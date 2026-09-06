@@ -96,7 +96,10 @@ end
 local function buildRiver(pts, widths, mouthY)
   local R = { pts = pts, total = L.polyLen(pts), w0 = widths[1], w1 = widths[2], h = {}, cum = { 0 } }
   local prev = math.huge
-  for i, p in ipairs(pts) do local hb = L.base(p[1], p[2]); R.h[i] = math.min(hb - 6 * L.VS, prev); prev = R.h[i] end
+  for i, p in ipairs(pts) do                       -- optional 3rd element forces the surface height (e.g. 0 where the river reaches the coast)
+    local hb = L.base(p[1], p[2])
+    R.h[i] = p[3] and p[3] * L.VS or math.min(hb - 6 * L.VS, prev); prev = R.h[i]
+  end
   R.h[#pts] = mouthY
   for i = #pts - 1, 1, -1 do if R.h[i] < R.h[i + 1] then R.h[i] = R.h[i + 1] end end
   for i = 2, #pts do R.cum[i] = R.cum[i - 1] + math.sqrt((pts[i][1] - pts[i - 1][1]) ^ 2 + (pts[i][2] - pts[i - 1][2]) ^ 2) end
@@ -108,9 +111,9 @@ local function riverSample(R, t)
   local f = (s - R.cum[i]) / math.max(R.cum[i + 1] - R.cum[i], 1e-9)
   local w = R.w0 + (R.w1 - R.w0) * t
   local est = 0
-  if R.estuary then                                -- only the last 240 studs flare into an estuary (kills the sand spit, keeps bridges spannable)
-    local t0 = 1 - 0.03 / R.total
-    if t > t0 then est = L.smooth((t - t0) / (1 - t0)); w = w + (200 - w) * est end
+  if R.estuary then                                -- the last 480 studs flare into an estuary (mouth opens wide; bridges stay upstream of this zone)
+    local t0 = 1 - 0.06 / R.total
+    if t > t0 then est = L.smooth((t - t0) / (1 - t0)); w = w + (220 - w) * est end
   end
   return R.h[i] + (R.h[i + 1] - R.h[i]) * f, w * L.VS, est
 end
@@ -173,11 +176,12 @@ function L.sample(u, v)
       h = math.min(nat, (hs - 10 * L.VS) + (bank - (hs - 10 * L.VS)) * t)
     else
       local tt = L.smooth((d - w / 2) / (valley - w / 2))
-      if est > 0 then                                                                        -- estuary: drown the ground beside the mouth so no sand islands split it
-        local drown = hs - 3 * L.VS
-        h = math.min(nat, drown + (nat - drown) * tt)
+      if est > 0 then                                                                        -- estuary: drowned shelf beside the channel, then a gentle 100-stud rise to natural ground
+        local drown = hs - 4 * L.VS
+        local tt2 = L.smooth((d - (w / 2 + 30 * L.VS)) / (100 * L.VS))
+        h = math.min(nat, drown + (nat - drown) * (1 - est + est * tt2))                     -- est blends the rule in gradually along the river
       elseif land > 0.9 and nat > 2 * L.VS then h = bank + (math.max(nat, bank) - bank) * tt   -- inland: valley wall, low ground raised to a levee
-      else h = math.min(nat, bank + (nat - bank) * tt) end                                 -- coast: cut only, never build sand levees into the sea
+      else h = math.min(nat, bank + (nat - bank) * tt) end                                 -- coast or low ground: cut only, never build levees
     end
   end
   if L.yard then

@@ -12,9 +12,12 @@ return L.runPhase("TestYard", function(folder)
   L.progress("style applied")
 
   local bx, bz = L.placePos("Brasshaven")
-  local cx, cz, rad = bx - 400, bz - 600, 1800
+  local kx0, kz0 = L.placePos("Ironcrest Keep")
+  local mouth = Y.river_main[#Y.river_main]; local mx0, mz0 = L.toWorld(mouth)
+  local cx, cz = (kx0 + mx0) / 2, (kz0 + mz0) / 2                                                   -- yard island spans keep .. river mouth
+  local rad = math.max(math.sqrt((kx0 - cx) ^ 2 + (kz0 - cz) ^ 2), math.sqrt((mx0 - cx) ^ 2 + (mz0 - cz) ^ 2)) + 500
   L.yard = { cx = cx, cz = cz, rad = rad }                 -- round island: terrain fades into the sea 400 studs before the edge
-  L.seaSlab(cx - 3200, cz - 3200, cx + 3200, cz + 3200)
+  L.seaSlab(cx - rad - 1600, cz - rad - 1600, cx + rad + 1600, cz + rad + 1600)
   L.progress("sea slab")
   local t0 = os.clock()
   local n = L.writeArea(cx, cz, rad, function(i, total) L.progress(("terrain %d/%d"):format(i, total)) end, 300)
@@ -52,7 +55,7 @@ return L.runPhase("TestYard", function(folder)
     local h = L.heightAt(p.X, p.Z); if h > 1 and h < 7 then L.tree(trees, p.X, h, p.Z, "palm", rng:NextNumber(0.9, 1.2), i) end end
   local planted = 0
   for i = 1, 400 do
-    local tx, tz = cx + rng:NextNumber(-1300, 1300), cz + rng:NextNumber(-1300, 1300)
+    local tx, tz = cx + rng:NextNumber(-rad + 500, rad - 500), cz + rng:NextNumber(-rad + 500, rad - 500)
     local dk = math.sqrt((tx - kx) ^ 2 + (tz - kz) ^ 2); local dm = math.sqrt((tx - mx) ^ 2 + (tz - mz) ^ 2)
     local rd, _, rw = L.riverAt(tx, tz); local h = L.heightAt(tx, tz)
     if dk > 330 and dm > 200 and rd > rw / 2 + 12 and h > 6 and L.polyDist(road, 1, tx, tz) > 20 then
@@ -64,7 +67,7 @@ return L.runPhase("TestYard", function(folder)
   for i = 1, 6 do local a = i * 1.05; L.tree(trees, mx + math.cos(a) * 150, L.heightAt(mx + math.cos(a) * 150, mz + math.sin(a) * 150), mz + math.sin(a) * 150, (i % 2 == 0) and "pine" or "oak", 1.2, 100 + i) end
   local deco = L.model(folder, "Deco")
   for i = 1, 40 do
-    local px, pz = cx + rng:NextNumber(-1200, 1200), cz + rng:NextNumber(-1200, 1200)
+    local px, pz = cx + rng:NextNumber(-rad + 600, rad - 600), cz + rng:NextNumber(-rad + 600, rad - 600)
     local rd, _, rw = L.riverAt(px, pz); local h = L.heightAt(px, pz)
     if rd > rw / 2 + 10 and h > 5 and math.sqrt((px - kx) ^ 2 + (pz - kz) ^ 2) > 300 and math.sqrt((px - mx) ^ 2 + (pz - mz) ^ 2) > 140 then
       L.placeAsset(deco, (i % 3 == 0) and "rock" or "bush", px, h, pz, rng, 0.8, 1.4)
