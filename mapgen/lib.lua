@@ -107,7 +107,10 @@ local function riverSample(R, t)
   local i = 1; while i < #R.cum - 1 and R.cum[i + 1] < s do i += 1 end
   local f = (s - R.cum[i]) / math.max(R.cum[i + 1] - R.cum[i], 1e-9)
   local w = R.w0 + (R.w1 - R.w0) * t
-  if R.estuary and t > 0.85 then w = w + (320 - w) * L.smooth((t - 0.85) / 0.15) end   -- mouth flares into an estuary so no sand spit forms
+  if R.estuary then                                -- only the last 240 studs flare into an estuary (kills the sand spit, keeps bridges spannable)
+    local t0 = 1 - 0.03 / R.total
+    if t > t0 then w = w + (200 - w) * L.smooth((t - t0) / (1 - t0)) end
+  end
   return R.h[i] + (R.h[i + 1] - R.h[i]) * f, w * L.VS
 end
 L.rivers = { buildRiver(Y.river_main, Y.river_width_studs.main, 0) }

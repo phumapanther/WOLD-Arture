@@ -22,7 +22,7 @@ return L.runPhase("AssetsSetup", function()
     end
   end
   for kind, list in pairs(Y.nature.assets) do
-    if type(list) == "table" and list[1] and list[1].id then
+    if kind ~= "rejected" and type(list) == "table" and list[1] and list[1].id then
       local kf = Instance.new("Folder"); kf.Name = kind; kf.Parent = root
       for _, a in ipairs(list) do
         local ok, loaded = pcall(function() return IS:LoadAsset(tonumber(a.id)) end)
@@ -34,7 +34,7 @@ return L.runPhase("AssetsSetup", function()
           for _, m in ipairs(found) do
             local _, size = m:GetBoundingBox()
             local isBush = kind == "bush"
-            local nameOk = (not isBush) or (m.Name:lower():find("bush") ~= nil) or (size.Y < 16 and size.X > 4)
+            local nameOk = (not isBush) or ((size.Y >= 4 and size.Y < 18) and (math.max(size.X, size.Z) / size.Y) < 2.2)   -- bush = compact clump, not logs/hedges
             local nParts = 0; for _, d in ipairs(m:GetDescendants()) do if d:IsA("BasePart") then nParts += 1; d.Anchored = true; d.CanCollide = (kind == "rock") end end
             if nameOk and nParts <= 12 and size.Y > 3 then
               m.Name = ("%s_%s_%d"):format(kind, a.id, kept + 1)
@@ -44,7 +44,7 @@ return L.runPhase("AssetsSetup", function()
               m.Parent = kf; kept += 1
             end
           end
-          report[#report + 1] = ("%s %s (%s): %d prototypes kept of %d"):format(kind, a.id, a.name, kept, #found)
+          report[#report + 1] = ("%s %s (%s): %d prototypes kept of %d"):format(kind, a.id, tostring(a.name), kept, #found)
           loaded:Destroy()
         end
         task.wait()
