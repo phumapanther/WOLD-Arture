@@ -137,12 +137,13 @@ function L.applyPads(u, v, h)                     -- overlapping pads blend by w
   local sumW, sumWY, maxT = 0, 0, 0
   for _, p in ipairs(L.pads) do
     local du, dv = (u - p.u) * L.HALF, (v - p.v) * L.HALF
-    local R = p.r * L.SCALE; local skirt = math.max(120 * L.SCALE, R * 0.5)
+    local R = p.r * L.SCALE; local skirt = math.max(160 * L.SCALE, R * 0.6)
     if math.abs(du) < R + skirt and math.abs(dv) < R + skirt then
       local d = math.sqrt(du * du + dv * dv)
       if d < R + skirt then
         local t = (d <= R) and 1 or L.smooth((R + skirt - d) / skirt)
-        sumW += t; sumWY += t * p.y * L.VS; if t > maxT then maxT = t end
+        local w = t ^ 8                            -- a pad you stand inside (t=1) outweighs neighbours' skirts, so its top stays flat
+        sumW += w; sumWY += w * p.y * L.VS; if t > maxT then maxT = t end
       end
     end
   end
@@ -511,7 +512,7 @@ end
 function L.castleTower(parent, x, y, z, r, h, opts)   -- fortified round tower: string course, machicolation ring, arrow slits, steep cone roof
   opts = opts or {}
   local m = L.model(parent, opts.name or "Tower")
-  L.cyl(m, CFrame.new(x, y + h / 2, z), r, h, MAT.Cobblestone, L.C.darkStone)
+  L.cyl(m, CFrame.new(x, y + h / 2 - 1.5, z), r, h + 3, MAT.Cobblestone, L.C.darkStone)                          -- base sunk 3 studs
   L.cyl(m, CFrame.new(x, y + h * 0.5, z), r + 0.6, 1.5, MAT.Slate, L.C.stone, { cancollide = false })           -- string course band
   L.cyl(m, CFrame.new(x, y + h - 3, z), r + 2, 3, MAT.Cobblestone, L.C.stone)                                    -- machicolation ring
   for i = 0, 11 do local a = i * math.pi / 6; L.box(m, CFrame.new(x + math.cos(a) * (r + 1.5), y + h + 1.5, z + math.sin(a) * (r + 1.5)) * L.yaw(-a), Vector3.new(2.2, 3, 2.6), MAT.Cobblestone, L.C.stone, { cancollide = false }) end
@@ -530,8 +531,8 @@ function L.castle(parent, x, y, z, faceDir, opts)   -- curtain wall square with 
   local m = L.model(parent, opts.name or "Castle")
   local faceSide = math.abs(faceDir.X) > math.abs(faceDir.Z) and (faceDir.X > 0 and 2 or 4) or (faceDir.Z > 0 and 3 or 1)   -- 1 north(-z) 2 east 3 south 4 west
   local sides = { { CFrame.new(x, 0, z - s / 2), 0, -1 }, { CFrame.new(x + s / 2, 0, z), math.pi / 2, -1 }, { CFrame.new(x, 0, z + s / 2), 0, 1 }, { CFrame.new(x - s / 2, 0, z), math.pi / 2, 1 } }
-  local function wallRun(cf, len, off)                 -- one straight run of wall centered at cf (X along the wall), offset off along X
-    L.box(m, cf * CFrame.new(off, y + wh / 2, 0), Vector3.new(len, wh, wt), MAT.Cobblestone, L.C.darkStone)
+  local function wallRun(cf, len, off)                 -- one straight run of wall centered at cf (X along the wall), offset off along X; base sunk 3 studs
+    L.box(m, cf * CFrame.new(off, y + wh / 2 - 1.5, 0), Vector3.new(len, wh + 3, wt), MAT.Cobblestone, L.C.darkStone)
     L.box(m, cf * CFrame.new(off, y + wh + 0.5, 0), Vector3.new(len, 1, wt + 2), MAT.Slate, L.C.stone)                        -- coping / walkway
     for k = -len / 2 + 3, len / 2 - 3, 6 do L.box(m, cf * CFrame.new(off + k, y + wh + 2.5, -wt / 2 - 0.2), Vector3.new(3, 3, 1.4), MAT.Cobblestone, L.C.stone, { cancollide = false }) end
     L.box(m, cf * CFrame.new(off, y + wh + 1.5, wt / 2 + 0.3), Vector3.new(len, 1.2, 0.6), MAT.Cobblestone, L.C.stone, { cancollide = false }) -- inner parapet

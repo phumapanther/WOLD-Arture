@@ -1,24 +1,19 @@
--- measure and line up AssetTest2 packs west/north of spawn; strip any scripts; anchor everything
 local out = {}
-local f = workspace.WOLD.AssetTest2
-local mx, mz = L.toWorld(L.LAYOUT.capital.districts.market.center); local my = L.padY(mx, mz)
-local order = { "Pine_A", "Spruce_B", "Spruce_C", "Palm_A", "Palm_B", "Palm_C", "TreeBushPack", "FoliagePack", "RockPack_A", "MossyRocks" }
-for i, name in ipairs(order) do
-  local m = f:FindFirstChild(name)
-  if m then
-    local parts, scripts = 0, 0
-    for _, d in ipairs(m:GetDescendants()) do
-      if d:IsA("BasePart") then parts += 1; d.Anchored = true end
-      if d:IsA("LuaSourceContainer") then scripts += 1; d:Destroy() end
-    end
-    if m:IsA("Folder") then local mm = Instance.new("Model"); mm.Name = "Pack"; for _, c in ipairs(m:GetChildren()) do c.Parent = mm end; mm.Parent = m; m = mm end
-    local cf, size = m:GetBoundingBox()
-    local tx, tz = mx - 420 + ((i - 1) % 5) * 130, mz - 300 - math.floor((i - 1) / 5) * 160
-    local delta = Vector3.new(tx, my + size.Y / 2, tz) - cf.Position
-    for _, d in ipairs(m:GetDescendants()) do if d:IsA("BasePart") then d.CFrame = d.CFrame + delta end end
-    local kids = {}; for _, c in ipairs(m:GetChildren()) do kids[#kids + 1] = c.ClassName end
-    out[#out + 1] = ("%s parts=%d scripts_removed=%d size=%.0fx%.0fx%.0f children=%d at (%d,%d)"):format(name, parts, scripts, size.X, size.Y, size.Z, #m:GetChildren(), tx, tz)
-  end
+local kx, kz = L.placePos("Ironcrest Keep")
+local gx, gz = L.toWorld(L.LAYOUT.capital.districts.government.center)
+local dx, dz = L.dirTo(kx, kz, gx, gz)
+local function surfaceY(x, z)
+  local reg = Region3.new(Vector3.new(x - 2, 0, z - 2), Vector3.new(x + 2, 400, z + 2)):ExpandToGrid(4)
+  local mats, occ = workspace.Terrain:ReadVoxels(reg, 4)
+  local top
+  for j = 1, #mats[1] do local m = mats[1][j][1]; if m ~= Enum.Material.Air and m ~= Enum.Material.Water then top = (j - 1) * 4 + occ[1][j][1] * 4 end end
+  return top
+end
+out[#out + 1] = ("keep padY=%d heightAt=%.1f surface=%s"):format(L.padY(kx, kz), L.heightAt(kx, kz), tostring(surfaceY(kx, kz)))
+for _, dir in ipairs({ { dx, dz, "toGate" }, { -dx, -dz, "awayGate" }, { -dz, dx, "side" } }) do
+  local row = {}
+  for r = 0, 480, 40 do local x, z = kx + dir[1] * r, kz + dir[2] * r; row[#row + 1] = ("%d:%.0f/%s"):format(r, L.heightAt(x, z), tostring(surfaceY(x, z))) end
+  out[#out + 1] = dir[3] .. " " .. table.concat(row, " ")
 end
 L.root():SetAttribute("Probe", table.concat(out, "\n"))
-return L.runPhase("Probe", function() L.progress("assets placed") end)
+return L.runPhase("Probe", function() L.progress("probe done") end)

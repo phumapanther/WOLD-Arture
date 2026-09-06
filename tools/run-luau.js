@@ -14,7 +14,9 @@ const POLL = `local r = workspace:FindFirstChild("WOLD"); return r and ((r:GetAt
 (async () => {
   const c = await connect();
   console.log(`sending ${file} (${(code.length / 1024).toFixed(0)} KB, SCALE=${scale})`);
-  console.log("execute_luau ->", c.text(await c.tool("execute_luau", { datamodel_type: "Edit", code })));
+  const first = c.text(await c.tool("execute_luau", { datamodel_type: "Edit", code }));
+  console.log("execute_luau ->", first);
+  if (/Play mode/i.test(first)) { console.error("Studio is in Play mode: stop Play and retry"); c.close(); process.exit(3); }
   const t0 = Date.now(); let last = "";
   while (Date.now() - t0 < timeout * 1000) {
     await new Promise((r) => setTimeout(r, 5000));

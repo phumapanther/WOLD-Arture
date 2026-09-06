@@ -411,16 +411,16 @@
           0.22,
           0.26
         ],
-        "radius": 0.05,
-        "th": "Ironcrest Keep บน Crown Hill ปรับพื้นเรียบตามความสูงจุดกลาง"
+        "radius": 0.032,
+        "th": "Ironcrest Keep บน Crown Hill ลานเรียบรัศมี 256 studs (ห้ามทับลานเขตราชการ)"
       },
       "government": {
         "center": [
-          0.26,
-          0.33
+          0.27,
+          0.35
         ],
-        "radius": 0.05,
-        "th": "Crown Plaza: รัฐสภา ธนาคารหลวง ศาล+คุก ค่ายทหาร"
+        "radius": 0.035,
+        "th": "Crown Plaza: รัฐสภา ธนาคารหลวง ศาล+คุก ค่ายทหาร (ห่างปราสาท 824 studs ให้ทางลาดเดินได้)"
       },
       "market": {
         "center": [
