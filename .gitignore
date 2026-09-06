@@ -2,3 +2,5 @@
 *.rbxlx
 *.rbxl.lock
 plugins/Rojo.rbxm
+*.mp4
+*.info.json
