@@ -121,24 +121,40 @@ local function codeKey(privateServerId)
 end
 
 function ChannelRegistry.GetOrCreateChannel(mode, channel)
+	-- Deliberately NOT built on UpdateAsync: ReserveServer is a side-effecting, non-idempotent external call
+	-- (it really reserves a server), and Roblox may invoke an UpdateAsync transform function more than once
+	-- internally on write contention — calling ReserveServer inside one would risk reserving extra servers for
+	-- the same slot even in normal operation. Get-then-set is simpler and keeps ReserveServer to exactly one call.
+	-- ReserveServer only works on a real published server (HTTP 403 in Studio, Play or not); errors here are
+	-- expected in Studio and only resolvable by a real publish — see spec §6 and plan Task 7.
 	local key = slotKey(mode, channel)
-	local accessCode, newPrivateServerId
-	store:UpdateAsync(key, function(existing)
-		if existing then
-			accessCode = existing.accessCode
-			return existing
-		end
-		local code, psid = TeleportService:ReserveServer(game.PlaceId)
-		accessCode, newPrivateServerId = code, psid
-		return { accessCode = code, privateServerId = psid, createdAt = os.time() }
+	local getOk, existing = pcall(function()
+		return store:GetAsync(key)
 	end)
-	if newPrivateServerId then
-		-- ponytail: best-effort second write, not transactional with the one above; see spec §6 for the (rare, harmless) failure mode
-		local ok, err = pcall(function()
-			store:SetAsync(codeKey(newPrivateServerId), { mode = mode, channel = channel })
-		end)
-		if not ok then warn("[ChannelRegistry] failed to write reverse lookup:", err) end
+	if not getOk then
+		error("[ChannelRegistry] GetOrCreateChannel(" .. mode .. ", " .. channel .. ") lookup failed: " .. tostring(existing), 0)
 	end
+	if existing then
+		return existing.accessCode
+	end
+
+	local reserveOk, accessCode, privateServerId = pcall(TeleportService.ReserveServer, TeleportService, game.PlaceId)
+	if not reserveOk then
+		error("[ChannelRegistry] ReserveServer failed for " .. mode .. "/" .. channel .. ": " .. tostring(accessCode), 0)
+	end
+
+	-- ponytail: known small race — two players picking an empty slot at the same instant can each reserve a
+	-- server; the second write below wins and the first reservation is orphaned (wasted, harmless at hobby scale)
+	local setOk, setErr = pcall(function()
+		store:SetAsync(key, { accessCode = accessCode, privateServerId = privateServerId, createdAt = os.time() })
+	end)
+	if not setOk then
+		warn("[ChannelRegistry] failed to persist new slot (a reserved server now exists but is not recorded):", setErr)
+	end
+	local revOk, revErr = pcall(function()
+		store:SetAsync(codeKey(privateServerId), { mode = mode, channel = channel })
+	end)
+	if not revOk then warn("[ChannelRegistry] failed to write reverse lookup:", revErr) end
 	return accessCode
 end
 
@@ -214,15 +230,17 @@ end
 return ServerConfig
 ```
 
-- [ ] **Step 5: Run the self-check** (exercises the pure/testable parts against the real DataStore, using a throwaway `TestMode`/`999` slot that can never collide with a real channel)
+- [ ] **Step 5: Run the self-check**
 
-Run:
-```
-node tools/mcp-call.js execute_luau '{"datamodel_type":"Edit","code":"local CR = require(game.ServerScriptService.Lobby.ChannelRegistry); local fails = {}; local function check(cond, msg) if not cond then table.insert(fails, msg) end end; local code1 = CR.GetOrCreateChannel(\"TestMode\", 999); local code2 = CR.GetOrCreateChannel(\"TestMode\", 999); check(code1 == code2, \"not idempotent: \"..tostring(code1)..\" ~= \"..tostring(code2)); check(type(code1) == \"string\" and #code1 > 0, \"access code should be a non-empty string\"); local m, c = CR.IdentifySelfFor(\"not-a-real-id\"); check(m == \"Roleplay\" and c == 0, \"fallback should be Roleplay/0, got \"..tostring(m)..\"/\"..tostring(c)); local m2, c2 = CR.IdentifySelfFor(\"\"); check(m2 == nil and c2 == nil, \"empty id should mean lobby (nil, nil)\"); return #fails == 0 and \"ALL PASS\" or (#fails ..\" FAIL(S): \"..table.concat(fails, \" | \"))"}'
-```
-Expected: `"ALL PASS"`. If it prints a fail message instead, fix the corresponding function in `ChannelRegistry.lua` and rerun.
+Two things cannot be verified in Studio at all, Play mode or not: `DataStoreService` calls only work from a real server context (not the Edit-mode command/Assistant context — use `datamodel_type: "Server"` while Play is running), and `TeleportService:ReserveServer` always fails with HTTP 403 in Studio regardless of Play/API-access settings (a real Roblox platform restriction, not a bug). The check below verifies everything that *can* run locally: the "channel already exists" path (via a pre-seeded fake entry, so it never has to call `ReserveServer`), idempotency, both branches of `IdentifySelfFor`, and that a genuinely new slot correctly *errors* rather than silently returning garbage. The "first-ever creation of a channel" path is only provable end to end after a real publish (Task 7).
 
-Note: this Studio session needs **Game Settings → Security → Enable Studio Access to API Services** turned on, the same setting the map generator already relies on for `InsertService`/asset loading — if this step errors with something like "not enabled," turn that on and retry.
+Run: with Studio in Play mode (start it if it isn't already):
+```
+node tools/mcp-call.js execute_luau '{"datamodel_type":"Server","code":"local CR = require(game.ServerScriptService.Lobby.ChannelRegistry); local DS = game:GetService(\"DataStoreService\"):GetDataStore(\"WOLD_ChannelRegistry_v1\"); DS:RemoveAsync(\"slot_TestMode_999\"); local fails = {}; local function check(cond, msg) if not cond then table.insert(fails, msg) end end; local seeded = { accessCode = \"fake-code-abc\", privateServerId = \"fake-psid-xyz\", createdAt = os.time() }; DS:SetAsync(\"slot_TestMode_999\", seeded); DS:SetAsync(\"code_fake-psid-xyz\", { mode = \"TestMode\", channel = 999 }); local code1 = CR.GetOrCreateChannel(\"TestMode\", 999); local code2 = CR.GetOrCreateChannel(\"TestMode\", 999); check(code1 == \"fake-code-abc\", \"expected pre-seeded code, got \"..tostring(code1)); check(code1 == code2, \"not idempotent\"); local m, c = CR.IdentifySelfFor(\"fake-psid-xyz\"); check(m == \"TestMode\" and c == 999, \"reverse lookup wrong: \"..tostring(m)..\"/\"..tostring(c)); local m2, c2 = CR.IdentifySelfFor(\"not-a-real-id\"); check(m2 == \"Roleplay\" and c2 == 0, \"fallback should be Roleplay/0\"); local m3, c3 = CR.IdentifySelfFor(\"\"); check(m3 == nil and c3 == nil, \"empty id should mean lobby\"); local reserveOk = pcall(CR.GetOrCreateChannel, \"TestMode\", 998); check(not reserveOk, \"expected a brand-new slot to error in Studio (ReserveServer 403)\"); DS:RemoveAsync(\"slot_TestMode_999\"); DS:RemoveAsync(\"code_fake-psid-xyz\"); return #fails == 0 and \"ALL PASS\" or (#fails ..\" FAIL(S): \"..table.concat(fails, \" | \"))"}'
+```
+Expected: `"ALL PASS"`. If it prints a fail message instead, fix the corresponding function in `ChannelRegistry.lua`, re-push it, and rerun.
+
+Note: this Studio session needs **Game Settings → Security → Enable Studio Access to API Services** turned on, the same setting the map generator already relies on for `InsertService`/asset loading — if this step errors with something like "API access not enabled," turn that on and retry.
 
 - [ ] **Step 6: Commit**
 
