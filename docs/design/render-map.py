@@ -25,11 +25,11 @@ g = lambda c, s: np.exp(-((X - c[0]) ** 2 + (Z - c[1]) ** 2) / (2 * s * s))
 plains = 20 + 40 * n2
 fm = sig((L["forest"]["x_max"] - X) / 0.08) * sig((L["forest"]["z_abs_max"] - np.abs(Z)) / 0.08) * (0.55 + 0.45 * n3)
 mb = sig((L["mountain_band_z"] - Z) / 0.06)
-pk = L["peaks"]
+pk = L["peaks"]; PH = L["peak_height_studs"]; SNOW = L["snow_line_studs"]
 ridge = np.exp(-(Z + 0.60) ** 2 / (2 * 0.07 ** 2)) * sig((0.45 - np.abs(X)) / 0.05)
 cl = L["cliffs"]
 cliffs = sig((r - cl["r_min"]) / 0.05) * np.exp(-(np.abs(ang) - cl["center_deg"]) ** 2 / (2 * cl["sigma_deg"] ** 2)) * 110
-H_land = (plains + fm * 30 + mb * (250 + 330 * n3) + g(pk["main_NE"], .10) * 950 + g(pk["second_NW"], .10) * 750
+H_land = (plains + fm * 30 + mb * (250 + 330 * n3) + g(pk["main_NE"], .10) * (PH["main_NE"] - 450) + g(pk["second_NW"], .10) * (PH["second_NW"] - 450)
           + ridge * 380 + g(L["crown_hill"], .07) * 200 + cliffs)
 sea = -40 - 40 * np.clip((r - 0.85) / 0.6, 0, 1)
 H = land * H_land + (1 - land) * sea
@@ -49,8 +49,8 @@ paint((H >= 0) & (H < 8), np.array((214, 196, 140), np.float32))
 paint((H >= 8) & (H < 100), lerp((120, 170, 75), (85, 135, 60), (H - 8) / 92))
 paint((H >= 8) & (H < 100) & (fm > 0.45) & (land > 0.5), lerp((85, 135, 60), (38, 88, 45), fm * 1.4))
 paint((H >= 100) & (H < 250), lerp((85, 135, 60), (125, 115, 98), (H - 100) / 150))
-paint((H >= 250) & (H < 900), lerp((110, 100, 90), (150, 145, 140), (H - 250) / 650))
-paint(H >= 900, np.array((238, 242, 246), np.float32))
+paint((H >= 250) & (H < SNOW), lerp((110, 100, 90), (150, 145, 140), (H - 250) / (SNOW - 250)))
+paint(H >= SNOW, np.array((238, 242, 246), np.float32))
 paint((cliffs > 60) & (land > 0.5) & (H > 0) & (H < 250), np.array((72, 66, 66), np.float32))
 gy, gx = np.gradient(H)
 shade = np.clip(1 + (-gx - gy) * 0.006, 0.55, 1.35)
@@ -130,8 +130,8 @@ sx, sy, sl = W - 260, W - 46, 2000 / HALF / (2 * EXT) * W
 d.line([(sx, sy), (sx + sl, sy)], fill=(255, 255, 255), width=4)
 d.text((sx + sl / 2, sy - 20), "2,000 studs", font=F(13, True), fill=(255, 255, 255), anchor="mt", stroke_width=2, stroke_fill=(0, 0, 0))
 leg = [((30, 90, 150), "ทะเล (ลึก -> ตื้น)"), ((214, 196, 140), "หาดทราย 0-8"), ((100, 150, 65), "ทุ่งหญ้า 20-60"),
-       ((38, 88, 45), "ป่าตะวันตก 30-90"), ((125, 115, 98), "เนิน / Crown Hill 100-250"), ((140, 135, 130), "เขาเหนือ 250-1,400"),
-       ((238, 242, 246), "หิมะ > 900"), ((72, 66, 66), "หน้าผาตะวันตก"), ((60, 140, 205), "แม่น้ำ"), ((170, 140, 95), "ถนน (เส้นประ)"),
+       ((38, 88, 45), "ป่าตะวันตก 30-90"), ((125, 115, 98), "เนิน / Crown Hill 100-250"), ((140, 135, 130), "เขาเหนือ 250-2,000"),
+       ((238, 242, 246), "หิมะ > 1,200"), ((72, 66, 66), "หน้าผาตะวันตก"), ((60, 140, 205), "แม่น้ำ"), ((170, 140, 95), "ถนน (เส้นประ)"),
        ((45, 40, 40), "รถไฟ"), ((30, 30, 30), "ถ้ำ")]
 lx, ly = 18, W - 22 - 22 * len(leg) - 10
 d.rectangle([lx - 8, ly - 8, lx + 250, W - 14], fill=(255, 255, 255), outline=(60, 60, 60))

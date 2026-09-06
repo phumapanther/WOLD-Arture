@@ -6,6 +6,8 @@
   "bay": { "angle_deg": 45, "sigma_deg": 18, "depth": 0.32 },
   "mountain_band_z": -0.45,
   "peaks": { "main_NE": [0.45, -0.60], "second_NW": [-0.45, -0.60] },
+  "peak_height_studs": { "main_NE": 2000, "second_NW": 1500 },
+  "snow_line_studs": 1200,
   "crown_hill": [0.22, 0.26],
   "forest": { "x_max": -0.25, "z_abs_max": 0.45 },
   "cliffs": { "center_deg": 180, "sigma_deg": 20, "r_min": 0.72 },
