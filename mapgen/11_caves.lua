@@ -67,11 +67,17 @@ return L.runPhase("Caves", function(folder)
       local br = tunnel(main[2 + b].X, main[2 + b].Z, px + b * 300, pz, rng, 3, 8, 11); br[1] = main[2 + b]; carve(br, 11); chamber(br[#br], 28)
     end
     -- ore deposits: Creator Store ore prototypes (kind "ore") on the tunnel floors when installed, else embedded metal boxes
+    local function sideSpot(seg, dist)                                                          -- a point beside the tunnel wall (never in the walkway)
+      local a, b = main[seg], main[math.min(seg + 1, #main)]
+      local d = (b - a); if d.Magnitude < 1 then d = Vector3.new(1, 0, 0) end; d = Vector3.new(d.X, 0, d.Z).Unit
+      local side = Vector3.new(-d.Z, 0, d.X) * dist * (rng:NextNumber() < 0.5 and -1 or 1)
+      return a + d * rng:NextNumber(0, (b - a).Magnitude) + side
+    end
     for i = 1, 30 do
-      local seg = rng:NextInteger(2, #main)
-      local p = main[seg] + Vector3.new(rng:NextNumber(-10, 10), 0, rng:NextNumber(-10, 10))
+      local seg = rng:NextInteger(3, #main - 1)                                                  -- from the second bend inward: the mouth stays clear
+      local p = sideSpot(seg, rng:NextNumber(7, 10))
       local floorY = main[seg].Y - 14 * 0.6                                                     -- carve() floor level for r=14
-      local ore = L.assetList("ore") and L.placeAsset(mm, "ore", p.X, floorY, p.Z, rng, 0.8, 1.4)
+      local ore = L.assetList("ore") and L.placeAsset(mm, "ore", p.X, floorY, p.Z, rng, 0.45, 0.9)
       if ore then L.tag(ore, "OreVein", { GatherType = "Mining", Resource = "Ore" })
       else
         local q = p + Vector3.new(rng:NextNumber(-4, 4), rng:NextNumber(4, 12), rng:NextNumber(-4, 4))
@@ -79,7 +85,7 @@ return L.runPhase("Caves", function(folder)
       end
     end
     -- cave decor (stalagmites) along the tunnels
-    if L.assetList("cave") then for i = 1, 12 do local seg = rng:NextInteger(3, #main); local p = main[seg] + Vector3.new(rng:NextNumber(-11, 11), 0, rng:NextNumber(-11, 11)); L.placeAsset(mm, "cave", p.X, main[seg].Y - 8.4, p.Z, rng, 0.4, 0.9) end end
+    if L.assetList("cave") then for i = 1, 12 do local seg = rng:NextInteger(3, #main - 1); local p = sideSpot(seg, rng:NextNumber(8, 11)); L.placeAsset(mm, "cave", p.X, main[seg].Y - 8.4, p.Z, rng, 0.4, 0.8) end end
     for i = 1, #main - 1 do
       L.rod(mm, main[i] - Vector3.new(0, 0.5, 0), main[i + 1] - Vector3.new(0, 0.5, 0), 0.3, MAT.Metal, L.C.iron, { cancollide = false })
       L.rod(mm, main[i] + Vector3.new(0, -0.5, 3), main[i + 1] + Vector3.new(0, -0.5, 3), 0.3, MAT.Metal, L.C.iron, { cancollide = false })
