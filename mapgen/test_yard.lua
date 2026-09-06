@@ -39,8 +39,12 @@ return L.runPhase("TestYard", function(folder)
   L.flattenDisc(mx, mz, 120, my, MAT.Cobblestone)
   local hm = L.model(folder, "Houses"); local rng = Random.new(3)
   for i = 0, 5 do local a = i * math.pi / 3; L.house(hm, mx + math.cos(a) * 80, my, mz + math.sin(a) * 80, rng:NextInteger(26, 34), rng:NextInteger(22, 30), rng:NextInteger(2, 3), { yaw = math.atan2(-math.cos(a), -math.sin(a)), roof = ({ L.C.roofRed, L.C.roofBlue, L.C.roofGreen })[i % 3 + 1] }) end
-  L.sign(hm, mx, my, mz, "Brasshaven", 0)
-  L.progress("houses"); task.wait()
+  L.sign(hm, mx, my, mz + 30, "Brasshaven", 0)
+  -- spawn on the market pad so the user can walk the yard in Play mode
+  local old = workspace:FindFirstChild("SpawnLocation"); if old then old:Destroy() end
+  local sp = Instance.new("SpawnLocation"); sp.Size = Vector3.new(16, 1, 16); sp.Position = Vector3.new(mx, my + 0.5, mz); sp.Anchored = true
+  sp.Material = MAT.Cobblestone; sp.Color = L.C.stone; sp.Neutral = true; sp.Duration = 0; sp.Name = "SpawnLocation"; sp.Parent = folder
+  L.progress("houses + spawn"); task.wait()
 
   -- pier + boat at the bay shore, palms on the beach, mixed trees near the keep
   local odx, odz = L.dirTo(0, 0, mx, mz)
