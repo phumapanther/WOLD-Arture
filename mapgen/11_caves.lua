@@ -15,12 +15,15 @@ return L.runPhase("Caves", function(folder)
       task.wait()
     end
   end
-  local function chamber(p, r)
+  local function chamber(p, r)                        -- hall stays under at least 8 studs of rock: shrink the radius if the cover is thin
+    local cover = L.heightAt(p.X, p.Z) - p.Y
+    r = math.max(14, math.min(r, (cover - 8) / 1.5))
     Terrain:FillBall(p + Vector3.new(0, r * 0.5, 0), r, MAT.Air)
     Terrain:FillBlock(CFrame.new(p.X, p.Y - 2, p.Z), Vector3.new(r * 1.8, 4, r * 1.8), MAT.Rock)
+    return r
   end
   local HttpService = game:GetService("HttpService")
-  local function tunnel(ex, ez, tx, tz, rng, legs, down)   -- from the entrance toward (tx,tz): first leg straight and level (a real mouth), then wandering; `down` = studs of descent per 100
+  local function tunnel(ex, ez, tx, tz, rng, legs, down, r)   -- from the entrance toward (tx,tz): first leg straight and level (a real mouth), then wandering; `down` = studs of descent per 100
     local ey = L.heightAt(ex, ez) + 1
     local path = { Vector3.new(ex, ey, ez) }
     local dx, dz = L.dirTo(ex, ez, tx, tz)
@@ -30,6 +33,7 @@ return L.runPhase("Caves", function(folder)
       local a = math.atan2(dz, dx) + rng:NextNumber(-0.6, 0.6)
       local len = rng:NextNumber(60, 120)
       p = p + Vector3.new(math.cos(a) * len, -down * len / 100, math.sin(a) * len)
+      p = Vector3.new(p.X, math.min(p.Y, L.heightAt(p.X, p.Z) - (r or 14) - 8), p.Z)   -- never closer than r+8 to the surface: tunnels stay underground
       path[#path + 1] = p
     end
     return path
@@ -58,9 +62,9 @@ return L.runPhase("Caves", function(folder)
     local mm = L.model(m, "Stonemark Mine"); local rng = Random.new(101)
     local ex, ez = L.toWorld(Y.caves["Stonemark Mine"]); local px, pz = L.toWorld(Y.peaks.second_NW)
     L.writeArea(ex, ez, 620)                                              -- repair: rewrite the natural terrain here so re-runs carve from a clean hill
-    local main = tunnel(ex, ez, px, pz, rng, 4, 6); carve(main, 14); chamber(main[#main], 40)
+    local main = tunnel(ex, ez, px, pz, rng, 4, 6, 14); carve(main, 14); chamber(main[#main], 40)
     for b = 1, 2 do
-      local br = tunnel(main[2 + b].X, main[2 + b].Z, px + b * 300, pz, rng, 3, 8); br[1] = main[2 + b]; carve(br, 11); chamber(br[#br], 28)
+      local br = tunnel(main[2 + b].X, main[2 + b].Z, px + b * 300, pz, rng, 3, 8, 11); br[1] = main[2 + b]; carve(br, 11); chamber(br[#br], 28)
     end
     -- ore deposits: Creator Store ore prototypes (kind "ore") on the tunnel floors when installed, else embedded metal boxes
     for i = 1, 30 do
@@ -90,15 +94,15 @@ return L.runPhase("Caves", function(folder)
     local mm = L.model(m, "Crystal Cave"); local rng = Random.new(202)
     local ex, ez = L.toWorld(Y.caves["Crystal Cave"]); local px, pz = L.toWorld(Y.peaks.main_NE)
     L.writeArea(ex, ez, 620)
-    local path = tunnel(ex, ez, px, pz, rng, 3, 4); carve(path, 16)
-    local hall = path[#path]; chamber(hall, 70)
-    for i = 1, 12 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(14, 58)
+    local path = tunnel(ex, ez, px, pz, rng, 3, 4, 16); carve(path, 16)
+    local hall = path[#path]; local hallR = chamber(hall, 70)
+    for i = 1, 12 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(10, hallR * 0.85)
       L.tag(L.crystal(mm, hall + Vector3.new(math.cos(a) * r, rng:NextNumber(0, 3), math.sin(a) * r), rng:NextNumber(2.5, 5)), "Crystal", { GatherType = "Mining", Resource = "Crystal" }) end
     for i = 1, 4 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(15, 40)
       L.crystal(mm, hall + Vector3.new(math.cos(a) * r, rng:NextNumber(22, 40), math.sin(a) * r), rng:NextNumber(3, 6)) end
     L.crystal(mm, hall + Vector3.new(0, 30, 0), 10)
-    if L.assetList("cave") then for i = 1, 8 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(30, 62); L.placeAsset(mm, "cave", hall.X + math.cos(a) * r, hall.Y - 2, hall.Z + math.sin(a) * r, rng, 0.5, 1.0) end end
-    if L.assetList("ore") then for i = 1, 8 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(12, 55); local o = L.placeAsset(mm, "ore", hall.X + math.cos(a) * r, hall.Y - 2, hall.Z + math.sin(a) * r, rng, 0.8, 1.2); if o then L.tag(o, "OreVein", { GatherType = "Mining", Resource = "Crystal" }) end end end
+    if L.assetList("cave") then for i = 1, 8 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(hallR * 0.4, hallR * 0.9); L.placeAsset(mm, "cave", hall.X + math.cos(a) * r, hall.Y - 2, hall.Z + math.sin(a) * r, rng, 0.5, 1.0) end end
+    if L.assetList("ore") then for i = 1, 8 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(8, hallR * 0.8); local o = L.placeAsset(mm, "ore", hall.X + math.cos(a) * r, hall.Y - 2, hall.Z + math.sin(a) * r, rng, 0.8, 1.2); if o then L.tag(o, "OreVein", { GatherType = "Mining", Resource = "Crystal" }) end end end
     local ddx, ddz = L.dirTo(ex, ez, px, pz)
     entrance(mm, "Crystal Cave", ex, ez, ddx, ddz); savePath(mm, path)
     L.progress("crystal cave"); task.wait()
@@ -109,7 +113,7 @@ return L.runPhase("Caves", function(folder)
     local hx, hz = L.toWorld(Y.caves["Sea Cave"])
     L.writeArea(hx, hz, 620)
     local ex, ez = L.findShore(0, 0, hx, hz, L.HALF * 1.2)            -- last land point walking from the island centre toward the west coast (waterline)
-    local path = tunnel(ex, ez, 0, 0, rng, 3, 6); carve(path, 14)      -- mouth at the waterline, tunnel dives 6/100 under the cliff plateau so it never breaks the surface
+    local path = tunnel(ex, ez, 0, 0, rng, 3, 6, 14); carve(path, 14)  -- mouth at the waterline, tunnel dives under the cliff plateau
     local hall = path[#path]; chamber(hall, 30)
     Terrain:FillBlock(CFrame.new(hall.X, hall.Y - 2, hall.Z), Vector3.new(36, 4, 36), MAT.Water)   -- tide pool
     local wreck = L.model(mm, "Shipwreck")
