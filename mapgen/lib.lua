@@ -275,8 +275,16 @@ end
 function L.seaSlab(x0, z0, x1, z1)                 -- seabed + water box with a thin sand rim so water never touches unwritten space (avoids water render spikes)
   local sb, deep = Y.sea.seabed_y * L.VS, Y.sea.deep_seabed_y * L.VS
   local cx, cz, w, d = (x0 + x1) / 2, (z0 + z1) / 2, x1 - x0, z1 - z0
-  Terrain:FillBlock(CFrame.new(cx, (sb + deep) / 2, cz), Vector3.new(w, sb - deep, d), MAT.Sand)
-  Terrain:FillBlock(CFrame.new(cx, sb / 2, cz), Vector3.new(w, -sb, d), MAT.Water)
+  local T = 2048                                    -- FillBlock rejects huge regions ("Extents are too large"): tile the slab
+  local tiles = 0
+  for tx = x0, x1 - 1, T do for tz = z0, z1 - 1, T do
+    local tw, td = math.min(T, x1 - tx), math.min(T, z1 - tz)
+    local tcx, tcz = tx + tw / 2, tz + td / 2
+    Terrain:FillBlock(CFrame.new(tcx, (sb + deep) / 2, tcz), Vector3.new(tw, sb - deep, td), MAT.Sand)
+    Terrain:FillBlock(CFrame.new(tcx, sb / 2, tcz), Vector3.new(tw, -sb, td), MAT.Water)
+    tiles += 1
+    if tiles % 16 == 0 then task.wait() end
+  end end
   for _, r in ipairs({ { x0 + 4, cz, 8, d }, { x1 - 4, cz, 8, d }, { cx, z0 + 4, w, 8 }, { cx, z1 - 4, w, 8 } }) do
     Terrain:FillBlock(CFrame.new(r[1], sb / 2 + 2, r[2]), Vector3.new(r[3], -sb + 4, r[4]), MAT.Sand)
   end
