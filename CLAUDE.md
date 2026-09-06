@@ -9,13 +9,13 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 2. ออกแบบแมพ NPC วัตถุ ตามธีมใหม่ เป็นลำดับขั้น
 3. เจนของเหล่านั้นเข้า Studio ตามลำดับ (ผ่าน Studio MCP หรือปลั๊กอินใน `plugins/`)
 
-**สถานะ (2026-09-06):** เครื่องมือครบ ผู้ใช้อนุมัติแบบแมพครบทั้ง 6 ส่วนแล้ว (โลก/ชื่อ, Terrain, Brasshaven, หมู่บ้าน+ไอน้ำ+เวท+เกาะ, สถาปัตยกรรมตัวเจน, ลำดับขั้น 0-10)
-- `docs/design/01-world-and-terrain.md` ส่วน 1-2 และ `docs/design/02-structures-and-generation.md` ส่วน 3-6 (มีตารางสิ่งที่ปรับจากแชท เกณฑ์ผ่านแต่ละขั้น มุมกล้องตรวจงาน)
-- `docs/design/world-layout.json` = แหล่งความจริงชุดเดียวของพิกัด (สัดส่วน -1..1, X ตะวันออก, Z ใต้) ตัวเจน Luau ต้องอ่านไฟล์นี้ ห้ามฮาร์ดโค้ดพิกัด
-- `docs/design/map-arture-v1.png` วาดด้วย `render-map.py` (รันใน docs/design ด้วย pyembed python + PYTHONUTF8=1) แก้ JSON แล้วรันใหม่ทุกครั้ง
-- แผนงานละเอียด 11 Task (ขั้น 0-10) พร้อมโค้ด: `docs/design/03-implementation-plan.md` ผู้ใช้อนุมัติ spec 02 แล้ว
-- ขั้นถัดไป: รันแผน Task 0 (spike MCP runner) → ... → Task 10 ขออนุมัติผู้ใช้ก่อนทุก Task, commit หลังทุก Task
-- ตัวเจนจะอยู่ใน `mapgen/*.lua` + `tools/run-luau.js` (สร้างตามแผน)
+**สถานะ (2026-09-06 ค่ำ):** แผน `docs/design/03-implementation-plan.md` ดำเนินถึงข้อ 2 แล้ว
+- ข้อ 0 สนามทดสอบ ผ่าน (8+ รอบ) ข้อ 1 ตั้งค่าโลก ผ่าน ข้อ 2 Terrain ขนาดจริง 16k เจนแล้ว 257 วินาที 2,928 ก้อน check_terrain ผ่าน
+- ถัดไป: ข้อ 3 ถ้ำ (`mapgen/11_caves.lua` เขียนแล้ว รอผู้ใช้อนุมัติ) → 4 ถนน/สะพาน → 5 Brasshaven → 6 หมู่บ้าน → 7 ไอน้ำ/เวท → 8 เกาะ → 9 ธรรมชาติ (ต้นไม้จาก Creator Store) → 10 ตรวจรวม
+- รันขั้น: `node tools/run-luau.js mapgen/<ไฟล์>.lua` (exit 3 = ผู้ใช้อยู่ใน Play mode รอแล้วลองใหม่) ภาพ: `node tools/mcp-call.js shot <ชื่อ> cx cy cz lx ly lz` → docs/shots/
+- ต้นแบบต้นไม้/พุ่ม/หิน: `node tools/run-luau.js mapgen/assets_setup.lua` (โหลดจาก Creator Store ตาม id ใน JSON เข้า ServerStorage.WOLD_Assets) ต้องรันก่อนข้อ 9 ถ้า place ใหม่
+- ข้อกำหนดสำคัญจากผู้ใช้: แมพต้องแก้มือได้ (Attribute Manual=true รอดจากการเจนซ้ำ) และมี hook ระบบเกม (แท็ก Tree/Rock/OreVein/Bush/FishingSpot/DigSpot/SearchPoint/RespawnPoint/Zone) ดู `docs/design/04-gameplay-hooks.md` ระบบเกมชุดแรกทำต่อหลังแมพ
+- เอกสารแบบ: `01-world-and-terrain.md`, `02-structures-and-generation.md` (มีส่วน 'ปรับผังหลังสนามทดสอบ'), `04-gameplay-hooks.md`; พิกัดทั้งหมดใน `world-layout.json`; แผนที่ `map-arture-v1.png` (render-map.py)
 ผู้ใช้สั่งว่า "อ่านประวัติสนทนาเดิมทั้งหมด ใช้เป็นบริบท แต่อย่าเพิ่งสรุปจนกว่าจะถาม"
 หมายเหตุ: ไฟล์ประวัติมีแค่ส่วนวิเคราะห์ UI 16 หน้าจอ + UI Flow รายละเอียดระบบเศรษฐกิจ/รัฐฉบับเต็มยังไม่มีในไฟล์ ถ้าผู้ใช้หามาได้จะอยู่ใน `docs/`
 
