@@ -1,0 +1,46 @@
+{
+  "_note": "พิกัดสัดส่วน -1..1 (X ตะวันออก, Z ใต้; เหนือ = -Z) คูณ half_size_studs เป็น studs",
+  "half_size_studs": 8000,
+  "coast_radius": 0.85,
+  "coast_noise": 0.09,
+  "bay": { "angle_deg": 45, "sigma_deg": 18, "depth": 0.32 },
+  "mountain_band_z": -0.45,
+  "peaks": { "main_NE": [0.45, -0.60], "second_NW": [-0.45, -0.60] },
+  "crown_hill": [0.22, 0.26],
+  "forest": { "x_max": -0.25, "z_abs_max": 0.45 },
+  "cliffs": { "center_deg": 180, "sigma_deg": 20, "r_min": 0.72 },
+  "places": {
+    "Brasshaven":     { "pos": [0.32, 0.42],  "type": "capital", "th": "เมืองหลวง ท่าเรือ" },
+    "Ironcrest Keep": { "pos": [0.22, 0.26],  "type": "castle",  "th": "ปราสาทบน Crown Hill" },
+    "Goldmeadow":     { "pos": [-0.03, 0.20], "type": "village", "th": "หมู่บ้านเกษตร" },
+    "Cogsworth":      { "pos": [0.10, -0.14], "type": "village", "th": "ช่างกล ชุมทางรถไฟ" },
+    "Stonemark":      { "pos": [-0.12, -0.42],"type": "village", "th": "หมู่บ้านเหมือง" },
+    "Elderwood":      { "pos": [-0.50, 0.02], "type": "village", "th": "ล่าสัตว์ ตัดไม้" },
+    "Saltmere":       { "pos": [-0.45, 0.62], "type": "village", "th": "หมู่บ้านประมง" },
+    "Astravale":      { "pos": [0.48, -0.42], "type": "village", "th": "หมู่บ้านนักเวท" },
+    "Spire of Eld":   { "pos": [0.45, -0.60], "type": "spire",   "th": "หอเวท ยอดเขาหลัก" }
+  },
+  "caves": {
+    "Stonemark Mine": [-0.14, -0.50],
+    "Crystal Cave":   [0.40, -0.65],
+    "Sea Cave":       [-0.84, 0.10]
+  },
+  "river_main": [[0.12,-0.62],[0.09,-0.45],[0.11,-0.30],[0.10,-0.14],[0.06,0.0],[0.05,0.18],[0.13,0.30],[0.25,0.36],[0.40,0.40]],
+  "river_tributary": [[-0.42,-0.55],[-0.40,-0.35],[-0.36,-0.15],[-0.25,-0.02],[-0.10,0.02],[0.06,0.0]],
+  "roads": [
+    ["Brasshaven","Goldmeadow","Elderwood"],
+    ["Elderwood","Saltmere","Brasshaven"],
+    ["Goldmeadow","Cogsworth","Stonemark"],
+    ["Cogsworth","Astravale","Spire of Eld"],
+    ["Brasshaven","Ironcrest Keep"]
+  ],
+  "railway": ["Stonemark","Cogsworth","Brasshaven"],
+  "isles": {
+    "Crystal Isle":        { "pos": [0.88, -0.88], "r": 0.08 },
+    "Steam Fortress Isle": { "pos": [1.18, 0.02],  "r": 0.10 },
+    "Lighthouse Isle":     { "pos": [0.05, 1.18],  "r": 0.06 },
+    "Ruins Isle":          { "pos": [-1.18, -0.10],"r": 0.07 },
+    "Smuggler's Cove":     { "pos": [-0.82, -0.86],"r": 0.05 }
+  },
+  "rocks": { "seed": 42, "count": 12, "r_min": 0.95, "r_max": 1.40 }
+}
