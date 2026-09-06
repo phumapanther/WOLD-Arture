@@ -538,7 +538,67 @@
     "mountain_pine_max_y": 1200,
     "tree_budget": 18000,
     "beach_palms": true,
-    "_note": "ต้นไม้ 4-6 Part ต่อต้นหลังปรับให้สมจริง งบชิ้นส่วนรวมขยายเป็น 150,000 (ผู้ใช้ไม่กังวลเรื่องแลค)"
+    "_note": "ต้นไม้ 4-6 Part ต่อต้นหลังปรับให้สมจริง งบชิ้นส่วนรวมขยายเป็น 150,000 (ผู้ใช้ไม่กังวลเรื่องแลค)",
+    "assets": {
+      "_note": "ผู้ใช้อนุมัติ 2026-09-06: ต้นไม้/พุ่ม/หินโคลนจากโมเดลฟรี Creator Store (ตรวจแล้วไม่มีสคริปต์ ลบสคริปต์ทิ้งตอน insert) แทนต้นไม้ Part ที่สร้างเอง",
+      "oak": [
+        {
+          "id": "98950444096614",
+          "name": "6 Realistic Oak Trees"
+        },
+        {
+          "id": "114023396228594",
+          "name": "3 realistic oak tree"
+        }
+      ],
+      "pine": [
+        {
+          "id": "5392132809",
+          "name": "Realistic Pine Tree"
+        },
+        {
+          "id": "110136399240805",
+          "name": "Enhanced Realistic Spruce Pine Tree"
+        }
+      ],
+      "palm": [
+        {
+          "id": "10562894034",
+          "name": "Palm Tree (Realistic)"
+        }
+      ],
+      "bush": [
+        {
+          "id": "7990107300",
+          "name": "Foliage Pack (Realistic) - Tree Bush Grass"
+        }
+      ],
+      "rock": [
+        {
+          "id": "16879341926",
+          "name": "Mossy rock pack (REALISTIC)"
+        }
+      ],
+      "rejected": [
+        {
+          "id": "99808919561383",
+          "why": "791 parts"
+        },
+        {
+          "id": "87431610905325",
+          "why": "791 parts"
+        },
+        {
+          "id": "113109119460825",
+          "why": "42 parts per tree"
+        },
+        {
+          "id": "15217079919",
+          "why": "cartoon low poly"
+        }
+      ],
+      "prototype_folder": "ServerStorage.WOLD_Assets"
+    }
   },
   "isles": {
     "Crystal Isle": {
