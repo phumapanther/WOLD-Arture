@@ -1,0 +1,13 @@
+{
+  "name": "WOLD Arture",
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": { "$path": "src/ServerScriptService" },
+    "ReplicatedStorage": { "$path": "src/ReplicatedStorage" },
+    "StarterGui": { "$path": "src/StarterGui" },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": { "$path": "src/StarterPlayerScripts" }
+    }
+  }
+}
