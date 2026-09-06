@@ -62,7 +62,7 @@ return L.runPhase("Caves", function(folder)
     local mm = L.model(m, "Stonemark Mine"); local rng = Random.new(101)
     local ex, ez = L.toWorld(Y.caves["Stonemark Mine"]); local px, pz = L.toWorld(Y.peaks.second_NW)
     L.writeArea(ex, ez, 620)                                              -- repair: rewrite the natural terrain here so re-runs carve from a clean hill
-    local main = tunnel(ex, ez, px, pz, rng, 4, 6, 14); carve(main, 14); chamber(main[#main], 40)
+    local main = tunnel(ex, ez, px, pz, rng, 4, 14, 14); carve(main, 14); chamber(main[#main], 40)
     for b = 1, 2 do
       local br = tunnel(main[2 + b].X, main[2 + b].Z, px + b * 300, pz, rng, 3, 8, 11); br[1] = main[2 + b]; carve(br, 11); chamber(br[#br], 28)
     end
@@ -94,7 +94,7 @@ return L.runPhase("Caves", function(folder)
     local mm = L.model(m, "Crystal Cave"); local rng = Random.new(202)
     local ex, ez = L.toWorld(Y.caves["Crystal Cave"]); local px, pz = L.toWorld(Y.peaks.main_NE)
     L.writeArea(ex, ez, 620)
-    local path = tunnel(ex, ez, px, pz, rng, 3, 4, 16); carve(path, 16)
+    local path = tunnel(ex, ez, px, pz, rng, 3, 22, 16); carve(path, 16)
     local hall = path[#path]; local hallR = chamber(hall, 70)
     for i = 1, 12 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(10, hallR * 0.85)
       L.tag(L.crystal(mm, hall + Vector3.new(math.cos(a) * r, rng:NextNumber(0, 3), math.sin(a) * r), rng:NextNumber(2.5, 5)), "Crystal", { GatherType = "Mining", Resource = "Crystal" }) end
@@ -113,7 +113,7 @@ return L.runPhase("Caves", function(folder)
     local hx, hz = L.toWorld(Y.caves["Sea Cave"])
     L.writeArea(hx, hz, 620)
     local ex, ez = L.findShore(0, 0, hx, hz, L.HALF * 1.2)            -- last land point walking from the island centre toward the west coast (waterline)
-    local path = tunnel(ex, ez, 0, 0, rng, 3, 6, 14); carve(path, 14)  -- mouth at the waterline, tunnel dives under the cliff plateau
+    local path = tunnel(ex, ez, 0, 0, rng, 3, 12, 14); carve(path, 14)  -- mouth at the waterline, tunnel dives under the cliff plateau
     local hall = path[#path]; chamber(hall, 30)
     Terrain:FillBlock(CFrame.new(hall.X, hall.Y - 2, hall.Z), Vector3.new(36, 4, 36), MAT.Water)   -- tide pool
     local wreck = L.model(mm, "Shipwreck")
