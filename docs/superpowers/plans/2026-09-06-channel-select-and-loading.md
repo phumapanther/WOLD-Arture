@@ -20,7 +20,9 @@
 - Stories/Tanding tabs are visible, non-interactive, no registry slots created for them.
 - Reserved Servers, real MessagingService cross-server delivery, and TeleportService cross-server teleport **cannot be fully exercised in Studio Play** — Studio Play always has `game.PrivateServerId == ""`. Every task says exactly what it can verify locally vs. what needs a real publish (Task 7 is the post-publish checklist).
 
-**Deviation from the spec worth flagging:** the spec's file table put the two GUIs under `StarterGui/`. Since every UI element here is built with `Instance.new` rather than hand-placed in Studio (no GUI-export pipeline exists in this project), the builder modules live under `ReplicatedStorage/UI/` instead and are invoked by LocalScripts in `StarterPlayerScripts/`. Same responsibilities, simpler file story for a codebase with no Studio-authored UI anywhere else. Also: the spec worried about replicating `ServerConfig.IsLobby` to the client via an Attribute or RemoteFunction — turns out `game.PrivateServerId` is already a plain client-readable property, so no replication plumbing is needed; only `Mode`/`Channel` (which come from a DataStore lookup) are server-only, and nothing on the client needs them for this plan's scope.
+**Deviation from the spec worth flagging:** the spec's file table put the two GUIs under `StarterGui/`. Since every UI element here is built with `Instance.new` rather than hand-placed in Studio (no GUI-export pipeline exists in this project), the builder modules live under `ReplicatedStorage/UI/` instead and are invoked by LocalScripts in `StarterPlayerScripts/`. Same responsibilities, simpler file story for a codebase with no Studio-authored UI anywhere else.
+
+**Correction found during Task 2's local testing (not just a Studio quirk — a real client/server API restriction):** the spec assumed `game.PrivateServerId` would be a plain client-readable property, so `ServerConfig.IsLobby` wouldn't need replicating. That's wrong — Roblox throws `"PrivateServerId cannot be checked on the client"` the instant a LocalScript reads it. `ServerConfig.lua` now sets `workspace:SetAttribute("IsLobby", ...)` (Attributes replicate automatically), and both client controllers wait for and read that Attribute instead of touching `game.PrivateServerId` directly. `Mode`/`Channel` remain server-only as originally planned; nothing on the client needs them for this plan's scope.
 
 ---
 
@@ -227,6 +229,10 @@ else
 	ServerConfig.Mode, ServerConfig.Channel = ChannelRegistry.IdentifySelf()
 end
 
+-- game.PrivateServerId cannot be read from LocalScripts at all ("PrivateServerId cannot be checked on the
+-- client") — replicate the one bit clients actually need via a Workspace Attribute, which replicates automatically.
+workspace:SetAttribute("IsLobby", ServerConfig.IsLobby)
+
 return ServerConfig
 ```
 
@@ -373,21 +379,21 @@ end)
 
 - [ ] **Step 3: Local Studio check (partial — see note)**
 
-Note: in Studio Play, `game.PrivateServerId` is always `""`, so this session is always "the lobby"; `ChannelServer.server.lua` will never run locally, and `TeleportToPrivateServer` will log a Studio no-op instead of really teleporting. What we CAN verify locally: that a channel slot gets created correctly end to end.
+Note: in Studio Play, `game.PrivateServerId` is always `""`, so this session is always "the lobby"; `ChannelServer.server.lua` will never run locally. `TeleportService:ReserveServer` fails with HTTP 403 in Studio unconditionally (confirmed in Task 1), so a channel that has never been created before **cannot** be created locally either — `GetOrCreateChannel` correctly raises an error in that case rather than silently producing garbage. What we CAN verify locally: that `LobbyServer` reaches that code path at all, handles the error cleanly (no crash, a `JoinFailed` reaches the client), and that the client's own request actually arrives (fire it from the real client, not a fabricated server-side call — `Remotes.JoinChannel.OnServerEvent`'s player argument only auto-populates for a genuine client `FireServer`).
 
-Run: press Play in Studio, then in a second command run:
+Run: press Play in Studio, then fire the remote as the client actually would (`datamodel_type: "Client"`):
 ```
-node tools/mcp-call.js execute_luau '{"datamodel_type":"Edit","code":"return workspace.WOLD and \"has WOLD, unrelated\" or \"ok, checking remotes next\""}'
+node tools/mcp-call.js execute_luau '{"datamodel_type":"Client","code":"local Remotes = require(game.ReplicatedStorage.Remotes); Remotes.JoinChannel:FireServer(\"Roleplay\", 1); return \"fired from client\""}'
 ```
-then trigger a join from the command bar (simulating the client click) while Play is running:
+then check the server console:
 ```
-node tools/mcp-call.js execute_luau '{"datamodel_type":"Edit","code":"local Remotes = require(game.ReplicatedStorage.Remotes); local plr = game.Players:GetPlayers()[1]; Remotes.JoinChannel:FireServer(plr, \"Roleplay\", 1); return \"fired\""}'
+node tools/mcp-call.js get_console_output '{}'
 ```
-Wait: `execute_luau` runs server-side, so `Remotes.JoinChannel:FireServer(...)` from there won't work the same way a client does (OnServerEvent's first argument is auto-supplied as the firing player only for real client `FireServer` calls) — instead, call the handler logic indirectly by checking the DataStore side effect: after the above, look at `get_console_output` for `"[Lobby] teleport failed"` (expected in Studio) and confirm the slot now exists:
+Expected: `[Lobby] could not get/create channel Roleplay 1 [ChannelRegistry] ReserveServer failed for Roleplay/1: HTTP 403 (Forbidden)` — proves the request reached `LobbyServer`, it attempted the real flow, and it failed for exactly the expected Studio-only reason rather than crashing. Confirm no slot got left behind:
 ```
-node tools/mcp-call.js execute_luau '{"datamodel_type":"Edit","code":"local ok, data = pcall(function() return game:GetService(\"DataStoreService\"):GetDataStore(\"WOLD_ChannelRegistry_v1\"):GetAsync(\"slot_Roleplay_1\") end); return ok and game:GetService(\"HttpService\"):JSONEncode(data) or tostring(data)"}'
+node tools/mcp-call.js execute_luau '{"datamodel_type":"Server","code":"local ok, data = pcall(function() return game:GetService(\"DataStoreService\"):GetDataStore(\"WOLD_ChannelRegistry_v1\"):GetAsync(\"slot_Roleplay_1\") end); return ok and tostring(data) or tostring(data)"}'
 ```
-Expected: a JSON object with `accessCode`, `privateServerId`, `createdAt` — proves `GetOrCreateChannel` really works end to end; the teleport itself is confirmed for real in Task 7.
+Expected: `nil` (the failed attempt wrote nothing — `GetOrCreateChannel` only writes *after* `ReserveServer` succeeds). The full success path (a real channel actually getting created and reused) is confirmed post-publish in Task 7.
 Stop Play mode when done.
 
 - [ ] **Step 4: Commit**
@@ -806,8 +812,13 @@ return ChannelSelectGui
 - [ ] **Step 2: Write `src/StarterPlayerScripts/ChannelSelectController.client.lua`**
 
 ```lua
--- ChannelSelectController: only runs in the lobby (game.PrivateServerId == "", client-readable, no round-trip needed).
-if game.PrivateServerId ~= "" then return end
+-- ChannelSelectController: only runs in the lobby. game.PrivateServerId cannot be read from the client at all
+-- ("PrivateServerId cannot be checked on the client") — ServerConfig.lua replicates IsLobby via a Workspace
+-- Attribute instead; wait for it since it may not exist the instant this script starts.
+while workspace:GetAttribute("IsLobby") == nil do
+	task.wait()
+end
+if not workspace:GetAttribute("IsLobby") then return end
 
 local Players = game:GetService("Players")
 local ChannelSelectGui = require(game.ReplicatedStorage.UI.ChannelSelectGui)
@@ -820,13 +831,12 @@ gui.gui.Parent = player:WaitForChild("PlayerGui")
 gui:Show()
 
 AvatarThumbnails.OnAnyLoaded(function(userId, content)
-	for mode, channels in pairs(gui.rows) do
-		for channel, row in pairs(channels) do
-			if row.avatars and row._playerIds then
-				for slot, id in ipairs(row._playerIds) do
-					if id == userId then
-						gui:SetRowAvatarImage(mode, channel, slot, content)
-					end
+	-- only Roleplay has real per-channel row tables; Stories/Tanding are { comingSoon = TextLabel }, not indexable this way
+	for channel, row in pairs(gui.rows.Roleplay) do
+		if row._playerIds then
+			for slot, id in ipairs(row._playerIds) do
+				if id == userId then
+					gui:SetRowAvatarImage("Roleplay", channel, slot, content)
 				end
 			end
 		end
@@ -850,11 +860,10 @@ Remotes.ChannelList.OnClientEvent:Connect(applySnapshot)
 
 Remotes.JoinFailed.OnClientEvent:Connect(function(reason)
 	warn("[ChannelSelect] join failed:", reason)
-	-- ponytail: reset every row's status rather than tracking which one was mid-join; there's only ever one in flight per client
-	for mode, channels in pairs(gui.rows) do
-		for channel in pairs(channels) do
-			if channels[channel].statusLabel then gui:SetRowStatus(mode, channel, "error") end
-		end
+	-- ponytail: reset every Roleplay row's status rather than tracking which one was mid-join (only ever one in
+	-- flight per client); Stories/Tanding aren't real per-channel tables (see ChannelSelectGui.new), so they're excluded.
+	for channel in pairs(gui.rows.Roleplay) do
+		gui:SetRowStatus("Roleplay", channel, "error")
 	end
 end)
 
@@ -869,6 +878,8 @@ end)
 Run: press Play in Studio.
 Expected: the channel-select screen appears immediately over the default character. "Roleplay Mode" tab is dark/selected, "Stories Mode"/"Tanding Mode" are grey; clicking them shows "เร็วๆ นี้" and hides the channel list; clicking back to Roleplay shows 5 rows, all "0/30", green JOIN. Click JOIN on row 1 → label changes to "กำลังเชื่อมต่อ..." then (a few seconds later, since Studio can't really teleport) an error state appears — that's the expected Studio-only limitation from Task 2.
 Stop Play mode when done.
+
+**Bugs found and fixed here during actual Play testing (both are why this step exists — see git history for the exact fixes):** (1) `game.PrivateServerId` throws when read from a LocalScript at all, not just "always empty in Studio" as the spec assumed — fixed via the `workspace:GetAttribute("IsLobby")` wait above. (2) the original `JoinFailed`/`OnAnyLoaded` handlers iterated `gui.rows` including the Stories/Tanding entries, which aren't per-channel tables (`{ comingSoon = TextLabel }`) — indexing `.statusLabel`/`.avatars` on the TextLabel crashed with "X is not a valid member of TextLabel". Fixed by scoping both loops to `gui.rows.Roleplay` only, since that's the only mode with real rows.
 
 - [ ] **Step 4: Commit**
 
@@ -1019,10 +1030,15 @@ return LoadingGui
 
 ```lua
 -- LoadingController: runs the weighted loading-step list and reveals the world when done.
--- game.PrivateServerId is always "" in Studio Play, so this never shows locally unless you flip the flag below.
+-- game.PrivateServerId cannot be read from the client at all ("PrivateServerId cannot be checked on the client")
+-- — ServerConfig.lua replicates IsLobby via a Workspace Attribute instead. It's always true in Studio Play
+-- (Play is always the lobby), so this never shows locally unless you flip the flag below.
 local FORCE_SHOW_IN_STUDIO_FOR_TESTING = false -- ponytail: flip to true to preview this screen in Play; flip back before publishing
 
-if game.PrivateServerId == "" and not FORCE_SHOW_IN_STUDIO_FOR_TESTING then return end
+while workspace:GetAttribute("IsLobby") == nil do
+	task.wait()
+end
+if workspace:GetAttribute("IsLobby") and not FORCE_SHOW_IN_STUDIO_FOR_TESTING then return end
 
 local Players = game:GetService("Players")
 local ContentProvider = game:GetService("ContentProvider")
@@ -1104,7 +1120,9 @@ gui:Destroy()
 
 Run: temporarily edit `LoadingController.client.lua`, set `FORCE_SHOW_IN_STUDIO_FOR_TESTING = true`, save. Press Play in Studio.
 Expected: the teal loading screen appears immediately, the segmented bar fills left to right over roughly 1+ second, then disappears revealing the character standing wherever the current `SpawnLocation` in the place is.
-Then: set the flag back to `false` and save, since this must not run for real players in the lobby (only a channel server should ever show it, and there it will be `true`-equivalent automatically because `game.PrivateServerId ~= ""` there).
+Then: set the flag back to `false` and save, since this must not run for real players in the lobby (only a channel server should ever show it, and there `workspace:GetAttribute("IsLobby")` will correctly be `false` automatically, no flag needed).
+
+**Bug found and fixed here during actual Play testing:** the original guard read `game.PrivateServerId` directly, which throws when read from a LocalScript — not just "always empty in Studio" as first assumed. Fixed via the `workspace:GetAttribute("IsLobby")` wait shown above (same fix as Task 5's controller).
 
 - [ ] **Step 5: Commit**
 
