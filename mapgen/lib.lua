@@ -106,9 +106,12 @@ local function riverSample(R, t)
   local s = t * R.total
   local i = 1; while i < #R.cum - 1 and R.cum[i + 1] < s do i += 1 end
   local f = (s - R.cum[i]) / math.max(R.cum[i + 1] - R.cum[i], 1e-9)
-  return R.h[i] + (R.h[i + 1] - R.h[i]) * f, (R.w0 + (R.w1 - R.w0) * t) * L.VS
+  local w = R.w0 + (R.w1 - R.w0) * t
+  if R.estuary and t > 0.85 then w = w + (320 - w) * L.smooth((t - 0.85) / 0.15) end   -- mouth flares into an estuary so no sand spit forms
+  return R.h[i] + (R.h[i + 1] - R.h[i]) * f, w * L.VS
 end
 L.rivers = { buildRiver(Y.river_main, Y.river_width_studs.main, 0) }
+L.rivers[1].estuary = true
 do -- tributary ends where it meets the main river: inherit that surface height
   local last = Y.river_tributary[#Y.river_tributary]
   local _, t = L.polyDist(Y.river_main, L.rivers[1].total, last[1], last[2])
@@ -185,7 +188,7 @@ function L.materialFor(h, yc, fm, cliff, slope, SNOW, MTN)
   if h < 4 * L.VS then return MAT.Sand end
   if h >= SNOW then return MAT.Snow end
   if cliff > 60 * L.VS then return MAT.Basalt end
-  if h >= MTN or slope > 1.2 then return MAT.Rock end
+  if h >= MTN or slope > 1.6 then return MAT.Rock end
   if fm > 0.5 then return MAT.LeafyGrass end
   return MAT.Grass
 end
@@ -629,9 +632,33 @@ function L.pipeRun(parent, pts, radius, color, postEvery)   -- pts: list of Vect
   end
   return m
 end
-function L.tree(parent, x, y, z, kind, s, seed)   -- kind: "pine" | "oak" | "palm"; trunk sunk 2 studs so slopes never show a floating base
+-- ---------- Creator Store prototypes (ServerStorage.WOLD_Assets.<kind>.*), built by mapgen/assets_setup.lua ----------
+L.assetCache = {}
+function L.assetList(kind)                          -- list of prototype Models for a kind, or nil when none are installed
+  if L.assetCache[kind] == nil then
+    local root = game:GetService("ServerStorage"):FindFirstChild("WOLD_Assets")
+    local f = root and root:FindFirstChild(kind)
+    local list = {}
+    if f then for _, c in ipairs(f:GetChildren()) do if c:IsA("Model") then list[#list + 1] = c end end end
+    L.assetCache[kind] = (#list > 0) and list or false
+  end
+  return L.assetCache[kind] or nil
+end
+function L.placeAsset(parent, kind, x, y, z, rng, sMin, sMax)   -- clone a random prototype, random yaw, scale, base sunk 1 stud
+  local list = L.assetList(kind); if not list then return nil end
+  local proto = list[rng:NextInteger(1, #list)]
+  local m = proto:Clone()
+  local s = rng:NextNumber(sMin or 0.9, sMax or 1.25)
+  m:ScaleTo(s)
+  local baseOffset = (proto:GetAttribute("BaseOffset") or 0) * s
+  m:PivotTo(CFrame.new(x, y - 1 + baseOffset, z) * L.yaw(rng:NextNumber(0, 6.28)))
+  m.Parent = parent
+  return m
+end
+function L.tree(parent, x, y, z, kind, s, seed)   -- kind: "pine" | "oak" | "palm"; uses Creator Store prototypes when installed, else procedural parts
   s = s or 1
   local rng = Random.new(seed or math.floor(x * 7 + z * 13))
+  if L.assetList(kind) then return L.placeAsset(parent, kind, x, y, z, rng, 0.85 * s, 1.2 * s) end
   local yaw = rng:NextNumber(0, 6.28)
   local base = CFrame.new(x, y - 2, z) * L.yaw(yaw)
   if kind == "pine" then
@@ -730,19 +757,40 @@ function L.woodBridge(m, x, z, dir, len, w, y, waterY, logs)
   end end
   for s = -1, 1, 2 do L.box(m, base * CFrame.new(0, y + 3, s * (w / 2 - 0.5)), Vector3.new(len, 0.6, 0.6), MAT.Wood, L.C.wood, { cancollide = false }) end
 end
+function L.stairs(m, top, dir, width, mat, color)   -- steps 1.5 high / 4 deep from the deck edge `top` (Vector3) outward along dir until they meet the ground
+  local yaw = math.atan2(-dir.Z, dir.X)
+  local n = 0
+  for i = 1, 60 do
+    local p = top + dir * (i * 4 - 2)
+    local y = top.Y - i * 1.5
+    local g = L.heightAt(p.X, p.Z)
+    if y <= g + 0.2 then break end
+    L.box(m, CFrame.new(p.X, y - 1.5, p.Z) * L.yaw(yaw), Vector3.new(4.2, 3, width), mat or MAT.Cobblestone, color or L.C.stone, { name = "Step" })
+    n += 1
+  end
+  return n
+end
 function L.bridge(parent, b)
   local x, z = L.toWorld(b.pos)
   local dir = Vector3.new(b.dir[1], 0, b.dir[2]).Unit
   local len = b.length
   local a = Vector3.new(x, 0, z) - dir * len / 2; local c = Vector3.new(x, 0, z) + dir * len / 2
   local _, hs = L.riverAt(x, z)
-  local deckY = math.floor(math.max(L.heightAt(a.X, a.Z), L.heightAt(c.X, c.Z), hs + 10) / 4) * 4 + 2
+  local deckY = math.floor(math.max(L.heightAt(a.X, a.Z), L.heightAt(c.X, c.Z), hs + 6) / 2) * 2 + 1   -- 6 studs of clearance over the water
   local m = L.model(parent, b.name)
+  local w, mat, color = 30, MAT.Cobblestone, L.C.stone
   if b.type == "stone_arch" then L.stoneBridge(m, x, z, dir, len, 30, deckY, hs, b.arches or 3)
-  elseif b.type == "iron_truss" then L.trussBridge(m, x, z, dir, len, 14, deckY, hs)
-  elseif b.type == "mechanical_draw" then L.drawBridge(m, x, z, dir, len, 24, deckY, hs)
-  else L.woodBridge(m, x, z, dir, len, b.type == "wood_log" and 10 or 8, deckY, hs, b.type == "wood_log") end
-  for _, e in ipairs({ a, c }) do Terrain:FillBlock(CFrame.new(e.X, deckY - 4, e.Z), Vector3.new(36, 8, 36), MAT.Cobblestone) end  -- approach pads
+  elseif b.type == "iron_truss" then w, mat, color = 14, MAT.DiamondPlate, L.C.iron; L.trussBridge(m, x, z, dir, len, 14, deckY, hs)
+  elseif b.type == "mechanical_draw" then w, mat, color = 24, MAT.DiamondPlate, L.C.iron; L.drawBridge(m, x, z, dir, len, 24, deckY, hs)
+  else w, mat, color = (b.type == "wood_log" and 10 or 8), MAT.WoodPlanks, L.C.plank; L.woodBridge(m, x, z, dir, len, w, deckY, hs, b.type == "wood_log") end
+  -- raised ends get proper stairs down to the bank instead of a raised slab; a small landing is recolored on the ground
+  for _, e in ipairs({ { a, -dir }, { c, dir } }) do
+    local top = Vector3.new(e[1].X, deckY, e[1].Z)
+    L.stairs(m, top, e[2], w, mat, color)
+    local land = e[1] + e[2] * 20
+    local reg = Region3.new(Vector3.new(land.X - 14, L.heightAt(land.X, land.Z) - 6, land.Z - 14), Vector3.new(land.X + 14, L.heightAt(land.X, land.Z) + 6, land.Z + 14)):ExpandToGrid(4)
+    for _, src in ipairs({ MAT.Grass, MAT.LeafyGrass, MAT.Sand, MAT.Ground }) do Terrain:ReplaceMaterial(reg, 4, src, MAT.Cobblestone) end
+  end
   return m
 end
 function L.paintRoad(a, b, width, mat, skipFn)     -- recolor the existing ground surface along a->b (no added geometry, so nothing floats on slopes)

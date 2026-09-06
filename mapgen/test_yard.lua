@@ -5,6 +5,7 @@ return L.runPhase("TestYard", function(folder)
   local Terrain = workspace.Terrain
   pcall(function() game:GetService("ChangeHistoryService"):SetEnabled(false) end)
   for _, n in ipairs({ "Baseplate", "MCP_Test", "SpawnLocation" }) do local o = workspace:FindFirstChild(n); if o then o:Destroy() end end
+  for _, n in ipairs({ "AssetTest", "AssetTest2" }) do local o = L.root():FindFirstChild(n); if o then o:Destroy() end end   -- prototypes now live in ServerStorage.WOLD_Assets
   workspace.StreamingEnabled = true
   Terrain:Clear()
   L.applyStyle()
@@ -59,8 +60,16 @@ return L.runPhase("TestYard", function(folder)
       if planted % 40 == 0 then task.wait() end
     end
   end
-  -- a small grove right next to spawn so tree shapes can be judged up close
+  -- a small grove right next to spawn so tree shapes can be judged up close, plus bushes and rocks
   for i = 1, 6 do local a = i * 1.05; L.tree(trees, mx + math.cos(a) * 150, L.heightAt(mx + math.cos(a) * 150, mz + math.sin(a) * 150), mz + math.sin(a) * 150, (i % 2 == 0) and "pine" or "oak", 1.2, 100 + i) end
+  local deco = L.model(folder, "Deco")
+  for i = 1, 40 do
+    local px, pz = cx + rng:NextNumber(-1200, 1200), cz + rng:NextNumber(-1200, 1200)
+    local rd, _, rw = L.riverAt(px, pz); local h = L.heightAt(px, pz)
+    if rd > rw / 2 + 10 and h > 5 and math.sqrt((px - kx) ^ 2 + (pz - kz) ^ 2) > 300 and math.sqrt((px - mx) ^ 2 + (pz - mz) ^ 2) > 140 then
+      L.placeAsset(deco, (i % 3 == 0) and "rock" or "bush", px, h, pz, rng, 0.8, 1.4)
+    end
+  end
   folder:SetAttribute("Shore", Vector3.new(shx, 0, shz)); folder:SetAttribute("KeepY", ky); folder:SetAttribute("MarketY", my); folder:SetAttribute("Trees", planted + 22)
   L.progress(("test yard done: keepY=%.0f marketY=%.0f trees=%d shore=(%.0f,%.0f)"):format(ky, my, planted + 22, shx, shz))
 end)
