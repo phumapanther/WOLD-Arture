@@ -48,11 +48,20 @@ return L.runPhase("Caves", function(folder)
     for b = 1, 2 do
       local br = tunnel(main[2 + b].X, main[2 + b].Z, px + b * 300, pz, rng, 3, 8); br[1] = main[2 + b]; carve(br, 11); chamber(br[#br], 28)
     end
+    -- ore deposits: Creator Store ore prototypes (kind "ore") on the tunnel floors when installed, else embedded metal boxes
     for i = 1, 30 do
-      local p = main[rng:NextInteger(2, #main)] + Vector3.new(rng:NextNumber(-14, 14), rng:NextNumber(0, 10), rng:NextNumber(-14, 14))
-      local vein = L.box(mm, CFrame.new(p) * CFrame.Angles(rng:NextNumber(0, 3), rng:NextNumber(0, 3), 0), Vector3.new(4, 3, 5), MAT.CorrodedMetal, L.C.rust, { name = "OreVein" })
-      L.tag(vein, "OreVein", { GatherType = "Mining", Resource = "Ore" })
+      local seg = rng:NextInteger(2, #main)
+      local p = main[seg] + Vector3.new(rng:NextNumber(-10, 10), 0, rng:NextNumber(-10, 10))
+      local floorY = main[seg].Y - 14 * 0.6                                                     -- carve() floor level for r=14
+      local ore = L.assetList("ore") and L.placeAsset(mm, "ore", p.X, floorY, p.Z, rng, 0.8, 1.4)
+      if ore then L.tag(ore, "OreVein", { GatherType = "Mining", Resource = "Ore" })
+      else
+        local q = p + Vector3.new(rng:NextNumber(-4, 4), rng:NextNumber(4, 12), rng:NextNumber(-4, 4))
+        L.tag(L.box(mm, CFrame.new(q) * CFrame.Angles(rng:NextNumber(0, 3), rng:NextNumber(0, 3), 0), Vector3.new(4, 3, 5), MAT.CorrodedMetal, L.C.rust, { name = "OreVein" }), "OreVein", { GatherType = "Mining", Resource = "Ore" })
+      end
     end
+    -- cave decor (stalagmites) along the tunnels
+    if L.assetList("cave") then for i = 1, 16 do local seg = rng:NextInteger(2, #main); local p = main[seg] + Vector3.new(rng:NextNumber(-11, 11), 0, rng:NextNumber(-11, 11)); L.placeAsset(mm, "cave", p.X, main[seg].Y - 8.4, p.Z, rng, 0.5, 1.1) end end
     for i = 1, #main - 1 do
       L.rod(mm, main[i] - Vector3.new(0, 0.5, 0), main[i + 1] - Vector3.new(0, 0.5, 0), 0.3, MAT.Metal, L.C.iron, { cancollide = false })
       L.rod(mm, main[i] + Vector3.new(0, -0.5, 3), main[i + 1] + Vector3.new(0, -0.5, 3), 0.3, MAT.Metal, L.C.iron, { cancollide = false })
@@ -72,6 +81,8 @@ return L.runPhase("Caves", function(folder)
     for i = 1, 8 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(15, 45)
       L.crystal(mm, hall + Vector3.new(math.cos(a) * r, rng:NextNumber(20, 45), math.sin(a) * r), rng:NextNumber(4, 9)) end
     L.crystal(mm, hall + Vector3.new(0, 30, 0), 14)
+    if L.assetList("cave") then for i = 1, 14 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(20, 62); L.placeAsset(mm, "cave", hall.X + math.cos(a) * r, hall.Y - 2, hall.Z + math.sin(a) * r, rng, 0.6, 1.6) end end
+    if L.assetList("ore") then for i = 1, 10 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(12, 55); local o = L.placeAsset(mm, "ore", hall.X + math.cos(a) * r, hall.Y - 2, hall.Z + math.sin(a) * r, rng, 0.8, 1.3); if o then L.tag(o, "OreVein", { GatherType = "Mining", Resource = "Crystal" }) end end end
     entrance(mm, "Crystal Cave", ex, ez)
     L.progress("crystal cave"); task.wait()
   end

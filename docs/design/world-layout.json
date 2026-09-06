@@ -602,7 +602,47 @@
           "why": "cartoon low poly"
         }
       ],
-      "prototype_folder": "ServerStorage.WOLD_Assets"
+      "prototype_folder": "ServerStorage.WOLD_Assets",
+      "ore": [
+        {
+          "id": "119276025950987",
+          "name": "Low Poly Ore Pack Minerals Gems Mining Rocks",
+          "note": "หิน/ทองแดง/ทอง/เพชร 4 แบบ + ก้อนเล็ก"
+        },
+        {
+          "id": "12816466572",
+          "name": "Iron Ore",
+          "note": "เหล็ก"
+        },
+        {
+          "id": "97290005011332",
+          "name": "Iron Ore Resource Metallic Mining Vein",
+          "note": "สายแร่เหล็ก"
+        },
+        {
+          "id": "8596606684",
+          "name": "Iron Ore (cave grown)",
+          "note": "เหล็กในถ้ำ"
+        }
+      ],
+      "cave": [
+        {
+          "id": "97188749566404",
+          "name": "Cave Rock Pack VEGA Stalagmite",
+          "note": "หินงอกหินย้อยชุด (ย่อ 0.46)"
+        },
+        {
+          "id": "107885898472710",
+          "name": "cave spike Stalagmite Moss Rock Low Poly",
+          "note": "หินงอกมีมอส"
+        },
+        {
+          "id": "104162414374468",
+          "name": "Cave Crystal Mine Stalactites Stalagmites RP",
+          "note": "ก้อนหินใหญ่มีคริสตัลฟ้า ใช้ในถ้ำคริสตัล"
+        }
+      ],
+      "_ore_note": "เสนอ 2026-09-06 จากโชว์เคส 12 ชิ้น รอผู้ใช้ยืนยัน/เปลี่ยน; โมเดลที่ยังไม่เคยดึงด้วย insert_asset ของ MCP จะ LoadAsset ไม่ผ่านสิทธิ์"
     }
   },
   "isles": {
