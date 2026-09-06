@@ -25,11 +25,11 @@ g = lambda c, s: np.exp(-((X - c[0]) ** 2 + (Z - c[1]) ** 2) / (2 * s * s))
 plains = 20 + 40 * n2
 fm = sig((L["forest"]["x_max"] - X) / 0.08) * sig((L["forest"]["z_abs_max"] - np.abs(Z)) / 0.08) * (0.55 + 0.45 * n3)
 mb = sig((L["mountain_band_z"] - Z) / 0.06)
-pk = L["peaks"]; PH = L["peak_height_studs"]; SNOW = L["snow_line_studs"]
+pk = L["peaks"]; PH = L["peak_height_studs"]; SNOW = L["snow_line_studs"]; PS = L["peak_sigma"]
 ridge = np.exp(-(Z + 0.60) ** 2 / (2 * 0.07 ** 2)) * sig((0.45 - np.abs(X)) / 0.05)
 cl = L["cliffs"]
 cliffs = sig((r - cl["r_min"]) / 0.05) * np.exp(-(np.abs(ang) - cl["center_deg"]) ** 2 / (2 * cl["sigma_deg"] ** 2)) * 110
-H_land = (plains + fm * 30 + mb * (250 + 330 * n3) + g(pk["main_NE"], .10) * (PH["main_NE"] - 450) + g(pk["second_NW"], .10) * (PH["second_NW"] - 450)
+H_land = (plains + fm * 30 + mb * (250 + 330 * n3) + g(pk["main_NE"], PS["main_NE"]) * (PH["main_NE"] - 450) + g(pk["second_NW"], PS["second_NW"]) * (PH["second_NW"] - 450)
           + ridge * 380 + g(L["crown_hill"], .07) * 200 + cliffs)
 sea = -40 - 40 * np.clip((r - 0.85) / 0.6, 0, 1)
 H = land * H_land + (1 - land) * sea

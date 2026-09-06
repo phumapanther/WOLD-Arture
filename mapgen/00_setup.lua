@@ -6,8 +6,8 @@ return L.runPhase("Setup", function(folder)
   L.manualFolder()
   pcall(function() game:GetService("ChangeHistoryService"):SetEnabled(false) end)          -- huge terrain writes must not fill undo history; re-enabled in 90_verify
   workspace.StreamingEnabled = true
-  workspace.StreamingMinRadius = Y.generator.streaming.min_radius
-  workspace.StreamingTargetRadius = Y.generator.streaming.target_radius
+  pcall(function() workspace.StreamingMinRadius = Y.generator.streaming.min_radius end)         -- not scriptable in current Studio: set in Properties if needed
+  pcall(function() workspace.StreamingTargetRadius = Y.generator.streaming.target_radius end)
   L.applyStyle()
   -- far sea: Part tiles from the terrain-water extent out to the part-sea extent (Part max 2048 per axis)
   local inner, outer, T = Y.sea.terrain_water_extent_studs * L.SCALE, Y.sea.part_sea_extent_studs * L.SCALE, 2048 * L.SCALE
@@ -18,5 +18,5 @@ return L.runPhase("Setup", function(folder)
       n += 1
     end
   end end
-  L.progress(("setup done: %d sea tiles, streaming %d/%d"):format(n, workspace.StreamingMinRadius, workspace.StreamingTargetRadius))
+  L.progress(("setup done: %d sea tiles, streaming on"):format(n))
 end)

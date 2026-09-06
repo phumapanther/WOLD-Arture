@@ -79,7 +79,7 @@ function L.base(u, v)
   local ridge = math.exp(-(v + 0.60) ^ 2 / (2 * 0.07 ^ 2)) * L.sig((0.45 - math.abs(u)) / 0.05)
   local cliff = L.sig((r - cl.r_min) / 0.05) * math.exp(-(math.abs(ang) - cl.center_deg) ^ 2 / (2 * cl.sigma_deg ^ 2)) * 110
   local hl = plains + fm * 30 + mb * (250 + 330 * n3)
-    + L.gauss(u, v, Y.peaks.main_NE, 0.10) * (PH.main_NE - 450) + L.gauss(u, v, Y.peaks.second_NW, 0.10) * (PH.second_NW - 450)
+    + L.gauss(u, v, Y.peaks.main_NE, Y.peak_sigma.main_NE) * (PH.main_NE - 450) + L.gauss(u, v, Y.peaks.second_NW, Y.peak_sigma.second_NW) * (PH.second_NW - 450)
     + ridge * 380 + L.gauss(u, v, Y.crown_hill, 0.07) * Y.crown_hill_height_studs + cliff
   local h = land * hl + (1 - land) * Y.sea.seabed_y
   for _, isl in ipairs(L.isles) do
