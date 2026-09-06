@@ -13,8 +13,9 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 - `docs/design/01-world-and-terrain.md` ส่วน 1-2 และ `docs/design/02-structures-and-generation.md` ส่วน 3-6 (มีตารางสิ่งที่ปรับจากแชท เกณฑ์ผ่านแต่ละขั้น มุมกล้องตรวจงาน)
 - `docs/design/world-layout.json` = แหล่งความจริงชุดเดียวของพิกัด (สัดส่วน -1..1, X ตะวันออก, Z ใต้) ตัวเจน Luau ต้องอ่านไฟล์นี้ ห้ามฮาร์ดโค้ดพิกัด
 - `docs/design/map-arture-v1.png` วาดด้วย `render-map.py` (รันใน docs/design ด้วย pyembed python + PYTHONUTF8=1) แก้ JSON แล้วรันใหม่ทุกครั้ง
-- ขั้นถัดไป: ผู้ใช้ตรวจเอกสาร 02 → เขียนแผน (writing-plans) → ข้อ 0 ทดสอบความเป็นไปได้ → เจนทีละขั้น ขออนุมัติทุกขั้น
-- ตัวเจนจะอยู่ใน `mapgen/*.lua` + `tools/run-luau.js` (ยังไม่มี)
+- แผนงานละเอียด 11 Task (ขั้น 0-10) พร้อมโค้ด: `docs/design/03-implementation-plan.md` ผู้ใช้อนุมัติ spec 02 แล้ว
+- ขั้นถัดไป: รันแผน Task 0 (spike MCP runner) → ... → Task 10 ขออนุมัติผู้ใช้ก่อนทุก Task, commit หลังทุก Task
+- ตัวเจนจะอยู่ใน `mapgen/*.lua` + `tools/run-luau.js` (สร้างตามแผน)
 ผู้ใช้สั่งว่า "อ่านประวัติสนทนาเดิมทั้งหมด ใช้เป็นบริบท แต่อย่าเพิ่งสรุปจนกว่าจะถาม"
 หมายเหตุ: ไฟล์ประวัติมีแค่ส่วนวิเคราะห์ UI 16 หน้าจอ + UI Flow รายละเอียดระบบเศรษฐกิจ/รัฐฉบับเต็มยังไม่มีในไฟล์ ถ้าผู้ใช้หามาได้จะอยู่ใน `docs/`
 
