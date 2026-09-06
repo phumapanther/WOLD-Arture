@@ -19,11 +19,13 @@ return L.runPhase("Caves", function(folder)
     Terrain:FillBall(p + Vector3.new(0, r * 0.5, 0), r, MAT.Air)
     Terrain:FillBlock(CFrame.new(p.X, p.Y - 2, p.Z), Vector3.new(r * 1.8, 4, r * 1.8), MAT.Rock)
   end
-  local function tunnel(ex, ez, tx, tz, rng, legs, down)   -- from the entrance toward (tx,tz), wandering; `down` = studs of descent per 100
+  local HttpService = game:GetService("HttpService")
+  local function tunnel(ex, ez, tx, tz, rng, legs, down)   -- from the entrance toward (tx,tz): first leg straight and level (a real mouth), then wandering; `down` = studs of descent per 100
     local ey = L.heightAt(ex, ez) + 1
     local path = { Vector3.new(ex, ey, ez) }
     local dx, dz = L.dirTo(ex, ez, tx, tz)
-    local p = path[1]
+    local p = path[1] + Vector3.new(dx * 50, 0, dz * 50)
+    path[#path + 1] = p
     for _ = 1, legs do
       local a = math.atan2(dz, dx) + rng:NextNumber(-0.6, 0.6)
       local len = rng:NextNumber(60, 120)
@@ -32,12 +34,23 @@ return L.runPhase("Caves", function(folder)
     end
     return path
   end
-  local function entrance(m, name, x, z)              -- widen the mouth so it always breaks the surface, then hooks
+  local function savePath(m, path)                    -- so probes/cameras/gameplay can find the tunnel: Attribute Path = JSON [[x,y,z],...]
+    local t = {}; for i, p in ipairs(path) do t[i] = { math.floor(p.X), math.floor(p.Y), math.floor(p.Z) } end
+    m:SetAttribute("Path", HttpService:JSONEncode(t))
+  end
+  local function entrance(m, name, x, z, dx, dz)      -- open mouth: air balls stepping inward and downward along the first leg, lit by two torches, zone + sign
     local y = L.heightAt(x, z)
-    Terrain:FillBall(Vector3.new(x, y + 8, z), 22, MAT.Air)
-    Terrain:FillBlock(CFrame.new(x, y - 3, z), Vector3.new(40, 6, 40), MAT.Rock)
+    for s = -10, 50, 10 do Terrain:FillBall(Vector3.new(x + dx * s, y + 10 - math.max(0, s) * 0.12, z + dz * s), 16, MAT.Air) end
+    Terrain:FillBlock(CFrame.new(x + dx * 20, y - 3, z + dz * 20) * L.yaw(math.atan2(-dz, dx)), Vector3.new(70, 6, 36), MAT.Rock)   -- level threshold floor
+    local side = Vector3.new(-dz, 0, dx)
+    for sgn = -1, 1, 2 do
+      local tp = Vector3.new(x, y, z) + side * 13 * sgn - Vector3.new(dx, 0, dz) * 4
+      L.cyl(m, CFrame.new(tp.X, y + 4, tp.Z), 0.5, 8, MAT.Wood, L.C.wood, { name = "TorchPost" })
+      local flame = L.ball(m, CFrame.new(tp.X, y + 8.6, tp.Z), Vector3.new(1.6, 2.2, 1.6), MAT.Neon, Color3.fromRGB(255, 170, 60), { cancollide = false, name = "Torch" })
+      local light = Instance.new("PointLight"); light.Color = Color3.fromRGB(255, 180, 90); light.Range = 40; light.Brightness = 2; light.Parent = flame
+    end
     L.zone(m, name, "dungeon", x, y, z, 120, 160)
-    L.sign(m, x + 18, y, z + 18, name, math.pi / 4)
+    L.sign(m, x + side.X * 22, y, z + side.Z * 22, name, math.atan2(-dx, dz))
   end
   local m = L.model(folder, "Caves")
   -- 1) Stonemark Mine
@@ -66,8 +79,9 @@ return L.runPhase("Caves", function(folder)
       L.rod(mm, main[i] - Vector3.new(0, 0.5, 0), main[i + 1] - Vector3.new(0, 0.5, 0), 0.3, MAT.Metal, L.C.iron, { cancollide = false })
       L.rod(mm, main[i] + Vector3.new(0, -0.5, 3), main[i + 1] + Vector3.new(0, -0.5, 3), 0.3, MAT.Metal, L.C.iron, { cancollide = false })
     end
-    entrance(mm, "Stonemark Mine", ex, ez)
-    L.spawnPoint(mm, "Stonemark Mine", ex + 12, L.heightAt(ex + 12, ez + 12), ez + 12)
+    local ddx, ddz = L.dirTo(ex, ez, px, pz)
+    entrance(mm, "Stonemark Mine", ex, ez, ddx, ddz); savePath(mm, main)
+    L.spawnPoint(mm, "Stonemark Mine", ex - ddx * 30, L.heightAt(ex - ddx * 30, ez - ddz * 30), ez - ddz * 30)
     L.progress("mine"); task.wait()
   end
   -- 2) Crystal Cave
@@ -83,7 +97,8 @@ return L.runPhase("Caves", function(folder)
     L.crystal(mm, hall + Vector3.new(0, 30, 0), 14)
     if L.assetList("cave") then for i = 1, 14 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(20, 62); L.placeAsset(mm, "cave", hall.X + math.cos(a) * r, hall.Y - 2, hall.Z + math.sin(a) * r, rng, 0.6, 1.6) end end
     if L.assetList("ore") then for i = 1, 10 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(12, 55); local o = L.placeAsset(mm, "ore", hall.X + math.cos(a) * r, hall.Y - 2, hall.Z + math.sin(a) * r, rng, 0.8, 1.3); if o then L.tag(o, "OreVein", { GatherType = "Mining", Resource = "Crystal" }) end end end
-    entrance(mm, "Crystal Cave", ex, ez)
+    local ddx, ddz = L.dirTo(ex, ez, px, pz)
+    entrance(mm, "Crystal Cave", ex, ez, ddx, ddz); savePath(mm, path)
     L.progress("crystal cave"); task.wait()
   end
   -- 3) Sea Cave on the west cliff beach
@@ -100,7 +115,8 @@ return L.runPhase("Caves", function(folder)
     L.rod(wreck, hall + Vector3.new(0, 8, 0), hall + Vector3.new(6, 40, 0), 1, MAT.Wood, L.C.wood)
     for i = 1, 6 do L.tag(L.cyl(wreck, CFrame.new(hall + Vector3.new(rng:NextNumber(-30, 30), 2, rng:NextNumber(-30, 30))), 2, 4, MAT.Wood, L.C.plank, { name = "Barrel" }), "SearchPoint", { GatherType = "Searching" }) end
     L.marker(mm, "FishingSpot", hall.X + 20, hall.Y, hall.Z + 20, { GatherType = "Fishing" })
-    entrance(mm, "Sea Cave", ex, ez)
+    local ddx, ddz = L.dirTo(ex, ez, 0, 0)
+    entrance(mm, "Sea Cave", ex, ez, ddx, ddz); savePath(mm, path)
     L.progress("sea cave")
   end
 end)
