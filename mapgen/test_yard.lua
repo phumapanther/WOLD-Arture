@@ -73,6 +73,11 @@ return L.runPhase("TestYard", function(folder)
       L.placeAsset(deco, (i % 3 == 0) and "rock" or "bush", px, h, pz, rng, 0.8, 1.4)
     end
   end
+  -- two scattered ruin sites (brick-by-brick decay technique) for review: one on the plain west of spawn, one on the hill flank
+  local ruins = L.model(folder, "Ruins")
+  L.ruinSite(ruins, mx - 420, mz + 60, 11)
+  L.ruinSite(ruins, kx + 520, kz + 260, 12)
+  L.progress("ruins"); task.wait()
   folder:SetAttribute("Shore", Vector3.new(shx, 0, shz)); folder:SetAttribute("KeepY", ky); folder:SetAttribute("MarketY", my); folder:SetAttribute("Trees", planted + 22)
   L.progress(("test yard done: keepY=%.0f marketY=%.0f trees=%d shore=(%.0f,%.0f)"):format(ky, my, planted + 22, shx, shz))
 end)

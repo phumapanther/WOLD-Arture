@@ -720,6 +720,66 @@ function L.boat(parent, x, y, z, yaw, len)
   return m
 end
 
+-- ---------- ruins: brick-by-brick masonry with damage increasing with height (user reference technique) ----------
+L.BRICK = Vector3.new(4, 2, 2)
+local RUIN_STONE, RUIN_MOSS = Color3.fromRGB(105, 105, 105), Color3.fromRGB(75, 95, 60)
+local function ruinBrick(parent, cf, rng, damage)
+  if rng:NextNumber() < damage then return nil end                         -- missing brick = decay
+  local mossy = rng:NextNumber() > 0.75
+  return L.box(parent, cf * CFrame.Angles(rng:NextNumber(-0.04, 0.04), 0, rng:NextNumber(-0.04, 0.04)), L.BRICK,
+    (rng:NextNumber() > 0.8) and MAT.Pebble or MAT.Slate, mossy and RUIN_MOSS or RUIN_STONE, { name = "RuinStone" })
+end
+function L.ruinedTower(parent, x, y, z, radius, levels, seed)            -- round tower; decay grows with height so the top is a jagged crown
+  local rng = Random.new(seed or 1); local m = L.model(parent, "RuinedTower")
+  local per = math.max(8, math.floor(2 * math.pi * radius / L.BRICK.X))
+  local collapseSide = rng:NextNumber(0, 2 * math.pi)                     -- one side has fallen further than the rest
+  for lv = 1, levels do
+    local yy = y + (lv - 0.5) * L.BRICK.Y
+    for i = 1, per do
+      local a = (i + (lv % 2) * 0.5) / per * 2 * math.pi
+      local sideBias = 0.5 + 0.5 * math.cos(a - collapseSide)              -- 1 on the collapsed side
+      local damage = math.clamp((lv / levels) ^ 2 * (0.4 + 0.9 * sideBias) - 0.1, 0, 0.97)
+      ruinBrick(m, CFrame.new(x + math.cos(a) * radius, yy, z + math.sin(a) * radius) * L.yaw(-a), rng, damage)
+    end
+  end
+  for i = 1, math.floor(radius) do                                          -- rubble at the foot
+    local a = rng:NextNumber(0, 6.28); local r = radius + rng:NextNumber(2, 10)
+    L.box(m, CFrame.new(x + math.cos(a) * r, L.heightAt(x + math.cos(a) * r, z + math.sin(a) * r) + 0.8, z + math.sin(a) * r) * CFrame.Angles(rng:NextNumber(0, 1), rng:NextNumber(0, 3), rng:NextNumber(0, 1)),
+      L.BRICK * rng:NextNumber(0.6, 1.3), MAT.Slate, (rng:NextNumber() > 0.6) and RUIN_MOSS or RUIN_STONE, { name = "Rubble" })
+  end
+  return m
+end
+function L.ruinWall(parent, a, b, y, levels, seed)                        -- straight ruined wall between world points a,b (Vector3, y ignored)
+  local rng = Random.new(seed or 2); local m = L.model(parent, "RuinWall")
+  local dir = (b - a); local len = dir.Magnitude; dir = dir.Unit; local yaw = math.atan2(-dir.Z, dir.X)
+  local n = math.floor(len / L.BRICK.X)
+  local gapAt = rng:NextNumber(0.3, 0.7)                                    -- a breach somewhere along the wall
+  for lv = 1, levels do
+    for i = 0, n - 1 do
+      local t = (i + 0.5 + (lv % 2) * 0.5) / n
+      local p = a + dir * (t * len)
+      local breach = math.exp(-((t - gapAt) / 0.08) ^ 2) * 1.2
+      local damage = math.clamp((lv / levels) ^ 2 * 0.9 + breach - 0.15, 0, 0.97)
+      ruinBrick(m, CFrame.new(p.X, y + (lv - 0.5) * L.BRICK.Y, p.Z) * L.yaw(yaw), rng, damage)
+    end
+  end
+  return m
+end
+function L.ruinSite(parent, x, z, seed)                                   -- small scattered ruin: a tower stump + one or two wall fragments + a broken pillar, on a flattened pad
+  local rng = Random.new(seed or 3); local y = L.padY(x, z)
+  L.flattenDisc(x, z, 40, y, MAT.Ground)
+  local m = L.model(parent, "RuinSite")
+  L.ruinedTower(m, x, y, z, rng:NextNumber(8, 14), rng:NextInteger(6, 12), seed)
+  for k = 1, rng:NextInteger(1, 2) do
+    local a = rng:NextNumber(0, 6.28); local len = rng:NextNumber(24, 48)
+    local p0 = Vector3.new(x + math.cos(a) * 18, 0, z + math.sin(a) * 18)
+    L.ruinWall(m, p0, p0 + Vector3.new(math.cos(a + 1.2), 0, math.sin(a + 1.2)) * len, y, rng:NextInteger(3, 6), seed + k)
+  end
+  local px, pz = x + rng:NextNumber(-25, 25), z + rng:NextNumber(-25, 25)
+  L.cyl(m, CFrame.new(px, y + 5, pz) * CFrame.Angles(rng:NextNumber(0, 0.2), 0, rng:NextNumber(0, 0.2)), 1.6, 10, MAT.Slate, RUIN_STONE, { name = "BrokenPillar" })
+  return m
+end
+
 -- ---------- bridges ----------
 function L.stoneBridge(m, x, z, dir, len, w, y, waterY, arches)
   local base = CFrame.new(x, 0, z) * L.yaw(math.atan2(-dir.Z, dir.X))

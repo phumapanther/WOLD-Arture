@@ -1,19 +1,28 @@
--- probe estuary: along the last river segment, sample heights across the channel
+-- mouth continuity: walk the river centreline from the forced-zero vertex to the mouth and report surface material/height; also the shelf 130 studs each side
 local out = {}
 local pts = L.LAYOUT.river_main
-local a = pts[#pts - 1]; local b = pts[#pts]
-for _, frac in ipairs({ 0.6, 0.75, 0.9, 1.0 }) do
-  local u, v = a[1] + (b[1] - a[1]) * frac, a[2] + (b[2] - a[2]) * frac
-  local dx, dz = (b[1] - a[1]), (b[2] - a[2]); local len = math.sqrt(dx * dx + dz * dz); local px, pz = -dz / len, dx / len   -- perpendicular (normalized units)
-  local row = {}
-  for _, off in ipairs({ -240, -160, -100, -60, 0, 60, 100, 160, 240 }) do
-    local uu, vv = u + px * off / L.HALF, v + pz * off / L.HALF
-    local h, fm, cl, land, d, hs, w = L.sample(uu, vv)
-    local nat = L.base(uu, vv)
-    local _, _, _, est = L.river(uu, vv)
-    row[#row + 1] = ("%d:h%.0f/n%.0f/l%.2f/e%.2f/w%.0f"):format(off, h, nat, land, est or -1, w)
-  end
-  out[#out + 1] = ("frac %.2f hs=%.1f  %s"):format(frac, select(6, L.sample(u, v)), table.concat(row, "  "))
+local a, b = pts[#pts - 1], pts[#pts]
+local function surf(x, z)
+  local reg = Region3.new(Vector3.new(x - 2, -60, z - 2), Vector3.new(x + 2, 80, z + 2)):ExpandToGrid(4)
+  local mats, occ = workspace.Terrain:ReadVoxels(reg, 4)
+  local top, mat
+  for j = 1, #mats[1] do local m = mats[1][j][1]; if m ~= Enum.Material.Air then top = -60 + (j - 1) * 4 + occ[1][j][1] * 4; mat = m end end
+  return top, mat
 end
+local dx, dz = b[1] - a[1], b[2] - a[2]; local len = math.sqrt(dx * dx + dz * dz); local px, pz = -dz / len, dx / len
+local landBar = 0
+for f = 0, 1, 0.1 do
+  local u, v = a[1] + dx * f, a[2] + dz * f
+  local row = {}
+  for _, off in ipairs({ -130, 0, 130 }) do
+    local x, z = (u + px * off / L.HALF) * L.HALF, (v + pz * off / L.HALF) * L.HALF
+    local top, mat = surf(x, z)
+    local name = tostring(mat):gsub("Enum.Material.", "")
+    if off == 0 and mat ~= Enum.Material.Water then landBar += 1 end
+    row[#row + 1] = ("%d:%s@%.0f"):format(off, name, top or -99)
+  end
+  out[#out + 1] = ("f=%.1f h=%.0f %s"):format(f, L.heightAt(u * L.HALF, v * L.HALF), table.concat(row, " "))
+end
+out[#out + 1] = ("centreline non-water samples: %d (0 = mouth open)"):format(landBar)
 L.root():SetAttribute("Probe", table.concat(out, "\n"))
 return L.runPhase("Probe", function() L.progress("probe done") end)
