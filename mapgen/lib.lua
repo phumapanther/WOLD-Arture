@@ -289,9 +289,20 @@ function L.root()
   return r
 end
 function L.progress(msg) L.root():SetAttribute("Progress", msg); print("[WOLD] " .. msg) end
+function L.manualFolder()
+  local root = L.root(); local f = root:FindFirstChild("Manual")
+  if not f then f = Instance.new("Folder"); f.Name = "Manual"; f.Parent = root end
+  return f
+end
 function L.runPhase(name, fn)
   local root = L.root()
-  local old = root:FindFirstChild(name); if old then old:Destroy() end
+  local old = root:FindFirstChild(name)
+  if old then                                        -- hand-edited instances (Attribute Manual=true) survive regeneration in WOLD.Manual
+    local kept = 0
+    for _, d in ipairs(old:GetDescendants()) do if d.Parent and d:GetAttribute("Manual") then d.Parent = L.manualFolder(); kept += 1 end end
+    if kept > 0 then print(("[WOLD] kept %d manual instances from %s"):format(kept, name)) end
+    old:Destroy()
+  end
   local folder = Instance.new("Folder"); folder.Name = name; folder.Parent = root
   root:SetAttribute("Status", "running"); root:SetAttribute("Phase", name); L.progress(name .. " start")
   task.spawn(function()
@@ -645,6 +656,25 @@ function L.pipeRun(parent, pts, radius, color, postEvery)   -- pts: list of Vect
   end
   return m
 end
+-- ---------- gameplay hooks: CollectionService tags + attributes, invisible markers, spawn points, zones ----------
+local CollectionService = game:GetService("CollectionService")
+function L.tag(inst, tagName, attrs)
+  CollectionService:AddTag(inst, tagName)
+  if attrs then for k, v in pairs(attrs) do inst:SetAttribute(k, v) end end
+  return inst
+end
+function L.marker(parent, tagName, x, y, z, attrs)                       -- invisible anchored 4x4x4 part for gameplay systems to find
+  local p = L.box(parent, CFrame.new(x, y + 2, z), Vector3.new(4, 4, 4), MAT.SmoothPlastic, Color3.new(1, 1, 1), { name = tagName, cancollide = false, transparency = 1 })
+  return L.tag(p, tagName, attrs)
+end
+function L.spawnPoint(parent, place, x, y, z) return L.marker(parent, "RespawnPoint", x, y, z, { Place = place }) end
+function L.zone(parent, name, kind, x, y, z, r, h)                        -- invisible cylinder volume covering a settlement/isle/dungeon
+  local p = L.cyl(parent, CFrame.new(x, y + (h or 200) / 2, z), r, h or 200, MAT.SmoothPlastic, Color3.new(1, 1, 1), { name = "Zone_" .. name, cancollide = false, transparency = 1 })
+  return L.tag(p, "Zone", { ZoneName = name, ZoneType = kind })
+end
+L.ASSET_TAGS = { oak = { "Tree", { GatherType = "Woodcutting", Resource = "Wood", Kind = "oak" } }, pine = { "Tree", { GatherType = "Woodcutting", Resource = "Wood", Kind = "pine" } },
+  palm = { "Tree", { GatherType = "Woodcutting", Resource = "Wood", Kind = "palm" } }, rock = { "Rock", { GatherType = "Mining", Resource = "Stone" } }, bush = { "Bush", { GatherType = "Searching" } } }
+
 -- ---------- Creator Store prototypes (ServerStorage.WOLD_Assets.<kind>.*), built by mapgen/assets_setup.lua ----------
 L.assetCache = {}
 function L.assetList(kind)                          -- list of prototype Models for a kind, or nil when none are installed
@@ -666,6 +696,7 @@ function L.placeAsset(parent, kind, x, y, z, rng, sMin, sMax)   -- clone a rando
   local baseOffset = (proto:GetAttribute("BaseOffset") or 0) * s
   m:PivotTo(CFrame.new(x, y - 1 + baseOffset, z) * L.yaw(rng:NextNumber(0, 6.28)))
   m.Parent = parent
+  local t = L.ASSET_TAGS[kind]; if t then L.tag(m, t[1], t[2]) end
   return m
 end
 function L.tree(parent, x, y, z, kind, s, seed)   -- kind: "pine" | "oak" | "palm"; uses Creator Store prototypes when installed, else procedural parts
