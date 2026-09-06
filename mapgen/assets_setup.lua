@@ -35,8 +35,11 @@ return L.runPhase("AssetsSetup", function()
             local _, size = m:GetBoundingBox()
             local isBush = kind == "bush"
             local nameOk = (not isBush) or ((size.Y >= 4 and size.Y < 18) and (math.max(size.X, size.Z) / size.Y) < 2.2)   -- bush = compact clump, not logs/hedges
-            local nParts = 0; for _, d in ipairs(m:GetDescendants()) do if d:IsA("BasePart") then nParts += 1; d.Anchored = true; d.CanCollide = (kind == "rock") end end
-            if nameOk and nParts <= 12 and size.Y > 3 then
+            if kind == "ore" and m.Name:lower():find("ingot") then nameOk = false end                                      -- ore packs ship ingots too; deposits only
+            local nParts = 0; for _, d in ipairs(m:GetDescendants()) do if d:IsA("BasePart") then nParts += 1; d.Anchored = true; d.CanCollide = (kind == "rock" or kind == "ore" or kind == "cave") end end
+            local maxParts = (kind == "ore" or kind == "cave") and 80 or 12
+            local minHeight = (kind == "ore") and 1.5 or 3
+            if nameOk and nParts <= maxParts and size.Y > minHeight then
               m.Name = ("%s_%s_%d"):format(kind, a.id, kept + 1)
               local cf = m:GetBoundingBox()
               m.WorldPivot = CFrame.new(cf.Position)                            -- upright pivot at the bbox centre: PivotTo(yaw) can never tip the tree over

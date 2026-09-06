@@ -606,43 +606,53 @@
       "ore": [
         {
           "id": "119276025950987",
-          "name": "Low Poly Ore Pack Minerals Gems Mining Rocks",
-          "note": "หิน/ทองแดง/ทอง/เพชร 4 แบบ + ก้อนเล็ก"
+          "name": "Low Poly Ore Pack Minerals Gems Mining Rocks"
+        },
+        {
+          "id": "70453542706041",
+          "name": "Ores/Ingots Pack Low Poly",
+          "note": "ใช้เฉพาะแร่ ข้ามอินก็อต"
+        },
+        {
+          "id": "8141387917",
+          "name": "ore pack (silver sapphire ruby emerald diamond gold)"
+        },
+        {
+          "id": "13804973252",
+          "name": "Triple Ore Pack"
         },
         {
           "id": "12816466572",
-          "name": "Iron Ore",
-          "note": "เหล็ก"
-        },
-        {
-          "id": "97290005011332",
-          "name": "Iron Ore Resource Metallic Mining Vein",
-          "note": "สายแร่เหล็ก"
+          "name": "Iron Ore A"
         },
         {
           "id": "8596606684",
-          "name": "Iron Ore (cave grown)",
-          "note": "เหล็กในถ้ำ"
+          "name": "Iron Ore C (cave grown)"
+        },
+        {
+          "id": "97290005011332",
+          "name": "Iron Ore Resource Metallic Mining Vein"
         }
       ],
       "cave": [
         {
           "id": "97188749566404",
-          "name": "Cave Rock Pack VEGA Stalagmite",
-          "note": "หินงอกหินย้อยชุด (ย่อ 0.46)"
+          "name": "Cave Rock Pack VEGA Stalagmite"
         },
         {
           "id": "107885898472710",
-          "name": "cave spike Stalagmite Moss Rock Low Poly",
-          "note": "หินงอกมีมอส"
+          "name": "cave spike Stalagmite Moss Rock Low Poly"
         },
         {
           "id": "104162414374468",
-          "name": "Cave Crystal Mine Stalactites Stalagmites RP",
-          "note": "ก้อนหินใหญ่มีคริสตัลฟ้า ใช้ในถ้ำคริสตัล"
+          "name": "Cave Crystal Mine Stalactites Stalagmites RP"
+        },
+        {
+          "id": "123104212512297",
+          "name": "Crystal Formation Shiny Cave Stalagmite RP"
         }
       ],
-      "_ore_note": "เสนอ 2026-09-06 จากโชว์เคส 12 ชิ้น รอผู้ใช้ยืนยัน/เปลี่ยน; โมเดลที่ยังไม่เคยดึงด้วย insert_asset ของ MCP จะ LoadAsset ไม่ผ่านสิทธิ์"
+      "_ore_note": "ผู้ใช้เลือก 2026-09-06: ใช้ทั้ง 12 ชิ้นจากโชว์เคส ยกเว้น IronOre_B (5380514482)"
     }
   },
   "isles": {
