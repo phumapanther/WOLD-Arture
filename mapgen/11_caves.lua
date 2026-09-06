@@ -181,11 +181,10 @@ return L.runPhase("Caves", function(folder)
     L.writeArea(ex, ez, 620)
     local path = tunnel(ex, ez, px, pz, rng, 4, 26, 16); carve(path, 16)
     local hall = path[#path]; local hallR = chamber(hall, 140)                                 -- the biggest single cavern on the island
-    for i = 1, 12 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(10, hallR * 0.85)     -- floating crystals in the open hall (never on the floor)
-      L.tag(L.crystal(mm, hall + Vector3.new(math.cos(a) * r, rng:NextNumber(0, 3), math.sin(a) * r), rng:NextNumber(2.5, 5)), "Crystal", { GatherType = "Mining", Resource = "Crystal" }) end
-    for i = 1, 4 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(15, 40)
-      L.crystal(mm, hall + Vector3.new(math.cos(a) * r, rng:NextNumber(22, 40), math.sin(a) * r), rng:NextNumber(3, 6)) end
-    L.crystal(mm, hall + Vector3.new(0, 30, 0), 10)
+    for i = 1, 16 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(hallR * 0.35, hallR * 0.92)   -- crystals along the wall and ceiling, well above the floor
+      local yy = rng:NextNumber(hallR * 0.15, hallR * 0.95)
+      L.tag(L.crystal(mm, hall + Vector3.new(math.cos(a) * r, yy, math.sin(a) * r), rng:NextNumber(2.5, 5)), "Crystal", { GatherType = "Mining", Resource = "Crystal" }) end
+    L.crystal(mm, hall + Vector3.new(0, hallR * 1.1, 0), 10)                                        -- one big crystal hanging from the very top
     local seeds = {}
     for i = 2, #path - 1 do local d = (path[i + 1] - path[i]); if d.Magnitude < 1 then d = Vector3.new(1, 0, 0) end; seeds[#seeds + 1] = { pos = path[i], dir = d.Unit } end
     for a = 0, 4 do local ang = a * 2 * math.pi / 5; seeds[#seeds + 1] = { pos = hall, dir = Vector3.new(math.cos(ang), 0, math.sin(ang)) } end
