@@ -123,16 +123,54 @@ function L.river(u, v)                            -- -> dist(studs), surfaceY, w
   end
   return best * L.HALF, hs, w
 end
+-- ---------- settlement pads: flat ground with walkable sloped skirts, baked into the height function ----------
+L.pads = {}
+local function addPad(pos, radiusStuds, name) L.pads[#L.pads + 1] = { u = pos[1], v = pos[2], r = radiusStuds, name = name } end
+for key, d in pairs(Y.capital.districts) do
+  if key == "residential" then for i, r in ipairs(d) do addPad(r.center, r.radius * Y.half_size_studs, "residential" .. i) end
+  elseif key ~= "harbor" and key ~= "airship_dock" and d.center then addPad(d.center, d.radius * Y.half_size_studs, key) end
+end
+for name, p in pairs(Y.places) do if p.type == "village" then addPad(p.pos, 300, name) elseif p.type == "spire" then addPad(p.pos, 90, name) end end
+for _, isl in ipairs(L.isles) do if not isl.rock then addPad(isl.pos, 130, isl.name) end end
+for _, p in ipairs(L.pads) do p.y = math.floor(L.base(p.u, p.v) / 4) * 4 end      -- pad height = natural height at its center
+function L.applyPads(u, v, h)                     -- overlapping pads blend by weight so two plateaus meet on a gentle ramp, never a cliff
+  local sumW, sumWY, maxT = 0, 0, 0
+  for _, p in ipairs(L.pads) do
+    local du, dv = (u - p.u) * L.HALF, (v - p.v) * L.HALF
+    local R = p.r * L.SCALE; local skirt = math.max(120 * L.SCALE, R * 0.5)
+    if math.abs(du) < R + skirt and math.abs(dv) < R + skirt then
+      local d = math.sqrt(du * du + dv * dv)
+      if d < R + skirt then
+        local t = (d <= R) and 1 or L.smooth((R + skirt - d) / skirt)
+        sumW += t; sumWY += t * p.y * L.VS; if t > maxT then maxT = t end
+      end
+    end
+  end
+  if maxT > 0 then h = h + (sumWY / sumW - h) * maxT end
+  return h
+end
+
 L.VALLEY = 0.03                                   -- valley half-width, normalized (240 studs at full scale)
+L.yard = nil                                      -- test-yard mask {cx, cz, rad}: fades the world into sea beyond rad-400 (round test island)
 function L.sample(u, v)
   local h, fm, cliff, land = L.base(u, v)
+  h = L.applyPads(u, v, h)
   local d, hs, w = L.river(u, v)
   local valley = L.VALLEY * L.HALF
-  if land > 0.5 and d < valley then
+  if land > 0.5 and d < valley and hs > -4 * L.VS then
     local bank = hs + 1 * L.VS                    -- ground right at the water's edge, just above the surface
     if d <= w / 2 then                            -- parabolic bed: 10 deep in the middle, shallow at the edges
       local t = (2 * d / w) ^ 2; h = (hs - 10 * L.VS) + (bank - (hs - 10 * L.VS)) * t
-    else h = bank + (math.max(h, hs + 3 * L.VS) - bank) * L.smooth((d - w / 2) / (valley - w / 2)) end
+    else
+      -- valley side: blend from the bank up to natural ground; never build levees into the sea near the mouth
+      local target = (h > bank) and h or ((hs > 3 * L.VS) and bank or h)
+      h = bank + (target - bank) * L.smooth((d - w / 2) / (valley - w / 2))
+    end
+  end
+  if L.yard then
+    local dy = math.sqrt((u * L.HALF - L.yard.cx) ^ 2 + (v * L.HALF - L.yard.cz) ^ 2)
+    local edge = L.yard.rad - 400
+    if dy > edge then h = h + (Y.sea.seabed_y * L.VS - h) * L.smooth((dy - edge) / 400) end
   end
   return h, fm, cliff, land, d, hs, w
 end
@@ -394,20 +432,32 @@ function L.house(parent, x, y, z, w, d, floors, opts)
   local fh = 10
   for f = 0, floors - 1 do
     local stone = (f == 0) or opts.stone
-    L.box(m, base * CFrame.new(0, f * fh + fh / 2, 0), Vector3.new(w, fh, d), stone and MAT.Cobblestone or MAT.Plaster, stone and L.C.darkStone or L.C.plaster)
+    local y0 = f * fh
+    L.box(m, base * CFrame.new(0, y0 + fh / 2, 0), Vector3.new(w, fh, d), stone and MAT.Cobblestone or MAT.Plaster, stone and L.C.darkStone or L.C.plaster)
     if not stone then
+      -- real timber frame: corner posts + top/bottom beams that stand 0.5 proud of the plaster (no coplanar faces = no flicker)
+      for sx = -1, 1, 2 do for sz = -1, 1, 2 do
+        L.box(m, base * CFrame.new(sx * w / 2, y0 + fh / 2, sz * d / 2), Vector3.new(1.2, fh, 1.2), MAT.Wood, L.C.wood, { cancollide = false })
+      end end
       for s = -1, 1, 2 do
-        L.box(m, base * CFrame.new(s * (w / 2 - 0.4), f * fh + fh / 2, 0), Vector3.new(0.8, fh, d + 0.4), MAT.Wood, L.C.wood, { cancollide = false })
-        L.box(m, base * CFrame.new(0, f * fh + fh / 2, s * (d / 2 - 0.4)), Vector3.new(w + 0.4, fh, 0.8), MAT.Wood, L.C.wood, { cancollide = false })
+        for _, yy in ipairs({ y0 + 0.5, y0 + fh - 0.5 }) do
+          L.box(m, base * CFrame.new(0, yy, s * (d / 2 + 0.3)), Vector3.new(w + 1.2, 1, 0.6), MAT.Wood, L.C.wood, { cancollide = false })
+          L.box(m, base * CFrame.new(s * (w / 2 + 0.3), yy, 0), Vector3.new(0.6, 1, d + 1.2), MAT.Wood, L.C.wood, { cancollide = false })
+        end
+        L.box(m, base * CFrame.new(0, y0 + fh / 2, s * (d / 2 + 0.3)), Vector3.new(0.8, fh - 2, 0.6), MAT.Wood, L.C.wood, { cancollide = false })
       end
-      L.box(m, base * CFrame.new(0, f * fh + 0.4, 0), Vector3.new(w + 0.4, 0.8, d + 0.4), MAT.Wood, L.C.wood, { cancollide = false })
     end
-    for s = -1, 1, 2 do L.box(m, base * CFrame.new(s * w / 4, f * fh + 6, d / 2 + 0.2), Vector3.new(3, 3.5, 0.4), MAT.Glass, L.C.glass, { cancollide = false }) end
+    for s = -1, 1, 2 do
+      L.box(m, base * CFrame.new(s * w / 4, y0 + 6, d / 2 + 0.45), Vector3.new(3.6, 4.2, 0.5), MAT.Wood, L.C.wood, { cancollide = false })        -- frame
+      L.box(m, base * CFrame.new(s * w / 4, y0 + 6, d / 2 + 0.5), Vector3.new(2.8, 3.4, 0.5), MAT.Glass, L.C.glass, { cancollide = false, transparency = 0.3 })
+    end
   end
-  L.box(m, base * CFrame.new(0, 4, d / 2 + 0.3), Vector3.new(4, 8, 0.6), MAT.Wood, L.C.wood, { cancollide = false, name = "Door" })
+  L.box(m, base * CFrame.new(0, 4.5, d / 2 + 0.45), Vector3.new(5, 9, 0.5), MAT.Wood, L.C.wood, { cancollide = false })                          -- door frame
+  L.box(m, base * CFrame.new(0, 4, d / 2 + 0.6), Vector3.new(4, 8, 0.5), MAT.WoodPlanks, L.C.plank, { cancollide = false, name = "Door" })
   local rh, top, rc = 7, floors * fh, opts.roof or L.C.roofRed
-  L.wedge(m, base * CFrame.new(0, top + rh / 2, d / 4), Vector3.new(w + 2, rh, d / 2 + 1), MAT.Slate, rc)
-  L.wedge(m, base * CFrame.new(0, top + rh / 2, -d / 4) * CFrame.Angles(0, math.pi, 0), Vector3.new(w + 2, rh, d / 2 + 1), MAT.Slate, rc)
+  L.wedge(m, base * CFrame.new(0, top + rh / 2, d / 4 + 0.5), Vector3.new(w + 3, rh, d / 2 + 1.5), MAT.Slate, rc)
+  L.wedge(m, base * CFrame.new(0, top + rh / 2, -d / 4 - 0.5) * CFrame.Angles(0, math.pi, 0), Vector3.new(w + 3, rh, d / 2 + 1.5), MAT.Slate, rc)
+  L.box(m, base * CFrame.new(0, top + rh + 0.3, 0), Vector3.new(w + 3.4, 0.6, 1.2), MAT.Slate, L.C.darkStone, { cancollide = false })           -- ridge cap
   L.cyl(m, base * CFrame.new(w / 3, top + rh / 2 + 2, 0), 1.2, rh + 4, MAT.Brick, L.C.brick)
   return m
 end
@@ -458,30 +508,84 @@ function L.gate(parent, x, z, dir, width, h)
   L.box(parent, CFrame.new(x, g + h - 3, z) * L.yaw(math.atan2(-side.Z, side.X)), Vector3.new(width + 14, 8, 10), MAT.Cobblestone, L.C.darkStone, { name = "GateArch" })
   Terrain:FillBlock(CFrame.new(x, g - 1.5, z) * L.yaw(math.atan2(-dir.Z, dir.X)), Vector3.new(40, 3, width), MAT.Cobblestone)
 end
-function L.castle(parent, x, y, z, faceDir, opts)   -- curtain wall square with corner towers, main keep, great tower, gate facing faceDir (Vector3)
+function L.castleTower(parent, x, y, z, r, h, opts)   -- fortified round tower: string course, machicolation ring, arrow slits, steep cone roof
+  opts = opts or {}
+  local m = L.model(parent, opts.name or "Tower")
+  L.cyl(m, CFrame.new(x, y + h / 2, z), r, h, MAT.Cobblestone, L.C.darkStone)
+  L.cyl(m, CFrame.new(x, y + h * 0.5, z), r + 0.6, 1.5, MAT.Slate, L.C.stone, { cancollide = false })           -- string course band
+  L.cyl(m, CFrame.new(x, y + h - 3, z), r + 2, 3, MAT.Cobblestone, L.C.stone)                                    -- machicolation ring
+  for i = 0, 11 do local a = i * math.pi / 6; L.box(m, CFrame.new(x + math.cos(a) * (r + 1.5), y + h + 1.5, z + math.sin(a) * (r + 1.5)) * L.yaw(-a), Vector3.new(2.2, 3, 2.6), MAT.Cobblestone, L.C.stone, { cancollide = false }) end
+  for i = 0, 3 do local a = i * math.pi / 2 + 0.4; for _, yy in ipairs({ 0.35, 0.65 }) do
+    L.box(m, CFrame.new(x + math.cos(a) * (r + 0.1), y + h * yy, z + math.sin(a) * (r + 0.1)) * L.yaw(-a), Vector3.new(0.5, 4, 0.8), MAT.SmoothPlastic, Color3.fromRGB(25, 25, 30), { cancollide = false }) end end
+  local rc = opts.roofColor or L.C.roofBlue
+  for i = 1, 8 do L.cyl(m, CFrame.new(x, y + h + 3 + (i - 0.5) * (r * 0.28), z), (r + 1.5) * (1 - (i - 1) / 8), r * 0.28, MAT.Slate, rc) end   -- 8-step cone
+  L.rod(m, Vector3.new(x, y + h + 3 + r * 2.2, z), Vector3.new(x, y + h + 8 + r * 2.2, z), 0.3, MAT.Metal, L.C.brass, { cancollide = false })
+  return m
+end
+function L.castle(parent, x, y, z, faceDir, opts)   -- curtain wall square with walkway + crenels + buttresses + arrow slits, corner towers, gatehouse, keep, courtyard
   opts = opts or {}
   local K = Y.capital.landmarks
   local s = opts.size or K.keep_wall_size
+  local wh, wt = 40, 8
   local m = L.model(parent, opts.name or "Castle")
   local faceSide = math.abs(faceDir.X) > math.abs(faceDir.Z) and (faceDir.X > 0 and 2 or 4) or (faceDir.Z > 0 and 3 or 1)   -- 1 north(-z) 2 east 3 south 4 west
-  local sides = { { CFrame.new(x, 0, z - s / 2), 0 }, { CFrame.new(x + s / 2, 0, z), math.pi / 2 }, { CFrame.new(x, 0, z + s / 2), 0 }, { CFrame.new(x - s / 2, 0, z), math.pi / 2 } }
-  for i, sd in ipairs(sides) do
-    local cf = sd[1] * L.yaw(sd[2])
-    if i == faceSide then
-      for hh = -1, 1, 2 do L.box(m, cf * CFrame.new(hh * (s / 4 + 6), y + 20, 0), Vector3.new(s / 2 - 12, 40, 8), MAT.Cobblestone, L.C.stone) end
-      L.gate(m, cf.Position.X, cf.Position.Z, faceDir.Unit, 24, 34)
-    else
-      L.box(m, cf * CFrame.new(0, y + 20, 0), Vector3.new(s, 40, 8), MAT.Cobblestone, L.C.stone)
-      for k = -s / 2 + 4, s / 2 - 4, 8 do L.box(m, cf * CFrame.new(k, y + 42, 0), Vector3.new(4, 4, 8.5), MAT.Cobblestone, L.C.stone, { cancollide = false }) end
+  local sides = { { CFrame.new(x, 0, z - s / 2), 0, -1 }, { CFrame.new(x + s / 2, 0, z), math.pi / 2, -1 }, { CFrame.new(x, 0, z + s / 2), 0, 1 }, { CFrame.new(x - s / 2, 0, z), math.pi / 2, 1 } }
+  local function wallRun(cf, len, off)                 -- one straight run of wall centered at cf (X along the wall), offset off along X
+    L.box(m, cf * CFrame.new(off, y + wh / 2, 0), Vector3.new(len, wh, wt), MAT.Cobblestone, L.C.darkStone)
+    L.box(m, cf * CFrame.new(off, y + wh + 0.5, 0), Vector3.new(len, 1, wt + 2), MAT.Slate, L.C.stone)                        -- coping / walkway
+    for k = -len / 2 + 3, len / 2 - 3, 6 do L.box(m, cf * CFrame.new(off + k, y + wh + 2.5, -wt / 2 - 0.2), Vector3.new(3, 3, 1.4), MAT.Cobblestone, L.C.stone, { cancollide = false }) end
+    L.box(m, cf * CFrame.new(off, y + wh + 1.5, wt / 2 + 0.3), Vector3.new(len, 1.2, 0.6), MAT.Cobblestone, L.C.stone, { cancollide = false }) -- inner parapet
+    for k = -len / 2 + 15, len / 2 - 15, 30 do
+      L.wedge(m, cf * CFrame.new(off + k, y + 8, -wt / 2 - 2) * CFrame.Angles(0, math.pi, 0), Vector3.new(6, 16, 4), MAT.Cobblestone, L.C.darkStone)  -- buttress
+      L.box(m, cf * CFrame.new(off + k + 8, y + wh * 0.6, -wt / 2 - 0.1), Vector3.new(0.6, 4, 0.8), MAT.SmoothPlastic, Color3.fromRGB(25, 25, 30), { cancollide = false }) -- arrow slit
     end
   end
-  for _, c in ipairs({ { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } }) do L.tower(m, x + c[1] * s / 2, y, z + c[2] * s / 2, 14, K.keep_corner_tower_height, { roof = true, roofColor = L.C.roofBlue }) end
+  for i, sd in ipairs(sides) do
+    local cf = sd[1] * L.yaw(sd[2]) * (sd[3] == 1 and CFrame.Angles(0, math.pi, 0) or CFrame.new())   -- outer face (-Z of cf) points away from the courtyard
+    if i == faceSide then
+      local gw = 26
+      for hh = -1, 1, 2 do wallRun(cf, (s - gw) / 2 - 12, hh * ((s - gw) / 4 + 6 + gw / 2)) end
+      -- gatehouse: two towers, arch, wooden gate, portcullis bars
+      local gx, gz = cf.Position.X, cf.Position.Z
+      local side = cf.RightVector
+      for hh = -1, 1, 2 do local p = Vector3.new(gx, 0, gz) + side * (gw / 2 + 7) * hh; L.castleTower(m, p.X, y, p.Z, 8, wh + 14, { roofColor = L.C.roofBlue, name = "GateTower" }) end
+      L.box(m, cf * CFrame.new(0, y + wh - 4, 0), Vector3.new(gw + 14, 8, wt + 4), MAT.Cobblestone, L.C.darkStone, { name = "GateArch" })
+      L.box(m, cf * CFrame.new(0, y + wh + 0.5, 0), Vector3.new(gw + 14, 1, wt + 6), MAT.Slate, L.C.stone)
+      L.box(m, cf * CFrame.new(0, y + 12, wt / 2 - 0.5), Vector3.new(gw - 2, 24, 1), MAT.WoodPlanks, L.C.wood, { cancollide = false, name = "GateDoor" })
+      for k = -gw / 2 + 3, gw / 2 - 3, 3 do L.box(m, cf * CFrame.new(k, y + 16, -wt / 2 + 0.5), Vector3.new(0.5, 30, 0.5), MAT.Metal, L.C.iron, { cancollide = false }) end
+      Terrain:FillBlock(CFrame.new(gx, y - 1.5, gz) * L.yaw(sd[2]), Vector3.new(gw, 3, 60), MAT.Cobblestone)
+    else
+      wallRun(cf, s, 0)
+    end
+  end
+  for _, c in ipairs({ { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } }) do L.castleTower(m, x + c[1] * s / 2, y, z + c[2] * s / 2, 14, K.keep_corner_tower_height, { roofColor = L.C.roofBlue }) end
+  -- courtyard: cobbles, well, crates
+  Terrain:FillBlock(CFrame.new(x, y - 1.5, z), Vector3.new(s - 16, 3, s - 16), MAT.Cobblestone)
+  local wx, wz = x + s * 0.3, z - s * 0.3
+  L.cyl(m, CFrame.new(wx, y + 1.5, wz), 4, 3, MAT.Cobblestone, L.C.stone, { name = "Well" }); L.cyl(m, CFrame.new(wx, y + 1.6, wz), 3, 3.2, MAT.Water, L.C.sea, { cancollide = false })
+  for sx = -1, 1, 2 do L.box(m, CFrame.new(wx + sx * 3.5, y + 5, wz), Vector3.new(0.8, 7, 0.8), MAT.Wood, L.C.wood) end
+  L.wedge(m, CFrame.new(wx, y + 9.5, wz + 2) , Vector3.new(9, 2.5, 4), MAT.Slate, L.C.roofRed); L.wedge(m, CFrame.new(wx, y + 9.5, wz - 2) * CFrame.Angles(0, math.pi, 0), Vector3.new(9, 2.5, 4), MAT.Slate, L.C.roofRed)
+  for i = 1, 6 do L.box(m, CFrame.new(x - s * 0.3 + (i % 3) * 5, y + 2, z + s * 0.3 + math.floor(i / 3) * 5) * L.yaw(i * 0.4), Vector3.new(4, 4, 4), MAT.WoodPlanks, L.C.plank, { name = "Crate" }) end
+  -- main keep: massive block with corner turrets, plinth, crenellated top, framed windows, stair + door
   local kw = s * 0.4
+  L.box(m, CFrame.new(x, y + 3, z), Vector3.new(kw + 6, 6, kw + 6), MAT.Cobblestone, L.C.stone, { name = "Plinth" })
   L.box(m, CFrame.new(x, y + 55, z), Vector3.new(kw, 110, kw), MAT.Cobblestone, L.C.darkStone, { name = "MainKeep" })
-  for i = 0, 5 do for s2 = -1, 1, 2 do L.box(m, CFrame.new(x + s2 * (kw / 2 + 0.3), y + 25 + i * 14, z - kw / 3 + (i % 3) * kw / 3), Vector3.new(0.6, 6, 3), MAT.Glass, L.C.glass, { cancollide = false }) end end
-  L.box(m, CFrame.new(x, y + 6, z + kw / 2 + 0.4), Vector3.new(10, 12, 0.8), MAT.Wood, L.C.wood, { cancollide = false, name = "HallDoor" })
-  L.tower(m, x, y, z, 20, K.keep_main_tower_height, { roof = true, roofColor = L.C.roofBlue, name = "GreatTower" })
-  L.box(m, CFrame.new(x, y + K.keep_main_tower_height + 16, z), Vector3.new(0.5, 12, 8), MAT.Fabric, L.C.roofRed, { cancollide = false, name = "Banner" })
+  L.box(m, CFrame.new(x, y + 110.5, z), Vector3.new(kw + 3, 1, kw + 3), MAT.Slate, L.C.stone)
+  for k = -kw / 2 + 3, kw / 2 - 3, 6 do for sd = -1, 1, 2 do
+    L.box(m, CFrame.new(x + k, y + 112.5, z + sd * (kw / 2 + 0.6)), Vector3.new(3, 3, 1.4), MAT.Cobblestone, L.C.stone, { cancollide = false })
+    L.box(m, CFrame.new(x + sd * (kw / 2 + 0.6), y + 112.5, z + k), Vector3.new(1.4, 3, 3), MAT.Cobblestone, L.C.stone, { cancollide = false })
+  end end
+  for _, c in ipairs({ { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } }) do L.castleTower(m, x + c[1] * kw / 2, y, z + c[2] * kw / 2, 6, 118, { roofColor = L.C.roofBlue, name = "Turret" }) end
+  for i = 0, 5 do for s2 = -1, 1, 2 do
+    local wx2, wz2 = x + s2 * (kw / 2 + 0.4), z - kw / 3 + (i % 3) * kw / 3
+    L.box(m, CFrame.new(wx2, y + 25 + i * 14, wz2), Vector3.new(0.8, 7.5, 4.2), MAT.Slate, L.C.stone, { cancollide = false })
+    L.box(m, CFrame.new(wx2 + s2 * 0.2, y + 25 + i * 14, wz2), Vector3.new(0.8, 6, 3), MAT.Glass, L.C.glass, { cancollide = false, transparency = 0.3 })
+  end end
+  L.box(m, CFrame.new(x, y + 7, z + kw / 2 + 0.5), Vector3.new(12, 14, 1), MAT.Slate, L.C.stone, { cancollide = false })
+  L.box(m, CFrame.new(x, y + 6, z + kw / 2 + 0.8), Vector3.new(10, 12, 0.8), MAT.WoodPlanks, L.C.wood, { cancollide = false, name = "HallDoor" })
+  for i = 1, 3 do L.box(m, CFrame.new(x, y + 6 - i * 1.5 + 0.75, z + kw / 2 + 3 + i * 2), Vector3.new(14, 1.5, 4), MAT.Cobblestone, L.C.stone) end   -- steps
+  L.castleTower(m, x, y + 110, z, 20, K.keep_main_tower_height - 110, { roofColor = L.C.roofBlue, name = "GreatTower" })
+  L.box(m, CFrame.new(x, y + K.keep_main_tower_height + 50, z), Vector3.new(0.4, 10, 7), MAT.Fabric, L.C.roofRed, { cancollide = false, name = "Banner" })
   return m
 end
 function L.sign(parent, x, y, z, text, yaw)
@@ -524,17 +628,35 @@ function L.pipeRun(parent, pts, radius, color, postEvery)   -- pts: list of Vect
   end
   return m
 end
-function L.tree(parent, x, y, z, kind, s)         -- 2 parts per tree; kind: "pine" | "oak" | "palm"
+function L.tree(parent, x, y, z, kind, s, seed)   -- kind: "pine" | "oak" | "palm"; trunk sunk 2 studs so slopes never show a floating base
   s = s or 1
+  local rng = Random.new(seed or math.floor(x * 7 + z * 13))
+  local yaw = rng:NextNumber(0, 6.28)
+  local base = CFrame.new(x, y - 2, z) * L.yaw(yaw)
   if kind == "pine" then
-    L.cyl(parent, CFrame.new(x, y + 6 * s, z), 1.2 * s, 12 * s, MAT.Wood, L.C.trunk, { name = "Tree" })
-    L.ball(parent, CFrame.new(x, y + 22 * s, z), Vector3.new(12 * s, 30 * s, 12 * s), MAT.Grass, L.C.leafDark, { cancollide = false })
+    L.cyl(parent, base * CFrame.new(0, 9 * s, 0), 1.1 * s, 18 * s, MAT.Wood, L.C.trunk, { name = "Tree" })
+    for i, tier in ipairs({ { 12, 9, 9 }, { 16.5, 7, 7.5 }, { 20.5, 4.6, 6.5 } }) do        -- {height, radius, thickness}: tiered conifer
+      L.ball(parent, base * CFrame.new(0, tier[1] * s, 0), Vector3.new(tier[2] * 2 * s, tier[3] * s, tier[2] * 2 * s), MAT.Grass, (i % 2 == 1) and L.C.leafDark or Color3.fromRGB(48, 104, 52), { cancollide = false })
+    end
+    L.ball(parent, base * CFrame.new(0, 24 * s, 0), Vector3.new(2.4 * s, 4 * s, 2.4 * s), MAT.Grass, L.C.leafDark, { cancollide = false })
   elseif kind == "palm" then
-    L.cyl(parent, CFrame.new(x, y + 9 * s, z) * CFrame.Angles(0, 0, 0.12), 0.9 * s, 18 * s, MAT.Wood, L.C.trunk, { name = "Tree" })
-    L.ball(parent, CFrame.new(x, y + 19 * s, z), Vector3.new(16 * s, 5 * s, 16 * s), MAT.Grass, L.C.leafLight, { cancollide = false })
-  else
-    L.cyl(parent, CFrame.new(x, y + 5 * s, z), 1.5 * s, 10 * s, MAT.Wood, L.C.trunk, { name = "Tree" })
-    L.ball(parent, CFrame.new(x, y + 15 * s, z), Vector3.new(18 * s, 16 * s, 18 * s), MAT.Grass, L.C.leafLight, { cancollide = false })
+    local lean = CFrame.Angles(0, 0, 0.14)
+    L.part(parent, Enum.PartType.Cylinder, base * CFrame.new(1.2 * s, 10 * s, 0) * lean * CFrame.Angles(0, 0, math.pi / 2), Vector3.new(20 * s, 1.6 * s, 1.6 * s), MAT.Wood, L.C.trunk, { name = "Tree" })
+    local top = base * CFrame.new(2.6 * s, 19.5 * s, 0)
+    for i = 0, 5 do
+      L.box(parent, top * CFrame.Angles(0, i * math.pi / 3, 0) * CFrame.new(0, 0, 5 * s) * CFrame.Angles(-0.55, 0, 0) * CFrame.new(0, 0, 3 * s), Vector3.new(2.2 * s, 0.3, 10 * s), MAT.Grass, L.C.leafLight, { cancollide = false })
+    end
+    L.ball(parent, top, Vector3.new(2.5 * s, 2.5 * s, 2.5 * s), MAT.Wood, L.C.wood, { cancollide = false })
+  else -- oak: tapered trunk + short branches + 5 leaf clusters in two shades
+    L.cyl(parent, base * CFrame.new(0, 5 * s, 0), 1.6 * s, 10 * s, MAT.Wood, L.C.trunk, { name = "Tree" })
+    L.cyl(parent, base * CFrame.new(0, 11 * s, 0), 1.1 * s, 4 * s, MAT.Wood, L.C.trunk, { cancollide = false })
+    for i = 0, 2 do local a = i * 2.09
+      L.rod(parent, (base * CFrame.new(0, 10 * s, 0)).Position, (base * CFrame.new(math.cos(a) * 5 * s, 14 * s, math.sin(a) * 5 * s)).Position, 0.5 * s, MAT.Wood, L.C.trunk, { cancollide = false })
+    end
+    L.ball(parent, base * CFrame.new(0, 16 * s, 0), Vector3.new(15 * s, 11 * s, 15 * s), MAT.Grass, L.C.leafLight, { cancollide = false })
+    for i = 0, 3 do local a = i * 1.57 + 0.4; local r = 5 * s
+      L.ball(parent, base * CFrame.new(math.cos(a) * r, (13.5 + (i % 2) * 3) * s, math.sin(a) * r), Vector3.new(9 * s, 8 * s, 9 * s), MAT.Grass, (i % 2 == 0) and L.C.leafDark or L.C.leafLight, { cancollide = false })
+    end
   end
 end
 function L.pier(parent, x, z, dir, len, w, y)     -- planks on posts from (x,z) outward along dir (Vector3)
@@ -622,14 +744,16 @@ function L.bridge(parent, b)
   for _, e in ipairs({ a, c }) do Terrain:FillBlock(CFrame.new(e.X, deckY - 4, e.Z), Vector3.new(36, 8, 36), MAT.Cobblestone) end  -- approach pads
   return m
 end
-function L.paintRoad(a, b, width, mat, skipFn)     -- paint a road strip on the terrain surface between world points a,b (Vector3, y ignored)
+function L.paintRoad(a, b, width, mat, skipFn)     -- recolor the existing ground surface along a->b (no added geometry, so nothing floats on slopes)
   local len = (b - a).Magnitude; if len < 1 then return end
-  local dir = (b - a).Unit; local yaw = math.atan2(-dir.Z, dir.X)
+  local dir = (b - a).Unit
+  local half = width / 2
   for s = 0, len, 4 do
     local p = a + dir * s
     local h = L.heightAt(p.X, p.Z); local d, _, w = L.riverAt(p.X, p.Z)
     if h > 1 and d > w / 2 + 6 and not (skipFn and skipFn(p)) then
-      Terrain:FillBlock(CFrame.new(p.X, h - 1.5, p.Z) * L.yaw(yaw), Vector3.new(6, 3, width), mat)
+      local reg = Region3.new(Vector3.new(p.X - half, h - 6, p.Z - half), Vector3.new(p.X + half, h + 6, p.Z + half)):ExpandToGrid(4)
+      for _, src in ipairs({ MAT.Grass, MAT.LeafyGrass, MAT.Sand, MAT.Rock, MAT.Snow, MAT.Mud }) do Terrain:ReplaceMaterial(reg, 4, src, mat) end
     end
   end
 end

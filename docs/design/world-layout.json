@@ -537,7 +537,8 @@
     "plains_spacing": 250,
     "mountain_pine_max_y": 1200,
     "tree_budget": 18000,
-    "beach_palms": true
+    "beach_palms": true,
+    "_note": "ต้นไม้ 4-6 Part ต่อต้นหลังปรับให้สมจริง งบชิ้นส่วนรวมขยายเป็น 150,000 (ผู้ใช้ไม่กังวลเรื่องแลค)"
   },
   "isles": {
     "Crystal Isle": {
@@ -594,7 +595,7 @@
       "min_radius": 512,
       "target_radius": 2048
     },
-    "part_budget": 70000,
+    "part_budget": 150000,
     "workspace_root": "WOLD"
   },
   "_bridges_note": "dir = ทิศทางสะพานตามถนน/รางที่ข้าม (สัดส่วน ไม่ต้อง normalize), length = ความยาวสะพาน studs",
