@@ -57,6 +57,7 @@ return L.runPhase("Caves", function(folder)
   do
     local mm = L.model(m, "Stonemark Mine"); local rng = Random.new(101)
     local ex, ez = L.toWorld(Y.caves["Stonemark Mine"]); local px, pz = L.toWorld(Y.peaks.second_NW)
+    L.writeArea(ex, ez, 620)                                              -- repair: rewrite the natural terrain here so re-runs carve from a clean hill
     local main = tunnel(ex, ez, px, pz, rng, 4, 6); carve(main, 14); chamber(main[#main], 40)
     for b = 1, 2 do
       local br = tunnel(main[2 + b].X, main[2 + b].Z, px + b * 300, pz, rng, 3, 8); br[1] = main[2 + b]; carve(br, 11); chamber(br[#br], 28)
@@ -74,7 +75,7 @@ return L.runPhase("Caves", function(folder)
       end
     end
     -- cave decor (stalagmites) along the tunnels
-    if L.assetList("cave") then for i = 1, 16 do local seg = rng:NextInteger(2, #main); local p = main[seg] + Vector3.new(rng:NextNumber(-11, 11), 0, rng:NextNumber(-11, 11)); L.placeAsset(mm, "cave", p.X, main[seg].Y - 8.4, p.Z, rng, 0.5, 1.1) end end
+    if L.assetList("cave") then for i = 1, 12 do local seg = rng:NextInteger(3, #main); local p = main[seg] + Vector3.new(rng:NextNumber(-11, 11), 0, rng:NextNumber(-11, 11)); L.placeAsset(mm, "cave", p.X, main[seg].Y - 8.4, p.Z, rng, 0.4, 0.9) end end
     for i = 1, #main - 1 do
       L.rod(mm, main[i] - Vector3.new(0, 0.5, 0), main[i + 1] - Vector3.new(0, 0.5, 0), 0.3, MAT.Metal, L.C.iron, { cancollide = false })
       L.rod(mm, main[i] + Vector3.new(0, -0.5, 3), main[i + 1] + Vector3.new(0, -0.5, 3), 0.3, MAT.Metal, L.C.iron, { cancollide = false })
@@ -88,15 +89,16 @@ return L.runPhase("Caves", function(folder)
   do
     local mm = L.model(m, "Crystal Cave"); local rng = Random.new(202)
     local ex, ez = L.toWorld(Y.caves["Crystal Cave"]); local px, pz = L.toWorld(Y.peaks.main_NE)
+    L.writeArea(ex, ez, 620)
     local path = tunnel(ex, ez, px, pz, rng, 3, 4); carve(path, 16)
     local hall = path[#path]; chamber(hall, 70)
-    for i = 1, 24 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(10, 60)
-      L.tag(L.crystal(mm, hall + Vector3.new(math.cos(a) * r, rng:NextNumber(0, 6), math.sin(a) * r), rng:NextNumber(3, 7)), "Crystal", { GatherType = "Mining", Resource = "Crystal" }) end
-    for i = 1, 8 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(15, 45)
-      L.crystal(mm, hall + Vector3.new(math.cos(a) * r, rng:NextNumber(20, 45), math.sin(a) * r), rng:NextNumber(4, 9)) end
-    L.crystal(mm, hall + Vector3.new(0, 30, 0), 14)
-    if L.assetList("cave") then for i = 1, 14 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(20, 62); L.placeAsset(mm, "cave", hall.X + math.cos(a) * r, hall.Y - 2, hall.Z + math.sin(a) * r, rng, 0.6, 1.6) end end
-    if L.assetList("ore") then for i = 1, 10 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(12, 55); local o = L.placeAsset(mm, "ore", hall.X + math.cos(a) * r, hall.Y - 2, hall.Z + math.sin(a) * r, rng, 0.8, 1.3); if o then L.tag(o, "OreVein", { GatherType = "Mining", Resource = "Crystal" }) end end end
+    for i = 1, 12 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(14, 58)
+      L.tag(L.crystal(mm, hall + Vector3.new(math.cos(a) * r, rng:NextNumber(0, 3), math.sin(a) * r), rng:NextNumber(2.5, 5)), "Crystal", { GatherType = "Mining", Resource = "Crystal" }) end
+    for i = 1, 4 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(15, 40)
+      L.crystal(mm, hall + Vector3.new(math.cos(a) * r, rng:NextNumber(22, 40), math.sin(a) * r), rng:NextNumber(3, 6)) end
+    L.crystal(mm, hall + Vector3.new(0, 30, 0), 10)
+    if L.assetList("cave") then for i = 1, 8 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(30, 62); L.placeAsset(mm, "cave", hall.X + math.cos(a) * r, hall.Y - 2, hall.Z + math.sin(a) * r, rng, 0.5, 1.0) end end
+    if L.assetList("ore") then for i = 1, 8 do local a, r = rng:NextNumber(0, 6.28), rng:NextNumber(12, 55); local o = L.placeAsset(mm, "ore", hall.X + math.cos(a) * r, hall.Y - 2, hall.Z + math.sin(a) * r, rng, 0.8, 1.2); if o then L.tag(o, "OreVein", { GatherType = "Mining", Resource = "Crystal" }) end end end
     local ddx, ddz = L.dirTo(ex, ez, px, pz)
     entrance(mm, "Crystal Cave", ex, ez, ddx, ddz); savePath(mm, path)
     L.progress("crystal cave"); task.wait()
@@ -105,15 +107,15 @@ return L.runPhase("Caves", function(folder)
   do
     local mm = L.model(m, "Sea Cave"); local rng = Random.new(303)
     local hx, hz = L.toWorld(Y.caves["Sea Cave"])
-    local ex, ez = L.findShore(0, 0, hx, hz, L.HALF * 1.2)            -- walk from the island centre toward the hint until the water
-    ex, ez = ex - (ex / math.abs(ex)) * 30, ez                          -- step 30 studs back inland from the waterline
-    local path = tunnel(ex, ez, 0, 0, rng, 3, -2); carve(path, 18)
-    local hall = path[#path]; chamber(hall, 45)
-    Terrain:FillBlock(CFrame.new(hall.X, hall.Y - 3, hall.Z), Vector3.new(60, 6, 60), MAT.Water)   -- tide pool
+    L.writeArea(hx, hz, 620)
+    local ex, ez = L.findShore(0, 0, hx, hz, L.HALF * 1.2)            -- last land point walking from the island centre toward the west coast (waterline)
+    local path = tunnel(ex, ez, 0, 0, rng, 3, 6); carve(path, 14)      -- mouth at the waterline, tunnel dives 6/100 under the cliff plateau so it never breaks the surface
+    local hall = path[#path]; chamber(hall, 30)
+    Terrain:FillBlock(CFrame.new(hall.X, hall.Y - 2, hall.Z), Vector3.new(36, 4, 36), MAT.Water)   -- tide pool
     local wreck = L.model(mm, "Shipwreck")
-    L.box(wreck, CFrame.new(hall + Vector3.new(0, 4, 0)) * CFrame.Angles(0, 0.6, 0.25), Vector3.new(50, 10, 16), MAT.WoodPlanks, L.C.wood)
-    L.rod(wreck, hall + Vector3.new(0, 8, 0), hall + Vector3.new(6, 40, 0), 1, MAT.Wood, L.C.wood)
-    for i = 1, 6 do L.tag(L.cyl(wreck, CFrame.new(hall + Vector3.new(rng:NextNumber(-30, 30), 2, rng:NextNumber(-30, 30))), 2, 4, MAT.Wood, L.C.plank, { name = "Barrel" }), "SearchPoint", { GatherType = "Searching" }) end
+    L.box(wreck, CFrame.new(hall + Vector3.new(0, 3, 0)) * CFrame.Angles(0, 0.6, 0.2), Vector3.new(34, 7, 11), MAT.WoodPlanks, L.C.wood)
+    L.rod(wreck, hall + Vector3.new(0, 6, 0), hall + Vector3.new(4, 24, 0), 0.8, MAT.Wood, L.C.wood)
+    for i = 1, 6 do L.tag(L.cyl(wreck, CFrame.new(hall + Vector3.new(rng:NextNumber(-20, 20), 2, rng:NextNumber(-20, 20))), 2, 4, MAT.Wood, L.C.plank, { name = "Barrel" }), "SearchPoint", { GatherType = "Searching" }) end
     L.marker(mm, "FishingSpot", hall.X + 20, hall.Y, hall.Z + 20, { GatherType = "Fishing" })
     local ddx, ddz = L.dirTo(ex, ez, 0, 0)
     entrance(mm, "Sea Cave", ex, ez, ddx, ddz); savePath(mm, path)
