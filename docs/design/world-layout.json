@@ -3,111 +3,703 @@
   "half_size_studs": 8000,
   "coast_radius": 0.85,
   "coast_noise": 0.09,
-  "bay": { "angle_deg": 45, "sigma_deg": 18, "depth": 0.32 },
+  "bay": {
+    "angle_deg": 45,
+    "sigma_deg": 18,
+    "depth": 0.32
+  },
   "mountain_band_z": -0.45,
-  "peaks": { "main_NE": [0.45, -0.60], "second_NW": [-0.45, -0.60] },
-  "peak_height_studs": { "main_NE": 2000, "second_NW": 1500 },
+  "peaks": {
+    "main_NE": [
+      0.45,
+      -0.6
+    ],
+    "second_NW": [
+      -0.45,
+      -0.6
+    ]
+  },
+  "peak_height_studs": {
+    "main_NE": 2000,
+    "second_NW": 1500
+  },
   "snow_line_studs": 1200,
-  "crown_hill": [0.22, 0.26],
+  "crown_hill": [
+    0.22,
+    0.26
+  ],
   "crown_hill_height_studs": 200,
-  "forest": { "x_max": -0.25, "z_abs_max": 0.45 },
-  "cliffs": { "center_deg": 180, "sigma_deg": 20, "r_min": 0.72 },
-  "sea": { "terrain_water_extent_studs": 16000, "part_sea_extent_studs": 32000, "seabed_y": -40, "deep_seabed_y": -80, "fog_end_studs": 24000 },
+  "forest": {
+    "x_max": -0.25,
+    "z_abs_max": 0.45
+  },
+  "cliffs": {
+    "center_deg": 180,
+    "sigma_deg": 20,
+    "r_min": 0.72
+  },
+  "sea": {
+    "terrain_water_extent_studs": 16000,
+    "part_sea_extent_studs": 32000,
+    "seabed_y": -40,
+    "deep_seabed_y": -80,
+    "fog_end_studs": 24000
+  },
   "places": {
-    "Brasshaven":     { "pos": [0.32, 0.42],  "type": "capital", "th": "เมืองหลวง ท่าเรือ" },
-    "Ironcrest Keep": { "pos": [0.22, 0.26],  "type": "castle",  "th": "ปราสาทบน Crown Hill" },
-    "Goldmeadow":     { "pos": [-0.12, 0.12], "type": "village", "th": "หมู่บ้านเกษตร", "fields_center": [-0.02, 0.06], "fields_radius": 0.10 },
-    "Cogsworth":      { "pos": [0.10, -0.14], "type": "village", "th": "ช่างกล ชุมทางรถไฟ" },
-    "Stonemark":      { "pos": [-0.12, -0.42],"type": "village", "th": "หมู่บ้านเหมือง" },
-    "Elderwood":      { "pos": [-0.50, 0.02], "type": "village", "th": "ล่าสัตว์ ตัดไม้" },
-    "Saltmere":       { "pos": [-0.45, 0.62], "type": "village", "th": "หมู่บ้านประมง" },
-    "Astravale":      { "pos": [0.48, -0.42], "type": "village", "th": "หมู่บ้านนักเวท" },
-    "Spire of Eld":   { "pos": [0.45, -0.60], "type": "spire",   "th": "หอเวท ยอดเขาหลัก" }
+    "Brasshaven": {
+      "pos": [
+        0.32,
+        0.42
+      ],
+      "type": "capital",
+      "th": "เมืองหลวง ท่าเรือ",
+      "kind": "capital"
+    },
+    "Ironcrest Keep": {
+      "pos": [
+        0.22,
+        0.26
+      ],
+      "type": "castle",
+      "th": "ปราสาทบน Crown Hill",
+      "kind": "castle"
+    },
+    "Goldmeadow": {
+      "pos": [
+        -0.12,
+        0.12
+      ],
+      "type": "village",
+      "th": "หมู่บ้านเกษตร",
+      "fields_center": [
+        -0.02,
+        0.06
+      ],
+      "fields_radius": 0.1,
+      "kind": "farm"
+    },
+    "Cogsworth": {
+      "pos": [
+        0.1,
+        -0.14
+      ],
+      "type": "village",
+      "th": "ช่างกล ชุมทางรถไฟ",
+      "kind": "engineer"
+    },
+    "Stonemark": {
+      "pos": [
+        -0.12,
+        -0.42
+      ],
+      "type": "village",
+      "th": "หมู่บ้านเหมือง",
+      "kind": "mine"
+    },
+    "Elderwood": {
+      "pos": [
+        -0.5,
+        0.02
+      ],
+      "type": "village",
+      "th": "ล่าสัตว์ ตัดไม้",
+      "kind": "lumber"
+    },
+    "Saltmere": {
+      "pos": [
+        -0.45,
+        0.62
+      ],
+      "type": "village",
+      "th": "หมู่บ้านประมง",
+      "kind": "fishing"
+    },
+    "Astravale": {
+      "pos": [
+        0.48,
+        -0.42
+      ],
+      "type": "village",
+      "th": "หมู่บ้านนักเวท",
+      "kind": "mage"
+    },
+    "Spire of Eld": {
+      "pos": [
+        0.45,
+        -0.6
+      ],
+      "type": "spire",
+      "th": "หอเวท ยอดเขาหลัก",
+      "kind": "spire"
+    }
   },
   "caves": {
-    "Stonemark Mine": [-0.14, -0.50],
-    "Crystal Cave":   [0.40, -0.65],
-    "Sea Cave":       [-0.84, 0.10]
+    "Stonemark Mine": [
+      -0.14,
+      -0.5
+    ],
+    "Crystal Cave": [
+      0.4,
+      -0.65
+    ],
+    "Sea Cave": [
+      -0.84,
+      0.1
+    ]
   },
-  "river_main": [[0.12,-0.62],[0.09,-0.45],[0.11,-0.30],[0.10,-0.14],[0.06,0.0],[0.05,0.18],[0.13,0.30],[0.25,0.36],[0.40,0.40]],
-  "river_tributary": [[-0.42,-0.55],[-0.44,-0.35],[-0.48,-0.12],[-0.44,0.06],[-0.25,0.08],[-0.10,0.06],[0.06,0.0]],
-  "river_width_studs": { "main": [60, 120], "tributary": [30, 50] },
+  "river_main": [
+    [
+      0.12,
+      -0.62
+    ],
+    [
+      0.09,
+      -0.45
+    ],
+    [
+      0.11,
+      -0.3
+    ],
+    [
+      0.1,
+      -0.14
+    ],
+    [
+      0.06,
+      0.0
+    ],
+    [
+      0.05,
+      0.18
+    ],
+    [
+      0.13,
+      0.3
+    ],
+    [
+      0.25,
+      0.36
+    ],
+    [
+      0.4,
+      0.4
+    ]
+  ],
+  "river_tributary": [
+    [
+      -0.42,
+      -0.55
+    ],
+    [
+      -0.44,
+      -0.35
+    ],
+    [
+      -0.48,
+      -0.12
+    ],
+    [
+      -0.44,
+      0.06
+    ],
+    [
+      -0.25,
+      0.08
+    ],
+    [
+      -0.1,
+      0.06
+    ],
+    [
+      0.06,
+      0.0
+    ]
+  ],
+  "river_width_studs": {
+    "main": [
+      60,
+      120
+    ],
+    "tributary": [
+      30,
+      50
+    ]
+  },
   "roads": [
-    ["Brasshaven", [0.14, 0.40], [0.02, 0.30], "Goldmeadow", "Elderwood"],
-    ["Elderwood", "Saltmere", [0.10, 0.62], "Brasshaven"],
-    ["Goldmeadow", "Cogsworth", "Stonemark"],
-    ["Cogsworth", "Astravale", "Spire of Eld"],
-    ["Cogsworth", "Brasshaven"],
-    ["Brasshaven", "Ironcrest Keep"]
+    [
+      "Brasshaven",
+      [
+        0.14,
+        0.4
+      ],
+      [
+        0.02,
+        0.3
+      ],
+      "Goldmeadow",
+      "Elderwood"
+    ],
+    [
+      "Elderwood",
+      "Saltmere",
+      [
+        0.1,
+        0.62
+      ],
+      "Brasshaven"
+    ],
+    [
+      "Goldmeadow",
+      "Cogsworth",
+      "Stonemark"
+    ],
+    [
+      "Cogsworth",
+      "Astravale",
+      "Spire of Eld"
+    ],
+    [
+      "Cogsworth",
+      "Brasshaven"
+    ],
+    [
+      "Brasshaven",
+      "Ironcrest Keep"
+    ]
   ],
   "_roads_note": "รายการ = สายถนน สมาชิกเป็นชื่อสถานที่หรือจุดผ่าน [x,z] ประตูเมืองคำนวณจากจุดที่ถนน/รถไฟ/แม่น้ำตัดกำแพง",
   "road_style": {
-    "main_route": ["Brasshaven", "Goldmeadow", "Cogsworth", "Stonemark"],
-    "main": { "material": "Cobblestone", "width": 24 },
-    "other": { "material": "Ground", "width": 16 }
+    "main_route": [
+      "Brasshaven",
+      "Goldmeadow",
+      "Cogsworth",
+      "Stonemark"
+    ],
+    "main": {
+      "material": "Cobblestone",
+      "width": 24
+    },
+    "other": {
+      "material": "Ground",
+      "width": 16
+    }
   },
-  "railway": ["Stonemark", "Cogsworth", "Brasshaven"],
-  "rail_stations": ["Stonemark", "Cogsworth", "Brasshaven"],
+  "railway": [
+    "Stonemark",
+    "Cogsworth",
+    "Brasshaven"
+  ],
+  "rail_stations": [
+    "Stonemark",
+    "Cogsworth",
+    "Brasshaven"
+  ],
   "bridges": [
-    { "name": "Crown Bridge",         "pos": [0.289, 0.370], "type": "stone_arch",      "arches": 5, "th": "สะพานหินใหญ่ 5 ซุ้ม เชื่อมตลาดฝั่งใต้กับ Crown Plaza ฝั่งเหนือ ในเมือง" },
-    { "name": "Iron Rail Bridge",     "pos": [0.302, 0.374], "type": "iron_truss",      "th": "สะพานโครงเหล็กรถไฟ ขนาน Crown Bridge ห่าง 100 studs" },
-    { "name": "Cogsworth Drawbridge", "pos": [0.10, -0.14],  "type": "mechanical_draw", "th": "สะพานกลไกยกได้ ถนน+รถไฟ กลางหมู่บ้าน หอเครื่องจักรสองข้าง" },
-    { "name": "Goldmeadow Footbridge","pos": [0.06, 0.04],   "type": "wood_plank",      "th": "สะพานไม้แผ่น ระหว่างแปลงนาสองฝั่งแม่น้ำ เหนือกำแพงเมือง" },
-    { "name": "Elderwood Log Bridge", "pos": [-0.44, 0.04],  "type": "wood_log",        "th": "สะพานไม้ซุง ถนนไป Goldmeadow ข้ามลำน้ำสาขาที่โรงเลื่อย" }
+    {
+      "name": "Crown Bridge",
+      "pos": [
+        0.289,
+        0.37
+      ],
+      "type": "stone_arch",
+      "arches": 5,
+      "th": "สะพานหินใหญ่ 5 ซุ้ม เชื่อมตลาดฝั่งใต้กับ Crown Plaza ฝั่งเหนือ ในเมือง",
+      "dir": [
+        -0.1,
+        -0.16
+      ],
+      "length": 160
+    },
+    {
+      "name": "Iron Rail Bridge",
+      "pos": [
+        0.302,
+        0.374
+      ],
+      "type": "iron_truss",
+      "th": "สะพานโครงเหล็กรถไฟ ขนาน Crown Bridge ห่าง 100 studs",
+      "dir": [
+        0.22,
+        0.56
+      ],
+      "length": 160
+    },
+    {
+      "name": "Cogsworth Drawbridge",
+      "pos": [
+        0.1,
+        -0.14
+      ],
+      "type": "mechanical_draw",
+      "th": "สะพานกลไกยกได้ ถนน+รถไฟ กลางหมู่บ้าน หอเครื่องจักรสองข้าง",
+      "dir": [
+        0.22,
+        0.28
+      ],
+      "length": 140
+    },
+    {
+      "name": "Goldmeadow Footbridge",
+      "pos": [
+        0.06,
+        0.04
+      ],
+      "type": "wood_plank",
+      "th": "สะพานไม้แผ่น ระหว่างแปลงนาสองฝั่งแม่น้ำ เหนือกำแพงเมือง",
+      "dir": [
+        0.18,
+        0.01
+      ],
+      "length": 120
+    },
+    {
+      "name": "Elderwood Log Bridge",
+      "pos": [
+        -0.44,
+        0.04
+      ],
+      "type": "wood_log",
+      "th": "สะพานไม้ซุง ถนนไป Goldmeadow ข้ามลำน้ำสาขาที่โรงเลื่อย",
+      "dir": [
+        0.38,
+        0.1
+      ],
+      "length": 80
+    }
   ],
   "capital": {
     "name": "Brasshaven",
     "wall": {
-      "polygon": [[0.02,0.09],[0.30,0.09],[0.42,0.20],[0.44,0.30],[0.30,0.55],[0.20,0.59],[0.02,0.50]],
-      "height": 30, "thickness": 8, "tower_spacing": 250,
+      "polygon": [
+        [
+          0.02,
+          0.09
+        ],
+        [
+          0.3,
+          0.09
+        ],
+        [
+          0.42,
+          0.2
+        ],
+        [
+          0.44,
+          0.3
+        ],
+        [
+          0.3,
+          0.55
+        ],
+        [
+          0.2,
+          0.59
+        ],
+        [
+          0.02,
+          0.5
+        ]
+      ],
+      "height": 30,
+      "thickness": 8,
+      "tower_spacing": 250,
       "th": "ช่วง (0.44,0.30)→(0.30,0.55) ติดอ่าว = กำแพงกันคลื่น + หอท่าเรือ 2 หอ ช่องกำแพงคำนวณอัตโนมัติ: ประตูตะวันตก (ถนน Goldmeadow) ประตูใต้ (ถนน Saltmere) ประตูเหนือ/รถไฟ (ถนน+รางจาก Cogsworth) และซุ้มแม่น้ำ (แม่น้ำลอดกำแพงเหนือ)"
     },
     "districts": {
-      "keep":        { "center": [0.22, 0.26], "radius": 0.05, "th": "Ironcrest Keep บน Crown Hill ปรับพื้นเรียบตามความสูงจุดกลาง" },
-      "government":  { "center": [0.26, 0.33], "radius": 0.05, "th": "Crown Plaza: รัฐสภา ธนาคารหลวง ศาล+คุก ค่ายทหาร" },
-      "market":      { "center": [0.32, 0.42], "radius": 0.05, "th": "จัตุรัสใหญ่ หอนาฬิกา ตลาดใหญ่ หอสมาคมช่าง/สมัครงาน โรงเตี๊ยม" },
+      "keep": {
+        "center": [
+          0.22,
+          0.26
+        ],
+        "radius": 0.05,
+        "th": "Ironcrest Keep บน Crown Hill ปรับพื้นเรียบตามความสูงจุดกลาง"
+      },
+      "government": {
+        "center": [
+          0.26,
+          0.33
+        ],
+        "radius": 0.05,
+        "th": "Crown Plaza: รัฐสภา ธนาคารหลวง ศาล+คุก ค่ายทหาร"
+      },
+      "market": {
+        "center": [
+          0.32,
+          0.42
+        ],
+        "radius": 0.05,
+        "th": "จัตุรัสใหญ่ หอนาฬิกา ตลาดใหญ่ หอสมาคมช่าง/สมัครงาน โรงเตี๊ยม"
+      },
       "residential": [
-        { "center": [0.18, 0.46], "radius": 0.09 },
-        { "center": [0.08, 0.18], "radius": 0.07 },
-        { "center": [0.26, 0.52], "radius": 0.05 }
+        {
+          "center": [
+            0.18,
+            0.46
+          ],
+          "radius": 0.09
+        },
+        {
+          "center": [
+            0.08,
+            0.18
+          ],
+          "radius": 0.07
+        },
+        {
+          "center": [
+            0.26,
+            0.52
+          ],
+          "radius": 0.05
+        }
       ],
-      "harbor":      { "center": [0.38, 0.40], "radius": 0.07, "th": "ท่าหิน 4 ท่า โกดัง ตลาดปลา โรงงานไอน้ำ โรงแปรรูป" },
-      "airship_dock":{ "pos": [0.43, 0.29], "tower_height": 260 }
+      "harbor": {
+        "center": [
+          0.38,
+          0.4
+        ],
+        "radius": 0.07,
+        "th": "ท่าหิน 4 ท่า โกดัง ตลาดปลา โรงงานไอน้ำ โรงแปรรูป"
+      },
+      "airship_dock": {
+        "pos": [
+          0.43,
+          0.29
+        ],
+        "tower_height": 260
+      }
     },
     "house_count": 250,
     "street_width": 60,
-    "spawn": [0.38, 0.40],
+    "spawn": [
+      0.38,
+      0.4
+    ],
     "landmarks": {
       "clocktower_height": 200,
-      "keep_wall_size": 300, "keep_corner_tower_height": 90, "keep_main_tower_height": 160,
-      "factory_size": [200, 120], "factory_chimneys": 3,
-      "pier_count": 4, "pier_length": 200,
+      "keep_wall_size": 300,
+      "keep_corner_tower_height": 90,
+      "keep_main_tower_height": 160,
+      "factory_size": [
+        200,
+        120
+      ],
+      "factory_chimneys": 3,
+      "pier_count": 4,
+      "pier_length": 200,
       "airship_length": 160
     },
-    "ai_mesh_pieces": ["airship", "locomotive", "plaza statue"]
+    "ai_mesh_pieces": [
+      "airship",
+      "locomotive",
+      "plaza statue"
+    ]
   },
-  "villages": { "footprint_studs": [400, 600], "houses": [8, 15] },
+  "villages": {
+    "footprint_studs": [
+      400,
+      600
+    ],
+    "houses": [
+      8,
+      15
+    ]
+  },
   "steam": {
-    "lift":  { "from": "Astravale", "to": "Spire of Eld", "th": "รางเอียงตามหน้าเขา โรงหม้อน้ำที่ฐาน กระเช้าทองเหลือง" },
-    "pipes": { "from": "Brasshaven", "to": "Goldmeadow", "th": "ท่อทองเหลืองบนเสาหินเลียบถนนหลวง วาล์ว เกจวัด" },
-    "train": { "parked_at": "Brasshaven", "cars": 3 }
+    "lift": {
+      "from": "Astravale",
+      "to": "Spire of Eld",
+      "th": "รางเอียงตามหน้าเขา โรงหม้อน้ำที่ฐาน กระเช้าทองเหลือง"
+    },
+    "pipes": {
+      "from": "Brasshaven",
+      "to": "Goldmeadow",
+      "th": "ท่อทองเหลืองบนเสาหินเลียบถนนหลวง วาล์ว เกจวัด"
+    },
+    "train": {
+      "parked_at": "Brasshaven",
+      "cars": 3
+    }
   },
-  "spire": { "base": 60, "height": 220, "orbit_crystals": 6 },
-  "crystal_sites": ["Crystal Cave", "Astravale", "Crystal Isle", "Spire of Eld"],
-  "nature": { "forest_spacing": 45, "plains_spacing": 250, "mountain_pine_max_y": 1200, "tree_budget": 18000, "beach_palms": true },
+  "spire": {
+    "base": 60,
+    "height": 220,
+    "orbit_crystals": 6
+  },
+  "crystal_sites": [
+    "Crystal Cave",
+    "Astravale",
+    "Crystal Isle",
+    "Spire of Eld"
+  ],
+  "nature": {
+    "forest_spacing": 45,
+    "plains_spacing": 250,
+    "mountain_pine_max_y": 1200,
+    "tree_budget": 18000,
+    "beach_palms": true
+  },
   "isles": {
-    "Crystal Isle":        { "pos": [0.88, -0.88], "r": 0.08, "th": "คริสตัลลอยใหญ่ ซุ้มโค้งพัง สระเรืองแสง" },
-    "Steam Fortress Isle": { "pos": [1.18, 0.02],  "r": 0.10, "th": "ป้อมเหล็กร้าง หม้อน้ำ ปืนใหญ่สนิม ท่าเทียบเรือ" },
-    "Lighthouse Isle":     { "pos": [0.05, 1.18],  "r": 0.06, "th": "ประภาคารสูง 120 กระท่อมผู้ดูแล ท่าเรือ" },
-    "Ruins Isle":          { "pos": [-1.18, -0.10],"r": 0.07, "th": "เสาหินโบราณ วิหารพัง รูปปั้น" },
-    "Smuggler's Cove":     { "pos": [-0.82, -0.86],"r": 0.05, "th": "อ่าวซ่อน กระท่อม ท่าเรือ ถังไม้ เรือจอด" }
+    "Crystal Isle": {
+      "pos": [
+        0.88,
+        -0.88
+      ],
+      "r": 0.08,
+      "th": "คริสตัลลอยใหญ่ ซุ้มโค้งพัง สระเรืองแสง"
+    },
+    "Steam Fortress Isle": {
+      "pos": [
+        1.18,
+        0.02
+      ],
+      "r": 0.1,
+      "th": "ป้อมเหล็กร้าง หม้อน้ำ ปืนใหญ่สนิม ท่าเทียบเรือ"
+    },
+    "Lighthouse Isle": {
+      "pos": [
+        0.05,
+        1.18
+      ],
+      "r": 0.06,
+      "th": "ประภาคารสูง 120 กระท่อมผู้ดูแล ท่าเรือ"
+    },
+    "Ruins Isle": {
+      "pos": [
+        -1.18,
+        -0.1
+      ],
+      "r": 0.07,
+      "th": "เสาหินโบราณ วิหารพัง รูปปั้น"
+    },
+    "Smuggler's Cove": {
+      "pos": [
+        -0.82,
+        -0.86
+      ],
+      "r": 0.05,
+      "th": "อ่าวซ่อน กระท่อม ท่าเรือ ถังไม้ เรือจอด"
+    }
   },
-  "rocks": { "seed": 42, "count": 12, "r_min": 0.95, "r_max": 1.40 },
+  "rocks": {
+    "seed": 42,
+    "count": 12,
+    "r_min": 0.95,
+    "r_max": 1.4
+  },
   "generator": {
     "scale_test": 0.125,
     "terrain_chunk_studs": 256,
-    "streaming": { "min_radius": 512, "target_radius": 2048 },
+    "streaming": {
+      "min_radius": 512,
+      "target_radius": 2048
+    },
     "part_budget": 70000,
     "workspace_root": "WOLD"
+  },
+  "_bridges_note": "dir = ทิศทางสะพานตามถนน/รางที่ข้าม (สัดส่วน ไม่ต้อง normalize), length = ความยาวสะพาน studs",
+  "style": {
+    "_note": "ค่าภาพรวมที่ผู้ใช้อนุมัติจากสนามทดสอบ (ข้อ 0) ตัวเจนใช้ผ่าน L.applyStyle()",
+    "terrain_colors": {
+      "Grass": [
+        106,
+        150,
+        68
+      ],
+      "LeafyGrass": [
+        88,
+        132,
+        60
+      ],
+      "Sand": [
+        212,
+        196,
+        150
+      ],
+      "Rock": [
+        118,
+        112,
+        108
+      ],
+      "Snow": [
+        235,
+        240,
+        248
+      ],
+      "Basalt": [
+        70,
+        66,
+        66
+      ],
+      "Ground": [
+        140,
+        112,
+        80
+      ],
+      "Cobblestone": [
+        132,
+        128,
+        122
+      ],
+      "Mud": [
+        96,
+        78,
+        56
+      ]
+    },
+    "water": {
+      "color": [
+        40,
+        100,
+        150
+      ],
+      "transparency": 0.45,
+      "wave_size": 0.15,
+      "wave_speed": 10,
+      "reflectance": 0.6
+    },
+    "lighting": {
+      "clock_time": 14,
+      "brightness": 2.5,
+      "exposure": 0.1,
+      "ambient": [
+        90,
+        90,
+        100
+      ],
+      "outdoor_ambient": [
+        128,
+        128,
+        128
+      ],
+      "shadow_softness": 0.3
+    },
+    "atmosphere": {
+      "density": 0.26,
+      "offset": 0.3,
+      "color": [
+        199,
+        210,
+        230
+      ],
+      "decay": [
+        106,
+        130,
+        160
+      ],
+      "glare": 0.2,
+      "haze": 0.9
+    },
+    "clouds": {
+      "enabled": true,
+      "cover": 0.55,
+      "density": 0.65,
+      "color": [
+        235,
+        235,
+        240
+      ]
+    },
+    "fog_end_studs": 24000
   }
 }
