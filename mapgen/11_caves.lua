@@ -92,6 +92,20 @@ return L.runPhase("Caves", function(folder)
     if not L.assetList("cave") then return end
     for i = 1, count do local p = randomWallSpot(segs, rng); L.placeAsset(mm, "cave", p.X, p.Y, p.Z, rng, scaleMin, scaleMax) end
   end
+  local function keepClearOfHall(seeds, hallPos, hallR)   -- a maze seed inside the big hall (or seeded AT it) can drop a rock floor slab through the open cavern;
+    local margin = hallR + 20                             -- push any such seed out past the hall wall first so its own tunnel/pockets start outside it
+    local out = {}
+    for _, sd in ipairs(seeds) do
+      local d = sd.pos - hallPos
+      if d.Magnitude < margin then
+        d = (d.Magnitude < 1) and sd.dir * margin or d.Unit * margin
+        out[#out + 1] = { pos = hallPos + d, dir = sd.dir }
+      else
+        out[#out + 1] = sd
+      end
+    end
+    return out
+  end
 
   -- ---------- trunk: the one lit path from the mouth, used for rails/spawn/camera probes; deep and level at the threshold ----------
   local function tunnel(ex, ez, tx, tz, rng, legs, down, r)
@@ -140,6 +154,7 @@ return L.runPhase("Caves", function(folder)
       seeds[#seeds + 1] = { pos = main[i], dir = d.Unit }
     end
     for a = 0, 2 do local ang = a * 2 * math.pi / 3; seeds[#seeds + 1] = { pos = main[#main], dir = Vector3.new(math.cos(ang), 0, math.sin(ang)) } end
+    seeds = keepClearOfHall(seeds, main[#main], hallR)
     local mazeSegs, mazePockets = growMaze(rng, seeds, {
       maxSegments = 44, segMin = 40, segMax = 85, wander = 1.0, dive = 9,
       r0 = 10, rMin = 6, rMax = 13, branchChance = 0.42, maxGen = 3, chamberChance = 0.13, chamberMax = 30, minCover = 10,
@@ -174,6 +189,7 @@ return L.runPhase("Caves", function(folder)
     local seeds = {}
     for i = 2, #path - 1 do local d = (path[i + 1] - path[i]); if d.Magnitude < 1 then d = Vector3.new(1, 0, 0) end; seeds[#seeds + 1] = { pos = path[i], dir = d.Unit } end
     for a = 0, 4 do local ang = a * 2 * math.pi / 5; seeds[#seeds + 1] = { pos = hall, dir = Vector3.new(math.cos(ang), 0, math.sin(ang)) } end
+    seeds = keepClearOfHall(seeds, hall, hallR)
     local mazeSegs, mazePockets = growMaze(rng, seeds, {
       maxSegments = 34, segMin = 35, segMax = 70, wander = 1.05, dive = 12,
       r0 = 11, rMin = 7, rMax = 14, branchChance = 0.36, maxGen = 2, chamberChance = 0.2, chamberMax = 36, minCover = 10,
@@ -196,9 +212,10 @@ return L.runPhase("Caves", function(folder)
     L.writeArea(hx, hz, 620)
     local ex, ez = L.findShore(0, 0, hx, hz, L.HALF * 1.2)
     local path = tunnel(ex, ez, 0, 0, rng, 4, 16, 14); carve(path, 14)
-    local hall = path[#path]; chamber(hall, 55)
+    local hall = path[#path]; local hallR = chamber(hall, 55)
     local seeds = {}
     for i = 2, #path - 1 do local d = (path[i + 1] - path[i]); if d.Magnitude < 1 then d = Vector3.new(1, 0, 0) end; seeds[#seeds + 1] = { pos = path[i], dir = d.Unit } end
+    seeds = keepClearOfHall(seeds, hall, hallR)
     local mazeSegs, mazePockets = growMaze(rng, seeds, {
       maxSegments = 16, segMin = 30, segMax = 55, wander = 1.0, dive = 7,
       r0 = 9, rMin = 6, rMax = 10, branchChance = 0.3, maxGen = 2, chamberChance = 0.15, chamberMax = 20, minCover = 8,
