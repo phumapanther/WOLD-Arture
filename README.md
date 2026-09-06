@@ -25,3 +25,15 @@ Rojo อยู่ที่ `%USERPROFILE%\tools\rojo\rojo.exe` (portable, ไม
 ## ปลั๊กอิน
 
 วางไฟล์ `.lua` ใน `plugins/` → เปิด Studio ใหม่ (หรือ Plugins → Manage Plugins → refresh) จะโหลดเป็นปลั๊กอินทันที
+
+## สั่ง Studio จากคอมมานด์ไลน์ (Studio MCP)
+
+Studio มี MCP server ในตัว เปิดที่ Assistant → … → Manage MCP Servers → Enable Studio as MCP server
+ลงทะเบียนกับ Claude Code แล้วในชื่อ `Roblox_Studio` (ใช้ `%LOCALAPPDATA%\Roblox\mcp.bat`)
+
+ทดสอบ/สั่งตรงโดยไม่ผ่าน Claude:
+
+```
+node tools/mcp-call.js list
+node tools/mcp-call.js execute_luau '{"datamodel_type":"Edit","code":"return #workspace:GetChildren()"}'
+```
