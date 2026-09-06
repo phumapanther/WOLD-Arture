@@ -38,8 +38,9 @@ return L.runPhase("AssetsSetup", function()
             local nParts = 0; for _, d in ipairs(m:GetDescendants()) do if d:IsA("BasePart") then nParts += 1; d.Anchored = true; d.CanCollide = (kind == "rock") end end
             if nameOk and nParts <= 12 and size.Y > 3 then
               m.Name = ("%s_%s_%d"):format(kind, a.id, kept + 1)
-              local cf = m:GetBoundingBox(); local bottom = cf.Position.Y - size.Y / 2
-              m:SetAttribute("BaseOffset", m:GetPivot().Position.Y - bottom)   -- pivot height above the model's lowest point
+              local cf = m:GetBoundingBox()
+              m.WorldPivot = CFrame.new(cf.Position)                            -- upright pivot at the bbox centre: PivotTo(yaw) can never tip the tree over
+              m:SetAttribute("BaseOffset", size.Y / 2)                          -- pivot height above the model's lowest point
               m:SetAttribute("Height", size.Y); m:SetAttribute("Parts", nParts); m:SetAttribute("SourceId", a.id)
               m.Parent = kf; kept += 1
             end

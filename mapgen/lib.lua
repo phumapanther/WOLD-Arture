@@ -107,11 +107,12 @@ local function riverSample(R, t)
   local i = 1; while i < #R.cum - 1 and R.cum[i + 1] < s do i += 1 end
   local f = (s - R.cum[i]) / math.max(R.cum[i + 1] - R.cum[i], 1e-9)
   local w = R.w0 + (R.w1 - R.w0) * t
+  local est = 0
   if R.estuary then                                -- only the last 240 studs flare into an estuary (kills the sand spit, keeps bridges spannable)
     local t0 = 1 - 0.03 / R.total
-    if t > t0 then w = w + (200 - w) * L.smooth((t - t0) / (1 - t0)) end
+    if t > t0 then est = L.smooth((t - t0) / (1 - t0)); w = w + (200 - w) * est end
   end
-  return R.h[i] + (R.h[i + 1] - R.h[i]) * f, w * L.VS
+  return R.h[i] + (R.h[i + 1] - R.h[i]) * f, w * L.VS, est
 end
 L.rivers = { buildRiver(Y.river_main, Y.river_width_studs.main, 0) }
 L.rivers[1].estuary = true
@@ -121,13 +122,13 @@ do -- tributary ends where it meets the main river: inherit that surface height
   local hs = riverSample(L.rivers[1], t)
   L.rivers[2] = buildRiver(Y.river_tributary, Y.river_width_studs.tributary, hs)
 end
-function L.river(u, v)                            -- -> dist(studs), surfaceY, width(studs)
-  local best, hs, w
+function L.river(u, v)                            -- -> dist(studs), surfaceY, width(studs), estuary factor 0..1
+  local best, hs, w, est
   for _, R in ipairs(L.rivers) do
     local d, t = L.polyDist(R.pts, R.total, u, v)
-    if not best or d < best then best = d; hs, w = riverSample(R, t) end
+    if not best or d < best then best = d; hs, w, est = riverSample(R, t) end
   end
-  return best * L.HALF, hs, w
+  return best * L.HALF, hs, w, est
 end
 -- ---------- settlement pads: flat ground with walkable sloped skirts, baked into the height function ----------
 L.pads = {}
@@ -162,16 +163,21 @@ L.yard = nil                                      -- test-yard mask {cx, cz, rad
 function L.sample(u, v)
   local h, fm, cliff, land = L.base(u, v)
   h = L.applyPads(u, v, h)
-  local d, hs, w = L.river(u, v)
+  local d, hs, w, est = L.river(u, v)
   local valley = L.VALLEY * L.HALF
   if land > 0.5 and d < valley and hs > -4 * L.VS then
     local bank = hs + 1 * L.VS                    -- ground right at the water's edge, just above the surface
-    if d <= w / 2 then                            -- parabolic bed: 10 deep in the middle, shallow at the edges
-      local t = (2 * d / w) ^ 2; h = (hs - 10 * L.VS) + (bank - (hs - 10 * L.VS)) * t
+    local nat = h
+    if d <= w / 2 then                            -- parabolic bed: 10 deep in the middle, shallow at the edges; cutting only
+      local t = (2 * d / w) ^ 2
+      h = math.min(nat, (hs - 10 * L.VS) + (bank - (hs - 10 * L.VS)) * t)
     else
-      -- valley side: blend from the bank up to natural ground; never build levees into the sea near the mouth
-      local target = (h > bank) and h or ((hs > 3 * L.VS) and bank or h)
-      h = bank + (target - bank) * L.smooth((d - w / 2) / (valley - w / 2))
+      local tt = L.smooth((d - w / 2) / (valley - w / 2))
+      if est > 0 then                                                                        -- estuary: drown the ground beside the mouth so no sand islands split it
+        local drown = hs - 3 * L.VS
+        h = math.min(nat, drown + (nat - drown) * tt)
+      elseif land > 0.9 and nat > 2 * L.VS then h = bank + (math.max(nat, bank) - bank) * tt   -- inland: valley wall, low ground raised to a levee
+      else h = math.min(nat, bank + (nat - bank) * tt) end                                 -- coast: cut only, never build sand levees into the sea
     end
   end
   if L.yard then
