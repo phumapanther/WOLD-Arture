@@ -81,12 +81,16 @@ def poly(pts, col, w, dash=None):
             t2 = min(t + on, Ln)
             d.line([(x0 + (x1 - x0) * t / Ln, y0 + (y1 - y0) * t / Ln), (x0 + (x1 - x0) * t2 / Ln, y0 + (y1 - y0) * t2 / Ln)], fill=col, width=w)
             t += on + off
-pos = lambda n: L["places"][n]["pos"]
+pos = lambda n: n if isinstance(n, list) else L["places"][n]["pos"]
 for road in L["roads"]: poly([pos(n) for n in road], (170, 140, 95), 3, dash=(9, 6))
 poly([pos(n) for n in L["railway"]], (45, 40, 40), 4)
 poly([pos(n) for n in L["railway"]], (230, 230, 230), 2, dash=(6, 6))
 poly(L["river_tributary"], (70, 150, 210), 3)
 poly(L["river_main"], (60, 140, 205), 5)
+# city wall polygon + bridges
+wp = L["capital"]["wall"]["polygon"]; poly(wp + [wp[0]], (60, 50, 45), 3)
+for b in L["bridges"]:
+    x, y = px(b["pos"]); d.rectangle((x - 5, y - 5, x + 5, y + 5), fill=(240, 200, 60), outline=(40, 30, 10))
 
 def label(p, txt, size=15, dy=10, bold=False, col=(25, 25, 25)):
     x, y = px(p)
