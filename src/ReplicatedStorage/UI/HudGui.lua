@@ -1,14 +1,14 @@
--- HudGui: pure UI builder for the in-game HUD (avatar, vitals bars, hotbar, 3-dot menu). Stat bars show static
--- full values for now — sub-project 1 (player data & life cycle) will wire them to real values later.
+-- HudGui: pure UI builder for the in-game HUD (bottom-left vitals cluster, hotbar, 3-dot menu). Stat bars show
+-- static full values for now — sub-project 1 (player data & life cycle) will wire them to real values later.
 local HudGui = {}
 HudGui.__index = HudGui
 
--- Pill bars: rounded-end bar with a round icon badge overlapping its left edge. Icon glyphs are Unicode
--- placeholders (no real icon art in the project yet) — swap `glyph` for a real ImageLabel + rbxassetid later.
+-- Pill bars: rounded-end bar with a round icon badge overlapping its left edge, and a text label on the bar
+-- itself. Icon glyphs are Unicode placeholders (no real icon art in the project yet) — swap `glyph` for a real
+-- ImageLabel + rbxassetid later.
 local PILL_BARS = {
-	{ key = "stamina", color = Color3.fromRGB(60, 200, 100), glyph = "\226\152\129" }, -- cloud (☁)
-	{ key = "hunger", color = Color3.fromRGB(210, 160, 60), glyph = "\226\151\143" }, -- drumstick placeholder (●)
-	{ key = "hp", color = Color3.fromRGB(230, 60, 60), glyph = "\226\153\165" }, -- heart (♥)
+	{ key = "hunger", label = "ความหิว", color = Color3.fromRGB(60, 200, 100), glyph = "\226\152\129" }, -- cloud (☁)
+	{ key = "hp", label = "เลือด", color = Color3.fromRGB(230, 60, 60), glyph = "\226\153\165" }, -- heart (♥)
 }
 
 local MANA_PIPS = 3
@@ -37,24 +37,23 @@ function HudGui.new()
 
 	local TOP_BAR = 56
 
-	-- avatar, top-left; armor badge + yellow divider to its right; pip/pill vitals stacked to the right of that
-	local avatar = Instance.new("ImageLabel")
-	avatar.Size = UDim2.new(0, 64, 0, 64)
-	avatar.Position = UDim2.new(0, 20, 0, TOP_BAR + 20)
-	avatar.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
-	avatar.Image = ""
-	avatar.Parent = gui
-	corner(avatar, UDim.new(1, 0))
-	self.avatar = avatar
+	-- Whole vitals cluster (armor / stamina / mana+hunger+hp) is anchored bottom-left, per the reference layout.
+	-- No avatar circle in this HUD.
+	local vitals = Instance.new("Frame")
+	vitals.AnchorPoint = Vector2.new(0, 1)
+	vitals.Size = UDim2.new(0, 230, 0, 148)
+	vitals.Position = UDim2.new(0, 20, 1, -20)
+	vitals.BackgroundTransparency = 1
+	vitals.Parent = gui
 
-	-- Armor: a square badge that IS its own bar — shaded top-to-bottom, not a separate pill (per reference: dark
-	-- region = armor remaining, light region = armor used up).
+	-- Armor: a square badge that IS its own bar — shaded bottom-up, not a separate pill (per reference: dark
+	-- region = armor remaining, light region = armor used up; full = all-dark for now, no depletion yet).
 	local armorBadge = Instance.new("Frame")
 	armorBadge.Size = UDim2.new(0, 44, 0, 44)
-	armorBadge.Position = UDim2.new(0, 20, 0, TOP_BAR + 92)
+	armorBadge.Position = UDim2.new(0, 0, 1, -44)
 	armorBadge.BackgroundColor3 = ARMOR_EMPTY
 	armorBadge.ClipsDescendants = true
-	armorBadge.Parent = gui
+	armorBadge.Parent = vitals
 	corner(armorBadge, UDim.new(0, 10))
 	local armorFill = Instance.new("Frame")
 	armorFill.AnchorPoint = Vector2.new(0, 1)
@@ -67,23 +66,43 @@ function HudGui.new()
 	-- swap the badge for a real ImageLabel + rbxassetid shield icon later.
 	self.armorFill = armorFill
 
-	-- yellow divider between avatar/armor and the vitals column
-	local divider = Instance.new("Frame")
-	divider.Size = UDim2.new(0, 3, 0, 148)
-	divider.Position = UDim2.new(0, 74, 0, TOP_BAR + 20)
-	divider.BackgroundColor3 = Color3.fromRGB(230, 190, 70)
-	divider.BorderSizePixel = 0
-	divider.Parent = gui
-	corner(divider, UDim.new(1, 0))
+	-- Stamina: thin vertical bar between armor and the mana/hunger/hp column, fills bottom-up.
+	local staminaTrack = Instance.new("Frame")
+	staminaTrack.Size = UDim2.new(0, 10, 1, 0)
+	staminaTrack.Position = UDim2.new(0, 54, 0, 0)
+	staminaTrack.BackgroundColor3 = Color3.fromRGB(30, 30, 34)
+	staminaTrack.BorderSizePixel = 0
+	staminaTrack.ClipsDescendants = true
+	staminaTrack.Parent = vitals
+	corner(staminaTrack, UDim.new(1, 0))
+	local staminaFill = Instance.new("Frame")
+	staminaFill.AnchorPoint = Vector2.new(0, 1)
+	staminaFill.Position = UDim2.new(0, 0, 1, 0)
+	staminaFill.Size = UDim2.fromScale(1, 1)
+	staminaFill.BackgroundColor3 = Color3.fromRGB(230, 190, 70)
+	staminaFill.BorderSizePixel = 0
+	staminaFill.Parent = staminaTrack
+	corner(staminaFill, UDim.new(1, 0))
+	self.staminaFill = staminaFill
 
-	local vitalsX = 96
+	local columnX = 78
 
-	-- Mana: pip row, not a fill bar — MANA_PIPS discrete gems, lit vs dim.
+	-- Mana: title label + pip row (MANA_PIPS discrete gems, lit vs dim — not a fill bar), at the top of the column.
+	local manaLabel = Instance.new("TextLabel")
+	manaLabel.Size = UDim2.new(1, -columnX, 0, 18)
+	manaLabel.Position = UDim2.new(0, columnX, 0, 0)
+	manaLabel.BackgroundTransparency = 1
+	manaLabel.Font = Enum.Font.SourceSansBold
+	manaLabel.TextSize = 16
+	manaLabel.TextColor3 = Color3.new(1, 1, 1)
+	manaLabel.Text = "มานา"
+	manaLabel.Parent = vitals
+
 	local manaFrame = Instance.new("Frame")
-	manaFrame.Size = UDim2.new(0, 34 * MANA_PIPS, 0, 30)
-	manaFrame.Position = UDim2.new(0, vitalsX, 0, TOP_BAR + 20)
+	manaFrame.Size = UDim2.new(0, 34 * MANA_PIPS, 0, 28)
+	manaFrame.Position = UDim2.new(0, columnX, 0, 18)
 	manaFrame.BackgroundTransparency = 1
-	manaFrame.Parent = gui
+	manaFrame.Parent = vitals
 	local manaLayout = Instance.new("UIListLayout")
 	manaLayout.FillDirection = Enum.FillDirection.Horizontal
 	manaLayout.Padding = UDim.new(0, 4)
@@ -92,23 +111,23 @@ function HudGui.new()
 	self.manaPips = {}
 	for i = 1, MANA_PIPS do
 		local pip = Instance.new("TextLabel")
-		pip.Size = UDim2.new(0, 30, 0, 30)
+		pip.Size = UDim2.new(0, 28, 0, 28)
 		pip.LayoutOrder = i
 		pip.BackgroundTransparency = 1
 		pip.Font = Enum.Font.SourceSansBold
-		pip.TextSize = 26
+		pip.TextSize = 24
 		pip.TextColor3 = MANA_LIT
 		pip.Text = "\226\153\166" -- gem/diamond (♦) placeholder for the mana potion icon
 		pip.Parent = manaFrame
 		self.manaPips[i] = pip
 	end
 
-	-- Pill bars: stamina, hunger, hp — rounded bar with a round icon badge overlapping its left edge.
+	-- Pill bars: hunger, hp — rounded bar with a round icon badge overlapping its left edge and a text label.
 	local pillsFrame = Instance.new("Frame")
-	pillsFrame.Size = UDim2.new(0, 200, 0, 96)
-	pillsFrame.Position = UDim2.new(0, vitalsX, 0, TOP_BAR + 58)
+	pillsFrame.Size = UDim2.new(1, -columnX, 0, 62)
+	pillsFrame.Position = UDim2.new(0, columnX, 0, 54)
 	pillsFrame.BackgroundTransparency = 1
-	pillsFrame.Parent = gui
+	pillsFrame.Parent = vitals
 	local pillsLayout = Instance.new("UIListLayout")
 	pillsLayout.Padding = UDim.new(0, 8)
 	pillsLayout.Parent = pillsFrame
@@ -136,6 +155,18 @@ function HudGui.new()
 		fill.BorderSizePixel = 0
 		fill.Parent = track
 		corner(fill, UDim.new(1, 0))
+
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.new(1, -34, 1, 0)
+		label.Position = UDim2.new(0, 30, 0, 0)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.SourceSansBold
+		label.TextSize = 15
+		label.TextColor3 = Color3.new(1, 1, 1)
+		label.TextXAlignment = Enum.TextXAlignment.Left
+		label.Text = def.label
+		label.ZIndex = 2
+		label.Parent = track
 
 		local badge = Instance.new("TextLabel")
 		badge.Size = UDim2.new(0, 26, 0, 26)
@@ -215,8 +246,8 @@ function HudGui.new()
 	return self
 end
 
--- SetBarFraction: 0..1, for the "stamina" | "hunger" | "hp" pill bars. Stub for sub-project 1; call with 1 for
--- every bar until real vitals exist.
+-- SetBarFraction: 0..1, for the "hunger" | "hp" pill bars. Stub for sub-project 1; call with 1 for every bar
+-- until real vitals exist.
 function HudGui:SetBarFraction(key, fraction)
 	local fill = self.bars[key]
 	if fill then fill.Size = UDim2.new(math.clamp(fraction, 0, 1), 0, 1, 0) end
@@ -227,15 +258,16 @@ function HudGui:SetArmorFraction(fraction)
 	self.armorFill.Size = UDim2.new(1, 0, math.clamp(fraction, 0, 1), 0)
 end
 
+-- SetStaminaFraction: 0..1, fills the thin vertical stamina bar bottom-up.
+function HudGui:SetStaminaFraction(fraction)
+	self.staminaFill.Size = UDim2.new(1, 0, math.clamp(fraction, 0, 1), 0)
+end
+
 -- SetManaPips: how many of the MANA_PIPS gems are lit (0..#self.manaPips).
 function HudGui:SetManaPips(lit)
 	for i, pip in ipairs(self.manaPips) do
 		pip.TextColor3 = (i <= lit) and MANA_LIT or MANA_DIM
 	end
-end
-
-function HudGui:SetAvatarImage(content)
-	self.avatar.Image = content or ""
 end
 
 function HudGui:OnLobbyRequested(callback)

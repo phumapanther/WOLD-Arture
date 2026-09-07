@@ -11,7 +11,6 @@ local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 local TeleportService = game:GetService("TeleportService")
 local HudGui = require(game.ReplicatedStorage.UI.HudGui)
-local AvatarThumbnails = require(game.ReplicatedStorage.UI.AvatarThumbnails)
 
 -- Same as the lobby: no chat/playerlist UI built for this yet.
 pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false) end)
@@ -23,15 +22,12 @@ gui.gui.Parent = player:WaitForChild("PlayerGui")
 gui:Show()
 
 -- Static full vitals until sub-project 1 (player data & life cycle) wires up real values.
-for _, key in ipairs({ "hp", "stamina", "hunger" }) do
+for _, key in ipairs({ "hp", "hunger" }) do
 	gui:SetBarFraction(key, 1)
 end
 gui:SetArmorFraction(1)
+gui:SetStaminaFraction(1)
 gui:SetManaPips(3)
-
-AvatarThumbnails.Get(player.UserId, function(content)
-	if content then gui:SetAvatarImage(content) end
-end)
 
 gui:OnLobbyRequested(function()
 	-- A non-reserved server (empty PrivateServerId) is exactly what ServerConfig treats as the lobby, so a plain
