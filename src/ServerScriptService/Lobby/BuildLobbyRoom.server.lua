@@ -6,6 +6,16 @@
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 if not ServerConfig.IsLobby then return end
 
+-- mapgen/temp_spawn.lua bakes a SpawnLocation into the place file itself (it's a generation-time script, not a
+-- per-server one, so it can't check IsLobby) at real map coordinates. That SpawnLocation is baked into every
+-- server including the lobby, so Roblox's own respawn picks it over LobbySpawn below and drops players back on
+-- the open map mid-lobby-session. Disable it here, lobby-only, until Brasshaven replaces it for real.
+local tempSpawn = workspace:FindFirstChild("WOLD"):FindFirstChild("TempSpawn")
+if tempSpawn then
+	local spawn = tempSpawn:FindFirstChildWhichIsA("SpawnLocation")
+	if spawn then spawn.Enabled = false end
+end
+
 local existing = workspace:FindFirstChild("LobbyRoom")
 if existing then return end
 

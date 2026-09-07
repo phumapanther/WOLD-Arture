@@ -262,20 +262,27 @@ function ChannelSelectGui.new()
 		self.rows[mode] = { comingSoon = soon }
 	end
 
-	-- Blackout: covers the entire screen the instant a join is confirmed, so a second click on this screen is
-	-- physically impossible (Active=true swallows all input) while the real teleport / next loading screen takes
-	-- over. High ZIndex keeps it above every row/tab regardless of insertion order.
+	-- Blackout: covers the entire screen (including under Roblox's own top bar, via its own IgnoreGuiInset
+	-- ScreenGui — the main `gui` respects the inset so its title/tabs aren't clipped by that bar, but that means
+	-- a Frame parented under `gui` can't paint over the bar's strip either) the instant a join is confirmed, so a
+	-- second click on this screen is physically impossible (Active=true swallows all input) while the real
+	-- teleport / next loading screen takes over.
+	local blackoutGui = Instance.new("ScreenGui")
+	blackoutGui.Name = "ChannelSelectBlackout"
+	blackoutGui.ResetOnSpawn = false
+	blackoutGui.IgnoreGuiInset = true
+	blackoutGui.DisplayOrder = 1000
+	blackoutGui.Enabled = false
 	local blackout = Instance.new("Frame")
 	blackout.Name = "Blackout"
 	blackout.Size = UDim2.fromScale(1, 1)
 	blackout.BackgroundColor3 = Color3.new(0, 0, 0)
 	blackout.BackgroundTransparency = 0
 	blackout.BorderSizePixel = 0
-	blackout.ZIndex = 1000
-	blackout.Visible = false
 	blackout.Active = true
-	blackout.Parent = gui
-	self.blackout = blackout
+	blackout.Parent = blackoutGui
+	blackoutGui.Parent = gui -- nested ScreenGuis still render top-level once `gui` reaches PlayerGui; Destroy() on gui cleans this up too
+	self.blackoutGui = blackoutGui
 
 	self.list = list
 	self.gui = gui
@@ -337,7 +344,7 @@ end
 function ChannelSelectGui:Lock()
 	if self._locked then return end
 	self._locked = true
-	self.blackout.Visible = true
+	self.blackoutGui.Enabled = true
 	for _, btn in pairs(self.tabs) do
 		btn.Active = false
 	end
@@ -350,7 +357,7 @@ end
 function ChannelSelectGui:Unlock()
 	if not self._locked then return end
 	self._locked = false
-	self.blackout.Visible = false
+	self.blackoutGui.Enabled = false
 	for mode, btn in pairs(self.tabs) do
 		btn.Active = ACTIVE_MODES[mode] == true
 	end
