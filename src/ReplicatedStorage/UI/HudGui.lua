@@ -35,6 +35,33 @@ local function gradient(parent, topColor, bottomColor)
 	return g
 end
 
+-- Responsive scaling: every element below is built at fixed pixel sizes tuned for a ~1280px-wide viewport (the
+-- vitals cluster especially — its internal layout is a dense, carefully-balanced percentage+pixel grid that's
+-- not safe to convert piecemeal to Scale units without redoing that tuning). A UIScale per top-level group lets
+-- the whole HUD shrink/grow together on smaller/larger screens while keeping every internal ratio exactly as
+-- designed. 1280px is the baseline (scale 1); clamped to [0.55, 1] so it only shrinks, never grows past the
+-- tuned size on huge screens.
+local BASELINE_WIDTH = 1280
+local MIN_UI_SCALE = 0.55
+
+local function responsiveScale(parent)
+	local scale = Instance.new("UIScale")
+	scale.Parent = parent
+	local camera = workspace.CurrentCamera
+	local function update()
+		local width = camera and camera.ViewportSize.X or BASELINE_WIDTH
+		scale.Scale = math.clamp(width / BASELINE_WIDTH, MIN_UI_SCALE, 1)
+	end
+	update()
+	if camera then camera:GetPropertyChangedSignal("ViewportSize"):Connect(update) end
+	workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+		camera = workspace.CurrentCamera
+		update()
+		if camera then camera:GetPropertyChangedSignal("ViewportSize"):Connect(update) end
+	end)
+	return scale
+end
+
 function HudGui.new()
 	local self = setmetatable({}, HudGui)
 
@@ -54,6 +81,7 @@ function HudGui.new()
 	vitals.Position = UDim2.new(0, 20, 1, -20)
 	vitals.BackgroundTransparency = 1
 	vitals.Parent = gui
+	responsiveScale(vitals)
 
 	-- Left 20%: armor badge, bottom-anchored, occupying the bottom 80% of the column height (HTML: height:80%,
 	-- justify-content:flex-end). Rounded corners, accent-colored border, gray gradient fill, shield icon centered
@@ -194,24 +222,36 @@ function HudGui.new()
 		self.bars[def.key] = fill
 	end
 
-	-- 3-dot menu, top-right
+	-- 3-dot menu, flush to the top-right corner of the playable area (gui ignores the inset, so TOP_BAR is added
+	-- back manually to clear Roblox's own top bar instead of drawing under it). Wrapped in its own group so one
+	-- UIScale scales the button and its dropdown panel together.
+	local menuGroup = Instance.new("Frame")
+	menuGroup.AnchorPoint = Vector2.new(1, 0)
+	menuGroup.Size = UDim2.new(0, 220, 0, 140)
+	menuGroup.Position = UDim2.new(1, 0, 0, TOP_BAR)
+	menuGroup.BackgroundTransparency = 1
+	menuGroup.Parent = gui
+	responsiveScale(menuGroup)
+
 	local menuButton = Instance.new("TextButton")
+	menuButton.AnchorPoint = Vector2.new(1, 0)
 	menuButton.Size = UDim2.new(0, 44, 0, 44)
-	menuButton.Position = UDim2.new(1, -64, 0, TOP_BAR + 20)
+	menuButton.Position = UDim2.new(1, -20, 0, 20)
 	menuButton.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
 	menuButton.Text = "\226\128\162\226\128\162\226\128\162" -- three bullet characters; a vertical-ellipsis glyph didn't render in SourceSansBold
 	menuButton.TextColor3 = Color3.new(1, 1, 1)
 	menuButton.TextSize = 18
 	menuButton.Font = Enum.Font.SourceSansBold
-	menuButton.Parent = gui
+	menuButton.Parent = menuGroup
 	corner(menuButton, UDim.new(1, 0))
 
 	local menuPanel = Instance.new("Frame")
+	menuPanel.AnchorPoint = Vector2.new(1, 0)
 	menuPanel.Size = UDim2.new(0, 200, 0, 56)
-	menuPanel.Position = UDim2.new(1, -220, 0, TOP_BAR + 72)
+	menuPanel.Position = UDim2.new(1, -20, 0, 72)
 	menuPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
 	menuPanel.Visible = false
-	menuPanel.Parent = gui
+	menuPanel.Parent = menuGroup
 	corner(menuPanel, UDim.new(0, 10))
 
 	local lobbyButton = Instance.new("TextButton")
@@ -237,6 +277,7 @@ function HudGui.new()
 	hotbar.Position = UDim2.new(0.5, 0, 1, -20)
 	hotbar.BackgroundTransparency = 1
 	hotbar.Parent = gui
+	responsiveScale(hotbar)
 	local hotbarLayout = Instance.new("UIListLayout")
 	hotbarLayout.FillDirection = Enum.FillDirection.Horizontal
 	hotbarLayout.Padding = UDim.new(0, 8)
