@@ -28,17 +28,15 @@ gui.gui.Parent = player:WaitForChild("PlayerGui")
 local downed = false
 local deadline = 0
 local proneConnection = nil
-local crawlTrack, crawlIdleTrack = nil, nil
+local crawlTrack = nil
 
 local function stopProne()
 	if proneConnection then
 		proneConnection:Disconnect()
 		proneConnection = nil
 	end
-	for _, track in ipairs({ crawlTrack, crawlIdleTrack }) do
-		if track then track:Stop(0.2) end
-	end
-	crawlTrack, crawlIdleTrack = nil, nil
+	if crawlTrack then crawlTrack:Stop(0.2) end
+	crawlTrack = nil
 end
 
 local function startProne()
@@ -61,25 +59,26 @@ local function startProne()
 			track.Looped = true
 			return track
 		end
+		-- Only the forward stroke is used. The stock "swim idle" is a treading-water pose — upright, paddling on
+		-- the spot — which is not what crawling should look like; when the player stops we simply slow this
+		-- same horizontal stroke down instead of switching to it.
 		crawlTrack = load(VitalsConfig.CrawlAnimation)
-		crawlIdleTrack = load(VitalsConfig.CrawlIdleAnimation)
+		if crawlTrack then crawlTrack:Play(0.2) end
 	end
 
-	-- Stepped runs after the animator each frame, so this rotation survives instead of being overwritten by
-	-- whatever animation is playing.
+	-- Stepped is the binding that actually holds the tilt. Measured client-side against the swim animation:
+	-- Stepped gives uprightDot 0.01 (prone), while BindToRenderStep past RenderPriority.Character gives 1.00
+	-- (still standing) — the opposite of what the ordering docs suggest, so don't "fix" this to RenderStep.
 	proneConnection = RunService.Stepped:Connect(function()
-		rootJoint.Transform = rootJoint.Transform * CFrame.Angles(math.rad(90), 0, 0)
+		-- NEGATIVE pitch puts the character face-DOWN. Positive lays it on its back (which is what the first
+		-- attempt did — the swim stroke then reads as backstroke rather than crawling).
+		rootJoint.Transform = rootJoint.Transform * CFrame.Angles(math.rad(-90), 0, 0)
 
-		-- Paddle while crawling, hold still when stopped.
-		local moving = humanoid.MoveDirection.Magnitude > 0.1
-		if crawlTrack and crawlIdleTrack then
-			if moving and not crawlTrack.IsPlaying then
-				crawlIdleTrack:Stop(0.2)
-				crawlTrack:Play(0.2)
-			elseif not moving and not crawlIdleTrack.IsPlaying then
-				crawlTrack:Stop(0.2)
-				crawlIdleTrack:Play(0.2)
-			end
+		-- Stroke at full speed while dragging forward, and almost still when stopped — the arms keep a slight
+		-- motion so the body doesn't read as a frozen prop.
+		if crawlTrack then
+			local moving = humanoid.MoveDirection.Magnitude > 0.1
+			crawlTrack:AdjustSpeed(moving and 1 or 0.15)
 		end
 	end)
 end

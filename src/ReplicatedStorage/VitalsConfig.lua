@@ -35,10 +35,14 @@ VitalsConfig.ArmorAbsorbFraction = 0.5
 
 -- Stock Roblox animations, reused rather than authored: the swim stroke doubles as the crawl once the body is
 -- pitched prone (see the spec — the animation only moves the arms, the tilt is applied separately).
+-- The horizontal forward stroke only. The matching "swim idle" (913389285) is deliberately NOT used: it is a
+-- treading-water pose, upright and paddling on the spot, which reads nothing like crawling.
 VitalsConfig.CrawlAnimation = "rbxassetid://913384386"
-VitalsConfig.CrawlIdleAnimation = "rbxassetid://913389285"
 
-VitalsConfig.HitSoundId = "rbxassetid://3932599903" -- punch impact, plays at the victim
+-- Punch impact, played at the victim. The user's own ตี.mp3 goes here once uploaded
+-- (create.roblox.com -> Creations -> Audio -> Upload Audio, then paste the id below).
+-- Leave as "" and combat still works, just silently — the sound is never required.
+VitalsConfig.HitSoundId = ""
 
 -- The HUD can't show finer than this, and it caps remote traffic per player.
 VitalsConfig.SendInterval = 0.15
