@@ -34,7 +34,7 @@ local function loadTracksFor(character)
 	tracks.guard = load(weapon.guardAnimation, Enum.AnimationPriority.Action)
 	tracks.attacks = {}
 	for i, attack in ipairs(weapon.attacks) do
-		tracks.attacks[i] = load(attack.animation, Enum.AnimationPriority.Action2)
+		tracks.attacks[i] = load(attack.animation, Enum.AnimationPriority.Action4)
 	end
 end
 
@@ -61,10 +61,26 @@ Remotes.CombatStateChanged.OnClientEvent:Connect(function(who, event, chainIndex
 	elseif event == "guard_end" then
 		if tracks.guard then tracks.guard:Stop(0.2) end
 	elseif event == "attack" then
+		-- The looping guard holds every joint at full weight, so a swing playing underneath it barely moves
+		-- (measured: 1.22 studs of reach solo, ~0.04 with the guard running). Stop the guard for the swing and
+		-- bring it back when the swing ends — the punch animation starts and ends on the guard pose anyway.
+		for _, other in pairs(tracks.attacks or {}) do
+			other:Stop(0)
+		end
+		if tracks.guard then tracks.guard:Stop(0.05) end
 		local track = tracks.attacks and tracks.attacks[chainIndex]
 		if track then
-			track:Stop(0)
 			track:Play(0.05)
+			track.Stopped:Once(function()
+				-- Only restore the guard if the server still has us guarding and no newer swing started.
+				if tracks.guard and not tracks.guard.IsPlaying then
+					local swinging = false
+					for _, other in pairs(tracks.attacks or {}) do
+						if other.IsPlaying then swinging = true end
+					end
+					if not swinging then tracks.guard:Play(0.1) end
+				end
+			end)
 		end
 	end
 end)

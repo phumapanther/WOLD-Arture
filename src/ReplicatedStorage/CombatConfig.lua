@@ -9,15 +9,15 @@ local CombatConfig = {}
 CombatConfig.Weapons = {
 	Fists = {
 		-- Guard: held stance entered on the first click, dropped after IdleTimeout with no further clicks.
-		guardAnimation = "", -- rbxassetid:// for Combat_Guard
+		guardAnimation = "rbxassetid://78177954414406", -- Combat_Guard
 		guardWalkSpeed = 6, -- slower than Normal (8); sprinting is blocked entirely while guarding
 		idleTimeout = 4, -- seconds without an attack before the guard drops on its own
 
 		-- Attacks cycle in order, one per click. Fists alternate right/left forever — a weapon can instead
 		-- define a 3- or 4-hit chain that ends in a longer recovery, which is why this is a list.
 		attacks = {
-			{ animation = "", damage = 8, windup = 0.1, active = 0.12, recovery = 0.2, range = 5.5 }, -- Punch_Right
-			{ animation = "", damage = 8, windup = 0.1, active = 0.12, recovery = 0.2, range = 5.5 }, -- Punch_Left
+			{ animation = "rbxassetid://139731608829349", damage = 8, windup = 0.1, active = 0.12, recovery = 0.2, range = 5.5 }, -- Punch_Right
+			{ animation = "rbxassetid://79645317544489", damage = 8, windup = 0.1, active = 0.12, recovery = 0.2, range = 5.5 }, -- Punch_Left
 		},
 
 		-- After the last attack in the chain, wait this long before the chain can start again. Fists set 0 so

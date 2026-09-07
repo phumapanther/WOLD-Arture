@@ -3,7 +3,7 @@
 -- See docs/superpowers/specs/2026-09-07-movement-stamina-design.md for the movement rules this cooperates with.
 --
 -- Two states per player:
---   idle     — nothing; the first click enters guard AND throws the first attack
+--   idle     — nothing; the first click only raises the guard, it does not punch
 --   guarding — the held stance; each click throws the next attack in the weapon's chain. Drops back to idle
 --              after the weapon's idleTimeout with no clicks.
 --
@@ -70,6 +70,16 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player)
 	local now = os.clock()
 	if now < state.busyUntil then return end -- still mid-swing; ignore the click rather than queueing it
 
+	-- First click only draws the guard — it does not throw a punch. Punches start from the second click,
+	-- alternating sides, and each returns to guard. This is also what keeps the two animations from fighting:
+	-- the guard is never playing underneath a swing.
+	if not state.guarding then
+		state.lastAttackAt = now
+		state.chainIndex = 0
+		setGuard(player, state, true)
+		return
+	end
+
 	local weapon = weaponOf(state)
 
 	-- Continue the chain only if this click is soon enough after the last one, otherwise restart at attack 1.
@@ -86,7 +96,6 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player)
 	state.hitThisSwing = {}
 	state.pendingAttack = attack
 
-	if not state.guarding then setGuard(player, state, true) end
 	Remotes.CombatStateChanged:FireAllClients(player, "attack", state.chainIndex)
 end)
 
