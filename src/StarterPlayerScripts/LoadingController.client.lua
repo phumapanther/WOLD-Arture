@@ -12,7 +12,7 @@ if workspace:GetAttribute("IsLobby") and not FORCE_SHOW_IN_STUDIO_FOR_TESTING th
 local Players = game:GetService("Players")
 local ContentProvider = game:GetService("ContentProvider")
 local LoadingGui = require(game.ReplicatedStorage.UI.LoadingGui)
-local SpawnSelector = require(game.ReplicatedStorage.SpawnSelector)
+local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local player = Players.LocalPlayer
 local gui = LoadingGui.new()
@@ -45,7 +45,7 @@ local STEPS = {
 		weight = 3,
 		run = function()
 			local hrp = player.Character:WaitForChild("HumanoidRootPart")
-			local target = SpawnSelector.GetSpawnPosition(player)
+			local target = Remotes.GetSpawnPosition:InvokeServer()
 			hrp.CFrame = CFrame.new(target)
 			local deadline = os.clock() + 10
 			while os.clock() < deadline do

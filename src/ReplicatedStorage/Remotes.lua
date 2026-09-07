@@ -1,8 +1,9 @@
--- Remotes.lua: idempotent RemoteEvent bootstrap. The server creates them; the client waits for them.
+-- Remotes.lua: idempotent RemoteEvent/RemoteFunction bootstrap. The server creates them; the client waits for them.
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 
-local NAMES = { "JoinChannel", "ChannelList", "JoinFailed" }
+local EVENTS = { "JoinChannel", "ChannelList", "JoinFailed" }
+local FUNCTIONS = { "GetSpawnPosition" } -- DataStore-backed lookups can only run server-side; the client must ask
 
 local folder = ReplicatedStorage:FindFirstChild("Remotes")
 if RunService:IsServer() then
@@ -11,11 +12,18 @@ if RunService:IsServer() then
 		folder.Name = "Remotes"
 		folder.Parent = ReplicatedStorage
 	end
-	for _, name in ipairs(NAMES) do
+	for _, name in ipairs(EVENTS) do
 		if not folder:FindFirstChild(name) then
 			local event = Instance.new("RemoteEvent")
 			event.Name = name
 			event.Parent = folder
+		end
+	end
+	for _, name in ipairs(FUNCTIONS) do
+		if not folder:FindFirstChild(name) then
+			local fn = Instance.new("RemoteFunction")
+			fn.Name = name
+			fn.Parent = folder
 		end
 	end
 else
@@ -23,7 +31,10 @@ else
 end
 
 local Remotes = {}
-for _, name in ipairs(NAMES) do
+for _, name in ipairs(EVENTS) do
+	Remotes[name] = folder:WaitForChild(name)
+end
+for _, name in ipairs(FUNCTIONS) do
 	Remotes[name] = folder:WaitForChild(name)
 end
 return Remotes
