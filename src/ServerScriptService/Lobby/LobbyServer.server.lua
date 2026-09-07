@@ -42,6 +42,28 @@ Players.PlayerAdded:Connect(function(player)
 	end
 end)
 
+-- Real teleport failures (server unreachable, and — always, in Studio — "there is no second server to reach")
+-- are NOT thrown as Luau errors; TeleportToPrivateServer returns normally and Roblox reports the failure later
+-- via this event instead. The pcall in the handler below only catches synchronous validation errors.
+-- lastAttempt tracks each player's most recent access code ourselves, rather than trying to recover it from
+-- the event's own parameters (TeleportOptions isn't reliably populated for the TeleportToPrivateServer call shape).
+local lastAttempt = {} -- [player] = { accessCode: string, retried: boolean }
+
+TeleportService.TeleportInitFailed:Connect(function(player, teleportResult, errorMessage, targetPlaceId)
+	if targetPlaceId ~= game.PlaceId then return end
+	local attempt = lastAttempt[player]
+	if attempt and not attempt.retried then
+		attempt.retried = true -- per spec §6: one retry before giving up
+		task.spawn(function()
+			pcall(function() TeleportService:TeleportToPrivateServer(game.PlaceId, attempt.accessCode, { player }) end)
+		end)
+		return
+	end
+	lastAttempt[player] = nil
+	warn("[Lobby] TeleportInitFailed for", player.Name, teleportResult, errorMessage)
+	Remotes.JoinFailed:FireClient(player, "teleport_failed")
+end)
+
 Remotes.JoinChannel.OnServerEvent:Connect(function(player, mode, channel)
 	if not FIXED_CHANNELS[mode] or type(channel) ~= "number" or channel < 1 or channel > FIXED_CHANNELS[mode] then
 		return
@@ -57,16 +79,16 @@ Remotes.JoinChannel.OnServerEvent:Connect(function(player, mode, channel)
 		Remotes.JoinFailed:FireClient(player, "create_failed")
 		return
 	end
+	lastAttempt[player] = { accessCode = accessCode, retried = false }
 	local teleportOk, err = pcall(function()
 		TeleportService:TeleportToPrivateServer(game.PlaceId, accessCode, { player })
 	end)
 	if not teleportOk then
-		teleportOk, err = pcall(function()
-			TeleportService:TeleportToPrivateServer(game.PlaceId, accessCode, { player })
-		end) -- one retry, per spec §6
-	end
-	if not teleportOk then
-		warn("[Lobby] teleport failed for", player.Name, err)
+		-- a synchronous throw means TeleportInitFailed will not also fire for this attempt; report it directly
+		lastAttempt[player] = nil
+		warn("[Lobby] teleport call threw for", player.Name, err)
 		Remotes.JoinFailed:FireClient(player, "teleport_failed")
 	end
+	-- if teleportOk, either the teleport is proceeding for real, or (always, in Studio) it will fail
+	-- asynchronously and be reported by the TeleportInitFailed handler above
 end)

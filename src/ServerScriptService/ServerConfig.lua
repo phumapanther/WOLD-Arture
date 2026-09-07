@@ -11,4 +11,8 @@ else
 	ServerConfig.Mode, ServerConfig.Channel = ChannelRegistry.IdentifySelf()
 end
 
+-- game.PrivateServerId cannot be read from LocalScripts at all ("PrivateServerId cannot be checked on the
+-- client") — replicate the one bit clients actually need via a Workspace Attribute, which replicates automatically.
+workspace:SetAttribute("IsLobby", ServerConfig.IsLobby)
+
 return ServerConfig
