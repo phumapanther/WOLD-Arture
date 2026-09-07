@@ -9,8 +9,8 @@ if workspace:GetAttribute("IsLobby") and not FORCE_SHOW_IN_STUDIO_FOR_TESTING th
 
 local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
-local TeleportService = game:GetService("TeleportService")
 local HudGui = require(game.ReplicatedStorage.UI.HudGui)
+local Remotes = require(game.ReplicatedStorage.Remotes)
 
 -- Same as the lobby: no chat/playerlist UI built for this yet.
 pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false) end)
@@ -30,7 +30,8 @@ gui:SetStaminaFraction(1)
 gui:SetManaPips(3)
 
 gui:OnLobbyRequested(function()
-	-- A non-reserved server (empty PrivateServerId) is exactly what ServerConfig treats as the lobby, so a plain
-	-- Teleport back to this same place lands the player in the public lobby pool without needing an access code.
-	TeleportService:Teleport(game.PlaceId, player)
+	-- Server-authoritative: it saves the player's position THEN teleports, because PlayerRemoving does not
+	-- reliably fire before a client-initiated Teleport actually removes the character (documented Roblox
+	-- behavior) — calling TeleportService directly from here lost the save. See PlayerPosition.server.lua.
+	Remotes.RequestReturnToLobby:FireServer()
 end)

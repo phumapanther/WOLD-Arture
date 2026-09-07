@@ -1,12 +1,20 @@
 -- PlayerPosition.server.lua: the only file that touches the player-position DataStore. Answers the client's
--- GetSpawnPosition RemoteFunction (SpawnSelector can't reach DataStoreService itself — client-only) and saves
--- the player's last position on PlayerRemoving (covers disconnect and the return-to-lobby teleport, both of
--- which fire it). One save trigger only, no periodic autosave — see docs/superpowers/specs/2026-09-07-player-position-design.md.
+-- GetSpawnPosition RemoteFunction (SpawnSelector can't reach DataStoreService itself — client-only), saves the
+-- player's position when they ask to return to the lobby (RequestReturnToLobby, saved server-side BEFORE the
+-- teleport is issued), and PlayerRemoving as a backup for real disconnects/crashes that never fire that event.
+--
+-- PlayerRemoving alone is NOT reliable for the teleport-out case: it's a documented Roblox behavior that
+-- PlayerRemoving does not consistently fire before TeleportService actually removes the character, so a
+-- character read at that point can already be gone (https://devforum.roblox.com/t/1789562,
+-- https://devforum.roblox.com/t/1794382). Confirmed as the root cause of a real bug here: position saved on
+-- "return to lobby" was silently lost, so the next join fell back to the default spawn point instead.
+--
 -- Respawn-repositioning and save-on-leave are channel-server-only: the lobby has its own dedicated LobbySpawn
 -- room, and saving a player's position while they're standing in that room (y=1000+) would clobber a real saved
 -- map position with lobby coordinates.
 local DataStoreService = game:GetService("DataStoreService")
 local Players = game:GetService("Players")
+local TeleportService = game:GetService("TeleportService")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local SpawnSelector = require(game.ReplicatedStorage.SpawnSelector)
@@ -27,6 +35,17 @@ local function loadSavedPosition(userId)
 	end
 	if not data then return nil end
 	return Vector3.new(data.x, data.y, data.z)
+end
+
+local function savePosition(player)
+	local character = player.Character
+	local hrp = character and character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end -- never spawned in this session — nothing to save
+	local p = hrp.Position
+	local ok, err = pcall(function()
+		store:SetAsync(key(player.UserId), { x = p.X, y = p.Y, z = p.Z })
+	end)
+	if not ok then warn("[PlayerPosition] save failed for", player.UserId, err) end
 end
 
 Remotes.GetSpawnPosition.OnServerInvoke = function(player)
@@ -53,15 +72,21 @@ if not ServerConfig.IsLobby then
 		end)
 	end)
 
+	-- Primary save path: the client asks to return to the lobby, server saves THEN teleports. Saving here
+	-- (character still fully exists) is what actually fixed the lost-position bug — see the file header.
+	Remotes.RequestReturnToLobby.OnServerEvent:Connect(function(player)
+		savePosition(player)
+		local ok, err = pcall(function()
+			TeleportService:Teleport(game.PlaceId, player)
+		end)
+		if not ok then warn("[PlayerPosition] return-to-lobby teleport failed for", player.UserId, err) end
+	end)
+
+	-- Backup save path: real disconnects/crashes never fire RequestReturnToLobby. PlayerRemoving's timing
+	-- relative to character teardown isn't guaranteed on every leave path, but it's the only hook available
+	-- here — better than nothing for the cases the primary path doesn't cover.
 	Players.PlayerRemoving:Connect(function(player)
 		hasSpawnedOnce[player] = nil
-		local character = player.Character
-		local hrp = character and character:FindFirstChild("HumanoidRootPart")
-		if not hrp then return end -- never spawned in this session — nothing to save
-		local p = hrp.Position
-		local ok, err = pcall(function()
-			store:SetAsync(key(player.UserId), { x = p.X, y = p.Y, z = p.Z })
-		end)
-		if not ok then warn("[PlayerPosition] save failed for", player.UserId, err) end
+		savePosition(player)
 	end)
 end
