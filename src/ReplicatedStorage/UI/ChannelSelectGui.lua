@@ -47,7 +47,7 @@ function ChannelSelectGui.new()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "ChannelSelectGui"
 	gui.ResetOnSpawn = false
-	gui.IgnoreGuiInset = true
+	gui.IgnoreGuiInset = false -- true drew the title/tabs under Roblox's own top bar (backpack/chat/mic icons), clipping them
 
 	local root = Instance.new("Frame")
 	root.Size = UDim2.fromScale(1, 1)
