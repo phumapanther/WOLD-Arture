@@ -1,6 +1,7 @@
 # Player profile foundation (ProfileStore), replacing the hand-rolled position save
 
-**Status:** approved 2026-09-07, phase 1 of 3 (movement states and vitals/death are phases 2 and 3, separate specs).
+**Status:** approved and implemented 2026-09-07 (commits `889d282`, `693f68c`). Phase 1 of 3 — movement states
+and vitals/death are phases 2 and 3, separate specs, not started yet.
 
 ## Why
 
