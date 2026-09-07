@@ -50,7 +50,7 @@ function HudGui.new()
 	-- right 75% (mana/hunger/hp) — see each section's comment for its own internal split.
 	local vitals = Instance.new("Frame")
 	vitals.AnchorPoint = Vector2.new(0, 1)
-	vitals.Size = UDim2.new(0, 280, 0, 100)
+	vitals.Size = UDim2.new(0, 280, 0, 75) -- 560x150 content box in the reference (280x75 keeps the same ~3.73:1 ratio)
 	vitals.Position = UDim2.new(0, 20, 1, -20)
 	vitals.BackgroundTransparency = 1
 	vitals.Parent = gui
@@ -65,11 +65,11 @@ function HudGui.new()
 	armorBadge.BackgroundColor3 = Color3.fromRGB(215, 218, 222)
 	armorBadge.BorderSizePixel = 0
 	armorBadge.Parent = vitals
-	corner(armorBadge, UDim.new(0, 14))
+	corner(armorBadge, UDim.new(0, 16))
 	gradient(armorBadge, Color3.fromRGB(244, 245, 247), Color3.fromRGB(185, 189, 196))
 	local armorStroke = Instance.new("UIStroke")
 	armorStroke.Color = ACCENT
-	armorStroke.Thickness = 3
+	armorStroke.Thickness = 4
 	armorStroke.Parent = armorBadge
 	local armorIcon = Instance.new("TextLabel")
 	armorIcon.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -83,12 +83,13 @@ function HudGui.new()
 	armorIcon.Text = "\226\154\160" -- placeholder glyph (no real icon art yet) — swap for an ImageLabel + rbxassetid shield icon later
 	armorIcon.Parent = armorBadge
 
-	-- Middle 5%: stamina, a vertical bar filling the middle 40% band of the column height (30/40/30 split). The
-	-- reference doesn't define a separate depleted look — SetStaminaFraction shrinks this bar's own height
-	-- (bottom-anchored) to represent depletion, so full stamina = the full 40% band.
+	-- Middle 5%: stamina, a vertical bar filling the middle 35% band of the column height (40/35/25 top/mid/bottom
+	-- split, per the updated reference). The reference doesn't define a separate depleted look —
+	-- SetStaminaFraction shrinks this bar's own height (bottom-anchored) to represent depletion, so full
+	-- stamina = the full 35% band.
 	local staminaBand = Instance.new("Frame")
-	staminaBand.Position = UDim2.new(0.225, 0, 0.3, 0)
-	staminaBand.Size = UDim2.new(0.05, 6, 0.4, 0)
+	staminaBand.Position = UDim2.new(0.225, 0, 0.4, 0)
+	staminaBand.Size = UDim2.new(0.05, 6, 0.35, 0)
 	staminaBand.BackgroundTransparency = 1
 	staminaBand.Parent = vitals
 	local staminaTrack = Instance.new("Frame")
@@ -148,8 +149,8 @@ function HudGui.new()
 
 		local track = Instance.new("Frame")
 		track.AnchorPoint = Vector2.new(0, 0.5)
-		track.Position = UDim2.new(0, 26, 0.5, 0)
-		track.Size = UDim2.new(1, -26, 0.52, 0)
+		track.Position = UDim2.new(0, 20, 0.5, 0)
+		track.Size = UDim2.new(1, -20, 0.52, 0)
 		track.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
 		track.BorderSizePixel = 0
 		track.ClipsDescendants = true
@@ -167,7 +168,7 @@ function HudGui.new()
 		local badge = Instance.new("Frame")
 		badge.AnchorPoint = Vector2.new(0, 0.5)
 		badge.Position = UDim2.new(0, 0, 0.5, 0)
-		badge.Size = UDim2.new(0, 40, 0.72, 0)
+		badge.Size = UDim2.new(0, 40, 0, 40) -- fixed 40x40, matches the reference's px badge exactly (stays circular)
 		badge.BackgroundColor3 = def.top
 		badge.BorderSizePixel = 0
 		badge.Parent = row
