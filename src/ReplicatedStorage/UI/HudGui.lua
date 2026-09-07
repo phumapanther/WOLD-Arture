@@ -83,11 +83,13 @@ function HudGui.new()
 	armorIcon.Text = "\226\154\160" -- placeholder glyph (no real icon art yet) — swap for an ImageLabel + rbxassetid shield icon later
 	armorIcon.Parent = armorBadge
 
-	-- Middle 5%: stamina, a thin vertical bar filling the middle 35% band of the column height (40/35/25
-	-- top/mid/bottom split). Thinner than before (3px, was 6px) and pinned to this column's left edge so its
-	-- own gap to the right column (which starts at 0.25) stays wide instead of nearly touching the badges.
+	-- Middle: stamina, a thin vertical bar filling the middle 35% band of the column height (40/35/25
+	-- top/mid/bottom split). Centered in the actual gap between the armor badge's right edge (0.2) and the
+	-- right column's left edge (0.28 + 10px), not just offset from the armor badge — armor ends at x=56 and the
+	-- right column starts at x=88.4 (on a 280px-wide cluster), so the bar sits at their midpoint, x≈72.
 	local staminaBand = Instance.new("Frame")
-	staminaBand.Position = UDim2.new(0.2, 4, 0.4, 0)
+	staminaBand.AnchorPoint = Vector2.new(0.5, 0)
+	staminaBand.Position = UDim2.new(0.24, 6.2, 0.4, 0)
 	staminaBand.Size = UDim2.new(0, 4, 0.35, 0)
 	staminaBand.BackgroundTransparency = 1
 	staminaBand.Parent = vitals
