@@ -314,6 +314,28 @@ Players.PlayerAdded:Connect(function(player)
 	end
 end)
 
+-- Real teleport failures (server unreachable, and — always, in Studio — "there is no second server to reach")
+-- are NOT thrown as Luau errors; TeleportToPrivateServer returns normally and Roblox reports the failure later
+-- via this event instead. The pcall in the handler below only catches synchronous validation errors.
+-- lastAttempt tracks each player's most recent access code ourselves, rather than trying to recover it from
+-- the event's own parameters (TeleportOptions isn't reliably populated for the TeleportToPrivateServer call shape).
+local lastAttempt = {} -- [player] = { accessCode: string, retried: boolean }
+
+TeleportService.TeleportInitFailed:Connect(function(player, teleportResult, errorMessage, targetPlaceId)
+	if targetPlaceId ~= game.PlaceId then return end
+	local attempt = lastAttempt[player]
+	if attempt and not attempt.retried then
+		attempt.retried = true -- per spec §6: one retry before giving up
+		task.spawn(function()
+			pcall(function() TeleportService:TeleportToPrivateServer(game.PlaceId, attempt.accessCode, { player }) end)
+		end)
+		return
+	end
+	lastAttempt[player] = nil
+	warn("[Lobby] TeleportInitFailed for", player.Name, teleportResult, errorMessage)
+	Remotes.JoinFailed:FireClient(player, "teleport_failed")
+end)
+
 Remotes.JoinChannel.OnServerEvent:Connect(function(player, mode, channel)
 	if not FIXED_CHANNELS[mode] or type(channel) ~= "number" or channel < 1 or channel > FIXED_CHANNELS[mode] then
 		return
@@ -329,18 +351,18 @@ Remotes.JoinChannel.OnServerEvent:Connect(function(player, mode, channel)
 		Remotes.JoinFailed:FireClient(player, "create_failed")
 		return
 	end
+	lastAttempt[player] = { accessCode = accessCode, retried = false }
 	local teleportOk, err = pcall(function()
 		TeleportService:TeleportToPrivateServer(game.PlaceId, accessCode, { player })
 	end)
 	if not teleportOk then
-		teleportOk, err = pcall(function()
-			TeleportService:TeleportToPrivateServer(game.PlaceId, accessCode, { player })
-		end) -- one retry, per spec §6
-	end
-	if not teleportOk then
-		warn("[Lobby] teleport failed for", player.Name, err)
+		-- a synchronous throw means TeleportInitFailed will not also fire for this attempt; report it directly
+		lastAttempt[player] = nil
+		warn("[Lobby] teleport call threw for", player.Name, err)
 		Remotes.JoinFailed:FireClient(player, "teleport_failed")
 	end
+	-- if teleportOk, either the teleport is proceeding for real, or (always, in Studio) it will fail
+	-- asynchronously and be reported by the TeleportInitFailed handler above
 end)
 ```
 
@@ -858,20 +880,39 @@ end
 
 Remotes.ChannelList.OnClientEvent:Connect(applySnapshot)
 
-Remotes.JoinFailed.OnClientEvent:Connect(function(reason)
-	warn("[ChannelSelect] join failed:", reason)
+local pendingJoin = 0 -- bumped on every click; a timeout only acts if it's still the most recent attempt
+
+local function resetToError()
 	-- ponytail: reset every Roleplay row's status rather than tracking which one was mid-join (only ever one in
 	-- flight per client); Stories/Tanding aren't real per-channel tables (see ChannelSelectGui.new), so they're excluded.
 	for channel in pairs(gui.rows.Roleplay) do
 		gui:SetRowStatus("Roleplay", channel, "error")
 	end
+end
+
+Remotes.JoinFailed.OnClientEvent:Connect(function(reason)
+	warn("[ChannelSelect] join failed:", reason)
+	pendingJoin += 1 -- a real answer arrived; any in-flight timeout for this attempt should no-op
+	resetToError()
 end)
 
 gui:OnJoin(function(mode, channel)
 	gui:SetRowStatus(mode, channel, "connecting")
 	Remotes.JoinChannel:FireServer(mode, channel)
+	pendingJoin += 1
+	local myAttempt = pendingJoin
+	task.delay(15, function()
+		-- covers any case the server never answers at all (e.g. Studio's TeleportService 403 doesn't reach
+		-- TeleportInitFailed) so the button never gets stuck on "connecting..." forever
+		if pendingJoin == myAttempt then
+			warn("[ChannelSelect] join timed out waiting for a server response")
+			resetToError()
+		end
+	end)
 end)
 ```
+
+**Bug found and fixed here during actual Play testing:** `TeleportToPrivateServer`'s failure is reported asynchronously via `TeleportService.TeleportInitFailed` (added to `LobbyServer.server.lua` in Task 2, revised after this test), not as a thrown Luau error. In one specific case — Studio's own hard block on `TeleportService`, an HTTP 403 the engine logs directly to console — that event never fires at all, so nothing server-side ever tells the client the attempt failed. Rather than chase a Studio-only quirk with no scriptable hook, the client now times out any "connecting..." state after 15s with no answer, which is a genuinely useful safety net for any cause of a silent server, not just this one.
 
 - [ ] **Step 3: Local check**
 
@@ -1118,11 +1159,17 @@ gui:Destroy()
 
 - [ ] **Step 4: Local check** (using the testing flag)
 
-Run: temporarily edit `LoadingController.client.lua`, set `FORCE_SHOW_IN_STUDIO_FOR_TESTING = true`, save. Press Play in Studio.
-Expected: the teal loading screen appears immediately, the segmented bar fills left to right over roughly 1+ second, then disappears revealing the character standing wherever the current `SpawnLocation` in the place is.
+Run: temporarily edit `LoadingController.client.lua`, set `FORCE_SHOW_IN_STUDIO_FOR_TESTING = true`, save. Press Play in Studio. The screen only shows for about 1+ second (the enforced minimum), so a screenshot easily misses it — verify via a debug Attribute instead, which is also the more rigorous check since it proves every step ran without error, not just that *some* screen briefly appeared:
+```
+node tools/mcp-call.js execute_luau '{"datamodel_type":"Client","code":"return tostring(workspace:GetAttribute(\"IsLobby\"))"}'
+```
+(sanity check the attribute is reachable at all), then watch the character teleport to the spawn point and, a moment later, confirm no `[Loading] step failed` ever printed via `get_console_output`.
+Expected: the teal loading screen appears immediately, the segmented bar fills left to right, then disappears revealing the character standing wherever the current `SpawnLocation` in the place is.
 Then: set the flag back to `false` and save, since this must not run for real players in the lobby (only a channel server should ever show it, and there `workspace:GetAttribute("IsLobby")` will correctly be `false` automatically, no flag needed).
 
 **Bug found and fixed here during actual Play testing:** the original guard read `game.PrivateServerId` directly, which throws when read from a LocalScript — not just "always empty in Studio" as first assumed. Fixed via the `workspace:GetAttribute("IsLobby")` wait shown above (same fix as Task 5's controller).
+
+**Testing pitfall hit while verifying this step, worth naming explicitly:** an Attribute set by a LocalScript is local to that client and **never replicates to the server** — checking it via `datamodel_type: "Server"` will always read `nil` even when the client-side script ran perfectly. Any check on something a *client* script wrote must use `datamodel_type: "Client"`; this cost significant time to track down here because the symptom (attribute always nil) looked identical to "the script never ran at all."
 
 - [ ] **Step 5: Commit**
 
