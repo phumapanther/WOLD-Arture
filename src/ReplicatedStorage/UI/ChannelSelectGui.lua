@@ -47,7 +47,8 @@ function ChannelSelectGui.new()
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "ChannelSelectGui"
 	gui.ResetOnSpawn = false
-	gui.IgnoreGuiInset = false -- true drew the title/tabs under Roblox's own top bar (backpack/chat/mic icons), clipping them
+	gui.IgnoreGuiInset = true -- covers the whole screen including under Roblox's own top bar; header content is pushed down below it instead
+	local TOP_BAR = 56 -- Roblox's default top bar height (backpack/chat/mic icons)
 
 	local root = Instance.new("Frame")
 	root.Size = UDim2.fromScale(1, 1)
@@ -75,7 +76,7 @@ function ChannelSelectGui.new()
 	-- header title, top-left, for a bit of branding on the menu
 	local title = Instance.new("TextLabel")
 	title.Size = UDim2.new(0.5, 0, 0, 40)
-	title.Position = UDim2.new(0.035, 0, 0, 24)
+	title.Position = UDim2.new(0.035, 0, 0, TOP_BAR + 24)
 	title.BackgroundTransparency = 1
 	title.Font = Enum.Font.SourceSansBold
 	title.TextSize = 26
@@ -90,7 +91,7 @@ function ChannelSelectGui.new()
 	local tabBar = Instance.new("Frame")
 	tabBar.AnchorPoint = Vector2.new(1, 0)
 	tabBar.Size = UDim2.new(0.34, 0, 0, 50)
-	tabBar.Position = UDim2.new(1, -24, 0, 24)
+	tabBar.Position = UDim2.new(1, -24, 0, TOP_BAR + 24)
 	tabBar.BackgroundTransparency = 1
 	tabBar.Parent = root
 	local tabBarConstraint = Instance.new("UISizeConstraint")
@@ -123,8 +124,8 @@ function ChannelSelectGui.new()
 	-- instead of a fixed 560px, and AutomaticCanvasSize means it never needs a manually-computed canvas height.
 	local list = Instance.new("ScrollingFrame")
 	list.AnchorPoint = Vector2.new(0.5, 0)
-	list.Size = UDim2.new(0.9, 0, 1, -140)
-	list.Position = UDim2.new(0.5, 0, 0, 96)
+	list.Size = UDim2.new(0.9, 0, 1, -TOP_BAR - 140)
+	list.Position = UDim2.new(0.5, 0, 0, TOP_BAR + 96)
 	list.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
 	list.BackgroundTransparency = 0.45 -- glass panel: background image/gradient shows through instead of flat black
 	list.BorderSizePixel = 0
@@ -262,27 +263,20 @@ function ChannelSelectGui.new()
 		self.rows[mode] = { comingSoon = soon }
 	end
 
-	-- Blackout: covers the entire screen (including under Roblox's own top bar, via its own IgnoreGuiInset
-	-- ScreenGui — the main `gui` respects the inset so its title/tabs aren't clipped by that bar, but that means
-	-- a Frame parented under `gui` can't paint over the bar's strip either) the instant a join is confirmed, so a
-	-- second click on this screen is physically impossible (Active=true swallows all input) while the real
-	-- teleport / next loading screen takes over.
-	local blackoutGui = Instance.new("ScreenGui")
-	blackoutGui.Name = "ChannelSelectBlackout"
-	blackoutGui.ResetOnSpawn = false
-	blackoutGui.IgnoreGuiInset = true
-	blackoutGui.DisplayOrder = 1000
-	blackoutGui.Enabled = false
+	-- Blackout: covers the entire screen (gui itself now ignores the inset, so this reaches under Roblox's top
+	-- bar too) the instant a join is confirmed, so a second click on this screen is physically impossible
+	-- (Active=true swallows all input) while the real teleport / next loading screen takes over.
 	local blackout = Instance.new("Frame")
 	blackout.Name = "Blackout"
 	blackout.Size = UDim2.fromScale(1, 1)
 	blackout.BackgroundColor3 = Color3.new(0, 0, 0)
 	blackout.BackgroundTransparency = 0
 	blackout.BorderSizePixel = 0
+	blackout.ZIndex = 1000
+	blackout.Visible = false
 	blackout.Active = true
-	blackout.Parent = blackoutGui
-	blackoutGui.Parent = gui -- nested ScreenGuis still render top-level once `gui` reaches PlayerGui; Destroy() on gui cleans this up too
-	self.blackoutGui = blackoutGui
+	blackout.Parent = gui
+	self.blackout = blackout
 
 	self.list = list
 	self.gui = gui
@@ -344,7 +338,7 @@ end
 function ChannelSelectGui:Lock()
 	if self._locked then return end
 	self._locked = true
-	self.blackoutGui.Enabled = true
+	self.blackout.Visible = true
 	for _, btn in pairs(self.tabs) do
 		btn.Active = false
 	end
@@ -357,7 +351,7 @@ end
 function ChannelSelectGui:Unlock()
 	if not self._locked then return end
 	self._locked = false
-	self.blackoutGui.Enabled = false
+	self.blackout.Visible = false
 	for mode, btn in pairs(self.tabs) do
 		btn.Active = ACTIVE_MODES[mode] == true
 	end
