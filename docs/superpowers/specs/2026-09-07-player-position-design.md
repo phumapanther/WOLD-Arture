@@ -74,3 +74,16 @@ moment) and only then issues the teleport itself. `PlayerRemoving` remains as a 
 disconnects/crashes, which have no equivalent "about to leave" moment to hook into. General lesson: any
 client-triggered leave-this-server action needs a server-side "save first, then act" step — `PlayerRemoving`
 alone cannot be trusted as the sole save point for a teleport-driven exit.
+
+## Second bug found immediately after (same session)
+
+User then tested Roblox's own built-in escape-menu "ออก" (Leave Game) button — not something this project's
+code triggers at all. Position still didn't save.
+
+**Root cause:** when the leaving player is the server's *last* player (the default case testing solo),
+`PlayerRemoving` firing begins server shutdown immediately, and the async `store:SetAsync` call inside the
+handler can get cut off mid-flight before it completes — confirmed as documented, reported Roblox behavior
+(`PlayerRemoving` does not by itself hold the server open for in-flight work; only `BindToClose` does).
+
+**Fix:** `game:BindToClose()` now waits (capped at 30s, Roblox's own hard ceiling) for any in-flight
+`PlayerRemoving` save to actually finish before letting the server terminate. Commit `de9a04a`.
