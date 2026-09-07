@@ -3,12 +3,12 @@
 local HudGui = {}
 HudGui.__index = HudGui
 
--- Pill bars: rounded-end bar with a round icon badge overlapping its left edge, and a text label on the bar
--- itself. Icon glyphs are Unicode placeholders (no real icon art in the project yet) — swap `glyph` for a real
--- ImageLabel + rbxassetid later.
+-- Pill bars: rounded-end bar with a round icon badge overlapping its left edge. No text on the bar — icon only,
+-- per the reference art. Icon glyphs are Unicode placeholders (no real icon art in the project yet) — swap
+-- `glyph` for a real ImageLabel + rbxassetid later.
 local PILL_BARS = {
-	{ key = "hunger", label = "ความหิว", color = Color3.fromRGB(60, 200, 100), glyph = "\226\152\129" }, -- cloud (☁)
-	{ key = "hp", label = "เลือด", color = Color3.fromRGB(230, 60, 60), glyph = "\226\153\165" }, -- heart (♥)
+	{ key = "hunger", color = Color3.fromRGB(60, 200, 100), glyph = "\226\152\129" }, -- cloud (☁)
+	{ key = "hp", color = Color3.fromRGB(230, 60, 60), glyph = "\226\153\165" }, -- heart (♥)
 }
 
 local MANA_PIPS = 3
@@ -66,10 +66,11 @@ function HudGui.new()
 	-- swap the badge for a real ImageLabel + rbxassetid shield icon later.
 	self.armorFill = armorFill
 
-	-- Stamina: thin vertical bar between armor and the mana/hunger/hp column, fills bottom-up.
+	-- Stamina: thin, short vertical bar between armor and the mana/hunger/hp column, fills bottom-up. Much
+	-- smaller than the armor badge, per the reference proportions.
 	local staminaTrack = Instance.new("Frame")
-	staminaTrack.Size = UDim2.new(0, 10, 1, 0)
-	staminaTrack.Position = UDim2.new(0, 54, 0, 0)
+	staminaTrack.Size = UDim2.new(0, 5, 0, 100)
+	staminaTrack.Position = UDim2.new(0, 54, 1, -100)
 	staminaTrack.BackgroundColor3 = Color3.fromRGB(30, 30, 34)
 	staminaTrack.BorderSizePixel = 0
 	staminaTrack.ClipsDescendants = true
@@ -87,20 +88,11 @@ function HudGui.new()
 
 	local columnX = 78
 
-	-- Mana: title label + pip row (MANA_PIPS discrete gems, lit vs dim — not a fill bar), at the top of the column.
-	local manaLabel = Instance.new("TextLabel")
-	manaLabel.Size = UDim2.new(1, -columnX, 0, 18)
-	manaLabel.Position = UDim2.new(0, columnX, 0, 0)
-	manaLabel.BackgroundTransparency = 1
-	manaLabel.Font = Enum.Font.SourceSansBold
-	manaLabel.TextSize = 16
-	manaLabel.TextColor3 = Color3.new(1, 1, 1)
-	manaLabel.Text = "มานา"
-	manaLabel.Parent = vitals
-
+	-- Mana: pip row (MANA_PIPS discrete gems, lit vs dim — not a fill bar), at the top of the column. No label,
+	-- per the reference art.
 	local manaFrame = Instance.new("Frame")
 	manaFrame.Size = UDim2.new(0, 34 * MANA_PIPS, 0, 28)
-	manaFrame.Position = UDim2.new(0, columnX, 0, 18)
+	manaFrame.Position = UDim2.new(0, columnX, 0, 0)
 	manaFrame.BackgroundTransparency = 1
 	manaFrame.Parent = vitals
 	local manaLayout = Instance.new("UIListLayout")
@@ -122,10 +114,10 @@ function HudGui.new()
 		self.manaPips[i] = pip
 	end
 
-	-- Pill bars: hunger, hp — rounded bar with a round icon badge overlapping its left edge and a text label.
+	-- Pill bars: hunger, hp — rounded bar with a round icon badge overlapping its left edge, icon only.
 	local pillsFrame = Instance.new("Frame")
 	pillsFrame.Size = UDim2.new(1, -columnX, 0, 62)
-	pillsFrame.Position = UDim2.new(0, columnX, 0, 54)
+	pillsFrame.Position = UDim2.new(0, columnX, 0, 36)
 	pillsFrame.BackgroundTransparency = 1
 	pillsFrame.Parent = vitals
 	local pillsLayout = Instance.new("UIListLayout")
@@ -155,18 +147,6 @@ function HudGui.new()
 		fill.BorderSizePixel = 0
 		fill.Parent = track
 		corner(fill, UDim.new(1, 0))
-
-		local label = Instance.new("TextLabel")
-		label.Size = UDim2.new(1, -34, 1, 0)
-		label.Position = UDim2.new(0, 30, 0, 0)
-		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.SourceSansBold
-		label.TextSize = 15
-		label.TextColor3 = Color3.new(1, 1, 1)
-		label.TextXAlignment = Enum.TextXAlignment.Left
-		label.Text = def.label
-		label.ZIndex = 2
-		label.Parent = track
 
 		local badge = Instance.new("TextLabel")
 		badge.Size = UDim2.new(0, 26, 0, 26)
