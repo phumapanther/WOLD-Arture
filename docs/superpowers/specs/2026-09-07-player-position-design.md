@@ -57,3 +57,20 @@ can't query the position store directly. Fixed by splitting the concern:
 - Full end-to-end (real respawn-after-death repositioning, real save-on-leave) needs a real channel server —
   Studio blocks `TeleportService`/`ReserveServer` unconditionally (documented platform restriction, same as
   every previous channel-select test) — deferred to a real publish test alongside the existing Task 7 checklist.
+
+## Bug found after first publish test (2026-09-07)
+
+User reported: walked away from spawn, returned to lobby via the HUD menu, rejoined a channel — landed back at
+the default spawn point instead of their last real position.
+
+**Root cause:** `PlayerRemoving` was the only save trigger, and it does not reliably fire *before*
+`TeleportService:Teleport()` (called client-side from the lobby-return button) actually removes the character —
+documented, reported Roblox behavior, not a guess (see commit `a974c4c` for devforum links). The
+`HumanoidRootPart` read inside the `PlayerRemoving` handler could already be gone, so the save silently no-opped.
+
+**Fix:** the client no longer calls `TeleportService:Teleport()` directly. It fires a new
+`RequestReturnToLobby` `RemoteEvent`; the server saves the position (character still fully exists at that
+moment) and only then issues the teleport itself. `PlayerRemoving` remains as a backup for real
+disconnects/crashes, which have no equivalent "about to leave" moment to hook into. General lesson: any
+client-triggered leave-this-server action needs a server-side "save first, then act" step — `PlayerRemoving`
+alone cannot be trusted as the sole save point for a teleport-driven exit.
