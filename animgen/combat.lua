@@ -56,16 +56,16 @@ end
 
 -- The stance every punch starts and returns to.
 local GUARD = {
-	lowerTorso = CFrame.new(0, -0.35, 0) * CFrame.Angles(rad(6), 0, 0),
-	waist      = CFrame.Angles(rad(4), rad(16), 0),
-	rShoulder  = CFrame.Angles(rad(-58), 0, rad(20)),
-	rElbow     = CFrame.Angles(rad(-105), 0, 0),
-	lShoulder  = CFrame.Angles(rad(-52), 0, rad(-24)),
-	lElbow     = CFrame.Angles(rad(-100), 0, 0),
-	rHip       = CFrame.Angles(rad(-22), 0, rad(6)),
-	rKnee      = CFrame.Angles(rad(38), 0, 0),
-	lHip       = CFrame.Angles(rad(-20), 0, rad(-6)),
-	lKnee      = CFrame.Angles(rad(34), 0, 0),
+	lowerTorso = CFrame.new(0, -0.75, 0) * CFrame.Angles(rad(-6), 0, 0),
+	waist      = CFrame.Angles(rad(-4), rad(16), 0),
+	rShoulder  = CFrame.Angles(rad(58), 0, rad(20)),
+	rElbow     = CFrame.Angles(rad(105), 0, 0),
+	lShoulder  = CFrame.Angles(rad(52), 0, rad(-24)),
+	lElbow     = CFrame.Angles(rad(100), 0, 0),
+	rHip       = CFrame.Angles(rad(34), 0, rad(6)),
+	rKnee      = CFrame.Angles(rad(52), 0, 0),
+	lHip       = CFrame.Angles(rad(31), 0, rad(-6)),
+	lKnee      = CFrame.Angles(rad(48), 0, 0),
 }
 
 local function copy(t, overrides)
@@ -82,9 +82,9 @@ guard.Priority = Enum.AnimationPriority.Action
 guard.Loop = true
 keyframe(guard, 0.0, GUARD)
 keyframe(guard, 0.9, copy(GUARD, {
-	lowerTorso = CFrame.new(0, -0.28, 0) * CFrame.Angles(rad(5), 0, 0),
-	rElbow     = CFrame.Angles(rad(-100), 0, 0),
-	lElbow     = CFrame.Angles(rad(-95), 0, 0),
+	lowerTorso = CFrame.new(0, -0.66, 0) * CFrame.Angles(rad(-5), 0, 0),
+	rElbow     = CFrame.Angles(rad(100), 0, 0),
+	lElbow     = CFrame.Angles(rad(95), 0, 0),
 }))
 keyframe(guard, 1.8, GUARD)
 guard.Parent = folder
@@ -105,26 +105,26 @@ local function makePunch(name, side)
 	keyframe(seq, 0.0, GUARD)
 	-- windup: torso coils away, punching elbow pulls back
 	keyframe(seq, 0.06, copy(GUARD, {
-		waist = CFrame.Angles(rad(4), isRight and rad(26) or rad(-26), 0),
-		[elbowKey] = CFrame.Angles(rad(-115), 0, 0),
+		waist = CFrame.Angles(rad(-4), isRight and rad(26) or rad(-26), 0),
+		[elbowKey] = CFrame.Angles(rad(115), 0, 0),
 	}))
 	-- extension: arm straightens, torso drives through, off hand stays up guarding
 	keyframe(seq, 0.16, copy(GUARD, {
-		lowerTorso = CFrame.new(0, -0.30, 0) * CFrame.Angles(rad(8), 0, 0),
-		waist = CFrame.Angles(rad(6), twist, 0),
-		[shoulderKey] = CFrame.Angles(rad(-92), 0, isRight and rad(6) or rad(-6)),
-		[elbowKey] = CFrame.Angles(rad(-4), 0, 0),
-		[offShoulderKey] = CFrame.Angles(rad(-56), 0, isRight and rad(-26) or rad(26)),
-		[offElbowKey] = CFrame.Angles(rad(-108), 0, 0),
+		lowerTorso = CFrame.new(0, -0.70, 0) * CFrame.Angles(rad(-8), 0, 0),
+		waist = CFrame.Angles(rad(-6), twist, 0),
+		[shoulderKey] = CFrame.Angles(rad(92), 0, isRight and rad(6) or rad(-6)),
+		[elbowKey] = CFrame.Angles(rad(4), 0, 0),
+		[offShoulderKey] = CFrame.Angles(rad(56), 0, isRight and rad(-26) or rad(26)),
+		[offElbowKey] = CFrame.Angles(rad(108), 0, 0),
 	}))
 	-- brief hold so the hit reads on screen
 	keyframe(seq, 0.24, copy(GUARD, {
-		lowerTorso = CFrame.new(0, -0.32, 0) * CFrame.Angles(rad(7), 0, 0),
-		waist = CFrame.Angles(rad(5), twist * 0.85, 0),
-		[shoulderKey] = CFrame.Angles(rad(-86), 0, isRight and rad(6) or rad(-6)),
-		[elbowKey] = CFrame.Angles(rad(-14), 0, 0),
-		[offShoulderKey] = CFrame.Angles(rad(-56), 0, isRight and rad(-26) or rad(26)),
-		[offElbowKey] = CFrame.Angles(rad(-108), 0, 0),
+		lowerTorso = CFrame.new(0, -0.72, 0) * CFrame.Angles(rad(-7), 0, 0),
+		waist = CFrame.Angles(rad(-5), twist * 0.85, 0),
+		[shoulderKey] = CFrame.Angles(rad(86), 0, isRight and rad(6) or rad(-6)),
+		[elbowKey] = CFrame.Angles(rad(14), 0, 0),
+		[offShoulderKey] = CFrame.Angles(rad(56), 0, isRight and rad(-26) or rad(26)),
+		[offElbowKey] = CFrame.Angles(rad(108), 0, 0),
 	}))
 	-- recover to guard, ready for the opposite side
 	keyframe(seq, 0.42, GUARD)
