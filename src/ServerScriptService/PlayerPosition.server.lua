@@ -82,11 +82,24 @@ if not ServerConfig.IsLobby then
 		if not ok then warn("[PlayerPosition] return-to-lobby teleport failed for", player.UserId, err) end
 	end)
 
-	-- Backup save path: real disconnects/crashes never fire RequestReturnToLobby. PlayerRemoving's timing
-	-- relative to character teardown isn't guaranteed on every leave path, but it's the only hook available
-	-- here — better than nothing for the cases the primary path doesn't cover.
+	-- Backup save path: real disconnects/crashes (including using Roblox's own "ออก"/Leave Game button) never
+	-- fire RequestReturnToLobby. Confirmed real bug: when the leaving player is the server's LAST player (the
+	-- common case testing solo), the server starts shutting down as soon as PlayerRemoving fires, and the async
+	-- SetAsync call below can get cut off before it completes — PlayerRemoving alone does not hold the server
+	-- open for it (https://devforum.roblox.com/t/1171619). BindToClose below fixes this by making the server
+	-- wait for any in-flight save to actually finish.
+	local pendingSaves = 0
 	Players.PlayerRemoving:Connect(function(player)
 		hasSpawnedOnce[player] = nil
+		pendingSaves += 1
 		savePosition(player)
+		pendingSaves -= 1
+	end)
+
+	game:BindToClose(function()
+		local deadline = os.clock() + 30 -- Roblox gives BindToClose ~30s before forcing shutdown regardless
+		while pendingSaves > 0 and os.clock() < deadline do
+			task.wait(0.1)
+		end
 	end)
 end
