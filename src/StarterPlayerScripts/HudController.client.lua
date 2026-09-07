@@ -21,13 +21,18 @@ local gui = HudGui.new()
 gui.gui.Parent = player:WaitForChild("PlayerGui")
 gui:Show()
 
--- Static full vitals until sub-project 1 (player data & life cycle) wires up real values.
+-- Static full vitals until later systems wire up real values (HP/hunger: sub-project 3; mana: not started).
 for _, key in ipairs({ "hp", "hunger" }) do
 	gui:SetBarFraction(key, 1)
 end
 gui:SetArmorFraction(1)
-gui:SetStaminaFraction(1)
 gui:SetManaPips(3)
+
+-- Stamina is real: PlayerMovement.server.lua drives it via the walk/normal/run state machine.
+gui:SetStaminaFraction(1)
+Remotes.StaminaUpdate.OnClientEvent:Connect(function(fraction)
+	gui:SetStaminaFraction(fraction)
+end)
 
 gui:OnLobbyRequested(function()
 	-- Server-authoritative: it saves the player's position THEN teleports, because PlayerRemoving does not
