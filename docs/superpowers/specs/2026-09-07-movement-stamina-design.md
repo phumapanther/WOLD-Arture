@@ -106,3 +106,35 @@ Fully testable in Studio Play — no TeleportService/channel-server dependency, 
 this session. Verify: WalkSpeed changes on state transitions, stamina drains/regens at the specified rates,
 the 2s forced-walk lock holds even while still holding Shift+WASD, walk-toggle only fires while idle, and
 running-from-walk returns to Normal (not Walk) on release.
+
+## Analog sticks — gamepad and mobile touch ("option B", added 2026-09-07)
+
+Chosen by the user over a dedicated on-screen sprint button: **push the stick to the edge = sprint, light push =
+walk, no extra buttons, no walk-toggle on sticks.** After a stamina-out forced walk, a stick still at the edge
+auto-resumes Run exactly like a held Shift on keyboard (confirmed: same rule on every platform, accepting that a
+player who pins the stick will cycle Run ~3.3s / ForcedWalk 2s).
+
+- "Walk" needs no code: the engine scales speed by stick deflection natively (verified in Play — `Humanoid:Move`
+  at 0.5 magnitude moves at exactly half `WalkSpeed`), and `DynamicThumbstick` emits
+  `magnitude = deflection / radiusOfMaxSpeed` clamped to `[0, 1]`, so a full push is exactly `1.0`.
+- Sprint decision (client, `MovementController`): deflection `>= 0.9` sustained `0.25s` → sprint intent on;
+  `< 0.7` → off (hysteresis against edge jitter; the sustain window ignores a quick flick to the edge that's just
+  starting a move). All three are constants at the top of the file — tune after real-device testing.
+- Server unchanged: it still only receives `SetSprintIntent`. The client ORs the keyboard rule
+  (`Shift held AND moving`) with the analog rule.
+- **Gamepad deflection is read directly** from `UserInputService.InputChanged` (`KeyCode.Thumbstick1`,
+  `Position.X/Y`) — exact, official, no PlayerModule involvement.
+- **Touch deflection has no engine API.** Findings from the investigation: `Humanoid.MoveDirection` is always a
+  unit vector; the modern `PlayerModule` lives at `StarterPlayer.PlayerModule`, is driven from the CoreScript
+  VM, and no longer exposes `GetControls()`/`GetMoveVector()` (its `ControlModule` has an `inputMoveVector`
+  field written only by that VM's update loop). `require`-ing that `ControlModule` from a client script builds a
+  separate, never-updated copy, and a probe that did so recorded zero movement during real keypresses while an
+  identical probe without it recorded full-speed movement — treated as "never do this." Chosen fallback:
+  **infer deflection as `horizontal speed / WalkSpeed`** (ponytail: ~10 lines, exact on flat ground, reads low
+  uphill/in water and can read high while airborne). Only evaluated when the last input type is Touch, so it
+  can never trigger on keyboard (WASD would otherwise read as a constant full push). Upgrade paths if the slope
+  error is noticeable in practice: read the thumbstick's own GUI (`ThumbstickEnd` offset from `ThumbstickStart`
+  under `PlayerGui.TouchGui`), or fork the whole `PlayerModule` into `StarterPlayerScripts` so its
+  `ControlModule` runs in the client VM and `inputMoveVector` becomes readable.
+- Not tested by Claude: the user is testing gamepad and mobile themselves (real thumbstick input can't be
+  produced from the MCP context).
