@@ -3,20 +3,20 @@
 local HudGui = {}
 HudGui.__index = HudGui
 
--- Pill bars: rounded-end bar with a round icon badge overlapping its left edge. No text on the bar — icon only,
--- per the reference art. Icon glyphs are Unicode placeholders (no real icon art in the project yet) — swap
--- `glyph` for a real ImageLabel + rbxassetid later.
+-- Pill bars: rounded-end bar with a round icon badge overlapping its left edge. No text on the bar — icon only.
+-- Colors and gradient stops match the approved HTML reference (docs/superpowers, Main.dc.html) exactly. Icon
+-- glyphs are Unicode placeholders (no real icon art in the project yet) — swap `glyph` for a real ImageLabel +
+-- rbxassetid later.
 local PILL_BARS = {
-	{ key = "hunger", color = Color3.fromRGB(60, 200, 100), glyph = "\226\152\129" }, -- cloud (☁)
-	{ key = "hp", color = Color3.fromRGB(230, 60, 60), glyph = "\226\153\165" }, -- heart (♥)
+	{ key = "hunger", top = Color3.fromRGB(111, 224, 122), bottom = Color3.fromRGB(47, 169, 61), glyph = "\226\152\129" }, -- cloud (☁)
+	{ key = "hp", top = Color3.fromRGB(255, 107, 107), bottom = Color3.fromRGB(224, 47, 47), glyph = "\226\153\165" }, -- heart (♥)
 }
 
 local MANA_PIPS = 3
-local MANA_LIT = Color3.fromRGB(90, 170, 235)
+local MANA_LIT = Color3.fromRGB(127, 212, 242)
 local MANA_DIM = Color3.fromRGB(50, 60, 75)
 
-local ARMOR_FULL = Color3.fromRGB(190, 190, 198)
-local ARMOR_EMPTY = Color3.fromRGB(70, 70, 76)
+local ACCENT = Color3.fromRGB(244, 197, 66)
 
 local HOTBAR_SLOTS = 6
 
@@ -25,6 +25,14 @@ local function corner(parent, radius)
 	c.CornerRadius = radius or UDim.new(0, 8)
 	c.Parent = parent
 	return c
+end
+
+local function gradient(parent, topColor, bottomColor)
+	local g = Instance.new("UIGradient")
+	g.Color = ColorSequence.new(topColor, bottomColor)
+	g.Rotation = 90
+	g.Parent = parent
+	return g
 end
 
 function HudGui.new()
@@ -37,105 +45,112 @@ function HudGui.new()
 
 	local TOP_BAR = 56
 
-	-- Whole vitals cluster (armor / stamina / mana+hunger+hp) is anchored bottom-left, per the reference layout.
-	-- No avatar circle in this HUD.
+	-- Whole vitals cluster (armor / stamina / mana+hunger+hp) is anchored bottom-left. Internally a strict
+	-- 3-column % grid matching the approved HTML reference exactly: left 20% (armor), middle 5% (stamina),
+	-- right 75% (mana/hunger/hp) — see each section's comment for its own internal split.
 	local vitals = Instance.new("Frame")
 	vitals.AnchorPoint = Vector2.new(0, 1)
-	vitals.Size = UDim2.new(0, 230, 0, 148)
+	vitals.Size = UDim2.new(0, 280, 0, 100)
 	vitals.Position = UDim2.new(0, 20, 1, -20)
 	vitals.BackgroundTransparency = 1
 	vitals.Parent = gui
 
-	-- Armor: a square badge that IS its own bar — shaded bottom-up, not a separate pill (per reference: dark
-	-- region = armor remaining, light region = armor used up; full = all-dark for now, no depletion yet).
+	-- Left 20%: armor badge, bottom-anchored, occupying the bottom 80% of the column height (HTML: height:80%,
+	-- justify-content:flex-end). Rounded corners, accent-colored border, gray gradient fill, shield icon centered
+	-- at 55% opacity.
 	local armorBadge = Instance.new("Frame")
-	armorBadge.Size = UDim2.new(0, 44, 0, 44)
-	armorBadge.Position = UDim2.new(0, 0, 1, -44)
-	armorBadge.BackgroundColor3 = ARMOR_EMPTY
-	armorBadge.ClipsDescendants = true
+	armorBadge.AnchorPoint = Vector2.new(0, 1)
+	armorBadge.Size = UDim2.new(0.2, 0, 0.8, 0)
+	armorBadge.Position = UDim2.new(0, 0, 1, 0)
+	armorBadge.BackgroundColor3 = Color3.fromRGB(215, 218, 222)
+	armorBadge.BorderSizePixel = 0
 	armorBadge.Parent = vitals
-	corner(armorBadge, UDim.new(0, 10))
-	local armorFill = Instance.new("Frame")
-	armorFill.AnchorPoint = Vector2.new(0, 1)
-	armorFill.Position = UDim2.new(0, 0, 1, 0)
-	armorFill.Size = UDim2.fromScale(1, 1)
-	armorFill.BackgroundColor3 = ARMOR_FULL
-	armorFill.BorderSizePixel = 0
-	armorFill.Parent = armorBadge
-	-- No shield glyph here: SourceSansBold has no legible shield character, and this is placeholder art anyway —
-	-- swap the badge for a real ImageLabel + rbxassetid shield icon later.
-	self.armorFill = armorFill
+	corner(armorBadge, UDim.new(0, 14))
+	gradient(armorBadge, Color3.fromRGB(244, 245, 247), Color3.fromRGB(185, 189, 196))
+	local armorStroke = Instance.new("UIStroke")
+	armorStroke.Color = ACCENT
+	armorStroke.Thickness = 3
+	armorStroke.Parent = armorBadge
+	local armorIcon = Instance.new("TextLabel")
+	armorIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+	armorIcon.Position = UDim2.fromScale(0.5, 0.5)
+	armorIcon.Size = UDim2.fromScale(0.46, 0.46)
+	armorIcon.BackgroundTransparency = 1
+	armorIcon.TextTransparency = 0.45
+	armorIcon.Font = Enum.Font.SourceSansBold
+	armorIcon.TextScaled = true
+	armorIcon.TextColor3 = Color3.new(1, 1, 1)
+	armorIcon.Text = "\226\154\160" -- placeholder glyph (no real icon art yet) — swap for an ImageLabel + rbxassetid shield icon later
+	armorIcon.Parent = armorBadge
 
-	-- Stamina: thin, short vertical bar between armor and the mana/hunger/hp column, fills bottom-up. Much
-	-- smaller than the armor badge, per the reference proportions.
+	-- Middle 5%: stamina, a vertical bar filling the middle 40% band of the column height (30/40/30 split). The
+	-- reference doesn't define a separate depleted look — SetStaminaFraction shrinks this bar's own height
+	-- (bottom-anchored) to represent depletion, so full stamina = the full 40% band.
+	local staminaBand = Instance.new("Frame")
+	staminaBand.Position = UDim2.new(0.225, 0, 0.3, 0)
+	staminaBand.Size = UDim2.new(0.05, 6, 0.4, 0)
+	staminaBand.BackgroundTransparency = 1
+	staminaBand.Parent = vitals
 	local staminaTrack = Instance.new("Frame")
-	staminaTrack.Size = UDim2.new(0, 5, 0, 100)
-	staminaTrack.Position = UDim2.new(0, 54, 1, -100)
-	staminaTrack.BackgroundColor3 = Color3.fromRGB(30, 30, 34)
+	staminaTrack.AnchorPoint = Vector2.new(0, 1)
+	staminaTrack.Position = UDim2.new(0, 0, 1, 0)
+	staminaTrack.Size = UDim2.fromScale(1, 1)
+	staminaTrack.BackgroundColor3 = ACCENT
 	staminaTrack.BorderSizePixel = 0
-	staminaTrack.ClipsDescendants = true
-	staminaTrack.Parent = vitals
-	corner(staminaTrack, UDim.new(1, 0))
-	local staminaFill = Instance.new("Frame")
-	staminaFill.AnchorPoint = Vector2.new(0, 1)
-	staminaFill.Position = UDim2.new(0, 0, 1, 0)
-	staminaFill.Size = UDim2.fromScale(1, 1)
-	staminaFill.BackgroundColor3 = Color3.fromRGB(230, 190, 70)
-	staminaFill.BorderSizePixel = 0
-	staminaFill.Parent = staminaTrack
-	corner(staminaFill, UDim.new(1, 0))
-	self.staminaFill = staminaFill
+	staminaTrack.Parent = staminaBand
+	corner(staminaTrack, UDim.new(0, 4))
+	gradient(staminaTrack, ACCENT, Color3.fromRGB(244, 197, 66))
+	self.staminaTrack = staminaTrack
 
-	local columnX = 78
+	-- Right 75%: top 10% mana pips, middle 45% hunger bar, bottom 45% hp bar.
+	local rightColumn = Instance.new("Frame")
+	rightColumn.Size = UDim2.new(0.75, 0, 1, 0)
+	rightColumn.Position = UDim2.new(0.25, 0, 0, 0)
+	rightColumn.BackgroundTransparency = 1
+	rightColumn.Parent = vitals
 
-	-- Mana: pip row (MANA_PIPS discrete gems, lit vs dim — not a fill bar), at the top of the column. No label,
-	-- per the reference art.
 	local manaFrame = Instance.new("Frame")
-	manaFrame.Size = UDim2.new(0, 34 * MANA_PIPS, 0, 28)
-	manaFrame.Position = UDim2.new(0, columnX, 0, 0)
+	manaFrame.Size = UDim2.new(1, 0, 0.1, 0)
+	manaFrame.Position = UDim2.new(0, 0, 0, 0)
 	manaFrame.BackgroundTransparency = 1
-	manaFrame.Parent = vitals
+	manaFrame.Parent = rightColumn
 	local manaLayout = Instance.new("UIListLayout")
 	manaLayout.FillDirection = Enum.FillDirection.Horizontal
-	manaLayout.Padding = UDim.new(0, 4)
+	manaLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	manaLayout.VerticalAlignment = Enum.VerticalAlignment.Center
+	manaLayout.Padding = UDim.new(0, 20)
 	manaLayout.Parent = manaFrame
 
 	self.manaPips = {}
 	for i = 1, MANA_PIPS do
 		local pip = Instance.new("TextLabel")
-		pip.Size = UDim2.new(0, 28, 0, 28)
+		pip.Size = UDim2.new(0, 22, 0.9, 0)
 		pip.LayoutOrder = i
 		pip.BackgroundTransparency = 1
 		pip.Font = Enum.Font.SourceSansBold
-		pip.TextSize = 24
+		pip.TextScaled = true
 		pip.TextColor3 = MANA_LIT
 		pip.Text = "\226\153\166" -- gem/diamond (♦) placeholder for the mana potion icon
 		pip.Parent = manaFrame
 		self.manaPips[i] = pip
 	end
 
-	-- Pill bars: hunger, hp — rounded bar with a round icon badge overlapping its left edge, icon only.
-	local pillsFrame = Instance.new("Frame")
-	pillsFrame.Size = UDim2.new(1, -columnX, 0, 62)
-	pillsFrame.Position = UDim2.new(0, columnX, 0, 36)
-	pillsFrame.BackgroundTransparency = 1
-	pillsFrame.Parent = vitals
-	local pillsLayout = Instance.new("UIListLayout")
-	pillsLayout.Padding = UDim.new(0, 8)
-	pillsLayout.Parent = pillsFrame
-
+	-- Pill bars: hunger (middle 45%), hp (bottom 45%). Track is 52% of its row's height (HTML: height:52%),
+	-- black background, fully pill-rounded, gradient fill. Badge is a circle positioned absolutely at the row's
+	-- left edge (overlapping the track, which is indented by the badge's own radius), white border, drop shadow.
 	self.bars = {}
 	for i, def in ipairs(PILL_BARS) do
 		local row = Instance.new("Frame")
-		row.Size = UDim2.new(1, 0, 0, 26)
+		row.Size = UDim2.new(1, 0, 0.45, 0)
+		row.Position = UDim2.new(0, 0, 0.1 + (i - 1) * 0.45, 0)
 		row.BackgroundTransparency = 1
-		row.LayoutOrder = i
-		row.Parent = pillsFrame
+		row.Parent = rightColumn
 
 		local track = Instance.new("Frame")
-		track.Size = UDim2.new(1, -13, 1, 0)
-		track.Position = UDim2.new(0, 13, 0, 0)
-		track.BackgroundColor3 = Color3.fromRGB(30, 30, 34)
+		track.AnchorPoint = Vector2.new(0, 0.5)
+		track.Position = UDim2.new(0, 26, 0.5, 0)
+		track.Size = UDim2.new(1, -26, 0.52, 0)
+		track.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
 		track.BorderSizePixel = 0
 		track.ClipsDescendants = true
 		track.Parent = row
@@ -143,22 +158,35 @@ function HudGui.new()
 
 		local fill = Instance.new("Frame")
 		fill.Size = UDim2.fromScale(1, 1)
-		fill.BackgroundColor3 = def.color
+		fill.BackgroundColor3 = def.top
 		fill.BorderSizePixel = 0
 		fill.Parent = track
 		corner(fill, UDim.new(1, 0))
+		gradient(fill, def.top, def.bottom)
 
-		local badge = Instance.new("TextLabel")
-		badge.Size = UDim2.new(0, 26, 0, 26)
-		badge.Position = UDim2.new(0, 0, 0, 0)
-		badge.BackgroundColor3 = def.color
-		badge.Font = Enum.Font.SourceSansBold
-		badge.TextSize = 15
-		badge.TextColor3 = Color3.new(1, 1, 1)
-		badge.Text = def.glyph
-		badge.ZIndex = 2
+		local badge = Instance.new("Frame")
+		badge.AnchorPoint = Vector2.new(0, 0.5)
+		badge.Position = UDim2.new(0, 0, 0.5, 0)
+		badge.Size = UDim2.new(0, 40, 0.72, 0)
+		badge.BackgroundColor3 = def.top
+		badge.BorderSizePixel = 0
 		badge.Parent = row
 		corner(badge, UDim.new(1, 0))
+		gradient(badge, def.top, def.bottom)
+		local badgeStroke = Instance.new("UIStroke")
+		badgeStroke.Color = Color3.new(1, 1, 1)
+		badgeStroke.Thickness = 3
+		badgeStroke.Parent = badge
+		local badgeIcon = Instance.new("TextLabel")
+		badgeIcon.AnchorPoint = Vector2.new(0.5, 0.5)
+		badgeIcon.Position = UDim2.fromScale(0.5, 0.5)
+		badgeIcon.Size = UDim2.fromScale(0.55, 0.55)
+		badgeIcon.BackgroundTransparency = 1
+		badgeIcon.Font = Enum.Font.SourceSansBold
+		badgeIcon.TextScaled = true
+		badgeIcon.TextColor3 = Color3.new(1, 1, 1)
+		badgeIcon.Text = def.glyph
+		badgeIcon.Parent = badge
 
 		self.bars[def.key] = fill
 	end
@@ -233,14 +261,14 @@ function HudGui:SetBarFraction(key, fraction)
 	if fill then fill.Size = UDim2.new(math.clamp(fraction, 0, 1), 0, 1, 0) end
 end
 
--- SetArmorFraction: 0..1, fills the armor badge bottom-up (dark region remaining, per the reference art).
-function HudGui:SetArmorFraction(fraction)
-	self.armorFill.Size = UDim2.new(1, 0, math.clamp(fraction, 0, 1), 0)
-end
+-- SetArmorFraction: 0..1. No-op for now — the approved reference draws armor as a static badge with no
+-- depletion visual. Kept as a stable call site so HudController doesn't need to change if/when armor gets one.
+function HudGui:SetArmorFraction(_fraction) end
 
--- SetStaminaFraction: 0..1, fills the thin vertical stamina bar bottom-up.
+-- SetStaminaFraction: 0..1, shrinks the stamina bar's own height bottom-up (no separate fill/track distinction
+-- in the reference — the bar itself is the fill).
 function HudGui:SetStaminaFraction(fraction)
-	self.staminaFill.Size = UDim2.new(1, 0, math.clamp(fraction, 0, 1), 0)
+	self.staminaTrack.Size = UDim2.new(1, 0, math.clamp(fraction, 0, 1), 0)
 end
 
 -- SetManaPips: how many of the MANA_PIPS gems are lit (0..#self.manaPips).
