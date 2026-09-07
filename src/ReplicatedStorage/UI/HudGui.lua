@@ -222,13 +222,13 @@ function HudGui.new()
 		self.bars[def.key] = fill
 	end
 
-	-- 3-dot menu, flush to the top-right corner of the playable area (gui ignores the inset, so TOP_BAR is added
-	-- back manually to clear Roblox's own top bar instead of drawing under it). Wrapped in its own group so one
-	-- UIScale scales the button and its dropdown panel together.
+	-- 3-dot menu, flush to the very top-right corner of the screen (past Roblox's own top bar on purpose — the
+	-- user wants it right at the corner, not clear of that bar). Wrapped in its own group so one UIScale scales
+	-- the button and its dropdown panel together.
 	local menuGroup = Instance.new("Frame")
 	menuGroup.AnchorPoint = Vector2.new(1, 0)
 	menuGroup.Size = UDim2.new(0, 220, 0, 140)
-	menuGroup.Position = UDim2.new(1, 0, 0, TOP_BAR)
+	menuGroup.Position = UDim2.new(1, 0, 0, 0)
 	menuGroup.BackgroundTransparency = 1
 	menuGroup.Parent = gui
 	responsiveScale(menuGroup)
@@ -236,7 +236,7 @@ function HudGui.new()
 	local menuButton = Instance.new("TextButton")
 	menuButton.AnchorPoint = Vector2.new(1, 0)
 	menuButton.Size = UDim2.new(0, 44, 0, 44)
-	menuButton.Position = UDim2.new(1, -20, 0, 20)
+	menuButton.Position = UDim2.new(1, -4, 0, 4)
 	menuButton.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
 	menuButton.Text = "\226\128\162\226\128\162\226\128\162" -- three bullet characters; a vertical-ellipsis glyph didn't render in SourceSansBold
 	menuButton.TextColor3 = Color3.new(1, 1, 1)
@@ -248,7 +248,7 @@ function HudGui.new()
 	local menuPanel = Instance.new("Frame")
 	menuPanel.AnchorPoint = Vector2.new(1, 0)
 	menuPanel.Size = UDim2.new(0, 200, 0, 56)
-	menuPanel.Position = UDim2.new(1, -20, 0, 72)
+	menuPanel.Position = UDim2.new(1, -4, 0, 56)
 	menuPanel.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
 	menuPanel.Visible = false
 	menuPanel.Parent = menuGroup
