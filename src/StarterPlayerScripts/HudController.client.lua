@@ -22,10 +22,12 @@ local gui = HudGui.new()
 gui.gui.Parent = player:WaitForChild("PlayerGui")
 gui:Show()
 
--- Static full bars until sub-project 1 (player data & life cycle) wires up real vitals.
-for _, key in ipairs({ "hp", "stamina", "mana", "hunger", "armor" }) do
+-- Static full vitals until sub-project 1 (player data & life cycle) wires up real values.
+for _, key in ipairs({ "hp", "stamina", "hunger" }) do
 	gui:SetBarFraction(key, 1)
 end
+gui:SetArmorFraction(1)
+gui:SetManaPips(3)
 
 AvatarThumbnails.Get(player.UserId, function(content)
 	if content then gui:SetAvatarImage(content) end
