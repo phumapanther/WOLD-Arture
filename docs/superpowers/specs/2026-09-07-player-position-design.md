@@ -100,8 +100,17 @@ server cannot close on its own: a rejoin lands in a **new, separate server proce
 + `PlayerRemoving` + the `SetAsync` call) has even started, let alone finished. Both legs take real wall-clock
 time; a fast-enough rejoin outruns them.
 
-**Mitigation (not a full fix — none is possible purely server-side for this race):** periodic autosave every
-30s, saving every player currently in the server, added per explicit user request. Bounds the loss to "at most
-~30s of movement" instead of the whole session. Commit `15f6438`. This is the third of three standard legs for
-this pattern (save-before-teleport for the in-game button, `PlayerRemoving`+`BindToClose` for real disconnects,
-periodic autosave for the race window neither can close).
+**Tried and reverted:** periodic autosave (every 30s, then 10s) was added to bound this race, but the user
+tested it against real quit-rejoin timing and it didn't help — real gaps run longer than 10s in practice, so it
+only added DataStore write volume without fixing the reported problem. Removed per YAGNI (commit `5053152`).
+No fix for this specific race exists purely server-side (it would need the *new* server to somehow wait on the
+*old* server's save, which isn't how Roblox server-to-server coordination works); the two remaining save paths
+(save-before-teleport on the in-game lobby button, `PlayerRemoving`+`BindToClose` for real disconnects) are
+what's shipped. Revisit if the race turns out to matter enough to justify a heavier mechanism later.
+
+**Also declined (2026-09-07):** switching to ProfileService, suggested externally. Sound module, but the wrong
+fit for a single-field (x,y,z) store with no concurrent-write story yet — its value (session locks across
+multiple systems sharing one profile) has no consumer here yet, and its typical `onCharacterAdded` pattern
+would double the first-spawn repositioning that's deliberately kept separate in `LoadingController.client.lua`.
+Revisit when a real shared player-profile system exists (vitals persistence, inventory) — the next system
+queued after this one.
