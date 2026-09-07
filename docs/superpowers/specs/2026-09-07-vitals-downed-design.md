@@ -29,6 +29,21 @@ Also out of scope (later sub-projects): roll/slide, attacking, mobile buttons fo
 | Fall damage | scaled by fall height; a high enough fall kills outright |
 | Void (fell out of the map) | instant death, no fall-damage curve |
 
+## Armor
+
+Armor is a **one-time pool that never refills** (confirmed 2026-09-07, overriding this spec's earlier claim
+that respawn restores it):
+
+- 0-100, stored in `profile.Data.Vitals.Armor`, saved across sessions like HP and hunger.
+- While armor > 0, incoming **combat** damage is split: half to armor, half to HP. Armor absorbs only as much
+  as it has left, and the remainder falls through to HP in full.
+- Once at 0 it stays at 0 forever — respawn does **not** restore it, and no other vitals rule touches it.
+- Only combat damage is reduced. Starvation, drowning, and fall damage go straight to HP: armor doesn't help
+  you stop being hungry.
+- There is no way to gain armor yet. Players start at 0 (no armor system exists to grant any), so this code
+  path is dormant until armor items arrive with a later sub-project — it is implemented now because the damage
+  split has to live in `applyDamage` from the start rather than be retrofitted through every damage source.
+
 ## HP model
 
 - 0-100, stored in `profile.Data.Vitals.HP`, saved across sessions (confirmed) — as is hunger. Stamina and mana
@@ -83,6 +98,27 @@ Entered when HP reaches 0 **on land** from starvation or fall damage that didn't
 - **Falling into water while downed = instant respawn** (confirmed), skipping the rest of the countdown.
 - Movement input still works (crawling), but sprint/walk-toggle intent is ignored while downed.
 
+### Crawl animation — reuse the stock swim animation on land
+
+Decided 2026-09-07 (user: "ท่าล้มลงไปคลาน ใช้ท่าเดียวกันกับว่ายน้ำก็ได้แต่เป็นใช้บนบก จะได้ประหยัดเวลา").
+A hand-built crawl was started and abandoned in favour of this; no custom animation is needed.
+
+Roblox's default swim animation (`rbxassetid://913384386`, plus `913389285` for the idle) is exactly the
+face-down paddling motion the crawl needs. Two facts found by measurement:
+
+1. **The swim animation only moves the arms.** Played on land it leaves the body fully upright
+   (`uprightDot=1.00`) — Roblox tilts the body prone through the *swimming humanoid state*, not the animation.
+   Forcing `HumanoidStateType.Swimming` on land doesn't work either: the engine snaps straight back to Running.
+2. **The tilt must be cosmetic only.** Physically rotating the character (via `AlignOrientation` on the root
+   part) does look prone, but it stops the player moving almost entirely — travel fell from 2.88 studs to 0.01,
+   because the humanoid's mover can't drive a rig whose orientation is pinned. `Root.C0` is read-only, so that
+   route is closed too.
+
+The approach that works: leave the humanoid upright so walking behaves normally, and pitch only the **visible**
+body by writing `LowerTorso.Root.Transform` on `RunService.Stepped` (after the animator has run each frame, or
+the animation overwrites it), with `HipHeight` lowered so the body rests near the floor. Measured prone:
+`uprightDot=0.05`, `headAboveFoot=0.20`, and still travels 2.18 studs — and it restores cleanly on stand-up.
+
 ### Revive/carry hook (for the next spec)
 
 The downed state exposes, server-side, "is this player downed" and a single entry point to end it early. The
@@ -94,7 +130,8 @@ spec needs to change when they land.
 - Always at the main spawn point (`WOLD.TempSpawn`, later Brasshaven) — **never** at the saved last position
   (confirmed; the position system's 7-second autosave would otherwise drop the player right back where they
   died).
-- On respawn: HP, hunger, stamina, mana, and armor all reset to full (confirmed).
+- On respawn: HP, hunger, stamina, and mana reset to full. **Armor does not** — see the Armor section; it is a
+  one-time pool that stays wherever it was.
 - 10 seconds of invulnerability, with the character blinking (transparency pulse) so it's visible to everyone.
   All damage sources are suppressed during it.
 

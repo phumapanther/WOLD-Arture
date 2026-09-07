@@ -12,6 +12,8 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
+local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
+local Vitals = require(game.ServerScriptService.Vitals)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local States = {} -- [player] = { weapon, guarding, lastAttackAt, chainIndex, busyUntil, activeUntil, hitThisSwing }
@@ -36,11 +38,17 @@ local function setGuard(player, state, guarding)
 	Remotes.CombatStateChanged:FireAllClients(player, guarding and "guard_start" or "guard_end")
 end
 
--- Damage lands here from any source so future systems (falls, drowning) can reuse it.
-local function applyDamage(target, amount)
-	local humanoid = target:FindFirstChildOfClass("Humanoid")
-	if not humanoid or humanoid.Health <= 0 then return end
-	humanoid:TakeDamage(amount)
+-- Impact feedback: a short sound parented to the victim so everyone nearby hears it positionally.
+local function playHitSound(character)
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	local sound = Instance.new("Sound")
+	sound.SoundId = VitalsConfig.HitSoundId
+	sound.RollOffMaxDistance = 60
+	sound.Parent = hrp
+	sound:Play()
+	sound.Ended:Once(function() sound:Destroy() end)
+	game:GetService("Debris"):AddItem(sound, 5) -- in case Ended never fires (asset failed to load)
 end
 
 local function resolveHit(player, state, attack)
@@ -56,7 +64,12 @@ local function resolveHit(player, state, attack)
 			local otherHrp = otherChar and otherChar:FindFirstChild("HumanoidRootPart")
 			if otherHrp and (otherHrp.Position - origin).Magnitude <= attack.range then
 				state.hitThisSwing[other] = true
-				applyDamage(otherChar, attack.damage)
+				-- Vitals decides what the hit actually does: armor absorbs half, downed and freshly-respawned
+				-- players take nothing, and HP reaching 0 downs them rather than killing.
+				if not Vitals.IsInvulnerable(other) then
+					Vitals.ApplyDamage(other, attack.damage, "combat")
+					playHitSound(otherChar)
+				end
 			end
 		end
 	end
@@ -66,6 +79,7 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player)
 	local state = States[player]
 	local humanoid = humanoidOf(player)
 	if not state or not humanoid or humanoid.Health <= 0 then return end
+	if Vitals.IsDowned(player) then return end -- can't throw punches while crawling
 
 	local now = os.clock()
 	if now < state.busyUntil then return end -- still mid-swing; ignore the click rather than queueing it

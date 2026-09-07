@@ -4,8 +4,9 @@ local RunService = game:GetService("RunService")
 
 local EVENTS = {
 	"JoinChannel", "ChannelList", "JoinFailed", "RequestReturnToLobby",
-	"SetSprintIntent", "ToggleWalk", "StaminaUpdate", -- movement/stamina (client intent in, stamina fraction out)
+	"SetSprintIntent", "ToggleWalk", -- movement (client intent in; stamina goes out via VitalsUpdate)
 	"RequestAttack", "CombatStateChanged", -- combat (click intent in, guard/attack playback out)
+	"VitalsUpdate", "DownedStateChanged", "RequestRespawn", -- vitals (hp/hunger/stamina/armor out, downed UI, respawn in)
 }
 local FUNCTIONS = { "GetSpawnPosition" } -- DataStore-backed lookups can only run server-side; the client must ask
 

@@ -72,15 +72,12 @@ if not ServerConfig.IsLobby then
 		end
 		Profiles[player] = profile
 
-		local hasSpawnedOnce = false -- first CharacterAdded is choreographed by LoadingController.client.lua; skip it here
-		player.CharacterAdded:Connect(function(character)
-			if not hasSpawnedOnce then
-				hasSpawnedOnce = true
-				return
-			end
-			local hrp = character:WaitForChild("HumanoidRootPart")
-			hrp.CFrame = CFrame.new(resolvedSpawnPosition(profile))
-		end)
+		-- Respawns after death go to the SPAWN POINT, not the saved position: dying at the bottom of a ravine
+		-- or in deep water would otherwise drop the player straight back into what killed them. The saved
+		-- position is for rejoining the server, which is the first CharacterAdded — and that one is
+		-- choreographed by LoadingController.client.lua, so nothing here needs to move the character at all.
+		-- (Vitals.lua handles the death/downed side; this file only decides where a fresh join lands, through
+		-- the GetSpawnPosition RemoteFunction above.)
 	end)
 
 	-- Periodic in-memory position update: cheap (ProfileStore only actually writes to the DataStore on its own

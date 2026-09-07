@@ -21,17 +21,19 @@ local gui = HudGui.new()
 gui.gui.Parent = player:WaitForChild("PlayerGui")
 gui:Show()
 
--- Static full vitals until later systems wire up real values (HP/hunger: sub-project 3; mana: not started).
-for _, key in ipairs({ "hp", "hunger" }) do
-	gui:SetBarFraction(key, 1)
-end
-gui:SetArmorFraction(1)
+-- HP, hunger, stamina and armor are all real now, driven by Vitals.lua on the server. Mana is still static
+-- (no mana system exists yet).
+gui:SetBarFraction("hp", 1)
+gui:SetBarFraction("hunger", 1)
+gui:SetStaminaFraction(1)
+gui:SetArmorFraction(0) -- armor starts empty: no armor items exist to grant any yet
 gui:SetManaPips(3)
 
--- Stamina is real: PlayerMovement.server.lua drives it via the walk/normal/run state machine.
-gui:SetStaminaFraction(1)
-Remotes.StaminaUpdate.OnClientEvent:Connect(function(fraction)
-	gui:SetStaminaFraction(fraction)
+Remotes.VitalsUpdate.OnClientEvent:Connect(function(vitals)
+	gui:SetBarFraction("hp", vitals.hp)
+	gui:SetBarFraction("hunger", vitals.hunger)
+	gui:SetStaminaFraction(vitals.stamina)
+	gui:SetArmorFraction(vitals.armor)
 end)
 
 gui:OnLobbyRequested(function()

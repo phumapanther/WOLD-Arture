@@ -5,19 +5,20 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
+local Vitals = require(game.ServerScriptService.Vitals)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
--- The HUD is StaminaUpdate's only consumer and it only exists in channel servers. Firing it in the lobby
--- (where nothing listens) fills Roblox's unhandled-remote queue and spams "invocation queue exhausted" warnings.
-local SEND_STAMINA = not ServerConfig.IsLobby
-local STAMINA_SEND_INTERVAL = 0.1 -- the HUD bar can't show finer than 10/s anyway; caps remote traffic per player
+-- Stamina VALUES now live in Vitals.lua (swimming spends it too, and drowning depends on it), and the HUD gets
+-- them through VitalsUpdate. This file still owns the walk/normal/run state machine that spends it, and reads
+-- the value back through Vitals.GetStamina. The lobby has no vitals at all, so the machine idles there.
+local ACTIVE = not ServerConfig.IsLobby
 
 local SPEED = { Normal = 8, Walk = 4, Run = 16 }
 local STAMINA_DRAIN_PER_SEC = 20 -- empties in ~5s from full
 local STAMINA_REGEN_PER_SEC = 100 / 3 -- fills in ~3s from empty
 local FORCED_WALK_SECONDS = 2
 
-local States = {} -- [player] = { state, stamina, sprintIntent, forcedWalkUntil, lastSentStaminaPercent }
+local States = {} -- [player] = { state, sprintIntent, forcedWalkUntil }
 
 local function humanoidOf(player)
 	local character = player.Character
@@ -28,22 +29,14 @@ local function setState(state, player, newState)
 	if state.state == newState then return end
 	state.state = newState
 	local humanoid = humanoidOf(player)
-	if humanoid then humanoid.WalkSpeed = SPEED[newState == "ForcedWalk" and "Walk" or newState] end
-end
-
-local function sendStamina(state, player)
-	local percent = math.floor(state.stamina + 0.5)
-	if percent == state.lastSentStaminaPercent then return end
-	-- lastSentStaminaPercent only updates on an actual send, so a change skipped by the interval is retried
-	-- next tick until it goes out — the final resting value is never lost.
-	if os.clock() - state.lastSentAt < STAMINA_SEND_INTERVAL then return end
-	state.lastSentStaminaPercent = percent
-	state.lastSentAt = os.clock()
-	Remotes.StaminaUpdate:FireClient(player, state.stamina / 100)
+	-- Vitals owns WalkSpeed while downed (crawling pace); don't fight it.
+	if humanoid and not Vitals.IsDowned(player) then
+		humanoid.WalkSpeed = SPEED[newState == "ForcedWalk" and "Walk" or newState]
+	end
 end
 
 Players.PlayerAdded:Connect(function(player)
-	local state = { state = "Normal", stamina = 100, sprintIntent = false, forcedWalkUntil = 0, lastSentStaminaPercent = 100, lastSentAt = 0 }
+	local state = { state = "Normal", sprintIntent = false, forcedWalkUntil = 0 }
 	States[player] = state
 
 	player.CharacterAdded:Connect(function()
@@ -61,8 +54,9 @@ end)
 Remotes.SetSprintIntent.OnServerEvent:Connect(function(player, intent)
 	local state = States[player]
 	if not state or type(intent) ~= "boolean" then return end
+	if Vitals.IsDowned(player) then return end -- no sprinting while crawling
 	state.sprintIntent = intent
-	if intent and state.state ~= "ForcedWalk" and state.stamina > 0 then
+	if intent and state.state ~= "ForcedWalk" and Vitals.GetStamina(player) > 0 then
 		setState(state, player, "Run")
 	elseif not intent and state.state == "Run" then
 		setState(state, player, "Normal")
@@ -73,28 +67,37 @@ Remotes.ToggleWalk.OnServerEvent:Connect(function(player)
 	local state = States[player]
 	local humanoid = humanoidOf(player)
 	if not state or not humanoid then return end
+	if Vitals.IsDowned(player) then return end -- the walk toggle is meaningless while crawling
 	if humanoid.MoveDirection.Magnitude > 0 then return end -- server re-verifies "standing still", doesn't trust the client
 	if state.state == "Normal" then
 		setState(state, player, "Walk")
 	end
 end)
 
-RunService.Heartbeat:Connect(function(dt)
-	for player, state in pairs(States) do
-		if state.state == "Run" then
-			state.stamina = math.max(0, state.stamina - STAMINA_DRAIN_PER_SEC * dt)
-			if state.stamina <= 0 then
-				state.forcedWalkUntil = os.clock() + FORCED_WALK_SECONDS
-				setState(state, player, "ForcedWalk")
+if ACTIVE then
+	RunService.Heartbeat:Connect(function(dt)
+		for player, state in pairs(States) do
+			local humanoid = humanoidOf(player)
+			local swimming = humanoid and humanoid:GetState() == Enum.HumanoidStateType.Swimming
+
+			-- While downed or swimming, Vitals owns stamina entirely: it drains for swimming and must not
+			-- regenerate here, or drowning could never start.
+			if Vitals.IsDowned(player) or swimming then
+				if state.state ~= "Normal" then setState(state, player, "Normal") end
+			elseif state.state == "Run" then
+				local stamina = Vitals.GetStamina(player) - STAMINA_DRAIN_PER_SEC * dt
+				Vitals.SetStamina(player, stamina)
+				if stamina <= 0 then
+					state.forcedWalkUntil = os.clock() + FORCED_WALK_SECONDS
+					setState(state, player, "ForcedWalk")
+				end
+			else
+				Vitals.SetStamina(player, Vitals.GetStamina(player) + STAMINA_REGEN_PER_SEC * dt)
 			end
-		else
-			state.stamina = math.min(100, state.stamina + STAMINA_REGEN_PER_SEC * dt)
-		end
 
-		if state.state == "ForcedWalk" and os.clock() >= state.forcedWalkUntil then
-			setState(state, player, (state.sprintIntent and state.stamina > 0) and "Run" or "Normal")
+			if state.state == "ForcedWalk" and os.clock() >= state.forcedWalkUntil then
+				setState(state, player, (state.sprintIntent and Vitals.GetStamina(player) > 0) and "Run" or "Normal")
+			end
 		end
-
-		if SEND_STAMINA then sendStamina(state, player) end
-	end
-end)
+	end)
+end
