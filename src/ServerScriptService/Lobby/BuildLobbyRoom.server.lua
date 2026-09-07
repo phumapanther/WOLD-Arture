@@ -1,5 +1,11 @@
 -- BuildLobbyRoom: idempotent. A small enclosed room with a spawn point, themed to match the rest of the game.
--- Runs in every server (cheap no-op if it already exists) so it's there before anyone needs it.
+-- Lobby-only: this used to run in every server, which planted a second SpawnLocation (this room's) inside every
+-- Reserved channel server too. SpawnSelector just grabs the first SpawnLocation it finds, so players joining a
+-- channel could land in this windowless stone box floating at y=1000 instead of on the real map. The lobby is the
+-- only server that ever shows the channel-select screen, so it's the only one that needs this room to exist.
+local ServerConfig = require(game.ServerScriptService.ServerConfig)
+if not ServerConfig.IsLobby then return end
+
 local existing = workspace:FindFirstChild("LobbyRoom")
 if existing then return end
 

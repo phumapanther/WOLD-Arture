@@ -7,9 +7,16 @@ end
 if not workspace:GetAttribute("IsLobby") then return end
 
 local Players = game:GetService("Players")
+local StarterGui = game:GetService("StarterGui")
 local ChannelSelectGui = require(game.ReplicatedStorage.UI.ChannelSelectGui)
 local AvatarThumbnails = require(game.ReplicatedStorage.UI.AvatarThumbnails)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+
+-- Hide the default chat window and player list while the channel-select screen is up (for now, per request —
+-- nothing about the lobby needs either yet). This is local-client core GUI state; teleporting into a channel
+-- server starts a fresh client so it doesn't carry this over.
+pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false) end)
+pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false) end)
 
 local player = Players.LocalPlayer
 local gui = ChannelSelectGui.new()
@@ -49,6 +56,7 @@ local pendingJoin = 0 -- bumped on every click; a timeout only acts if it's stil
 local function resetToError()
 	-- ponytail: reset every Roleplay row's status rather than tracking which one was mid-join (only ever one in
 	-- flight per client); Stories/Tanding aren't real per-channel tables (see ChannelSelectGui.new), so they're excluded.
+	gui:Unlock() -- only a failed/timed-out join reaches here; a successful one blacks out the screen for good
 	for channel in pairs(gui.rows.Roleplay) do
 		gui:SetRowStatus("Roleplay", channel, "error")
 	end
@@ -61,6 +69,9 @@ Remotes.JoinFailed.OnClientEvent:Connect(function(reason)
 end)
 
 gui:OnJoin(function(mode, channel)
+	-- Lock immediately, before firing the remote or waiting on any response: the screen blacks out on this
+	-- click, not once the server answers, so a second click during the (network) gap in between is impossible.
+	gui:Lock()
 	gui:SetRowStatus(mode, channel, "connecting")
 	Remotes.JoinChannel:FireServer(mode, channel)
 	pendingJoin += 1
