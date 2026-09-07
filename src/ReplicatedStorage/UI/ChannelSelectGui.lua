@@ -52,6 +52,7 @@ function ChannelSelectGui.new()
 	local root = Instance.new("Frame")
 	root.Size = UDim2.fromScale(1, 1)
 	root.BackgroundColor3 = BG_TOP
+	root.BackgroundTransparency = 0.8
 	root.BorderSizePixel = 0
 	root.Parent = gui
 	local rootGradient = Instance.new("UIGradient")
