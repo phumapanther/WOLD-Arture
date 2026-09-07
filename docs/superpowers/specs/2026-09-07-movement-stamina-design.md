@@ -1,7 +1,14 @@
 # Movement states: walk / normal / run, tied to stamina
 
-**Status:** approved 2026-09-07. Sub-project 2 (เคลื่อนไหว/อนิเมชัน), stamina-driven speed slice only —
-animations themselves are a later pass.
+**Status:** approved and implemented 2026-09-07. Sub-project 2 (เคลื่อนไหว/อนิเมชัน), stamina-driven speed
+slice only — animations themselves are a later pass. Every transition below was verified in Studio Play by
+firing the intent remotes directly (real keypresses can't be simulated from the MCP context) and reading the
+resulting `WalkSpeed`/stamina.
+
+**Deviation found in testing:** `StaminaUpdate` must only be broadcast in channel servers and is capped at
+10 sends/s per player. Firing it in the lobby — where `HudController` correctly never connects a listener —
+filled Roblox's unhandled-remote queue and logged escalating "invocation queue exhausted" warnings. The
+Architecture section's "Runs in every server" still holds for the speed logic; only the HUD broadcast is gated.
 
 ## Speeds
 
