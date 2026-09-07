@@ -248,14 +248,21 @@ function Vitals.Tick(player, state, dt)
 			Vitals.ApplyDamage(player, VitalsConfig.DrowningDamagePerSec * dt, "drown")
 		end
 		state.peakFallY = nil -- water cancels any fall in progress
-	elseif humanoid:GetState() == Enum.HumanoidStateType.Freefall then
-		state.peakFallY = math.max(state.peakFallY or hrp.Position.Y, hrp.Position.Y)
-	elseif state.peakFallY then
-		-- Landed: bill the drop from the highest point reached.
-		local drop = state.peakFallY - hrp.Position.Y
-		state.peakFallY = nil
-		if drop > VitalsConfig.SafeFallStuds then
-			Vitals.ApplyDamage(player, (drop - VitalsConfig.SafeFallStuds) * VitalsConfig.FallDamagePerStud, "fall")
+	else
+		-- Fall tracking. Note we do NOT key off Freefall alone: mid-fall the humanoid flickers back to Running
+		-- for a frame or two (measured: a 30-stud drop reported Running again 3 studs in), and treating that as
+		-- a landing billed a 3-stud fall and lost the rest of the drop. So keep accumulating the peak whenever
+		-- the character is off the ground, and only settle up once something is actually underfoot.
+		local grounded = humanoid.FloorMaterial ~= Enum.Material.Air
+		if not grounded then
+			state.peakFallY = math.max(state.peakFallY or hrp.Position.Y, hrp.Position.Y)
+		elseif state.peakFallY then
+			-- Landed: bill the drop from the highest point reached.
+			local drop = state.peakFallY - hrp.Position.Y
+			state.peakFallY = nil
+			if drop > VitalsConfig.SafeFallStuds then
+				Vitals.ApplyDamage(player, (drop - VitalsConfig.SafeFallStuds) * VitalsConfig.FallDamagePerStud, "fall")
+			end
 		end
 	end
 end
