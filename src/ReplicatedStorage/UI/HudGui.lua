@@ -83,13 +83,12 @@ function HudGui.new()
 	armorIcon.Text = "\226\154\160" -- placeholder glyph (no real icon art yet) — swap for an ImageLabel + rbxassetid shield icon later
 	armorIcon.Parent = armorBadge
 
-	-- Middle 5%: stamina, a vertical bar filling the middle 35% band of the column height (40/35/25 top/mid/bottom
-	-- split, per the updated reference). The reference doesn't define a separate depleted look —
-	-- SetStaminaFraction shrinks this bar's own height (bottom-anchored) to represent depletion, so full
-	-- stamina = the full 35% band.
+	-- Middle 5%: stamina, a thin vertical bar filling the middle 35% band of the column height (40/35/25
+	-- top/mid/bottom split). Thinner than before (3px, was 6px) and pinned to this column's left edge so its
+	-- own gap to the right column (which starts at 0.25) stays wide instead of nearly touching the badges.
 	local staminaBand = Instance.new("Frame")
-	staminaBand.Position = UDim2.new(0.225, 0, 0.4, 0)
-	staminaBand.Size = UDim2.new(0.05, 6, 0.35, 0)
+	staminaBand.Position = UDim2.new(0.2, 4, 0.4, 0)
+	staminaBand.Size = UDim2.new(0, 4, 0.35, 0)
 	staminaBand.BackgroundTransparency = 1
 	staminaBand.Parent = vitals
 	local staminaTrack = Instance.new("Frame")
@@ -99,14 +98,15 @@ function HudGui.new()
 	staminaTrack.BackgroundColor3 = ACCENT
 	staminaTrack.BorderSizePixel = 0
 	staminaTrack.Parent = staminaBand
-	corner(staminaTrack, UDim.new(0, 4))
+	corner(staminaTrack, UDim.new(0, 2))
 	gradient(staminaTrack, ACCENT, Color3.fromRGB(244, 197, 66))
 	self.staminaTrack = staminaTrack
 
-	-- Right 75%: top 10% mana pips, middle 45% hunger bar, bottom 45% hp bar.
+	-- Right 75%: top 10% mana pips, middle 45% hunger bar, bottom 45% hp bar. Inset from the stamina bar by
+	-- extra padding so the pill badges (which sit at this column's own left edge) never crowd it.
 	local rightColumn = Instance.new("Frame")
-	rightColumn.Size = UDim2.new(0.75, 0, 1, 0)
-	rightColumn.Position = UDim2.new(0.25, 0, 0, 0)
+	rightColumn.Size = UDim2.new(0.72, -10, 1, 0)
+	rightColumn.Position = UDim2.new(0.28, 10, 0, 0)
 	rightColumn.BackgroundTransparency = 1
 	rightColumn.Parent = vitals
 
@@ -149,8 +149,8 @@ function HudGui.new()
 
 		local track = Instance.new("Frame")
 		track.AnchorPoint = Vector2.new(0, 0.5)
-		track.Position = UDim2.new(0, 20, 0.5, 0)
-		track.Size = UDim2.new(1, -20, 0.52, 0)
+		track.Position = UDim2.new(0, 14, 0.5, 0)
+		track.Size = UDim2.new(1, -14, 0.52, 0)
 		track.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
 		track.BorderSizePixel = 0
 		track.ClipsDescendants = true
@@ -168,7 +168,7 @@ function HudGui.new()
 		local badge = Instance.new("Frame")
 		badge.AnchorPoint = Vector2.new(0, 0.5)
 		badge.Position = UDim2.new(0, 0, 0.5, 0)
-		badge.Size = UDim2.new(0, 40, 0, 40) -- fixed 40x40, matches the reference's px badge exactly (stays circular)
+		badge.Size = UDim2.new(0, 28, 0, 28) -- smaller than before (was 40x40) so it clears the stamina bar
 		badge.BackgroundColor3 = def.top
 		badge.BorderSizePixel = 0
 		badge.Parent = row
@@ -176,7 +176,7 @@ function HudGui.new()
 		gradient(badge, def.top, def.bottom)
 		local badgeStroke = Instance.new("UIStroke")
 		badgeStroke.Color = Color3.new(1, 1, 1)
-		badgeStroke.Thickness = 3
+		badgeStroke.Thickness = 2
 		badgeStroke.Parent = badge
 		local badgeIcon = Instance.new("TextLabel")
 		badgeIcon.AnchorPoint = Vector2.new(0.5, 0.5)
