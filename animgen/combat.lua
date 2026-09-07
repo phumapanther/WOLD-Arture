@@ -9,7 +9,8 @@
 -- Run with:  node tools/run-luau.js animgen/combat.lua
 --
 -- Poses are R15 joint rotations. The three sequences:
---   Combat_Guard — looping stance: knees bent, both elbows tucked, fists up by the face. Held between punches.
+--   Combat_Guard — looping stance: both elbows tucked, fists up by the face. Arms/torso only, so the
+--   default walk and run keep driving the legs and the player still moves normally while guarding.
 --   Punch_Right / Punch_Left — from guard, one arm extends and the torso drives through, then snaps back to
 --   guard so the opposite side can follow immediately (the click-to-click alternating jab the user asked for).
 
@@ -46,26 +47,21 @@ local function keyframe(seq, time, s)
 	pose(rU, "RightLowerArm", s.rElbow)
 	local lU = pose(upper, "LeftUpperArm", s.lShoulder)
 	pose(lU, "LeftLowerArm", s.lElbow)
-	local rUL = pose(lower, "RightUpperLeg", s.rHip)
-	pose(rUL, "RightLowerLeg", s.rKnee)
-	local lUL = pose(lower, "LeftUpperLeg", s.lHip)
-	pose(lUL, "LeftLowerLeg", s.lKnee)
+	-- Legs are deliberately absent: without poses for them the default walk/run/idle animation keeps control
+	-- of the lower body, so the player moves normally while the guard only occupies the arms and upper torso.
 	kf.Parent = seq
 	return kf
 end
 
 -- The stance every punch starts and returns to.
 local GUARD = {
-	lowerTorso = CFrame.new(0, -0.75, 0) * CFrame.Angles(rad(-6), 0, 0),
+	-- No vertical offset and no leg rotation: the stance is arms-and-torso only so walking still reads normally.
+	lowerTorso = CFrame.new(),
 	waist      = CFrame.Angles(rad(-4), rad(16), 0),
 	rShoulder  = CFrame.Angles(rad(58), 0, rad(20)),
 	rElbow     = CFrame.Angles(rad(105), 0, 0),
 	lShoulder  = CFrame.Angles(rad(52), 0, rad(-24)),
 	lElbow     = CFrame.Angles(rad(100), 0, 0),
-	rHip       = CFrame.Angles(rad(34), 0, rad(6)),
-	rKnee      = CFrame.Angles(rad(52), 0, 0),
-	lHip       = CFrame.Angles(rad(31), 0, rad(-6)),
-	lKnee      = CFrame.Angles(rad(48), 0, 0),
 }
 
 local function copy(t, overrides)
@@ -82,7 +78,6 @@ guard.Priority = Enum.AnimationPriority.Action
 guard.Loop = true
 keyframe(guard, 0.0, GUARD)
 keyframe(guard, 0.9, copy(GUARD, {
-	lowerTorso = CFrame.new(0, -0.66, 0) * CFrame.Angles(rad(-5), 0, 0),
 	rElbow     = CFrame.Angles(rad(100), 0, 0),
 	lElbow     = CFrame.Angles(rad(95), 0, 0),
 }))
@@ -110,7 +105,6 @@ local function makePunch(name, side)
 	}))
 	-- extension: arm straightens, torso drives through, off hand stays up guarding
 	keyframe(seq, 0.16, copy(GUARD, {
-		lowerTorso = CFrame.new(0, -0.70, 0) * CFrame.Angles(rad(-8), 0, 0),
 		waist = CFrame.Angles(rad(-6), twist, 0),
 		[shoulderKey] = CFrame.Angles(rad(92), 0, isRight and rad(6) or rad(-6)),
 		[elbowKey] = CFrame.Angles(rad(4), 0, 0),
@@ -119,7 +113,6 @@ local function makePunch(name, side)
 	}))
 	-- brief hold so the hit reads on screen
 	keyframe(seq, 0.24, copy(GUARD, {
-		lowerTorso = CFrame.new(0, -0.72, 0) * CFrame.Angles(rad(-7), 0, 0),
 		waist = CFrame.Angles(rad(-5), twist * 0.85, 0),
 		[shoulderKey] = CFrame.Angles(rad(86), 0, isRight and rad(6) or rad(-6)),
 		[elbowKey] = CFrame.Angles(rad(14), 0, 0),
