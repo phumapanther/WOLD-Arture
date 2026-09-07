@@ -87,3 +87,21 @@ handler can get cut off mid-flight before it completes — confirmed as document
 
 **Fix:** `game:BindToClose()` now waits (capped at 30s, Roblox's own hard ceiling) for any in-flight
 `PlayerRemoving` save to actually finish before letting the server terminate. Commit `de9a04a`.
+
+## Third finding: a fast quit-and-rejoin still lost the position
+
+After the `BindToClose` fix, user tested again: quit via Roblox's own "ออก" button, rejoined within a few
+seconds, landed near the default spawn (not exactly `TempSpawn`'s coordinates, but close) instead of their real
+last position — confirmed via the `DebugCoords` corner readout, real numbers, not a guess.
+
+**Analysis:** this isn't a bug in the save/load logic itself — both were re-verified correct. It's a race this
+server cannot close on its own: a rejoin lands in a **new, separate server process**, which can call
+`GetSpawnPosition` and read the DataStore before the *old* server's leave-triggered save (disconnect detection
++ `PlayerRemoving` + the `SetAsync` call) has even started, let alone finished. Both legs take real wall-clock
+time; a fast-enough rejoin outruns them.
+
+**Mitigation (not a full fix — none is possible purely server-side for this race):** periodic autosave every
+30s, saving every player currently in the server, added per explicit user request. Bounds the loss to "at most
+~30s of movement" instead of the whole session. Commit `15f6438`. This is the third of three standard legs for
+this pattern (save-before-teleport for the in-game button, `PlayerRemoving`+`BindToClose` for real disconnects,
+periodic autosave for the race window neither can close).
