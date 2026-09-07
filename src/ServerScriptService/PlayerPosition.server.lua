@@ -107,10 +107,10 @@ if not ServerConfig.IsLobby then
 	-- (new server) can read the DataStore before the old server's leave-triggered save has even started, since
 	-- both the client's disconnect and the server's PlayerRemoving take some real time to fire. Not a fix for
 	-- that race (nothing server-side can be, since it's a different server), just bounds how much a session can
-	-- lose: at most ~30s of movement instead of the whole session.
+	-- lose: at most ~10s of movement instead of the whole session.
 	task.spawn(function()
 		while true do
-			task.wait(30)
+			task.wait(10)
 			for _, player in ipairs(Players:GetPlayers()) do
 				savePosition(player)
 			end
