@@ -17,6 +17,15 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 - ต้นแบบต้นไม้/พุ่ม/หิน: `node tools/run-luau.js mapgen/assets_setup.lua` (โหลดจาก Creator Store ตาม id ใน JSON เข้า ServerStorage.WOLD_Assets) ต้องรันก่อนข้อ 9 ถ้า place ใหม่
 - ข้อกำหนดสำคัญจากผู้ใช้: แมพต้องแก้มือได้ (Attribute Manual=true รอดจากการเจนซ้ำ) และมี hook ระบบเกม (แท็ก Tree/Rock/OreVein/Bush/FishingSpot/DigSpot/SearchPoint/RespawnPoint/Zone) ดู `docs/design/04-gameplay-hooks.md` ระบบเกมชุดแรกทำต่อหลังแมพ
 - เอกสารแบบ: `01-world-and-terrain.md`, `02-structures-and-generation.md` (มีส่วน 'ปรับผังหลังสนามทดสอบ'), `04-gameplay-hooks.md`; พิกัดทั้งหมดใน `world-layout.json`; แผนที่ `map-arture-v1.png` (render-map.py)
+
+**ระบบเกม (นอกแมพ):** สร้าง "เลือกช่อง+หน้าโหลด" (sub-project 6 จาก `04-gameplay-hooks.md`) เสร็จครบ 6 Task แล้ว
+- Spec: `docs/superpowers/specs/2026-09-06-channel-select-and-loading-design.md` แผน: `docs/superpowers/plans/2026-09-06-channel-select-and-loading.md`
+- โค้ด: `src/ServerScriptService/{ServerConfig.lua, Lobby/*}`, `src/ReplicatedStorage/{Remotes.lua, SpawnSelector.lua, UI/*}`, `src/StarterPlayerScripts/{ChannelSelectController,LoadingController}.client.lua`
+- ทดสอบใน Play ได้ครบยกเว้น Reserved Server/TeleportService จริง (บล็อกใน Studio เสมอ HTTP 403) — **เหลือ Task 7: publish จริงแล้วทดสอบเลือกช่อง/เทเลพอร์ตข้ามเซิร์ฟเวอร์ 2 บัญชี** ตามเช็คลิสต์ในแผน แล้วอัปเดตสถานะตรงนี้
+- **ต้องเปิด "Enable Studio Access to API Services" ใน Game Settings → Security** ถึงจะทดสอบ DataStore/MessagingService ใน Play ได้ (เปิดแล้วตอนนี้)
+- Rojo เชื่อมได้จริง แต่การเชื่อมต่อ (ทั้ง `rojo serve` process และปลั๊กอิน Studio) หลุดเงียบๆ ได้กลางเซสชัน โดยไม่มี error — ถ้าไฟล์ไม่ sync ให้ตรวจด้วย `script_read` เทียบกับไฟล์ local แล้วดันตรงผ่าน `multi_edit` (ลบ instance เดิมแล้วสร้างใหม่ด้วย `old_string: ""`) แทนการรอเชื่อมต่อใหม่
+- ระบบถัดไปตามลำดับ: sub-project 1 ข้อมูลผู้เล่น+วงจรชีวิต (เลือด/สตามินา/มานา, จุดเกิด, เซฟตำแหน่งล่าสุด) → 2 เคลื่อนไหว/อนิเมชัน → 3 ต่อสู้ → 4 ล้ม-ปั๊ม-ตาย → 5 เก็บเกี่ยว
+
 ผู้ใช้สั่งว่า "อ่านประวัติสนทนาเดิมทั้งหมด ใช้เป็นบริบท แต่อย่าเพิ่งสรุปจนกว่าจะถาม"
 หมายเหตุ: ไฟล์ประวัติมีแค่ส่วนวิเคราะห์ UI 16 หน้าจอ + UI Flow รายละเอียดระบบเศรษฐกิจ/รัฐฉบับเต็มยังไม่มีในไฟล์ ถ้าผู้ใช้หามาได้จะอยู่ใน `docs/`
 
