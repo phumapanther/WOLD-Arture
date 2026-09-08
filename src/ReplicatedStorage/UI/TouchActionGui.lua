@@ -8,6 +8,7 @@
 -- The roll/slide button is deliberately INERT for now (sub-project 4 implements the moves) — it renders and
 -- swaps its label, but presses do nothing.
 local Players = game:GetService("Players")
+local Responsive = require(script.Parent.Responsive)
 
 local TouchActionGui = {}
 TouchActionGui.__index = TouchActionGui
@@ -22,15 +23,15 @@ local ROLL_SIZE = JUMP_SIZE / 2 -- was JUMP_SIZE
 local EDGE_MARGIN = 30
 local GAP = 14
 
--- Monochrome, modern: near-black glass with a thin grey rim, rather than coloured buttons. The two actions
--- are told apart by size, position and glyph instead of by hue, which keeps them from competing with the
--- game world for attention.
-local ATTACK_COLOR = Color3.fromRGB(6, 6, 8)
-local ROLL_COLOR = Color3.fromRGB(10, 10, 12)
-local SLIDE_COLOR = Color3.fromRGB(26, 26, 30) -- slightly lighter so the ROLL -> SLIDE swap still reads
-local BUTTON_TRANSPARENCY = 0.4 -- see-through enough to read the world behind, dark enough to stay legible
+-- Black glass, exactly the lobby panel's colour and transparency (Responsive.Glass*), so the buttons look
+-- like the same material as the rest of the UI rather than a separate grey overlay. No greys and no hues:
+-- the two actions are told apart by size, position and glyph.
+local ATTACK_COLOR = Responsive.GlassColor
+local ROLL_COLOR = Responsive.GlassColor
+local SLIDE_COLOR = Responsive.GlassColor
+local BUTTON_TRANSPARENCY = Responsive.GlassTransparency
 local TEXT_LIGHT = Color3.fromRGB(232, 232, 236)
-local RIM = Color3.fromRGB(150, 152, 160)
+local RIM = Color3.fromRGB(120, 122, 132)
 
 local function circle(parent, size, color, glyph, glyphSize)
 	local btn = Instance.new("ImageButton")
@@ -45,19 +46,13 @@ local function circle(parent, size, color, glyph, glyphSize)
 	corner.CornerRadius = UDim.new(1, 0)
 	corner.Parent = btn
 
-	-- A soft top-to-bottom lift so the flat black reads as a raised control rather than a hole in the screen.
-	local sheen = Instance.new("UIGradient")
-	sheen.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(160, 160, 170))
-	sheen.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.93),
-		NumberSequenceKeypoint.new(1, 1),
-	})
-	sheen.Rotation = 90
-	sheen.Parent = btn
+	-- No sheen gradient: any lift toward white would stop the fill from matching the lobby panel exactly,
+	-- which is the whole point of sharing Responsive.Glass*. The rim alone gives the button its edge.
 
 	local stroke = Instance.new("UIStroke")
+	stroke.Name = "Rim"
 	stroke.Color = RIM
-	stroke.Transparency = 0.4
+	stroke.Transparency = 0.45
 	stroke.Thickness = 1.5
 	stroke.Parent = btn
 
@@ -145,9 +140,11 @@ function TouchActionGui:OnAttack(callback)
 end
 
 -- Roll becomes Slide while the player is sprinting. Presses are not wired to anything yet.
+-- Every button now shares one black, so the state change shows in the rim and label rather than the fill.
 function TouchActionGui:SetSprinting(sprinting)
 	self.rollLabel.Text = sprinting and "SLIDE" or "ROLL"
-	self.rollButton.BackgroundColor3 = sprinting and SLIDE_COLOR or ROLL_COLOR
+	local rim = self.rollButton:FindFirstChild("Rim")
+	if rim then rim.Transparency = sprinting and 0.1 or 0.45 end
 end
 
 function TouchActionGui:Show()

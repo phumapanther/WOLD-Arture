@@ -146,8 +146,10 @@ function ChannelSelectGui.new()
 	local bottomMargin = portrait and 150 or (Responsive.IsSmallScreen() and 96 or 140)
 	list.Size = UDim2.new(0.94, 0, 1, -TOP_BAR - bottomMargin)
 	list.Position = UDim2.new(0.5, 0, 0, TOP_BAR + headerDrop)
-	list.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
-	list.BackgroundTransparency = 0.45 -- glass panel: background image/gradient shows through instead of flat black
+	-- Glass panel: background image/gradient shows through instead of flat black. The touch action buttons
+	-- reuse these exact values (Responsive.Glass*) so the two surfaces read as one material.
+	list.BackgroundColor3 = Responsive.GlassColor
+	list.BackgroundTransparency = Responsive.GlassTransparency
 	list.BorderSizePixel = 0
 	list.ScrollBarThickness = 6
 	list.ScrollBarImageColor3 = ACCENT

@@ -73,4 +73,9 @@ function Responsive.OnViewportChanged(callback)
 	end)
 end
 
+-- The dark glass used by the lobby's channel panel. Shared so other surfaces (the touch action buttons) can
+-- match it exactly rather than each guessing at "dark and see-through" and drifting apart.
+Responsive.GlassColor = Color3.fromRGB(10, 10, 14)
+Responsive.GlassTransparency = 0.45
+
 return Responsive
