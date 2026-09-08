@@ -2,10 +2,9 @@
 -- prone body tilt, and the crawl animation. Presentation only: the server decides who is downed, for how long,
 -- and when the countdown ends (it runs its own timer; this one is only what the player reads on screen).
 --
--- The prone look is deliberately cosmetic. Physically rotating the character looks right but stops the player
--- moving almost entirely — measured 2.88 studs of travel down to 0.01, because the humanoid's mover can't
--- drive a rig whose orientation is pinned. Instead the humanoid stays upright (so walking works normally) and
--- only the visible body is pitched, by writing LowerTorso.Root.Transform each frame.
+-- The prone tilt is NOT done here any more. Writing LowerTorso.Root.Transform from this client only tilted the
+-- body locally, so everyone else saw the crawler standing upright. Vitals.lua now lays the body down
+-- server-side by swapping in a Motor6D it owns; this file is left with the screen and the animation.
 --
 -- See docs/superpowers/specs/2026-09-07-vitals-downed-design.md.
 local FORCE_SHOW_IN_STUDIO_FOR_TESTING = false -- ponytail: flip to preview this screen in Play; flip back before publishing
@@ -27,14 +26,9 @@ gui.gui.Parent = player:WaitForChild("PlayerGui")
 
 local downed = false
 local deadline = 0
-local proneConnection = nil
 local crawlTrack = nil
 
 local function stopProne()
-	if proneConnection then
-		proneConnection:Disconnect()
-		proneConnection = nil
-	end
 	if crawlTrack then crawlTrack:Stop(0.2) end
 	crawlTrack = nil
 end
@@ -42,9 +36,7 @@ end
 local function startProne()
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	local lowerTorso = character and character:FindFirstChild("LowerTorso")
-	local rootJoint = lowerTorso and lowerTorso:FindFirstChild("Root")
-	if not humanoid or not rootJoint then return end
+	if not humanoid then return end
 
 	-- Stock swim animations reused as the crawl: the stroke is exactly the face-down paddling motion, and it
 	-- only drives the arms, which is why the body tilt has to be applied separately below.
@@ -65,19 +57,6 @@ local function startProne()
 		if crawlTrack then crawlTrack:Play(0.2) end
 	end
 
-	-- Stepped is the binding that actually holds the tilt. Measured client-side against the swim animation:
-	-- Stepped gives uprightDot 0.01 (prone), while BindToRenderStep past RenderPriority.Character gives 1.00
-	-- (still standing) — the opposite of what the ordering docs suggest, so don't "fix" this to RenderStep.
-	proneConnection = RunService.Stepped:Connect(function()
-		-- NEGATIVE pitch puts the character face-DOWN. Positive lays it on its back (which is what the first
-		-- attempt did — the swim stroke then reads as backstroke rather than crawling).
-		rootJoint.Transform = rootJoint.Transform * CFrame.Angles(math.rad(-90), 0, 0)
-
-		-- The stroke always runs forward at full speed. An earlier version slowed it to 0.15x when the player
-		-- stopped, but a barely-moving swim stroke is exactly what treading water looks like — the thing this
-		-- animation was chosen to avoid. Stopping simply means the body stops travelling, not that the arms
-		-- start paddling on the spot.
-	end)
 end
 
 gui:OnRespawnRequested(function()

@@ -146,22 +146,83 @@ end
 -- Downed state
 --------------------------------------------------------------------------------
 
--- The prone look is cosmetic only, applied client-side: the humanoid stays upright so the engine's mover
--- still works. Physically rotating the character does look right but stops movement almost entirely
--- (measured: 2.88 studs of travel -> 0.01). Here we only slow the player, ground the capsule, stop jumping.
+-- Laying the body down, server-side so EVERY player sees it.
+--
+-- Three approaches that do NOT work, all measured:
+--   * Writing LowerTorso.Root.Transform on the owning client — the tilt is purely local, so other players see
+--     the crawler standing upright. This is what the user's screenshot caught.
+--   * Writing that Transform from the server — the client owns the character's physics and overwrites it.
+--   * Rotating the HumanoidRootPart — replicates, but a walking humanoid immediately rights itself.
+--
+-- The Root joint's own C0/C1 are read-only, so what works is REPLACING that Motor6D with an identical one we
+-- own, and pitching its C0. The humanoid stays upright underneath (so the engine's mover still drives
+-- movement normally — measured 92 studs of crawling), while the visible body lies flat.
+local PRONE_PITCH = math.rad(-90) -- negative is face-down; positive lays the character on its back
+
+local function rootJointOf(character)
+	local lowerTorso = character and character:FindFirstChild("LowerTorso")
+	return lowerTorso and lowerTorso:FindFirstChild("Root")
+end
+
+-- Swaps in a Motor6D we control, once, and remembers the upright C0 to restore later.
+local function ownedRootJoint(character)
+	local joint = rootJointOf(character)
+	if not joint then return nil end
+	if joint:GetAttribute("WOLD_Owned") then return joint end
+
+	local replacement = Instance.new("Motor6D")
+	replacement.Name = "Root"
+	replacement.Part0 = joint.Part0
+	replacement.Part1 = joint.Part1
+	replacement.C0 = joint.C0
+	replacement.C1 = joint.C1
+	replacement:SetAttribute("WOLD_Owned", true)
+	replacement:SetAttribute("WOLD_UprightC0", true)
+	replacement.Parent = joint.Parent
+	joint:Destroy()
+	return replacement
+end
+
+local UPRIGHT_C0 = {} -- [character] = the C0 to put back when standing up
+
+-- A body lying flat has arms, legs, torso and head all scraping the floor (measured: eleven parts touching),
+-- and their friction fights the humanoid's mover — crawling slowed to about 2 studs where 12 was expected.
+-- The root capsule alone is enough to stand on, so the visible limbs stop colliding while prone.
+local function setLimbCollision(character, collide)
+	for _, part in ipairs(character:GetChildren()) do
+		if part:IsA("BasePart") and part.Name ~= "HumanoidRootPart" then
+			part.CanCollide = collide
+		end
+	end
+end
+
 local function applyDownedPosture(player, downed)
 	local humanoid = humanoidOf(player)
-	if not humanoid then return end
+	local character = player.Character
+	if not humanoid or not character then return end
+
 	if downed then
 		humanoid.WalkSpeed = VitalsConfig.DownedWalkSpeed
 		humanoid.JumpPower = 0
 		humanoid.JumpHeight = 0
 		humanoid.HipHeight = VitalsConfig.DownedHipHeight
+		local joint = ownedRootJoint(character)
+		if joint then
+			UPRIGHT_C0[character] = UPRIGHT_C0[character] or joint.C0
+			joint.C0 = UPRIGHT_C0[character] * CFrame.Angles(PRONE_PITCH, 0, 0)
+		end
+		setLimbCollision(character, false)
 	else
 		humanoid.JumpPower = 50
 		humanoid.JumpHeight = 7.2
 		humanoid.HipHeight = 2
 		humanoid.WalkSpeed = 8
+		local joint = rootJointOf(character)
+		if joint and UPRIGHT_C0[character] then
+			joint.C0 = UPRIGHT_C0[character]
+		end
+		UPRIGHT_C0[character] = nil
+		setLimbCollision(character, true)
 	end
 end
 
