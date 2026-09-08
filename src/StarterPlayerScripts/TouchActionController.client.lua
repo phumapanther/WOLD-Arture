@@ -60,6 +60,13 @@ Remotes.CarryStateChanged.OnClientEvent:Connect(function(actor, event)
 	end
 end)
 
+-- The bag button drives InventoryController's BindableEvent, so touch and the I key share one path.
+gui:OnBag(function()
+	local pg = player:FindFirstChild("PlayerGui")
+	local toggle = pg and pg:FindFirstChild("WOLD_ToggleInventory")
+	if toggle then toggle:Fire() end
+end)
+
 gui:Show()
 gui:AnchorJumpButton()
 

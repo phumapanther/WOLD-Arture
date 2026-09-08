@@ -27,7 +27,7 @@ gui:SetBarFraction("hp", 1)
 gui:SetBarFraction("hunger", 1)
 gui:SetStaminaFraction(1)
 gui:SetArmorFraction(1) -- everyone starts in the bare starter armor, which reads full until it is chipped away
-gui:SetManaPips(3)
+gui:SetManaPips(3) -- real value arrives with the first VitalsUpdate below
 
 -- EXP bar: level and progress toward the next one.
 gui:SetExp(1, 0)
@@ -46,6 +46,7 @@ Remotes.VitalsUpdate.OnClientEvent:Connect(function(vitals)
 	gui:SetBarFraction("hunger", vitals.hunger)
 	gui:SetStaminaFraction(vitals.stamina)
 	gui:SetArmorFraction(vitals.armor)
+	gui:SetManaPips(vitals.mana or 0)
 end)
 
 gui:OnLobbyRequested(function()

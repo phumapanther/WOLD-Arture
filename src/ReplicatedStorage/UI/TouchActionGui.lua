@@ -84,7 +84,8 @@ function TouchActionGui.new()
 	local cluster = Instance.new("Frame")
 	cluster.Name = "Cluster"
 	cluster.AnchorPoint = Vector2.new(1, 1)
-	cluster.Position = UDim2.new(1, -EDGE_MARGIN, 1, -EDGE_MARGIN)
+	-- Shifted left to leave the corner for the bag/social column.
+	cluster.Position = UDim2.new(1, -(EDGE_MARGIN + ROLL_SIZE + GAP), 1, -EDGE_MARGIN)
 	cluster.Size = UDim2.fromOffset(ATTACK_SIZE, ATTACK_SIZE + GAP + ROLL_SIZE + GAP + ROLL_SIZE)
 	cluster.BackgroundTransparency = 1
 	cluster.Parent = gui
@@ -115,7 +116,27 @@ function TouchActionGui.new()
 	self.dropButton = drop
 	self.dropLabel = dropLabel
 
+	-- Bag: its own cluster hard against the bottom-right corner, to the RIGHT of the action cluster, so it
+	-- never moves as the drop button appears and disappears above.
+	local sideColumn = Instance.new("Frame")
+	sideColumn.Name = "SideColumn"
+	sideColumn.AnchorPoint = Vector2.new(1, 1)
+	sideColumn.Position = UDim2.new(1, -6, 1, -EDGE_MARGIN)
+	sideColumn.Size = UDim2.fromOffset(ROLL_SIZE, ROLL_SIZE)
+	sideColumn.BackgroundTransparency = 1
+	sideColumn.Parent = gui
+
+	local bag = circle(sideColumn, ROLL_SIZE, ROLL_COLOR, "BAG", 15)
+	bag.Name = "BagButton"
+	bag.AnchorPoint = Vector2.new(1, 1)
+	bag.Position = UDim2.new(1, 0, 1, 0)
+	self.bagButton = bag
+
 	return self
+end
+
+function TouchActionGui:OnBag(callback)
+	self.bagButton.MouseButton1Down:Connect(callback)
 end
 
 function TouchActionGui:OnDrop(callback)
@@ -145,7 +166,9 @@ function TouchActionGui:AnchorJumpButton()
 				-- กระโดดขยับมาด้านขวาเล็กน้อย" — it moves right relative to its old spot, since the attack
 				-- button now occupies the corner).
 				jump.AnchorPoint = Vector2.new(1, 1)
-				jump.Position = UDim2.new(1, -(EDGE_MARGIN + ATTACK_SIZE + GAP), 1,
+				-- Left of the attack button, which itself now sits left of the bag column — so the offset has
+				-- to clear both, or the jump button lands underneath the attack button.
+				jump.Position = UDim2.new(1, -(EDGE_MARGIN + ROLL_SIZE + GAP + ATTACK_SIZE + GAP), 1,
 					-(EDGE_MARGIN + (ATTACK_SIZE - JUMP_SIZE) / 2))
 				return
 			end
