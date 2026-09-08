@@ -10,7 +10,7 @@ VitalsConfig.MaxStamina = 100
 -- Mana is spent in whole pips, not a smooth bar: the HUD draws three gems and every weapon skill costs one,
 -- so the value is the number of pips rather than a 0-100 pool.
 VitalsConfig.MaxMana = 3
-VitalsConfig.ManaRegenSeconds = 12 -- seconds to regain one pip
+VitalsConfig.ManaRegenSeconds = 24 -- seconds to regain one pip
 -- The bar is drawn against the armor you are WEARING, not an absolute ceiling: the bare starter armor should
 -- read full at 20/20, not a fifth full at 20/100. Better armor raises this along with the value.
 VitalsConfig.MaxArmor = 20

@@ -85,11 +85,15 @@ function InventoryGui.new()
 
 	-- The panel itself. Sized in SCALE so it can never exceed a phone screen, with a max size so it does not
 	-- become a billboard on a desktop monitor.
+	-- A phone gets nearly the whole screen: at 0.72x0.78 of an 844x390 landscape phone the grid's square
+	-- cells came out 20px a side, which is smaller than a fingertip. Desktop keeps the smaller panel, since
+	-- there a full-screen bag would be a billboard.
+	local small = Responsive.IsSmallScreen()
 	local panel = Instance.new("Frame")
 	panel.Name = "Panel"
 	panel.AnchorPoint = Vector2.new(0.5, 0.5)
 	panel.Position = UDim2.fromScale(0.5, 0.5)
-	panel.Size = UDim2.fromScale(0.72, 0.78)
+	panel.Size = small and UDim2.fromScale(0.94, 0.94) or UDim2.fromScale(0.72, 0.78)
 	panel.BackgroundColor3 = PANEL_BG
 	panel.BackgroundTransparency = 0.18 -- "โปร่งใสเล็กน้อย"
 	panel.BorderSizePixel = 0
@@ -98,7 +102,8 @@ function InventoryGui.new()
 	stroke(panel, ACCENT, 0.55, 1.5)
 	local panelSize = Instance.new("UISizeConstraint")
 	panelSize.MaxSize = Vector2.new(760, 560)
-	panelSize.MinSize = Vector2.new(280, 220)
+	-- No MinSize on a phone: a floor taller than the screen is what pushed the panel off the bottom edge.
+	panelSize.MinSize = small and Vector2.new(240, 180) or Vector2.new(280, 220)
 	panelSize.Parent = panel
 	self.panel = panel
 
@@ -191,8 +196,12 @@ function InventoryGui.new()
 	--------------------------------------------------------------------------
 	local grid = Instance.new("Frame")
 	grid.Name = "Slots"
-	grid.Position = UDim2.new(0.3, 0, 0, 62)
-	grid.Size = UDim2.new(0.68, -18, 1, -110)
+	-- Chrome above and below the grid is fixed pixels, which eats half of a short phone panel; trim it there
+	-- so the square cells keep a usable size.
+	local chromeTop = small and 46 or 62
+	local chromeTotal = small and 74 or 110
+	grid.Position = UDim2.new(0.3, 0, 0, chromeTop)
+	grid.Size = UDim2.new(0.68, -18, 1, -chromeTotal)
 	grid.BackgroundTransparency = 1
 	grid.Parent = panel
 
@@ -274,7 +283,9 @@ function InventoryGui.new()
 	hint.Position = UDim2.new(0.3, 0, 1, -18)
 	hint.Size = UDim2.new(0.6, 0, 0, 16)
 
-	Responsive.Scale(panel, 0.75)
+	-- On a phone the panel is already sized as a fraction of the viewport, so the width-driven scale would
+	-- shrink it a second time; keep it near 1 there and let the layout do the adapting.
+	Responsive.Scale(panel, small and 0.95 or 0.75)
 
 	return self
 end

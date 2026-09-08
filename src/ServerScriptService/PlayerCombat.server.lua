@@ -57,10 +57,9 @@ local function wearWeapon(player)
 	if not item or not entry or not entry.durability then return end
 	entry.durability -= CombatConfig.DurabilityPerSwing
 	if entry.durability <= 0 then
-		local state = Inventory.Get(player)
-		if state then state.equipped.weapon = nil end
-		Remotes.EquipmentChanged:FireAllClients(player, nil,
-			state and state.equipped.armor and state.equipped.armor.id or nil)
+		-- Through Inventory rather than clearing the slot here: doing it by hand skipped OnWeaponChanged, so
+		-- the broken weapon's model stayed in the player's hand while the animations fell back to fists.
+		Inventory.BreakEquipped(player, "weapon")
 	end
 	Inventory.Send(player)
 end

@@ -214,6 +214,38 @@ function Inventory.Equip(player, index)
 	return true
 end
 
+-- Destroys the equipped piece outright (worn to nothing). Unlike Unequip it does NOT go back in the bag,
+-- and unlike hand-rolled clearing it goes through broadcastEquipment, so the model actually leaves the hand.
+function Inventory.BreakEquipped(player, kind)
+	local state = States[player]
+	if not state or not state.equipped[kind] then return false end
+	state.equipped[kind] = nil
+	broadcastEquipment(player, state)
+	return true
+end
+
+-- Restores every worn piece the player owns -- equipped and bagged -- to its catalog maximum. Returns false
+-- when nothing was actually damaged, so the caller can decline to spend the repair item.
+function Inventory.RepairAll(player)
+	local state = States[player]
+	if not state then return false end
+
+	local repaired = false
+	local function restore(entry)
+		local item = entry and ItemCatalog.Get(entry.id)
+		local full = item and (item.maxDurability or item.armor)
+		if not full or (entry.durability or full) >= full then return end
+		entry.durability = full
+		repaired = true
+	end
+
+	for _, entry in pairs(state.equipped) do restore(entry) end
+	for i = 1, InventoryConfig.SlotCount do restore(state.slots[i]) end
+
+	if repaired then Inventory.Send(player) end
+	return repaired
+end
+
 function Inventory.Unequip(player, kind)
 	local state = States[player]
 	local entry = state and state.equipped[kind]

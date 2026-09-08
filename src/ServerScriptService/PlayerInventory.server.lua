@@ -158,10 +158,9 @@ Remotes.RequestUseItem.OnServerEvent:Connect(function(player, index)
 	elseif use.stat == "mana" then
 		Vitals.AddMana(player, use.amount)
 	elseif use.stat == "repair" then
-		-- The repair hammer restores the equipped armor rather than healing the player.
-		local armorItem, entry = Inventory.EquippedArmor(player)
-		if not armorItem or not entry then return end -- nothing to repair: don't consume the hammer
-		entry.durability = armorItem.armor
+		-- The repair hammer restores EVERYTHING the player owns to full: what they are wearing and wielding,
+		-- plus every worn piece sitting in the bag. Refuse (and keep the hammer) when nothing needs it.
+		if not Inventory.RepairAll(player) then return end
 		Vitals.SyncArmorFromEquipment(player)
 	end
 
