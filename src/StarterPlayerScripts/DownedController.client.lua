@@ -59,9 +59,8 @@ local function startProne()
 			track.Looped = true
 			return track
 		end
-		-- Only the forward stroke is used. The stock "swim idle" is a treading-water pose — upright, paddling on
-		-- the spot — which is not what crawling should look like; when the player stops we simply slow this
-		-- same horizontal stroke down instead of switching to it.
+		-- Only the forward stroke is used, always at full speed. The stock "swim idle" is a treading-water pose
+		-- — upright, paddling on the spot — which is not what crawling should look like.
 		crawlTrack = load(VitalsConfig.CrawlAnimation)
 		if crawlTrack then crawlTrack:Play(0.2) end
 	end
@@ -74,12 +73,10 @@ local function startProne()
 		-- attempt did — the swim stroke then reads as backstroke rather than crawling).
 		rootJoint.Transform = rootJoint.Transform * CFrame.Angles(math.rad(-90), 0, 0)
 
-		-- Stroke at full speed while dragging forward, and almost still when stopped — the arms keep a slight
-		-- motion so the body doesn't read as a frozen prop.
-		if crawlTrack then
-			local moving = humanoid.MoveDirection.Magnitude > 0.1
-			crawlTrack:AdjustSpeed(moving and 1 or 0.15)
-		end
+		-- The stroke always runs forward at full speed. An earlier version slowed it to 0.15x when the player
+		-- stopped, but a barely-moving swim stroke is exactly what treading water looks like — the thing this
+		-- animation was chosen to avoid. Stopping simply means the body stops travelling, not that the arms
+		-- start paddling on the spot.
 	end)
 end
 

@@ -42,6 +42,46 @@ Players.PlayerAdded:Connect(function(player)
 	end
 end)
 
+-- Rebroadcast on a timer so the counts go stale by at most this long. Without it the list was only ever sent
+-- once, on join, so a server filling up while you sat on the menu still showed empty.
+local REFRESH_SECONDS = 5
+
+local function broadcast()
+	local data = snapshot()
+	for _, player in ipairs(Players:GetPlayers()) do
+		Remotes.ChannelList:FireClient(player, data)
+	end
+end
+
+task.spawn(function()
+	while true do
+		task.wait(REFRESH_SECONDS)
+		if #Players:GetPlayers() > 0 then
+			for mode in pairs(FIXED_CHANNELS) do
+				ChannelRegistry.RequestFreshData(mode)
+			end
+			broadcast()
+		end
+	end
+end)
+
+-- The refresh button asks for an immediate update rather than waiting out the timer. Rate-limited per player
+-- so holding it down cannot spam the cross-server data request.
+local lastManualRefresh = {} -- [player] = os.clock()
+Remotes.RequestChannelRefresh.OnServerEvent:Connect(function(player)
+	local now = os.clock()
+	if lastManualRefresh[player] and now - lastManualRefresh[player] < 1 then return end
+	lastManualRefresh[player] = now
+	for mode in pairs(FIXED_CHANNELS) do
+		ChannelRegistry.RequestFreshData(mode)
+	end
+	Remotes.ChannelList:FireClient(player, snapshot())
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+	lastManualRefresh[player] = nil
+end)
+
 -- Real teleport failures (server unreachable, and — always, in Studio — "there is no second server to reach")
 -- are NOT thrown as Luau errors; TeleportToPrivateServer returns normally and Roblox reports the failure later
 -- via this event instead. The pcall in the handler below only catches synchronous validation errors.

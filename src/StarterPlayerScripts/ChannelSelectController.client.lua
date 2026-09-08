@@ -22,6 +22,13 @@ pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+-- Lock the lobby to landscape on phones and tablets. The channel rows are a wide strip — name, avatar
+-- gallery, then the count and JOIN — and portrait squeezes all of that into roughly half the width.
+-- LandscapeSensor rather than LandscapeLeft so the device can still flip between the two landscape
+-- orientations. Joining a channel teleports to a new server, which starts a fresh client with the player's
+-- own preference back, so nothing needs restoring here.
+playerGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor
+
 -- The GUI branches on portrait vs landscape at BUILD time (rows and the header are arranged differently, not
 -- merely scaled), so rotating the phone has to rebuild it. `gui` is therefore reassigned rather than captured:
 -- every handler below goes through this upvalue, and `lastSnapshot` replays the channel data into the new
@@ -102,6 +109,10 @@ function buildGui()
 	local old = gui
 	gui = ChannelSelectGui.new()
 	gui:OnJoin(onJoin)
+	gui:OnRefreshRequested(function()
+		gui:FlashRefresh()
+		Remotes.RequestChannelRefresh:FireServer()
+	end)
 	gui.gui.Parent = playerGui
 	gui:Show()
 	if locked then gui:Lock() end

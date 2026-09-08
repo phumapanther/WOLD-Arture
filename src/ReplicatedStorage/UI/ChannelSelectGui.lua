@@ -135,6 +135,24 @@ function ChannelSelectGui.new()
 		self.tabs[mode] = btn
 	end
 
+	-- Manual refresh. The list also rebroadcasts every few seconds on its own; this is for when you want to
+	-- know right now whether a server just freed up.
+	local refreshButton = Instance.new("TextButton")
+	refreshButton.Name = "RefreshButton"
+	refreshButton.AnchorPoint = Vector2.new(1, 0)
+	refreshButton.Size = UDim2.new(0, portrait and 92 or 104, 0, portrait and 30 or 34)
+	refreshButton.Position = portrait and UDim2.new(1, -24, 0, TOP_BAR + 20) or UDim2.new(1, -24, 0, TOP_BAR + 84)
+	refreshButton.BackgroundColor3 = GLASS
+	refreshButton.BackgroundTransparency = 0.82
+	refreshButton.Font = Enum.Font.SourceSansBold
+	refreshButton.TextSize = portrait and 14 or 15
+	refreshButton.TextColor3 = TEXT_LIGHT
+	refreshButton.Text = "รีเฟรช"
+	refreshButton.Parent = root
+	corner(refreshButton, UDim.new(1, 0))
+	glassStroke(refreshButton, 0.7)
+	self.refreshButton = refreshButton
+
 	-- channel list — scale-based on every axis (including height) so it fills whatever's left below the header
 	-- instead of a fixed 560px, and AutomaticCanvasSize means it never needs a manually-computed canvas height.
 	local list = Instance.new("ScrollingFrame")
@@ -272,6 +290,8 @@ function ChannelSelectGui.new()
 		joinButton.Text = "JOIN"
 		joinButton.Parent = row
 		corner(joinButton, UDim.new(0, 10))
+		-- Held so SetChannelData can recolour it: the gradient paints over BackgroundColor3, so setting the
+		-- background red for a FULL server left the button looking green.
 		local joinGradient = Instance.new("UIGradient")
 		joinGradient.Color = ColorSequence.new(Color3.fromRGB(66, 196, 124), Color3.fromRGB(38, 150, 90))
 		joinGradient.Rotation = 90
@@ -281,6 +301,7 @@ function ChannelSelectGui.new()
 		end)
 
 		self.rows.Roleplay[channel] = {
+			joinGradient = joinGradient,
 			frame = row, countLabel = countLabel, joinButton = joinButton, statusLabel = statusLabel, avatars = avatars,
 		}
 	end
@@ -341,12 +362,30 @@ function ChannelSelectGui:OnJoin(callback)
 	self.onJoin = callback
 end
 
+function ChannelSelectGui:OnRefreshRequested(callback)
+	self.refreshButton.Activated:Connect(callback)
+end
+
+-- Brief feedback so a press that finds no change still looks like it did something.
+function ChannelSelectGui:FlashRefresh()
+	local button = self.refreshButton
+	button.Text = "กำลังรีเฟรช..."
+	task.delay(0.6, function()
+		if button.Parent then button.Text = "รีเฟรช" end
+	end)
+end
+
 function ChannelSelectGui:SetChannelData(mode, channel, data)
 	local row = self.rows[mode] and self.rows[mode][channel]
 	if not row then return end
 	row.countLabel.Text = data.count .. "/" .. CAP
 	row.joinButton.Text = data.full and "FULL" or "JOIN"
 	row.joinButton.BackgroundColor3 = data.full and Color3.fromRGB(200, 60, 50) or Color3.fromRGB(52, 178, 108)
+	if row.joinGradient then
+		row.joinGradient.Color = data.full
+			and ColorSequence.new(Color3.fromRGB(224, 82, 70), Color3.fromRGB(168, 44, 36))
+			or ColorSequence.new(Color3.fromRGB(66, 196, 124), Color3.fromRGB(38, 150, 90))
+	end
 	row.joinButton.Active = not data.full and not self._locked
 	for i, icon in ipairs(row.avatars) do
 		icon.Visible = i <= data.count

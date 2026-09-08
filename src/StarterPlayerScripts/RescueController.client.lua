@@ -121,7 +121,9 @@ Players.PlayerRemoving:Connect(removePrompts)
 local UserInputService = game:GetService("UserInputService")
 local carryingSomeone = false
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
-	if gameProcessed or not carryingSomeone then return end
+	-- Deliberately ignores gameProcessed: while carrying someone, that player's own "อุ้ม" ProximityPrompt is
+	-- still in range and also bound to F, so it marks the key as consumed and the drop never fired.
+	if not carryingSomeone then return end
 	if input.KeyCode == Enum.KeyCode.F then
 		Remotes.RequestDrop:FireServer()
 	end
@@ -140,6 +142,8 @@ Remotes.CarryStateChanged.OnClientEvent:Connect(function(actor, event, target)
 		if actor == player then
 			carryingSomeone = true
 			if tracks.holder then tracks.holder:Play(0.2) end
+			-- Someone already on your back should not still be offering "ชุบ"/"อุ้ม".
+			removePrompts(target)
 		end
 		if target == player then
 			-- We are the one being carried: play the ride-along pose on our own rig.
@@ -154,6 +158,12 @@ Remotes.CarryStateChanged.OnClientEvent:Connect(function(actor, event, target)
 		if actor == player then
 			carryingSomeone = false
 			if tracks.holder then tracks.holder:Stop(0.2) end
+			-- Set down and still downed: the prompts come back so they can be picked up or revived again.
+			if target and target:GetAttribute("WOLD_Downed") then
+				task.delay(0.3, function()
+					if target.Parent and target:GetAttribute("WOLD_Downed") then addPrompts(target) end
+				end)
+			end
 		end
 		if target == player and heldTracks[player] then
 			heldTracks[player]:Stop(0.2)
