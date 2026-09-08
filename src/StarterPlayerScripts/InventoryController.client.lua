@@ -9,6 +9,7 @@ end
 if workspace:GetAttribute("IsLobby") then return end
 
 local Players = game:GetService("Players")
+local ContextActionService = game:GetService("ContextActionService")
 local UserInputService = game:GetService("UserInputService")
 local InventoryGui = require(game.ReplicatedStorage.UI.InventoryGui)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
@@ -31,6 +32,7 @@ local function toggle()
 		gui:Hide()
 	else
 		gui:Render(latest)
+		gui:GuardAgainstOpeningTap()
 		gui:Show()
 	end
 end
@@ -42,11 +44,19 @@ bindable.Name = "WOLD_ToggleInventory"
 bindable.Parent = player:WaitForChild("PlayerGui")
 bindable.Event:Connect(toggle)
 
+-- I is bound through ContextActionService rather than watched through UserInputService, because I and O are
+-- Roblox's built-in camera zoom keys: pressing I opened the bag AND zoomed the camera in. Sinking the action
+-- consumes the key before the camera sees it, and leaves zooming on the mouse wheel untouched.
+ContextActionService:BindAction("WOLD_ToggleInventory", function(_, inputState)
+	if inputState == Enum.UserInputState.Begin then
+		toggle()
+	end
+	return Enum.ContextActionResult.Sink
+end, false, Enum.KeyCode.I)
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.I then
-		toggle()
-	elseif input.KeyCode == Enum.KeyCode.Escape and gui:IsOpen() then
+	if input.KeyCode == Enum.KeyCode.Escape and gui:IsOpen() then
 		gui:Hide()
 	end
 end)

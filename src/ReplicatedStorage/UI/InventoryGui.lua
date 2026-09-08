@@ -306,7 +306,18 @@ function InventoryGui:OnEquipSlotClicked(callback) self.onEquipSlotClicked = cal
 function InventoryGui:OnSortRequested(callback) self.sortButton.Activated:Connect(callback) end
 function InventoryGui:OnCloseRequested(callback)
 	self.closeButton.Activated:Connect(callback)
-	self.backdrop.Activated:Connect(callback)
+	-- The backdrop ignores any release that belongs to the tap which opened the panel. Without this a single
+	-- mobile tap opened the bag on press (the BAG button fires on MouseButton1Down) and closed it again on
+	-- release, so the panel appeared to do nothing at all.
+	self.backdrop.Activated:Connect(function()
+		if os.clock() < (self._ignoreBackdropUntil or 0) then return end
+		callback()
+	end)
+end
+
+-- Called by the controller when it opens the panel, so the opening tap's own release cannot close it.
+function InventoryGui:GuardAgainstOpeningTap()
+	self._ignoreBackdropUntil = os.clock() + 0.35
 end
 
 function InventoryGui:IsOpen() return self.gui.Enabled end
