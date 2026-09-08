@@ -51,6 +51,13 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 - ทดสอบใน Play ผ่าน 22/22 (เกราะ/invuln/ล้ม/Recover/จมน้ำ/หิว 1800 วิ/อดตาย 120 วิ/ตก 8-30-70 studs/void/ท่าคลาน) — **เหลือทดสอบจริงหลัง publish: จอมืด+นับถอยหลัง+ปุ่มเกิดใหม่, เสียงต่อยโดน, กระพริบตอนเกิดใหม่, ต่อยกันจริง 2 บัญชี**
 - ถัดไป: 3b ชุบ/อุ้มคนล้ม (แยก spec) → 4 กลิ้ง/สไลด์ + ปุ่มมือถือ → 5 เก็บเกี่ยว
 
+**sub-project 3b (ชุบ/อุ้มคนล้ม) — สเปกอนุมัติแล้ว 2026-09-08 ยังไม่เขียนโค้ด** `docs/superpowers/specs/2026-09-08-revive-carry-design.md`
+- ตัวเลขที่ผู้ใช้ยืนยัน: ปั๊มกดค้าง 8 วิ ฟื้นมา 30% เลือด / **นับถอยหลัง 10 นาทีเดินต่อตลอด** ไม่หยุดทั้งตอนถูกอุ้มและตอนโดนปั๊ม / ปุ่มใช้ `ProximityPrompt` ของ Roblox (ได้วงแหวนกดค้าง + มือถือ + จอย ฟรี ไม่ต้องเพิ่มปุ่มใน `TouchActionGui`) ระยะ 7 studs / **คนอุ้มทำได้ทุกอย่างเหมือนเดิม** (เดิน วิ่ง กระโดด ต่อยมือเปล่า) ต่างแค่วิ่งกินสตามินา 2 เท่า
+- โครง: `PlayerRevive.server.lua` ใหม่ (เจ้าของ state ทั้งหมด) + `ReviveController.client.lua` ใหม่ + `Remotes.ReviveStateChanged` (ทรงเดียวกับ `CombatStateChanged`) + `Vitals` เพิ่ม `DownedChanged` BindableEvent กับตัวคูณสตามินา — `Vitals.Recover(player, 0.3)` ใช้ได้ตามที่ออกแบบไว้เดิม ไม่ต้องแก้
+- **กับดักที่ต้องระวังตอนเขียน:** ท่าคลานของ `DownedController` เขียน `LowerTorso.Root.Transform` ทุกเฟรมหลัง animator → ทับ `Carry_Held` ทั้งท่า ต้องหยุดเขียนตอนถูกอุ้ม (คืน HipHeight = 2 ด้วย); การอุ้มต้องครบ 4 อย่าง Motor6D + `PlatformStand` + CollisionGroup + `SetNetworkOwner(คนอุ้ม)` ขาดอันไหนก็ดูเหมือนบั๊ก; ยกเลิก hold ของ ProximityPrompt จากฝั่ง server ทำตรงๆ ไม่ได้ ต้อง `Enabled=false` แล้วเปิดกลับ
+- ค้างไว้: กลิ้ง/สไลด์ตอนอุ้มคนอยู่ — ผู้ใช้ตอบ "ทำได้เหมือนเดิมทุกอย่าง" สเปกเลยอนุญาต แต่ยังไม่มีท่าให้เทส ค่อยตัดสินตอน sub-project 4
+- ทดสอบต้องใช้ 2 ผู้เล่น (Studio 2-player local) และ ProximityPrompt hold จำลองไม่ได้ (VirtualInputManager ถูกบล็อก) → เรียก handler ฝั่ง server ตรงๆ
+
 **อนิเมชัน 3b/4 (2026-09-08) — สร้าง KeyframeSequence ครบ 6 ท่าเข้า `ServerStorage.WOLD_Animations` แล้ว รอผู้ใช้ดูท่า/จูนองศา ยังไม่ publish และยังไม่มีโค้ดระบบ** (ท่าทั้งหมดผู้ใช้บรรยายมาเอง)
 - `animgen/movement.lua` → `Roll_Forward` (ย่อเข่าลึก ก้มตัวติดขา แล้วม้วนหน้า 1 รอบ), `Slide_Enter`/`Slide_Hold` (เอนหลัง 45° ขาข้างหนึ่งชันเข่า อีกข้างเหยียดตรง แขนกางสองข้าง เอียงไปทางขาที่งอ — สลับข้างด้วยค่าคงที่ `BENT_SIDE`)
 - `animgen/revive.lua` → `CPR_Loop` (นั่งทับส้น เข่าติดพื้น ก้มหน้า แขนตรงประสานด้านหน้า ปั๊ม 0.55 วิ/ครั้ง ≈110 ครั้ง/นาที มี KeyframeMarker `Beat` ให้ `GetMarkerReachedSignal` ผูกเสียง/หัวใจบน HUD ตรงจังหวะ), `Carry_Held` + `Carry_Holder` (อุ้มขี่หลังแบบกระเป๋า ไม่ใช่พาดบ่า)
