@@ -21,11 +21,12 @@ local PREFABS = ReplicatedStorage:WaitForChild("WOLD_Weapons", 20)
 -- DOWN; it has to be flipped 180 degrees for the blade to stand up, then leaned forward.
 local BLADE_UP = CFrame.Angles(math.rad(180), 0, 0)
 local GRIP = {
-	-- Held between both hands in front of the chest rather than clipped to one hand, so it sits centred.
-	-- Raised (0.2 -> 1.1) so the hilt sits at chest height rather than at the waist, and the lean is NEGATIVE
-	-- because it is applied after BLADE_UP's 180-degree flip, which reverses it: +20 tipped the blade back
-	-- into the character's face.
-	Sword = CFrame.new(0, 1.1, -1.6) * BLADE_UP * CFrame.Angles(math.rad(-20), 0, 0),
+	-- Gripped in the right hand, by the HANDLE. The joint drives the PrimaryPart, which is the Blade, and the
+	-- Handle sits 2.0 studs along the blade's local +Y — so the offset has to pull the model back by that much
+	-- or the palm ends up holding the blade (measured: handle 3.2 studs from the hand, blade only 1.2).
+	-- BLADE_UP flips the model so the point stands up, and the lean is negative because it is applied after
+	-- that flip, which reverses it.
+	Sword = CFrame.new(0, -0.3, 0) * BLADE_UP * CFrame.Angles(math.rad(-20), 0, 0) * CFrame.new(0, -2.0, 0),
 	Bow = CFrame.new(0, -0.2, 0.3) * CFrame.Angles(math.rad(-90), math.rad(90), 0),
 	-- The staff is a single part with no separate hilt, so it has no wrong end to flip: leaving it upright
 	-- puts its ornamented head at the top, which is the way a staff is carried.
@@ -36,9 +37,9 @@ local GRIP = {
 }
 -- Which body part each weapon joints to. Anything not listed here is held in the hand.
 local ATTACH_TO = {
+	-- The spellbook is the only one that floats: it hangs off the chest between the open hands. Everything
+	-- else is gripped, so it goes to the hand (the default) and moves with it under animation.
 	Spellbook = "UpperTorso",
-	-- Two-handed: the blade belongs between the hands, not clipped to the right one.
-	Sword = "UpperTorso",
 	Staff = "UpperTorso",
 }
 local DEFAULT_GRIP = CFrame.new(0, -1, 0) * CFrame.Angles(math.rad(-90), 0, 0)
