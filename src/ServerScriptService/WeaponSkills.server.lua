@@ -13,6 +13,7 @@ local Debris = game:GetService("Debris")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
+local StatusEffects = require(game.ServerScriptService.StatusEffects)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
@@ -101,20 +102,48 @@ function Skills.ScatterShot(player)
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = { character }
 
-	-- Five arrows fanned across 50 degrees. Raycasts, not projectiles: they cannot be outrun on a laggy
-	-- connection and they cost nothing to simulate.
+	-- Five arrows fanned across 50 degrees. Real travelling parts rather than instant raycasts, so the spread
+	-- is something the player can actually see leave the bow.
 	local hitAlready = {}
 	for i = -2, 2 do
 		local angle = math.rad(i * 12.5)
 		local dir = CFrame.Angles(0, angle, 0):VectorToWorldSpace(forward)
-		local result = workspace:Raycast(hrp.Position + Vector3.new(0, 1.5, 0), dir * 90, params)
-		if result and result.Instance then
-			local victim = Players:GetPlayerFromCharacter(result.Instance.Parent)
-			if victim and victim ~= player and not hitAlready[victim] and not Vitals.IsInvulnerable(victim) then
-				hitAlready[victim] = true
-				Vitals.ApplyDamage(victim, 14, "combat")
+		local origin = hrp.Position + Vector3.new(0, 1.5, 0) + dir * 2
+
+		local arrow = Instance.new("Part")
+		arrow.Name = "WOLD_Projectile"
+		arrow.Anchored = true
+		arrow.CanCollide = false
+		arrow.CanQuery = false
+		arrow.Size = Vector3.new(0.18, 0.18, 2.2)
+		arrow.Color = Color3.fromRGB(222, 198, 152)
+		arrow.Material = Enum.Material.Wood
+		arrow.CFrame = CFrame.lookAt(origin, origin + dir)
+		arrow.Parent = workspace
+		Debris:AddItem(arrow, 1.2)
+
+		task.spawn(function()
+			local travelled = 0
+			while arrow.Parent and travelled < 70 do
+				local dt = task.wait()
+				local step = dir * (110 * dt)
+				local result = workspace:Raycast(arrow.Position, step, params)
+				if result then
+					local victim = Players:GetPlayerFromCharacter(result.Instance.Parent)
+					if victim and victim ~= player and not hitAlready[victim]
+						and not Vitals.IsInvulnerable(victim) then
+						hitAlready[victim] = true
+						Vitals.ApplyDamage(victim, 14, "combat")
+						StatusEffects.Knockdown(victim, 3)
+					end
+					arrow:Destroy()
+					return
+				end
+				arrow.CFrame = arrow.CFrame + step
+				travelled += step.Magnitude
 			end
-		end
+			if arrow.Parent then arrow:Destroy() end
+		end)
 	end
 	return true
 end
@@ -125,8 +154,43 @@ function Skills.GroupHeal(player)
 	if not hrp then return false end
 
 	Remotes.SkillUsed:FireAllClients(player, "GroupHeal")
+
+	-- A visible ring of light so allies can see the heal reach them, rather than health simply changing.
+	local RADIUS = 24
+	local aura = Instance.new("Part")
+	aura.Name = "WOLD_HealAura"
+	aura.Shape = Enum.PartType.Ball
+	aura.Anchored = true
+	aura.CanCollide = false
+	aura.CanQuery = false
+	aura.Material = Enum.Material.ForceField
+	aura.Color = Color3.fromRGB(120, 236, 180)
+	aura.Transparency = 0.35
+	aura.Size = Vector3.new(2, 2, 2)
+	aura.CFrame = CFrame.new(hrp.Position)
+	aura.Parent = workspace
+	Debris:AddItem(aura, 1.2)
+
+	local light = Instance.new("PointLight")
+	light.Color = aura.Color
+	light.Range = RADIUS
+	light.Brightness = 3
+	light.Parent = aura
+
+	-- Expand to the heal's real radius, so the ring shows exactly who was in range.
+	task.spawn(function()
+		local t0 = os.clock()
+		while aura.Parent and os.clock() - t0 < 0.6 do
+			local t = (os.clock() - t0) / 0.6
+			aura.Size = Vector3.new(1, 1, 1) * (2 + (RADIUS * 2 - 2) * t)
+			aura.Transparency = 0.35 + 0.6 * t
+			task.wait()
+		end
+		if aura.Parent then aura:Destroy() end
+	end)
+
 	Vitals.Heal(player, 35)
-	for _, ally in ipairs(playersNear(hrp.Position, 24, player)) do
+	for _, ally in ipairs(playersNear(hrp.Position, RADIUS, player)) do
 		Vitals.Heal(ally, 35)
 	end
 	return true

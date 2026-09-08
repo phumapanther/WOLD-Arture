@@ -53,7 +53,9 @@ CombatConfig.Weapons = {
 		idleTimeout = 4,
 		attacks = {
 			{ animation = "rbxassetid://73671392887806", damage = 16, windup = 0.15, active = 0.05, recovery = 0.45, range = 0, -- Bow_Shoot
-				projectile = { kind = "arrow", speed = 160, life = 2.5, size = Vector3.new(0.18, 0.18, 2.4),
+				-- An arrow floors whoever it hits for a few seconds.
+				effect = "knockdown", effectSeconds = 3,
+				projectile = { kind = "arrow", speed = 110, life = 0.7, size = Vector3.new(0.18, 0.18, 2.4),
 					color = Color3.fromRGB(222, 198, 152), material = Enum.Material.Wood } },
 		},
 		chainResetDelay = 0.3,
@@ -67,7 +69,7 @@ CombatConfig.Weapons = {
 		attacks = {
 			{ animation = "rbxassetid://103928195222614", damage = 14, windup = 0.2, active = 0.05, recovery = 0.4, range = 0, -- Staff_Swing
 				-- A beam, not a travelling shot: it reaches its full length at once and fades.
-				projectile = { kind = "beam", length = 60, life = 0.25, size = Vector3.new(0.5, 0.5, 1),
+				projectile = { kind = "beam", length = 22, life = 0.25, size = Vector3.new(0.5, 0.5, 1),
 					color = Color3.fromRGB(120, 236, 180), material = Enum.Material.Neon } },
 		},
 		chainResetDelay = 0.35,
@@ -80,7 +82,9 @@ CombatConfig.Weapons = {
 		idleTimeout = 4,
 		attacks = {
 			{ animation = "rbxassetid://94236406810598", damage = 15, windup = 0.2, active = 0.05, recovery = 0.4, range = 0, -- Spellbook_Cast
-				projectile = { kind = "orb", speed = 70, life = 3, size = Vector3.new(1.6, 1.6, 1.6),
+				-- Dark magic leaves the target wading through treacle.
+				effect = "slow", effectSeconds = 3, effectFactor = 0.45,
+				projectile = { kind = "orb", speed = 55, life = 0.9, size = Vector3.new(1.6, 1.6, 1.6),
 					color = Color3.fromRGB(58, 26, 86), material = Enum.Material.Neon } },
 		},
 		chainResetDelay = 0.3,

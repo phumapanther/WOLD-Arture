@@ -7,6 +7,7 @@ local RunService = game:GetService("RunService")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local Vitals = require(game.ServerScriptService.Vitals)
 local Inventory = require(game.ServerScriptService.Inventory)
+local StatusEffects = require(game.ServerScriptService.StatusEffects)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 -- Stamina VALUES now live in Vitals.lua (swimming spends it too, and drowning depends on it), and the HUD gets
@@ -34,7 +35,8 @@ local function applySpeed(state, player)
 	-- Vitals owns WalkSpeed while downed (crawling pace); don't fight it.
 	if not humanoid or Vitals.IsDowned(player) then return end
 	local base = SPEED[state.state == "ForcedWalk" and "Walk" or state.state]
-	local wanted = base * Inventory.SpeedMultiplier(player)
+	-- Carry weight and any slow effect both scale the same base speed, so neither has to know about the other.
+	local wanted = base * Inventory.SpeedMultiplier(player) * StatusEffects.SpeedMultiplier(player)
 	-- Only write when it actually differs: WalkSpeed replicates, so setting it every frame is wasteful.
 	if math.abs(humanoid.WalkSpeed - wanted) > 0.01 then
 		humanoid.WalkSpeed = wanted

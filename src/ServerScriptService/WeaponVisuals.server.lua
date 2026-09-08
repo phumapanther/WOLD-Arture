@@ -16,10 +16,14 @@ local PREFABS = ReplicatedStorage:WaitForChild("WOLD_Weapons", 20)
 
 -- How each weapon sits in the hand. Tuned per weapon because the prefabs have different origins: a sword is
 -- held mid-blade, a bow across the grip, a book flat on the palm.
+-- Measured: these prefabs run along their own Y axis, so NO rotation already points a blade up (upDot +1.00)
+-- while the -90 X used before laid it flat and inverted (-0.01). A small forward tilt gives the 0.94 lean the
+-- user asked for.
 local GRIP = {
-	Sword = CFrame.new(0, -1.6, 0) * CFrame.Angles(math.rad(-90), 0, 0),
+	-- Held between both hands in front of the chest rather than clipped to one hand, so it sits centred.
+	Sword = CFrame.new(0, 0.2, -1.6) * CFrame.Angles(math.rad(-20), 0, 0),
 	Bow = CFrame.new(0, -0.2, 0.3) * CFrame.Angles(math.rad(-90), math.rad(90), 0),
-	Staff = CFrame.new(0, -1.4, 0) * CFrame.Angles(math.rad(-90), 0, 0),
+	Staff = CFrame.new(0, 0.2, -1.6) * CFrame.Angles(math.rad(-20), 0, 0),
 	-- The spellbook is not gripped: it floats in front of the chest between the open hands, so it hangs off
 	-- the torso instead. Attached to the hand it sat off to one side (measured x=2.5 instead of centred).
 	Spellbook = CFrame.new(0, 0.4, -2) * CFrame.Angles(math.rad(-70), 0, 0),
@@ -27,6 +31,9 @@ local GRIP = {
 -- Which body part each weapon joints to. Anything not listed here is held in the hand.
 local ATTACH_TO = {
 	Spellbook = "UpperTorso",
+	-- Two-handed: the blade belongs between the hands, not clipped to the right one.
+	Sword = "UpperTorso",
+	Staff = "UpperTorso",
 }
 local DEFAULT_GRIP = CFrame.new(0, -1, 0) * CFrame.Angles(math.rad(-90), 0, 0)
 
