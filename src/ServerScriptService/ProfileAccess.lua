@@ -20,6 +20,7 @@ end
 -- system runs and there is nothing to save.
 ProfileAccess.SerializeProgression = nil
 ProfileAccess.SerializeInventory = nil
+ProfileAccess.SerializeRole = nil
 
 -- Set by PlayerProfile: copies a player's current level and bag into their profile immediately, rather than
 -- waiting for the next autosave tick. Call it after anything worth keeping.

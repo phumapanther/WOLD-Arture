@@ -16,6 +16,9 @@ local EVENTS = {
 	"RequestEquip", "RequestUnequip", "RequestUseItem", "RequestDropItem", "RequestAutoSort",
 	"RequestSkill", "SkillUsed", -- the weapon's Q skill: intent in, playback out
 	"StatusChanged", -- knockdown / slow, so every client can render them
+	-- Admin console: the command text in, the reply out. AdminCommand is guarded by a UserId allow-list on
+	-- the SERVER, so a non-admin firing it is refused exactly as if they had never found it.
+	"AdminCommand", "AdminMessage",
 }
 local FUNCTIONS = { "GetSpawnPosition" } -- DataStore-backed lookups can only run server-side; the client must ask
 

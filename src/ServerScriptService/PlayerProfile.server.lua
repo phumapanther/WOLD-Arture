@@ -22,6 +22,7 @@ local ProfileTemplate = {
 	Vitals = { HP = 100, Stamina = 100, Hunger = 100 }, -- unused this phase; here so later phases don't Reconcile again
 	Progression = { Level = 1, Exp = 0 }, -- EXP/level survive a rejoin; dying is what resets them, not leaving
 	Inventory = nil, -- {Slots, Equipped, Gold} | nil (nil = never saved, so hand out the starter kit)
+	Role = nil, -- roleId from RoleConfig | nil (no role). Handed out by admin command; abilities are phase 4.
 	-- One-off test grant. Recorded in the profile so it happens once per player, ever, rather than on every
 	-- rejoin. Bumping the number re-runs it for everyone; leave it alone to stop granting.
 	TestGrant = 0,
@@ -69,10 +70,19 @@ local function saveInventory(player)
 	if data then profile.Data.Inventory = data end
 end
 
+local function saveRole(player)
+	local profile = Profiles[player]
+	local serialize = ProfileAccess.SerializeRole
+	if not profile or not serialize then return end
+	-- Unlike the others a nil result is meaningful here: it means "no role", which must overwrite an old one.
+	profile.Data.Role = serialize(player)
+end
+
 local function saveAll(player)
 	savePosition(player)
 	saveProgression(player)
 	saveInventory(player)
+	saveRole(player)
 end
 
 -- Published so the systems that OWN the data can flush it the moment it changes. ProfileStore only writes to
