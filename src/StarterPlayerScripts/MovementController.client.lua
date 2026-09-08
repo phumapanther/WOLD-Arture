@@ -20,6 +20,13 @@ local ANALOG_SPRINT_ON = 0.9
 local ANALOG_SPRINT_OFF = 0.7
 local ANALOG_SUSTAIN = 0.25
 
+-- Touch needs a much harder push than a gamepad: a thumb resting anywhere past the middle of the ring was
+-- tripping the gamepad thresholds constantly ("ลากไปนิดเดียวก็วิ่งแล้ว"). These demand a near-pinned stick
+-- held for twice as long before sprinting, and drop it as soon as the thumb eases off.
+local TOUCH_SPRINT_ON = 0.97
+local TOUCH_SPRINT_OFF = 0.85
+local TOUCH_SUSTAIN = 0.5
+
 local player = Players.LocalPlayer
 
 local shiftHeld = false
@@ -46,18 +53,35 @@ end
 -- Touch thumbstick deflection isn't exposed by the engine: Humanoid.MoveDirection is always a unit vector, and
 -- the modern PlayerModule (StarterPlayer.PlayerModule, driven from the CoreScript VM) no longer offers
 -- GetControls()/GetMoveVector() — requiring its ControlModule from here builds a dead duplicate and appears to
--- break the real controls (see CLAUDE.md). ponytail: infer deflection as horizontal speed / WalkSpeed instead.
--- Exact on flat ground; reads low uphill / in water and can read high while airborne. Upgrade path if that
--- bites: read the DynamicThumbstick's own GUI (ThumbstickEnd offset from ThumbstickStart under
--- PlayerGui.TouchGui), or fork the PlayerModule into StarterPlayerScripts so its ControlModule lives in this VM.
-local function touchInferredMag()
+-- break the real controls (see CLAUDE.md).
+--
+-- So read the thumbstick's own GUI instead: the stock touch controls draw ThumbstickEnd (the knob) offset from
+-- ThumbstickStart (the ring) inside PlayerGui.TouchGui, and that offset in pixels over the ring's radius IS
+-- the deflection. This replaced an earlier "horizontal speed / WalkSpeed" estimate, which saturated at 1.0
+-- the moment the player reached full speed — so ANY sustained push read as a full-edge push and sprinted.
+local function touchThumbstickMag()
 	if UserInputService:GetLastInputType() ~= Enum.UserInputType.Touch then return 0 end
-	local character = player.Character
-	local humanoid = humanoidOf(character)
-	local hrp = character and character:FindFirstChild("HumanoidRootPart")
-	if not humanoid or not hrp or humanoid.WalkSpeed <= 0 then return 0 end
-	local v = hrp.AssemblyLinearVelocity
-	return math.min(1, Vector3.new(v.X, 0, v.Z).Magnitude / humanoid.WalkSpeed)
+	local playerGui = player:FindFirstChildOfClass("PlayerGui")
+	local touchGui = playerGui and playerGui:FindFirstChild("TouchGui")
+	local frame = touchGui and touchGui:FindFirstChild("TouchControlFrame")
+	if not frame then return 0 end
+
+	-- Classic thumbstick: an explicit start ring and end knob.
+	local startRing = frame:FindFirstChild("ThumbstickFrame", true)
+	local knob = startRing and startRing:FindFirstChild("ThumbstickEnd")
+	if startRing and knob then
+		local radius = startRing.AbsoluteSize.X / 2
+		if radius <= 0 then return 0 end
+		local centre = startRing.AbsolutePosition + startRing.AbsoluteSize / 2
+		local knobCentre = knob.AbsolutePosition + knob.AbsoluteSize / 2
+		return math.min(1, (knobCentre - centre).Magnitude / radius)
+	end
+
+	-- DynamicThumbstick: no persistent ring, so fall back to the engine's own move vector magnitude, which for
+	-- touch IS the deflection (deflection / radiusOfMaxSpeed, clamped to 1 — verified in Play).
+	local humanoid = humanoidOf(player.Character)
+	if not humanoid then return 0 end
+	return math.min(1, humanoid.MoveDirection.Magnitude)
 end
 
 local function onCharacterAdded(character)
@@ -108,15 +132,21 @@ end)
 -- Analog sprint decision, evaluated every frame from whichever stick source is active. The server still owns
 -- the state machine — this only decides what intent to report.
 RunService.Heartbeat:Connect(function()
-	local mag = math.max(gamepadMag, touchInferredMag())
+	local touchMag = touchThumbstickMag()
+	local usingTouch = touchMag > 0 and gamepadMag <= 0
+	local mag = math.max(gamepadMag, touchMag)
+	local on = usingTouch and TOUCH_SPRINT_ON or ANALOG_SPRINT_ON
+	local off = usingTouch and TOUCH_SPRINT_OFF or ANALOG_SPRINT_OFF
+	local sustain = usingTouch and TOUCH_SUSTAIN or ANALOG_SUSTAIN
+
 	if analogSprint then
-		if mag < ANALOG_SPRINT_OFF then
+		if mag < off then
 			analogSprint = false
 			analogAboveSince = nil
 		end
-	elseif mag >= ANALOG_SPRINT_ON then
+	elseif mag >= on then
 		analogAboveSince = analogAboveSince or os.clock()
-		if os.clock() - analogAboveSince >= ANALOG_SUSTAIN then analogSprint = true end
+		if os.clock() - analogAboveSince >= sustain then analogSprint = true end
 	else
 		analogAboveSince = nil
 	end

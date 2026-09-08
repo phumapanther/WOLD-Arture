@@ -2,6 +2,8 @@
 local CAP = 30
 local ROWS, COLS = 2, 15 -- 30 avatar slots per channel, matching the reference mockup
 
+local Responsive = require(script.Parent.Responsive)
+
 local ChannelSelectGui = {}
 ChannelSelectGui.__index = ChannelSelectGui
 
@@ -75,7 +77,9 @@ function ChannelSelectGui.new()
 
 	-- header title, top-left, for a bit of branding on the menu
 	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(0.5, 0, 0, 40)
+	title.Size = UDim2.new(0.42, 0, 0, 40)
+	title.TextScaled = false
+	title.TextTruncate = Enum.TextTruncate.AtEnd
 	title.Position = UDim2.new(0.035, 0, 0, TOP_BAR + 24)
 	title.BackgroundTransparency = 1
 	title.Font = Enum.Font.SourceSansBold
@@ -90,17 +94,19 @@ function ChannelSelectGui.new()
 	-- too wide on ultrawide windows or shrinking unreadably on small ones.
 	local tabBar = Instance.new("Frame")
 	tabBar.AnchorPoint = Vector2.new(1, 0)
-	tabBar.Size = UDim2.new(0.34, 0, 0, 50)
+	-- AutomaticSize + a right anchor: the bar is exactly as wide as its tabs and grows leftward from the edge,
+	-- so it can never run past the screen. The old fixed 0.34-scale width clipped the third tab on a phone
+	-- (measured: 410px of tabs inside a 309px bar, last tab ending 76px off-screen).
+	tabBar.AutomaticSize = Enum.AutomaticSize.X
+	tabBar.Size = UDim2.new(0, 0, 0, 50)
 	tabBar.Position = UDim2.new(1, -24, 0, TOP_BAR + 24)
 	tabBar.BackgroundTransparency = 1
 	tabBar.Parent = root
-	local tabBarConstraint = Instance.new("UISizeConstraint")
-	tabBarConstraint.MinSize = Vector2.new(280, 44)
-	tabBarConstraint.MaxSize = Vector2.new(520, 64)
-	tabBarConstraint.Parent = tabBar
+	Responsive.Scale(tabBar)
 	local tabLayout = Instance.new("UIListLayout")
 	tabLayout.FillDirection = Enum.FillDirection.Horizontal
 	tabLayout.Padding = UDim.new(0, 10)
+	tabLayout.VerticalAlignment = Enum.VerticalAlignment.Center
 	tabLayout.Parent = tabBar
 
 	self.tabs = {}
@@ -124,8 +130,12 @@ function ChannelSelectGui.new()
 	-- instead of a fixed 560px, and AutomaticCanvasSize means it never needs a manually-computed canvas height.
 	local list = Instance.new("ScrollingFrame")
 	list.AnchorPoint = Vector2.new(0.5, 0)
-	list.Size = UDim2.new(0.9, 0, 1, -TOP_BAR - 140)
-	list.Position = UDim2.new(0.5, 0, 0, TOP_BAR + 96)
+	-- On a phone the header eats proportionally more of a short screen, so the list starts higher and keeps a
+	-- smaller bottom margin than on desktop.
+	local headerDrop = Responsive.IsSmallScreen() and 78 or 96
+	local bottomMargin = Responsive.IsSmallScreen() and 96 or 140
+	list.Size = UDim2.new(0.94, 0, 1, -TOP_BAR - bottomMargin)
+	list.Position = UDim2.new(0.5, 0, 0, TOP_BAR + headerDrop)
 	list.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
 	list.BackgroundTransparency = 0.45 -- glass panel: background image/gradient shows through instead of flat black
 	list.BorderSizePixel = 0
@@ -149,10 +159,21 @@ function ChannelSelectGui.new()
 	pad.PaddingBottom = UDim.new(0, 20)
 	pad.Parent = list
 
+	-- Phone rows are shorter and give the avatar strip less room, because a landscape phone is short: five
+	-- 130px rows plus the header do not fit, and the 44px avatar cells overflow the card.
+	local small = Responsive.IsSmallScreen()
+	local ROW_H = small and 88 or 130
+	local NAME_W = small and 62 or 100
+	local RIGHT_W = small and 128 or 190 -- reserved for the count/status/JOIN cluster
+	local AVATAR_CELL = small and 26 or 44
+	local AVATAR_H = small and 56 or 90
+	local JOIN_W = small and 74 or 90
+	local JOIN_H = small and 32 or 40
+
 	self.rows.Roleplay = {}
 	for channel = 1, 5 do
 		local row = Instance.new("Frame")
-		row.Size = UDim2.new(1, 0, 0, 130)
+		row.Size = UDim2.new(1, 0, 0, ROW_H)
 		row.BackgroundColor3 = GLASS
 		row.BackgroundTransparency = 0.9 -- frosted glass card, not a flat gray block
 		row.BorderSizePixel = 0
@@ -162,11 +183,11 @@ function ChannelSelectGui.new()
 		glassStroke(row, 0.75)
 
 		local nameLabel = Instance.new("TextLabel")
-		nameLabel.Size = UDim2.new(0, 100, 1, 0)
-		nameLabel.Position = UDim2.new(0, 20, 0, 0)
+		nameLabel.Size = UDim2.new(0, NAME_W, 1, 0)
+		nameLabel.Position = UDim2.new(0, small and 12 or 20, 0, 0)
 		nameLabel.BackgroundTransparency = 1
 		nameLabel.Font = Enum.Font.SourceSansBold
-		nameLabel.TextSize = 22
+		nameLabel.TextSize = small and 16 or 22
 		nameLabel.TextColor3 = TEXT_LIGHT
 		nameLabel.Text = "เชิฟ " .. channel
 		nameLabel.TextXAlignment = Enum.TextXAlignment.Left
@@ -175,18 +196,18 @@ function ChannelSelectGui.new()
 		-- avatar strip stretches with the row's own width (relative Size, not a fixed 700px) instead of
 		-- overflowing past the card edge on a narrower window.
 		local avatarGrid = Instance.new("Frame")
-		avatarGrid.Size = UDim2.new(1, -330, 0, 90)
-		avatarGrid.Position = UDim2.new(0, 124, 0.5, -45)
+		avatarGrid.Size = UDim2.new(1, -(NAME_W + RIGHT_W + (small and 30 or 40)), 0, AVATAR_H)
+		avatarGrid.Position = UDim2.new(0, NAME_W + (small and 18 or 24), 0.5, -AVATAR_H / 2)
 		avatarGrid.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 		avatarGrid.BackgroundTransparency = 0.55
 		avatarGrid.BorderSizePixel = 0
 		avatarGrid.Parent = row
 		corner(avatarGrid, UDim.new(0, 6))
 		local avatarGridConstraint = Instance.new("UISizeConstraint")
-		avatarGridConstraint.MinSize = Vector2.new(160, 90)
+		avatarGridConstraint.MinSize = Vector2.new(small and 90 or 160, AVATAR_H)
 		avatarGridConstraint.Parent = avatarGrid
 		local grid = Instance.new("UIGridLayout")
-		grid.CellSize = UDim2.new(0, 44, 0, 40)
+		grid.CellSize = UDim2.new(0, AVATAR_CELL, 0, small and 24 or 40)
 		grid.CellPadding = UDim2.new(0, 2, 0, 2)
 		grid.Parent = avatarGrid
 		local gpad = Instance.new("UIPadding")
@@ -207,30 +228,30 @@ function ChannelSelectGui.new()
 		end
 
 		local countLabel = Instance.new("TextLabel")
-		countLabel.Size = UDim2.new(0, 90, 0, 40)
-		countLabel.Position = UDim2.new(1, -190, 0, 20)
+		countLabel.Size = UDim2.new(0, small and 60 or 90, 0, small and 26 or 40)
+		countLabel.Position = UDim2.new(1, -RIGHT_W, 0, small and 10 or 20)
 		countLabel.BackgroundTransparency = 1
 		countLabel.Font = Enum.Font.SourceSansBold
-		countLabel.TextSize = 22
+		countLabel.TextSize = small and 16 or 22
 		countLabel.TextColor3 = TEXT_LIGHT
 		countLabel.Text = "0/" .. CAP
 		countLabel.Parent = row
 
 		local statusLabel = Instance.new("TextLabel")
-		statusLabel.Size = UDim2.new(0, 190, 0, 20)
-		statusLabel.Position = UDim2.new(1, -190, 0, 60)
+		statusLabel.Size = UDim2.new(0, RIGHT_W, 0, small and 16 or 20)
+		statusLabel.Position = UDim2.new(1, -RIGHT_W, 0, small and 38 or 60)
 		statusLabel.BackgroundTransparency = 1
 		statusLabel.Font = Enum.Font.SourceSans
-		statusLabel.TextSize = 14
+		statusLabel.TextSize = small and 11 or 14
 		statusLabel.TextColor3 = Color3.fromRGB(230, 110, 100)
 		statusLabel.Text = ""
 		statusLabel.Parent = row
 
 		local joinButton = Instance.new("TextButton")
-		joinButton.Size = UDim2.new(0, 90, 0, 40)
-		joinButton.Position = UDim2.new(1, -90, 0, 70)
+		joinButton.Size = UDim2.new(0, JOIN_W, 0, JOIN_H)
+		joinButton.Position = UDim2.new(1, -JOIN_W - (small and 6 or 0), 1, -JOIN_H - (small and 8 or 20))
 		joinButton.Font = Enum.Font.SourceSansBold
-		joinButton.TextSize = 18
+		joinButton.TextSize = small and 15 or 18
 		joinButton.TextColor3 = Color3.new(1, 1, 1)
 		joinButton.BackgroundColor3 = Color3.fromRGB(52, 178, 108)
 		joinButton.Text = "JOIN"
