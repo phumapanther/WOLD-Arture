@@ -36,6 +36,19 @@ SocialConfig.MessageHistory = 30 -- messages kept per conversation, in server me
 SocialConfig.BankMaxTransfer = 1000000 -- one transfer cannot exceed this, as a blast radius on any bug
 SocialConfig.BankMinTransfer = 1
 
+-- Depositing and withdrawing happen at a banker NPC in the world, not from the stone: the stone is for
+-- reaching people, and walking to a teller is what makes the bank a place. Transfers stay here, because
+-- sending money to someone is exactly the kind of thing a communication device is for.
+
+--------------------------------------------------------------------------------
+-- Profile cards
+--------------------------------------------------------------------------------
+
+-- Showing your profile raises a card above your head that everyone nearby can see, so several people can
+-- introduce themselves at once and each card is its own.
+SocialConfig.CardRange = 60 -- studs; beyond this a card is not worth drawing
+SocialConfig.CardMaxVisible = 8 -- cards drawn at once, nearest first, so a crowd cannot flood the screen
+
 --------------------------------------------------------------------------------
 -- Ranks
 --------------------------------------------------------------------------------

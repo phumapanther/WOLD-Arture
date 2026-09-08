@@ -137,11 +137,19 @@ function ChannelSelectGui.new()
 
 	-- Manual refresh. The list also rebroadcasts every few seconds on its own; this is for when you want to
 	-- know right now whether a server just freed up.
+	-- Where the channel list starts. Computed here rather than beside the list, because the refresh button
+	-- has to sit ABOVE that line: at a fixed offset it landed on top of the list instead (measured: the
+	-- button at y=82 over a list starting at y=94).
+	local headerDrop = portrait and 112 or (Responsive.IsSmallScreen() and 78 or 96)
+
 	local refreshButton = Instance.new("TextButton")
 	refreshButton.Name = "RefreshButton"
-	refreshButton.AnchorPoint = Vector2.new(1, 0)
+	refreshButton.AnchorPoint = Vector2.new(1, 1)
 	refreshButton.Size = UDim2.new(0, portrait and 92 or 104, 0, portrait and 30 or 34)
-	refreshButton.Position = portrait and UDim2.new(1, -24, 0, TOP_BAR + 20) or UDim2.new(1, -24, 0, TOP_BAR + 84)
+	-- Bottom-anchored to where the list begins, less a small gap, so the two cannot overlap however the
+	-- header is sized.
+	refreshButton.Position = portrait and UDim2.new(1, -24, 0, TOP_BAR + 52)
+		or UDim2.new(1, -24, 0, TOP_BAR + headerDrop - 8)
 	refreshButton.BackgroundColor3 = GLASS
 	refreshButton.BackgroundTransparency = 0.82
 	refreshButton.Font = Enum.Font.SourceSansBold
@@ -159,7 +167,6 @@ function ChannelSelectGui.new()
 	list.AnchorPoint = Vector2.new(0.5, 0)
 	-- On a phone the header eats proportionally more of a short screen, so the list starts higher and keeps a
 	-- smaller bottom margin than on desktop.
-	local headerDrop = portrait and 112 or (Responsive.IsSmallScreen() and 78 or 96)
 	-- Portrait leaves room at the bottom for the touch controls, which sit over the lower corners.
 	local bottomMargin = portrait and 150 or (Responsive.IsSmallScreen() and 96 or 140)
 	list.Size = UDim2.new(0.94, 0, 1, -TOP_BAR - bottomMargin)

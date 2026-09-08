@@ -14,6 +14,7 @@ local Remotes = require(game.ReplicatedStorage.Remotes)
 local GuildBoard = require(game.ServerScriptService.GuildBoard)
 local Friends = require(game.ServerScriptService.Friends)
 local Bank = require(game.ServerScriptService.Bank)
+local Calls = require(game.ServerScriptService.Calls)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Progression = require(game.ServerScriptService.Progression)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
@@ -56,6 +57,12 @@ Players.PlayerAdded:Connect(function(player)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
+	-- A player who leaves mid-call must not leave the other end ringing forever.
+	local other = Calls.Remove(player)
+	if other then
+		Remotes.CallStateChanged:FireClient(other, "ended", player.UserId, player.Name)
+	end
+	Remotes.CardStateChanged:FireAllClients(player, nil)
 	Friends.Remove(player)
 	Bank.Remove(player)
 	GuildBoard.Remove(player)
@@ -188,11 +195,9 @@ Remotes.RequestBankAction.OnServerEvent:Connect(function(player, action, amount,
 	if typeof(action) ~= "string" then return end
 
 	local ok, message, other
-	if action == "deposit" then
-		ok, message = Bank.Deposit(player, amount)
-	elseif action == "withdraw" then
-		ok, message = Bank.Withdraw(player, amount)
-	elseif action == "transfer" then
+	-- Deposit and withdraw are deliberately NOT here: they belong to the banker NPC in the world. Bank.lua
+	-- still has them, and that is what the teller will call.
+	if action == "transfer" then
 		ok, message, other = Bank.Transfer(player, targetName, amount)
 		if ok and other then
 			Remotes.SocialNotify:FireClient(other, "info",
@@ -205,4 +210,85 @@ Remotes.RequestBankAction.OnServerEvent:Connect(function(player, action, amount,
 
 	Remotes.SocialNotify:FireClient(player, ok and "info" or "error", message)
 	send(player)
+end)
+
+--------------------------------------------------------------------------------
+-- Profile cards
+--------------------------------------------------------------------------------
+
+-- Raising your card is public by design: everyone nearby sees it, several can be up at once, and each
+-- viewer's client decides which are close enough to draw. The server only says who is showing what, so it
+-- cannot be faked into showing someone else's card.
+Remotes.RequestShowCard.OnServerEvent:Connect(function(player, showing)
+	if showing then
+		local level = Progression.GetLevel(player)
+		local data = ProfileAccess.Get(player)
+		local social = (data and data.Social) or {}
+		Remotes.CardStateChanged:FireAllClients(player, {
+			userId = player.UserId,
+			name = player.DisplayName ~= "" and player.DisplayName or player.Name,
+			level = level,
+			birthday = social.Birthday,
+			gender = social.Gender,
+		})
+	else
+		Remotes.CardStateChanged:FireAllClients(player, nil)
+	end
+end)
+
+--------------------------------------------------------------------------------
+-- Telepathy calls
+--------------------------------------------------------------------------------
+
+local function nameOf(player)
+	return player.DisplayName ~= "" and player.DisplayName or player.Name
+end
+
+Remotes.RequestCall.OnServerEvent:Connect(function(player, action, targetUserId)
+	if typeof(action) ~= "string" then return end
+
+	if action == "start" then
+		local target = Players:GetPlayerByUserId(tonumber(targetUserId) or 0)
+		if not target then
+			Remotes.SocialNotify:FireClient(player, "error", "คนนี้ไม่ได้อยู่ในเซิร์ฟเวอร์นี้")
+			return
+		end
+		-- Calls are for friends, the same as pigeon messages: an open line to any stranger is a harassment
+		-- surface, and the friend list is the consent that has already been given.
+		local state = Friends.Get(player)
+		if not state or not state.friends[target.UserId] then
+			Remotes.SocialNotify:FireClient(player, "error", "โทรได้เฉพาะสหายเท่านั้น")
+			return
+		end
+
+		local ok, reason = Calls.Start(player, target)
+		if not ok then
+			Remotes.SocialNotify:FireClient(player, "error", reason)
+			return
+		end
+		Remotes.CallStateChanged:FireClient(player, "calling", target.UserId, nameOf(target))
+		Remotes.CallStateChanged:FireClient(target, "incoming", player.UserId, nameOf(player))
+
+	elseif action == "answer" then
+		local ok, other = Calls.Answer(player)
+		if not ok then
+			Remotes.SocialNotify:FireClient(player, "error", other)
+			return
+		end
+		Remotes.CallStateChanged:FireClient(player, "active", other.UserId, nameOf(other))
+		Remotes.CallStateChanged:FireClient(other, "active", player.UserId, nameOf(player))
+
+	elseif action == "end" then
+		-- One verb for declining and hanging up: the state ends the same way either side does it.
+		local ok, other, wasRinging, wasCaller = Calls.End(player)
+		if not ok then return end
+		Remotes.CallStateChanged:FireClient(player, "ended", other.UserId, nameOf(other))
+		if other.Parent then
+			Remotes.CallStateChanged:FireClient(other, "ended", player.UserId, nameOf(player))
+			-- Being declined and being hung up on read differently, so say which happened.
+			if wasRinging and not wasCaller then
+				Remotes.SocialNotify:FireClient(other, "info", ("%s ไม่รับสาย"):format(nameOf(player)))
+			end
+		end
+	end
 end)

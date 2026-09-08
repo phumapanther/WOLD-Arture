@@ -487,7 +487,8 @@ function SocialGui:buildFriends()
 	voice.Position = UDim2.new(1, 0, 1, 0)
 	voice.Size = UDim2.fromOffset(70, 32)
 	voice.Activated:Connect(function()
-		self:SetStatus(SocialConfig.VoiceNotice, "error")
+		if not self.chatWith then return end
+		if self.callbacks.call then self.callbacks.call(self.chatWith) end
 	end)
 end
 
@@ -562,14 +563,29 @@ function SocialGui:RenderFriends(friends, pending)
 
 		local name = label(f, friend.name, 13, TEXT_LIGHT)
 		name.Position = UDim2.new(0, 28, 0, 0)
-		name.Size = UDim2.new(1, -170, 1, 0)
+		name.Size = UDim2.new(1, -230, 1, 0)
+		name.TextTruncate = Enum.TextTruncate.AtEnd
 
 		-- Only an online friend can be messaged, and the button says so rather than failing on tap.
 		local talk = button(f, friend.online and "คุย" or "ไม่อยู่", 12,
 			friend.online and Color3.fromRGB(58, 84, 110) or Color3.fromRGB(46, 48, 58))
 		talk.AnchorPoint = Vector2.new(1, 0.5)
-		talk.Position = UDim2.new(1, -74, 0.5, 0)
-		talk.Size = UDim2.fromOffset(60, 26)
+		talk.Position = UDim2.new(1, -136, 0.5, 0)
+		talk.Size = UDim2.fromOffset(54, 26)
+
+		-- Telepathy sits next to the chat button because it is the same act aimed at the same person.
+		local call = button(f, "โทร", 12,
+			friend.online and Color3.fromRGB(72, 58, 96) or Color3.fromRGB(46, 48, 58))
+		call.AnchorPoint = Vector2.new(1, 0.5)
+		call.Position = UDim2.new(1, -78, 0.5, 0)
+		call.Size = UDim2.fromOffset(52, 26)
+		call.Activated:Connect(function()
+			if not friend.online then
+				self:SetStatus("เพื่อนคนนี้ไม่ได้อยู่ในเซิร์ฟเวอร์นี้", "error")
+				return
+			end
+			if self.callbacks.call then self.callbacks.call(friend.userId) end
+		end)
 		talk.Activated:Connect(function()
 			if not friend.online then
 				self:SetStatus("เพื่อนคนนี้ไม่ได้อยู่ในเซิร์ฟเวอร์นี้", "error")
@@ -581,7 +597,7 @@ function SocialGui:RenderFriends(friends, pending)
 		local drop = button(f, "ลบ", 12, Color3.fromRGB(96, 56, 52))
 		drop.AnchorPoint = Vector2.new(1, 0.5)
 		drop.Position = UDim2.new(1, -8, 0.5, 0)
-		drop.Size = UDim2.fromOffset(60, 26)
+		drop.Size = UDim2.fromOffset(62, 26)
 		drop.Activated:Connect(function()
 			if self.callbacks.friendAction then self.callbacks.friendAction("remove", friend.userId) end
 		end)
@@ -661,36 +677,28 @@ function SocialGui:buildBank()
 	self.pocketLabel = balanceCard(0, "ในกระเป๋า (หายเมื่อตาย)", ACCENT)
 	self.bankLabel = balanceCard(0.5, "ในธนาคาร (ปลอดภัย)", OK_GREEN)
 
-	local amount = textBox(page, "จำนวนเงิน")
-	amount.Position = UDim2.new(0, 0, 0, 80)
-	amount.Size = UDim2.new(1, 0, 0, 32)
-	self.bankAmount = amount
-
-	local deposit = button(page, "ฝาก", 13, Color3.fromRGB(58, 96, 78))
-	deposit.Position = UDim2.new(0, 0, 0, 120)
-	deposit.Size = UDim2.new(0.5, -5, 0, 32)
-	deposit.Activated:Connect(function()
-		if self.callbacks.bank then self.callbacks.bank("deposit", amount.Text) end
-	end)
-
-	local withdraw = button(page, "ถอน", 13, Color3.fromRGB(96, 80, 52))
-	withdraw.Position = UDim2.new(0.5, 5, 0, 120)
-	withdraw.Size = UDim2.new(0.5, -5, 0, 32)
-	withdraw.Activated:Connect(function()
-		if self.callbacks.bank then self.callbacks.bank("withdraw", amount.Text) end
-	end)
+	-- Depositing and withdrawing are done at the banker NPC, not from here. Saying so is the difference
+	-- between a screen that looks unfinished and one that is telling you where to go.
+	local hint = label(page, "ฝาก-ถอน ทำที่ NPC ธนาคารในเมือง", 12, TEXT_MUTED, Enum.TextXAlignment.Center)
+	hint.Position = UDim2.new(0, 0, 0, 78)
+	hint.Size = UDim2.new(1, 0, 0, 18)
 
 	local head = label(page, "โอนเงิน (ผู้รับต้องอยู่ในเซิร์ฟเวอร์นี้)", 12, TEXT_MUTED)
-	head.Position = UDim2.new(0, 0, 0, 164)
+	head.Position = UDim2.new(0, 0, 0, 106)
 	head.Size = UDim2.new(1, 0, 0, 18)
 
 	local target = textBox(page, "@ชื่อผู้รับ")
-	target.Position = UDim2.new(0, 0, 0, 186)
+	target.Position = UDim2.new(0, 0, 0, 128)
 	target.Size = UDim2.new(1, 0, 0, 32)
 	self.bankTarget = target
 
+	local amount = textBox(page, "จำนวนเงิน")
+	amount.Position = UDim2.new(0, 0, 0, 168)
+	amount.Size = UDim2.new(1, 0, 0, 32)
+	self.bankAmount = amount
+
 	local transfer = button(page, "โอน", 13, Color3.fromRGB(58, 84, 110))
-	transfer.Position = UDim2.new(0, 0, 0, 226)
+	transfer.Position = UDim2.new(0, 0, 0, 208)
 	transfer.Size = UDim2.new(1, 0, 0, 34)
 	transfer.Activated:Connect(function()
 		if self.callbacks.bank then self.callbacks.bank("transfer", amount.Text, target.Text) end
@@ -780,10 +788,32 @@ function SocialGui:buildProfile()
 		self.profileFields[entry[2]] = value
 	end
 
+	-- Raising the card is the point of the screen: it puts your profile over your head for everyone nearby.
+	-- It toggles, because the only way to take a sign down is the same button that put it up.
+	local show = button(page, "แสดงการ์ดโปรไฟล์", 13, Color3.fromRGB(58, 84, 110))
+	show.Position = UDim2.new(0, 0, 0, 314)
+	show.Size = UDim2.new(1, 0, 0, 34)
+	self.showCardButton = show
+	self.cardShowing = false
+	show.Activated:Connect(function()
+		self.cardShowing = not self.cardShowing
+		self:SetCardButton(self.cardShowing)
+		if self.callbacks.showCard then self.callbacks.showCard(self.cardShowing) end
+	end)
+
 	local note = label(page, "แก้ไขโปรไฟล์จะเปิดให้ใช้ในภายหลัง", 11, TEXT_MUTED,
 		Enum.TextXAlignment.Center)
-	note.Position = UDim2.new(0, 0, 0, 316)
+	note.Position = UDim2.new(0, 0, 0, 352)
 	note.Size = UDim2.new(1, 0, 0, 18)
+end
+
+-- Kept in step with the real state rather than assumed: a respawn drops the card, and the button has to
+-- stop claiming it is up.
+function SocialGui:SetCardButton(showing)
+	self.cardShowing = showing
+	self.showCardButton.Text = showing and "ซ่อนการ์ดโปรไฟล์" or "แสดงการ์ดโปรไฟล์"
+	self.showCardButton.BackgroundColor3 = showing and Color3.fromRGB(96, 80, 52)
+		or Color3.fromRGB(58, 84, 110)
 end
 
 function SocialGui:RenderProfile(data)

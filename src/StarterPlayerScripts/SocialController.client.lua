@@ -12,6 +12,8 @@ local ContextActionService = game:GetService("ContextActionService")
 local UserInputService = game:GetService("UserInputService")
 local SocialGui = require(game.ReplicatedStorage.UI.SocialGui)
 local BoardFeedGui = require(game.ReplicatedStorage.UI.BoardFeedGui)
+local ProfileCardGui = require(game.ReplicatedStorage.UI.ProfileCardGui)
+local CallGui = require(game.ReplicatedStorage.UI.CallGui)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local player = Players.LocalPlayer
@@ -22,6 +24,9 @@ gui.gui.Parent = playerGui
 
 local feed = BoardFeedGui.new()
 feed.gui.Parent = playerGui
+
+local call = CallGui.new()
+call.gui.Parent = playerGui
 
 local latest = { board = {}, friends = {}, pending = {}, bank = 0, gold = 0, level = 1 }
 local threads = {} -- [userId] = { messages }
@@ -81,6 +86,40 @@ Remotes.SocialNotify.OnClientEvent:Connect(function(kind, message)
 	end
 end)
 
+-- Someone raised or lowered their profile card. Every client draws every card: the billboard is parented
+-- to that player s own character, so several at once need no layout of their own.
+Remotes.CardStateChanged.OnClientEvent:Connect(function(who, data)
+	if data then
+		ProfileCardGui.Show(data)
+	else
+		ProfileCardGui.Hide(who.UserId)
+	end
+	-- Keep our own button honest about whether the card is actually up.
+	if who == player then
+		gui:SetCardButton(data ~= nil)
+	end
+end)
+
+-- A respawn destroys the character the card hangs on, so our own card has to be re-raised or the button
+-- would keep claiming it is showing.
+player.CharacterAdded:Connect(function()
+	if gui.cardShowing then
+		task.wait(1)
+		Remotes.RequestShowCard:FireServer(true)
+	end
+end)
+
+Remotes.CallStateChanged.OnClientEvent:Connect(function(state, userId, name)
+	if state == "ended" then
+		call:Hide()
+		if gui:IsOpen() then gui:SetStatus(("จบสายกับ %s"):format(name or ""), "ok") end
+		return
+	end
+	-- calling / incoming / active: the panel sits above everything, so a call is answerable with the stone
+	-- closed and while still playing.
+	call:Show(state, userId, name)
+end)
+
 --------------------------------------------------------------------------------
 -- Sending
 --------------------------------------------------------------------------------
@@ -99,6 +138,22 @@ end)
 
 gui:On("bank", function(action, amount, target)
 	Remotes.RequestBankAction:FireServer(action, amount, target)
+end)
+
+gui:On("showCard", function(showing)
+	Remotes.RequestShowCard:FireServer(showing)
+end)
+
+gui:On("call", function(userId)
+	Remotes.RequestCall:FireServer("start", userId)
+end)
+
+call:On("answer", function()
+	Remotes.RequestCall:FireServer("answer")
+end)
+
+call:On("hangUp", function()
+	Remotes.RequestCall:FireServer("end")
 end)
 
 gui:On("openChat", function(userId)

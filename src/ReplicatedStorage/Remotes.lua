@@ -26,6 +26,8 @@ local EVENTS = {
 	"RequestGuildPost", "GuildPostAdded", -- the board, plus a push for the floating feed
 	"RequestFriendAction", "RequestPigeonMessage", "PigeonMessage",
 	"RequestBankAction",
+	"RequestShowCard", "CardStateChanged", -- profile card raised over a player, seen by everyone nearby
+	"RequestCall", "CallStateChanged", -- telepathy: ring, answer, decline, hang up (UI only, no audio yet)
 }
 local FUNCTIONS = { "GetSpawnPosition" } -- DataStore-backed lookups can only run server-side; the client must ask
 
