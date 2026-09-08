@@ -28,7 +28,7 @@ local GRIP = {
 	-- that flip, which reverses it.
 	-- Leaned forward from -20 to -90: the blade was standing bolt upright. The lean is applied BEFORE the
 	-- handle offset below, so the grip stays put in the palm and only the blade swings down and forward.
-	Sword = CFrame.new(0, -0.3, 0) * BLADE_UP * CFrame.Angles(math.rad(90), 0, 0) * CFrame.new(0, -2.0, 0),
+	Sword = CFrame.new(0, -0.3, 0) * BLADE_UP * CFrame.Angles(math.rad(-90), 0, 0) * CFrame.new(0, -2.0, 0),
 	-- The bow's belly has to face out to the RIGHT while it is held in the right hand, so the limbs curve away
 	-- from the character rather than into it. The 180 is on ROLL, not yaw: the bow lies in a plane, so yawing
 	-- it only spins that plane about the arm while rolling it turns the belly over.

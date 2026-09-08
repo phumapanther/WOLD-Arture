@@ -24,37 +24,71 @@ end
 -- Starting kit, so a new player has something to test the bag with rather than an empty grid.
 -- ponytail: all four weapons for now so every Q skill is reachable without a shop or drops. Trim this to a
 -- sword once items can actually be found in the world.
+-- What a brand-new player starts with. Deliberately modest: the full set is a one-off test grant below, not
+-- the normal opening hand.
 local STARTER_KIT = {
 	{ id = "Sword", count = 1 },
-	{ id = "Bow", count = 1 },
-	{ id = "Staff", count = 1 },
-	{ id = "Spellbook", count = 1 },
 	{ id = "LeatherArmor", count = 1 },
 	{ id = "Bread", count = 3 },
-	{ id = "Water", count = 3 },
 	{ id = "HealthPotion", count = 2 },
-	{ id = "RepairHammer", count = 1 },
+}
+
+-- One-off grant for everyone who has already played, so existing testers all hold the same full kit. Runs
+-- once per player, ever: TestGrant in their profile records the version they last received, and only a player
+-- whose profile ALREADY EXISTS is eligible — someone joining for the first time after this gets the starter
+-- kit above and nothing more.
+local TEST_GRANT_VERSION = 1
+local TEST_GRANT = {
+	-- Every weapon and every armor set, one each.
+	{ id = "Sword" }, { id = "Bow" }, { id = "Staff" }, { id = "Spellbook" },
+	{ id = "LeatherArmor" }, { id = "ChainmailArmor" }, { id = "PlateArmor" },
+	-- Consumables to a full stack, whatever that stack size happens to be.
+	{ id = "Bread", full = true },
+	{ id = "Water", full = true },
+	{ id = "HealthPotion", full = true },
+	{ id = "RepairHammer", full = true },
 }
 
 Players.PlayerAdded:Connect(function(player)
 	-- Wait for the profile the same way PlayerProgression does, so a returning player gets their own bag back
 	-- rather than a fresh starter kit.
-	local saved
+	local data
 	for _ = 1, 40 do
-		local data = ProfileAccess.Get(player)
-		if data then
-			saved = data.Inventory
-			break
-		end
+		data = ProfileAccess.Get(player)
+		if data then break end
 		task.wait(0.1)
 	end
+	local saved = data and data.Inventory
+
+	-- Eligibility for the one-off grant is "has PLAYED before", which is whether a profile exists at all —
+	-- not whether a bag was saved. Keying it off the bag missed anyone who had played before inventories
+	-- existed, which is most of the current testers.
+	local hasPlayedBefore = data ~= nil and data.Position ~= nil
+	local wantsGrant = hasPlayedBefore and (data.TestGrant or 0) < TEST_GRANT_VERSION
 
 	Inventory.Add(player, saved)
-	if not saved then
+
+	if wantsGrant then
+		-- Clear first, so every tester ends up holding exactly the same kit rather than it piling on top of
+		-- whatever they happened to have.
+		data.TestGrant = TEST_GRANT_VERSION
+		local state = Inventory.Get(player)
+		if state then
+			state.slots = {}
+			state.equipped = {}
+		end
+		for _, entry in ipairs(TEST_GRANT) do
+			local count = entry.full and ItemCatalog.StackSize(entry.id) or 1
+			Inventory.AddItem(player, entry.id, count)
+		end
+		if ProfileAccess.Flush then ProfileAccess.Flush(player) end
+	elseif not saved then
+		-- Brand new: the ordinary opening hand.
 		for _, entry in ipairs(STARTER_KIT) do
 			Inventory.AddItem(player, entry.id, entry.count)
 		end
 	end
+
 	Inventory.Send(player)
 	Vitals.SyncArmorFromEquipment(player)
 end)

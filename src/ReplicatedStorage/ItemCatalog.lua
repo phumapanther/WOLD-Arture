@@ -73,31 +73,31 @@ ItemCatalog.Items = {
 	--------------------------------------------------------------------------
 	Bread = {
 		icon = "", -- assets/item-icons/Bread.png
-		name = "ขนมปัง", kind = "consumable", weight = 0.5, stackSize = 20,
+		name = "ขนมปัง", kind = "consumable", weight = 0.5, stackSize = 16,
 		use = { stat = "hunger", amount = 35 },
 	},
 	Water = {
 		icon = "", -- assets/item-icons/Water.png
-		name = "น้ำเปล่า", kind = "consumable", weight = 1, stackSize = 20,
+		name = "น้ำเปล่า", kind = "consumable", weight = 1, stackSize = 16,
 		use = { stat = "mana", amount = 1 },
 	},
 	HealthPotion = {
 		icon = "", -- assets/item-icons/HealthPotion.png
-		name = "ยาฮีล", kind = "consumable", weight = 0.8, stackSize = 10,
+		name = "ยาฮีล", kind = "consumable", weight = 0.8, stackSize = 5,
 		use = { stat = "hp", amount = 40 },
 	},
 	RepairHammer = {
 		icon = "", -- assets/item-icons/RepairHammer.png
-		name = "ค้อนซ่อม", kind = "consumable", weight = 3, stackSize = 5,
+		name = "ค้อนซ่อม", kind = "consumable", weight = 3, stackSize = 15,
 		use = { stat = "repair", amount = 1 }, -- restores the equipped armor's durability
 	},
 
 	--------------------------------------------------------------------------
 	-- Junk. No effect yet; they exist to be gathered, carried and sold later.
 	--------------------------------------------------------------------------
-	Bone = { icon = "", name = "กระดูก", kind = "junk", weight = 1, stackSize = 30, value = 2 },
-	WoodScrap = { icon = "", name = "เศษไม้", kind = "junk", weight = 1.5, stackSize = 30, value = 1 },
-	Stone = { icon = "", name = "ก้อนหิน", kind = "junk", weight = 2.5, stackSize = 30, value = 1 },
+	Bone = { icon = "", name = "กระดูก", kind = "junk", weight = 1, stackSize = 99, value = 2 },
+	WoodScrap = { icon = "", name = "เศษไม้", kind = "junk", weight = 1.5, stackSize = 99, value = 1 },
+	Stone = { icon = "", name = "ก้อนหิน", kind = "junk", weight = 2.5, stackSize = 99, value = 1 },
 }
 
 function ItemCatalog.Get(id)
