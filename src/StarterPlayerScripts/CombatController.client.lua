@@ -35,9 +35,11 @@ local function loadTracksFor(character)
 		return track
 	end
 
-	-- The weapon's held stance. Idle priority so Roblox's walk and run still drive the legs underneath, which
-	-- is what keeps "ขาขยับเดินวิ่งแบบปกติ" true while a weapon is out.
-	tracks.idle = load(weapon.idleAnimation, Enum.AnimationPriority.Idle, true)
+	-- The weapon's held stance. Movement priority, NOT Idle: at Idle it ties with Roblox's own idle and mood
+	-- animations at equal weight (measured: three tracks all at Idle, w=1.00) and the default wins, so the
+	-- stance never showed. Movement still sits below Action, so swings play over it, and because the stance
+	-- poses no leg joints the default walk and run keep driving the legs regardless of priority.
+	tracks.idle = load(weapon.idleAnimation, Enum.AnimationPriority.Movement, true)
 	tracks.guard = load(weapon.guardAnimation, Enum.AnimationPriority.Action)
 	tracks.attacks = {}
 	for i, attack in ipairs(weapon.attacks) do
@@ -99,17 +101,24 @@ Remotes.CombatStateChanged.OnClientEvent:Connect(function(who, event, chainIndex
 			other:Stop(0)
 		end
 		if tracks.guard then tracks.guard:Stop(0.05) end
+		-- The held stance holds every arm joint, so a swing blended under it barely moves. Same fault the
+		-- guard had against the punches; stop it for the swing and bring it back after.
+		if tracks.idle then tracks.idle:Stop(0.05) end
 		local track = tracks.attacks and tracks.attacks[chainIndex]
 		if track then
 			track:Play(0.05)
 			track.Stopped:Once(function()
-				-- Only restore the guard if the server still has us guarding and no newer swing started.
-				if tracks.guard and not tracks.guard.IsPlaying then
-					local swinging = false
-					for _, other in pairs(tracks.attacks or {}) do
-						if other.IsPlaying then swinging = true end
-					end
-					if not swinging then tracks.guard:Play(0.1) end
+				-- Don't restore anything if a newer swing is already running.
+				local swinging = false
+				for _, other in pairs(tracks.attacks or {}) do
+					if other.IsPlaying then swinging = true end
+				end
+				if swinging then return end
+				-- Back to whichever held pose this weapon has: its own stance, or the bare-hands guard.
+				if tracks.idle then
+					if not tracks.idle.IsPlaying then tracks.idle:Play(0.15) end
+				elseif tracks.guard and not tracks.guard.IsPlaying then
+					tracks.guard:Play(0.1)
 				end
 			end)
 		end
