@@ -23,6 +23,9 @@ local ProfileTemplate = {
 	Progression = { Level = 1, Exp = 0 }, -- EXP/level survive a rejoin; dying is what resets them, not leaving
 	Inventory = nil, -- {Slots, Equipped, Gold} | nil (nil = never saved, so hand out the starter kit)
 	Role = nil, -- roleId from RoleConfig | nil (no role). Handed out by admin command; abilities are phase 4.
+	-- Friend list, banked gold, and the profile fields the player will be able to set later. The three
+	-- display fields exist now so adding the editor later needs no migration.
+	Social = nil, -- {Friends, Pending, Bank, Birthday, Gender, AvatarImage} | nil
 	-- One-off test grant. Recorded in the profile so it happens once per player, ever, rather than on every
 	-- rejoin. Bumping the number re-runs it for everyone; leave it alone to stop granting.
 	TestGrant = 0,
@@ -78,11 +81,26 @@ local function saveRole(player)
 	profile.Data.Role = serialize(player)
 end
 
+local function saveSocial(player)
+	local profile = Profiles[player]
+	local serialize = ProfileAccess.SerializeSocial
+	if not profile or not serialize then return end
+	local data = serialize(player)
+	if data then
+		-- Merge rather than replace: the display fields (birthday, gender, picture) are not owned by the
+		-- social modules, so a save must not wipe them.
+		local existing = profile.Data.Social or {}
+		for key, value in pairs(data) do existing[key] = value end
+		profile.Data.Social = existing
+	end
+end
+
 local function saveAll(player)
 	savePosition(player)
 	saveProgression(player)
 	saveInventory(player)
 	saveRole(player)
+	saveSocial(player)
 end
 
 -- Published so the systems that OWN the data can flush it the moment it changes. ProfileStore only writes to

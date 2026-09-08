@@ -20,6 +20,12 @@ local EVENTS = {
 	-- Admin console: the command text in, the reply out. AdminCommand is guarded by a UserId allow-list on
 	-- the SERVER, so a non-admin firing it is refused exactly as if they had never found it.
 	"AdminCommand", "AdminMessage",
+	-- Social (the speaking stone): the client asks and the server answers. Every inbound one is validated
+	-- server-side -- amounts, names and lengths are never trusted as sent.
+	"RequestSocialData", "SocialUpdate", "SocialNotify",
+	"RequestGuildPost", "GuildPostAdded", -- the board, plus a push for the floating feed
+	"RequestFriendAction", "RequestPigeonMessage", "PigeonMessage",
+	"RequestBankAction",
 }
 local FUNCTIONS = { "GetSpawnPosition" } -- DataStore-backed lookups can only run server-side; the client must ask
 

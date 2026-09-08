@@ -122,7 +122,7 @@ function TouchActionGui.new()
 	sideColumn.Name = "SideColumn"
 	sideColumn.AnchorPoint = Vector2.new(1, 1)
 	sideColumn.Position = UDim2.new(1, -6, 1, -EDGE_MARGIN)
-	sideColumn.Size = UDim2.fromOffset(ROLL_SIZE, ROLL_SIZE)
+	sideColumn.Size = UDim2.fromOffset(ROLL_SIZE, ROLL_SIZE * 2 + GAP)
 	sideColumn.BackgroundTransparency = 1
 	sideColumn.Parent = gui
 
@@ -132,11 +132,23 @@ function TouchActionGui.new()
 	bag.Position = UDim2.new(1, 0, 1, 0)
 	self.bagButton = bag
 
+	-- The speaking stone, directly above the bag and the same size: the user asked for a small button in
+	-- the bottom-right corner matching the bag button. Same column, so neither moves as the other appears.
+	local social = circle(sideColumn, ROLL_SIZE, ROLL_COLOR, " 98|", 22) -- crystal ball
+	social.Name = "SocialButton"
+	social.AnchorPoint = Vector2.new(1, 1)
+	social.Position = UDim2.new(1, 0, 1, -(ROLL_SIZE + GAP))
+	self.socialButton = social
+
 	return self
 end
 
 function TouchActionGui:OnBag(callback)
 	self.bagButton.MouseButton1Down:Connect(callback)
+end
+
+function TouchActionGui:OnSocial(callback)
+	self.socialButton.MouseButton1Down:Connect(callback)
 end
 
 function TouchActionGui:OnDrop(callback)

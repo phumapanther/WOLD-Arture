@@ -67,6 +67,13 @@ gui:OnBag(function()
 	if toggle then toggle:Fire() end
 end)
 
+-- Same again for the speaking stone: touch and the P key share SocialController's BindableEvent.
+gui:OnSocial(function()
+	local pg = player:FindFirstChild("PlayerGui")
+	local toggle = pg and pg:FindFirstChild("WOLD_ToggleSocial")
+	if toggle then toggle:Fire() end
+end)
+
 gui:Show()
 gui:AnchorJumpButton()
 
