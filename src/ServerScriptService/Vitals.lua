@@ -151,6 +151,9 @@ function Vitals.EnterDowned(player)
 	state.hp = 0
 	state.downedUntil = os.clock() + VitalsConfig.DownedSeconds
 	applyDownedPosture(player, true)
+	-- Replicated so every client knows who to offer revive/carry prompts on; DownedStateChanged only reaches
+	-- the downed player themselves.
+	player:SetAttribute("WOLD_Downed", true)
 	Remotes.DownedStateChanged:FireClient(player, true, VitalsConfig.DownedSeconds)
 	Vitals.Send(player, true)
 end
@@ -160,6 +163,7 @@ end
 local function clearDowned(player, state)
 	state.downed = false
 	applyDownedPosture(player, false)
+	player:SetAttribute("WOLD_Downed", false)
 	Remotes.DownedStateChanged:FireClient(player, false)
 end
 
@@ -199,6 +203,9 @@ function Vitals.ResetForRespawn(player)
 	state.hunger = VitalsConfig.MaxHunger
 	state.stamina = VitalsConfig.MaxStamina
 	state.downed = false
+	-- Clear the replicated flag too, or other clients keep showing revive/carry prompts on a player who has
+	-- already respawned (this path bypasses clearDowned).
+	player:SetAttribute("WOLD_Downed", false)
 	state.peakFallY = nil
 	state.invulnUntil = os.clock() + VitalsConfig.RespawnInvulnSeconds
 end

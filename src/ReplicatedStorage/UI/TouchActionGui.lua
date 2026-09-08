@@ -5,8 +5,8 @@
 -- its size; the jump button is nudged right to make room; the roll/slide button sits ABOVE the attack button
 -- at the jump button's size.
 --
--- The roll/slide button is deliberately INERT for now (sub-project 4 implements the moves) — it renders and
--- swaps its label, but presses do nothing.
+-- The roll/slide button relabels itself to SLIDE while sprinting; both it and the Ctrl key resolve to the
+-- same action, decided server-side from the player's current speed.
 local Players = game:GetService("Players")
 local Responsive = require(script.Parent.Responsive)
 
@@ -137,6 +137,10 @@ end
 
 function TouchActionGui:OnAttack(callback)
 	self.attackButton.MouseButton1Down:Connect(callback)
+end
+
+function TouchActionGui:OnRoll(callback)
+	self.rollButton.MouseButton1Down:Connect(callback)
 end
 
 -- Roll becomes Slide while the player is sprinting. Presses are not wired to anything yet.

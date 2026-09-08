@@ -2,8 +2,8 @@
 -- and wires the attack button to the same RequestAttack path the mouse uses. Presentation + intent only, like
 -- every other controller here — the server decides what an attack actually does.
 --
--- The roll/slide button is intentionally inert: sub-project 4 implements rolling and sliding. It renders and
--- swaps its label so the layout can be judged now, but pressing it does nothing.
+-- The roll/slide button routes through ActionController's BindableEvent, so touch and keyboard share one
+-- code path; the server decides whether the press becomes a roll or a slide.
 local FORCE_SHOW_IN_STUDIO_FOR_TESTING = false -- ponytail: flip to preview the buttons on a desktop Play session
 
 while workspace:GetAttribute("IsLobby") == nil do
@@ -25,6 +25,14 @@ gui.gui.Parent = player:WaitForChild("PlayerGui")
 
 gui:OnAttack(function()
 	Remotes.RequestAttack:FireServer()
+end)
+
+-- The roll/slide button drives the same path as the Ctrl key, through ActionController's BindableEvent, so
+-- the two input routes cannot drift apart. It resolves to a slide while sprinting and a roll otherwise.
+gui:OnRoll(function()
+	local bindable = player:FindFirstChild("PlayerGui")
+	bindable = bindable and bindable:FindFirstChild("WOLD_RequestAction")
+	if bindable then bindable:Fire() end
 end)
 
 gui:Show()
