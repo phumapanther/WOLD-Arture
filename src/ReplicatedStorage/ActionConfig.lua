@@ -13,7 +13,9 @@ ActionConfig.Roll = {
 	staminaCost = 25,
 	duration = 0.6, -- slightly under the clip so the player isn't locked out after it visually ends
 	speed = 34, -- studs/sec while rolling
-	cooldown = 0.7, -- from the START of a roll, so it cannot be chained faster than the animation plays
+	-- From the START of a roll. Longer than the roll itself so there is a real beat between them rather than
+	-- one rolling straight into the next.
+	cooldown = 1.2,
 }
 
 --------------------------------------------------------------------------------

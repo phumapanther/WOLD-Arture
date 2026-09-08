@@ -66,6 +66,10 @@ local function canAct(player, state)
 	if Vitals.IsDowned(player) then return false end
 	if state.action then return false end
 	if os.clock() < state.nextAllowedAt then return false end
+	-- Only from solid ground. A roll drives the character with a LinearVelocity that overrides gravity for its
+	-- duration, so rolling in mid-air held the player up — and because the next roll could start before they
+	-- landed, they could stay airborne indefinitely.
+	if humanoid.FloorMaterial == Enum.Material.Air then return false end
 	return true
 end
 

@@ -26,8 +26,13 @@ local GRIP = {
 	-- or the palm ends up holding the blade (measured: handle 3.2 studs from the hand, blade only 1.2).
 	-- BLADE_UP flips the model so the point stands up, and the lean is negative because it is applied after
 	-- that flip, which reverses it.
-	Sword = CFrame.new(0, -0.3, 0) * BLADE_UP * CFrame.Angles(math.rad(-20), 0, 0) * CFrame.new(0, -2.0, 0),
-	Bow = CFrame.new(0, -0.2, 0.3) * CFrame.Angles(math.rad(-90), math.rad(90), 0),
+	-- Leaned forward from -20 to -90: the blade was standing bolt upright. The lean is applied BEFORE the
+	-- handle offset below, so the grip stays put in the palm and only the blade swings down and forward.
+	Sword = CFrame.new(0, -0.3, 0) * BLADE_UP * CFrame.Angles(math.rad(90), 0, 0) * CFrame.new(0, -2.0, 0),
+	-- The bow's belly has to face out to the RIGHT while it is held in the right hand, so the limbs curve away
+	-- from the character rather than into it. The 180 is on ROLL, not yaw: the bow lies in a plane, so yawing
+	-- it only spins that plane about the arm while rolling it turns the belly over.
+	Bow = CFrame.new(0, -0.2, 0.3) * CFrame.Angles(math.rad(-90), 0, math.rad(180)),
 	-- The staff is a single part with no separate hilt, so it has no wrong end to flip: leaving it upright
 	-- puts its ornamented head at the top, which is the way a staff is carried.
 	Staff = CFrame.new(0, 0.9, -1.6) * CFrame.Angles(math.rad(-20), 0, 0),
