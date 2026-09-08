@@ -16,6 +16,14 @@ local Vitals = {}
 
 local States = {} -- [player] = state; see NewState() for the shape
 
+-- Carrying suspends the prone pose without ending the downed state: a player riding on someone's back should
+-- sit upright in the Carry_Held pose, not stay face-down. Set while carried, cleared when set down.
+local ProneSuspended = {} -- [player] = true
+
+-- [character] = the joint's upright C0, so the prone pose can always be set ABSOLUTELY rather than rotated
+-- off whatever it currently is.
+local UPRIGHT_C0 = {}
+
 -- Injected by PlayerProgression.server.lua. Progression already calls back into Vitals (level-up refills the
 -- bars), so requiring it here as well would be a cycle. When it is absent — the lobby, or before startup
 -- finishes — the maximums fall back to the flat level-1 values.
@@ -61,6 +69,7 @@ end
 
 function Vitals.Remove(player)
 	States[player] = nil
+	ProneSuspended[player] = nil
 end
 
 function Vitals.Get(player)
@@ -177,13 +186,23 @@ local function ownedRootJoint(character)
 	replacement.C0 = joint.C0
 	replacement.C1 = joint.C1
 	replacement:SetAttribute("WOLD_Owned", true)
-	replacement:SetAttribute("WOLD_UprightC0", true)
 	replacement.Parent = joint.Parent
 	joint:Destroy()
 	return replacement
 end
 
-local UPRIGHT_C0 = {} -- [character] = the C0 to put back when standing up
+-- The upright C0, captured the first time we take the joint over — while it is still upright. Reading it
+-- later can capture an already-tilted value, which then compounds every time the pose is re-applied (a carry
+-- and set-down left the body upside down).
+local function uprightC0(character)
+	local joint = ownedRootJoint(character)
+	if not joint then return nil, nil end
+	if UPRIGHT_C0[character] == nil then
+		UPRIGHT_C0[character] = joint.C0
+	end
+	return joint, UPRIGHT_C0[character]
+end
+
 
 -- A body lying flat has arms, legs, torso and head all scraping the floor (measured: eleven parts touching),
 -- and their friction fights the humanoid's mover — crawling slowed to about 2 studs where 12 was expected.
@@ -201,15 +220,23 @@ local function applyDownedPosture(player, downed)
 	local character = player.Character
 	if not humanoid or not character then return end
 
+	if downed and ProneSuspended[player] then
+		-- Being carried: the carrier owns this body's pose entirely, so leave the joint alone and only keep
+		-- the movement clamps that being downed implies.
+		humanoid.WalkSpeed = 0
+		humanoid.JumpPower = 0
+		humanoid.JumpHeight = 0
+		return
+	end
+
 	if downed then
 		humanoid.WalkSpeed = VitalsConfig.DownedWalkSpeed
 		humanoid.JumpPower = 0
 		humanoid.JumpHeight = 0
 		humanoid.HipHeight = VitalsConfig.DownedHipHeight
-		local joint = ownedRootJoint(character)
-		if joint then
-			UPRIGHT_C0[character] = UPRIGHT_C0[character] or joint.C0
-			joint.C0 = UPRIGHT_C0[character] * CFrame.Angles(PRONE_PITCH, 0, 0)
+		local joint, upright = uprightC0(character)
+		if joint and upright then
+			joint.C0 = upright * CFrame.Angles(PRONE_PITCH, 0, 0)
 		end
 		setLimbCollision(character, false)
 	else
@@ -221,8 +248,28 @@ local function applyDownedPosture(player, downed)
 		if joint and UPRIGHT_C0[character] then
 			joint.C0 = UPRIGHT_C0[character]
 		end
-		UPRIGHT_C0[character] = nil
 		setLimbCollision(character, true)
+	end
+end
+
+-- Called by the rescue system when a downed player is picked up or set down. Lifting the prone pose while
+-- carried and restoring it on release keeps the two systems from fighting over the same joint.
+function Vitals.SetProneSuspended(player, suspended)
+	if suspended then
+		ProneSuspended[player] = true
+		-- Stand the body back up before the carry joint takes over, or the carried player rides face-down.
+		local character = player.Character
+		local joint = character and rootJointOf(character)
+		if joint and UPRIGHT_C0[character] then
+			joint.C0 = UPRIGHT_C0[character] -- absolute, never a relative rotation off the current value
+		end
+		if character then setLimbCollision(character, true) end
+	else
+		ProneSuspended[player] = nil
+		-- Put the prone pose back if they are still down after being set down.
+		if Vitals.IsDowned(player) then
+			applyDownedPosture(player, true)
+		end
 	end
 end
 
@@ -294,6 +341,12 @@ end
 
 -- Everything comes back full EXCEPT armor: a one-time pool that never refills, not even on respawn.
 function Vitals.ResetForRespawn(player)
+	-- The rig is rebuilt on respawn, so the old character's joint baseline is dead weight. Keyed by character,
+	-- so this is the only place it can be released without losing the value mid-carry.
+	local character = player.Character
+	if character then UPRIGHT_C0[character] = nil end
+	ProneSuspended[player] = nil
+
 	local state = States[player]
 	if not state then return end
 	state.hp = maxHP(player)

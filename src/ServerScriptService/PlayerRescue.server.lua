@@ -103,6 +103,8 @@ local function dropCarried(carrier)
 		-- to the downed state's own crawling controls.
 		if humanoid then humanoid.PlatformStand = false end
 		setCarriedPhysics(character, nil, false)
+		-- Back on the ground: if they are still downed, lie them down again.
+		Vitals.SetProneSuspended(entry.target, false)
 		local root = character:FindFirstChild("HumanoidRootPart")
 		if root then pcall(function() root:SetNetworkOwner(entry.target) end) end
 	end
@@ -125,6 +127,9 @@ Remotes.RequestCarry.OnServerEvent:Connect(function(carrier, target)
 
 	local targetHumanoid = targetChar:FindFirstChildOfClass("Humanoid")
 	if targetHumanoid then targetHumanoid.PlatformStand = true end
+	-- Stand the carried body upright before the joint takes hold: they are still downed, so without this the
+	-- prone tilt stays applied and they ride face-down.
+	Vitals.SetProneSuspended(target, true)
 	setCarriedPhysics(targetChar, carrier, true)
 
 	-- Motor6D, not a weld: it still lets the carried player's own Animator drive its rig, which is what plays
