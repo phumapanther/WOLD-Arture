@@ -17,7 +17,16 @@ local RunService = game:GetService("RunService")
 local TouchActionGui = require(game.ReplicatedStorage.UI.TouchActionGui)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
-if not UserInputService.TouchEnabled and not FORCE_SHOW_IN_STUDIO_FOR_TESTING then return end
+-- Phones and tablets ONLY. TouchEnabled alone is not enough: a touchscreen laptop, a 2-in-1, and Studio's
+-- device emulator all report it true while still having a keyboard and mouse, and those players use Ctrl and
+-- left-click. A real phone or tablet has touch and NO keyboard, so require that combination.
+local function isTouchOnlyDevice()
+	return UserInputService.TouchEnabled
+		and not UserInputService.KeyboardEnabled
+		and not UserInputService.MouseEnabled
+end
+
+if not isTouchOnlyDevice() and not FORCE_SHOW_IN_STUDIO_FOR_TESTING then return end
 
 local player = Players.LocalPlayer
 local gui = TouchActionGui.new()
@@ -37,6 +46,20 @@ end)
 
 gui:Show()
 gui:AnchorJumpButton()
+
+-- A tablet can gain a keyboard mid-session (a docked iPad, a Surface folded around), which turns it into a
+-- device that should be using Ctrl and left-click instead. Follow that rather than deciding once at startup.
+local function refreshVisibility()
+	if isTouchOnlyDevice() then
+		gui:Show()
+		gui:AnchorJumpButton()
+	else
+		gui:Hide()
+	end
+end
+UserInputService:GetPropertyChangedSignal("KeyboardEnabled"):Connect(refreshVisibility)
+UserInputService:GetPropertyChangedSignal("MouseEnabled"):Connect(refreshVisibility)
+UserInputService:GetPropertyChangedSignal("TouchEnabled"):Connect(refreshVisibility)
 
 -- Roblox rebuilds its touch controls with the character, so the jump button has to be re-positioned each time.
 player.CharacterAdded:Connect(function()
