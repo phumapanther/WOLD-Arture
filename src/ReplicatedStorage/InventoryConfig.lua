@@ -2,7 +2,7 @@
 local InventoryConfig = {}
 
 InventoryConfig.SlotCount = 24 -- the personal bag grid
-InventoryConfig.MaxWeight = 60 -- carry this much before the penalties below start
+InventoryConfig.MaxWeight = 2000 -- carry this much before the penalties below start
 
 -- Overencumbrance. Past MaxWeight you slow down in proportion to the excess, down to a floor so a hoarder can
 -- still crawl home rather than being frozen in place.

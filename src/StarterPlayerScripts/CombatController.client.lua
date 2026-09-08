@@ -59,10 +59,9 @@ local function onCharacterAdded(character)
 	playHeldStance()
 end
 
--- The weapon decides which animations play, so a swap has to rebuild the cache. Fires for every player; only
--- our own matters here.
-Remotes.EquipmentChanged.OnClientEvent:Connect(function(who, weaponId)
-	if who ~= player then return end
+-- The weapon decides which animations play, so a change has to rebuild the cache.
+local function useWeapon(weaponId)
+	if weaponId == equippedWeaponId then return end
 	-- Drop the previous weapon's stance before the new tracks replace the table.
 	if tracks.idle then tracks.idle:Stop(0.2) end
 	equippedWeaponId = weaponId
@@ -70,6 +69,20 @@ Remotes.EquipmentChanged.OnClientEvent:Connect(function(who, weaponId)
 		loadTracksFor(player.Character)
 		playHeldStance()
 	end
+end
+
+-- Fires for every player; only our own matters here.
+Remotes.EquipmentChanged.OnClientEvent:Connect(function(who, weaponId)
+	if who ~= player then return end
+	useWeapon(weaponId)
+end)
+
+-- EquipmentChanged only fires when equipment CHANGES, so a player who joins already holding a weapon was
+-- never told and loaded the bare-hands animations — which is why attacking looked like a punch until the
+-- weapon was taken off and put back on. InventoryUpdate carries the equipped set and does arrive on join, so
+-- it is the reliable source for the initial state.
+Remotes.InventoryUpdate.OnClientEvent:Connect(function(data)
+	useWeapon(data and data.equipped and data.equipped.weapon and data.equipped.weapon.id or nil)
 end)
 
 player.CharacterAdded:Connect(onCharacterAdded)

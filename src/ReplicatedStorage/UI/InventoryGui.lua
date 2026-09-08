@@ -147,14 +147,21 @@ function InventoryGui.new()
 	for i, entry in ipairs(EQUIP_ORDER) do
 		local holder = Instance.new("TextButton")
 		holder.Name = entry.key
-		holder.Size = UDim2.new(1, 0, 0, 74)
-		holder.Position = UDim2.new(0, 0, 0, (i - 1) * 84)
+		-- Square, like the bag slots. The height is a SCALE of the column (which is tall enough for two of
+		-- them plus a gap) and the aspect constraint then matches the width to it; sizing the height to zero
+		-- and hoping the constraint would fill it in collapsed the slot to nothing.
+		holder.Size = UDim2.new(1, 0, 0.42, 0)
+		holder.Position = UDim2.new(0, 0, (i - 1) * 0.52, 0)
 		holder.BackgroundColor3 = SLOT_BG
 		holder.BackgroundTransparency = 0.15
 		holder.Text = ""
 		holder.AutoButtonColor = true
 		holder.Parent = equipColumn
 		corner(holder, UDim.new(0, 10))
+		local holderAspect = Instance.new("UIAspectRatioConstraint")
+		holderAspect.AspectRatio = 1
+		holderAspect.DominantAxis = Enum.DominantAxis.Height
+		holderAspect.Parent = holder
 		local holderStroke = stroke(holder, ACCENT, 0.7)
 
 		local caption = label(holder, entry.text, 11, TEXT_MUTED)
@@ -188,10 +195,15 @@ function InventoryGui.new()
 	grid.Parent = panel
 
 	local layout = Instance.new("UIGridLayout")
-	layout.CellSize = UDim2.new(1 / COLS, -6, 1 / ROWS, -6)
+	-- Cells are sized off the WIDTH on both axes, so they stay square whatever shape the panel takes; sizing
+	-- the height as a fraction of the grid's own height stretched them with the panel's aspect ratio.
+	layout.CellSize = UDim2.new(1 / COLS, -6, 1 / COLS, -6)
 	layout.CellPadding = UDim2.fromOffset(6, 6)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = grid
+	local cellAspect = Instance.new("UIAspectRatioConstraint")
+	cellAspect.AspectRatio = 1
+	cellAspect.Parent = layout
 
 	for i = 1, COLS * ROWS do
 		local slot = Instance.new("TextButton")
