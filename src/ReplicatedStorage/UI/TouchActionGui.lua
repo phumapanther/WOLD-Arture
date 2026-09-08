@@ -25,9 +25,10 @@ local GAP = 14
 -- Monochrome, modern: near-black glass with a thin grey rim, rather than coloured buttons. The two actions
 -- are told apart by size, position and glyph instead of by hue, which keeps them from competing with the
 -- game world for attention.
-local ATTACK_COLOR = Color3.fromRGB(18, 18, 20)
-local ROLL_COLOR = Color3.fromRGB(28, 28, 32)
-local SLIDE_COLOR = Color3.fromRGB(44, 44, 50) -- slightly lighter so the ROLL -> SLIDE swap still reads
+local ATTACK_COLOR = Color3.fromRGB(6, 6, 8)
+local ROLL_COLOR = Color3.fromRGB(10, 10, 12)
+local SLIDE_COLOR = Color3.fromRGB(26, 26, 30) -- slightly lighter so the ROLL -> SLIDE swap still reads
+local BUTTON_TRANSPARENCY = 0.4 -- see-through enough to read the world behind, dark enough to stay legible
 local TEXT_LIGHT = Color3.fromRGB(232, 232, 236)
 local RIM = Color3.fromRGB(150, 152, 160)
 
@@ -35,7 +36,7 @@ local function circle(parent, size, color, glyph, glyphSize)
 	local btn = Instance.new("ImageButton")
 	btn.Size = UDim2.fromOffset(size, size)
 	btn.BackgroundColor3 = color
-	btn.BackgroundTransparency = 0.3
+	btn.BackgroundTransparency = BUTTON_TRANSPARENCY
 	btn.AutoButtonColor = true
 	btn.Image = ""
 	btn.Parent = parent
@@ -48,7 +49,7 @@ local function circle(parent, size, color, glyph, glyphSize)
 	local sheen = Instance.new("UIGradient")
 	sheen.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(160, 160, 170))
 	sheen.Transparency = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0.82),
+		NumberSequenceKeypoint.new(0, 0.93),
 		NumberSequenceKeypoint.new(1, 1),
 	})
 	sheen.Rotation = 90
