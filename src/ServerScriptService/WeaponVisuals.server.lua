@@ -20,16 +20,35 @@ local GRIP = {
 	Sword = CFrame.new(0, -1.6, 0) * CFrame.Angles(math.rad(-90), 0, 0),
 	Bow = CFrame.new(0, -0.2, 0.3) * CFrame.Angles(math.rad(-90), math.rad(90), 0),
 	Staff = CFrame.new(0, -1.4, 0) * CFrame.Angles(math.rad(-90), 0, 0),
-	Spellbook = CFrame.new(0, -0.4, 0) * CFrame.Angles(math.rad(-90), 0, math.rad(90)),
+	-- The spellbook is not gripped: it floats in front of the chest between the open hands, so it hangs off
+	-- the torso instead. Attached to the hand it sat off to one side (measured x=2.5 instead of centred).
+	Spellbook = CFrame.new(0, 0.4, -2) * CFrame.Angles(math.rad(-70), 0, 0),
+}
+-- Which body part each weapon joints to. Anything not listed here is held in the hand.
+local ATTACH_TO = {
+	Spellbook = "UpperTorso",
 }
 local DEFAULT_GRIP = CFrame.new(0, -1, 0) * CFrame.Angles(math.rad(-90), 0, 0)
+
+-- Where a given weapon should be jointed: the hand by default, the torso for the floating spellbook.
+local function anchorPartFor(character, weaponId)
+	local wanted = ATTACH_TO[weaponId]
+	if wanted then
+		local part = character:FindFirstChild(wanted)
+		if part then return part end
+	end
+	return character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+end
 
 local function clearHeldWeapon(character)
 	local existing = character:FindFirstChild("EquippedWeapon")
 	if existing then existing:Destroy() end
-	local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
-	local grip = hand and hand:FindFirstChild("WeaponGrip")
-	if grip then grip:Destroy() end
+	-- The joint can live on the hand or the torso, so clear both rather than assuming.
+	for _, name in ipairs({ "RightHand", "Right Arm", "UpperTorso" }) do
+		local part = character:FindFirstChild(name)
+		local grip = part and part:FindFirstChild("WeaponGrip")
+		if grip then grip:Destroy() end
+	end
 end
 
 local function holdWeapon(player, weaponId)
@@ -39,8 +58,8 @@ local function holdWeapon(player, weaponId)
 	if not weaponId or not PREFABS then return end
 
 	local prefab = PREFABS:FindFirstChild(weaponId)
-	local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
-	if not prefab or not hand then return end
+	local anchor = anchorPartFor(character, weaponId)
+	if not prefab or not anchor then return end
 
 	local model = prefab:Clone()
 	model.Name = "EquippedWeapon"
@@ -55,10 +74,10 @@ local function holdWeapon(player, weaponId)
 
 	local motor = Instance.new("Motor6D")
 	motor.Name = "WeaponGrip"
-	motor.Part0 = hand
+	motor.Part0 = anchor
 	motor.Part1 = root
 	motor.C0 = GRIP[weaponId] or DEFAULT_GRIP
-	motor.Parent = hand
+	motor.Parent = anchor
 end
 
 local function refresh(player)
