@@ -39,9 +39,12 @@ CombatConfig.Weapons = {
 		guardAnimation = "",
 		guardWalkSpeed = 6,
 		idleTimeout = 4,
+		-- One slash rather than a left/right pair: animgen/sword.lua builds a single Sword_Slash whose stages
+		-- are wind-up 0-0.24, strike 0.24-0.36 (the HitStart/HitEnd markers), then follow-through and
+		-- recovery out to 0.66. The windup/active numbers below mirror those marker times exactly, so the
+		-- hitbox is live precisely while the blade is sweeping.
 		attacks = {
-			{ animation = "rbxassetid://129710823629195", damage = 18, windup = 0.15, active = 0.15, recovery = 0.3, range = 7 }, -- Sword_Swing_Left
-			{ animation = "rbxassetid://114792436974678", damage = 18, windup = 0.15, active = 0.15, recovery = 0.35, range = 7 }, -- Sword_Swing_Right
+			{ animation = "", damage = 18, windup = 0.24, active = 0.12, recovery = 0.3, range = 7 }, -- Sword_Slash
 		},
 		chainResetDelay = 0.35, -- the user asked for a beat between swings
 		chainWindow = 1.4,
