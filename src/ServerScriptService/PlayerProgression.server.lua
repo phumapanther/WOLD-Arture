@@ -30,14 +30,25 @@ Players.PlayerAdded:Connect(function(player)
 	end
 	Progression.Add(player, saved)
 
-	player.CharacterAdded:Connect(function(character)
-		-- Scale and tag have to be re-applied every respawn: the character is rebuilt from scratch.
-		character:WaitForChild("Humanoid")
-		Progression.Refresh(player, character)
-	end)
+	-- Shared by CharacterAdded and by a character that already exists when this runs. Missing the second case
+	-- left the very first character with no death hook at all, so the first death never cost a level.
+	local function setUpCharacter(character)
+		local humanoid = character:WaitForChild("Humanoid")
 
+		-- Every death resets the level, whatever killed the player. Hooked to Humanoid.Died rather than to
+		-- Vitals.Kill because a player can die by paths that never call it — drowning, the void, falling, or
+		-- being killed by another player — and each of those must cost the level too.
+		humanoid.Died:Connect(function()
+			Progression.ResetOnDeath(player)
+		end)
+
+		-- Scale and tag have to be re-applied every respawn: the character is rebuilt from scratch.
+		Progression.Refresh(player, character)
+	end
+
+	player.CharacterAdded:Connect(setUpCharacter)
 	if player.Character then
-		Progression.Refresh(player, player.Character)
+		task.spawn(setUpCharacter, player.Character)
 	end
 end)
 

@@ -323,7 +323,16 @@ function Vitals.Respawn(player)
 	local state = States[player]
 	if not state then return end
 	if state.downed then clearDowned(player, state) end
-	player:LoadCharacter()
+	-- Bleeding out and pressing "respawn now" ARE deaths, so they must cost the level like any other. Killing
+	-- the humanoid rather than calling LoadCharacter is what makes that automatic: LoadCharacter rebuilds the
+	-- rig without the humanoid ever dying, so Humanoid.Died — the one hook every death path shares — would
+	-- never fire and the level would survive.
+	local humanoid = humanoidOf(player)
+	if humanoid and humanoid.Health > 0 then
+		humanoid.Health = 0
+	else
+		player:LoadCharacter() -- already dead (or no rig): nothing to kill, just bring them back
+	end
 end
 
 -- Instant death: the character really dies and Roblox's own respawn cycle brings it back.
@@ -332,9 +341,8 @@ function Vitals.Kill(player)
 	if not state then return end
 	if state.downed then clearDowned(player, state) end
 	state.hp = 0
-	-- Dying wipes every level and the body size with it — the risk that pays for growing. Being downed and
-	-- revived does not come through here, so a rescue costs nothing.
-	if Progression then Progression.ResetOnDeath(player) end
+	-- The level wipe is NOT done here: PlayerProgression hooks Humanoid.Died instead, so deaths that never
+	-- reach this function (the downed countdown expiring, the respawn button) cost the level too.
 	local humanoid = humanoidOf(player)
 	if humanoid then humanoid.Health = 0 end
 end
