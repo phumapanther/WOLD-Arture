@@ -35,7 +35,7 @@ CombatConfig.Weapons = {
 	-- sequences and paste the ids here; an empty id is safe, the attack still lands and just looks like a
 	-- punch. `projectile` marks the ranged weapons: those fire instead of swinging a melee hitbox.
 	Sword = {
-		idleAnimation = "rbxassetid://104032619103694", -- Sword_Idle
+		idleAnimation = "rbxassetid://103704114129246", -- Sword_Idle
 		guardAnimation = "",
 		guardWalkSpeed = 6,
 		idleTimeout = 4,
@@ -44,7 +44,7 @@ CombatConfig.Weapons = {
 		-- recovery out to 0.66. The windup/active numbers below mirror those marker times exactly, so the
 		-- hitbox is live precisely while the blade is sweeping.
 		attacks = {
-			{ animation = "", damage = 18, windup = 0.24, active = 0.12, recovery = 0.3, range = 7 }, -- Sword_Slash
+			{ animation = "rbxassetid://138133285610075", damage = 18, windup = 0.24, active = 0.12, recovery = 0.3, range = 7 }, -- Sword_Slash
 		},
 		chainResetDelay = 0.35, -- the user asked for a beat between swings
 		chainWindow = 1.4,
