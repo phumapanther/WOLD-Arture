@@ -134,7 +134,7 @@ function TouchActionGui.new()
 
 	-- The speaking stone, directly above the bag and the same size: the user asked for a small button in
 	-- the bottom-right corner matching the bag button. Same column, so neither moves as the other appears.
-	local social = circle(sideColumn, ROLL_SIZE, ROLL_COLOR, " 98|", 22) -- crystal ball
+	local social = circle(sideColumn, ROLL_SIZE, ROLL_COLOR, "STONE", 13)
 	social.Name = "SocialButton"
 	social.AnchorPoint = Vector2.new(1, 1)
 	social.Position = UDim2.new(1, 0, 1, -(ROLL_SIZE + GAP))

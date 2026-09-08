@@ -130,7 +130,9 @@ function SocialGui.new()
 	panel.Name = "Stone"
 	panel.AnchorPoint = Vector2.new(0.5, 0.5)
 	panel.Position = UDim2.fromScale(0.5, 0.5)
-	panel.Size = small and UDim2.fromScale(0.92, 0.9) or UDim2.fromScale(0.5, 0.82)
+	-- 0.9 of the height plus the UIScale below pushed the slab past the top edge on a short screen
+	-- (measured: y = -19 on an 908x542 viewport). 0.82 leaves room for the scale and the phone notch.
+	panel.Size = small and UDim2.fromScale(0.92, 0.82) or UDim2.fromScale(0.5, 0.82)
 	panel.BackgroundColor3 = STONE
 	panel.BackgroundTransparency = 0.08
 	panel.BorderSizePixel = 0
@@ -139,7 +141,8 @@ function SocialGui.new()
 
 	local size = Instance.new("UISizeConstraint")
 	size.MaxSize = Vector2.new(560, 660)
-	size.MinSize = Vector2.new(280, 320)
+	-- No tall floor on a phone: a minimum bigger than the screen is what forces the slab off the edge.
+	size.MinSize = small and Vector2.new(260, 260) or Vector2.new(280, 320)
 	size.Parent = panel
 
 	corner(panel, UDim.new(0, 18))
@@ -368,7 +371,8 @@ function SocialGui:RenderBoard(posts)
 		corner(face, UDim.new(1, 0))
 		-- Cached and paced by AvatarThumbnails, so a busy board does not hammer the thumbnail API.
 		AvatarThumbnails.Get(post.userId, function(image)
-			if face.Parent then face.Image = image end
+			-- nil until the fetch lands, false if it failed; only a string is a valid Image.
+			if face.Parent and type(image) == "string" then face.Image = image end
 		end)
 
 		local name = label(row, post.name, 13, ACCENT)
@@ -785,7 +789,7 @@ end
 function SocialGui:RenderProfile(data)
 	local player = Players.LocalPlayer
 	AvatarThumbnails.Get(player.UserId, function(image)
-		if self.profileFace.Parent then self.profileFace.Image = image end
+		if self.profileFace.Parent and type(image) == "string" then self.profileFace.Image = image end
 	end)
 	self.profileName.Text = player.DisplayName ~= "" and player.DisplayName or player.Name
 

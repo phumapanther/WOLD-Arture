@@ -102,8 +102,10 @@ function BoardFeedGui:Add(post)
 	local fc = Instance.new("UICorner")
 	fc.CornerRadius = UDim.new(1, 0)
 	fc.Parent = face
+	-- Get calls back immediately with nil (and false on failure) before the real image arrives, so an
+	-- unguarded assignment throws "ContentId expected, got nil" and aborts the rest of this row.
 	AvatarThumbnails.Get(post.userId, function(image)
-		if face.Parent then face.Image = image end
+		if face.Parent and type(image) == "string" then face.Image = image end
 	end)
 
 	local name = Instance.new("TextLabel")
