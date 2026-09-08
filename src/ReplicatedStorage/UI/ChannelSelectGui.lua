@@ -76,14 +76,18 @@ function ChannelSelectGui.new()
 	bgImage.Parent = root
 
 	-- header title, top-left, for a bit of branding on the menu
+	local portrait = Responsive.IsPortrait()
+
 	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(0.42, 0, 0, 40)
+	-- Portrait has no room for a title and tabs side by side, so the title takes the full width and the tabs
+	-- drop onto their own line below it (see tabBar's position).
+	title.Size = portrait and UDim2.new(0.93, 0, 0, 34) or UDim2.new(0.42, 0, 0, 40)
 	title.TextScaled = false
 	title.TextTruncate = Enum.TextTruncate.AtEnd
 	title.Position = UDim2.new(0.035, 0, 0, TOP_BAR + 24)
 	title.BackgroundTransparency = 1
 	title.Font = Enum.Font.SourceSansBold
-	title.TextSize = 26
+	title.TextSize = portrait and 20 or 26
 	title.TextColor3 = ACCENT
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Text = "WOLD Arture — เลือกเซิร์ฟเวอร์"
@@ -98,8 +102,13 @@ function ChannelSelectGui.new()
 	-- so it can never run past the screen. The old fixed 0.34-scale width clipped the third tab on a phone
 	-- (measured: 410px of tabs inside a 309px bar, last tab ending 76px off-screen).
 	tabBar.AutomaticSize = Enum.AutomaticSize.X
-	tabBar.Size = UDim2.new(0, 0, 0, 50)
-	tabBar.Position = UDim2.new(1, -24, 0, TOP_BAR + 24)
+	tabBar.Size = UDim2.new(0, 0, 0, portrait and 40 or 50)
+	if portrait then
+		tabBar.AnchorPoint = Vector2.new(0.5, 0)
+		tabBar.Position = UDim2.new(0.5, 0, 0, TOP_BAR + 62)
+	else
+		tabBar.Position = UDim2.new(1, -24, 0, TOP_BAR + 24)
+	end
 	tabBar.BackgroundTransparency = 1
 	tabBar.Parent = root
 	Responsive.Scale(tabBar)
@@ -132,8 +141,9 @@ function ChannelSelectGui.new()
 	list.AnchorPoint = Vector2.new(0.5, 0)
 	-- On a phone the header eats proportionally more of a short screen, so the list starts higher and keeps a
 	-- smaller bottom margin than on desktop.
-	local headerDrop = Responsive.IsSmallScreen() and 78 or 96
-	local bottomMargin = Responsive.IsSmallScreen() and 96 or 140
+	local headerDrop = portrait and 112 or (Responsive.IsSmallScreen() and 78 or 96)
+	-- Portrait leaves room at the bottom for the touch controls, which sit over the lower corners.
+	local bottomMargin = portrait and 150 or (Responsive.IsSmallScreen() and 96 or 140)
 	list.Size = UDim2.new(0.94, 0, 1, -TOP_BAR - bottomMargin)
 	list.Position = UDim2.new(0.5, 0, 0, TOP_BAR + headerDrop)
 	list.BackgroundColor3 = Color3.fromRGB(10, 10, 14)
@@ -162,13 +172,16 @@ function ChannelSelectGui.new()
 	-- Phone rows are shorter and give the avatar strip less room, because a landscape phone is short: five
 	-- 130px rows plus the header do not fit, and the 44px avatar cells overflow the card.
 	local small = Responsive.IsSmallScreen()
-	local ROW_H = small and 88 or 130
-	local NAME_W = small and 62 or 100
-	local RIGHT_W = small and 128 or 190 -- reserved for the count/status/JOIN cluster
-	local AVATAR_CELL = small and 26 or 44
-	local AVATAR_H = small and 56 or 90
-	local JOIN_W = small and 74 or 90
-	local JOIN_H = small and 32 or 40
+	local ROW_H = portrait and 96 or (small and 88 or 130)
+	local NAME_W = portrait and 56 or (small and 62 or 100)
+	-- Reserved for the count/status/JOIN cluster. In portrait this is a FRACTION of the row rather than a
+	-- fixed pixel width: a 720px-wide phone cannot spare 190px, and a fixed reservation pushed JOIN off the
+	-- right edge entirely (which is what the portrait screenshot showed).
+	local RIGHT_W = portrait and 96 or (small and 128 or 190)
+	local AVATAR_CELL = portrait and 22 or (small and 26 or 44)
+	local AVATAR_H = portrait and 48 or (small and 56 or 90)
+	local JOIN_W = portrait and 68 or (small and 74 or 90)
+	local JOIN_H = portrait and 30 or (small and 32 or 40)
 
 	self.rows.Roleplay = {}
 	for channel = 1, 5 do

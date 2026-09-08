@@ -10,6 +10,7 @@ local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 local ChannelSelectGui = require(game.ReplicatedStorage.UI.ChannelSelectGui)
 local AvatarThumbnails = require(game.ReplicatedStorage.UI.AvatarThumbnails)
+local Responsive = require(game.ReplicatedStorage.UI.Responsive)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 -- Hide the default chat window and player list while the channel-select screen is up (for now, per request —
@@ -19,9 +20,17 @@ pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false) end)
 pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false) end)
 
 local player = Players.LocalPlayer
-local gui = ChannelSelectGui.new()
-gui.gui.Parent = player:WaitForChild("PlayerGui")
-gui:Show()
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- The GUI branches on portrait vs landscape at BUILD time (rows and the header are arranged differently, not
+-- merely scaled), so rotating the phone has to rebuild it. `gui` is therefore reassigned rather than captured:
+-- every handler below goes through this upvalue, and `lastSnapshot` replays the channel data into the new
+-- instance so a rotation doesn't blank the list until the next server broadcast.
+local gui
+local lastSnapshot = nil
+local locked = false -- survives a rebuild: a rotation must not un-black a screen that is mid-join
+
+local buildGui, applySnapshot
 
 AvatarThumbnails.OnAnyLoaded(function(userId, content)
 	-- only Roleplay has real per-channel row tables; Stories/Tanding are { comingSoon = TextLabel }, not indexable this way
@@ -36,7 +45,8 @@ AvatarThumbnails.OnAnyLoaded(function(userId, content)
 	end
 end)
 
-local function applySnapshot(data)
+function applySnapshot(data)
+	lastSnapshot = data
 	for mode, channels in pairs(data) do
 		for channel, d in pairs(channels) do
 			gui:SetChannelData(mode, channel, d)
@@ -56,6 +66,7 @@ local pendingJoin = 0 -- bumped on every click; a timeout only acts if it's stil
 local function resetToError()
 	-- ponytail: reset every Roleplay row's status rather than tracking which one was mid-join (only ever one in
 	-- flight per client); Stories/Tanding aren't real per-channel tables (see ChannelSelectGui.new), so they're excluded.
+	locked = false
 	gui:Unlock() -- only a failed/timed-out join reaches here; a successful one blacks out the screen for good
 	for channel in pairs(gui.rows.Roleplay) do
 		gui:SetRowStatus("Roleplay", channel, "error")
@@ -68,9 +79,10 @@ Remotes.JoinFailed.OnClientEvent:Connect(function(reason)
 	resetToError()
 end)
 
-gui:OnJoin(function(mode, channel)
+local function onJoin(mode, channel)
 	-- Lock immediately, before firing the remote or waiting on any response: the screen blacks out on this
 	-- click, not once the server answers, so a second click during the (network) gap in between is impossible.
+	locked = true
 	gui:Lock()
 	gui:SetRowStatus(mode, channel, "connecting")
 	Remotes.JoinChannel:FireServer(mode, channel)
@@ -84,4 +96,27 @@ gui:OnJoin(function(mode, channel)
 			resetToError()
 		end
 	end)
+end
+
+function buildGui()
+	local old = gui
+	gui = ChannelSelectGui.new()
+	gui:OnJoin(onJoin)
+	gui.gui.Parent = playerGui
+	gui:Show()
+	if locked then gui:Lock() end
+	if lastSnapshot then applySnapshot(lastSnapshot) end
+	if old then old.gui:Destroy() end
+end
+
+buildGui()
+
+-- Rebuild on rotation / resize, but only when the portrait-vs-landscape answer actually flips: a plain resize
+-- is handled by the UIScale already, and tearing down the screen mid-join would be jarring.
+local wasPortrait = Responsive.IsPortrait()
+Responsive.OnViewportChanged(function()
+	local isPortrait = Responsive.IsPortrait()
+	if isPortrait == wasPortrait then return end
+	wasPortrait = isPortrait
+	buildGui()
 end)

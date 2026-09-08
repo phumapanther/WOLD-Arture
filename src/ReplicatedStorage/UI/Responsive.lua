@@ -40,4 +40,37 @@ function Responsive.IsSmallScreen()
 	return camera.ViewportSize.X < 900 or camera.ViewportSize.Y < 500
 end
 
+-- Taller than it is wide: a phone held upright. Worth its own branch because the scarce axis flips — there is
+-- plenty of height for stacked rows but almost no width, so anything laid out as a horizontal strip has to be
+-- re-arranged rather than merely scaled.
+function Responsive.IsPortrait()
+	local camera = workspace.CurrentCamera
+	if not camera then return false end
+	return camera.ViewportSize.Y > camera.ViewportSize.X
+end
+
+-- Runs `callback` now and again whenever the viewport changes shape (rotation, window resize), so a layout
+-- that branches on IsPortrait/IsSmallScreen can rebuild itself instead of being frozen at whatever the screen
+-- was when the GUI was first constructed.
+function Responsive.OnViewportChanged(callback)
+	local camera = workspace.CurrentCamera
+	local last = camera and camera.ViewportSize or Vector2.zero
+
+	local function check()
+		local now = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize
+		if not now then return end
+		-- Only fire on a real shape change; ViewportSize also ticks during window drags.
+		if math.abs(now.X - last.X) < 1 and math.abs(now.Y - last.Y) < 1 then return end
+		last = now
+		callback(now)
+	end
+
+	if camera then camera:GetPropertyChangedSignal("ViewportSize"):Connect(check) end
+	workspace:GetPropertyChangedSignal("CurrentCamera"):Connect(function()
+		camera = workspace.CurrentCamera
+		if camera then camera:GetPropertyChangedSignal("ViewportSize"):Connect(check) end
+		check()
+	end)
+end
+
 return Responsive

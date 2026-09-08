@@ -22,16 +22,20 @@ local ROLL_SIZE = JUMP_SIZE / 2 -- was JUMP_SIZE
 local EDGE_MARGIN = 30
 local GAP = 14
 
-local ATTACK_COLOR = Color3.fromRGB(198, 62, 52)
-local ROLL_COLOR = Color3.fromRGB(58, 96, 150)
-local SLIDE_COLOR = Color3.fromRGB(150, 108, 40)
-local TEXT_LIGHT = Color3.fromRGB(245, 242, 236)
+-- Monochrome, modern: near-black glass with a thin grey rim, rather than coloured buttons. The two actions
+-- are told apart by size, position and glyph instead of by hue, which keeps them from competing with the
+-- game world for attention.
+local ATTACK_COLOR = Color3.fromRGB(18, 18, 20)
+local ROLL_COLOR = Color3.fromRGB(28, 28, 32)
+local SLIDE_COLOR = Color3.fromRGB(44, 44, 50) -- slightly lighter so the ROLL -> SLIDE swap still reads
+local TEXT_LIGHT = Color3.fromRGB(232, 232, 236)
+local RIM = Color3.fromRGB(150, 152, 160)
 
 local function circle(parent, size, color, glyph, glyphSize)
 	local btn = Instance.new("ImageButton")
 	btn.Size = UDim2.fromOffset(size, size)
 	btn.BackgroundColor3 = color
-	btn.BackgroundTransparency = 0.25
+	btn.BackgroundTransparency = 0.3
 	btn.AutoButtonColor = true
 	btn.Image = ""
 	btn.Parent = parent
@@ -40,17 +44,27 @@ local function circle(parent, size, color, glyph, glyphSize)
 	corner.CornerRadius = UDim.new(1, 0)
 	corner.Parent = btn
 
+	-- A soft top-to-bottom lift so the flat black reads as a raised control rather than a hole in the screen.
+	local sheen = Instance.new("UIGradient")
+	sheen.Color = ColorSequence.new(Color3.fromRGB(255, 255, 255), Color3.fromRGB(160, 160, 170))
+	sheen.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.82),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	sheen.Rotation = 90
+	sheen.Parent = btn
+
 	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.fromRGB(255, 255, 255)
-	stroke.Transparency = 0.55
-	stroke.Thickness = 2
+	stroke.Color = RIM
+	stroke.Transparency = 0.4
+	stroke.Thickness = 1.5
 	stroke.Parent = btn
 
 	local label = Instance.new("TextLabel")
 	label.Name = "Glyph"
 	label.Size = UDim2.fromScale(1, 1)
 	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.GothamBold
+	label.Font = Enum.Font.GothamMedium
 	label.TextSize = glyphSize
 	label.TextColor3 = TEXT_LIGHT
 	label.Text = glyph
