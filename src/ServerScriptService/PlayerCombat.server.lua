@@ -63,6 +63,15 @@ local function setGuard(player, state, guarding)
 	Remotes.CombatStateChanged:FireAllClients(player, guarding and "guard_start" or "guard_end")
 end
 
+-- The blow that downs someone is the kill, and it pays by how far above the killer the victim was: a big
+-- upset is worth several ordinary kills, while farming someone far below is worth a fraction. Only the
+-- finishing hit calls this, so the reward goes to whoever actually took them down.
+local function awardKill(killer, victim)
+	local multiplier = ProgressionConfig.KillMultiplier(
+		Progression.GetLevel(killer), Progression.GetLevel(victim))
+	Progression.AwardExp(killer, math.floor(ProgressionConfig.ExpPerPlayerKill * multiplier + 0.5))
+end
+
 -- Impact feedback: a short sound parented to the victim so everyone nearby hears it positionally. Works for
 -- training dummies too: their body part is deliberately named HumanoidRootPart.
 local function playHitSound(character)
@@ -127,7 +136,7 @@ local function fireProjectile(player, attack)
 					Vitals.ApplyDamage(other, attack.damage, "combat")
 					playHitSound(otherChar)
 					if not wasDowned and Vitals.IsDowned(other) then
-						Progression.AwardExp(player, ProgressionConfig.ExpPerPlayerKill)
+						awardKill(player, other)
 					end
 				end
 			end
@@ -210,7 +219,7 @@ local function resolveHit(player, state, attack)
 					-- The blow that puts someone down is the "kill" for EXP purposes: combat downs players
 					-- rather than killing them outright, so there is no later death to hook.
 					if not wasDowned and Vitals.IsDowned(other) then
-						Progression.AwardExp(player, ProgressionConfig.ExpPerPlayerKill)
+						awardKill(player, other)
 					end
 				end
 			end

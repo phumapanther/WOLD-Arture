@@ -15,6 +15,8 @@ local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
 local StatusEffects = require(game.ServerScriptService.StatusEffects)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
+local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
+local Progression = require(game.ServerScriptService.Progression)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 if ServerConfig.IsLobby then return end
@@ -40,6 +42,20 @@ local function launch(hrp, direction, speed, lift)
 	mover.Parent = hrp
 	Debris:AddItem(mover, 0.25)
 	Debris:AddItem(attachment, 0.3)
+end
+
+-- Damage that also pays out if it downs someone. Skills previously dealt damage without ever awarding a
+-- kill, so finishing an opponent with Q was worth nothing; this routes them through the same level-gap
+-- reward the basic attacks use.
+local function damageAndScore(caster, victim, amount)
+	if Vitals.IsInvulnerable(victim) then return end
+	local wasDowned = Vitals.IsDowned(victim)
+	Vitals.ApplyDamage(victim, amount, "combat")
+	if not wasDowned and Vitals.IsDowned(victim) then
+		local multiplier = ProgressionConfig.KillMultiplier(
+			Progression.GetLevel(caster), Progression.GetLevel(victim))
+		Progression.AwardExp(caster, math.floor(ProgressionConfig.ExpPerPlayerKill * multiplier + 0.5))
+	end
 end
 
 -- Everyone (other than the caster) whose root is within `radius` of `origin`.
@@ -79,9 +95,7 @@ function Skills.LungeSlash(player)
 		if not landedHrp then return end
 		local origin = landedHrp.Position + landedHrp.CFrame.LookVector * 4
 		for _, victim in ipairs(playersNear(origin, 9, player)) do
-			if not Vitals.IsInvulnerable(victim) then
-				Vitals.ApplyDamage(victim, 32, "combat")
-			end
+			damageAndScore(player, victim, 32)
 		end
 	end)
 	return true
@@ -130,10 +144,9 @@ function Skills.ScatterShot(player)
 				local result = workspace:Raycast(arrow.Position, step, params)
 				if result then
 					local victim = Players:GetPlayerFromCharacter(result.Instance.Parent)
-					if victim and victim ~= player and not hitAlready[victim]
-						and not Vitals.IsInvulnerable(victim) then
+					if victim and victim ~= player and not hitAlready[victim] then
 						hitAlready[victim] = true
-						Vitals.ApplyDamage(victim, 14, "combat")
+						damageAndScore(player, victim, 14)
 						StatusEffects.Knockdown(victim, 3)
 					end
 					arrow:Destroy()
@@ -236,9 +249,7 @@ function Skills.Fireball(player)
 			if result then
 				-- Explode: everything close to the impact takes damage.
 				for _, victim in ipairs(playersNear(result.Position, 12, player)) do
-					if not Vitals.IsInvulnerable(victim) then
-						Vitals.ApplyDamage(victim, 26, "combat")
-					end
+					damageAndScore(player, victim, 26)
 				end
 				ball:Destroy()
 				return

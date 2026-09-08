@@ -19,6 +19,27 @@ ProgressionConfig.ExpPerMonsterKill = 100 -- no monsters exist yet; here so the 
 ProgressionConfig.ExpPerPlayerKill = ProgressionConfig.ExpPerMonsterKill / 10 -- 10
 ProgressionConfig.ExpPerDummyHit = ProgressionConfig.ExpPerPlayerKill / 2 -- 5, once per punch
 
+-- Killing UP is worth more: the further above you the victim was, the bigger the multiplier. Killing down is
+-- worth less, but never nothing, so farming low levels stops being efficient without becoming pointless.
+-- The bonus is per level of difference and capped, or a level-1 player downing a level-100 one would earn a
+-- hundred levels back in a single hit.
+ProgressionConfig.KillLevelBonusPerLevel = 0.25 -- +25% per level the victim is above the killer
+ProgressionConfig.KillLevelPenaltyPerLevel = 0.08 -- -8% per level they were below
+ProgressionConfig.MaxKillMultiplier = 6
+ProgressionConfig.MinKillMultiplier = 0.2
+
+-- How much the kill is worth, given both levels. Only the killer's last hit calls this.
+function ProgressionConfig.KillMultiplier(killerLevel, victimLevel)
+	local gap = (victimLevel or 1) - (killerLevel or 1)
+	local multiplier
+	if gap >= 0 then
+		multiplier = 1 + gap * ProgressionConfig.KillLevelBonusPerLevel
+	else
+		multiplier = 1 + gap * ProgressionConfig.KillLevelPenaltyPerLevel
+	end
+	return math.clamp(multiplier, ProgressionConfig.MinKillMultiplier, ProgressionConfig.MaxKillMultiplier)
+end
+
 -- Body growth: the character reaches 10x its normal size at MaxLevel, one step every 10 levels.
 ProgressionConfig.MaxScale = 10
 ProgressionConfig.LevelsPerGrowth = 10
