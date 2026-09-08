@@ -205,6 +205,17 @@ function InventoryGui.new()
 		corner(slot, UDim.new(0, 8))
 		local slotStroke = stroke(slot, GLASS, 0.85)
 
+		-- Icon first, name as the fallback: an item with artwork hides its label, one without shows text.
+		local icon = Instance.new("ImageLabel")
+		icon.Name = "Icon"
+		icon.Size = UDim2.new(1, -8, 1, -8)
+		icon.Position = UDim2.new(0, 4, 0, 4)
+		icon.BackgroundTransparency = 1
+		icon.ScaleType = Enum.ScaleType.Fit
+		icon.Image = ""
+		icon.Visible = false
+		icon.Parent = slot
+
 		local name = label(slot, "", 11, TEXT_LIGHT, Enum.TextXAlignment.Center)
 		name.Size = UDim2.new(1, -6, 1, -18)
 		name.Position = UDim2.new(0, 3, 0, 3)
@@ -219,7 +230,7 @@ function InventoryGui.new()
 			if self.onSlotClicked then self.onSlotClicked(i) end
 		end)
 
-		self.slotButtons[i] = { button = slot, name = name, count = count, stroke = slotStroke }
+		self.slotButtons[i] = { button = slot, name = name, count = count, stroke = slotStroke, icon = icon }
 	end
 
 	--------------------------------------------------------------------------
@@ -267,11 +278,17 @@ function InventoryGui:Render(data)
 		local slot = data.slots and data.slots[i]
 		if slot then
 			local item = ItemCatalog.Get(slot.id)
-			entry.name.Text = item and item.name or slot.id
+			local art = item and item.icon or ""
+			entry.icon.Image = art
+			entry.icon.Visible = art ~= ""
+			-- The name only shows when there is no artwork, so an icon is never covered by its own label.
+			entry.name.Text = (art == "") and (item and item.name or slot.id) or ""
 			entry.count.Text = (slot.count or 1) > 1 and ("x%d"):format(slot.count) or ""
 			entry.stroke.Color = item and KIND_TINT[item.kind] or GLASS
 			entry.stroke.Transparency = 0.35
 		else
+			entry.icon.Image = ""
+			entry.icon.Visible = false
 			entry.name.Text = ""
 			entry.count.Text = ""
 			entry.stroke.Color = GLASS

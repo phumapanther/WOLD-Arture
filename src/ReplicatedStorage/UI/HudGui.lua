@@ -288,15 +288,71 @@ function HudGui.new()
 	hotbarLayout.Padding = UDim.new(0, 8)
 	hotbarLayout.Parent = hotbar
 
+	-- Hotbar slots hold consumables: the number key (or a tap) uses whatever is in them. Buttons rather than
+	-- frames so touch players can use an item without opening the bag.
 	self.slots = {}
+	self.hotbarEntries = {}
+	self.onHotbarUsed = nil
 	for i = 1, HOTBAR_SLOTS do
-		local slot = Instance.new("Frame")
+		local slot = Instance.new("TextButton")
 		slot.Size = UDim2.new(0, 64, 0, 64)
 		slot.BackgroundColor3 = Color3.fromRGB(35, 35, 40)
 		slot.LayoutOrder = i
+		slot.Text = ""
+		slot.AutoButtonColor = true
 		slot.Parent = hotbar
 		corner(slot, UDim.new(0, 10))
+
+		local icon = Instance.new("ImageLabel")
+		icon.Name = "Icon"
+		icon.Size = UDim2.new(1, -8, 1, -8)
+		icon.Position = UDim2.new(0, 4, 0, 4)
+		icon.BackgroundTransparency = 1
+		icon.ScaleType = Enum.ScaleType.Fit
+		icon.Image = ""
+		icon.Visible = false
+		icon.Parent = slot
+
+		local nameLabel = Instance.new("TextLabel")
+		nameLabel.Size = UDim2.new(1, -6, 1, -16)
+		nameLabel.Position = UDim2.new(0, 3, 0, 3)
+		nameLabel.BackgroundTransparency = 1
+		nameLabel.Font = Enum.Font.GothamMedium
+		nameLabel.TextSize = 10
+		nameLabel.TextColor3 = Color3.fromRGB(226, 226, 232)
+		nameLabel.TextWrapped = true
+		nameLabel.Text = ""
+		nameLabel.Parent = slot
+
+		local countLabel = Instance.new("TextLabel")
+		countLabel.AnchorPoint = Vector2.new(1, 1)
+		countLabel.Position = UDim2.new(1, -4, 1, -2)
+		countLabel.Size = UDim2.new(0, 24, 0, 14)
+		countLabel.BackgroundTransparency = 1
+		countLabel.Font = Enum.Font.GothamBold
+		countLabel.TextSize = 11
+		countLabel.TextColor3 = ACCENT
+		countLabel.TextXAlignment = Enum.TextXAlignment.Right
+		countLabel.Text = ""
+		countLabel.Parent = slot
+
+		-- The slot number, so the keyboard shortcut is discoverable.
+		local keyLabel = Instance.new("TextLabel")
+		keyLabel.Position = UDim2.new(0, 4, 0, 1)
+		keyLabel.Size = UDim2.new(0, 12, 0, 12)
+		keyLabel.BackgroundTransparency = 1
+		keyLabel.Font = Enum.Font.GothamBold
+		keyLabel.TextSize = 10
+		keyLabel.TextColor3 = Color3.fromRGB(150, 150, 160)
+		keyLabel.Text = tostring(i)
+		keyLabel.Parent = slot
+
+		slot.Activated:Connect(function()
+			if self.onHotbarUsed then self.onHotbarUsed(i) end
+		end)
+
 		self.slots[i] = slot
+		self.hotbarEntries[i] = { button = slot, icon = icon, name = nameLabel, count = countLabel }
 	end
 
 	-- EXP bar, centred under the hotbar. A thin strip rather than a pill: it is progress, not a vital, and
@@ -346,6 +402,29 @@ function HudGui.new()
 
 	self.gui = gui
 	return self
+end
+
+-- SetHotbar: `entries` is a list of { id, count, icon, name } or nil per slot.
+function HudGui:SetHotbar(entries)
+	for i, ui in ipairs(self.hotbarEntries) do
+		local entry = entries and entries[i]
+		if entry then
+			local art = entry.icon or ""
+			ui.icon.Image = art
+			ui.icon.Visible = art ~= ""
+			ui.name.Text = (art == "") and (entry.name or entry.id) or ""
+			ui.count.Text = (entry.count or 1) > 1 and tostring(entry.count) or ""
+		else
+			ui.icon.Image = ""
+			ui.icon.Visible = false
+			ui.name.Text = ""
+			ui.count.Text = ""
+		end
+	end
+end
+
+function HudGui:OnHotbarUsed(callback)
+	self.onHotbarUsed = callback
 end
 
 -- SetExp: level plus progress 0..1 toward the next one.
