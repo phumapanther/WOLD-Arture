@@ -86,19 +86,44 @@ end
 
 -- Impact feedback: a short sound parented to the victim so everyone nearby hears it positionally. Works for
 -- training dummies too: their body part is deliberately named HumanoidRootPart.
-local function playHitSound(character)
-	if VitalsConfig.HitSoundId == "" then return end -- no sound configured; combat is simply silent
-	local hrp = character:FindFirstChild("HumanoidRootPart")
+-- Plays a one-shot sound at a character and cleans it up afterwards. Every combat sound goes through here
+-- so volume, falloff and cleanup are decided once.
+local function playAt(character, soundId, distance, volume, maxSeconds)
+	if not character or soundId == "" then return end -- unconfigured sounds are simply silent
+	local hrp = character:FindFirstChild("HumanoidRootPart") or character.PrimaryPart
 	if not hrp then return end
 	local sound = Instance.new("Sound")
-	sound.SoundId = VitalsConfig.HitSoundId
-	sound.Volume = VitalsConfig.HitSoundVolume
-	sound.RollOffMaxDistance = 60
+	sound.SoundId = soundId
+	sound.Volume = volume or CombatConfig.AttackSoundVolume
+	sound.RollOffMaxDistance = distance or CombatConfig.HitSoundDistance
 	sound.Parent = hrp
 	sound:Play()
-	-- Punches land about once a second but the clip is longer than that, so cut it short rather than letting
-	-- consecutive hits stack into a drone.
-	game:GetService("Debris"):AddItem(sound, VitalsConfig.HitSoundMaxSeconds)
+	-- Blows land faster than the clips are long, so cut them short rather than letting consecutive hits
+	-- stack into a drone.
+	game:GetService("Debris"):AddItem(sound, maxSeconds or VitalsConfig.HitSoundMaxSeconds)
+end
+
+-- The sound pair for whatever the player is wielding. Falls back to the punch sound for the impact so an
+-- unconfigured weapon still thumps rather than landing in silence.
+local function soundsFor(player)
+	local _, entry = Inventory.EquippedWeapon(player)
+	local set = entry and CombatConfig.Sounds[entry.id]
+	local hit = (set and set.hit ~= "" and set.hit) or VitalsConfig.HitSoundId
+	return (set and set.cast) or "", hit
+end
+
+local function playHitSound(character, attacker)
+	local hit = VitalsConfig.HitSoundId
+	if attacker then
+		hit = select(2, soundsFor(attacker))
+	end
+	playAt(character, hit, CombatConfig.HitSoundDistance, VitalsConfig.HitSoundVolume)
+end
+
+-- The attacker's own sound: the swing, the bowstring, the spell leaving the book.
+local function playCastSound(player)
+	local cast = select(1, soundsFor(player))
+	playAt(player.Character, cast, CombatConfig.CastSoundDistance)
 end
 
 -- Ranged attacks: the bow's arrow and the spellbook's orb travel and hit the first thing they reach; the
@@ -147,7 +172,7 @@ local function fireProjectile(player, attack)
 					local wasDowned = Vitals.IsDowned(other)
 					Vitals.ApplyDamage(other, attack.damage, "combat")
 					applyEffect(attack, other)
-					playHitSound(otherChar)
+					playHitSound(otherChar, player)
 					if not wasDowned and Vitals.IsDowned(other) then
 						awardKill(player, other)
 					end
@@ -158,7 +183,7 @@ local function fireProjectile(player, attack)
 			local root = dummy.PrimaryPart
 			if root and (root.Position - position).Magnitude <= 6 then
 				Progression.AwardExp(player, ProgressionConfig.ExpPerDummyHit)
-				playHitSound(dummy)
+				playHitSound(dummy, player)
 			end
 		end
 	end
@@ -213,7 +238,7 @@ local function resolveHit(player, state, attack)
 		if root and not state.hitThisSwing[dummy] and (root.Position - origin).Magnitude <= attack.range then
 			state.hitThisSwing[dummy] = true
 			Progression.AwardExp(player, ProgressionConfig.ExpPerDummyHit)
-			playHitSound(dummy)
+			playHitSound(dummy, player)
 		end
 	end
 
@@ -229,7 +254,7 @@ local function resolveHit(player, state, attack)
 					local wasDowned = Vitals.IsDowned(other)
 					Vitals.ApplyDamage(other, attack.damage, "combat")
 					applyEffect(attack, other)
-					playHitSound(otherChar)
+					playHitSound(otherChar, player)
 					-- The blow that puts someone down is the "kill" for EXP purposes: combat downs players
 					-- rather than killing them outright, so there is no later death to hook.
 					if not wasDowned and Vitals.IsDowned(other) then
@@ -274,6 +299,9 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player)
 	state.activeUntil = now + attack.windup + attack.active
 	state.activeFrom = now + attack.windup
 	state.hitThisSwing = {}
+	-- The attacker's own sound fires on the windup, not on the hit: a swing that misses should still be
+	-- heard, and a bowstring should sound as the arrow leaves rather than when it lands.
+	playCastSound(player)
 	-- A ranged attack fires a single shot after its windup; only melee keeps a live hitbox.
 	if attack.projectile then
 		state.pendingAttack = nil
