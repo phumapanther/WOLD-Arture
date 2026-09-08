@@ -16,13 +16,16 @@ local PREFABS = ReplicatedStorage:WaitForChild("WOLD_Weapons", 20)
 
 -- How each weapon sits in the hand. Tuned per weapon because the prefabs have different origins: a sword is
 -- held mid-blade, a bow across the grip, a book flat on the palm.
--- Measured: these prefabs run along their own Y axis, so NO rotation already points a blade up (upDot +1.00)
--- while the -90 X used before laid it flat and inverted (-0.01). A small forward tilt gives the 0.94 lean the
--- user asked for.
+-- These prefabs run along their own Y axis, but the HILT is at +Y and the blade at the origin (measured on
+-- the sword: Handle +2.00, Pommel +2.50, Blade 0.00). So leaving the rotation alone hangs the sword point
+-- DOWN; it has to be flipped 180 degrees for the blade to stand up, then leaned forward.
+local BLADE_UP = CFrame.Angles(math.rad(180), 0, 0)
 local GRIP = {
 	-- Held between both hands in front of the chest rather than clipped to one hand, so it sits centred.
-	Sword = CFrame.new(0, 0.2, -1.6) * CFrame.Angles(math.rad(-20), 0, 0),
+	Sword = CFrame.new(0, 0.2, -1.6) * BLADE_UP * CFrame.Angles(math.rad(20), 0, 0),
 	Bow = CFrame.new(0, -0.2, 0.3) * CFrame.Angles(math.rad(-90), math.rad(90), 0),
+	-- The staff is a single part with no separate hilt, so it has no wrong end to flip: leaving it upright
+	-- puts its ornamented head at the top, which is the way a staff is carried.
 	Staff = CFrame.new(0, 0.2, -1.6) * CFrame.Angles(math.rad(-20), 0, 0),
 	-- The spellbook is not gripped: it floats in front of the chest between the open hands, so it hangs off
 	-- the torso instead. Attached to the hand it sat off to one side (measured x=2.5 instead of centred).
