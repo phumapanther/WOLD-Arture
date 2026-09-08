@@ -16,11 +16,22 @@
 
 local ServerStorage = game:GetService("ServerStorage")
 
+local NAMES = { "Combat_Guard", "Punch_Right", "Punch_Left" }
+
 local folder = ServerStorage:FindFirstChild("WOLD_Animations")
-if folder then folder:Destroy() end
-folder = Instance.new("Folder")
-folder.Name = "WOLD_Animations"
-folder.Parent = ServerStorage
+if not folder then
+	folder = Instance.new("Folder")
+	folder.Name = "WOLD_Animations"
+	folder.Parent = ServerStorage
+end
+
+-- Clear only the sequences this file owns. Destroying the whole folder would take the ones built by
+-- animgen/movement.lua and animgen/revive.lua with it, and a sequence that has not been published yet is
+-- unrecoverable.
+for _, name in ipairs(NAMES) do
+	local old = folder:FindFirstChild(name)
+	if old then old:Destroy() end
+end
 
 local rad = math.rad
 
@@ -129,7 +140,8 @@ makePunch("Punch_Right", "right")
 makePunch("Punch_Left", "left")
 
 local names = {}
-for _, c in ipairs(folder:GetChildren()) do
+for _, name in ipairs(NAMES) do
+	local c = folder:FindFirstChild(name)
 	local kfs = 0
 	for _, k in ipairs(c:GetChildren()) do
 		if k:IsA("Keyframe") then kfs += 1 end

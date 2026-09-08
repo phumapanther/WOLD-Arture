@@ -51,6 +51,17 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 - ทดสอบใน Play ผ่าน 22/22 (เกราะ/invuln/ล้ม/Recover/จมน้ำ/หิว 1800 วิ/อดตาย 120 วิ/ตก 8-30-70 studs/void/ท่าคลาน) — **เหลือทดสอบจริงหลัง publish: จอมืด+นับถอยหลัง+ปุ่มเกิดใหม่, เสียงต่อยโดน, กระพริบตอนเกิดใหม่, ต่อยกันจริง 2 บัญชี**
 - ถัดไป: 3b ชุบ/อุ้มคนล้ม (แยก spec) → 4 กลิ้ง/สไลด์ + ปุ่มมือถือ → 5 เก็บเกี่ยว
 
+**อนิเมชัน 3b/4 (2026-09-08) — สร้าง KeyframeSequence ครบ 6 ท่าเข้า `ServerStorage.WOLD_Animations` แล้ว รอผู้ใช้ดูท่า/จูนองศา ยังไม่ publish และยังไม่มีโค้ดระบบ** (ท่าทั้งหมดผู้ใช้บรรยายมาเอง)
+- `animgen/movement.lua` → `Roll_Forward` (ย่อเข่าลึก ก้มตัวติดขา แล้วม้วนหน้า 1 รอบ), `Slide_Enter`/`Slide_Hold` (เอนหลัง 45° ขาข้างหนึ่งชันเข่า อีกข้างเหยียดตรง แขนกางสองข้าง เอียงไปทางขาที่งอ — สลับข้างด้วยค่าคงที่ `BENT_SIDE`)
+- `animgen/revive.lua` → `CPR_Loop` (นั่งทับส้น เข่าติดพื้น ก้มหน้า แขนตรงประสานด้านหน้า ปั๊ม 0.55 วิ/ครั้ง ≈110 ครั้ง/นาที มี KeyframeMarker `Beat` ให้ `GetMarkerReachedSignal` ผูกเสียง/หัวใจบน HUD ตรงจังหวะ), `Carry_Held` + `Carry_Holder` (อุ้มขี่หลังแบบกระเป๋า ไม่ใช่พาดบ่า)
+- **ท่าอุ้มต้องมี Motor6D ที่อนิเมชันให้ไม่ได้:** Part0 = คนอุ้ม `UpperTorso`, Part1 = คนถูกอุ้ม `HumanoidRootPart`, C0 ≈ `CFrame.new(0,0.15,1.55)*CFrame.Angles(rad(-8),0,0)` (Motor6D ไม่ใช่ WeldConstraint — Animator ของคนถูกอุ้มถึงจะเล่น `Carry_Held` ทับได้) + `PlatformStand=true` + CollisionGroup ไม่ให้สองตัวชนกัน + `SetNetworkOwner(คนอุ้ม)` ไม่งั้นตัวสั่นหนักตอนเดิน
+- **Roblox ไม่มี root motion** — อนิเมชันไม่ขยับตัวละครเลย กลิ้ง/สไลด์ต้องดันด้วย velocity ในโค้ด + `AutoRotate=false`
+- เทคนิคในไฟล์: pose `LowerTorso` = RootJoint ใช้ย่อ/หมุน "ร่างที่มองเห็น" ทั้งตัวโดยไม่แตะ HipHeight (humanoid ยังยืนตรงชนปกติ); หมุน 360° ต้องซอยทีละ 90° เพราะ engine lerp เส้นทางสั้นสุด (0→-360 ในคีย์เดียว = ไม่หมุนเลย, ก้าว 180° = สุ่มทิศ) และคีย์เฟรมช่วงหมุนต้องตั้ง easing Linear ไม่งั้นสะดุดเป็น 4 จังหวะ; ไม่ใส่ pose ขา = อนิเมชันเดิน/วิ่งเดิมยังคุมขาต่อ (ใช้กับ `Carry_Holder` เหมือนที่ `Combat_Guard` ใช้)
+- แก้ `animgen/combat.lua`: เดิมลบทั้งโฟลเดอร์ `WOLD_Animations` ตอนรัน → ล้างท่าของไฟล์อื่นทิ้ง เปลี่ยนเป็นลบเฉพาะ 3 ท่าของตัวเอง (ไฟล์ใหม่ทั้งสองทำแบบเดียวกัน)
+- **พรีวิวโดยไม่ต้องอัปโหลด:** `node tools/preview-anim.js animgen/<ไฟล์>.lua <ชื่อท่า> [--speed 0.4]` — ต้องอยู่ใน **Play** (รันในดาต้าโมเดล Server, ใช้ `KeyframeSequenceProvider:RegisterKeyframeSequence` แล้วเล่นบนตัวละครผู้เล่นคนแรก) มักได้ "Target is not reachable" ครั้งแรก เรียกซ้ำแล้วติด
+- publish: right-click ทีละ sequence ใน ServerStorage → Save to Roblox (**ต้องเป็นบัญชีเจ้าของ place** ไม่งั้นโหลดไม่ขึ้น) แล้วเอา id ไปใส่ config แบบเดียวกับ `CombatConfig.Weapons[].guardAnimation` (id ว่าง = ระบบทำงานต่อได้ แค่เงียบ)
+- `screen_capture` ระหว่างอยู่ใน Play mode timeout ไม่ได้ภาพ — ตรวจท่าด้วยตาผู้ใช้แทน
+
 **เดิน/วิ่งบนจอย gamepad + มือถือ แบบ B — เขียนโค้ดแล้ว รอผู้ใช้ทดสอบเองด้วยจอย (Claude ไม่ต้องเทส)** อยู่ใน `MovementController.client.lua` เดิม server ไม่แตะ
 - ผู้ใช้เลือก B: ดันจอยสุดขอบ = วิ่ง (threshold ≥0.9 ค้าง ~0.25 วิ, หยุดเมื่อ <0.7 hysteresis — 3 ค่าคงที่บนหัวไฟล์ ปรับได้), ดันเบา = เดินช้า (engine ปรับความเร็วตามแรงดันให้เองอยู่แล้ว), ไม่มีปุ่มเพิ่ม, หลังบังคับเดิน 2 วิถ้ายังดันสุดขอบ → วิ่งต่ออัตโนมัติเหมือนคอม (ผู้ใช้ยืนยันแล้ว)
 - **gamepad** อ่านแรงดันตรงจาก `UserInputService.InputChanged` (`Thumbstick1.Position`) แม่นยำ ไม่ยุ่ง PlayerModule / **touch มือถือ** ไม่มี API → อนุมานจาก `ความเร็วแนวราบ / WalkSpeed` เฉพาะตอน `GetLastInputType()==Touch` (WASD ให้ magnitude 1 เสมอ ห้ามใช้กับคีย์บอร์ด) เพี้ยนบนเนิน/ในน้ำ/กลางอากาศ — ทางอัปเกรดจดไว้ในโค้ดและสเปก
