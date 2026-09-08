@@ -4,6 +4,7 @@
 -- Pure UI builder, like HudGui: it draws what it is handed and reports clicks through callbacks. The
 -- controller owns every decision and the server owns the data.
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
+local InventoryConfig = require(script.Parent.Parent.InventoryConfig)
 local Responsive = require(script.Parent.Responsive)
 
 local InventoryGui = {}
@@ -18,7 +19,8 @@ local SLOT_BG = Color3.fromRGB(26, 25, 32)
 local PANEL_BG = Color3.fromRGB(14, 13, 18)
 
 local COLS = 6
-local ROWS = 4 -- 24 slots, matching InventoryConfig.SlotCount
+-- Rows follow the bag size rather than being written down twice: change SlotCount and the grid follows.
+local ROWS = math.ceil(InventoryConfig.SlotCount / COLS)
 
 -- Colour-codes the slot border by what is in it, so a bag reads at a glance without icon art.
 local KIND_TINT = {
@@ -194,16 +196,20 @@ function InventoryGui.new()
 	grid.BackgroundTransparency = 1
 	grid.Parent = panel
 
+	-- The grid box is pinned to the COLS:ROWS aspect, which is what keeps square cells fitting. Sizing cells
+	-- off the WIDTH alone was fine at 4 rows (they could never be too tall) but overflows at 6: a 280x268 box
+	-- gives 46.7px cells, and six of those plus padding need 310px. Constraining the box instead means the
+	-- cells stay square AND the last row is always inside it, whatever shape the panel takes.
+	local gridAspect = Instance.new("UIAspectRatioConstraint")
+	gridAspect.AspectRatio = COLS / ROWS
+	gridAspect.DominantAxis = Enum.DominantAxis.Height
+	gridAspect.Parent = grid
+
 	local layout = Instance.new("UIGridLayout")
-	-- Cells are sized off the WIDTH on both axes, so they stay square whatever shape the panel takes; sizing
-	-- the height as a fraction of the grid's own height stretched them with the panel's aspect ratio.
-	layout.CellSize = UDim2.new(1 / COLS, -6, 1 / COLS, -6)
+	layout.CellSize = UDim2.new(1 / COLS, -6, 1 / ROWS, -6)
 	layout.CellPadding = UDim2.fromOffset(6, 6)
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = grid
-	local cellAspect = Instance.new("UIAspectRatioConstraint")
-	cellAspect.AspectRatio = 1
-	cellAspect.Parent = layout
 
 	for i = 1, COLS * ROWS do
 		local slot = Instance.new("TextButton")

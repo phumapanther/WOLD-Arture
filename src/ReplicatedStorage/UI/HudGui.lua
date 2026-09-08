@@ -77,7 +77,9 @@ function HudGui.new()
 	-- right 75% (mana/hunger/hp) — see each section's comment for its own internal split.
 	local vitals = Instance.new("Frame")
 	vitals.AnchorPoint = Vector2.new(0, 1)
-	vitals.Size = UDim2.new(0, 280, 0, 75) -- 560x150 content box in the reference (280x75 keeps the same ~3.73:1 ratio)
+	-- Taller than the reference's 3.73:1 box: the mana crystals sit in the top fifth, and at 75px tall that
+	-- row was only 11px, which squashed them to unreadable specks whatever width they were given.
+	vitals.Size = UDim2.new(0, 280, 0, 100)
 	vitals.Position = UDim2.new(0, 20, 1, -20)
 	vitals.BackgroundTransparency = 1
 	vitals.Parent = gui
@@ -137,7 +139,7 @@ function HudGui.new()
 	gradient(staminaTrack, ACCENT, Color3.fromRGB(244, 197, 66))
 	self.staminaTrack = staminaTrack
 
-	-- Right 75%: top 10% mana pips, middle 45% hunger bar, bottom 45% hp bar. Inset from the stamina bar by
+	-- Right 75%: top 30% mana pips, middle 35% hunger bar, bottom 35% hp bar. Inset from the stamina bar by
 	-- extra padding so the pill badges (which sit at this column's own left edge) never crowd it.
 	local rightColumn = Instance.new("Frame")
 	rightColumn.Size = UDim2.new(0.72, -10, 1, 0)
@@ -146,7 +148,7 @@ function HudGui.new()
 	rightColumn.Parent = vitals
 
 	local manaFrame = Instance.new("Frame")
-	manaFrame.Size = UDim2.new(1, 0, 0.1, 0)
+	manaFrame.Size = UDim2.new(1, 0, 0.3, 0)
 	manaFrame.Position = UDim2.new(0, 0, 0, 0)
 	manaFrame.BackgroundTransparency = 1
 	manaFrame.Parent = rightColumn
@@ -160,7 +162,7 @@ function HudGui.new()
 	self.manaPips = {}
 	for i = 1, MANA_PIPS do
 		local pip = Instance.new("TextLabel")
-		pip.Size = UDim2.new(0, 22, 0.9, 0)
+		pip.Size = UDim2.new(0, 34, 0.95, 0)
 		pip.LayoutOrder = i
 		pip.BackgroundTransparency = 1
 		pip.Font = Enum.Font.SourceSansBold
@@ -171,14 +173,14 @@ function HudGui.new()
 		self.manaPips[i] = pip
 	end
 
-	-- Pill bars: hunger (middle 45%), hp (bottom 45%). Track is 52% of its row's height (HTML: height:52%),
+	-- Pill bars: hunger (middle 35%), hp (bottom 35%). Track is 52% of its row's height (HTML: height:52%),
 	-- black background, fully pill-rounded, gradient fill. Badge is a circle positioned absolutely at the row's
 	-- left edge (overlapping the track, which is indented by the badge's own radius), white border, drop shadow.
 	self.bars = {}
 	for i, def in ipairs(PILL_BARS) do
 		local row = Instance.new("Frame")
-		row.Size = UDim2.new(1, 0, 0.45, 0)
-		row.Position = UDim2.new(0, 0, 0.1 + (i - 1) * 0.45, 0)
+		row.Size = UDim2.new(1, 0, 0.35, 0)
+		row.Position = UDim2.new(0, 0, 0.3 + (i - 1) * 0.35, 0)
 		row.BackgroundTransparency = 1
 		row.Parent = rightColumn
 

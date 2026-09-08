@@ -336,8 +336,11 @@ function Vitals.SetProneSuspended(player, suspended)
 		if character then setLimbCollision(character, true) end
 	else
 		ProneSuspended[player] = nil
-		-- Put the prone pose back if they are still down after being set down.
-		if Vitals.IsDowned(player) then
+		-- Put the prone pose back if they are still down after being set down. A dying or dead humanoid is
+		-- being set down BY a respawn (the carried player pressed the button), and re-applying the pose there
+		-- would lay the incoming rig back down on a player who is no longer downed at all.
+		local humanoid = humanoidOf(player)
+		if Vitals.IsDowned(player) and humanoid and humanoid.Health > 0 then
 			applyDownedPosture(player, true)
 		end
 	end
@@ -432,10 +435,19 @@ function Vitals.ResetForRespawn(player)
 	state.hunger = maxHunger(player)
 	state.stamina = VitalsConfig.MaxStamina
 	state.mana = VitalsConfig.MaxMana
+	local wasDowned = state.downed
 	state.downed = false
 	-- Clear the replicated flag too, or other clients keep showing revive/carry prompts on a player who has
 	-- already respawned (this path bypasses clearDowned).
 	player:SetAttribute("WOLD_Downed", false)
+	-- ...and tell the respawning player's own client, which is the ONLY thing that hides the dark screen.
+	-- Vitals.Respawn normally fires this through clearDowned before killing the humanoid, but that is not
+	-- enough on its own: while someone is carrying you, dropCarried runs a frame later and puts the downed
+	-- posture back, leaving the state downed again by the time the new rig arrives. Respawning is the last
+	-- word either way, so clear the screen here, where every respawn path converges.
+	if wasDowned then
+		Remotes.DownedStateChanged:FireClient(player, false)
+	end
 	state.peakFallY = nil
 	state.invulnUntil = os.clock() + VitalsConfig.RespawnInvulnSeconds
 end

@@ -1,7 +1,7 @@
 -- InventoryConfig: bag size, carry weight, and what being overloaded costs you.
 local InventoryConfig = {}
 
-InventoryConfig.SlotCount = 24 -- the personal bag grid
+InventoryConfig.SlotCount = 36 -- the personal bag grid, 6 columns x 6 rows
 InventoryConfig.MaxWeight = 2000 -- carry this much before the penalties below start
 
 -- Overencumbrance. Past MaxWeight you slow down in proportion to the excess, down to a floor so a hoarder can
