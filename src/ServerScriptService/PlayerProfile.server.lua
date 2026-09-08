@@ -21,6 +21,7 @@ local ProfileTemplate = {
 	Position = nil, -- {x, y, z} | nil (nil = never saved yet)
 	Vitals = { HP = 100, Stamina = 100, Hunger = 100 }, -- unused this phase; here so later phases don't Reconcile again
 	Progression = { Level = 1, Exp = 0 }, -- EXP/level survive a rejoin; dying is what resets them, not leaving
+	Inventory = nil, -- {Slots, Equipped, Gold} | nil (nil = never saved, so hand out the starter kit)
 }
 
 local Store = ProfileStore.New("WOLD_PlayerProfile_v1", ProfileTemplate)
@@ -57,9 +58,18 @@ local function saveProgression(player)
 	if data then profile.Data.Progression = data end
 end
 
+local function saveInventory(player)
+	local profile = Profiles[player]
+	local serialize = ProfileAccess.SerializeInventory
+	if not profile or not serialize then return end
+	local data = serialize(player)
+	if data then profile.Data.Inventory = data end
+end
+
 local function saveAll(player)
 	savePosition(player)
 	saveProgression(player)
+	saveInventory(player)
 end
 
 Remotes.GetSpawnPosition.OnServerInvoke = function(player)

@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local Vitals = require(game.ServerScriptService.Vitals)
+local Inventory = require(game.ServerScriptService.Inventory)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 -- Stamina VALUES now live in Vitals.lua (swimming spends it too, and drowning depends on it), and the HUD gets
@@ -25,14 +26,25 @@ local function humanoidOf(player)
 	return character and character:FindFirstChildOfClass("Humanoid")
 end
 
+-- Applies the current state's speed, scaled by how overloaded the player is. Called on state changes AND
+-- every tick, because carry weight changes while the state does not: picking up loot mid-walk has to slow the
+-- player without waiting for the next walk/run transition.
+local function applySpeed(state, player)
+	local humanoid = humanoidOf(player)
+	-- Vitals owns WalkSpeed while downed (crawling pace); don't fight it.
+	if not humanoid or Vitals.IsDowned(player) then return end
+	local base = SPEED[state.state == "ForcedWalk" and "Walk" or state.state]
+	local wanted = base * Inventory.SpeedMultiplier(player)
+	-- Only write when it actually differs: WalkSpeed replicates, so setting it every frame is wasteful.
+	if math.abs(humanoid.WalkSpeed - wanted) > 0.01 then
+		humanoid.WalkSpeed = wanted
+	end
+end
+
 local function setState(state, player, newState)
 	if state.state == newState then return end
 	state.state = newState
-	local humanoid = humanoidOf(player)
-	-- Vitals owns WalkSpeed while downed (crawling pace); don't fight it.
-	if humanoid and not Vitals.IsDowned(player) then
-		humanoid.WalkSpeed = SPEED[newState == "ForcedWalk" and "Walk" or newState]
-	end
+	applySpeed(state, player)
 end
 
 Players.PlayerAdded:Connect(function(player)
@@ -40,10 +52,9 @@ Players.PlayerAdded:Connect(function(player)
 	States[player] = state
 
 	player.CharacterAdded:Connect(function()
-		-- WalkSpeed doesn't persist across respawns; re-apply the current state directly (setState no-ops
-		-- when the state name is unchanged, which it always is here).
-		local humanoid = humanoidOf(player)
-		if humanoid then humanoid.WalkSpeed = SPEED[state.state == "ForcedWalk" and "Walk" or state.state] end
+		-- WalkSpeed doesn't persist across respawns, and setState would no-op (the state name is unchanged),
+		-- so re-apply it directly. Deferred so the new humanoid exists before we write to it.
+		task.defer(applySpeed, state, player)
 	end)
 end)
 
@@ -98,6 +109,9 @@ if ACTIVE then
 			if state.state == "ForcedWalk" and os.clock() >= state.forcedWalkUntil then
 				setState(state, player, (state.sprintIntent and Vitals.GetStamina(player) > 0) and "Run" or "Normal")
 			end
+
+			applySpeed(state, player) -- carry weight can change without the state changing
+			
 		end
 	end)
 end

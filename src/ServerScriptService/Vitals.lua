@@ -32,6 +32,13 @@ function Vitals.BindProgression(progression)
 	Progression = progression
 end
 
+-- Armor now comes from the equipped set rather than a fixed pool, so Vitals needs to read the player's gear.
+-- Injected for the same reason as Progression: no cycle, and the lobby runs neither system.
+local Inventory = nil
+function Vitals.BindInventory(inventory)
+	Inventory = inventory
+end
+
 -- Max HP and max hunger grow with level, so every read goes through these rather than VitalsConfig directly.
 local function maxHP(player)
 	return Progression and Progression.MaxHP(player) or VitalsConfig.MaxHP
@@ -53,9 +60,12 @@ function Vitals.Add(player)
 		hp = maxHP(player),
 		hunger = maxHunger(player),
 		stamina = VitalsConfig.MaxStamina,
+		mana = VitalsConfig.MaxMana,
+		manaTimer = 0, -- seconds accumulated toward the next pip
 		-- Everyone starts in the "bare" armor: it halves incoming combat damage but has so little capacity
 		-- that roughly five punches destroy it. Better armor is a later sub-project.
 		armor = VitalsConfig.StartingArmor,
+		maxArmor = VitalsConfig.MaxArmor, -- raised by wearing real armor; see SyncArmorFromEquipment
 
 		downed = false,
 		downedUntil = 0,
@@ -95,6 +105,60 @@ function Vitals.SetStamina(player, value)
 	state.stamina = math.clamp(value, 0, VitalsConfig.MaxStamina)
 end
 
+-- Weapon skills call this: it either spends the pips and returns true, or refuses and returns false, so the
+-- caller never has to check and subtract separately (which is how double-spends creep in).
+function Vitals.TrySpendMana(player, cost)
+	local state = States[player]
+	if not state then return false end
+	cost = cost or 1
+	if state.mana < cost then return false end
+	state.mana -= cost
+	Vitals.Send(player, true)
+	return true
+end
+
+function Vitals.AddMana(player, amount)
+	local state = States[player]
+	if not state then return end
+	state.mana = math.clamp(state.mana + amount, 0, VitalsConfig.MaxMana)
+	Vitals.Send(player, true)
+end
+
+-- Consumables. Both clamp to the player's level-scaled maximum rather than a flat 100.
+function Vitals.Heal(player, amount)
+	local state = States[player]
+	if not state or state.downed then return end
+	state.hp = math.min(maxHP(player), state.hp + amount)
+	Vitals.Send(player, true)
+end
+
+function Vitals.Feed(player, amount)
+	local state = States[player]
+	if not state then return end
+	state.hunger = math.min(maxHunger(player), state.hunger + amount)
+	Vitals.Send(player, true)
+end
+
+-- Called whenever the equipped armor changes (worn, removed, repaired): the armor pool follows the gear.
+function Vitals.SyncArmorFromEquipment(player)
+	local state = States[player]
+	if not state then return end
+	if not Inventory then
+		state.armor = VitalsConfig.StartingArmor
+	else
+		local armorItem, entry = Inventory.EquippedArmor(player)
+		if armorItem and entry then
+			state.armor = entry.durability or armorItem.armor
+			state.maxArmor = armorItem.armor
+		else
+			-- Nothing worn: back to the fragile bare armor everyone has by default.
+			state.armor = math.min(state.armor, VitalsConfig.StartingArmor)
+			state.maxArmor = VitalsConfig.MaxArmor
+		end
+	end
+	Vitals.Send(player, true)
+end
+
 function Vitals.IsDowned(player)
 	local state = States[player]
 	return state ~= nil and state.downed
@@ -117,7 +181,8 @@ function Vitals.Send(player, force)
 		hp = state.hp / maxHP(player),
 		hunger = state.hunger / maxHunger(player),
 		stamina = state.stamina / VitalsConfig.MaxStamina,
-		armor = state.armor / VitalsConfig.MaxArmor,
+		armor = state.armor / (state.maxArmor or VitalsConfig.MaxArmor),
+		mana = state.mana, -- whole pips, not a fraction: the HUD lights that many gems
 	})
 end
 
@@ -136,9 +201,14 @@ function Vitals.ApplyDamage(player, amount, kind)
 	if Vitals.IsInvulnerable(player) then return end
 
 	if kind == "combat" and state.armor > 0 then
-		local absorbed = math.min(state.armor, amount * VitalsConfig.ArmorAbsorbFraction)
+		-- The worn armor decides how much of the hit it eats; bare skin falls back to the old flat rate.
+		local armorItem, entry = Inventory and Inventory.EquippedArmor(player)
+		local fraction = armorItem and armorItem.absorbFraction or VitalsConfig.ArmorAbsorbFraction
+		local absorbed = math.min(state.armor, amount * fraction)
 		state.armor -= absorbed
 		amount -= absorbed
+		-- Wear the piece itself down, so it can be repaired or replaced rather than silently regenerating.
+		if entry then entry.durability = state.armor end
 	end
 
 	state.hp = math.max(0, state.hp - amount)
@@ -314,6 +384,7 @@ function Vitals.RefillOnLevelUp(player)
 	state.hp = maxHP(player)
 	state.hunger = maxHunger(player)
 	state.stamina = VitalsConfig.MaxStamina
+	state.mana = VitalsConfig.MaxMana
 	state.armor = VitalsConfig.MaxArmor
 	Vitals.Send(player, true)
 end
@@ -360,6 +431,7 @@ function Vitals.ResetForRespawn(player)
 	state.hp = maxHP(player)
 	state.hunger = maxHunger(player)
 	state.stamina = VitalsConfig.MaxStamina
+	state.mana = VitalsConfig.MaxMana
 	state.downed = false
 	-- Clear the replicated flag too, or other clients keep showing revive/carry prompts on a player who has
 	-- already respawned (this path bypasses clearDowned).
@@ -398,6 +470,18 @@ function Vitals.Tick(player, state, dt)
 	end
 
 	-- Hunger drains continuously, and starves HP once empty.
+	-- Mana trickles back a whole pip at a time.
+	if state.mana < VitalsConfig.MaxMana then
+		state.manaTimer += dt
+		if state.manaTimer >= VitalsConfig.ManaRegenSeconds then
+			state.manaTimer = 0
+			state.mana += 1
+			Vitals.Send(player, true)
+		end
+	else
+		state.manaTimer = 0
+	end
+
 	-- Drain scales with the player's own maximum, so growing does not shorten the 30-minute hunger clock.
 	local hungerScale = maxHunger(player) / VitalsConfig.MaxHunger
 	state.hunger = math.max(0, state.hunger - VitalsConfig.HungerDrainPerSec * hungerScale * dt)

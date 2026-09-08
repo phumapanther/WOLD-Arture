@@ -8,6 +8,8 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local Vitals = require(game.ServerScriptService.Vitals)
+local Inventory = require(game.ServerScriptService.Inventory)
+local InventoryConfig = require(game.ReplicatedStorage.InventoryConfig)
 local ActionConfig = require(game.ReplicatedStorage.ActionConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
@@ -96,7 +98,9 @@ Remotes.RequestRoll.OnServerEvent:Connect(function(player, direction)
 	character.HumanoidRootPart.CFrame = CFrame.lookAt(character.HumanoidRootPart.Position,
 		character.HumanoidRootPart.Position + flat)
 	humanoid.AutoRotate = false
-	state.mover, state.attachment = startMover(character, flat, cfg.speed)
+	-- A heavily loaded player rolls half as far: carrying a plate armor and a full bag should cost agility.
+	local penalty = Inventory.IsHeavilyLoaded(player) and InventoryConfig.HeavyActionPenalty or 1
+	state.mover, state.attachment = startMover(character, flat, cfg.speed * penalty)
 
 	Remotes.MoveStateChanged:FireAllClients(player, "roll")
 end)
@@ -129,9 +133,10 @@ Remotes.RequestSlide.OnServerEvent:Connect(function(player)
 	state.action = "slide"
 	state.endsAt = now + duration
 	state.nextAllowedAt = now + duration + cfg.cooldown
-	state.speed = cfg.startSpeed
+	local penalty = Inventory.IsHeavilyLoaded(player) and InventoryConfig.HeavyActionPenalty or 1
+	state.speed = cfg.startSpeed * penalty
 	humanoid.AutoRotate = false
-	state.mover, state.attachment = startMover(character, flat, cfg.startSpeed)
+	state.mover, state.attachment = startMover(character, flat, state.speed)
 
 	Remotes.MoveStateChanged:FireAllClients(player, "slide")
 end)

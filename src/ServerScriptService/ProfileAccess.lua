@@ -19,5 +19,6 @@ end
 -- Set by Progression at startup: PlayerProfile calls this when saving. nil in the lobby, where no progression
 -- system runs and there is nothing to save.
 ProfileAccess.SerializeProgression = nil
+ProfileAccess.SerializeInventory = nil
 
 return ProfileAccess
