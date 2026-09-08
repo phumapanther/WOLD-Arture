@@ -26,9 +26,14 @@ gui.gui.Parent = player:WaitForChild("PlayerGui")
 
 local downed = false
 local deadline = 0
+local proneConnection = nil
 local crawlTrack = nil
 
 local function stopProne()
+	if proneConnection then
+		proneConnection:Disconnect()
+		proneConnection = nil
+	end
 	if crawlTrack then crawlTrack:Stop(0.2) end
 	crawlTrack = nil
 end
@@ -51,12 +56,23 @@ local function startProne()
 			track.Looped = true
 			return track
 		end
-		-- Only the forward stroke is used, always at full speed. The stock "swim idle" is a treading-water pose
-		-- — upright, paddling on the spot — which is not what crawling should look like.
+		-- Only the forward stroke is used. The stock "swim idle" is a treading-water pose — upright, paddling on
+		-- the spot — which is not what crawling should look like.
 		crawlTrack = load(VitalsConfig.CrawlAnimation)
-		if crawlTrack then crawlTrack:Play(0.2) end
+		if crawlTrack then
+			crawlTrack:Play(0.2)
+			crawlTrack:AdjustSpeed(0) -- start held still; the loop below starts it once the player moves
+		end
 	end
 
+	-- Stroke while dragging forward, hold completely still when stopped. Speed 0 PAUSES the track on its
+	-- current frame rather than slowing it: a slow stroke still reads as treading water, which is exactly the
+	-- look this animation was chosen to avoid, while a frozen one reads as lying there spent.
+	proneConnection = RunService.Heartbeat:Connect(function()
+		if not crawlTrack then return end
+		local moving = humanoid.MoveDirection.Magnitude > 0.1
+		crawlTrack:AdjustSpeed(moving and 1 or 0)
+	end)
 end
 
 gui:OnRespawnRequested(function()
