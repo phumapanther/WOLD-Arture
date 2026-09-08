@@ -21,7 +21,7 @@ local function loadTracksFor(character)
 	local weapon = CombatConfig.Weapons[equippedWeaponId or CombatConfig.DefaultWeapon]
 		or CombatConfig.Weapons[CombatConfig.DefaultWeapon]
 
-	local function load(id, priority)
+	local function load(id, priority, looped)
 		if not id or id == "" then return nil end -- unpublished animation: system still works, just silent
 		local anim = Instance.new("Animation")
 		anim.AnimationId = id
@@ -31,9 +31,13 @@ local function loadTracksFor(character)
 			return nil
 		end
 		track.Priority = priority
+		track.Looped = looped or false
 		return track
 	end
 
+	-- The weapon's held stance. Idle priority so Roblox's walk and run still drive the legs underneath, which
+	-- is what keeps "ขาขยับเดินวิ่งแบบปกติ" true while a weapon is out.
+	tracks.idle = load(weapon.idleAnimation, Enum.AnimationPriority.Idle, true)
 	tracks.guard = load(weapon.guardAnimation, Enum.AnimationPriority.Action)
 	tracks.attacks = {}
 	for i, attack in ipairs(weapon.attacks) do
@@ -41,16 +45,29 @@ local function loadTracksFor(character)
 	end
 end
 
+-- The weapon's held stance plays for as long as one is equipped, not only while guarding.
+local function playHeldStance()
+	if tracks.idle and not tracks.idle.IsPlaying then
+		tracks.idle:Play(0.25)
+	end
+end
+
 local function onCharacterAdded(character)
 	loadTracksFor(character)
+	playHeldStance()
 end
 
 -- The weapon decides which animations play, so a swap has to rebuild the cache. Fires for every player; only
 -- our own matters here.
 Remotes.EquipmentChanged.OnClientEvent:Connect(function(who, weaponId)
 	if who ~= player then return end
+	-- Drop the previous weapon's stance before the new tracks replace the table.
+	if tracks.idle then tracks.idle:Stop(0.2) end
 	equippedWeaponId = weaponId
-	if player.Character then loadTracksFor(player.Character) end
+	if player.Character then
+		loadTracksFor(player.Character)
+		playHeldStance()
+	end
 end)
 
 player.CharacterAdded:Connect(onCharacterAdded)

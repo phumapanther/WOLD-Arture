@@ -11,6 +11,8 @@
 -- a click during recovery is allowed so chains feel responsive.
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
+local CollectionService = game:GetService("CollectionService")
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
@@ -78,6 +80,103 @@ local function playHitSound(character)
 	game:GetService("Debris"):AddItem(sound, VitalsConfig.HitSoundMaxSeconds)
 end
 
+-- Ranged attacks: the bow's arrow and the spellbook's orb travel and hit the first thing they reach; the
+-- staff's beam appears at full length at once. All three are stepped by hand rather than thrown with physics,
+-- so nothing can shove them off course and a laggy client cannot outrun them.
+local function fireProjectile(player, attack)
+	local spec = attack.projectile
+	local character = player.Character
+	local hrp = character and character:FindFirstChild("HumanoidRootPart")
+	if not spec or not hrp then return end
+
+	local forward = hrp.CFrame.LookVector
+	local origin = hrp.Position + forward * 2.5 + Vector3.new(0, 1.2, 0)
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character }
+
+	local part = Instance.new("Part")
+	part.Name = "WOLD_Projectile"
+	part.Anchored = true
+	part.CanCollide = false
+	part.CanQuery = false
+	part.Size = spec.size
+	part.Color = spec.color
+	part.Material = spec.material
+	part.Parent = workspace
+	Debris:AddItem(part, spec.life)
+
+	if spec.kind == "orb" then
+		part.Shape = Enum.PartType.Ball
+		local light = Instance.new("PointLight")
+		light.Color = spec.color
+		light.Range = 12
+		light.Brightness = 2
+		light.Parent = part
+	end
+
+	local function damageAt(position)
+		for _, other in ipairs(Players:GetPlayers()) do
+			if other ~= player then
+				local otherChar = other.Character
+				local otherHrp = otherChar and otherChar:FindFirstChild("HumanoidRootPart")
+				if otherHrp and (otherHrp.Position - position).Magnitude <= 6
+					and not Vitals.IsInvulnerable(other) then
+					local wasDowned = Vitals.IsDowned(other)
+					Vitals.ApplyDamage(other, attack.damage, "combat")
+					playHitSound(otherChar)
+					if not wasDowned and Vitals.IsDowned(other) then
+						Progression.AwardExp(player, ProgressionConfig.ExpPerPlayerKill)
+					end
+				end
+			end
+		end
+		for _, dummy in ipairs(CollectionService:GetTagged("WOLD_Dummy")) do
+			local root = dummy.PrimaryPart
+			if root and (root.Position - position).Magnitude <= 6 then
+				Progression.AwardExp(player, ProgressionConfig.ExpPerDummyHit)
+				playHitSound(dummy)
+			end
+		end
+	end
+
+	if spec.kind == "beam" then
+		-- Instant: stretch the part from the caster to whatever it first hits.
+		local result = workspace:Raycast(origin, forward * spec.length, params)
+		local endPoint = result and result.Position or (origin + forward * spec.length)
+		local distance = (endPoint - origin).Magnitude
+		part.Size = Vector3.new(spec.size.X, spec.size.Y, distance)
+		part.CFrame = CFrame.lookAt(origin + (endPoint - origin) / 2, endPoint)
+		damageAt(endPoint)
+		-- Damage everything along the beam, not only at its end.
+		for step = 8, distance, 8 do
+			damageAt(origin + forward * step)
+		end
+		return
+	end
+
+	-- Travelling shot.
+	part.CFrame = CFrame.lookAt(origin, origin + forward)
+	task.spawn(function()
+		local travelled = 0
+		local maxDistance = spec.speed * spec.life
+		while part.Parent and travelled < maxDistance do
+			local dt = task.wait()
+			local step = forward * (spec.speed * dt)
+			local result = workspace:Raycast(part.Position, step, params)
+			if result then
+				damageAt(result.Position)
+				part:Destroy()
+				return
+			end
+			part.CFrame = part.CFrame + step
+			travelled += step.Magnitude
+		end
+		if part.Parent then part:Destroy() end
+	end)
+end
+
 local function resolveHit(player, state, attack)
 	local character = player.Character
 	local hrp = character and character:FindFirstChild("HumanoidRootPart")
@@ -87,7 +186,7 @@ local function resolveHit(player, state, attack)
 
 	-- Training dummies: static targets that pay a little EXP per punch. Checked before players because they
 	-- are not Players at all, so the loop below would never see them.
-	for _, dummy in ipairs(game:GetService("CollectionService"):GetTagged("WOLD_Dummy")) do
+	for _, dummy in ipairs(CollectionService:GetTagged("WOLD_Dummy")) do
 		local root = dummy.PrimaryPart
 		if root and not state.hitThisSwing[dummy] and (root.Position - origin).Magnitude <= attack.range then
 			state.hitThisSwing[dummy] = true
@@ -152,7 +251,15 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player)
 	state.activeUntil = now + attack.windup + attack.active
 	state.activeFrom = now + attack.windup
 	state.hitThisSwing = {}
-	state.pendingAttack = attack
+	-- A ranged attack fires a single shot after its windup; only melee keeps a live hitbox.
+	if attack.projectile then
+		state.pendingAttack = nil
+		task.delay(attack.windup, function()
+			if player.Parent then fireProjectile(player, attack) end
+		end)
+	else
+		state.pendingAttack = attack
+	end
 	wearWeapon(player)
 
 	Remotes.CombatStateChanged:FireAllClients(player, "attack", state.chainIndex)

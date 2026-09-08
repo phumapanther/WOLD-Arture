@@ -31,45 +31,59 @@ CombatConfig.Weapons = {
 	-- The four equippable weapons. Each reuses the punch animations for now: code-built swing sequences per
 	-- weapon are a separate animgen pass, and an empty id is safe (the attack still lands, it just looks like
 	-- a punch). Damage, reach and timing already differ, which is what makes them feel distinct.
+	-- Each weapon names its OWN idle and swing animations, built by animgen/weapons.lua. Publish those
+	-- sequences and paste the ids here; an empty id is safe, the attack still lands and just looks like a
+	-- punch. `projectile` marks the ranged weapons: those fire instead of swinging a melee hitbox.
 	Sword = {
-		guardAnimation = "rbxassetid://118766016678017",
+		idleAnimation = "", -- Sword_Idle
+		guardAnimation = "",
 		guardWalkSpeed = 6,
 		idleTimeout = 4,
 		attacks = {
-			{ animation = "rbxassetid://123567461001098", damage = 18, windup = 0.15, active = 0.15, recovery = 0.3, range = 7 },
-			{ animation = "rbxassetid://74899499463368", damage = 18, windup = 0.15, active = 0.15, recovery = 0.35, range = 7 },
+			{ animation = "", damage = 18, windup = 0.15, active = 0.15, recovery = 0.3, range = 7 }, -- Sword_Swing_Left
+			{ animation = "", damage = 18, windup = 0.15, active = 0.15, recovery = 0.35, range = 7 }, -- Sword_Swing_Right
 		},
-		chainResetDelay = 0.2,
+		chainResetDelay = 0.35, -- the user asked for a beat between swings
 		chainWindow = 1.4,
 	},
 	Bow = {
-		guardAnimation = "rbxassetid://118766016678017",
+		idleAnimation = "", -- Bow_Idle
+		guardAnimation = "",
 		guardWalkSpeed = 7,
 		idleTimeout = 4,
 		attacks = {
-			{ animation = "rbxassetid://123567461001098", damage = 12, windup = 0.2, active = 0.1, recovery = 0.4, range = 6 },
+			{ animation = "", damage = 16, windup = 0.15, active = 0.05, recovery = 0.45, range = 0, -- Bow_Shoot
+				projectile = { kind = "arrow", speed = 160, life = 2.5, size = Vector3.new(0.18, 0.18, 2.4),
+					color = Color3.fromRGB(222, 198, 152), material = Enum.Material.Wood } },
 		},
 		chainResetDelay = 0.3,
 		chainWindow = 1.2,
 	},
 	Staff = {
-		guardAnimation = "rbxassetid://118766016678017",
+		idleAnimation = "", -- Staff_Idle
+		guardAnimation = "",
 		guardWalkSpeed = 6,
 		idleTimeout = 4,
 		attacks = {
-			{ animation = "rbxassetid://123567461001098", damage = 10, windup = 0.2, active = 0.12, recovery = 0.35, range = 6 },
+			{ animation = "", damage = 14, windup = 0.2, active = 0.05, recovery = 0.4, range = 0, -- Staff_Swing
+				-- A beam, not a travelling shot: it reaches its full length at once and fades.
+				projectile = { kind = "beam", length = 60, life = 0.25, size = Vector3.new(0.5, 0.5, 1),
+					color = Color3.fromRGB(120, 236, 180), material = Enum.Material.Neon } },
 		},
-		chainResetDelay = 0.2,
+		chainResetDelay = 0.35,
 		chainWindow = 1.2,
 	},
 	Spellbook = {
-		guardAnimation = "rbxassetid://118766016678017",
+		idleAnimation = "", -- Spellbook_Idle
+		guardAnimation = "",
 		guardWalkSpeed = 7,
 		idleTimeout = 4,
 		attacks = {
-			{ animation = "rbxassetid://123567461001098", damage = 8, windup = 0.2, active = 0.12, recovery = 0.3, range = 5 },
+			{ animation = "", damage = 15, windup = 0.2, active = 0.05, recovery = 0.4, range = 0, -- Spellbook_Cast
+				projectile = { kind = "orb", speed = 70, life = 3, size = Vector3.new(1.6, 1.6, 1.6),
+					color = Color3.fromRGB(58, 26, 86), material = Enum.Material.Neon } },
 		},
-		chainResetDelay = 0.2,
+		chainResetDelay = 0.3,
 		chainWindow = 1.2,
 	},
 }
