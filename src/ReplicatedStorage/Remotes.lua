@@ -14,6 +14,7 @@ local EVENTS = {
 	-- see what each other is holding.
 	"InventoryUpdate", "EquipmentChanged",
 	"RequestEquip", "RequestUnequip", "RequestUseItem", "RequestDropItem", "RequestAutoSort",
+	"RequestSkill", "SkillUsed", -- the weapon's Q skill: intent in, playback out
 }
 local FUNCTIONS = { "GetSpawnPosition" } -- DataStore-backed lookups can only run server-side; the client must ask
 

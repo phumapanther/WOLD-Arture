@@ -8,6 +8,7 @@ local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local player = Players.LocalPlayer
+local equippedWeaponId = nil -- set from EquipmentChanged; drives which animation set is loaded
 
 -- One track cache per character, rebuilt on respawn since Animator is recreated with the character.
 local tracks = {}
@@ -16,7 +17,9 @@ local function loadTracksFor(character)
 	tracks = {}
 	local humanoid = character:WaitForChild("Humanoid")
 	local animator = humanoid:WaitForChild("Animator")
-	local weapon = CombatConfig.Weapons[CombatConfig.DefaultWeapon]
+	-- equippedWeaponId is kept in step by EquipmentChanged below; nil means bare hands.
+	local weapon = CombatConfig.Weapons[equippedWeaponId or CombatConfig.DefaultWeapon]
+		or CombatConfig.Weapons[CombatConfig.DefaultWeapon]
 
 	local function load(id, priority)
 		if not id or id == "" then return nil end -- unpublished animation: system still works, just silent
@@ -42,6 +45,14 @@ local function onCharacterAdded(character)
 	loadTracksFor(character)
 end
 
+-- The weapon decides which animations play, so a swap has to rebuild the cache. Fires for every player; only
+-- our own matters here.
+Remotes.EquipmentChanged.OnClientEvent:Connect(function(who, weaponId)
+	if who ~= player then return end
+	equippedWeaponId = weaponId
+	if player.Character then loadTracksFor(player.Character) end
+end)
+
 player.CharacterAdded:Connect(onCharacterAdded)
 if player.Character then onCharacterAdded(player.Character) end
 
@@ -49,6 +60,9 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end -- don't punch when the click was consumed by a button
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
 		Remotes.RequestAttack:FireServer()
+	elseif input.KeyCode == Enum.KeyCode.Q then
+		-- Which skill this is depends on the equipped weapon; the server resolves that and the mana cost.
+		Remotes.RequestSkill:FireServer()
 	end
 end)
 

@@ -22,11 +22,18 @@ local function syncArmor(player)
 end
 
 -- Starting kit, so a new player has something to test the bag with rather than an empty grid.
+-- ponytail: all four weapons for now so every Q skill is reachable without a shop or drops. Trim this to a
+-- sword once items can actually be found in the world.
 local STARTER_KIT = {
 	{ id = "Sword", count = 1 },
+	{ id = "Bow", count = 1 },
+	{ id = "Staff", count = 1 },
+	{ id = "Spellbook", count = 1 },
 	{ id = "LeatherArmor", count = 1 },
 	{ id = "Bread", count = 3 },
+	{ id = "Water", count = 3 },
 	{ id = "HealthPotion", count = 2 },
+	{ id = "RepairHammer", count = 1 },
 }
 
 Players.PlayerAdded:Connect(function(player)

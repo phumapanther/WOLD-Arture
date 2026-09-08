@@ -15,6 +15,7 @@ local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
 local Progression = require(game.ServerScriptService.Progression)
+local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
@@ -25,8 +26,28 @@ local function humanoidOf(player)
 	return character and character:FindFirstChildOfClass("Humanoid")
 end
 
-local function weaponOf(state)
-	return CombatConfig.Weapons[state.weapon] or CombatConfig.Weapons[CombatConfig.DefaultWeapon]
+-- The weapon in hand comes from the inventory, so equipping a sword changes damage, reach, timing and the
+-- animations without combat holding any state of its own. Bare hands are the fallback.
+local function weaponOf(player)
+	local item, entry = Inventory.EquippedWeapon(player)
+	if item and entry and CombatConfig.Weapons[entry.id] then
+		return CombatConfig.Weapons[entry.id], entry
+	end
+	return CombatConfig.Weapons[CombatConfig.DefaultWeapon], nil
+end
+
+-- Every swing wears the weapon down; at zero it breaks and is gone.
+local function wearWeapon(player)
+	local item, entry = Inventory.EquippedWeapon(player)
+	if not item or not entry or not entry.durability then return end
+	entry.durability -= CombatConfig.DurabilityPerSwing
+	if entry.durability <= 0 then
+		local state = Inventory.Get(player)
+		if state then state.equipped.weapon = nil end
+		Remotes.EquipmentChanged:FireAllClients(player, nil,
+			state and state.equipped.armor and state.equipped.armor.id or nil)
+	end
+	Inventory.Send(player)
 end
 
 local function setGuard(player, state, guarding)
@@ -35,7 +56,7 @@ local function setGuard(player, state, guarding)
 	local humanoid = humanoidOf(player)
 	if humanoid then
 		-- PlayerMovement owns WalkSpeed normally; while guarding we clamp it and it restores on guard drop.
-		humanoid.WalkSpeed = guarding and weaponOf(state).guardWalkSpeed or 8
+		humanoid.WalkSpeed = guarding and weaponOf(player).guardWalkSpeed or 8
 	end
 	Remotes.CombatStateChanged:FireAllClients(player, guarding and "guard_start" or "guard_end")
 end
@@ -117,7 +138,7 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player)
 		return
 	end
 
-	local weapon = weaponOf(state)
+	local weapon = weaponOf(player)
 
 	-- Continue the chain only if this click is soon enough after the last one, otherwise restart at attack 1.
 	if now - state.lastAttackAt > weapon.chainWindow then
@@ -132,6 +153,7 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player)
 	state.activeFrom = now + attack.windup
 	state.hitThisSwing = {}
 	state.pendingAttack = attack
+	wearWeapon(player)
 
 	Remotes.CombatStateChanged:FireAllClients(player, "attack", state.chainIndex)
 end)
@@ -171,7 +193,7 @@ RunService.Heartbeat:Connect(function()
 			state.pendingAttack = nil
 		end
 
-		if state.guarding and now - state.lastAttackAt > weaponOf(state).idleTimeout and now >= state.busyUntil then
+		if state.guarding and now - state.lastAttackAt > weaponOf(player).idleTimeout and now >= state.busyUntil then
 			setGuard(player, state, false)
 		end
 	end
