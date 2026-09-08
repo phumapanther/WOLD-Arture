@@ -26,8 +26,20 @@ gui:Show()
 gui:SetBarFraction("hp", 1)
 gui:SetBarFraction("hunger", 1)
 gui:SetStaminaFraction(1)
-gui:SetArmorFraction(0) -- armor starts empty: no armor items exist to grant any yet
+gui:SetArmorFraction(1) -- everyone starts in the bare starter armor, which reads full until it is chipped away
 gui:SetManaPips(3)
+
+-- EXP bar: level and progress toward the next one.
+gui:SetExp(1, 0)
+Remotes.ProgressionUpdate.OnClientEvent:Connect(function(p)
+	local fraction = 0
+	if p.expForNext and p.expForNext > 0 and p.expForNext ~= math.huge then
+		fraction = p.exp / p.expForNext
+	elseif p.expForNext == math.huge then
+		fraction = 1 -- level capped: show the bar full rather than empty
+	end
+	gui:SetExp(p.level, fraction)
+end)
 
 Remotes.VitalsUpdate.OnClientEvent:Connect(function(vitals)
 	gui:SetBarFraction("hp", vitals.hp)

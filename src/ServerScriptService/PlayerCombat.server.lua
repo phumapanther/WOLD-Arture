@@ -13,6 +13,8 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
+local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
+local Progression = require(game.ServerScriptService.Progression)
 local Vitals = require(game.ServerScriptService.Vitals)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
@@ -38,7 +40,8 @@ local function setGuard(player, state, guarding)
 	Remotes.CombatStateChanged:FireAllClients(player, guarding and "guard_start" or "guard_end")
 end
 
--- Impact feedback: a short sound parented to the victim so everyone nearby hears it positionally.
+-- Impact feedback: a short sound parented to the victim so everyone nearby hears it positionally. Works for
+-- training dummies too: their body part is deliberately named HumanoidRootPart.
 local function playHitSound(character)
 	if VitalsConfig.HitSoundId == "" then return end -- no sound configured; combat is simply silent
 	local hrp = character:FindFirstChild("HumanoidRootPart")
@@ -61,6 +64,17 @@ local function resolveHit(player, state, attack)
 	local origin = hrp.Position + hrp.CFrame.LookVector * (attack.range * 0.5)
 		+ Vector3.new(0, CombatConfig.HitboxHeightOffset, 0)
 
+	-- Training dummies: static targets that pay a little EXP per punch. Checked before players because they
+	-- are not Players at all, so the loop below would never see them.
+	for _, dummy in ipairs(game:GetService("CollectionService"):GetTagged("WOLD_Dummy")) do
+		local root = dummy.PrimaryPart
+		if root and not state.hitThisSwing[dummy] and (root.Position - origin).Magnitude <= attack.range then
+			state.hitThisSwing[dummy] = true
+			Progression.AwardExp(player, ProgressionConfig.ExpPerDummyHit)
+			playHitSound(dummy)
+		end
+	end
+
 	for _, other in ipairs(Players:GetPlayers()) do
 		if other ~= player and not state.hitThisSwing[other] then
 			local otherChar = other.Character
@@ -70,8 +84,14 @@ local function resolveHit(player, state, attack)
 				-- Vitals decides what the hit actually does: armor absorbs half, downed and freshly-respawned
 				-- players take nothing, and HP reaching 0 downs them rather than killing.
 				if not Vitals.IsInvulnerable(other) then
+					local wasDowned = Vitals.IsDowned(other)
 					Vitals.ApplyDamage(other, attack.damage, "combat")
 					playHitSound(otherChar)
+					-- The blow that puts someone down is the "kill" for EXP purposes: combat downs players
+					-- rather than killing them outright, so there is no later death to hook.
+					if not wasDowned and Vitals.IsDowned(other) then
+						Progression.AwardExp(player, ProgressionConfig.ExpPerPlayerKill)
+					end
 				end
 			end
 		end

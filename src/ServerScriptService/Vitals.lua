@@ -16,6 +16,23 @@ local Vitals = {}
 
 local States = {} -- [player] = state; see NewState() for the shape
 
+-- Injected by PlayerProgression.server.lua. Progression already calls back into Vitals (level-up refills the
+-- bars), so requiring it here as well would be a cycle. When it is absent — the lobby, or before startup
+-- finishes — the maximums fall back to the flat level-1 values.
+local Progression = nil
+function Vitals.BindProgression(progression)
+	Progression = progression
+end
+
+-- Max HP and max hunger grow with level, so every read goes through these rather than VitalsConfig directly.
+local function maxHP(player)
+	return Progression and Progression.MaxHP(player) or VitalsConfig.MaxHP
+end
+
+local function maxHunger(player)
+	return Progression and Progression.MaxHunger(player) or VitalsConfig.MaxHunger
+end
+
 local function humanoidOf(player)
 	local character = player.Character
 	return character and character:FindFirstChildOfClass("Humanoid")
@@ -23,10 +40,14 @@ end
 
 function Vitals.Add(player)
 	States[player] = {
-		hp = VitalsConfig.MaxHP,
-		hunger = VitalsConfig.MaxHunger,
+		-- Level-scaled: a returning high-level player joins with their bigger bars already full. Progression
+		-- is bound before any player is added, so this reads the real maximum.
+		hp = maxHP(player),
+		hunger = maxHunger(player),
 		stamina = VitalsConfig.MaxStamina,
-		armor = 0, -- no armor items exist yet; the absorb path is live for when they do
+		-- Everyone starts in the "bare" armor: it halves incoming combat damage but has so little capacity
+		-- that roughly five punches destroy it. Better armor is a later sub-project.
+		armor = VitalsConfig.StartingArmor,
 
 		downed = false,
 		downedUntil = 0,
@@ -84,8 +105,8 @@ function Vitals.Send(player, force)
 	if not force and now - state.lastSentAt < VitalsConfig.SendInterval then return end
 	state.lastSentAt = now
 	Remotes.VitalsUpdate:FireClient(player, {
-		hp = state.hp / VitalsConfig.MaxHP,
-		hunger = state.hunger / VitalsConfig.MaxHunger,
+		hp = state.hp / maxHP(player),
+		hunger = state.hunger / maxHunger(player),
 		stamina = state.stamina / VitalsConfig.MaxStamina,
 		armor = state.armor / VitalsConfig.MaxArmor,
 	})
@@ -177,6 +198,18 @@ function Vitals.Recover(player, hpFraction)
 	Vitals.Send(player, true)
 end
 
+-- Level-up refills every bar INCLUDING armor. This is the one path that restores armor: a plain respawn
+-- deliberately does not (see ResetForRespawn), so armor is otherwise a one-time pool.
+function Vitals.RefillOnLevelUp(player)
+	local state = States[player]
+	if not state then return end
+	state.hp = maxHP(player)
+	state.hunger = maxHunger(player)
+	state.stamina = VitalsConfig.MaxStamina
+	state.armor = VitalsConfig.MaxArmor
+	Vitals.Send(player, true)
+end
+
 -- Respawn at the spawn point. Vitals themselves reset on CharacterAdded (Vitals.ResetForRespawn).
 function Vitals.Respawn(player)
 	local state = States[player]
@@ -191,6 +224,9 @@ function Vitals.Kill(player)
 	if not state then return end
 	if state.downed then clearDowned(player, state) end
 	state.hp = 0
+	-- Dying wipes every level and the body size with it — the risk that pays for growing. Being downed and
+	-- revived does not come through here, so a rescue costs nothing.
+	if Progression then Progression.ResetOnDeath(player) end
 	local humanoid = humanoidOf(player)
 	if humanoid then humanoid.Health = 0 end
 end
@@ -199,8 +235,8 @@ end
 function Vitals.ResetForRespawn(player)
 	local state = States[player]
 	if not state then return end
-	state.hp = VitalsConfig.MaxHP
-	state.hunger = VitalsConfig.MaxHunger
+	state.hp = maxHP(player)
+	state.hunger = maxHunger(player)
 	state.stamina = VitalsConfig.MaxStamina
 	state.downed = false
 	-- Clear the replicated flag too, or other clients keep showing revive/carry prompts on a player who has
@@ -240,9 +276,11 @@ function Vitals.Tick(player, state, dt)
 	end
 
 	-- Hunger drains continuously, and starves HP once empty.
-	state.hunger = math.max(0, state.hunger - VitalsConfig.HungerDrainPerSec * dt)
+	-- Drain scales with the player's own maximum, so growing does not shorten the 30-minute hunger clock.
+	local hungerScale = maxHunger(player) / VitalsConfig.MaxHunger
+	state.hunger = math.max(0, state.hunger - VitalsConfig.HungerDrainPerSec * hungerScale * dt)
 	if state.hunger <= 0 then
-		Vitals.ApplyDamage(player, VitalsConfig.StarvationDamagePerSec * dt, "starve")
+		Vitals.ApplyDamage(player, VitalsConfig.StarvationDamagePerSec * (maxHP(player) / VitalsConfig.MaxHP) * dt, "starve")
 		if state.downed then return end
 	end
 
@@ -252,7 +290,8 @@ function Vitals.Tick(player, state, dt)
 			state.stamina = math.max(0, state.stamina - VitalsConfig.SwimStaminaDrainPerSec * dt)
 		end
 		if state.stamina <= 0 then
-			Vitals.ApplyDamage(player, VitalsConfig.DrowningDamagePerSec * dt, "drown")
+			-- Ten seconds to drown regardless of size, for the same reason hunger scales.
+			Vitals.ApplyDamage(player, VitalsConfig.DrowningDamagePerSec * (maxHP(player) / VitalsConfig.MaxHP) * dt, "drown")
 		end
 		state.peakFallY = nil -- water cancels any fall in progress
 	else

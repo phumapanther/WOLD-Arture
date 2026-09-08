@@ -94,11 +94,16 @@ function HudGui.new()
 	armorBadge.BorderSizePixel = 0
 	armorBadge.Parent = vitals
 	corner(armorBadge, UDim.new(0, 16))
-	gradient(armorBadge, Color3.fromRGB(244, 245, 247), Color3.fromRGB(185, 189, 196))
+	local armorGradient = gradient(armorBadge, Color3.fromRGB(244, 245, 247), Color3.fromRGB(185, 189, 196))
 	local armorStroke = Instance.new("UIStroke")
 	armorStroke.Color = ACCENT
 	armorStroke.Thickness = 4
 	armorStroke.Parent = armorBadge
+	-- Kept so SetArmorFraction can dim the badge as the armor wears down; the gradient sits on top of
+	-- BackgroundColor3, so it is the thing that actually has to change.
+	self.armorBadge = armorBadge
+	self.armorGradient = armorGradient
+	self.armorStroke = armorStroke
 	local armorIcon = Instance.new("TextLabel")
 	armorIcon.AnchorPoint = Vector2.new(0.5, 0.5)
 	armorIcon.Position = UDim2.fromScale(0.5, 0.5)
@@ -294,8 +299,59 @@ function HudGui.new()
 		self.slots[i] = slot
 	end
 
+	-- EXP bar, centred under the hotbar. A thin strip rather than a pill: it is progress, not a vital, and
+	-- should not compete with the health cluster for attention.
+	local expGroup = Instance.new("Frame")
+	expGroup.Name = "ExpGroup"
+	expGroup.AnchorPoint = Vector2.new(0.5, 1)
+	expGroup.Size = UDim2.new(0, 420, 0, 18)
+	expGroup.Position = UDim2.new(0.5, 0, 1, -92)
+	expGroup.BackgroundTransparency = 1
+	expGroup.Parent = gui
+	responsiveScale(expGroup)
+
+	local expTrack = Instance.new("Frame")
+	expTrack.Size = UDim2.fromScale(1, 1)
+	expTrack.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+	expTrack.BackgroundTransparency = 0.35
+	expTrack.BorderSizePixel = 0
+	expTrack.Parent = expGroup
+	corner(expTrack, UDim.new(1, 0))
+
+	local expFill = Instance.new("Frame")
+	expFill.Name = "Fill"
+	expFill.Size = UDim2.new(0, 0, 1, 0)
+	expFill.BackgroundColor3 = ACCENT
+	expFill.BorderSizePixel = 0
+	expFill.Parent = expTrack
+	corner(expFill, UDim.new(1, 0))
+	gradient(expFill, Color3.fromRGB(255, 224, 130), ACCENT)
+	self.expFill = expFill
+
+	local expLabel = Instance.new("TextLabel")
+	expLabel.Name = "ExpLabel"
+	expLabel.Size = UDim2.fromScale(1, 1)
+	expLabel.BackgroundTransparency = 1
+	expLabel.Font = Enum.Font.GothamBold
+	expLabel.TextSize = 11
+	expLabel.TextColor3 = Color3.fromRGB(240, 238, 232)
+	expLabel.Text = "Lv. 1"
+	expLabel.Parent = expTrack
+	local expStroke = Instance.new("UIStroke")
+	expStroke.Color = Color3.fromRGB(0, 0, 0)
+	expStroke.Transparency = 0.5
+	expStroke.Thickness = 2
+	expStroke.Parent = expLabel
+	self.expLabel = expLabel
+
 	self.gui = gui
 	return self
+end
+
+-- SetExp: level plus progress 0..1 toward the next one.
+function HudGui:SetExp(level, fraction)
+	self.expFill.Size = UDim2.new(math.clamp(fraction, 0, 1), 0, 1, 0)
+	self.expLabel.Text = ("Lv. %d"):format(level)
 end
 
 -- SetBarFraction: 0..1, for the "hunger" | "hp" pill bars. Stub for sub-project 1; call with 1 for every bar
@@ -305,9 +361,21 @@ function HudGui:SetBarFraction(key, fraction)
 	if fill then fill.Size = UDim2.new(math.clamp(fraction, 0, 1), 0, 1, 0) end
 end
 
--- SetArmorFraction: 0..1. No-op for now — the approved reference draws armor as a static badge with no
--- depletion visual. Kept as a stable call site so HudController doesn't need to change if/when armor gets one.
-function HudGui:SetArmorFraction(_fraction) end
+-- SetArmorFraction: 0..1. Armor is a real, spendable pool now, so the badge dims and desaturates as it wears
+-- down and goes fully grey when it breaks — the reference's static badge gave no warning at all.
+function HudGui:SetArmorFraction(fraction)
+	if not self.armorGradient then return end
+	fraction = math.clamp(fraction, 0, 1)
+	local worn = 1 - fraction
+	-- Bright steel when intact, dull grey when broken.
+	local top = Color3.fromRGB(244, 245, 247):Lerp(Color3.fromRGB(96, 96, 104), worn)
+	local bottom = Color3.fromRGB(185, 189, 196):Lerp(Color3.fromRGB(62, 62, 70), worn)
+	self.armorGradient.Color = ColorSequence.new(top, bottom)
+	if self.armorStroke then
+		-- The gold rim fades out entirely once the armor is gone, so a broken set is obvious at a glance.
+		self.armorStroke.Transparency = worn
+	end
+end
 
 -- SetStaminaFraction: 0..1, shrinks the stamina bar's own height bottom-up (no separate fill/track distinction
 -- in the reference — the bar itself is the fill).

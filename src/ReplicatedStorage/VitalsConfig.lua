@@ -6,7 +6,9 @@ local VitalsConfig = {}
 VitalsConfig.MaxHP = 100
 VitalsConfig.MaxHunger = 100
 VitalsConfig.MaxStamina = 100
-VitalsConfig.MaxArmor = 100
+-- The bar is drawn against the armor you are WEARING, not an absolute ceiling: the bare starter armor should
+-- read full at 20/20, not a fifth full at 20/100. Better armor raises this along with the value.
+VitalsConfig.MaxArmor = 20
 
 -- Hunger drains over 30 minutes; once empty it starves HP away over 2 minutes.
 VitalsConfig.HungerDrainPerSec = VitalsConfig.MaxHunger / (30 * 60)
@@ -29,9 +31,12 @@ VitalsConfig.DownedWalkSpeed = 6 -- crawling pace
 VitalsConfig.DownedHipHeight = 0.6 -- lowers the capsule so the prone body rests near the floor
 VitalsConfig.RespawnInvulnSeconds = 10 -- blinking, immune to every damage source
 
--- Armor is a one-time pool that never refills — not even on respawn. While it lasts it eats half of each
--- incoming COMBAT hit (falls, drowning and starvation ignore it entirely).
+-- Armor eats half of each incoming COMBAT hit (falls, drowning and starvation ignore it entirely). It does
+-- NOT refill on respawn — only a level-up restores it (Vitals.RefillOnLevelUp).
 VitalsConfig.ArmorAbsorbFraction = 0.5
+-- The "bare" armor everyone starts with. An 8-damage punch sends half (4) into armor, so 20 points is five
+-- punches before it breaks — the fragile starter set the user described. Real armor items come later.
+VitalsConfig.StartingArmor = VitalsConfig.MaxArmor
 
 -- Stock Roblox animations, reused rather than authored: the swim stroke doubles as the crawl once the body is
 -- pitched prone (see the spec — the animation only moves the arms, the tilt is applied separately).

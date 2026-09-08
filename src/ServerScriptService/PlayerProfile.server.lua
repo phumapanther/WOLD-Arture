@@ -13,12 +13,14 @@ local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local ProfileStore = require(game.ServerScriptService.ProfileStore)
+local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local SpawnSelector = require(game.ReplicatedStorage.SpawnSelector)
 
 local ProfileTemplate = {
 	Position = nil, -- {x, y, z} | nil (nil = never saved yet)
 	Vitals = { HP = 100, Stamina = 100, Hunger = 100 }, -- unused this phase; here so later phases don't Reconcile again
+	Progression = { Level = 1, Exp = 0 }, -- EXP/level survive a rejoin; dying is what resets them, not leaving
 }
 
 local Store = ProfileStore.New("WOLD_PlayerProfile_v1", ProfileTemplate)
@@ -42,6 +44,22 @@ local function savePosition(player)
 	if not profile or not hrp then return end
 	local p = hrp.Position
 	profile.Data.Position = { x = p.X, y = p.Y, z = p.Z }
+end
+
+-- Level and EXP ride along on the same save points as position. Progression publishes a serializer through
+-- ProfileAccess rather than being required here, so this file keeps working in the lobby where Progression
+-- never starts.
+local function saveProgression(player)
+	local profile = Profiles[player]
+	local serialize = ProfileAccess.SerializeProgression
+	if not profile or not serialize then return end
+	local data = serialize(player)
+	if data then profile.Data.Progression = data end
+end
+
+local function saveAll(player)
+	savePosition(player)
+	saveProgression(player)
 end
 
 Remotes.GetSpawnPosition.OnServerInvoke = function(player)
@@ -71,6 +89,7 @@ if not ServerConfig.IsLobby then
 			return
 		end
 		Profiles[player] = profile
+		ProfileAccess.Set(player, profile.Data)
 
 		-- Respawns after death go to the SPAWN POINT, not the saved position: dying at the bottom of a ravine
 		-- or in deep water would otherwise drop the player straight back into what killed them. The saved
@@ -88,14 +107,14 @@ if not ServerConfig.IsLobby then
 		while true do
 			task.wait(7)
 			for _, player in ipairs(Players:GetPlayers()) do
-				savePosition(player)
+				saveAll(player)
 			end
 		end
 	end)
 
 	-- Primary explicit save path: the client asks to return to the lobby, server saves THEN teleports.
 	Remotes.RequestReturnToLobby.OnServerEvent:Connect(function(player)
-		savePosition(player)
+		saveAll(player)
 		local ok, err = pcall(function()
 			TeleportService:Teleport(game.PlaceId, player)
 		end)
@@ -103,7 +122,8 @@ if not ServerConfig.IsLobby then
 	end)
 
 	Players.PlayerRemoving:Connect(function(player)
-		savePosition(player)
+		saveAll(player)
+		ProfileAccess.Set(player, nil)
 		local profile = Profiles[player]
 		Profiles[player] = nil
 		if profile then
