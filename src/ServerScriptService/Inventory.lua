@@ -182,10 +182,15 @@ end
 -- Equipping
 --------------------------------------------------------------------------------
 
+-- Set by WeaponVisuals: puts the equipped weapon in the character's hand. Left nil in the lobby, where no
+-- weapon visuals run.
+Inventory.OnWeaponChanged = nil
+
 local function broadcastEquipment(player, state)
 	Remotes.EquipmentChanged:FireAllClients(player,
 		state.equipped.weapon and state.equipped.weapon.id or nil,
 		state.equipped.armor and state.equipped.armor.id or nil)
+	if Inventory.OnWeaponChanged then Inventory.OnWeaponChanged(player) end
 end
 
 function Inventory.Equip(player, index)
