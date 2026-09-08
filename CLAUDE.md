@@ -67,7 +67,9 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
   ถ้าได้ข้อความ "Unable to reach Roblox Studio" ทั้งที่ Studio เปิดอยู่ = proxy ยังต่อไม่เสร็จ ให้เรียกซ้ำ
 - **`tools/mcp-call.js`** เรียก Studio MCP จาก shell ได้โดยไม่ต้องรีสตาร์ท Claude Code:
   `node tools/mcp-call.js list` / `node tools/mcp-call.js execute_luau '{"datamodel_type":"Edit","code":"..."}'`
-- **Rojo 7.7.0** portable ที่ `%USERPROFILE%\tools\rojo\rojo.exe` → `serve.bat` แล้วกด Connect ที่ปลั๊กอิน Rojo ใน Studio
+- **Rojo 7.7.0** portable ที่ `%USERPROFILE%\tools\rojo\rojo.exe` → **`serve-background.bat`** แล้วกด Connect ที่ปลั๊กอิน Rojo ใน Studio
+  - **สาเหตุที่ Rojo หลุดบ่อย:** `serve.bat` รันแบบ foreground พอหน้าต่างเทอร์มินัลปิด process ก็ตายเงียบๆ → `serve-background.bat` แยกหน้าต่างและรีสตาร์ทใหม่เองถ้าตาย
+  - เช็คว่ารันอยู่ไหม: `tasklist | grep -i rojo` หรือเรียก `http://localhost:34872/api/rojo`
   `default.project.json` แมป `src/` → ServerScriptService, ReplicatedStorage, StarterGui, StarterPlayerScripts
 - **`plugins/`** = junction ของ `%LOCALAPPDATA%\Roblox\Plugins` วาง `.lua`/`.rbxm` แล้ว Studio โหลดเป็นปลั๊กอินเอง (มี Rojo.rbxm อยู่แล้ว)
 

@@ -16,7 +16,8 @@ Place ใน Roblox Studio ชื่อ **WOLD Arture**
 
 ## ซิงก์สคริปต์เข้า Studio (Rojo)
 
-1. ดับเบิลคลิก `serve.bat` (รัน `rojo serve` ที่ port 34872)
+1. ดับเบิลคลิก `serve-background.bat` (รัน `rojo serve` ที่ port 34872 ในหน้าต่างแยก ไม่ตายตอนปิดหน้าต่างเทอร์มินัล และรีสตาร์ทใหม่เองถ้าหลุด)
+   - `serve.bat` เดิมยังใช้ได้ แต่มันตายเมื่อปิดหน้าต่าง → Studio ขึ้น "Couldn't connect to the Rojo server"
 2. เปิด place WOLD Arture ใน Studio → แท็บ Plugins → **Rojo** → Connect
 3. แก้ไฟล์ใน `src/` แล้ว Studio อัปเดตทันที
 
