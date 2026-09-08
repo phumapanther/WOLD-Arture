@@ -19,6 +19,7 @@ local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
 local Progression = require(game.ServerScriptService.Progression)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
+local StatusEffects = require(game.ServerScriptService.StatusEffects)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local States = {} -- [player] = { weapon, guarding, lastAttackAt, chainIndex, busyUntil, activeUntil, hitThisSwing }
@@ -36,6 +37,18 @@ local function weaponOf(player)
 		return CombatConfig.Weapons[entry.id], entry
 	end
 	return CombatConfig.Weapons[CombatConfig.DefaultWeapon], nil
+end
+
+-- Some attacks carry a rider beyond damage: an arrow floors whoever it hits, dark magic slows them. The
+-- rider lives on the attack in CombatConfig so every hit path resolves it the same way. A hit that puts
+-- someone down skips it -- they are already on the floor, and a knockdown would fight the crawl for the body.
+local function applyEffect(attack, victim)
+	if not attack.effect or Vitals.IsDowned(victim) then return end
+	if attack.effect == "knockdown" then
+		StatusEffects.Knockdown(victim, attack.effectSeconds)
+	elseif attack.effect == "slow" then
+		StatusEffects.Slow(victim, attack.effectSeconds, attack.effectFactor)
+	end
 end
 
 -- Every swing wears the weapon down; at zero it breaks and is gone.
@@ -134,6 +147,7 @@ local function fireProjectile(player, attack)
 					and not Vitals.IsInvulnerable(other) then
 					local wasDowned = Vitals.IsDowned(other)
 					Vitals.ApplyDamage(other, attack.damage, "combat")
+					applyEffect(attack, other)
 					playHitSound(otherChar)
 					if not wasDowned and Vitals.IsDowned(other) then
 						awardKill(player, other)
@@ -215,6 +229,7 @@ local function resolveHit(player, state, attack)
 				if not Vitals.IsInvulnerable(other) then
 					local wasDowned = Vitals.IsDowned(other)
 					Vitals.ApplyDamage(other, attack.damage, "combat")
+					applyEffect(attack, other)
 					playHitSound(otherChar)
 					-- The blow that puts someone down is the "kill" for EXP purposes: combat downs players
 					-- rather than killing them outright, so there is no later death to hook.
