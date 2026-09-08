@@ -44,6 +44,22 @@ gui:OnRoll(function()
 	if bindable then bindable:Fire() end
 end)
 
+-- Dropping a carried player is bound to F on desktop, which touch cannot press. This button drives the same
+-- remote. Carry state comes straight from the server event, so it matches RescueController without either
+-- script having to reach into the other.
+gui:OnDrop(function()
+	Remotes.RequestDrop:FireServer()
+end)
+
+Remotes.CarryStateChanged.OnClientEvent:Connect(function(actor, event)
+	if actor ~= player then return end
+	if event == "carry_start" then
+		gui:SetCarrying(true)
+	elseif event == "carry_end" then
+		gui:SetCarrying(false)
+	end
+end)
+
 gui:Show()
 gui:AnchorJumpButton()
 

@@ -85,7 +85,7 @@ function TouchActionGui.new()
 	cluster.Name = "Cluster"
 	cluster.AnchorPoint = Vector2.new(1, 1)
 	cluster.Position = UDim2.new(1, -EDGE_MARGIN, 1, -EDGE_MARGIN)
-	cluster.Size = UDim2.fromOffset(ATTACK_SIZE, ATTACK_SIZE + GAP + ROLL_SIZE)
+	cluster.Size = UDim2.fromOffset(ATTACK_SIZE, ATTACK_SIZE + GAP + ROLL_SIZE + GAP + ROLL_SIZE)
 	cluster.BackgroundTransparency = 1
 	cluster.Parent = gui
 	self.cluster = cluster
@@ -105,7 +105,26 @@ function TouchActionGui.new()
 	self.rollButton = roll
 	self.rollLabel = rollLabel
 
+	-- Drop: only visible while carrying someone. Sits above the roll button so it never covers the two
+	-- buttons that are always there, and dropping is keyboard-F on desktop — touch had no way to do it at all.
+	local drop, dropLabel = circle(cluster, ROLL_SIZE, ROLL_COLOR, "วาง", 18)
+	drop.Name = "DropButton"
+	drop.AnchorPoint = Vector2.new(1, 1)
+	drop.Position = UDim2.new(1, 0, 1, -(ATTACK_SIZE + GAP + ROLL_SIZE + GAP))
+	drop.Visible = false
+	self.dropButton = drop
+	self.dropLabel = dropLabel
+
 	return self
+end
+
+function TouchActionGui:OnDrop(callback)
+	self.dropButton.MouseButton1Down:Connect(callback)
+end
+
+-- Shown only while actually carrying someone: a permanent "วาง" button with nothing to put down is noise.
+function TouchActionGui:SetCarrying(carrying)
+	self.dropButton.Visible = carrying and true or false
 end
 
 -- Nudges Roblox's own jump button left of our attack button, and matches its vertical centre. The jump button
