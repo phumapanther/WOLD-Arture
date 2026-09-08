@@ -15,8 +15,10 @@ TouchActionGui.__index = TouchActionGui
 -- Roblox's own jump button is 90x90 at its smallest and sits a fixed distance from the bottom-right corner.
 -- These are matched to it so the cluster reads as one set of controls rather than a separate overlay.
 local JUMP_SIZE = 90
-local ATTACK_SIZE = JUMP_SIZE * 2 -- "ขยายปุ่มโจมตีให้ใหญ่กว่าปุ่มกระโดดเท่าหนึ่ง"
-local ROLL_SIZE = JUMP_SIZE
+-- Both buttons were halved on request: the attack button is still twice the roll button, just a smaller pair
+-- overall, so the cluster covers less of a phone screen.
+local ATTACK_SIZE = JUMP_SIZE -- was JUMP_SIZE * 2
+local ROLL_SIZE = JUMP_SIZE / 2 -- was JUMP_SIZE
 local EDGE_MARGIN = 30
 local GAP = 14
 

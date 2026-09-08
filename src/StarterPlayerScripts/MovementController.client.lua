@@ -22,10 +22,16 @@ local ANALOG_SUSTAIN = 0.25
 
 -- Touch needs a much harder push than a gamepad: a thumb resting anywhere past the middle of the ring was
 -- tripping the gamepad thresholds constantly ("ลากไปนิดเดียวก็วิ่งแล้ว"). These demand a near-pinned stick
--- held for twice as long before sprinting, and drop it as soon as the thumb eases off.
-local TOUCH_SPRINT_ON = 0.97
-local TOUCH_SPRINT_OFF = 0.85
-local TOUCH_SUSTAIN = 0.5
+-- held before sprinting, and drop it as soon as the thumb eases off.
+--
+-- DISTANCE, not time: sprinting on touch is decided purely by how far the stick is dragged. Holding a
+-- half-pushed stick must never build up into a sprint no matter how long it is held
+-- ("ลากค้างไม่ต้องวิ่ง ต้องลากออกยาวเท่านั้น"), so the sustain window is zero here and the gate is the
+-- deflection alone. The stick must be dragged essentially to the rim, and sprint drops the moment it eases
+-- back inside TOUCH_SPRINT_OFF.
+local TOUCH_SPRINT_ON = 0.98
+local TOUCH_SPRINT_OFF = 0.90
+local TOUCH_SUSTAIN = 0
 
 local player = Players.LocalPlayer
 
@@ -37,6 +43,13 @@ local shiftPressedAt = 0
 local gamepadMag = 0 -- left-stick deflection 0..1, straight from UserInputService (exact; no PlayerModule involved)
 local analogSprint = false
 local analogAboveSince = nil
+
+-- Raw touch drag, used only when the DynamicThumbstick (which has no ring to measure) is the active control.
+-- Pixels the stock control needs for full speed; it scales the thumbstick with screen size, so this is
+-- expressed against the same 1280-wide baseline the GUIs use.
+local DYNAMIC_THUMBSTICK_RADIUS = 70
+local touchDragStart = nil
+local touchDragCurrent = nil
 
 local function humanoidOf(character)
 	return character and character:FindFirstChildOfClass("Humanoid")
@@ -77,11 +90,20 @@ local function touchThumbstickMag()
 		return math.min(1, (knobCentre - centre).Magnitude / radius)
 	end
 
-	-- DynamicThumbstick: no persistent ring, so fall back to the engine's own move vector magnitude, which for
-	-- touch IS the deflection (deflection / radiusOfMaxSpeed, clamped to 1 — verified in Play).
-	local humanoid = humanoidOf(player.Character)
-	if not humanoid then return 0 end
-	return math.min(1, humanoid.MoveDirection.Magnitude)
+	-- DynamicThumbstick draws no persistent ring, so measure the drag ourselves from the raw touch: how far the
+	-- finger has travelled from where it first went down, over the same radius the stock control uses for full
+	-- speed. Humanoid.MoveDirection is NOT usable as a fallback here — it is always a unit vector, so it reads
+	-- 1.0 for any movement at all and every drag would sprint.
+	if touchDragStart and touchDragCurrent then
+		local delta = touchDragCurrent - touchDragStart
+		-- InputObject.Position is a Vector3 whose Z is unused for touch; drop it or the magnitude is wrong.
+		local pixels = Vector2.new(delta.X, delta.Y).Magnitude
+		-- The stock control sizes itself against the screen, so scale the radius the same way the GUIs do.
+		local camera = workspace.CurrentCamera
+		local widthScale = camera and math.clamp(camera.ViewportSize.X / 1280, 0.5, 1) or 1
+		return math.min(1, pixels / (DYNAMIC_THUMBSTICK_RADIUS * widthScale))
+	end
+	return 0
 end
 
 local function onCharacterAdded(character)
@@ -117,6 +139,28 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
 			Remotes.ToggleWalk:FireServer()
 		end
 	end
+end)
+
+-- Touch: follow one finger's drag so the DynamicThumbstick path above has a real distance to measure.
+-- gameProcessed is true when the touch landed on a GUI button (our attack/roll buttons), which must not be
+-- mistaken for a movement drag.
+UserInputService.TouchStarted:Connect(function(input, gameProcessed)
+	if gameProcessed or touchDragStart then return end
+	-- Movement lives on the left half of the screen; a touch on the right is the camera or our action buttons.
+	local camera = workspace.CurrentCamera
+	if camera and input.Position.X > camera.ViewportSize.X / 2 then return end
+	touchDragStart = input.Position
+	touchDragCurrent = input.Position
+end)
+
+UserInputService.TouchMoved:Connect(function(input, gameProcessed)
+	if not touchDragStart then return end
+	touchDragCurrent = input.Position
+end)
+
+UserInputService.TouchEnded:Connect(function()
+	touchDragStart = nil
+	touchDragCurrent = nil
 end)
 
 -- Gamepad: raw left-stick deflection (Position.X/Y are each -1..1)
