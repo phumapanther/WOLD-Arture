@@ -39,10 +39,13 @@ VitalsConfig.ArmorAbsorbFraction = 0.5
 -- treading-water pose, upright and paddling on the spot, which reads nothing like crawling.
 VitalsConfig.CrawlAnimation = "rbxassetid://913384386"
 
--- Punch impact, played at the victim. The user's own ตี.mp3 goes here once uploaded
--- (create.roblox.com -> Creations -> Audio -> Upload Audio, then paste the id below).
--- Leave as "" and combat still works, just silently — the sound is never required.
-VitalsConfig.HitSoundId = ""
+-- Punch impact, played at the victim: the user's own uploaded ตี.mp3.
+-- Setting this to "" is safe — combat still works, just silently.
+VitalsConfig.HitSoundId = "rbxassetid://132299141332172"
+VitalsConfig.HitSoundVolume = 1
+-- The clip runs 1.35s but punches land about once a second, so trim playback to keep consecutive hits
+-- from stacking into a drone.
+VitalsConfig.HitSoundMaxSeconds = 0.7
 
 -- The HUD can't show finer than this, and it caps remote traffic per player.
 VitalsConfig.SendInterval = 0.15

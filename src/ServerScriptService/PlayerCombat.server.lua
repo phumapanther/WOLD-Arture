@@ -40,15 +40,18 @@ end
 
 -- Impact feedback: a short sound parented to the victim so everyone nearby hears it positionally.
 local function playHitSound(character)
+	if VitalsConfig.HitSoundId == "" then return end -- no sound configured; combat is simply silent
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
 	local sound = Instance.new("Sound")
 	sound.SoundId = VitalsConfig.HitSoundId
+	sound.Volume = VitalsConfig.HitSoundVolume
 	sound.RollOffMaxDistance = 60
 	sound.Parent = hrp
 	sound:Play()
-	sound.Ended:Once(function() sound:Destroy() end)
-	game:GetService("Debris"):AddItem(sound, 5) -- in case Ended never fires (asset failed to load)
+	-- Punches land about once a second but the clip is longer than that, so cut it short rather than letting
+	-- consecutive hits stack into a drone.
+	game:GetService("Debris"):AddItem(sound, VitalsConfig.HitSoundMaxSeconds)
 end
 
 local function resolveHit(player, state, attack)
