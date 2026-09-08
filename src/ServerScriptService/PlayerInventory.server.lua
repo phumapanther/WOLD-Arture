@@ -67,6 +67,11 @@ end)
 -- Client requests. Each one re-validates rather than trusting the index it was handed.
 --------------------------------------------------------------------------------
 
+-- Anything that changes the bag is worth persisting at once rather than waiting for the autosave tick.
+local function flush(player)
+	if ProfileAccess.Flush then ProfileAccess.Flush(player) end
+end
+
 local function canAct(player)
 	-- Nothing in the bag is usable while crawling: a downed player cannot rummage.
 	return not Vitals.IsDowned(player)
@@ -74,24 +79,32 @@ end
 
 Remotes.RequestEquip.OnServerEvent:Connect(function(player, index)
 	if type(index) ~= "number" or not canAct(player) then return end
-	if Inventory.Equip(player, index) then syncArmor(player) end
+	if Inventory.Equip(player, index) then
+		syncArmor(player)
+		flush(player)
+	end
 end)
 
 Remotes.RequestUnequip.OnServerEvent:Connect(function(player, kind)
 	if kind ~= "weapon" and kind ~= "armor" then return end
 	if not canAct(player) then return end
-	if Inventory.Unequip(player, kind) then syncArmor(player) end
+	if Inventory.Unequip(player, kind) then
+		syncArmor(player)
+		flush(player)
+	end
 end)
 
 Remotes.RequestAutoSort.OnServerEvent:Connect(function(player)
 	if not canAct(player) then return end
 	Inventory.AutoSort(player)
+	flush(player)
 end)
 
 Remotes.RequestDropItem.OnServerEvent:Connect(function(player, index)
 	if type(index) ~= "number" or not canAct(player) then return end
 	-- Dropping destroys the item for now; world pickups arrive with the gathering sub-project.
 	Inventory.RemoveFromSlot(player, index)
+	flush(player)
 end)
 
 Remotes.RequestUseItem.OnServerEvent:Connect(function(player, index)
@@ -119,4 +132,5 @@ Remotes.RequestUseItem.OnServerEvent:Connect(function(player, index)
 	end
 
 	Inventory.RemoveFromSlot(player, index, 1)
+	flush(player)
 end)

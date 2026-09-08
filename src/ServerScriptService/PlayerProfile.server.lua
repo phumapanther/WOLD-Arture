@@ -72,6 +72,14 @@ local function saveAll(player)
 	saveInventory(player)
 end
 
+-- Published so the systems that OWN the data can flush it the moment it changes. ProfileStore only writes to
+-- the DataStore on its own schedule, so calling this often is cheap — it just keeps the in-memory profile
+-- current, which is what PlayerRemoving and BindToClose then persist. Without it, everything earned since the
+-- last 7-second tick was lost by anyone who left in between.
+ProfileAccess.Flush = function(player)
+	if Profiles[player] then saveAll(player) end
+end
+
 Remotes.GetSpawnPosition.OnServerInvoke = function(player)
 	local profile = Profiles[player]
 	if not profile then return SpawnSelector.ResolvePosition(nil) end -- lobby, or profile failed to load

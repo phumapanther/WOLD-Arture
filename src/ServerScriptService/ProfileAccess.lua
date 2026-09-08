@@ -21,4 +21,8 @@ end
 ProfileAccess.SerializeProgression = nil
 ProfileAccess.SerializeInventory = nil
 
+-- Set by PlayerProfile: copies a player's current level and bag into their profile immediately, rather than
+-- waiting for the next autosave tick. Call it after anything worth keeping.
+ProfileAccess.Flush = nil
+
 return ProfileAccess

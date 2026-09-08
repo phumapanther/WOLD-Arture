@@ -4,6 +4,7 @@
 -- Server-authoritative: the client only renders the bar and the overhead tag.
 local Players = game:GetService("Players")
 local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
+local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
@@ -113,6 +114,8 @@ function Progression.AwardExp(player, amount)
 	end
 
 	if levelledUp then
+		-- Persist immediately: a level is too expensive to lose to the gap between autosave ticks.
+		if ProfileAccess.Flush then ProfileAccess.Flush(player) end
 		publishLevel(player)
 		Progression.ApplyScale(player)
 		-- Level-up refills everything, armor included (confirmed: the reward for levelling. A plain respawn
@@ -131,6 +134,7 @@ function Progression.ResetOnDeath(player)
 	if state.level == 1 and state.exp == 0 then return end
 	state.level = 1
 	state.exp = 0
+	if ProfileAccess.Flush then ProfileAccess.Flush(player) end
 	publishLevel(player)
 	Progression.ApplyScale(player)
 	send(player)
