@@ -128,6 +128,13 @@ Remotes.RequestUnequip.OnServerEvent:Connect(function(player, kind)
 	end
 end)
 
+-- A client that connected too late to catch the join broadcast asks for one. Read-only: it sends the
+-- player their own bag and nothing else, so there is nothing to abuse beyond asking for what they can
+-- already see. Inventory.Send is a no-op when the profile has not loaded yet, and the client retries.
+Remotes.RequestInventoryRefresh.OnServerEvent:Connect(function(player)
+	Inventory.Send(player)
+end)
+
 Remotes.RequestAutoSort.OnServerEvent:Connect(function(player)
 	if not canAct(player) then return end
 	Inventory.AutoSort(player)

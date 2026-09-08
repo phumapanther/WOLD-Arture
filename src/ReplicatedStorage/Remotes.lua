@@ -14,6 +14,7 @@ local EVENTS = {
 	-- see what each other is holding.
 	"InventoryUpdate", "EquipmentChanged",
 	"RequestEquip", "RequestUnequip", "RequestUseItem", "RequestDropItem", "RequestAutoSort",
+	"RequestInventoryRefresh", -- client asks for a resend: the join broadcast can land before it connects
 	"RequestSkill", "SkillUsed", -- the weapon's Q skill: intent in, playback out
 	"StatusChanged", -- knockdown / slow, so every client can render them
 	-- Admin console: the command text in, the reply out. AdminCommand is guarded by a UserId allow-list on

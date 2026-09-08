@@ -27,6 +27,18 @@ Remotes.InventoryUpdate.OnClientEvent:Connect(function(data)
 	if gui:IsOpen() then gui:Render(latest) end
 end)
 
+-- Ask for the contents rather than relying on having caught the one broadcast the server sends on join.
+-- This script waits for the IsLobby attribute before it connects, and on a slow-loading client (a phone,
+-- measured) that wait outlasts the server send -- so the bag stayed empty forever, since later updates only
+-- arrive when something CHANGES. Retried a few times because the profile may still be loading server-side.
+task.spawn(function()
+	for _ = 1, 10 do
+		if latest.slots and next(latest.slots) ~= nil then return end
+		Remotes.RequestInventoryRefresh:FireServer()
+		task.wait(1)
+	end
+end)
+
 local function toggle()
 	if gui:IsOpen() then
 		gui:Hide()
