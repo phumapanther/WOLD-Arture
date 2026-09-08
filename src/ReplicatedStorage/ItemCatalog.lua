@@ -40,7 +40,7 @@ ItemCatalog.Items = {
 		skill = { id = "GroupHeal", name = "ฮีลหมู่", manaCost = 1, cooldown = 15 },
 	},
 	Spellbook = {
-		icon = "", -- assets/item-icons/Spellbook.png
+		icon = "", -- assets/item-icons/Spellbook.jpg
 		name = "สมุดเวท", kind = "weapon", weight = 3, stackSize = 1,
 		damage = 8, range = 5,
 		maxDurability = 80,
