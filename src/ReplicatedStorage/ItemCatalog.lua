@@ -19,28 +19,28 @@ ItemCatalog.Items = {
 	-- attack uses; equipping one swaps the combat animations wholesale.
 	--------------------------------------------------------------------------
 	Sword = {
-		icon = "", -- assets/item-icons/Sword.png
+		icon = "rbxassetid://113229682531477", -- assets/item-icons/Sword.png
 		name = "ดาบ", kind = "weapon", weight = 6, stackSize = 1,
 		damage = 18, range = 7,
 		maxDurability = 120,
 		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 },
 	},
 	Bow = {
-		icon = "", -- assets/item-icons/Bow.png
+		icon = "rbxassetid://100309435801424", -- assets/item-icons/Bow.png
 		name = "ธนู", kind = "weapon", weight = 4, stackSize = 1,
 		damage = 12, range = 6, -- melee fallback; the skill is the real attack
 		maxDurability = 100,
 		skill = { id = "ScatterShot", name = "ยิงกระจาย", manaCost = 1, cooldown = 3 },
 	},
 	Staff = {
-		icon = "", -- assets/item-icons/Staff.png
+		icon = "rbxassetid://86359404715162", -- assets/item-icons/Staff.png
 		name = "ไม้คทา", kind = "weapon", weight = 5, stackSize = 1,
 		damage = 10, range = 6,
 		maxDurability = 90,
 		skill = { id = "GroupHeal", name = "ฮีลหมู่", manaCost = 1, cooldown = 3 },
 	},
 	Spellbook = {
-		icon = "", -- assets/item-icons/Spellbook.png
+		icon = "rbxassetid://98989238832991", -- assets/item-icons/Spellbook.png
 		name = "สมุดเวท", kind = "weapon", weight = 3, stackSize = 1,
 		damage = 8, range = 5,
 		maxDurability = 80,
@@ -52,17 +52,17 @@ ItemCatalog.Items = {
 	-- incoming hit it eats. Heavier armor lasts longer but costs carry weight.
 	--------------------------------------------------------------------------
 	LeatherArmor = {
-		icon = "", -- assets/item-icons/LeatherArmor.png
+		icon = "rbxassetid://131986289115512", -- assets/item-icons/LeatherArmor.png
 		name = "เกราะหนัง", kind = "armor", weight = 8, stackSize = 1,
 		armor = 60, absorbFraction = 0.5,
 	},
 	ChainmailArmor = {
-		icon = "", -- assets/item-icons/ChainmailArmor.png
+		icon = "rbxassetid://137536880363064", -- assets/item-icons/ChainmailArmor.png
 		name = "เกราะเหล็กโซ่", kind = "armor", weight = 16, stackSize = 1,
 		armor = 140, absorbFraction = 0.6,
 	},
 	PlateArmor = {
-		icon = "", -- assets/item-icons/PlateArmor.png
+		icon = "rbxassetid://128618993703994", -- assets/item-icons/PlateArmor.png
 		name = "เกราะเหล็กหนัก", kind = "armor", weight = 28, stackSize = 1,
 		armor = 260, absorbFraction = 0.7,
 	},
@@ -72,12 +72,12 @@ ItemCatalog.Items = {
 	-- same units as the stat itself.
 	--------------------------------------------------------------------------
 	Bread = {
-		icon = "", -- assets/item-icons/Bread.png
+		icon = "rbxassetid://70954901802854", -- assets/item-icons/Bread.png
 		name = "ขนมปัง", kind = "consumable", weight = 0.5, stackSize = 16,
 		use = { stat = "hunger", amount = 35 },
 	},
 	Water = {
-		icon = "", -- assets/item-icons/Water.png
+		icon = "rbxassetid://128474051932298", -- assets/item-icons/Water.png
 		name = "น้ำเปล่า", kind = "consumable", weight = 1, stackSize = 16,
 		use = { stat = "mana", amount = 1 },
 	},
@@ -87,7 +87,7 @@ ItemCatalog.Items = {
 		use = { stat = "hp", amount = 40 },
 	},
 	RepairHammer = {
-		icon = "", -- assets/item-icons/RepairHammer.png
+		icon = "rbxassetid://94401710904380", -- assets/item-icons/RepairHammer.png
 		name = "ค้อนซ่อม", kind = "consumable", weight = 3, stackSize = 15,
 		use = { stat = "repair", amount = 1 }, -- restores the equipped armor's durability
 	},
