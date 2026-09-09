@@ -148,7 +148,7 @@ CombatConfig.SkillSoundVolume = 0.27
 -- Per-skill overrides of the volume above; anything not listed uses it. LungeSlash was much louder than the
 -- other three in play, and the sword is the most used weapon, so its cast is the sound heard most often.
 CombatConfig.SkillSoundVolumes = {
-	LungeSlash = 0.027,
+	LungeSlash = 0.12,
 }
 CombatConfig.SkillSoundMaxSeconds = 2.5
 CombatConfig.SkillSoundDistance = 110 -- a skill should be heard from further off than a swing
