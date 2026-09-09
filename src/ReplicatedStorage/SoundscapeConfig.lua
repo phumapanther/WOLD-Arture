@@ -237,6 +237,12 @@ SoundscapeConfig.Interface = {
 	Eat = "rbxassetid://77895300305950",
 	Drink = "rbxassetid://139274681710432",
 	Hammer = "rbxassetid://114020474816962",
+
+	-- Money changing hands: giving, robbing, a fine paid, a trade closing. Heard by both parties, since a
+	-- transfer is a thing that happens between two people rather than to one.
+	Coin = "rbxassetid://117316732298294",
+	-- The architect putting someone gear back together. Longer and more mechanical than the hand hammer.
+	Repair = "rbxassetid://129031223149367",
 }
 
 --------------------------------------------------------------------------------

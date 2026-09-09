@@ -10,6 +10,7 @@ local Players = game:GetService("Players")
 local ClassActionConfig = require(game.ReplicatedStorage.ClassActionConfig)
 local ClassActionGui = require(game.ReplicatedStorage.UI.ClassActionGui)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local UiSound = require(game.ReplicatedStorage.UI.UiSound)
 
 while workspace:GetAttribute("IsLobby") == nil do
 	task.wait()
@@ -135,6 +136,19 @@ Remotes.ClassActionPrompt.OnClientEvent:Connect(function(actionId, fromPlayer, s
 	end
 end)
 
+-- The noise a successful action makes. Only on success: a refused give should not sound like coins
+-- changing hands. Both parties get the result event, so both hear it, which is right for money -- a
+-- transfer happens between two people rather than to one.
+local SOUND_FOR = {
+	give = "Coin",
+	rob = "Coin",
+	repair = "Repair",
+}
+
 Remotes.ClassActionResult.OnClientEvent:Connect(function(actionId, ok, message, other, extra)
 	gui:Notify(ok, message, other)
+	if ok then
+		local sound = SOUND_FOR[actionId]
+		if sound then UiSound.Play(sound) end
+	end
 end)

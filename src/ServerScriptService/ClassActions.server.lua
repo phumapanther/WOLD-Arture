@@ -164,7 +164,9 @@ local function doRob(actor, target)
 	-- The victim gets the countdown and a button. Everything about whether they beat it is decided on the
 	-- server when the timer runs out, so a client that never answers is simply robbed.
 	Remotes.ClassActionPrompt:FireClient(target, "rob", actor, seconds)
-	report(actor, nil, "rob", true, "กำลังปล้น...")
+	-- Reported as "rob_start", not "rob": the coin sound is keyed off a successful rob, and a robbery that
+	-- has only just begun has taken nothing yet. The real result arrives when the countdown resolves.
+	report(actor, nil, "rob_start", true, "กำลังปล้น...")
 
 	task.delay(seconds, function()
 		resolveRobbery(target)
