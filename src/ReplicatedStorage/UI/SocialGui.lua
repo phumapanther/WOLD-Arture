@@ -9,6 +9,7 @@ local Players = game:GetService("Players")
 local SocialConfig = require(script.Parent.Parent.SocialConfig)
 local AvatarThumbnails = require(script.Parent.AvatarThumbnails)
 local Responsive = require(script.Parent.Responsive)
+local ClassConfig = require(script.Parent.Parent.ClassConfig)
 local UiSound = require(script.Parent.UiSound)
 
 local SocialGui = {}
@@ -778,7 +779,13 @@ function SocialGui:RenderBoard(posts)
 			if face.Parent and type(image) == "string" then face.Image = image end
 		end)
 
-		local name = label(row, post.name, 13, ACCENT)
+		-- The class colour lives HERE now. Nothing is drawn above a player's head any more, so the board is
+		-- where you learn that the person posting is a guard or a priest.
+		local nameColor = post.class and ClassConfig.ColorOf(post.class) or ACCENT
+		local shown = post.class
+			and ("[%s] %s"):format(ClassConfig.DisplayName(post.class), post.name)
+			or post.name
+		local name = label(row, shown, 13, nameColor)
 		name.Position = UDim2.new(0, 62, 0, 7)
 		name.Size = UDim2.new(1, -150, 0, 16)
 		name.Font = Enum.Font.GothamBold
@@ -1156,13 +1163,21 @@ function SocialGui:buildProfile()
 	levelText.Size = UDim2.new(1, 0, 0, 20)
 	self.profileLevel = levelText
 
+	-- The class, in its own colour. Under the level because it is the more interesting fact about a player,
+	-- and because the level is what earned it.
+	local classText = label(page, "", 15, TEXT_LIGHT, Enum.TextXAlignment.Center)
+	classText.Position = UDim2.new(0, 0, 0, 232)
+	classText.Size = UDim2.new(1, 0, 0, 22)
+	classText.Font = Enum.Font.GothamBold
+	self.profileClass = classText
+
 	-- The three fields the player will be able to set later. Shown now so the screen is not half-empty,
 	-- and so it is obvious where they will appear.
 	local rows = { { "วันเกิด", "birthday" }, { "เพศ", "gender" } }
 	self.profileFields = {}
 	for i, entry in ipairs(rows) do
 		local row = Instance.new("Frame")
-		row.Position = UDim2.new(0, 0, 0, 240 + (i - 1) * 36)
+		row.Position = UDim2.new(0, 0, 0, 264 + (i - 1) * 36)
 		row.Size = UDim2.new(1, 0, 0, 30)
 		row.BackgroundColor3 = STONE_DEEP
 		row.BackgroundTransparency = 0.45
@@ -1223,6 +1238,16 @@ function SocialGui:RenderProfile(data)
 	self.rankStroke.Color = rank.color
 	self.rankStroke.Transparency = rank.glow and 0.05 or 0.4
 	self.profileLevel.Text = ("เลเวล %d"):format(level)
+
+	if self.profileClass then
+		if data.class then
+			self.profileClass.Text = ClassConfig.DisplayName(data.class)
+			self.profileClass.TextColor3 = ClassConfig.ColorOf(data.class)
+		else
+			self.profileClass.Text = "ยังไม่มีอาชีพ"
+			self.profileClass.TextColor3 = TEXT_MUTED
+		end
+	end
 
 	self.profileFields.birthday.Text = data.birthday or "ยังไม่ระบุ"
 	self.profileFields.gender.Text = data.gender or "ยังไม่ระบุ"

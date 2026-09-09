@@ -17,6 +17,7 @@ local Bank = require(game.ServerScriptService.Bank)
 local Calls = require(game.ServerScriptService.Calls)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Progression = require(game.ServerScriptService.Progression)
+local Classes = require(game.ServerScriptService.Classes)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 
 -- Injected rather than required inside Bank, so the money module does not depend on the bag's lifecycle.
@@ -115,6 +116,7 @@ local function send(player)
 		bank = Bank.Get(player),
 		gold = (Inventory.Get(player) or {}).gold or 0,
 		level = Progression.GetLevel(player),
+		class = Classes.Primary(player),
 	})
 end
 
@@ -232,6 +234,7 @@ Remotes.RequestShowCard.OnServerEvent:Connect(function(player, showing)
 			userId = player.UserId,
 			name = player.DisplayName ~= "" and player.DisplayName or player.Name,
 			level = level,
+			class = Classes.Primary(player),
 			birthday = social.Birthday,
 			gender = social.Gender,
 		})

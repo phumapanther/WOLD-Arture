@@ -51,7 +51,7 @@ ClassActionConfig.Actions = {
 		label = "เทรด",
 		key = Enum.KeyCode.T,
 		hold = 0, -- opens a request; the deliberation is in the window that follows
-		classes = { "Merchant" },
+		classes = { "Merchant", "Chef" },
 	},
 	{
 		id = "arrest",

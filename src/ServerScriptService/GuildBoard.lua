@@ -4,6 +4,7 @@
 -- is for channel 1), and it disappears when the server does. That was the user's choice, and it keeps the
 -- board free of the write budget every persistent system has to share.
 local SocialConfig = require(game.ReplicatedStorage.SocialConfig)
+local Classes = require(script.Parent.Classes)
 
 local GuildBoard = {}
 
@@ -39,6 +40,9 @@ function GuildBoard.Post(player, text)
 		id = NextId,
 		userId = player.UserId,
 		name = player.DisplayName ~= "" and player.DisplayName or player.Name,
+		-- Stamped onto the post rather than looked up when it is drawn: the board keeps posts after the
+		-- writer has left, and a name with no colour would be a stranger among coloured ones.
+		class = Classes.Primary(player),
 		text = body,
 		at = os.time(),
 	}

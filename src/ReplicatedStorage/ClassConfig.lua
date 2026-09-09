@@ -68,6 +68,11 @@ ClassConfig.Classes = {
 		color = Color3.fromRGB(255, 215, 0),
 		blurb = "จับกุม ยึดของ ปรับเงิน",
 	},
+	Chef = {
+		name = "เชฟ", tier = "advanced",
+		color = Color3.fromRGB(255, 120, 180),
+		blurb = "แลกเปลี่ยนของ",
+	},
 }
 
 -- A failed robbery marks the thief for everyone to see. Not a class, a temporary state -- so it overrides

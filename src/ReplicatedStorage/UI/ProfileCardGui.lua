@@ -5,6 +5,7 @@
 -- players introducing themselves simply looks like a crowd of cards.
 local Players = game:GetService("Players")
 local SocialConfig = require(script.Parent.Parent.SocialConfig)
+local ClassConfig = require(script.Parent.Parent.ClassConfig)
 local AvatarThumbnails = require(script.Parent.AvatarThumbnails)
 
 local ProfileCardGui = {}
@@ -102,7 +103,13 @@ function ProfileCardGui.Show(data)
 	badge.Size = UDim2.fromOffset(30, 30)
 	badge.Font = Enum.Font.GothamBold
 
-	local level = label(panel, ("เลเวล %d"):format(data.level or 1), 12, TEXT_MUTED)
+	-- Level and class on one line. Raising the card is the only way anyone learns either of these about a
+	-- stranger now, so the card has to carry both.
+	local levelText = data.class
+		and ("เลเวล %d · %s"):format(data.level or 1, ClassConfig.DisplayName(data.class))
+		or ("เลเวล %d"):format(data.level or 1)
+	local level = label(panel, levelText, 12,
+		data.class and ClassConfig.ColorOf(data.class) or TEXT_MUTED)
 	level.Position = UDim2.new(0, 62, 0, 28)
 	level.Size = UDim2.new(1, -70, 0, 16)
 

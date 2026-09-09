@@ -1,94 +1,66 @@
--- LevelTagController: draws "Lv. N" above every player's head, including your own.
+-- LevelTagController: makes sure NOTHING is drawn above anyone's head.
 --
--- The level replicates as the WOLD_Level attribute (set by Progression), so this needs no remote of its own
--- and stays correct for players who were already in the server when you joined.
+-- This file used to draw the "Lv. N" tag it is still named for. That tag is gone: in this game you do not
+-- know a stranger's name, level or class by looking at them. You find out by raising their profile card,
+-- which is a deliberate act on both sides, or by reading the board in the speaking stone.
+--
+-- So the job here is the opposite of what it was -- turning off everything Roblox draws overhead by default:
+--   * the character's own name and health bar (DisplayDistanceType)
+--   * the speech bubble that appears when someone talks
+--   * any WOLD_LevelTag left on a rig from before this change
+--
+-- The profile card (ProfileCardGui) is the one exception, and it is not touched here.
+local Players = game:GetService("Players")
+local Chat = game:GetService("Chat")
+local TextChatService = game:GetService("TextChatService")
+
 while workspace:GetAttribute("IsLobby") == nil do
 	task.wait()
 end
-if workspace:GetAttribute("IsLobby") then return end -- no levels in the lobby
+if workspace:GetAttribute("IsLobby") then return end
 
-local Players = game:GetService("Players")
-local ClassConfig = require(game.ReplicatedStorage.ClassConfig)
+--------------------------------------------------------------------------------
+-- Speech bubbles
+--------------------------------------------------------------------------------
 
-local ACCENT = Color3.fromRGB(244, 197, 66)
-
--- What colour a name should be, and what it should say. The class replicates as an attribute, so this needs
--- no remote and is already right for players who were here before you joined.
+-- Two chat systems exist depending on the place's setting, so both are turned off. Wrapped because the one
+-- that is not in use throws on being configured.
 --
--- The mark wins over everything: a thief who failed a robbery is red whatever they otherwise are, which is
--- the whole point of marking them.
-local function appearance(player)
-	local level = player:GetAttribute("WOLD_Level") or 1
-	if player:GetAttribute("WOLD_Marked") then
-		return ClassConfig.MarkedColor, ("Lv. %d"):format(level)
-	end
-	-- The advanced class outranks the basic one: it is the more interesting fact about a player, and the
-	-- one whose colour carries authority.
-	local classId = player:GetAttribute("WOLD_ClassAdvanced") or player:GetAttribute("WOLD_ClassBasic")
-	if not classId then
-		return ACCENT, ("Lv. %d"):format(level)
-	end
-	return ClassConfig.ColorOf(classId),
-		("[%s] Lv. %d"):format(ClassConfig.DisplayName(classId), level)
-end
+-- BubbleChatConfiguration is created asynchronously, so it is WAITED for rather than looked up once: a
+-- FindFirstChildOfClass at this point ran before it existed and silently did nothing (measured -- bubbles
+-- stayed on).
+task.spawn(function()
+	local ok, bubble = pcall(function()
+		return TextChatService:WaitForChild("BubbleChatConfiguration", 15)
+	end)
+	if ok and bubble then bubble.Enabled = false end
+end)
+pcall(function()
+	Chat:SetBubbleChatSettings({ BubbleDuration = 0, BubblesSpacing = 0, MaxBubbles = 0 })
+end)
 
-local function tagFor(character)
+--------------------------------------------------------------------------------
+-- Names and health bars
+--------------------------------------------------------------------------------
+
+-- Set on every humanoid rather than once on StarterPlayer, because a rebuilt character comes back with the
+-- defaults. None means the name is never drawn at any distance, for anyone including yourself.
+local function silence(character)
+	local humanoid = character:FindFirstChildOfClass("Humanoid") or character:WaitForChild("Humanoid", 10)
+	if not humanoid then return end
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	humanoid.NameDisplayDistance = 0
+	humanoid.HealthDisplayDistance = 0
+
+	-- Anything this file used to draw, cleared off rigs that still carry one.
 	local head = character:FindFirstChild("Head")
-	if not head then return nil end
-	local existing = head:FindFirstChild("WOLD_LevelTag")
-	if existing then return existing end
-
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "WOLD_LevelTag"
-	billboard.Size = UDim2.fromOffset(120, 26)
-	-- Sits above the character's own name tag. StudsOffsetWorldSpace so it stays put as the body scales with
-	-- level rather than drifting into the head.
-	billboard.StudsOffsetWorldSpace = Vector3.new(0, 3.2, 0)
-	billboard.AlwaysOnTop = false
-	billboard.MaxDistance = 120
-	billboard.Parent = head
-
-	local label = Instance.new("TextLabel")
-	label.Name = "Label"
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
-	label.TextColor3 = ACCENT
-	label.Text = "Lv. 1"
-	label.Parent = billboard
-
-	local stroke = Instance.new("UIStroke")
-	stroke.Color = Color3.fromRGB(0, 0, 0)
-	stroke.Transparency = 0.35
-	stroke.Thickness = 2
-	stroke.Parent = label
-
-	return billboard
-end
-
-local function refresh(player)
-	local character = player.Character
-	if not character then return end
-	local billboard = tagFor(character)
-	if not billboard then return end
-	local color, text = appearance(player)
-	billboard.Label.TextColor3 = color
-	billboard.Label.Text = text
+	local stale = head and head:FindFirstChild("WOLD_LevelTag")
+	if stale then stale:Destroy() end
 end
 
 local function watch(player)
-	-- Any of these changes the tag: the level, either class, or the mark going on or coming off.
-	for _, attribute in ipairs({ "WOLD_Level", "WOLD_ClassBasic", "WOLD_ClassAdvanced", "WOLD_Marked" }) do
-		player:GetAttributeChangedSignal(attribute):Connect(function()
-			refresh(player)
-		end)
-	end
-	player.CharacterAdded:Connect(function(character)
-		character:WaitForChild("Head", 10)
-		refresh(player)
-	end)
-	refresh(player)
+	player.CharacterAdded:Connect(silence)
+	if player.Character then task.spawn(silence, player.Character) end
 end
 
 for _, player in ipairs(Players:GetPlayers()) do watch(player) end
