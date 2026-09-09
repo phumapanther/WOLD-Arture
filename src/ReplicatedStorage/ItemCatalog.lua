@@ -82,7 +82,7 @@ ItemCatalog.Items = {
 		use = { stat = "mana", amount = 1 },
 	},
 	HealthPotion = {
-		icon = "", -- assets/item-icons/HealthPotion.png
+		icon = "rbxassetid://77251269114612", -- assets/item-icons/HealthPotion.png
 		name = "ยาฮีล", kind = "consumable", weight = 0.8, stackSize = 5,
 		use = { stat = "hp", amount = 40 },
 	},
@@ -96,8 +96,17 @@ ItemCatalog.Items = {
 	-- Junk. No effect yet; they exist to be gathered, carried and sold later.
 	--------------------------------------------------------------------------
 	Bone = { icon = "", name = "กระดูก", kind = "junk", weight = 1, stackSize = 99, value = 2 },
-	WoodScrap = { icon = "", name = "เศษไม้", kind = "junk", weight = 1.5, stackSize = 99, value = 1 },
-	Stone = { icon = "", name = "ก้อนหิน", kind = "junk", weight = 2.5, stackSize = 99, value = 1 },
+	WoodScrap = { icon = "rbxassetid://140646776701721", name = "เศษไม้", kind = "junk", weight = 1.5, stackSize = 99, value = 1 },
+	Stone = { icon = "rbxassetid://111540893837307", name = "ก้อนหิน", kind = "junk", weight = 2.5, stackSize = 99, value = 1 },
+
+	-- Gathered materials. Priced and weighted by where they come from: fibre is picked off a bush
+	-- anywhere, herbs need looking for, ore has to be mined, and crystal only grows in the caves. The
+	-- gathering tags in docs/design/04-gameplay-hooks.md already name these as resources, so the catalog
+	-- entries exist before the system that drops them rather than after.
+	IronOre = { icon = "", name = "แร่เหล็ก", kind = "junk", weight = 3, stackSize = 99, value = 6 },
+	Fiber = { icon = "", name = "เส้นใย", kind = "junk", weight = 0.3, stackSize = 99, value = 2 },
+	Herb = { icon = "", name = "สมุนไพร", kind = "junk", weight = 0.4, stackSize = 99, value = 4 },
+	Crystal = { icon = "", name = "คริสตัล", kind = "junk", weight = 1.2, stackSize = 99, value = 15 },
 }
 
 function ItemCatalog.Get(id)
