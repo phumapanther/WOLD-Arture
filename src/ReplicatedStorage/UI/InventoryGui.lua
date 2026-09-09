@@ -4,6 +4,7 @@
 -- Pure UI builder, like HudGui: it draws what it is handed and reports clicks through callbacks. The
 -- controller owns every decision and the server owns the data.
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
+local UiSound = require(script.Parent.UiSound)
 local InventoryConfig = require(script.Parent.Parent.InventoryConfig)
 local Responsive = require(script.Parent.Responsive)
 
@@ -268,6 +269,9 @@ function InventoryGui.new()
 		count.Font = Enum.Font.GothamBold
 
 		slot.Activated:Connect(function()
+			-- Bag slots click; the equipment slots above deliberately do not, since putting something on
+			-- already has its own heavier sound and the two together sounded like a stutter.
+			UiSound.Play("Click")
 			if self.onSlotClicked then self.onSlotClicked(i) end
 		end)
 

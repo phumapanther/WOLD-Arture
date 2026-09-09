@@ -9,6 +9,7 @@ local Players = game:GetService("Players")
 local SocialConfig = require(script.Parent.Parent.SocialConfig)
 local AvatarThumbnails = require(script.Parent.AvatarThumbnails)
 local Responsive = require(script.Parent.Responsive)
+local UiSound = require(script.Parent.UiSound)
 
 local SocialGui = {}
 SocialGui.__index = SocialGui
@@ -64,6 +65,9 @@ local function button(parent, text, size, color)
 	b.Text = text or ""
 	b.Parent = parent
 	corner(b, UDim.new(0, 8))
+	-- Every button on the stone clicks, wired once here rather than at each of the twenty-odd Activated
+	-- handlers -- which would have meant remembering it every time a button is added.
+	b.Activated:Connect(function() UiSound.Play("Click") end)
 	return b
 end
 

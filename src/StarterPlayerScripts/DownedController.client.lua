@@ -17,6 +17,7 @@ if workspace:GetAttribute("IsLobby") and not FORCE_SHOW_IN_STUDIO_FOR_TESTING th
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local DownedGui = require(game.ReplicatedStorage.UI.DownedGui)
+local UiSound = require(game.ReplicatedStorage.UI.UiSound)
 local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
@@ -77,12 +78,16 @@ end
 
 gui:OnRespawnRequested(function()
 	if not downed then return end
+	UiSound.Play("Respawn")
 	Remotes.RequestRespawn:FireServer()
 end)
 
 Remotes.DownedStateChanged.OnClientEvent:Connect(function(isDowned, seconds)
 	downed = isDowned
 	if isDowned then
+		-- The blow that put you down. Played here rather than broadcast from the server on purpose: this
+		-- event only reaches the person it happened to, which is exactly who should hear it.
+		UiSound.Play("LastHit")
 		deadline = os.clock() + (seconds or VitalsConfig.DownedSeconds)
 		gui:SetRemaining(seconds or VitalsConfig.DownedSeconds)
 		gui:Show()

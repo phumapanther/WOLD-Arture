@@ -17,6 +17,7 @@ local CallGui = require(game.ReplicatedStorage.UI.CallGui)
 local MapGui = require(game.ReplicatedStorage.UI.MapGui)
 local Navigation = require(game.ReplicatedStorage.Navigation)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local UiSound = require(game.ReplicatedStorage.UI.UiSound)
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -124,6 +125,12 @@ end)
 Remotes.PigeonMessage.OnClientEvent:Connect(function(withUserId, message)
 	threads[withUserId] = threads[withUserId] or {}
 	table.insert(threads[withUserId], message)
+	-- Only for messages FROM someone else. Both ends of a conversation receive this event -- the sender so
+	-- their own line appears -- and chiming at yourself for typing would be absurd. Muted chat stays silent
+	-- but still arrives, unlike a muted call, which is refused outright.
+	if message and message.from ~= player.UserId and not settings.muteChat then
+		UiSound.Play("Notification")
+	end
 	if gui:IsOpen() and gui.chatWith == withUserId then
 		gui:RenderChat(threads[withUserId], player.UserId)
 	end
@@ -165,6 +172,16 @@ player.CharacterAdded:Connect(function()
 	end
 end)
 
+-- The ringtone loops until the call is answered, declined or given up on, so it is held rather than fired
+-- and forgotten. Only one can be ringing at a time.
+local ringing = nil
+local function stopRinging()
+	if ringing then
+		ringing:Destroy()
+		ringing = nil
+	end
+end
+
 Remotes.CallStateChanged.OnClientEvent:Connect(function(state, userId, name)
 	-- Muted means the call is turned away, not merely silent: a panel ringing unheard would leave the
 	-- caller waiting on someone who never sees it.
@@ -173,9 +190,22 @@ Remotes.CallStateChanged.OnClientEvent:Connect(function(state, userId, name)
 		return
 	end
 	if state == "ended" then
+		stopRinging()
 		call:Hide()
 		if gui:IsOpen() then gui:SetStatus(("จบสายกับ %s"):format(name or ""), "ok") end
 		return
+	end
+
+	if state == "calling" then
+		-- Dialling out: the tone you hear while waiting for them to pick up.
+		stopRinging()
+		ringing = UiSound.Loop("Call")
+	elseif state == "incoming" then
+		stopRinging()
+		ringing = UiSound.Loop("Ringtone")
+	elseif state == "active" then
+		-- Answered, so whichever tone was playing has done its job.
+		stopRinging()
 	end
 	-- calling / incoming / active: the panel sits above everything, so a call is answerable with the stone
 	-- closed and while still playing.

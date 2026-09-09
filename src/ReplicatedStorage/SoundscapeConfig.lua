@@ -203,6 +203,37 @@ SoundscapeConfig.Water = {
 }
 
 --------------------------------------------------------------------------------
+-- Interface and event sounds
+--------------------------------------------------------------------------------
+
+-- One-shots for things the interface does, and for two moments in the world worth marking. These are not
+-- positional: they are things happening TO YOU, so they play flat rather than from somewhere in the world.
+--
+-- All at 0.3 of the uploads' natural level, matching the rest of the game's mix.
+SoundscapeConfig.Interface = {
+	Volume = 0.3,
+
+	-- Placing a call, and being called. The ringtone repeats while the caller waits for an answer; the
+	-- others are single events.
+	Call = "rbxassetid://136630953748080",
+	Ringtone = "rbxassetid://97881981206256",
+
+	-- A message arriving, and anything else that wants attention later.
+	Notification = "rbxassetid://137070625485720",
+
+	-- Buttons on the speaking stone, and picking items up in the bag. Not equipping, which has its own
+	-- heavier sound already.
+	Click = "rbxassetid://111830273525239",
+
+	-- The blow that puts you down. Heard ONLY by the person going down: it marks your own defeat, and
+	-- everyone nearby hearing it would turn a private moment into a broadcast.
+	LastHit = "rbxassetid://137178131907409",
+
+	-- Choosing to respawn.
+	Respawn = "rbxassetid://93187755315297",
+}
+
+--------------------------------------------------------------------------------
 -- Lobby music
 --------------------------------------------------------------------------------
 
@@ -219,7 +250,7 @@ SoundscapeConfig.LobbyMusic = {
 		"rbxassetid://138384771239589", -- Cozy Tavern Ambience VII, 3:42
 		"rbxassetid://1843259503",      -- Hush Nightingale, 3:56 -- soft and pastoral
 	},
-	Volume = 0.25,
+	Volume = 0.125,
 	-- Fades in on arrival rather than starting at full, and fades out when a channel is joined so the music
 	-- does not cut off mid-note as the screen blacks out for the teleport.
 	FadeSeconds = 2,
@@ -240,7 +271,7 @@ SoundscapeConfig.LobbyMusic = {
 -- Every id is from APMOfficial or DistrokidOfficial, Roblox's licensed-music partner accounts, so publishing
 -- carries no takedown risk. All were load-tested in this place.
 SoundscapeConfig.WorldMusic = {
-	Volume = 0.14, -- quieter than the lobby's: this plays under footsteps and ambience, not instead of them
+	Volume = 0.07, -- quieter than the lobby's: this plays under footsteps and ambience, not instead of them
 	FadeSeconds = 3, -- slow, so a track arriving or leaving is never a noticeable event
 
 	-- Combat. Fades in the moment a real blow lands (dealt or taken, not a swing at air) and fades out
@@ -254,7 +285,7 @@ SoundscapeConfig.WorldMusic = {
 			"rbxassetid://9043602056",       -- Ghost Ship, 1:02 -- agitated strings and gothic choir
 			"rbxassetid://139997523791273",  -- Boss Battle Burnout, 2:52
 		},
-		Volume = 0.22, -- louder than the rest: it is meant to take over
+		Volume = 0.11, -- louder than the rest: it is meant to take over
 		FadeInSeconds = 1.5, -- quick enough to feel like a reaction to being hit
 		FadeOutSeconds = 4, -- slow, so the fight ending settles rather than stops
 		LingerSeconds = 10, -- quiet for this long after the last blow before it lets go
