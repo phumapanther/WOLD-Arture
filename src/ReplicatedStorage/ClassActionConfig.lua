@@ -57,7 +57,10 @@ ClassActionConfig.Actions = {
 		id = "arrest",
 		label = "จับกุม",
 		key = Enum.KeyCode.R,
-		hold = 3,
+		-- A tap, not a hold. An arrest is the one action here that has to land on someone who is trying to
+		-- get away, and three seconds of standing still was three seconds for them to walk out of range --
+		-- the guard could not actually catch anyone. What follows is a window they can take their time in.
+		hold = 0,
 		classes = { "Guard", "Noble" },
 	},
 	{
