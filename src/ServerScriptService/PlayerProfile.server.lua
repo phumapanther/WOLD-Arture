@@ -82,8 +82,12 @@ local function saveRole(player)
 	local profile = Profiles[player]
 	local serialize = ProfileAccess.SerializeRole
 	if not profile or not serialize then return end
-	-- Unlike the others a nil result is meaningful here: it means "no role", which must overwrite an old one.
-	profile.Data.Role = serialize(player)
+	local data = serialize(player)
+	-- Guarded like the others. Nil now means only one thing -- the player is no longer loaded in Classes --
+	-- and writing that through wipes the class AND the offered-at levels that stop the card reappearing.
+	-- Both PlayerClasses and this file answer PlayerRemoving, in an order Roblox does not define, so the
+	-- unguarded version lost the whole Role on roughly every other logout.
+	if data then profile.Data.Role = data end
 end
 
 local function saveSocial(player)
