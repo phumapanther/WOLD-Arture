@@ -198,13 +198,9 @@ local function fireProjectile(player, attack)
 	if not spec or not hrp then return end
 
 	local forward = hrp.CFrame.LookVector
-	-- Fired from low on the body rather than from the chest, for the same reason the swing is: a level-100
-	-- archer's chest is thirty studs up, and an arrow from there passes clean over a level-1 player's head.
-	-- A fifth of the way up the rig keeps it looking like it comes from the bow at any size.
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	local feetY = hrp.Position.Y - (humanoid and humanoid.HipHeight or 2) - hrp.Size.Y * 0.5
-	local origin = Vector3.new(hrp.Position.X, feetY + (hrp.Position.Y - feetY) * 0.35, hrp.Position.Z)
-		+ forward * 2.5
+	-- Leaves from chest height, which is where a bow is held. Lowered while body growth was on, for the same
+	-- reason the swing was; growth is off now and an arrow fired from the shins looked wrong.
+	local origin = hrp.Position + forward * 2.5 + Vector3.new(0, 1.2, 0)
 
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
@@ -296,20 +292,14 @@ local function resolveHit(player, state, attack)
 	local character = player.Character
 	local hrp = character and character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
-	-- The swing starts at the attacker's feet rather than their chest, and reaches from there. A big player
-	-- swinging from chest height was swinging entirely over a small one: at level 50 a sword could not touch
-	-- a level-1 player from any position, because the root-to-root gap alone (12 studs) already exceeded the
-	-- sword's whole range of 7.
+	-- Swung from the middle of the body, which is where a swing comes from.
 	--
-	-- Dropping the origin to the ground is what "aiming low" means mechanically: the reach is measured from
-	-- where the small player actually is, so a giant can hit someone standing at their ankles without the
-	-- small player losing any reach of their own.
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	local feetY = hrp.Position.Y - (humanoid and humanoid.HipHeight or 2) - hrp.Size.Y * 0.5
-	local flat = hrp.CFrame.LookVector * Vector3.new(1, 0, 1)
-	if flat.Magnitude > 0.01 then flat = flat.Unit else flat = hrp.CFrame.LookVector end
-	local origin = Vector3.new(hrp.Position.X, feetY, hrp.Position.Z)
-		+ flat * (attack.range * 0.5)
+	-- It was dropped to the feet for a while, to let a ten-times-scaled player reach someone standing at
+	-- their ankles. Growth is off now (ProgressionConfig.MaxScale = 1), everyone is the same height, and
+	-- aiming at the floor made every swing look and feel low for no benefit. distanceToBody below still
+	-- measures to the whole body rather than the root, so this stays correct if growth is ever turned back
+	-- on at a sane number.
+	local origin = hrp.Position + hrp.CFrame.LookVector * (attack.range * 0.5)
 		+ Vector3.new(0, CombatConfig.HitboxHeightOffset, 0)
 
 	-- Training dummies: static targets that pay a little EXP per punch. Checked before players because they
