@@ -136,6 +136,23 @@ function Classes.MarkRemaining(player)
 	return math.max(0, until_ - os.clock())
 end
 
+-- Death takes the classes with the level. Progression already resets the level to 1, and a player who
+-- kept their class through that would never be offered the card again: the check is "level 5 and no basic
+-- class", and they would arrive at level 5 already holding one.
+--
+-- This is also what makes the choice worth anything. The class is meant to be a thing you can lose.
+function Classes.ResetOnDeath(player)
+	local state = Held[player]
+	if not state then return end
+	state.basic = nil
+	state.advanced = nil
+	-- The mark goes too: it is tied to a life, and ten minutes of shame that outlived the death would be
+	-- carried by a character who no longer did the thing.
+	MarkedUntil[player] = nil
+	Classes.Replicate(player)
+	if ProfileAccess.Flush then ProfileAccess.Flush(player) end
+end
+
 function Classes.Serialize(player)
 	local state = Held[player]
 	if not state then return nil end

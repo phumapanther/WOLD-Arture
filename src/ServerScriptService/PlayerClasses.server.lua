@@ -21,6 +21,11 @@ ProfileAccess.SerializeRole = Classes.Serialize
 -- Offering the choice
 --------------------------------------------------------------------------------
 
+-- Who has finished loading. An offer decided before this is meaningless: Classes.Get would answer nil for
+-- a player who has chosen, and they would be handed the card again on every rejoin. The client asks a few
+-- seconds after joining, and the profile can take longer than that to arrive.
+local Loaded = {}
+
 -- Whether this player is owed a choice of `tier`, and has not made it. Checked rather than remembered, so a
 -- player who was offered the card and closed it is offered it again on their next level-up -- and one who
 -- reaches level 50 in a single jump is offered both.
@@ -36,6 +41,9 @@ local function pendingTier(player)
 end
 
 local function offer(player)
+	-- Silence rather than a wrong answer. The client asks again on its next level-up, and the join-time ask
+	-- below waits for this instead of racing it.
+	if not Loaded[player] then return end
 	local tier = pendingTier(player)
 	if tier then
 		Remotes.ClassOffer:FireClient(player, tier, ClassConfig.OfTier(tier))
@@ -74,7 +82,16 @@ end)
 
 -- The client asks on join, once its UI exists: the level-up that unlocked the tier may have happened in a
 -- previous session, so there is nothing to react to.
-Remotes.RequestClassOffer.OnServerEvent:Connect(offer)
+-- Waits for the profile rather than answering nothing: a client that asked too early would otherwise get
+-- silence and never ask again until it levelled up.
+Remotes.RequestClassOffer.OnServerEvent:Connect(function(player)
+	for _ = 1, 100 do
+		if Loaded[player] then break end
+		if not player.Parent then return end
+		task.wait(0.1)
+	end
+	offer(player)
+end)
 
 --------------------------------------------------------------------------------
 -- Lifecycle
@@ -93,6 +110,7 @@ local function load(player)
 		task.wait(0.1)
 	end
 	Classes.Add(player, saved)
+	Loaded[player] = true
 end
 
 Players.PlayerAdded:Connect(function(player)
@@ -101,6 +119,7 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	Classes.Remove(player)
+	Loaded[player] = nil
 end)
 
 for _, player in ipairs(Players:GetPlayers()) do

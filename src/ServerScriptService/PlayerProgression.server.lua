@@ -5,6 +5,7 @@
 local Players = game:GetService("Players")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local Progression = require(game.ServerScriptService.Progression)
+local Classes = require(game.ServerScriptService.Classes)
 local Vitals = require(game.ServerScriptService.Vitals)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 
@@ -40,6 +41,11 @@ Players.PlayerAdded:Connect(function(player)
 		-- being killed by another player — and each of those must cost the level too.
 		humanoid.Died:Connect(function()
 			Progression.ResetOnDeath(player)
+			-- The class goes with the level, and for the same reason: the card is offered at "level 5 with no
+			-- basic class", so a player who kept theirs through a death would never be asked again. Hooked
+			-- here rather than in a second Died listener of its own -- one death, one place that decides what
+			-- a death costs.
+			Classes.ResetOnDeath(player)
 		end)
 
 		-- Scale and tag have to be re-applied every respawn: the character is rebuilt from scratch.

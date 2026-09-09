@@ -40,8 +40,11 @@ function ProgressionConfig.KillMultiplier(killerLevel, victimLevel)
 	return math.clamp(multiplier, ProgressionConfig.MinKillMultiplier, ProgressionConfig.MaxKillMultiplier)
 end
 
--- Body growth: the character reaches 10x its normal size at MaxLevel, one step every 10 levels.
-ProgressionConfig.MaxScale = 10
+-- Body growth. Set to 1, which means nobody grows: at 10x a level-100 player's root sat thirty studs off
+-- the ground, and a giant standing next to a normal player could barely be fought or interacted with at all
+-- -- the hitbox fix made it possible, not pleasant. Left as a knob rather than deleted, because the growth
+-- is a nice idea at a sane number: 1.5 or 2 would read as "big" without breaking the world around them.
+ProgressionConfig.MaxScale = 1
 ProgressionConfig.LevelsPerGrowth = 10
 -- Scale at a given level, stepped rather than continuous so growing is a visible event.
 function ProgressionConfig.ScaleForLevel(level)
