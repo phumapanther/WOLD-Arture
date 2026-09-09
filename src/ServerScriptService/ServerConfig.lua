@@ -5,7 +5,7 @@ local ChannelRegistry = require(script.Parent.Lobby.ChannelRegistry)
 -- ponytail: Studio Play is ALWAYS the lobby (PrivateServerId is empty there), so every channel-only system —
 -- vitals, the downed state, the HUD — is switched off and can't be tested without publishing. Flip this to
 -- pretend Play is a channel server. Flip it back before publishing, or the real lobby will run gameplay.
-local FORCE_CHANNEL_IN_STUDIO_FOR_TESTING = true
+local FORCE_CHANNEL_IN_STUDIO_FOR_TESTING = false
 
 local ServerConfig = {}
 ServerConfig.IsLobby = game.PrivateServerId == ""

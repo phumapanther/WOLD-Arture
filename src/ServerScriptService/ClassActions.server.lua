@@ -18,6 +18,7 @@ local ClassActionConfig = require(game.ReplicatedStorage.ClassActionConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local RescueAccess = require(game.ServerScriptService.RescueAccess)
 local TradeAccess = require(game.ServerScriptService.TradeAccess)
+local ArrestAccess = require(game.ServerScriptService.ArrestAccess)
 
 if ServerConfig.IsLobby then return end
 
@@ -297,6 +298,12 @@ Remotes.RequestClassAction.OnServerEvent:Connect(function(actor, actionId, targe
 		doRepair(actor, target)
 	elseif actionId == "carry" then
 		doAskCarry(actor, target)
+	elseif actionId == "arrest" then
+		-- Arrest owns its own sessions and the hold; this only asks it to start one.
+		if ArrestAccess.Begin then
+			local ok, message = ArrestAccess.Begin(actor, target)
+			if not ok then report(actor, nil, "arrest", false, message) end
+		end
 	elseif actionId == "trade" then
 		-- Trading owns its own sessions; this only asks it to start one.
 		if TradeAccess.Invite then
@@ -304,7 +311,7 @@ Remotes.RequestClassAction.OnServerEvent:Connect(function(actor, actionId, targe
 			if not ok then report(actor, nil, "trade", false, message) end
 		end
 	end
-	-- arrest is handled by its own system and is not accepted here.
+
 end)
 
 -- The victim of a robbery pressing the defend button.

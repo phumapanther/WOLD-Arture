@@ -27,6 +27,9 @@ local EVENTS = {
 	-- Trading. The offer is server state: both sides are sent the same picture of it after every change, so
 	-- neither can be looking at something the other is not.
 	"TradeStateChanged", "RequestTradeOffer", "RequestTradeConfirm", "RequestTradeCancel",
+	-- Arrest. One-sided: the guard takes, the prisoner gives. The prisoner is told so their own screen can
+	-- show what is being done to them, and so the hold ends on their client too.
+	"ArrestStateChanged", "RequestArrestTake", "RequestArrestConfirm", "RequestArrestRelease",
 	-- Eating and drinking take time; every client needs to know so it can play the animation and hold the
 	-- item to the mouth.
 	"ConsumeStateChanged", -- client asks for a resend: the join broadcast can land before it connects
