@@ -183,4 +183,10 @@ CombatConfig.DurabilityPerSwing = 1
 -- RaycastHitboxV4 approach the user referenced is worth revisiting once weapons with real geometry exist.
 CombatConfig.HitboxHeightOffset = 0
 
+-- How close a projectile must pass to count as a hit. Measured to the nearest point of the target body
+-- rather than to its root, so it does not need to be generous to cope with size differences -- but a
+-- level-100 archer fires from ten studs up, and against a level-1 target the line still passes about five
+-- studs clear, so this leaves margin above that rather than landing on the edge of it.
+CombatConfig.ProjectileHitRadius = 8
+
 return CombatConfig

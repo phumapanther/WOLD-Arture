@@ -157,6 +157,40 @@ end
 -- Ranged attacks: the bow's arrow and the spellbook's orb travel and hit the first thing they reach; the
 -- staff's beam appears at full length at once. All three are stepped by hand rather than thrown with physics,
 -- so nothing can shove them off course and a laggy client cannot outrun them.
+-- How far a hit at `origin` is from actually touching `character`.
+--
+-- Measured to the nearest point of the target's BODY rather than to the centre of its root. Body scale
+-- reaches 10x at level 100, which puts a big player's root thirty studs off the ground while a level-1
+-- player's is at three -- so a root-to-root sphere of range 7 could not reach at all (measured: from level
+-- 50 a sword literally could not hit a level-1 player from any position). Measuring to the body means a
+-- swing connects with whatever part of them is actually in front of you, at any pair of sizes.
+--
+-- The root's own bounding box is used as the body: it is the one part every rig has, it scales with the
+-- rig, and it spans the torso, which is what a swing is aimed at.
+local function distanceToBody(origin, character)
+	local hrp = character and character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return math.huge end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+
+	-- The rig standing on the ground, from its feet to the top of its head, as a box around the root.
+	local half = hrp.Size * 0.5
+	-- Vertically the root covers only the torso, so the box is grown to the whole standing height: down to
+	-- the feet (HipHeight below the root) and up over the head.
+	local down = (humanoid and humanoid.HipHeight or 2) + half.Y
+	local up = half.Y * 2.2 -- torso above the root plus the head, in the same proportion the rig has
+
+	local delta = origin - hrp.Position
+	local dx = math.max(0, math.abs(delta.X) - half.X)
+	local dz = math.max(0, math.abs(delta.Z) - half.Z)
+	local dy = 0
+	if delta.Y > up then
+		dy = delta.Y - up
+	elseif delta.Y < -down then
+		dy = -down - delta.Y
+	end
+	return math.sqrt(dx * dx + dy * dy + dz * dz)
+end
+
 local function fireProjectile(player, attack)
 	local spec = attack.projectile
 	local character = player.Character
@@ -164,7 +198,13 @@ local function fireProjectile(player, attack)
 	if not spec or not hrp then return end
 
 	local forward = hrp.CFrame.LookVector
-	local origin = hrp.Position + forward * 2.5 + Vector3.new(0, 1.2, 0)
+	-- Fired from low on the body rather than from the chest, for the same reason the swing is: a level-100
+	-- archer's chest is thirty studs up, and an arrow from there passes clean over a level-1 player's head.
+	-- A fifth of the way up the rig keeps it looking like it comes from the bow at any size.
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local feetY = hrp.Position.Y - (humanoid and humanoid.HipHeight or 2) - hrp.Size.Y * 0.5
+	local origin = Vector3.new(hrp.Position.X, feetY + (hrp.Position.Y - feetY) * 0.35, hrp.Position.Z)
+		+ forward * 2.5
 
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
@@ -194,8 +234,7 @@ local function fireProjectile(player, attack)
 		for _, other in ipairs(Players:GetPlayers()) do
 			if other ~= player then
 				local otherChar = other.Character
-				local otherHrp = otherChar and otherChar:FindFirstChild("HumanoidRootPart")
-				if otherHrp and (otherHrp.Position - position).Magnitude <= 6
+				if otherChar and distanceToBody(position, otherChar) <= CombatConfig.ProjectileHitRadius
 					and not Vitals.IsInvulnerable(other) then
 					local wasDowned = Vitals.IsDowned(other)
 					Vitals.ApplyDamage(other, attack.damage, "combat")
@@ -210,7 +249,7 @@ local function fireProjectile(player, attack)
 		end
 		for _, dummy in ipairs(CollectionService:GetTagged("WOLD_Dummy")) do
 			local root = dummy.PrimaryPart
-			if root and (root.Position - position).Magnitude <= 6 then
+			if root and distanceToBody(position, dummy) <= CombatConfig.ProjectileHitRadius then
 				Progression.AwardExp(player, ProgressionConfig.ExpPerDummyHit)
 				playHitSound(dummy, player)
 			end
@@ -257,14 +296,27 @@ local function resolveHit(player, state, attack)
 	local character = player.Character
 	local hrp = character and character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
-	local origin = hrp.Position + hrp.CFrame.LookVector * (attack.range * 0.5)
+	-- The swing starts at the attacker's feet rather than their chest, and reaches from there. A big player
+	-- swinging from chest height was swinging entirely over a small one: at level 50 a sword could not touch
+	-- a level-1 player from any position, because the root-to-root gap alone (12 studs) already exceeded the
+	-- sword's whole range of 7.
+	--
+	-- Dropping the origin to the ground is what "aiming low" means mechanically: the reach is measured from
+	-- where the small player actually is, so a giant can hit someone standing at their ankles without the
+	-- small player losing any reach of their own.
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	local feetY = hrp.Position.Y - (humanoid and humanoid.HipHeight or 2) - hrp.Size.Y * 0.5
+	local flat = hrp.CFrame.LookVector * Vector3.new(1, 0, 1)
+	if flat.Magnitude > 0.01 then flat = flat.Unit else flat = hrp.CFrame.LookVector end
+	local origin = Vector3.new(hrp.Position.X, feetY, hrp.Position.Z)
+		+ flat * (attack.range * 0.5)
 		+ Vector3.new(0, CombatConfig.HitboxHeightOffset, 0)
 
 	-- Training dummies: static targets that pay a little EXP per punch. Checked before players because they
 	-- are not Players at all, so the loop below would never see them.
 	for _, dummy in ipairs(CollectionService:GetTagged("WOLD_Dummy")) do
 		local root = dummy.PrimaryPart
-		if root and not state.hitThisSwing[dummy] and (root.Position - origin).Magnitude <= attack.range then
+		if root and not state.hitThisSwing[dummy] and distanceToBody(origin, dummy) <= attack.range then
 			state.hitThisSwing[dummy] = true
 			Progression.AwardExp(player, ProgressionConfig.ExpPerDummyHit)
 			playHitSound(dummy, player)
@@ -274,8 +326,7 @@ local function resolveHit(player, state, attack)
 	for _, other in ipairs(Players:GetPlayers()) do
 		if other ~= player and not state.hitThisSwing[other] then
 			local otherChar = other.Character
-			local otherHrp = otherChar and otherChar:FindFirstChild("HumanoidRootPart")
-			if otherHrp and (otherHrp.Position - origin).Magnitude <= attack.range then
+			if otherChar and distanceToBody(origin, otherChar) <= attack.range then
 				state.hitThisSwing[other] = true
 				-- Vitals decides what the hit actually does: armor absorbs half, downed and freshly-respawned
 				-- players take nothing, and HP reaching 0 downs them rather than killing.
