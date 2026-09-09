@@ -205,6 +205,9 @@ Remotes.RequestUseItem.OnServerEvent:Connect(function(player, index)
 		if not applyUse(player, item) then return end
 		Inventory.RemoveFromSlot(player, index, 1)
 		flush(player)
+		-- "used" rather than "start": there is no pose to hold and nothing to finish, only a noise. Sent to
+		-- everyone because a hammer is a thing you hear someone else doing, unlike swallowing a potion.
+		Remotes.ConsumeStateChanged:FireAllClients(player, "used", slot.id)
 		return
 	end
 

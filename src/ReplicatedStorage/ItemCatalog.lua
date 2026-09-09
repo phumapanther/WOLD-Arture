@@ -79,21 +79,25 @@ ItemCatalog.Items = {
 		icon = "rbxassetid://70954901802854", -- assets/item-icons/Bread.png
 		name = "ขนมปัง", kind = "consumable", weight = 0.5, stackSize = 16,
 		use = { stat = "hunger", amount = 35 },
+		useSound = "Eat",
 	},
 	Water = {
 		icon = "rbxassetid://128474051932298", -- assets/item-icons/Water.png
 		name = "น้ำเปล่า", kind = "consumable", weight = 1, stackSize = 16,
 		use = { stat = "mana", amount = 1 },
+		useSound = "Drink",
 	},
 	HealthPotion = {
 		icon = "rbxassetid://70766990190847", -- assets/item-icons/HealthPotion.png
 		name = "ยาฮีล", kind = "consumable", weight = 0.8, stackSize = 5,
 		use = { stat = "hp", amount = 40 },
+		useSound = "Drink",
 	},
 	RepairHammer = {
 		icon = "rbxassetid://94401710904380", -- assets/item-icons/RepairHammer.png
 		name = "ค้อนซ่อม", kind = "consumable", weight = 3, stackSize = 15,
 		use = { stat = "repair", amount = 1 }, -- restores the equipped armor's durability
+		useSound = "Hammer",
 	},
 
 	--------------------------------------------------------------------------

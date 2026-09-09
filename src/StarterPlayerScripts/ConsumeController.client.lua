@@ -15,6 +15,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local SoundscapeConfig = require(game.ReplicatedStorage.SoundscapeConfig)
 
 -- One entry per player currently eating, so several people can eat at once.
 local active = {} -- [player] = { connection, model, startedAt }
@@ -119,8 +120,33 @@ end
 
 --------------------------------------------------------------------------------
 
+-- The noise an item makes when it is used. Which sound is the item's own business -- ItemCatalog names it
+-- -- so a consumable added later needs no change here. Played at the character rather than flat: eating is
+-- something bystanders should hear from where you are standing.
+local function playUseSound(character, itemId)
+	local item = itemId and ItemCatalog.Get(itemId)
+	local name = item and item.useSound
+	local id = name and SoundscapeConfig.Interface[name]
+	if not character or not id or id == "" then return end
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	local sound = Instance.new("Sound")
+	sound.SoundId = id
+	sound.Volume = SoundscapeConfig.Interface.Volume
+	sound.RollOffMaxDistance = 40 -- a personal sound; not something to carry across the square
+	sound.Parent = root
+	sound:Play()
+	game:GetService("Debris"):AddItem(sound, 6)
+end
+
 Remotes.ConsumeStateChanged.OnClientEvent:Connect(function(player, state, itemId)
+	if state == "used" then
+		-- An instant item: no pose, no held model, just the sound.
+		playUseSound(player.Character, itemId)
+		return
+	end
 	if state == "start" then
+		playUseSound(player.Character, itemId)
 		start(player, itemId)
 	else
 		-- "finish" and "cancel" look the same from here: the hands come down and the item goes away. The

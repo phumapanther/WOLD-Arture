@@ -231,6 +231,12 @@ SoundscapeConfig.Interface = {
 
 	-- Choosing to respawn.
 	Respawn = "rbxassetid://93187755315297",
+
+	-- Using a consumable. Which one an item plays is the item's own business, declared as `useSound` in
+	-- ItemCatalog, so adding a consumable later means naming its sound rather than editing a list here.
+	Eat = "rbxassetid://77895300305950",
+	Drink = "rbxassetid://139274681710432",
+	Hammer = "rbxassetid://114020474816962",
 }
 
 --------------------------------------------------------------------------------
