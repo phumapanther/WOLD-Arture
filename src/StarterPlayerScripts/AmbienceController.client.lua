@@ -155,6 +155,10 @@ local function sampleTargets()
 	local coast = coastLevel(pos.X, pos.Z)
 	local mountain = mountainLevel(pos.Y)
 
+	-- Underwater, the surface world all but disappears. WaterController owns the head-under check and
+	-- publishes it, rather than this sampling the terrain a second time on its own schedule.
+	local underwater = workspace:GetAttribute("WOLD_Submerged") == true
+
 	for name, layer in pairs(SoundscapeConfig.Ambience) do
 		local level = layer.volume
 
@@ -174,6 +178,10 @@ local function sampleTargets()
 		-- in the way.
 		if layer.zone == nil then
 			level *= town
+		end
+
+		if underwater then
+			level *= SoundscapeConfig.Water.SubmergedDuck
 		end
 
 		targets[name] = level

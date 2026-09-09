@@ -142,6 +142,67 @@ SoundscapeConfig.StepIntervalRun = 0.28 -- WalkSpeed 16
 SoundscapeConfig.MinStepSpeed = 1.5
 
 --------------------------------------------------------------------------------
+-- Water
+--------------------------------------------------------------------------------
+
+-- Swimming, and the muffled world with your head under. Three separate things happen here: strokes while
+-- swimming, one-shots on crossing the surface either way, and a loop plus a filter while submerged.
+SoundscapeConfig.Water = {
+	-- Strokes, played on a timer while swimming, the way footsteps are played while walking. No clean
+	-- isolated arm-stroke exists in the free library; these are short single water impacts, pitched up a
+	-- little, which read as strokes at low volume.
+	Strokes = {
+		"rbxassetid://9117823333",
+		"rbxassetid://9125703162",
+		"rbxassetid://9125702439",
+		"rbxassetid://9125702803",
+	},
+	StrokeInterval = 0.75, -- slower than a footstep: a swimming stroke is a longer motion
+	StrokeVolume = 0.16,
+	StrokePitch = 1.15, -- these clips are water impacts; a little brighter sells them as a stroke
+	StrokePitchJitter = 0.1,
+
+	-- Going in. Chosen over the pool-jump takes because its description is a body falling in and dropping
+	-- under, which is what entering deep water actually sounds like.
+	EnterSounds = {
+		"rbxassetid://9119481909",
+		"rbxassetid://9117823374",
+		"rbxassetid://9117822989",
+	},
+	EnterVolume = 0.3,
+
+	-- Coming out. Only one purpose-recorded water exit exists free; the drip layers a tail onto it.
+	ExitSounds = {
+		"rbxassetid://9120548576",
+	},
+	ExitVolume = 0.25,
+
+	-- The muffled drone with your head under -- the "อื้อๆ". 59 seconds of low bubble rumble, long enough
+	-- that the loop point is inaudible.
+	SubmergedAmbience = "rbxassetid://9112889917",
+	SubmergedVolume = 0.35,
+
+	-- Occasional breath bubbles while submerged, so being under is not one unchanging drone.
+	BubbleSounds = {
+		"rbxassetid://9120310416",
+		"rbxassetid://9120310104",
+	},
+	BubbleVolume = 0.2,
+	BubbleIntervalMin = 2.5, -- seconds between bubble bursts, randomised in this range
+	BubbleIntervalMax = 6,
+
+	-- How much of the ordinary world you can still hear underwater. Everything above the surface ducks to
+	-- this while submerged, which is what actually sells "head under" -- more than the drone does.
+	SubmergedDuck = 0.25,
+	-- Muffling proper: a low-pass filter on everything else, so what does come through is dull rather than
+	-- merely quiet. Frequencies above this are cut.
+	SubmergedLowPassHz = 500,
+
+	-- Crossing the surface fades over this, so bobbing up for air is a quick swell rather than a click.
+	SurfaceFadeSeconds = 0.35,
+}
+
+--------------------------------------------------------------------------------
 -- Ambience
 --------------------------------------------------------------------------------
 

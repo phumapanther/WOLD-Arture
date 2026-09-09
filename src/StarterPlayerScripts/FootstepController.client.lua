@@ -83,7 +83,16 @@ RunService.Heartbeat:Connect(function(dt)
 	-- reason the fall damage does: mid-jump the state flickers back to Running for a frame or two.
 	local material = humanoid.FloorMaterial
 	local swimming = humanoid:GetState() == Enum.HumanoidStateType.Swimming
-	if material == Enum.Material.Air and not swimming then
+
+	-- Swimming is WaterController's job. Without this both fire at once: a swimming character still reports
+	-- the seabed as its FloorMaterial, so strokes and wet footsteps played over each other (measured: 4
+	-- strokes and 8 footsteps in one 3.5s swim).
+	if swimming then
+		sinceStep = 0
+		return
+	end
+
+	if material == Enum.Material.Air then
 		-- Reset rather than accumulate, so landing plays a step promptly instead of after a leftover
 		-- fraction of an interval.
 		sinceStep = 0
@@ -103,7 +112,7 @@ RunService.Heartbeat:Connect(function(dt)
 	sinceStep = 0
 
 	-- Water underfoot beats whatever the riverbed is made of: wading should sound wet.
-	local group = groupFor(material, swimming or material == Enum.Material.Water)
+	local group = groupFor(material, material == Enum.Material.Water)
 	playStep(character, group)
 	Remotes.Footstep:FireServer(group)
 end)
