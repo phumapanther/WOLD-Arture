@@ -144,6 +144,11 @@ Remotes.SocialNotify.OnClientEvent:Connect(function(kind, message)
 	-- A message that arrives with the stone closed still deserves to be seen, so it goes on the feed --
 	-- unless the player has muted chat notices, which is the whole point of that switch.
 	if settings.muteChat and (kind == "pigeon" or kind == "friendRequest") then return end
+	-- A friend request is a notice worth hearing. Messages chime where they arrive instead, since only that
+	-- path knows who sent them and can skip the ones you sent yourself.
+	if kind == "friendRequest" then
+		UiSound.Play("Notification")
+	end
 	if not gui:IsOpen() and (kind == "pigeon" or kind == "friendRequest") then
 		feed:Add({ id = os.clock(), userId = player.UserId, name = "หินเวท", text = message })
 	end

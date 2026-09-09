@@ -65,9 +65,6 @@ local function button(parent, text, size, color)
 	b.Text = text or ""
 	b.Parent = parent
 	corner(b, UDim.new(0, 8))
-	-- Every button on the stone clicks, wired once here rather than at each of the twenty-odd Activated
-	-- handlers -- which would have meant remembering it every time a button is added.
-	b.Activated:Connect(function() UiSound.Play("Click") end)
 	return b
 end
 
@@ -146,6 +143,17 @@ function SocialGui.new()
 	gui.DisplayOrder = 20
 	gui.Enabled = false
 	self.gui = gui
+
+	-- Clicks are wired at the ROOT rather than in the button factory. Six of the stone-s buttons -- the home
+	-- tiles among them, which are the ones most tapped -- are built with Instance.new directly and never go
+	-- through the factory, so a hook there was silent exactly where it mattered most. Listening on the whole
+	-- tree catches those, and catches any button added later without anyone having to remember.
+	local function wireClick(inst)
+		if inst:IsA("TextButton") or inst:IsA("ImageButton") then
+			inst.Activated:Connect(function() UiSound.Play("Click") end)
+		end
+	end
+	gui.DescendantAdded:Connect(wireClick)
 
 	local small = Responsive.IsSmallScreen()
 

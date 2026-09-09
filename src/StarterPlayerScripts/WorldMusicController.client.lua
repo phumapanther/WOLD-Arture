@@ -183,4 +183,14 @@ RunService.Heartbeat:Connect(function(dt)
 	if not inCombat and combatTrack.IsPlaying and combatTrack.Volume <= 0 then
 		combatTrack:Stop()
 	end
+
+	-- And the same for the theme underneath. Ducking it to zero left it PLAYING under the fight, so the two
+	-- ran on together and the theme came back mid-phrase when combat ended -- audibly two tracks at once.
+	-- Stopping it means the town gets a fresh track afterwards rather than the middle of an old one.
+	if inCombat and ambientTrack.IsPlaying and ambientTrack.Volume <= 0 then
+		ambientTrack:Stop()
+		playingZone = nil
+		-- A breath before the theme returns, rather than it snapping back the instant the fight ends.
+		nextAllowedAt = os.clock() + Music.FadeSeconds
+	end
 end)
