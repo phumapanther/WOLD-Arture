@@ -57,6 +57,37 @@ local function playStep(character, group)
 end
 
 --------------------------------------------------------------------------------
+-- Silencing the built-in one
+--------------------------------------------------------------------------------
+
+-- Roblox parents a set of default sounds to every rig, driven by the core RbxCharacterSounds script, and
+-- its "Running" entry is action_footsteps_plastic -- the single plastic step that plays on every surface.
+-- Left alone it plays UNDERNEATH these, so walking on grass was heard as plastic and grass at once.
+--
+-- Muted rather than destroyed: the core script keeps a reference and goes on driving it, so a destroyed
+-- sound can come back or produce errors, while one at zero volume is simply never heard. Every OTHER
+-- default (jumping, landing, climbing) is deliberately left alone -- only footsteps are ours.
+local function silenceDefaultFootsteps(character)
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	local running = root:FindFirstChild("Running")
+	if running and running:IsA("Sound") then
+		running.Volume = 0
+	end
+end
+
+-- Re-applied per character: a fresh rig arrives with the default volume restored.
+local function onCharacter(character)
+	-- The sounds are added by the core script a moment after the rig appears, so one immediate attempt can
+	-- land before "Running" exists.
+	task.defer(silenceDefaultFootsteps, character)
+	task.delay(1, silenceDefaultFootsteps, character)
+end
+
+if player.Character then onCharacter(player.Character) end
+player.CharacterAdded:Connect(onCharacter)
+
+--------------------------------------------------------------------------------
 -- Timing this player's own steps
 --------------------------------------------------------------------------------
 

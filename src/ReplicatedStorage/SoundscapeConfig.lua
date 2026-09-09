@@ -215,8 +215,12 @@ SoundscapeConfig.Ambience = {
 	-- is the sound of a hot afternoon.
 	Cicadas = {
 		id = "rbxassetid://9112757161",
-		volume = 0.10,
+		volume = 0.09,
 		when = "day",
+		-- Real cicadas come in waves: a chorus builds, holds, then dies back. Held at a flat level this was
+		-- the one layer you never stopped hearing, which is exactly what makes a drone tiring. `swell` makes
+		-- it rise and fall instead, and dip near silence between choruses.
+		swell = { period = 26, low = 0.05, high = 1 },
 	},
 	-- The clean rural set rather than the one recorded next to a freeway.
 	Crickets = {
@@ -233,7 +237,7 @@ SoundscapeConfig.Ambience = {
 	-- plane flying past, which would be a strange thing to hear on a medieval coastline.
 	Waves = {
 		id = "rbxassetid://9119677305",
-		volume = 0.22,
+		volume = 0.13,
 		when = "always",
 		zone = "coast",
 	},
@@ -261,8 +265,10 @@ SoundscapeConfig.TwilightHours = 1.0
 --------------------------------------------------------------------------------
 
 -- Coast: surf rises as the sea gets closer. Distances are to the nearest water, in studs.
-SoundscapeConfig.CoastFullDistance = 120 -- at or under this, surf is at full volume
-SoundscapeConfig.CoastFadeDistance = 700 -- beyond this, silent
+-- Both cut to 40% of their first values (120/700): the surf carried far too far inland, and you could hear
+-- the sea from places with no sea in sight.
+SoundscapeConfig.CoastFullDistance = 48 -- at or under this, surf is at full volume
+SoundscapeConfig.CoastFadeDistance = 280 -- beyond this, silent
 
 -- Mountain: wind rises with altitude. The snow line from world-layout.json is where it starts to be heard.
 SoundscapeConfig.MountainStartHeight = 700

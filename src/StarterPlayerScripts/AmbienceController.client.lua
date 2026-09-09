@@ -162,6 +162,18 @@ local function sampleTargets()
 	for name, layer in pairs(SoundscapeConfig.Ambience) do
 		local level = layer.volume
 
+		-- A layer with a swell rises and falls on its own slow cycle rather than holding one level, so it
+		-- is not the same unchanging noise every second the sun is up. Each layer gets a different phase
+		-- offset from its own name, so two swelling layers never breathe in lockstep.
+		if layer.swell then
+			local phase = (#name % 7) / 7
+			local t = (os.clock() / layer.swell.period + phase) % 1
+			-- A sine shaped to sit low most of the cycle and peak briefly: a chorus that builds and dies,
+			-- rather than a level that wanders up and down evenly.
+			local wave = (math.sin(t * math.pi * 2 - math.pi / 2) + 1) / 2
+			level *= layer.swell.low + (layer.swell.high - layer.swell.low) * wave
+		end
+
 		if layer.when == "day" then
 			level *= day
 		elseif layer.when == "night" then
