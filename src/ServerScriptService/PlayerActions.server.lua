@@ -39,10 +39,30 @@ local function startMover(character, direction, speed)
 	return mover, attachment
 end
 
+-- The action sound, parented to the root so everyone nearby hears it positionally. It is stopped when the
+-- action stops rather than left to run out, so a short slide is heard for exactly as long as it lasts.
+-- The clips begin with a moment of silence; skipping past it makes the sound land on the first frame
+-- instead of after the slide has already ended.
+local function startSound(character, soundId)
+	if not character or not soundId or soundId == "" then return nil end
+	local hrp = character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return nil end
+	local sound = Instance.new("Sound")
+	sound.SoundId = soundId
+	sound.Volume = ActionConfig.SoundVolume
+	sound.RollOffMaxDistance = ActionConfig.SoundDistance
+	sound.Looped = true -- a slide can outlast the clip; looping is better than falling silent mid-slide
+	sound.TimePosition = ActionConfig.SoundStartOffset
+	sound.Parent = hrp
+	sound:Play()
+	return sound
+end
+
 local function stopAction(player, state)
 	if state.mover then state.mover:Destroy() end
 	if state.attachment then state.attachment:Destroy() end
-	state.mover, state.attachment = nil, nil
+	if state.sound then state.sound:Destroy() end
+	state.mover, state.attachment, state.sound = nil, nil, nil
 
 	local humanoid = humanoidOf(player)
 	if humanoid then
@@ -105,6 +125,7 @@ Remotes.RequestRoll.OnServerEvent:Connect(function(player, direction)
 	-- A heavily loaded player rolls half as far: carrying a plate armor and a full bag should cost agility.
 	local penalty = Inventory.IsHeavilyLoaded(player) and InventoryConfig.HeavyActionPenalty or 1
 	state.mover, state.attachment = startMover(character, flat, cfg.speed * penalty)
+	state.sound = startSound(character, cfg.sound)
 
 	Remotes.MoveStateChanged:FireAllClients(player, "roll")
 end)
@@ -141,6 +162,7 @@ Remotes.RequestSlide.OnServerEvent:Connect(function(player)
 	state.speed = cfg.startSpeed * penalty
 	humanoid.AutoRotate = false
 	state.mover, state.attachment = startMover(character, flat, state.speed)
+	state.sound = startSound(character, cfg.sound)
 
 	Remotes.MoveStateChanged:FireAllClients(player, "slide")
 end)
@@ -151,7 +173,7 @@ Players.PlayerAdded:Connect(function(player)
 		local state = States[player]
 		-- The old character's mover died with it; just clear the flags so the new one can act immediately.
 		if state then
-			state.action, state.mover, state.attachment = nil, nil, nil
+			state.action, state.mover, state.attachment, state.sound = nil, nil, nil, nil
 			state.endsAt, state.nextAllowedAt = 0, 0
 		end
 	end)

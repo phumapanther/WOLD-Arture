@@ -16,6 +16,7 @@ ActionConfig.Roll = {
 	-- From the START of a roll. Longer than the roll itself so there is a real beat between them rather than
 	-- one rolling straight into the next.
 	cooldown = 1.2,
+	sound = "rbxassetid://125698568439738", -- assets/sounds/roll.mp3
 }
 
 --------------------------------------------------------------------------------
@@ -35,7 +36,15 @@ ActionConfig.Slide = {
 	friction = 0.82, -- per-second velocity multiplier, so the slide decelerates instead of stopping dead
 	cooldown = 0.9,
 	minStaminaToStart = 15, -- below this there is nothing to spend and the slide would look broken
+	sound = "rbxassetid://111559181369898", -- assets/sounds/slide.mp3
 }
+
+-- Both action sounds start when the action does and are cut off when it ends, so a slide is heard for
+-- exactly as long as it lasts. The clips open on a moment of silence, which would make a short slide sound
+-- like nothing at all; TimePosition skips past it so the sound is there from the first frame.
+ActionConfig.SoundStartOffset = 0.06
+ActionConfig.SoundVolume = 0.6
+ActionConfig.SoundDistance = 60
 
 --------------------------------------------------------------------------------
 -- Reviving and carrying a downed player.

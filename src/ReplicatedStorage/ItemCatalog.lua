@@ -86,7 +86,7 @@ ItemCatalog.Items = {
 		use = { stat = "mana", amount = 1 },
 	},
 	HealthPotion = {
-		icon = "rbxassetid://77251269114612", -- assets/item-icons/HealthPotion.png
+		icon = "rbxassetid://70766990190847", -- assets/item-icons/HealthPotion.png
 		name = "ยาฮีล", kind = "consumable", weight = 0.8, stackSize = 5,
 		use = { stat = "hp", amount = 40 },
 	},

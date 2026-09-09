@@ -114,7 +114,7 @@ CombatConfig.Sounds = {
 	},
 	Staff = {
 		cast = "rbxassetid://103908715700511", -- assets/sounds/laser_shoot.mp3
-		hit = "rbxassetid://138547296634446",  -- assets/sounds/laser_hit.mp3
+		hit = "rbxassetid://121322394992211",  -- assets/sounds/laser_hit.mp3
 	},
 	Spellbook = {
 		cast = "rbxassetid://85137139623534", -- assets/sounds/spell_shoot.mp3
