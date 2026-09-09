@@ -63,6 +63,10 @@ ActionConfig.Carry = {
 	holderAnimation = "rbxassetid://92068579403761", -- Carry_Holder, 1.80s (arms/torso only, legs keep walking)
 	heldAnimation = "rbxassetid://135226135071936", -- Carry_Held, 2.40s
 	range = 8,
+	-- Picking someone up takes a moment of holding the key rather than a tap. A tap meant anyone walking
+	-- past a downed player could scoop them up instantly, which made carrying feel like theft; the hold is
+	-- long enough that the person being carried, and anyone nearby, can see it happening.
+	holdSeconds = 5,
 	walkSpeed = 6, -- the carrier is slowed while holding someone
 	-- Where the carried player sits relative to the carrier's UpperTorso. From animgen/revive.lua's notes.
 	jointC0 = CFrame.new(0, 0.15, 1.55) * CFrame.Angles(math.rad(-8), 0, 0),

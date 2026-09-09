@@ -59,7 +59,7 @@ local function addPrompts(target)
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	if not root then return end
 
-	local function make(actionText, keyboardKey, order)
+	local function make(actionText, keyboardKey, order, holdSeconds)
 		local prompt = Instance.new("ProximityPrompt")
 		prompt.ActionText = actionText
 		prompt.ObjectText = target.DisplayName
@@ -67,13 +67,17 @@ local function addPrompts(target)
 		prompt.MaxActivationDistance = ActionConfig.Revive.range
 		prompt.RequiresLineOfSight = false
 		prompt.UIOffset = Vector2.new(0, order * 44)
+		-- The prompt draws its own filling ring for a hold, so the wait is visible without any UI of ours.
+		prompt.HoldDuration = holdSeconds or 0
 		prompt.Parent = root
 		return prompt
 	end
 
 	prompts[target] = {
+		-- Reviving is a tap because the five seconds of CPR happen AFTER it, on the server, with its own
+		-- animation. Carrying has no such phase, so its wait is the hold itself.
 		revive = make("ชุบ", Enum.KeyCode.E, 0),
-		carry = make("อุ้ม", Enum.KeyCode.F, 1),
+		carry = make("อุ้ม", Enum.KeyCode.F, 1, ActionConfig.Carry.holdSeconds),
 	}
 
 	prompts[target].revive.Triggered:Connect(function()
