@@ -101,20 +101,20 @@ CombatConfig.Weapons = {
 -- VitalsConfig.HitSoundId so an unconfigured weapon still thumps like a punch.
 CombatConfig.Sounds = {
 	Sword = {
-		cast = "", -- assets/sounds/sword_swing.mp3
-		hit = "",  -- assets/sounds/sword_hit.mp3
+		cast = "rbxassetid://130522255329953", -- assets/sounds/sword_swing.mp3
+		hit = "rbxassetid://114083734266818",  -- assets/sounds/sword_hit.mp3
 	},
 	Bow = {
-		cast = "", -- assets/sounds/bow_shoot.mp3
-		hit = "",  -- assets/sounds/bow_hit.mp3
+		cast = "rbxassetid://110510289237765", -- assets/sounds/bow_shoot.mp3
+		hit = "rbxassetid://95565382064387",  -- assets/sounds/bow_hit.mp3
 	},
 	Staff = {
-		cast = "", -- assets/sounds/laser_shoot.mp3
-		hit = "",  -- assets/sounds/laser_hit.mp3
+		cast = "rbxassetid://103908715700511", -- assets/sounds/laser_shoot.mp3
+		hit = "rbxassetid://138547296634446",  -- assets/sounds/laser_hit.mp3
 	},
 	Spellbook = {
-		cast = "", -- assets/sounds/spell_shoot.mp3
-		hit = "",  -- assets/sounds/spell_hit.mp3
+		cast = "rbxassetid://85137139623534", -- assets/sounds/spell_shoot.mp3
+		hit = "rbxassetid://121322394992211",  -- assets/sounds/spell_hit.mp3
 	},
 }
 
