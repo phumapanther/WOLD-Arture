@@ -33,7 +33,88 @@ local BUTTON_TRANSPARENCY = Responsive.GlassTransparency
 local TEXT_LIGHT = Color3.fromRGB(232, 232, 236)
 local RIM = Color3.fromRGB(120, 122, 132)
 
-local function circle(parent, size, color, glyph, glyphSize)
+-- A rounded rectangle inside a button, positioned in the button's own 0..1 space. Every icon below is
+-- built from these, so an icon is a handful of lines rather than an asset to upload and keep track of.
+local function bar(parent, x, y, w, h, rotation, radius, transparency)
+	local f = Instance.new("Frame")
+	f.AnchorPoint = Vector2.new(0.5, 0.5)
+	f.Position = UDim2.fromScale(x, y)
+	f.Size = UDim2.fromScale(w, h)
+	f.Rotation = rotation or 0
+	f.BackgroundColor3 = TEXT_LIGHT
+	f.BackgroundTransparency = transparency or 0
+	f.BorderSizePixel = 0
+	f.Parent = parent
+	if radius then
+		local c = Instance.new("UICorner")
+		c.CornerRadius = UDim.new(radius, 0)
+		c.Parent = f
+	end
+	return f
+end
+
+-- Each icon draws into a square holder so it scales with the button.
+local Icons = {}
+
+-- Backpack: a body, a lid flap and a shoulder strap.
+function Icons.bag(holder)
+	bar(holder, 0.5, 0.58, 0.52, 0.46, 0, 0.18)          -- body
+	bar(holder, 0.5, 0.34, 0.42, 0.16, 0, 0.3)           -- lid
+	bar(holder, 0.5, 0.24, 0.22, 0.14, 0, 0.5, 0.35)     -- handle
+	bar(holder, 0.5, 0.62, 0.16, 0.1, 0, 0.3, 0.55)      -- buckle
+end
+
+-- Speaking stone: a gem outline with a spark inside.
+function Icons.stone(holder)
+	local gem = bar(holder, 0.5, 0.5, 0.46, 0.46, 45, 0.16)
+	gem.BackgroundTransparency = 0.15
+	bar(holder, 0.5, 0.5, 0.16, 0.16, 45, 0.3, 0.55)
+end
+
+-- Roll: a curved arrow, suggested by three dashes around a circle.
+function Icons.roll(holder)
+	local ring = bar(holder, 0.5, 0.5, 0.5, 0.5, 0, 0.5)
+	ring.BackgroundTransparency = 1
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = TEXT_LIGHT
+	stroke.Thickness = 2.5
+	stroke.Parent = ring
+	-- The arrow head, so it reads as rotation rather than a plain ring.
+	bar(holder, 0.72, 0.28, 0.2, 0.09, 45, 0.3)
+	bar(holder, 0.72, 0.28, 0.09, 0.2, 45, 0.3)
+end
+
+-- Slide: motion lines behind a leading edge, which reads as sliding low and fast.
+function Icons.slide(holder)
+	bar(holder, 0.62, 0.62, 0.34, 0.12, -18, 0.4)
+	bar(holder, 0.36, 0.44, 0.3, 0.08, -18, 0.4, 0.3)
+	bar(holder, 0.3, 0.3, 0.22, 0.07, -18, 0.4, 0.55)
+end
+
+-- Drop: an arrow pointing down out of a hand-sized bar.
+function Icons.drop(holder)
+	bar(holder, 0.5, 0.3, 0.1, 0.34, 0, 0.3)
+	bar(holder, 0.42, 0.56, 0.1, 0.22, 45, 0.3)
+	bar(holder, 0.58, 0.56, 0.1, 0.22, -45, 0.3)
+	bar(holder, 0.5, 0.76, 0.44, 0.09, 0, 0.4, 0.3)
+end
+
+-- Attack: crossed blades.
+function Icons.attack(holder)
+	bar(holder, 0.5, 0.5, 0.12, 0.66, 42, 0.3)
+	bar(holder, 0.5, 0.5, 0.12, 0.66, -42, 0.3)
+	bar(holder, 0.5, 0.5, 0.2, 0.2, 45, 0.4, 0.4)
+end
+
+-- Replaces whatever an icon holder currently draws. Used when roll becomes slide.
+local function setIcon(holder, name)
+	for _, c in ipairs(holder:GetChildren()) do c:Destroy() end
+	local draw = Icons[name]
+	if draw then draw(holder) end
+	holder:SetAttribute("Icon", name)
+end
+
+local function circle(parent, size, color, iconName)
 	local btn = Instance.new("ImageButton")
 	btn.Size = UDim2.fromOffset(size, size)
 	btn.BackgroundColor3 = color
@@ -56,17 +137,17 @@ local function circle(parent, size, color, glyph, glyphSize)
 	stroke.Thickness = 1.5
 	stroke.Parent = btn
 
-	local label = Instance.new("TextLabel")
-	label.Name = "Glyph"
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.GothamMedium
-	label.TextSize = glyphSize
-	label.TextColor3 = TEXT_LIGHT
-	label.Text = glyph
-	label.Parent = btn
+	-- A square holder centred in the circle, so the icon scales with the button.
+	local holder = Instance.new("Frame")
+	holder.Name = "Icon"
+	holder.AnchorPoint = Vector2.new(0.5, 0.5)
+	holder.Position = UDim2.fromScale(0.5, 0.5)
+	holder.Size = UDim2.fromScale(0.58, 0.58)
+	holder.BackgroundTransparency = 1
+	holder.Parent = btn
+	setIcon(holder, iconName)
 
-	return btn, label
+	return btn, holder
 end
 
 function TouchActionGui.new()
@@ -92,29 +173,29 @@ function TouchActionGui.new()
 	self.cluster = cluster
 
 	-- Attack: bottom of the cluster, the big one.
-	local attack = circle(cluster, ATTACK_SIZE, ATTACK_COLOR, "\226\154\148", 54) -- crossed swords (⚔)
+	local attack = circle(cluster, ATTACK_SIZE, ATTACK_COLOR, "attack")
 	attack.Name = "AttackButton"
 	attack.AnchorPoint = Vector2.new(1, 1)
 	attack.Position = UDim2.new(1, 0, 1, 0)
 	self.attackButton = attack
 
 	-- Roll/slide: directly above the attack button, jump-button sized. Right-aligned with it.
-	local roll, rollLabel = circle(cluster, ROLL_SIZE, ROLL_COLOR, "ROLL", 20)
+	local roll, rollIcon = circle(cluster, ROLL_SIZE, ROLL_COLOR, "roll")
 	roll.Name = "RollButton"
 	roll.AnchorPoint = Vector2.new(1, 1)
 	roll.Position = UDim2.new(1, 0, 1, -(ATTACK_SIZE + GAP))
 	self.rollButton = roll
-	self.rollLabel = rollLabel
+	self.rollIcon = rollIcon
 
 	-- Drop: only visible while carrying someone. Sits above the roll button so it never covers the two
 	-- buttons that are always there, and dropping is keyboard-F on desktop — touch had no way to do it at all.
-	local drop, dropLabel = circle(cluster, ROLL_SIZE, ROLL_COLOR, "วาง", 18)
+	local drop, dropIcon = circle(cluster, ROLL_SIZE, ROLL_COLOR, "drop")
 	drop.Name = "DropButton"
 	drop.AnchorPoint = Vector2.new(1, 1)
 	drop.Position = UDim2.new(1, 0, 1, -(ATTACK_SIZE + GAP + ROLL_SIZE + GAP))
 	drop.Visible = false
 	self.dropButton = drop
-	self.dropLabel = dropLabel
+	self.dropIcon = dropIcon
 
 	-- Bag: its own cluster hard against the bottom-right corner, to the RIGHT of the action cluster, so it
 	-- never moves as the drop button appears and disappears above.
@@ -126,7 +207,7 @@ function TouchActionGui.new()
 	sideColumn.BackgroundTransparency = 1
 	sideColumn.Parent = gui
 
-	local bag = circle(sideColumn, ROLL_SIZE, ROLL_COLOR, "BAG", 15)
+	local bag = circle(sideColumn, ROLL_SIZE, ROLL_COLOR, "bag")
 	bag.Name = "BagButton"
 	bag.AnchorPoint = Vector2.new(1, 1)
 	bag.Position = UDim2.new(1, 0, 1, 0)
@@ -134,7 +215,7 @@ function TouchActionGui.new()
 
 	-- The speaking stone, directly above the bag and the same size: the user asked for a small button in
 	-- the bottom-right corner matching the bag button. Same column, so neither moves as the other appears.
-	local social = circle(sideColumn, ROLL_SIZE, ROLL_COLOR, "STONE", 13)
+	local social = circle(sideColumn, ROLL_SIZE, ROLL_COLOR, "stone")
 	social.Name = "SocialButton"
 	social.AnchorPoint = Vector2.new(1, 1)
 	social.Position = UDim2.new(1, 0, 1, -(ROLL_SIZE + GAP))
@@ -225,7 +306,7 @@ end
 -- Roll becomes Slide while the player is sprinting. Presses are not wired to anything yet.
 -- Every button now shares one black, so the state change shows in the rim and label rather than the fill.
 function TouchActionGui:SetSprinting(sprinting)
-	self.rollLabel.Text = sprinting and "SLIDE" or "ROLL"
+	setIcon(self.rollIcon, sprinting and "slide" or "roll")
 	local rim = self.rollButton:FindFirstChild("Rim")
 	if rim then rim.Transparency = sprinting and 0.1 or 0.45 end
 end

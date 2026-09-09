@@ -50,6 +50,7 @@ function MapGui.new()
 	self.zoom = 1
 	self.offset = Vector2.new(0, 0) -- pan, in canvas pixels
 	self.markers = {}
+	self.callbacks = {}
 
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "MapGui"
@@ -196,6 +197,7 @@ function MapGui:buildCanvas()
 	for _, c in ipairs(canvas:GetChildren()) do
 		if not c:IsA("UIScale") then c:Destroy() end
 	end
+	self.waypointPin = nil -- destroyed with the rest; the controller re-sets it if there is still one
 	self.markers = {}
 
 	local size = 600 -- drawn at a fixed size, then scaled: redrawing on every zoom would be wasteful
@@ -351,12 +353,15 @@ end
 
 function MapGui:bindInput()
 	local dragging, lastPos = false, nil
+	local pressedAt, pressedPos = 0, nil
 
 	self.viewport.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1
 			or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = true
 			lastPos = input.Position
+			pressedAt = os.clock()
+			pressedPos = input.Position
 		end
 	end)
 
@@ -364,6 +369,15 @@ function MapGui:bindInput()
 		if input.UserInputType == Enum.UserInputType.MouseButton1
 			or input.UserInputType == Enum.UserInputType.Touch then
 			dragging = false
+			-- A tap places a waypoint; a drag pans. Both start the same way, so the difference is measured
+			-- rather than guessed: short, and it barely moved.
+			if pressedPos then
+				local moved = (input.Position - pressedPos).Magnitude
+				if moved < 8 and os.clock() - pressedAt < 0.4 then
+					self:pinAt(input.Position)
+				end
+			end
+			pressedPos = nil
 		end
 	end)
 
@@ -383,6 +397,41 @@ function MapGui:bindInput()
 	end)
 end
 
+-- Turns a tap on the map into a world position and reports it. The maths is the exact inverse of place():
+-- canvas pixels back to normalized, then normalized back to studs.
+function MapGui:pinAt(screenPosition)
+	local canvas = self.canvas
+	local scale = self.canvasScale.Scale
+	-- Where the tap landed inside the canvas, in the canvas s own unscaled pixel space.
+	local local2d = (Vector2.new(screenPosition.X, screenPosition.Y) - canvas.AbsolutePosition) / scale
+	local nx = (local2d.X / self.baseSize) * 2 - 1
+	local nz = (local2d.Y / self.baseSize) * 2 - 1
+	if nx < -1 or nx > 1 or nz < -1 or nz > 1 then return end
+
+	local x, z = MapConfig.ToWorld(nx, nz)
+	-- Height comes from the sampled terrain, so the pin lands on the ground rather than at sea level.
+	local h = MapTerrain.At(x, z)
+	if h == MapTerrain.Water then
+		self:SetStatus("ปักหมุดกลางน้ำไม่ได้")
+		return
+	end
+	if self.callbacks.pin then self.callbacks.pin(Vector3.new(x, h, z)) end
+end
+
+function MapGui:SetStatus(text)
+	self.footerOverride = text
+	if text then
+		self.footer.Text = text
+		task.delay(3, function()
+			if self.footerOverride == text then self.footerOverride = nil end
+		end)
+	end
+end
+
+function MapGui:On(name, fn)
+	self.callbacks[name] = fn
+end
+
 -- Moves the pin to wherever the player is. Called on a loop while the map is open.
 function MapGui:UpdatePin()
 	local character = Players.LocalPlayer.Character
@@ -398,8 +447,39 @@ function MapGui:UpdatePin()
 	nz = math.clamp(nz, -1, 1)
 	local x, y = place(self.baseSize, nx, nz)
 	self.youPin.Position = UDim2.fromOffset(x, y)
-	self.footer.Text = ("ตำแหน่ง %.0f, %.0f · ลากเพื่อเลื่อน · ล้อเมาส์เพื่อซูม"):format(
-		root.Position.X, root.Position.Z)
+	if not self.footerOverride then
+		self.footer.Text = ("ตำแหน่ง %.0f, %.0f · แตะเพื่อปักหมุด · ลากเพื่อเลื่อน"):format(
+			root.Position.X, root.Position.Z)
+	end
+end
+
+-- Shows (or clears) the waypoint marker on the map itself, so the destination is visible alongside the
+-- player pin rather than only out in the world.
+function MapGui:SetWaypoint(position)
+	if self.waypointPin then
+		self.waypointPin:Destroy()
+		self.waypointPin = nil
+	end
+	if not position then return end
+
+	local pin = Instance.new("Frame")
+	pin.Name = "Waypoint"
+	pin.AnchorPoint = Vector2.new(0.5, 0.5)
+	pin.Size = UDim2.fromOffset(14, 14)
+	pin.Rotation = 45 -- a diamond, so it never reads as the round "you are here" dot
+	pin.BackgroundColor3 = Color3.fromRGB(232, 190, 84)
+	pin.BorderSizePixel = 0
+	pin.ZIndex = 7
+	pin.Parent = self.canvas
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(28, 22, 16)
+	stroke.Thickness = 2
+	stroke.Parent = pin
+
+	local nx, nz = MapConfig.ToNormalized(position.X, position.Z)
+	local x, y = place(self.baseSize, math.clamp(nx, -1, 1), math.clamp(nz, -1, 1))
+	pin.Position = UDim2.fromOffset(x, y)
+	self.waypointPin = pin
 end
 
 function MapGui:IsOpen()

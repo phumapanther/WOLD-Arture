@@ -15,6 +15,7 @@ local BoardFeedGui = require(game.ReplicatedStorage.UI.BoardFeedGui)
 local ProfileCardGui = require(game.ReplicatedStorage.UI.ProfileCardGui)
 local CallGui = require(game.ReplicatedStorage.UI.CallGui)
 local MapGui = require(game.ReplicatedStorage.UI.MapGui)
+local Navigation = require(game.ReplicatedStorage.Navigation)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local player = Players.LocalPlayer
@@ -41,6 +42,30 @@ RunService.Heartbeat:Connect(function(dt)
 	if sincePin < 0.2 then return end -- five times a second is smooth enough for a map pin
 	sincePin = 0
 	map:UpdatePin()
+end)
+
+-- Waypoints: tapping the map sets one, and the trail is drawn in the world so it can be followed with the
+-- map closed. Entirely client-side -- it is a hint for this player, not a fact the server needs.
+local nav = Navigation.new()
+
+map:On("pin", function(position)
+	local ok, message = nav:SetDestination(position, ("%.0f, %.0f"):format(position.X, position.Z))
+	map:SetStatus(ok and ("ปักหมุดแล้ว (%s) — แตะหมุดเดิมเพื่อยกเลิก"):format(message) or message)
+	map:SetWaypoint(ok and position or nil)
+end)
+
+-- Keep the path fresh while travelling, and clear it on arrival.
+task.spawn(function()
+	while true do
+		task.wait(1)
+		if nav:HasDestination() then
+			local state, extra = nav:Update()
+			if state == "arrived" then
+				map:SetWaypoint(nil)
+				map:SetStatus("ถึงจุดหมายแล้ว")
+			end
+		end
+	end
 end)
 
 local function toggleMap()
