@@ -260,6 +260,74 @@ function ClassActionGui:ShowRobDefence(thief, seconds, onDefend)
 end
 
 --------------------------------------------------------------------------------
+-- Agree or refuse
+--------------------------------------------------------------------------------
+
+-- Someone is asking to do something TO you that needs your say-so: being picked up, and later a trade.
+-- Written generally rather than as a carry window, since the shape is the same either way -- a question,
+-- two buttons, and a clock that answers "no" for you if you ignore it.
+function ClassActionGui:AskConsent(fromPlayer, seconds, question, onAnswer)
+	self:clearBody()
+	self.title.Text = "คำขอ"
+	self.panel.Size = UDim2.fromOffset(320, 190)
+
+	local text = Instance.new("TextLabel")
+	text.Size = UDim2.new(1, 0, 0, 46)
+	text.BackgroundTransparency = 1
+	text.Font = Enum.Font.Gotham
+	text.TextSize = 14
+	text.TextWrapped = true
+	text.TextColor3 = TEXT_LIGHT
+	text.Text = question
+	text.Parent = self.body
+
+	local clock = Instance.new("TextLabel")
+	clock.Size = UDim2.new(1, 0, 0, 26)
+	clock.Position = UDim2.new(0, 0, 0, 50)
+	clock.BackgroundTransparency = 1
+	clock.Font = Enum.Font.GothamBold
+	clock.TextSize = 18
+	clock.TextColor3 = TEXT_MUTED
+	clock.Text = tostring(seconds)
+	clock.Parent = self.body
+
+	local yes = button(self.body, "ยินยอม", Color3.fromRGB(58, 78, 56))
+	yes.Size = UDim2.new(0.5, -4, 0, 40)
+	yes.Position = UDim2.new(0, 0, 1, -44)
+
+	local no = button(self.body, "ปฏิเสธ", Color3.fromRGB(96, 52, 48))
+	no.Size = UDim2.new(0.5, -4, 0, 40)
+	no.Position = UDim2.new(0.5, 4, 1, -44)
+
+	-- A token so a second request cannot be answered by the first ones countdown, and so answering twice
+	-- sends only one reply.
+	self.consentToken = (self.consentToken or 0) + 1
+	local token = self.consentToken
+	local answered = false
+	local function answer(accepted)
+		if answered or self.consentToken ~= token then return end
+		answered = true
+		self:Close()
+		onAnswer(accepted)
+	end
+
+	yes.Activated:Connect(function() answer(true) end)
+	no.Activated:Connect(function() answer(false) end)
+
+	self.panel.Visible = true
+	task.spawn(function()
+		for remaining = seconds, 1, -1 do
+			if self.consentToken ~= token or answered then return end
+			clock.Text = tostring(remaining)
+			task.wait(1)
+		end
+		-- Ignoring the question is a refusal: the server has already given up on it by now, and leaving the
+		-- window open would let a stale yes arrive after the fact.
+		answer(false)
+	end)
+end
+
+--------------------------------------------------------------------------------
 -- Result line
 --------------------------------------------------------------------------------
 

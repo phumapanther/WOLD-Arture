@@ -133,6 +133,12 @@ Remotes.ClassActionPrompt.OnClientEvent:Connect(function(actionId, fromPlayer, s
 		gui:ShowRobDefence(fromPlayer, seconds, function()
 			Remotes.RespondClassAction:FireServer("rob", false)
 		end)
+	elseif actionId == "carry" then
+		gui:AskConsent(fromPlayer, seconds,
+			("%s ขออุ้มคุณ"):format(fromPlayer and fromPlayer.DisplayName or "ใครบางคน"),
+			function(accepted)
+				Remotes.RespondClassAction:FireServer("carry", accepted)
+			end)
 	end
 end)
 

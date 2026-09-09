@@ -10,6 +10,7 @@ local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local Vitals = require(game.ServerScriptService.Vitals)
 local ActionConfig = require(game.ReplicatedStorage.ActionConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local RescueAccess = require(game.ServerScriptService.RescueAccess)
 
 if ServerConfig.IsLobby then return end
 
@@ -40,10 +41,14 @@ local function withinRange(a, b, range)
 	return (ra.Position - rb.Position).Magnitude <= range
 end
 
--- Shared entry guard: the target must actually be downed, in range, and not already involved in a rescue.
-local function canRescue(rescuer, target, range)
+-- Shared entry guard: the target must be in range and neither player already involved in a rescue.
+--
+-- `consented` lifts the downed requirement, and ONLY that. It is set by the carry path after the target has
+-- agreed, never by anything a client sends: picking up a healthy player who has not said yes would be a way
+-- to take someone hostage.
+local function canRescue(rescuer, target, range, consented)
 	if not rescuer or not target or rescuer == target then return false end
-	if not Vitals.IsDowned(target) then return false end
+	if not consented and not Vitals.IsDowned(target) then return false end
 	if Vitals.IsDowned(rescuer) then return false end
 	if CarriedBy[target] then return false end
 	if Carrying[rescuer] or Reviving[rescuer] then return false end
@@ -115,9 +120,10 @@ local function dropCarried(carrier)
 	Remotes.CarryStateChanged:FireAllClients(carrier, "carry_end", entry.target)
 end
 
-Remotes.RequestCarry.OnServerEvent:Connect(function(carrier, target)
-	if typeof(target) ~= "Instance" or not target:IsA("Player") then return end
-	if not canRescue(carrier, target, ActionConfig.Carry.range) then return end
+-- Shared by the downed carry (no consent needed -- they cannot answer) and the consented carry of a player
+-- who is up and has agreed.
+local function beginCarry(carrier, target, consented)
+	if not canRescue(carrier, target, ActionConfig.Carry.range, consented) then return false end
 
 	local carrierChar = characterOf(carrier)
 	local targetChar = characterOf(target)
@@ -141,13 +147,26 @@ Remotes.RequestCarry.OnServerEvent:Connect(function(carrier, target)
 	joint.C0 = ActionConfig.Carry.jointC0
 	joint.Parent = torso
 
-	Carrying[carrier] = { target = target, joint = joint }
+	-- Remembered, because the upkeep loop below needs to know whether being un-downed should end this carry.
+	Carrying[carrier] = { target = target, joint = joint, consented = consented }
 	CarriedBy[target] = carrier
 
 	local carrierHumanoid = carrierChar:FindFirstChildOfClass("Humanoid")
 	if carrierHumanoid then carrierHumanoid.WalkSpeed = ActionConfig.Carry.walkSpeed end
 
 	Remotes.CarryStateChanged:FireAllClients(carrier, "carry_start", target)
+	return true
+end
+
+-- Published so ClassActions can start a carry once its consent prompt has been answered, without either
+-- file duplicating the joint, the physics group and the network ownership this sets up. Through a module
+-- rather than a global, the same hand-off ProfileAccess and HudAccess use.
+RescueAccess.BeginCarry = beginCarry
+
+Remotes.RequestCarry.OnServerEvent:Connect(function(carrier, target)
+	if typeof(target) ~= "Instance" or not target:IsA("Player") then return end
+	-- The plain remote never consents: it is the downed-player rescue, and a downed player cannot answer.
+	beginCarry(carrier, target, false)
 end)
 
 Remotes.RequestDrop.OnServerEvent:Connect(function(carrier)
@@ -188,8 +207,11 @@ RunService.Heartbeat:Connect(function()
 	end
 
 	for carrier, entry in pairs(Carrying) do
-		-- A carried player who stopped being downed (revived by someone else, or respawned) is set down.
-		if not entry.target.Parent or not Vitals.IsDowned(entry.target) or not characterOf(carrier) then
+		-- A carried player who stopped being downed is set down -- unless they agreed to be carried while
+		-- up, in which case being fine is the normal state and dropping them would end every such carry on
+		-- the frame it started.
+		local lostReason = not entry.consented and not Vitals.IsDowned(entry.target)
+		if not entry.target.Parent or lostReason or not characterOf(carrier) then
 			dropCarried(carrier)
 		end
 	end

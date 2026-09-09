@@ -16,6 +16,7 @@ local Vitals = require(game.ServerScriptService.Vitals)
 local Progression = require(game.ServerScriptService.Progression)
 local ClassActionConfig = require(game.ReplicatedStorage.ClassActionConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local RescueAccess = require(game.ServerScriptService.RescueAccess)
 
 if ServerConfig.IsLobby then return end
 
@@ -225,6 +226,56 @@ local function doRepair(actor, target)
 end
 
 --------------------------------------------------------------------------------
+-- Carry (with consent)
+--------------------------------------------------------------------------------
+
+-- [target] = { asker, deadline }. One pending request per target, so a crowd cannot bury someone in
+-- popups, and the asker cannot queue several to be answered later.
+local CarryRequests = {}
+
+local CARRY_ASK_SECONDS = 15
+
+local function doAskCarry(actor, target)
+	if CarryRequests[target] then
+		return report(actor, nil, "carry", false, "เขากำลังถูกถามอยู่")
+	end
+	CarryRequests[target] = { asker = actor, deadline = os.clock() + CARRY_ASK_SECONDS }
+	Remotes.ClassActionPrompt:FireClient(target, "carry", actor, CARRY_ASK_SECONDS)
+	report(actor, nil, "carry_ask", true, "ขออนุญาตอุ้ม...")
+
+	task.delay(CARRY_ASK_SECONDS, function()
+		local entry = CarryRequests[target]
+		-- Only clear it if it is still OUR request: the target may have answered and been asked again.
+		if entry and entry.asker == actor then
+			CarryRequests[target] = nil
+			report(actor, nil, "carry", false, "ไม่มีคำตอบ")
+		end
+	end)
+end
+
+-- The target answering. Consent is recorded here and nowhere else: the carry itself is started by the
+-- server from this handler, so a client cannot claim to have been given permission.
+local function answerCarry(target, accepted)
+	local entry = CarryRequests[target]
+	if not entry then return end
+	CarryRequests[target] = nil
+	local asker = entry.asker
+
+	if not accepted then
+		return report(asker, nil, "carry", false, "ถูกปฏิเสธ")
+	end
+	-- Re-checked at the moment of the answer, not the moment of the ask: they may have walked apart, or
+	-- either may have gone down, in the fifteen seconds in between.
+	if not mayAct(asker, target, "carry") then
+		return report(asker, nil, "carry", false, "อยู่ไกลเกินไปแล้ว")
+	end
+	if not RescueAccess.BeginCarry or not RescueAccess.BeginCarry(asker, target, true) then
+		return report(asker, nil, "carry", false, "อุ้มไม่ได้ตอนนี้")
+	end
+	report(asker, target, "carry", true, "อุ้มขึ้นหลังแล้ว")
+end
+
+--------------------------------------------------------------------------------
 -- Requests
 --------------------------------------------------------------------------------
 
@@ -243,22 +294,31 @@ Remotes.RequestClassAction.OnServerEvent:Connect(function(actor, actionId, targe
 		doHeal(actor, target, argument)
 	elseif actionId == "repair" then
 		doRepair(actor, target)
+	elseif actionId == "carry" then
+		doAskCarry(actor, target)
 	end
-	-- carry and arrest are handled by their own systems and are not accepted here.
+	-- arrest is handled by its own system and is not accepted here.
 end)
 
 -- The victim of a robbery pressing the defend button.
 Remotes.RespondClassAction.OnServerEvent:Connect(function(player, actionId, accepted)
-	if actionId ~= "rob" then return end
-	local entry = Robberies[player]
-	if not entry then return end
-	if accepted then return end -- "accepted" means letting it happen, which needs no action
-	entry.defended = true
+	if actionId == "rob" then
+		local entry = Robberies[player]
+		if not entry then return end
+		if accepted then return end -- "accepted" means letting it happen, which needs no action
+		entry.defended = true
+	elseif actionId == "carry" then
+		answerCarry(player, accepted == true)
+	end
 end)
 
 Players.PlayerRemoving:Connect(function(player)
 	Cooldowns[player] = nil
 	Robberies[player] = nil
+	CarryRequests[player] = nil
+	for target, entry in pairs(CarryRequests) do
+		if entry.asker == player then CarryRequests[target] = nil end
+	end
 	-- A thief who leaves mid-robbery: the countdown still resolves, and finds no thief to pay.
 	for victim, entry in pairs(Robberies) do
 		if entry.thief == player then Robberies[victim] = nil end
