@@ -15,6 +15,9 @@ local EVENTS = {
 	"InventoryUpdate", "EquipmentChanged",
 	"RequestEquip", "RequestUnequip", "RequestUseItem", "RequestDropItem", "RequestAutoSort",
 	"RequestInventoryRefresh",
+	-- Hotbar: assigning an item to one of the six slots, and pressing one. Assignment is a drag in the bag
+	-- UI; pressing is a number key or a tap.
+	"RequestSetHotbar", "RequestUseHotbar",
 	-- Eating and drinking take time; every client needs to know so it can play the animation and hold the
 	-- item to the mouth.
 	"ConsumeStateChanged", -- client asks for a resend: the join broadcast can land before it connects

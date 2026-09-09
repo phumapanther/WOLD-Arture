@@ -14,6 +14,7 @@ local UserInputService = game:GetService("UserInputService")
 local InventoryGui = require(game.ReplicatedStorage.UI.InventoryGui)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local HudAccess = require(game.ReplicatedStorage.UI.HudAccess)
 
 local player = Players.LocalPlayer
 local gui = InventoryGui.new()
@@ -93,6 +94,78 @@ gui:OnSlotClicked(function(index)
 		Remotes.RequestUseItem:FireServer(index)
 	end
 	-- junk: nothing to do yet; selling arrives with the economy systems
+end)
+
+--------------------------------------------------------------------------------
+-- Dragging an item from the bag onto a hotbar slot
+--------------------------------------------------------------------------------
+
+-- A press on a bag slot might be a tap (use it) or the start of a drag (assign it). They are told apart by
+-- distance: a press that never moves far is a tap, and OnSlotClicked handles it as before. Only once the
+-- pointer has travelled past this does it become a drag, so an ordinary tap is never stolen.
+local DRAG_THRESHOLD = 12 -- pixels
+
+local drag = nil -- { index, id, startedAt, moved, connections }
+
+local function endDrag(dropPosition)
+	if not drag then return end
+	local current = drag
+	drag = nil
+
+	for _, c in ipairs(current.connections) do c:Disconnect() end
+	gui:EndDragGhost()
+
+	local hud = HudAccess.Get()
+	if hud then hud:HighlightSlot(nil) end
+	-- A drag that never moved was a tap; the slot's own Activated has already dealt with it.
+	if not current.moved or not hud or not dropPosition then return end
+
+	local slotIndex = hud:SlotAt(dropPosition)
+	if slotIndex then
+		Remotes.RequestSetHotbar:FireServer(slotIndex, current.id)
+	end
+end
+
+gui:OnDragStarted(function(index, input)
+	local slot = latest.slots and latest.slots[index]
+	if not slot then return end
+	-- Junk cannot be assigned: there is nothing pressing a slot would do with it.
+	local item = ItemCatalog.Get(slot.id)
+	if not item or item.kind == "junk" then return end
+
+	endDrag(nil) -- never two at once
+	local startPosition = Vector2.new(input.Position.X, input.Position.Y)
+	drag = { index = index, id = slot.id, moved = false, connections = {} }
+
+	local moveConn = UserInputService.InputChanged:Connect(function(moved)
+		if not drag then return end
+		if moved.UserInputType ~= Enum.UserInputType.MouseMovement
+			and moved.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+		local position = Vector2.new(moved.Position.X, moved.Position.Y)
+		if not drag.moved and (position - startPosition).Magnitude >= DRAG_THRESHOLD then
+			drag.moved = true
+			gui:BeginDragGhost(item.icon, item.name)
+		end
+		if drag.moved then
+			gui:MoveDragGhost(position)
+			local hud = HudAccess.Get()
+			if hud then hud:HighlightSlot(hud:SlotAt(position)) end
+		end
+	end)
+
+	local endConn
+	endConn = UserInputService.InputEnded:Connect(function(ended)
+		if not drag then return end
+		if ended.UserInputType ~= Enum.UserInputType.MouseButton1
+			and ended.UserInputType ~= Enum.UserInputType.Touch then
+			return
+		end
+		endDrag(Vector2.new(ended.Position.X, ended.Position.Y))
+	end)
+
+	drag.connections = { moveConn, endConn }
 end)
 
 gui:OnEquipSlotClicked(function(kind)

@@ -17,6 +17,10 @@ function Inventory.Add(player, saved)
 		slots = saved and saved.Slots or {},
 		equipped = saved and saved.Equipped or {},
 		gold = saved and saved.Gold or 0,
+		-- [hotbar 1-6] = item id. Ids rather than bag positions: the bag gets sorted and items move, and a
+		-- hotbar pointing at "slot 7" would silently start pointing at something else. An id still names the
+		-- same thing after any rearrangement, and simply shows empty when the last one is used up.
+		hotbar = saved and saved.Hotbar or {},
 	}
 	return States[player]
 end
@@ -280,6 +284,38 @@ function Inventory.AddGold(player, amount)
 	Inventory.Send(player)
 end
 
+-- Puts an item id in a hotbar slot, or clears it when id is nil. Assigning something that is already in
+-- another hotbar slot moves it rather than duplicating it: six slots showing the same potion would be six
+-- ways to do one thing.
+function Inventory.SetHotbar(player, index, id)
+	local state = States[player]
+	if not state then return false end
+	if type(index) ~= "number" or index < 1 or index > InventoryConfig.HotbarSlots then return false end
+
+	if id == nil then
+		state.hotbar[index] = nil
+		return true
+	end
+	if not ItemCatalog.Exists(id) then return false end
+
+	for i, existing in pairs(state.hotbar) do
+		if existing == id and i ~= index then state.hotbar[i] = nil end
+	end
+	state.hotbar[index] = id
+	return true
+end
+
+-- The bag slot currently holding this id, or nil. The hotbar stores what to use, not where it lives, so
+-- using one is a lookup at the moment of the press.
+function Inventory.FindSlotById(player, id)
+	local state = States[player]
+	if not state or not id then return nil end
+	for index, slot in pairs(state.slots) do
+		if slot and slot.id == id then return index end
+	end
+	return nil
+end
+
 function Inventory.Send(player)
 	local state = States[player]
 	if not state then return end
@@ -287,6 +323,7 @@ function Inventory.Send(player)
 		slots = state.slots,
 		equipped = state.equipped,
 		gold = state.gold,
+		hotbar = state.hotbar,
 		weight = Inventory.Weight(player),
 		maxWeight = InventoryConfig.MaxWeight,
 	})
@@ -295,7 +332,7 @@ end
 function Inventory.Serialize(player)
 	local state = States[player]
 	if not state then return nil end
-	return { Slots = state.slots, Equipped = state.equipped, Gold = state.gold }
+	return { Slots = state.slots, Equipped = state.equipped, Gold = state.gold, Hotbar = state.hotbar }
 end
 
 return Inventory

@@ -148,14 +148,18 @@ local function applyUse(player, item)
 	return true
 end
 
-Remotes.RequestEquip.OnServerEvent:Connect(function(player, index)
+-- Named rather than inline so the hotbar can equip through exactly the same path a click in the bag takes.
+-- Two copies of "wear this" would be two places to keep the armor sync and the sound in step.
+local function doEquip(player, index)
 	if type(index) ~= "number" or not canAct(player) then return end
 	if Inventory.Equip(player, index) then
 		syncArmor(player)
 		playEquipSound(player)
 		flush(player)
 	end
-end)
+end
+
+Remotes.RequestEquip.OnServerEvent:Connect(doEquip)
 
 Remotes.RequestUnequip.OnServerEvent:Connect(function(player, kind)
 	if kind ~= "weapon" and kind ~= "armor" then return end
@@ -187,7 +191,7 @@ Remotes.RequestDropItem.OnServerEvent:Connect(function(player, index)
 	flush(player)
 end)
 
-Remotes.RequestUseItem.OnServerEvent:Connect(function(player, index)
+local function doUseItem(player, index)
 	if type(index) ~= "number" or not canAct(player) then return end
 	-- One at a time: a second potion while the first is going down would otherwise stack two effects for
 	-- one wait.
@@ -232,6 +236,44 @@ Remotes.RequestUseItem.OnServerEvent:Connect(function(player, index)
 		applyUse(player, item)
 		Remotes.ConsumeStateChanged:FireAllClients(player, "finish", itemId)
 	end)
+end
+
+Remotes.RequestUseItem.OnServerEvent:Connect(doUseItem)
+
+-- Dropping an item onto a hotbar slot. The client says what it wants placed; the server decides whether that
+-- is a real item and stores it.
+Remotes.RequestSetHotbar.OnServerEvent:Connect(function(player, index, id)
+	if not canAct(player) then return end
+	-- nil clears the slot, which is how dragging something back out of the bar works.
+	if id ~= nil and type(id) ~= "string" then return end
+	if Inventory.SetHotbar(player, index, id) then
+		Inventory.Send(player)
+		flush(player)
+	end
+end)
+
+-- Pressing a hotbar slot. What that means depends on what is in it: food is eaten, a weapon or a piece of
+-- armor is worn. The bar holds an ITEM rather than an action, so the difference is decided here -- and it
+-- routes through the same two functions a click in the bag uses, so nothing is validated twice or
+-- differently.
+Remotes.RequestUseHotbar.OnServerEvent:Connect(function(player, index)
+	if type(index) ~= "number" or not canAct(player) then return end
+	local state = Inventory.Get(player)
+	local id = state and state.hotbar and state.hotbar[index]
+	if not id then return end
+
+	-- Looked up now rather than remembered: the bag gets sorted and items move, and the last of something
+	-- can be used up entirely, in which case the slot simply does nothing until it is refilled.
+	local slotIndex = Inventory.FindSlotById(player, id)
+	if not slotIndex then return end
+
+	local item = ItemCatalog.Get(id)
+	if not item then return end
+	if item.kind == "consumable" then
+		doUseItem(player, slotIndex)
+	elseif item.kind == "weapon" or item.kind == "armor" then
+		doEquip(player, slotIndex)
+	end
 end)
 
 -- Being downed or dying interrupts whatever was being eaten.

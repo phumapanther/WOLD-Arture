@@ -268,6 +268,16 @@ function InventoryGui.new()
 		count.Position = UDim2.new(0, 3, 1, -16)
 		count.Font = Enum.Font.GothamBold
 
+		-- Dragging this slot out to the hotbar. Begun here and finished by the controller, which is the only
+		-- part that knows where the hotbar is on screen. Mouse and touch arrive through the same events, so
+		-- dragging works on a phone without a second implementation.
+		slot.InputBegan:Connect(function(input)
+			if input.UserInputType == Enum.UserInputType.MouseButton1
+				or input.UserInputType == Enum.UserInputType.Touch then
+				if self.onDragStarted then self.onDragStarted(i, input) end
+			end
+		end)
+
 		slot.Activated:Connect(function()
 			-- Bag slots click; the equipment slots above deliberately do not, since putting something on
 			-- already has its own heavier sound and the two together sounded like a stutter.
@@ -373,6 +383,53 @@ function InventoryGui:Render(data)
 end
 
 function InventoryGui:OnSlotClicked(callback) self.onSlotClicked = callback end
+function InventoryGui:OnDragStarted(callback) self.onDragStarted = callback end
+
+-- The item picture that follows the finger or cursor during a drag. Parented to the bag's ScreenGui so it
+-- draws above the grid, and destroyed the moment the drag ends.
+function InventoryGui:BeginDragGhost(icon, name)
+	self:EndDragGhost()
+	local ghost = Instance.new("ImageLabel")
+	ghost.Name = "DragGhost"
+	ghost.Size = UDim2.fromOffset(48, 48)
+	ghost.AnchorPoint = Vector2.new(0.5, 0.5)
+	ghost.BackgroundTransparency = 0.3
+	ghost.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
+	ghost.Image = icon or ""
+	ghost.ScaleType = Enum.ScaleType.Fit
+	ghost.ZIndex = 50
+	ghost.Parent = self.gui
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, 8)
+	c.Parent = ghost
+	if (not icon or icon == "") and name then
+		local label = Instance.new("TextLabel")
+		label.Size = UDim2.fromScale(1, 1)
+		label.BackgroundTransparency = 1
+		label.Font = Enum.Font.GothamMedium
+		label.TextSize = 10
+		label.TextWrapped = true
+		label.TextColor3 = Color3.fromRGB(226, 226, 232)
+		label.Text = name
+		label.ZIndex = 51
+		label.Parent = ghost
+	end
+	self.dragGhost = ghost
+	return ghost
+end
+
+function InventoryGui:MoveDragGhost(position)
+	if self.dragGhost then
+		self.dragGhost.Position = UDim2.fromOffset(position.X, position.Y)
+	end
+end
+
+function InventoryGui:EndDragGhost()
+	if self.dragGhost then
+		self.dragGhost:Destroy()
+		self.dragGhost = nil
+	end
+end
 function InventoryGui:OnEquipSlotClicked(callback) self.onEquipSlotClicked = callback end
 function InventoryGui:OnSortRequested(callback) self.sortButton.Activated:Connect(callback) end
 function InventoryGui:OnCloseRequested(callback)

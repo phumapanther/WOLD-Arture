@@ -17,8 +17,11 @@ pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false) end)
 pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false) end)
 
 local player = Players.LocalPlayer
+local HudAccess = require(game.ReplicatedStorage.UI.HudAccess)
 local gui = HudGui.new()
 gui.gui.Parent = player:WaitForChild("PlayerGui")
+-- Published so the bag can find the hotbar to drop onto, without either screen requiring the other.
+HudAccess.Set(gui)
 gui:Show()
 
 -- HP, hunger, stamina and armor are all real now, driven by Vitals.lua on the server. Mana is still static
@@ -52,32 +55,35 @@ end)
 -- Hotbar: the first six consumables in the bag, so a potion is one key away without opening it. Keys 1-6 and
 -- tapping a slot both use the item; the server re-validates the slot either way.
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
+local InventoryConfig = require(game.ReplicatedStorage.InventoryConfig)
 local UserInputService = game:GetService("UserInputService")
 
-local hotbarSlots = {} -- [hotbar index] = inventory slot index, so a press maps back to the real bag
-
+-- The bar shows what the player put there, not the first six consumables the bag happened to hold. The
+-- server owns the assignment (it is saved with the profile) and sends it with every inventory update.
 local function refreshHotbar(inventory)
 	local entries = {}
-	hotbarSlots = {}
-	local n = 0
-	for index = 1, 24 do
-		local slot = inventory.slots and inventory.slots[index]
-		if slot then
-			local item = ItemCatalog.Get(slot.id)
-			if item and item.kind == "consumable" then
-				n += 1
-				entries[n] = { id = slot.id, count = slot.count, icon = item.icon, name = item.name }
-				hotbarSlots[n] = index
-				if n >= 6 then break end
+	for i = 1, InventoryConfig.HotbarSlots do
+		local id = inventory.hotbar and inventory.hotbar[i]
+		if id then
+			local item = ItemCatalog.Get(id)
+			if item then
+				-- How many of it are actually carried. Zero is not empty: the slot keeps the assignment and
+				-- shows dimmed, so drinking your last potion does not lose the arrangement.
+				local count = 0
+				for _, slot in pairs(inventory.slots or {}) do
+					if slot and slot.id == id then count += slot.count or 1 end
+				end
+				entries[i] = { id = id, count = count, icon = item.icon, name = item.name }
 			end
 		end
 	end
 	gui:SetHotbar(entries)
 end
 
+-- The server decides what pressing a slot means -- eat it or wear it -- since only it knows what is really
+-- in the bag at that moment.
 local function useHotbar(index)
-	local slotIndex = hotbarSlots[index]
-	if slotIndex then Remotes.RequestUseItem:FireServer(slotIndex) end
+	Remotes.RequestUseHotbar:FireServer(index)
 end
 
 gui:OnHotbarUsed(useHotbar)

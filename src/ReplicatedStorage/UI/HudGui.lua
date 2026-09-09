@@ -416,6 +416,11 @@ function HudGui:SetHotbar(entries)
 			ui.icon.Visible = art ~= ""
 			ui.name.Text = (art == "") and (entry.name or entry.id) or ""
 			ui.count.Text = (entry.count or 1) > 1 and tostring(entry.count) or ""
+			-- An assigned item you have run out of stays in its slot, dimmed. Clearing it would lose the
+			-- arrangement every time the last potion was drunk, and it fills back in when you carry one again.
+			local out = entry.count == 0
+			ui.icon.ImageTransparency = out and 0.6 or 0
+			ui.name.TextTransparency = out and 0.6 or 0
 		else
 			ui.icon.Image = ""
 			ui.icon.Visible = false
@@ -427,6 +432,33 @@ end
 
 function HudGui:OnHotbarUsed(callback)
 	self.onHotbarUsed = callback
+end
+
+-- Which hotbar slot is under this screen point, or nil. Used to decide where a drag from the bag landed.
+-- AbsolutePosition and AbsoluteSize already have every scale applied, so this stays correct on a phone and
+-- at any window size -- the same reason the map's pin maths reads them rather than doing its own scaling.
+function HudGui:SlotAt(position)
+	for i, ui in ipairs(self.hotbarEntries) do
+		local b = ui.button
+		if b then
+			local p, sz = b.AbsolutePosition, b.AbsoluteSize
+			if position.X >= p.X and position.X <= p.X + sz.X
+				and position.Y >= p.Y and position.Y <= p.Y + sz.Y then
+				return i
+			end
+		end
+	end
+	return nil
+end
+
+-- Lights the slot a drag is currently over, so it is obvious where the item will land before letting go.
+function HudGui:HighlightSlot(index)
+	for i, ui in ipairs(self.hotbarEntries) do
+		if ui.button then
+			ui.button.BackgroundColor3 = (i == index)
+				and Color3.fromRGB(70, 92, 68) or Color3.fromRGB(35, 35, 40)
+		end
+	end
 end
 
 -- SetExp: level plus progress 0..1 toward the next one.
