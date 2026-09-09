@@ -466,7 +466,9 @@ function InventoryGui:ShowItemMenu(slotButton, entries)
 	menu.BackgroundColor3 = Color3.fromRGB(26, 28, 34)
 	menu.BorderSizePixel = 0
 	menu.ZIndex = 60
-	menu.Size = UDim2.fromOffset(120, #entries * 30 + 8)
+	-- The extra 26 is the close strip along the top; without it the X would sit over the first button.
+	local CLOSE_STRIP = 26
+	menu.Size = UDim2.fromOffset(120, #entries * 30 + 8 + CLOSE_STRIP)
 	-- Beside the slot, not over it: the player needs to still see what they tapped.
 	local p = slotButton.AbsolutePosition
 	local sz = slotButton.AbsoluteSize
@@ -480,10 +482,33 @@ function InventoryGui:ShowItemMenu(slotButton, entries)
 	st.Transparency = 0.5
 	st.Parent = menu
 
+	-- A way out that is not a choice. Every entry in this menu DOES something -- one of them destroys the
+	-- item -- so opening it by accident needed an exit that costs nothing.
+	local close = Instance.new("TextButton")
+	close.Name = "Close"
+	close.AnchorPoint = Vector2.new(1, 0)
+	close.Position = UDim2.new(1, -4, 0, 4)
+	close.Size = UDim2.fromOffset(20, 18)
+	close.BackgroundColor3 = Color3.fromRGB(70, 74, 84)
+	close.BorderSizePixel = 0
+	close.Font = Enum.Font.GothamBold
+	close.TextSize = 13
+	close.TextColor3 = Color3.fromRGB(232, 232, 238)
+	close.Text = "\195\151" -- multiplication sign, the escape the bag close button uses
+	close.ZIndex = 61
+	close.AutoButtonColor = true
+	close.Parent = menu
+	local closeCorner = Instance.new("UICorner")
+	closeCorner.CornerRadius = UDim.new(0, 5)
+	closeCorner.Parent = close
+	close.Activated:Connect(function()
+		self:CloseItemMenu()
+	end)
+
 	for i, entry in ipairs(entries) do
 		local b = Instance.new("TextButton")
 		b.Size = UDim2.new(1, -8, 0, 26)
-		b.Position = UDim2.new(0, 4, 0, 4 + (i - 1) * 30)
+		b.Position = UDim2.new(0, 4, 0, 4 + CLOSE_STRIP + (i - 1) * 30)
 		b.BackgroundColor3 = Color3.fromRGB(44, 46, 56)
 		b.BorderSizePixel = 0
 		b.Font = Enum.Font.GothamBold
