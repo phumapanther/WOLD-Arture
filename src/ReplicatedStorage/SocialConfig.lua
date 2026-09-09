@@ -98,6 +98,32 @@ SocialConfig.Screens = {
 		notice = "ปุ่มฉุกเฉินจะใช้ได้เมื่อระบบอาชีพเปิด" },
 }
 
+--------------------------------------------------------------------------------
+-- The stone as a handset
+--------------------------------------------------------------------------------
+
+-- Wallpapers behind the icon grid. Gradients rather than images: no upload, and they cannot go missing the
+-- way an asset can.
+SocialConfig.Wallpapers = {
+	{ id = "rune", name = "รูนสีคราม", from = Color3.fromRGB(26, 38, 54), to = Color3.fromRGB(12, 16, 22) },
+	{ id = "ember", name = "ถ่านไฟ", from = Color3.fromRGB(54, 28, 22), to = Color3.fromRGB(16, 12, 12) },
+	{ id = "moss", name = "มอสส์", from = Color3.fromRGB(26, 46, 34), to = Color3.fromRGB(12, 18, 14) },
+	{ id = "dusk", name = "สนธยา", from = Color3.fromRGB(42, 30, 56), to = Color3.fromRGB(14, 12, 20) },
+	{ id = "stone", name = "หินเปล่า", from = Color3.fromRGB(38, 41, 52), to = Color3.fromRGB(16, 17, 22) },
+}
+
+function SocialConfig.WallpaperFor(id)
+	for _, w in ipairs(SocialConfig.Wallpapers) do
+		if w.id == id then return w end
+	end
+	return SocialConfig.Wallpapers[1]
+end
+
+-- The battery is decoration -- there is no power system and a stone does not have a cell. It drains slowly
+-- and refills on its own so the readout is never simply static, and never runs the player out of anything.
+SocialConfig.BatteryDrainPerMinute = 0.4
+SocialConfig.BatteryMin = 0.35
+
 -- Voice is deliberately not a screen of its own: it lives inside the friends screen, on a conversation.
 SocialConfig.VoiceNotice = "โทรจิตยังไม่เปิดใช้งาน — ต้องเปิดระบบเสียงของ Roblox และยืนยันอายุก่อน"
 

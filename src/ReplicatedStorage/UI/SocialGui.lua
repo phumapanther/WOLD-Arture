@@ -226,14 +226,18 @@ function SocialGui.new()
 	divider.BorderSizePixel = 0
 	divider.Parent = panel
 
-	-- Everything below the header lives in here; screens swap inside it.
+	self:buildStatusBar(panel)
+
+	-- Everything between the status bar and the nav bar. Screens swap inside it.
 	local body = Instance.new("Frame")
 	body.Name = "Body"
-	body.Position = UDim2.new(0, 14, 0, 58)
-	body.Size = UDim2.new(1, -28, 1, -104)
+	body.Position = UDim2.new(0, 14, 0, 76)
+	body.Size = UDim2.new(1, -28, 1, -76 - 62)
 	body.BackgroundTransparency = 1
 	body.Parent = panel
 	self.body = body
+
+	self:buildNavBar(panel)
 
 	-- A status line along the bottom: every reply from the server lands here.
 	local status = label(panel, "", 12, TEXT_MUTED, Enum.TextXAlignment.Center)
@@ -248,6 +252,7 @@ function SocialGui.new()
 	self:buildFriends()
 	self:buildBank()
 	self:buildProfile()
+	self:buildSettings()
 	self:buildNotice()
 
 	back.Activated:Connect(function() self:ShowScreen("home") end)
@@ -261,6 +266,331 @@ end
 --------------------------------------------------------------------------------
 -- Home: the eight icons
 --------------------------------------------------------------------------------
+
+--------------------------------------------------------------------------------
+-- The handset chrome: a status bar across the top, a nav bar along the bottom
+--------------------------------------------------------------------------------
+
+-- Signal bars, battery and clock. None of it is real -- there is no power system and a rune stone has no
+-- cell -- but a handset without them does not read as a handset, and the clock at least tells the truth.
+function SocialGui:buildStatusBar(panel)
+	local bar = Instance.new("Frame")
+	bar.Name = "StatusBar"
+	bar.Position = UDim2.new(0, 14, 0, 52)
+	bar.Size = UDim2.new(1, -28, 0, 20)
+	bar.BackgroundTransparency = 1
+	bar.Parent = panel
+
+	-- Left: the date and time, from the player's own clock.
+	local clock = label(bar, "", 11, TEXT_MUTED)
+	clock.Size = UDim2.new(0.55, 0, 1, 0)
+	self.clockLabel = clock
+
+	-- Right: signal bars, then the battery.
+	local right = Instance.new("Frame")
+	right.AnchorPoint = Vector2.new(1, 0.5)
+	right.Position = UDim2.new(1, 0, 0.5, 0)
+	right.Size = UDim2.fromOffset(74, 14)
+	right.BackgroundTransparency = 1
+	right.Parent = bar
+
+	-- Four rising bars, the usual shorthand for signal.
+	self.signalBars = {}
+	for i = 1, 4 do
+		local b = Instance.new("Frame")
+		b.AnchorPoint = Vector2.new(0, 1)
+		b.Position = UDim2.new(0, (i - 1) * 5, 1, 0)
+		b.Size = UDim2.fromOffset(3, 3 + i * 2.5)
+		b.BackgroundColor3 = RUNE
+		b.BorderSizePixel = 0
+		b.Parent = right
+		self.signalBars[i] = b
+	end
+
+	-- The battery: a shell, a tip, and a fill that shrinks.
+	local shell = Instance.new("Frame")
+	shell.AnchorPoint = Vector2.new(1, 0.5)
+	shell.Position = UDim2.new(1, -3, 0.5, 0)
+	shell.Size = UDim2.fromOffset(24, 12)
+	shell.BackgroundTransparency = 1
+	shell.Parent = right
+	corner(shell, UDim.new(0, 3))
+	local shellStroke = Instance.new("UIStroke")
+	shellStroke.Color = TEXT_MUTED
+	shellStroke.Thickness = 1
+	shellStroke.Parent = shell
+
+	local tip = Instance.new("Frame")
+	tip.AnchorPoint = Vector2.new(0, 0.5)
+	tip.Position = UDim2.new(1, 1, 0.5, 0)
+	tip.Size = UDim2.fromOffset(2, 5)
+	tip.BackgroundColor3 = TEXT_MUTED
+	tip.BorderSizePixel = 0
+	tip.Parent = shell
+
+	local fill = Instance.new("Frame")
+	fill.Position = UDim2.fromOffset(2, 2)
+	fill.Size = UDim2.new(1, -4, 1, -4)
+	fill.BackgroundColor3 = OK_GREEN
+	fill.BorderSizePixel = 0
+	fill.Parent = shell
+	corner(fill, UDim.new(0, 2))
+	self.batteryFill = fill
+
+	self.battery = 1
+	self.batteryStartedAt = os.clock()
+	self:refreshStatusBar()
+end
+
+function SocialGui:refreshStatusBar()
+	if not self.clockLabel then return end
+
+	local now = os.date("*t")
+	self.clockLabel.Text = ("%02d/%02d/%d  %02d:%02d"):format(
+		now.day, now.month, now.year, now.hour, now.min)
+
+	-- The battery drains slowly and settles at a floor rather than reaching zero: it is decoration, and a
+	-- dead battery would imply the stone stops working, which it never does.
+	local minutes = (os.clock() - (self.batteryStartedAt or os.clock())) / 60
+	local level = math.max(SocialConfig.BatteryMin,
+		1 - minutes * (SocialConfig.BatteryDrainPerMinute / 100))
+	self.battery = level
+	self.batteryFill.Size = UDim2.new(level, -4, 1, -4)
+	self.batteryFill.BackgroundColor3 = level > 0.5 and OK_GREEN
+		or level > 0.25 and Color3.fromRGB(216, 172, 84)
+		or BAD_RED
+
+	-- Signal wanders a little so it does not look painted on, but never drops below two bars: nothing in
+	-- the game depends on it, and a player watching it fall would reasonably expect it to matter.
+	local strength = 3 + math.floor(math.abs(math.sin(os.clock() / 11)) * 1.99)
+	for i, b in ipairs(self.signalBars) do
+		b.BackgroundTransparency = i <= strength and 0 or 0.75
+	end
+end
+
+-- Home, call and settings, the way a handset puts them.
+function SocialGui:buildNavBar(panel)
+	local bar = Instance.new("Frame")
+	bar.Name = "NavBar"
+	bar.AnchorPoint = Vector2.new(0.5, 1)
+	bar.Position = UDim2.new(0.5, 0, 1, -10)
+	bar.Size = UDim2.new(1, -28, 0, 44)
+	bar.BackgroundColor3 = STONE_DEEP
+	bar.BackgroundTransparency = 0.35
+	bar.BorderSizePixel = 0
+	bar.Parent = panel
+	corner(bar, UDim.new(0, 12))
+
+	local function navButton(order, name, draw)
+		local b = Instance.new("TextButton")
+		b.Name = name
+		b.Position = UDim2.new(order / 3, 0, 0, 0)
+		b.Size = UDim2.new(1 / 3, 0, 1, 0)
+		b.BackgroundTransparency = 1
+		b.Text = ""
+		b.Parent = bar
+
+		local holder = Instance.new("Frame")
+		holder.AnchorPoint = Vector2.new(0.5, 0.5)
+		holder.Position = UDim2.fromScale(0.5, 0.5)
+		holder.Size = UDim2.fromOffset(22, 22)
+		holder.BackgroundTransparency = 1
+		holder.Parent = b
+		draw(holder)
+		return b
+	end
+
+	-- Icons drawn from frames, like the touch buttons: nothing to upload and nothing an encoding step can
+	-- corrupt.
+	local function shape(parent, x, y, w, h, rotation, radius, transparency)
+		local f = Instance.new("Frame")
+		f.AnchorPoint = Vector2.new(0.5, 0.5)
+		f.Position = UDim2.fromScale(x, y)
+		f.Size = UDim2.fromScale(w, h)
+		f.Rotation = rotation or 0
+		f.BackgroundColor3 = TEXT_LIGHT
+		f.BackgroundTransparency = transparency or 0
+		f.BorderSizePixel = 0
+		f.Parent = parent
+		if radius then
+			local c = Instance.new("UICorner")
+			c.CornerRadius = UDim.new(radius, 0)
+			c.Parent = f
+		end
+		return f
+	end
+
+	local call = navButton(0, "Call", function(h)
+		-- A handset: a bar rotated with two ends, which is the shape everyone reads as "phone".
+		shape(h, 0.5, 0.5, 0.24, 0.7, -40, 0.4)
+		shape(h, 0.28, 0.28, 0.34, 0.3, -40, 0.5)
+		shape(h, 0.72, 0.72, 0.34, 0.3, -40, 0.5)
+	end)
+	call.Activated:Connect(function() self:ShowScreen("friends") end)
+
+	local home = navButton(1, "Home", function(h)
+		-- A house: roof over a body.
+		shape(h, 0.5, 0.3, 0.62, 0.34, 45, 0.12)
+		shape(h, 0.5, 0.66, 0.62, 0.44, 0, 0.12)
+	end)
+	home.Activated:Connect(function() self:ShowScreen("home") end)
+
+	local settings = navButton(2, "Settings", function(h)
+		-- A gear, suggested by a ring and four teeth.
+		local ring = shape(h, 0.5, 0.5, 0.5, 0.5, 0, 0.5)
+		ring.BackgroundTransparency = 1
+		local s = Instance.new("UIStroke")
+		s.Color = TEXT_LIGHT
+		s.Thickness = 2.5
+		s.Parent = ring
+		for i = 0, 3 do
+			shape(h, 0.5 + math.cos(i * math.pi / 2) * 0.36, 0.5 + math.sin(i * math.pi / 2) * 0.36,
+				0.2, 0.2, i * 45, 0.3)
+		end
+	end)
+	settings.Activated:Connect(function() self:ShowScreen("settings") end)
+
+	self.navBar = bar
+end
+
+--------------------------------------------------------------------------------
+-- Settings
+--------------------------------------------------------------------------------
+
+-- Mute calls, mute chat notices, and pick the wallpaper. Kept on the client: none of it changes what the
+-- server does, only what this player hears and sees.
+function SocialGui:buildSettings()
+	local page = scrollPage(self.body, "settings", 300)
+	self.screens.settings = page
+
+	self.settings = self.settings or { muteCalls = false, muteChat = false, wallpaper = "rune" }
+
+	local y = 0
+	local function toggleRow(caption, key)
+		local row = Instance.new("Frame")
+		row.Position = UDim2.new(0, 0, 0, y)
+		row.Size = UDim2.new(1, 0, 0, 40)
+		row.BackgroundColor3 = STONE_DEEP
+		row.BackgroundTransparency = 0.4
+		row.BorderSizePixel = 0
+		row.Parent = page
+		corner(row, UDim.new(0, 8))
+
+		local name = label(row, caption, 13, TEXT_LIGHT)
+		name.Position = UDim2.new(0, 12, 0, 0)
+		name.Size = UDim2.new(1, -80, 1, 0)
+
+		-- A switch rather than a checkbox: the state has to be readable at a glance on a small screen.
+		local track = Instance.new("TextButton")
+		track.AnchorPoint = Vector2.new(1, 0.5)
+		track.Position = UDim2.new(1, -12, 0.5, 0)
+		track.Size = UDim2.fromOffset(44, 22)
+		track.BackgroundColor3 = Color3.fromRGB(52, 56, 68)
+		track.BorderSizePixel = 0
+		track.Text = ""
+		track.Parent = row
+		corner(track, UDim.new(1, 0))
+
+		local knob = Instance.new("Frame")
+		knob.AnchorPoint = Vector2.new(0, 0.5)
+		knob.Size = UDim2.fromOffset(18, 18)
+		knob.BackgroundColor3 = TEXT_LIGHT
+		knob.BorderSizePixel = 0
+		knob.Parent = track
+		corner(knob, UDim.new(1, 0))
+
+		local function paint()
+			local on = self.settings[key]
+			knob.Position = UDim2.new(0, on and 24 or 2, 0.5, 0)
+			track.BackgroundColor3 = on and OK_GREEN or Color3.fromRGB(52, 56, 68)
+		end
+		paint()
+
+		track.Activated:Connect(function()
+			self.settings[key] = not self.settings[key]
+			paint()
+			if self.callbacks.settingsChanged then
+				self.callbacks.settingsChanged(self.settings)
+			end
+		end)
+
+		y = y + 48
+		return row
+	end
+
+	toggleRow("ปิดเสียงโทรเข้า", "muteCalls")
+	toggleRow("ปิดแจ้งเตือนแชท", "muteChat")
+
+	local head = label(page, "พื้นหลังหน้าจอ", 12, TEXT_MUTED)
+	head.Position = UDim2.new(0, 0, 0, y + 6)
+	head.Size = UDim2.new(1, 0, 0, 18)
+	y = y + 28
+
+	-- The wallpapers, as swatches. Tapping one applies it immediately, so the choice is its own preview.
+	local strip = Instance.new("Frame")
+	strip.Position = UDim2.new(0, 0, 0, y)
+	strip.Size = UDim2.new(1, 0, 0, 56)
+	strip.BackgroundTransparency = 1
+	strip.Parent = page
+
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.Padding = UDim.new(0, 8)
+	layout.Parent = strip
+
+	self.wallpaperSwatches = {}
+	for _, paper in ipairs(SocialConfig.Wallpapers) do
+		local swatch = Instance.new("TextButton")
+		swatch.Size = UDim2.fromOffset(46, 56)
+		swatch.BackgroundColor3 = paper.from
+		swatch.BorderSizePixel = 0
+		swatch.Text = ""
+		swatch.Parent = strip
+		corner(swatch, UDim.new(0, 8))
+
+		local g = Instance.new("UIGradient")
+		g.Color = ColorSequence.new(paper.from, paper.to)
+		g.Rotation = 90
+		g.Parent = swatch
+
+		local ring = Instance.new("UIStroke")
+		ring.Color = ACCENT
+		ring.Thickness = 2
+		ring.Transparency = 1
+		ring.Parent = swatch
+
+		self.wallpaperSwatches[paper.id] = ring
+		swatch.Activated:Connect(function()
+			self.settings.wallpaper = paper.id
+			self:ApplyWallpaper(paper.id)
+			if self.callbacks.settingsChanged then
+				self.callbacks.settingsChanged(self.settings)
+			end
+		end)
+	end
+	y = y + 68
+
+	local note = label(page, "การตั้งค่าเก็บเฉพาะเครื่องนี้", 11, TEXT_MUTED,
+		Enum.TextXAlignment.Center)
+	note.Position = UDim2.new(0, 0, 0, y)
+	note.Size = UDim2.new(1, 0, 0, 18)
+end
+
+-- Repaints the home screen behind the icons, and marks which swatch is chosen.
+function SocialGui:ApplyWallpaper(id)
+	local paper = SocialConfig.WallpaperFor(id)
+	if self.wallpaper then
+		self.wallpaper.Color = ColorSequence.new(paper.from, paper.to)
+	end
+	for swatchId, ring in pairs(self.wallpaperSwatches or {}) do
+		ring.Transparency = swatchId == paper.id and 0 or 1
+	end
+end
+
+function SocialGui:SetSettings(settings)
+	self.settings = settings
+	self:ApplyWallpaper(settings.wallpaper)
+end
 
 function SocialGui:buildHome()
 	-- A ScrollingFrame, not a plain one: nine tiles need three rows, and a landscape phone is short enough
@@ -278,6 +608,21 @@ function SocialGui:buildHome()
 	page.CanvasSize = UDim2.new()
 	page.Parent = self.body
 	self.screens.home = page
+
+	-- The wallpaper, behind the icons. A gradient on a frame rather than an image: nothing to upload, and
+	-- one more thing that cannot go missing.
+	local paper = Instance.new("Frame")
+	paper.Name = "Wallpaper"
+	paper.Size = UDim2.fromScale(1, 1)
+	paper.BackgroundColor3 = Color3.fromRGB(26, 38, 54)
+	paper.BorderSizePixel = 0
+	paper.ZIndex = 0
+	paper.Parent = page
+	corner(paper, UDim.new(0, 10))
+	local paperGradient = Instance.new("UIGradient")
+	paperGradient.Rotation = 90
+	paperGradient.Parent = paper
+	self.wallpaper = paperGradient
 
 	local grid = Instance.new("UIGridLayout")
 	-- Tiles shrink a little on a small screen so three fit across without the scroll bar clipping one.
@@ -897,6 +1242,7 @@ end
 
 local TITLES = {
 	home = "หินเวทสื่อสาร",
+	settings = "ตั้งค่า",
 	board = "บอร์ดกิลด์",
 	friends = "รายชื่อสหาย",
 	bank = "ธนาคาร",
@@ -939,6 +1285,17 @@ end
 
 function SocialGui:Show()
 	self.gui.Enabled = true
+	self:ApplyWallpaper(self.settings and self.settings.wallpaper or "rune")
+	-- The status bar is only worth updating while it can be seen.
+	if not self.statusThread then
+		self.statusThread = task.spawn(function()
+			while self.gui.Enabled do
+				self:refreshStatusBar()
+				task.wait(5)
+			end
+			self.statusThread = nil
+		end)
+	end
 end
 
 function SocialGui:Hide()
