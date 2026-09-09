@@ -26,16 +26,25 @@ ProfileAccess.SerializeRole = Classes.Serialize
 -- seconds after joining, and the profile can take longer than that to arrive.
 local Loaded = {}
 
--- Whether this player is owed a choice of `tier`, and has not made it. Checked rather than remembered, so a
--- player who was offered the card and closed it is offered it again on their next level-up -- and one who
--- reaches level 50 in a single jump is offered both.
-local function pendingTier(player)
+-- The card appears on REACHING the level, whether or not a class is already held: reaching level 5 again
+-- after a death is a fresh chance to choose, and choosing the same class again is a valid answer.
+--
+-- The level each tier was last offered at lives in Classes, saved with the profile -- because it answers a
+-- question the classes cannot. A level-60 player holding a class is either someone who just got there
+-- (offer it) or someone rejoining (do not), and only the offered-at level tells those apart.
+local function tierToOffer(player)
 	local level = Progression.GetLevel(player)
-	if level >= ClassConfig.AdvancedLevel and not Classes.Get(player, "advanced") then
-		return "advanced"
+
+	-- EXACTLY the threshold, not at-or-above. Ranging over it would pop the card on every level-up forever,
+	-- since level 6 is also "past 5".
+	--
+	-- The offered-at check is still needed on top: without it, closing the card and rejoining at the same
+	-- level would show it again.
+	if level == ClassConfig.AdvancedLevel and Classes.OfferedAt(player, "advanced") ~= level then
+		return "advanced", level
 	end
-	if level >= ClassConfig.BasicLevel and not Classes.Get(player, "basic") then
-		return "basic"
+	if level == ClassConfig.BasicLevel and Classes.OfferedAt(player, "basic") ~= level then
+		return "basic", level
 	end
 	return nil
 end
@@ -44,10 +53,12 @@ local function offer(player)
 	-- Silence rather than a wrong answer. The client asks again on its next level-up, and the join-time ask
 	-- below waits for this instead of racing it.
 	if not Loaded[player] then return end
-	local tier = pendingTier(player)
-	if tier then
-		Remotes.ClassOffer:FireClient(player, tier, ClassConfig.OfTier(tier))
-	end
+	local tier, level = tierToOffer(player)
+	if not tier then return end
+	-- Marked as offered BEFORE it is sent, so a card that is closed and re-requested does not loop, and a
+	-- rejoin at the same level does not pop it again.
+	Classes.MarkOffered(player, tier, level)
+	Remotes.ClassOffer:FireClient(player, tier, ClassConfig.OfTier(tier))
 end
 
 -- No hook into Progression: it already tells the client it levelled up, and the client asks here. That
@@ -68,10 +79,11 @@ Remotes.RequestChooseClass.OnServerEvent:Connect(function(player, classId)
 	local needed = ClassConfig.LevelFor(class.tier)
 	if not needed or Progression.GetLevel(player) < needed then return end
 
-	-- One choice per tier per life. Changing your mind means dying and coming back, which is the point:
-	-- the class is a commitment, and death is what unmakes it.
-	if Classes.Get(player, class.tier) then return end
-
+	-- An existing class is REPLACED rather than refused: reaching the level again is a fresh chance to
+	-- choose, and picking a different class is the whole point of being asked twice.
+	--
+	-- What stops this being a free class-swap button is that the card is only sent on reaching the level,
+	-- and a client cannot make the server send one.
 	if Classes.Set(player, class.tier, classId) then
 		Remotes.ClassChanged:FireClient(player, class.tier, classId)
 		-- Still owed the other tier? A level-50 player choosing their basic class is offered the advanced

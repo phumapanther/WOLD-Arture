@@ -13,6 +13,10 @@ local ProfileAccess = require(script.Parent.ProfileAccess)
 local Classes = {}
 
 local Held = {} -- [player] = { basic = id|nil, advanced = id|nil }
+-- The level each tier was last offered at. Saved with the classes because it answers a question the classes
+-- cannot: a level-60 player holding a class is either someone who just arrived (offer the card) or someone
+-- rejoining (do not), and only this tells them apart across a session boundary.
+local Offered = {} -- [player] = { basic = level|nil, advanced = level|nil }
 local MarkedUntil = {} -- [player] = os.clock() deadline while marked for a failed robbery
 
 --------------------------------------------------------------------------------
@@ -40,12 +44,14 @@ function Classes.Add(player, saved)
 		place(state, saved) -- an old Role value: Guard/Priest/Architect are advanced, Merchant is basic
 	end
 	Held[player] = state
+	Offered[player] = (type(saved) == "table" and type(saved.Offered) == "table") and saved.Offered or {}
 	Classes.Replicate(player)
 	return state
 end
 
 function Classes.Remove(player)
 	Held[player] = nil
+	Offered[player] = nil
 	MarkedUntil[player] = nil
 end
 
@@ -68,6 +74,19 @@ function Classes.Primary(player)
 	local state = Held[player]
 	if not state then return nil end
 	return state.advanced or state.basic
+end
+
+-- The level `tier` was last offered at, or nil. Nil means "never offered", which is what a fresh
+-- character has.
+function Classes.OfferedAt(player, tier)
+	local seen = Offered[player]
+	return seen and seen[tier] or nil
+end
+
+function Classes.MarkOffered(player, tier, level)
+	Offered[player] = Offered[player] or {}
+	Offered[player][tier] = level
+	if ProfileAccess.Flush then ProfileAccess.Flush(player) end
 end
 
 --------------------------------------------------------------------------------
@@ -146,6 +165,8 @@ function Classes.ResetOnDeath(player)
 	if not state then return end
 	state.basic = nil
 	state.advanced = nil
+	-- Cleared so climbing back to level 5 counts as reaching it again and offers the card.
+	Offered[player] = {}
 	-- The mark goes too: it is tied to a life, and ten minutes of shame that outlived the death would be
 	-- carried by a character who no longer did the thing.
 	MarkedUntil[player] = nil
@@ -158,7 +179,7 @@ function Classes.Serialize(player)
 	if not state then return nil end
 	-- The mark is deliberately NOT saved: ten minutes of shame should not survive a rejoin, or hiding from
 	-- it would be a matter of pressing the rejoin button.
-	return { Basic = state.basic, Advanced = state.advanced }
+	return { Basic = state.basic, Advanced = state.advanced, Offered = Offered[player] or {} }
 end
 
 return Classes
