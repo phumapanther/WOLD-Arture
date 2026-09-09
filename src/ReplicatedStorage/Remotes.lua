@@ -21,6 +21,9 @@ local EVENTS = {
 	-- Classes: the card offering a choice at level 5 and 50, the choice itself, and the confirmation. The
 	-- client asks for an offer on join too, since the level that unlocked it may be from an old session.
 	"ClassOffer", "RequestChooseClass", "ClassChanged", "RequestClassOffer",
+	-- Class actions on a nearby player: one request in, and one broadcast out telling both parties what
+	-- happened so each can show it. ClassActionPrompt asks the target to agree, refuse, or defend.
+	"RequestClassAction", "ClassActionResult", "ClassActionPrompt", "RespondClassAction",
 	-- Eating and drinking take time; every client needs to know so it can play the animation and hold the
 	-- item to the mouth.
 	"ConsumeStateChanged", -- client asks for a resend: the join broadcast can land before it connects

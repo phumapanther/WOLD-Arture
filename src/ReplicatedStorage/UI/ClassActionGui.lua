@@ -1,0 +1,281 @@
+-- ClassActionGui: the small windows the class actions need.
+--
+-- Three of them: a box to type an amount into, a choice of heal size, and the countdown a robbery victim
+-- gets to defend themselves. Plus a one-line notice for every result.
+--
+-- Pure builder, like the rest: it collects an answer and hands it back through a callback. What the answer
+-- means is the server's business.
+local Players = game:GetService("Players")
+local Responsive = require(script.Parent.Responsive)
+local UiSound = require(script.Parent.UiSound)
+
+local STONE = Color3.fromRGB(38, 40, 48)
+local STONE_DEEP = Color3.fromRGB(26, 28, 34)
+local TEXT_LIGHT = Color3.fromRGB(232, 232, 238)
+local TEXT_MUTED = Color3.fromRGB(150, 152, 162)
+local RUNE = Color3.fromRGB(244, 197, 66)
+local DANGER = Color3.fromRGB(214, 84, 74)
+local GOOD = Color3.fromRGB(120, 190, 120)
+
+local ClassActionGui = {}
+ClassActionGui.__index = ClassActionGui
+
+local function corner(inst, radius)
+	local c = Instance.new("UICorner")
+	c.CornerRadius = radius
+	c.Parent = inst
+	return c
+end
+
+local function stroke(inst, color, transparency, thickness)
+	local s = Instance.new("UIStroke")
+	s.Color = color
+	s.Transparency = transparency or 0.5
+	s.Thickness = thickness or 1
+	s.Parent = inst
+	return s
+end
+
+local function button(parent, text, color)
+	local b = Instance.new("TextButton")
+	b.BackgroundColor3 = color or STONE_DEEP
+	b.BorderSizePixel = 0
+	b.AutoButtonColor = true
+	b.Font = Enum.Font.GothamBold
+	b.TextSize = 14
+	b.TextColor3 = TEXT_LIGHT
+	b.Text = text
+	b.Parent = parent
+	corner(b, UDim.new(0, 8))
+	b.Activated:Connect(function() UiSound.Play("Click") end)
+	return b
+end
+
+function ClassActionGui.new()
+	local self = setmetatable({}, ClassActionGui)
+
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "ClassActionGui"
+	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = true
+	gui.DisplayOrder = 19 -- above the bag, below the downed overlay
+	gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+	self.gui = gui
+
+	-- A single panel reused by all three dialogs: only one can be open at a time anyway, and rebuilding its
+	-- contents is cheaper than keeping three around.
+	local panel = Instance.new("Frame")
+	panel.Name = "Panel"
+	panel.AnchorPoint = Vector2.new(0.5, 0.5)
+	panel.Position = UDim2.fromScale(0.5, 0.42)
+	panel.Size = UDim2.fromOffset(300, 180)
+	panel.BackgroundColor3 = STONE
+	panel.BorderSizePixel = 0
+	panel.Visible = false
+	panel.Parent = gui
+	corner(panel, UDim.new(0, 12))
+	stroke(panel, RUNE, 0.55, 2)
+	Responsive.Scale(panel)
+	self.panel = panel
+
+	local title = Instance.new("TextLabel")
+	title.Size = UDim2.new(1, -20, 0, 28)
+	title.Position = UDim2.new(0, 10, 0, 12)
+	title.BackgroundTransparency = 1
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 16
+	title.TextColor3 = RUNE
+	title.Text = ""
+	title.Parent = panel
+	self.title = title
+
+	local body = Instance.new("Frame")
+	body.Name = "Body"
+	body.Position = UDim2.new(0, 10, 0, 46)
+	body.Size = UDim2.new(1, -20, 1, -58)
+	body.BackgroundTransparency = 1
+	body.Parent = panel
+	self.body = body
+
+	-- The result line, bottom-centre and self-clearing. Separate from the panel so a notice can appear while
+	-- nothing is open.
+	local notice = Instance.new("TextLabel")
+	notice.AnchorPoint = Vector2.new(0.5, 1)
+	notice.Position = UDim2.new(0.5, 0, 1, -140)
+	notice.Size = UDim2.fromOffset(340, 28)
+	notice.BackgroundColor3 = STONE_DEEP
+	notice.BackgroundTransparency = 0.15
+	notice.Font = Enum.Font.GothamMedium
+	notice.TextSize = 13
+	notice.TextColor3 = TEXT_LIGHT
+	notice.Text = ""
+	notice.Visible = false
+	notice.Parent = gui
+	corner(notice, UDim.new(0, 8))
+	Responsive.Scale(notice)
+	self.notice = notice
+	self.noticeToken = 0
+
+	return self
+end
+
+function ClassActionGui:clearBody()
+	for _, child in ipairs(self.body:GetChildren()) do
+		child:Destroy()
+	end
+end
+
+function ClassActionGui:Close()
+	self.panel.Visible = false
+	self:clearBody()
+end
+
+--------------------------------------------------------------------------------
+-- Type an amount
+--------------------------------------------------------------------------------
+
+function ClassActionGui:AskAmount(target, onSend)
+	self:clearBody()
+	self.title.Text = ("ให้เงิน %s"):format(target.DisplayName)
+	self.panel.Size = UDim2.fromOffset(300, 180)
+
+	local box = Instance.new("TextBox")
+	box.Size = UDim2.new(1, 0, 0, 40)
+	box.BackgroundColor3 = STONE_DEEP
+	box.BorderSizePixel = 0
+	box.Font = Enum.Font.GothamBold
+	box.TextSize = 18
+	box.TextColor3 = TEXT_LIGHT
+	box.PlaceholderText = "จำนวนเงิน"
+	box.PlaceholderColor3 = TEXT_MUTED
+	box.Text = ""
+	box.ClearTextOnFocus = false
+	box.Parent = self.body
+	corner(box, UDim.new(0, 8))
+
+	local send = button(self.body, "ส่ง", Color3.fromRGB(58, 78, 56))
+	send.Size = UDim2.new(0.5, -4, 0, 36)
+	send.Position = UDim2.new(0, 0, 1, -44)
+
+	local cancel = button(self.body, "ยกเลิก")
+	cancel.Size = UDim2.new(0.5, -4, 0, 36)
+	cancel.Position = UDim2.new(0.5, 4, 1, -44)
+
+	send.Activated:Connect(function()
+		-- Parsed here only to avoid sending obvious nonsense; the server checks it properly.
+		local amount = tonumber(box.Text)
+		self:Close()
+		if amount then onSend(math.floor(amount)) end
+	end)
+	cancel.Activated:Connect(function() self:Close() end)
+
+	self.panel.Visible = true
+	box:CaptureFocus()
+end
+
+--------------------------------------------------------------------------------
+-- Choose a heal
+--------------------------------------------------------------------------------
+
+function ClassActionGui:AskHealSize(target, onChoose)
+	self:clearBody()
+	self.title.Text = ("ฮีล %s"):format(target.DisplayName)
+	self.panel.Size = UDim2.fromOffset(300, 190)
+
+	local ClassActionConfig = require(script.Parent.Parent.ClassActionConfig)
+	local order = { "small", "large" }
+	for i, size in ipairs(order) do
+		local option = ClassActionConfig.Heal[size]
+		local b = button(self.body, ("%s — %d ทอง"):format(option.label, option.cost))
+		b.Size = UDim2.new(1, 0, 0, 40)
+		b.Position = UDim2.new(0, 0, 0, (i - 1) * 48)
+		b.Activated:Connect(function()
+			self:Close()
+			onChoose(size)
+		end)
+	end
+
+	local cancel = button(self.body, "ยกเลิก")
+	cancel.Size = UDim2.new(1, 0, 0, 34)
+	cancel.Position = UDim2.new(0, 0, 1, -34)
+	cancel.Activated:Connect(function() self:Close() end)
+
+	self.panel.Visible = true
+end
+
+--------------------------------------------------------------------------------
+-- Defend against a robbery
+--------------------------------------------------------------------------------
+
+function ClassActionGui:ShowRobDefence(thief, seconds, onDefend)
+	self:clearBody()
+	self.title.Text = "โดนปล้น!"
+	self.panel.Size = UDim2.fromOffset(320, 180)
+
+	local who = Instance.new("TextLabel")
+	who.Size = UDim2.new(1, 0, 0, 22)
+	who.BackgroundTransparency = 1
+	who.Font = Enum.Font.Gotham
+	who.TextSize = 13
+	who.TextColor3 = TEXT_LIGHT
+	who.Text = ("%s กำลังปล้นคุณ"):format(thief and thief.DisplayName or "ใครบางคน")
+	who.Parent = self.body
+
+	local count = Instance.new("TextLabel")
+	count.Size = UDim2.new(1, 0, 0, 40)
+	count.Position = UDim2.new(0, 0, 0, 26)
+	count.BackgroundTransparency = 1
+	count.Font = Enum.Font.GothamBold
+	count.TextSize = 30
+	count.TextColor3 = DANGER
+	count.Text = tostring(seconds)
+	count.Parent = self.body
+
+	local defend = button(self.body, "ป้องกัน!", Color3.fromRGB(96, 52, 48))
+	defend.Size = UDim2.new(1, 0, 0, 40)
+	defend.Position = UDim2.new(0, 0, 1, -44)
+
+	-- A token so a second robbery cannot be answered by the first one's countdown.
+	self.robToken = (self.robToken or 0) + 1
+	local token = self.robToken
+	local answered = false
+
+	defend.Activated:Connect(function()
+		if answered then return end
+		answered = true
+		self:Close()
+		onDefend()
+	end)
+
+	self.panel.Visible = true
+	task.spawn(function()
+		for remaining = seconds, 1, -1 do
+			if self.robToken ~= token or answered then return end
+			count.Text = tostring(remaining)
+			task.wait(1)
+		end
+		-- Ran out: the server has already decided, so this only takes the window away.
+		if self.robToken == token and not answered then self:Close() end
+	end)
+end
+
+--------------------------------------------------------------------------------
+-- Result line
+--------------------------------------------------------------------------------
+
+function ClassActionGui:Notify(ok, message, other)
+	if not message or message == "" then return end
+	self.noticeToken += 1
+	local token = self.noticeToken
+
+	local who = other and (" — " .. other.DisplayName) or ""
+	self.notice.Text = message .. who
+	self.notice.TextColor3 = ok and GOOD or DANGER
+	self.notice.Visible = true
+
+	task.delay(4, function()
+		if self.noticeToken == token then self.notice.Visible = false end
+	end)
+end
+
+return ClassActionGui
