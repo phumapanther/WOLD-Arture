@@ -611,18 +611,24 @@ function SocialGui:buildHome()
 
 	-- The wallpaper, behind the icons. A gradient on a frame rather than an image: nothing to upload, and
 	-- one more thing that cannot go missing.
+	--
+	-- Parented to the BODY, not to the scrolling page: UIGridLayout lays out every child it is given, so a
+	-- wallpaper inside the page was counted as a cell and appeared as an empty tile in the first slot. It
+	-- also should not scroll with the icons.
 	local paper = Instance.new("Frame")
 	paper.Name = "Wallpaper"
 	paper.Size = UDim2.fromScale(1, 1)
 	paper.BackgroundColor3 = Color3.fromRGB(26, 38, 54)
 	paper.BorderSizePixel = 0
 	paper.ZIndex = 0
-	paper.Parent = page
+	paper.Visible = false -- shown only while the home screen is
+	paper.Parent = self.body
 	corner(paper, UDim.new(0, 10))
 	local paperGradient = Instance.new("UIGradient")
 	paperGradient.Rotation = 90
 	paperGradient.Parent = paper
 	self.wallpaper = paperGradient
+	self.wallpaperFrame = paper
 
 	local grid = Instance.new("UIGridLayout")
 	-- Tiles shrink a little on a small screen so three fit across without the scroll bar clipping one.
@@ -1254,6 +1260,10 @@ function SocialGui:ShowScreen(id, titleOverride)
 		page.Visible = (name == id)
 	end
 	self.current = id
+	-- The wallpaper belongs to the home screen; every other page draws on the stone itself.
+	if self.wallpaperFrame then
+		self.wallpaperFrame.Visible = (id == "home")
+	end
 	self.title.Text = titleOverride or TITLES[id] or "หินเวทสื่อสาร"
 	self.backButton.Visible = (id ~= "home")
 	self:SetStatus("")
