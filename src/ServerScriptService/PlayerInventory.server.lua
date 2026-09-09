@@ -7,6 +7,7 @@ local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
+local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
@@ -108,6 +109,21 @@ end
 
 local Consuming = require(game.ServerScriptService.Consuming)
 
+-- The click of gear going on. Played at the player rather than to them alone, so someone nearby drawing a
+-- sword is something you can hear.
+local function playEquipSound(player)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or CombatConfig.EquipSound == "" then return end
+	local sound = Instance.new("Sound")
+	sound.SoundId = CombatConfig.EquipSound
+	sound.Volume = CombatConfig.EquipSoundVolume
+	sound.RollOffMaxDistance = CombatConfig.EquipSoundDistance
+	sound.Parent = root
+	sound:Play()
+	game:GetService("Debris"):AddItem(sound, CombatConfig.EquipSoundMaxSeconds)
+end
+
 local function canAct(player)
 	-- Nothing in the bag is usable while crawling: a downed player cannot rummage.
 	return not Vitals.IsDowned(player)
@@ -136,6 +152,7 @@ Remotes.RequestEquip.OnServerEvent:Connect(function(player, index)
 	if type(index) ~= "number" or not canAct(player) then return end
 	if Inventory.Equip(player, index) then
 		syncArmor(player)
+		playEquipSound(player)
 		flush(player)
 	end
 end)
@@ -145,6 +162,7 @@ Remotes.RequestUnequip.OnServerEvent:Connect(function(player, kind)
 	if not canAct(player) then return end
 	if Inventory.Unequip(player, kind) then
 		syncArmor(player)
+		playEquipSound(player)
 		flush(player)
 	end
 end)

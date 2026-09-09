@@ -13,6 +13,7 @@ local Debris = game:GetService("Debris")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
+local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local Consuming = require(game.ServerScriptService.Consuming)
 local StatusEffects = require(game.ServerScriptService.StatusEffects)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
@@ -291,6 +292,21 @@ Remotes.RequestSkill.OnServerEvent:Connect(function(player)
 	if not Vitals.TrySpendMana(player, skill.manaCost or 1) then return end
 
 	Cooldowns[player][skill.id] = os.clock() + (skill.cooldown or 5)
+
+	-- The skill sound plays on the cast, not on whatever it hits: a skill that misses should still be heard,
+	-- and it is the moment the player committed the mana.
+	local soundId = CombatConfig.SkillSounds[skill.id]
+	local skillCharacter = player.Character
+	local skillRoot = skillCharacter and skillCharacter:FindFirstChild("HumanoidRootPart")
+	if soundId and skillRoot then
+		local sound = Instance.new("Sound")
+		sound.SoundId = soundId
+		sound.Volume = CombatConfig.SkillSoundVolume
+		sound.RollOffMaxDistance = CombatConfig.SkillSoundDistance
+		sound.Parent = skillRoot
+		sound:Play()
+		game:GetService("Debris"):AddItem(sound, CombatConfig.SkillSoundMaxSeconds)
+	end
 	if not handler(player) then
 		-- The skill could not resolve (no character, no facing): give the mana back rather than charging for
 		-- nothing.

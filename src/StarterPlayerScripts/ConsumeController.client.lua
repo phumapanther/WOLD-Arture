@@ -83,15 +83,18 @@ local function startPose(character)
 		-- Upper arms swing forward and in toward the chest; the elbows fold so the hands finish at the face.
 		-- Written as Transform, which the animator applies on top of whatever else is playing, so walking
 		-- and running still move the legs underneath.
+		-- POSITIVE X swings the arms FORWARD on an R15 rig; the first version used negative and put both
+		-- hands behind the character's back. The elbows fold the same way, bringing the hands up to the
+		-- face rather than down behind the hips.
 		leftShoulder.Transform = CFrame.new(0, bob, 0)
-			* CFrame.Angles(math.rad(-75 + bob * 60), 0, math.rad(28))
+			* CFrame.Angles(math.rad(75 - bob * 60), 0, math.rad(28))
 		rightShoulder.Transform = CFrame.new(0, bob, 0)
-			* CFrame.Angles(math.rad(-75 + bob * 60), 0, math.rad(-28))
+			* CFrame.Angles(math.rad(75 - bob * 60), 0, math.rad(-28))
 		if leftElbow then
-			leftElbow.Transform = CFrame.Angles(math.rad(-70), 0, 0)
+			leftElbow.Transform = CFrame.Angles(math.rad(70), 0, 0)
 		end
 		if rightElbow then
-			rightElbow.Transform = CFrame.Angles(math.rad(-70), 0, 0)
+			rightElbow.Transform = CFrame.Angles(math.rad(70), 0, 0)
 		end
 	end)
 end

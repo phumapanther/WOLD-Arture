@@ -110,16 +110,22 @@ local function soundsFor(player)
 	local _, entry = Inventory.EquippedWeapon(player)
 	local set = entry and CombatConfig.Sounds[entry.id]
 	local hit = (set and set.hit ~= "" and set.hit) or VitalsConfig.HitSoundId
-	return (set and set.cast) or "", hit
+	-- A weapon may override how loud and how long its impact is; the sword is much louder and longer than
+	-- the rest, so it says so here rather than every weapon being tuned to the noisiest one.
+	return (set and set.cast) or "", hit,
+		set and set.hitVolume or nil,
+		set and set.hitSeconds or nil
 end
 
 local function playHitSound(character, attacker)
-	local hit = VitalsConfig.HitSoundId
+	local hit, volume, seconds = VitalsConfig.HitSoundId, nil, nil
 	if attacker then
-		hit = select(2, soundsFor(attacker))
+		local _, weaponHit, weaponVolume, weaponSeconds = soundsFor(attacker)
+		hit, volume, seconds = weaponHit, weaponVolume, weaponSeconds
 	end
-	playAt(character, hit, CombatConfig.HitSoundDistance, VitalsConfig.HitSoundVolume,
-		CombatConfig.HitSoundMaxSeconds)
+	playAt(character, hit, CombatConfig.HitSoundDistance,
+		volume or VitalsConfig.HitSoundVolume,
+		seconds or CombatConfig.HitSoundMaxSeconds)
 end
 
 -- The attacker's own sound: the swing, the bowstring, the spell leaving the book.

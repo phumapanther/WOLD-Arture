@@ -103,6 +103,10 @@ CombatConfig.Sounds = {
 	Sword = {
 		cast = "rbxassetid://130522255329953", -- assets/sounds/sword_swing.mp3
 		hit = "rbxassetid://114083734266818",  -- assets/sounds/sword_hit.mp3
+		-- Steel on a body was the loudest thing in a fight and rang on far too long. Halved and cut short,
+		-- per weapon rather than globally, so the other three keep their own balance.
+		hitVolume = 0.5,
+		hitSeconds = 0.55,
 	},
 	Bow = {
 		cast = "rbxassetid://110510289237765", -- assets/sounds/bow_shoot.mp3
@@ -117,6 +121,26 @@ CombatConfig.Sounds = {
 		hit = "rbxassetid://121322394992211",  -- assets/sounds/spell_hit.mp3
 	},
 }
+
+-- The Q skill each weapon grants, which is a bigger, rarer thing than a swing and deserves its own noise.
+-- Keyed by SKILL id rather than weapon, so a skill that later moves to another weapon keeps its sound.
+CombatConfig.SkillSounds = {
+	LungeSlash = "rbxassetid://107584400031007", -- sword_q
+	ScatterShot = "rbxassetid://120465457667697", -- arrow_q
+	Fireball = "rbxassetid://118145699359127",    -- magic_q
+	GroupHeal = "rbxassetid://118799033183305",   -- staff_q
+}
+
+CombatConfig.SkillSoundVolume = 0.9
+CombatConfig.SkillSoundMaxSeconds = 2.5
+CombatConfig.SkillSoundDistance = 110 -- a skill should be heard from further off than a swing
+
+-- Equipping a weapon or a piece of armor. One sound for all of them: the feedback is "that went on", not
+-- which thing it was.
+CombatConfig.EquipSound = "rbxassetid://73684484951222"
+CombatConfig.EquipSoundVolume = 0.7
+CombatConfig.EquipSoundMaxSeconds = 1.2
+CombatConfig.EquipSoundDistance = 40 -- a personal sound; nobody across the square needs to hear it
 
 -- Cast sounds carry further than impacts: you should hear an archer loose an arrow from further away than
 -- you hear it land on someone else.
