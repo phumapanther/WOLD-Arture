@@ -44,7 +44,7 @@ ClassActionConfig.Actions = {
 		label = "อุ้ม",
 		key = Enum.KeyCode.F,
 		hold = 2, -- shorter than the rescue carry: this one also needs the target to agree
-		classes = { "Adventurer", "Rogue" },
+		classes = { "Villager", "Adventurer", "Rogue" },
 	},
 	{
 		id = "trade",

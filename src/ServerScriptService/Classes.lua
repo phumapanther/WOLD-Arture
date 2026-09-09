@@ -43,6 +43,10 @@ function Classes.Add(player, saved)
 	elseif type(saved) == "string" then
 		place(state, saved) -- an old Role value: Guard/Priest/Architect are advanced, Merchant is basic
 	end
+	-- Everyone is a villager until they choose otherwise. A player with no basic class would have no
+	-- actions and a blank class on their card, which reads as something being broken rather than as a
+	-- starting state.
+	if not state.basic then state.basic = ClassConfig.DefaultClass end
 	Held[player] = state
 	Offered[player] = (type(saved) == "table" and type(saved.Offered) == "table") and saved.Offered or {}
 	Classes.Replicate(player)
@@ -163,7 +167,9 @@ end
 function Classes.ResetOnDeath(player)
 	local state = Held[player]
 	if not state then return end
-	state.basic = nil
+	-- Back to the starting class rather than to nothing, so a fresh level-1 character is exactly what a
+	-- brand new one is.
+	state.basic = ClassConfig.DefaultClass
 	state.advanced = nil
 	-- Cleared so climbing back to level 5 counts as reaching it again and offers the card.
 	Offered[player] = {}

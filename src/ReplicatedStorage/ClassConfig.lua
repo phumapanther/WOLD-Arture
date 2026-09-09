@@ -19,10 +19,13 @@ ClassConfig.Classes = {
 	--------------------------------------------------------------------------
 	-- Basic, chosen at level 5.
 	--------------------------------------------------------------------------
+	-- The class everyone starts as, and returns to on death. Not "no class": a player with no class at all
+	-- would have no actions and an empty nametag, and the difference between "has not chosen" and "chose to
+	-- stay a villager" is not worth modelling.
 	Villager = {
 		name = "ชาวบ้าน", tier = "basic",
 		color = Color3.fromRGB(255, 255, 255),
-		blurb = "ไม่มีสกิลพิเศษ",
+		blurb = "อุ้มเพื่อน",
 	},
 	Adventurer = {
 		name = "นักผจญภัย", tier = "basic",
@@ -81,6 +84,9 @@ ClassConfig.MarkedColor = Color3.fromRGB(255, 0, 0)
 ClassConfig.MarkedSeconds = 10 * 60
 
 ClassConfig.DefaultColor = Color3.fromRGB(255, 255, 255)
+
+-- What a player is before they have chosen anything, and what a death returns them to.
+ClassConfig.DefaultClass = "Villager"
 
 function ClassConfig.Exists(id)
 	return ClassConfig.Classes[id] ~= nil
