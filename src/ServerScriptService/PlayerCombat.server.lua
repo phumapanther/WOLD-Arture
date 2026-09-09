@@ -120,6 +120,16 @@ local function soundsFor(player)
 		set and set.hitSeconds or nil
 end
 
+-- Tells the two people in a fight that a blow just landed, so their music can react. Only the pair: a
+-- fight across the square is not everyone's fight, and music swelling for a scrap you cannot see would be
+-- confusing rather than exciting.
+local function reportHit(attacker, victim)
+	-- Checked rather than assumed: FireClient throws on anything that is not a Player, and a hit can land on
+	-- a training dummy, which is a plain Model.
+	if attacker and attacker:IsA("Player") then Remotes.CombatHit:FireClient(attacker) end
+	if victim and victim ~= attacker and victim:IsA("Player") then Remotes.CombatHit:FireClient(victim) end
+end
+
 local function playHitSound(character, attacker)
 	local hit, volume, seconds = VitalsConfig.HitSoundId, nil, nil
 	if attacker then
@@ -189,6 +199,7 @@ local function fireProjectile(player, attack)
 					and not Vitals.IsInvulnerable(other) then
 					local wasDowned = Vitals.IsDowned(other)
 					Vitals.ApplyDamage(other, attack.damage, "combat")
+					reportHit(player, other)
 					applyEffect(attack, other)
 					playHitSound(otherChar, player)
 					if not wasDowned and Vitals.IsDowned(other) then
@@ -271,6 +282,7 @@ local function resolveHit(player, state, attack)
 				if not Vitals.IsInvulnerable(other) then
 					local wasDowned = Vitals.IsDowned(other)
 					Vitals.ApplyDamage(other, attack.damage, "combat")
+					reportHit(player, other)
 					applyEffect(attack, other)
 					playHitSound(otherChar, player)
 					-- The blow that puts someone down is the "kill" for EXP purposes: combat downs players

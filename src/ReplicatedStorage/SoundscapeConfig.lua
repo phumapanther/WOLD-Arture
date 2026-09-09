@@ -226,6 +226,104 @@ SoundscapeConfig.LobbyMusic = {
 }
 
 --------------------------------------------------------------------------------
+-- World music
+--------------------------------------------------------------------------------
+
+-- Music out in the world, as opposed to the lobby's. Three kinds, in priority order:
+--   combat    a fight is happening to you -- interrupts everything, fades back out when it is over
+--   zone      you are in a settlement -- its own theme
+--   wander    out in open country -- an occasional track, mostly silence
+--
+-- Only one plays at a time: the highest-priority kind wins and the others fade out under it. Silence is the
+-- default, not a failure -- a roleplay game people sit in for hours should not have wall-to-wall music.
+--
+-- Every id is from APMOfficial or DistrokidOfficial, Roblox's licensed-music partner accounts, so publishing
+-- carries no takedown risk. All were load-tested in this place.
+SoundscapeConfig.WorldMusic = {
+	Volume = 0.14, -- quieter than the lobby's: this plays under footsteps and ambience, not instead of them
+	FadeSeconds = 3, -- slow, so a track arriving or leaving is never a noticeable event
+
+	-- Combat. Fades in the moment a real blow lands (dealt or taken, not a swing at air) and fades out
+	-- after the last one. Every fresh hit restarts that countdown, so a long fight keeps its music.
+	Combat = {
+		Tracks = {
+			-- Chosen for having no quiet passages: the music starts mid-track on a hit, so a track that
+			-- opens softly would fade in on nothing.
+			"rbxassetid://9043368831",       -- Race to the Artifact, 1:32 -- brass, choir, never lets up
+			"rbxassetid://9043369028",       -- Heroes are Coming, 1:35 -- more heroic than menacing
+			"rbxassetid://9043602056",       -- Ghost Ship, 1:02 -- agitated strings and gothic choir
+			"rbxassetid://139997523791273",  -- Boss Battle Burnout, 2:52
+		},
+		Volume = 0.22, -- louder than the rest: it is meant to take over
+		FadeInSeconds = 1.5, -- quick enough to feel like a reaction to being hit
+		FadeOutSeconds = 4, -- slow, so the fight ending settles rather than stops
+		LingerSeconds = 10, -- quiet for this long after the last blow before it lets go
+	},
+
+	-- Out in open country: a track now and then, long gaps between. Deliberately sparse.
+	Wander = {
+		Tracks = {
+			"rbxassetid://93280438567176",   -- Cozy Tavern Ambience II, 5:10
+			"rbxassetid://140595275946952",  -- Greensleeves Variations, 5:05
+			"rbxassetid://1843259503",       -- Hush Nightingale, 3:56
+			"rbxassetid://140648151329276",  -- Noctilucent Calm, 2:26
+			"rbxassetid://9042042999",       -- Comfort (b), 2:08 -- warm cello drones, no melody to tire of
+			"rbxassetid://77732020920507",   -- The Alchemist's Pendulum, 2:35 -- clockwork, the steampunk half
+		},
+		FirstDelaySeconds = 300, -- five minutes of nothing before the first track
+		GapSeconds = 600, -- and ten minutes between tracks after one finishes
+	},
+
+	-- Settlements. Each has its own theme, and its own idea of what it is: a farming village should not
+	-- sound like a royal keep. Zone names match SoundscapeConfig.Towns.
+	Zones = {
+		Brasshaven = {
+			Tracks = {
+				"rbxassetid://9042223208",   -- Chaconne pour les Ombres -- harpsichord and baroque strings
+				"rbxassetid://9042222859",   -- Chaconne des Tendres
+				"rbxassetid://1842164153",   -- Brandenburg No. 5, 3:14
+				"rbxassetid://1842309221",   -- Catch As Cornet Can -- the most bustling of the four
+			},
+		},
+		["Ironcrest Keep"] = {
+			Tracks = {
+				"rbxassetid://1840747895",   -- Papal Might -- solemn and ceremonial
+				"rbxassetid://1837435717",   -- Redemption -- orchestra and choir
+				"rbxassetid://1837435800",   -- A Place for Kings -- brass-forward
+			},
+		},
+		-- The mage village and the spire share the arcane set.
+		Astravale = {
+			Tracks = {
+				"rbxassetid://85026511867827", -- Searching for Sorcery
+				"rbxassetid://9039951256",     -- Dance Of The Elves
+				"rbxassetid://1840049555",     -- Bells and Harp -- near-melodyless, sits under NPC chatter
+			},
+		},
+		["Spire of Eld"] = {
+			Tracks = {
+				"rbxassetid://1843291182",     -- Time Sphere Cymbalum -- darker, for the spire rather than the village
+				"rbxassetid://85026511867827", -- Searching for Sorcery
+				"rbxassetid://1840049555",     -- Bells and Harp
+			},
+		},
+	},
+
+	-- Every other settlement is a village and shares the folk set, rather than each needing its own theme
+	-- before it has been built.
+	DefaultZoneTracks = {
+		"rbxassetid://9044850771",   -- Gånglåt från Uppåkra -- solo violin folk
+		"rbxassetid://1840385289",   -- Connaught Man's Rambles -- Irish trad
+		"rbxassetid://1842316061",   -- Celtic Dance -- livelier
+		"rbxassetid://1842176562",   -- Olive Grove -- solo guitar, the sleepiest
+	},
+
+	-- After a settlement's track finishes, its theme stays quiet this long before starting another, so a
+	-- town is not a continuous soundtrack either.
+	ZoneGapSeconds = 600,
+}
+
+--------------------------------------------------------------------------------
 -- Ambience
 --------------------------------------------------------------------------------
 

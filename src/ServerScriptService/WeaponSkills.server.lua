@@ -53,6 +53,9 @@ local function damageAndScore(caster, victim, amount)
 	if Vitals.IsInvulnerable(victim) then return end
 	local wasDowned = Vitals.IsDowned(victim)
 	Vitals.ApplyDamage(victim, amount, "combat")
+	-- A skill landing is a blow like any other, so the music hears about it the same way.
+	Remotes.CombatHit:FireClient(caster)
+	if victim ~= caster then Remotes.CombatHit:FireClient(victim) end
 
 	-- A skill landing sounds like the weapon that cast it, the same as a swing landing. Without this a
 	-- skill dealt damage in total silence, which read as it having missed.

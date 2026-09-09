@@ -25,6 +25,9 @@ local EVENTS = {
 	-- each client time every other character keeps one authority on who stepped when, and costs one small
 	-- event per step instead of every client running a state machine per player.
 	"Footstep",
+	-- A real blow landing, sent to the two people in it so their music can react. Not fired for a swing at
+	-- air: music that swells every time someone practises on nothing would be constant.
+	"CombatHit",
 	-- Admin console: the command text in, the reply out. AdminCommand is guarded by a UserId allow-list on
 	-- the SERVER, so a non-admin firing it is refused exactly as if they had never found it.
 	"AdminCommand", "AdminMessage",
