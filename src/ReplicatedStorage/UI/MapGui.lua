@@ -8,6 +8,7 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local MapConfig = require(script.Parent.Parent.MapConfig)
+local MapTerrain = require(script.Parent.Parent.MapTerrain)
 local Responsive = require(script.Parent.Responsive)
 
 local MapGui = {}
@@ -190,21 +191,37 @@ function MapGui:buildCanvas()
 	self.baseSize = size
 	canvas.Size = UDim2.fromOffset(size, size)
 
-	-- Land: a rough island under everything else.
-	local land = Instance.new("Frame")
-	land.AnchorPoint = Vector2.new(0.5, 0.5)
-	land.Position = UDim2.fromScale(0.5, 0.5)
-	land.Size = UDim2.fromOffset(size * MapConfig.CoastRadius, size * MapConfig.CoastRadius)
-	land.BackgroundColor3 = MapConfig.LandColor
-	land.BorderSizePixel = 0
-	land.ZIndex = 1
-	land.Parent = canvas
-	corner(land, UDim.new(0.5, 0))
-
-	local sand = Instance.new("UIStroke")
-	sand.Color = MapConfig.SandColor
-	sand.Thickness = 6
-	sand.Parent = land
+	-- The land, drawn cell by cell from the sampled terrain. A circle was a lie: the real coast has bays,
+	-- headlands and an estuary, and the whole point of a map is to show them.
+	local cells = MapTerrain.Size
+	local cell = size / cells
+	for gz = 1, cells do
+		local row = MapTerrain.Heights[gz]
+		local gx = 1
+		while gx <= cells do
+			local h = row[gx]
+			if h ~= MapTerrain.Water then
+				-- Merge neighbouring cells of similar height into one frame: 6400 separate frames would
+				-- cost far more than the map is worth, and a run of coast is one shape anyway.
+				local band = MapConfig.BandFor(h)
+				local run = gx
+				while run < cells and row[run + 1] ~= MapTerrain.Water
+					and MapConfig.BandFor(row[run + 1]) == band do
+					run += 1
+				end
+				local piece = Instance.new("Frame")
+				piece.Position = UDim2.fromOffset((gx - 1) * cell, (gz - 1) * cell)
+				piece.Size = UDim2.fromOffset((run - gx + 1) * cell + 1, cell + 1)
+				piece.BackgroundColor3 = band.color
+				piece.BorderSizePixel = 0
+				piece.ZIndex = 1
+				piece.Parent = canvas
+				gx = run + 1
+			else
+				gx += 1
+			end
+		end
+	end
 
 	-- The grid, drawn in world units so a square means a known distance.
 	local step = size * (MapConfig.GridStuds / MapConfig.HalfSize) / 2

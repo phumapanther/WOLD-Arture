@@ -24,9 +24,24 @@ MapConfig.RiverColor = Color3.fromRGB(64, 108, 150)
 MapConfig.RoadColor = Color3.fromRGB(146, 124, 92)
 MapConfig.GridColor = Color3.fromRGB(210, 200, 170)
 
--- The coastline, as a rough circle the terrain generator also uses. Drawn as a filled shape rather than
--- traced exactly: a map is a diagram, not a survey.
-MapConfig.CoastRadius = 0.86
+-- Height bands, so the map reads as terrain rather than a flat silhouette: beach, lowland, forest, hill,
+-- mountain, snow. Ordered high to low; the first match wins. Heights are studs, from the real sample
+-- (measured range 0..497).
+MapConfig.Bands = {
+	{ min = 320, color = Color3.fromRGB(228, 230, 236) }, -- snow
+	{ min = 220, color = Color3.fromRGB(126, 122, 124) }, -- bare rock
+	{ min = 140, color = Color3.fromRGB(104, 106, 88) },  -- high ground
+	{ min = 80, color = Color3.fromRGB(78, 100, 62) },    -- forested hill
+	{ min = 20, color = Color3.fromRGB(92, 116, 68) },    -- lowland
+	{ min = 0, color = Color3.fromRGB(146, 138, 100) },   -- beach
+}
+
+function MapConfig.BandFor(height)
+	for _, band in ipairs(MapConfig.Bands) do
+		if height >= band.min then return band end
+	end
+	return MapConfig.Bands[#MapConfig.Bands]
+end
 
 -- Everywhere worth naming. `kind` picks the marker's colour and glyph.
 MapConfig.Places = {
