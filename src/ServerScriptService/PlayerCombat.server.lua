@@ -128,6 +128,12 @@ local function playHitSound(character, attacker)
 		seconds or CombatConfig.HitSoundMaxSeconds)
 end
 
+-- Published for WeaponSkills: a skill landing should sound like the weapon that cast it, and the rules for
+-- which sound that is -- and how loud, and how long -- already live here. Sharing the function keeps the
+-- two paths from drifting apart the way two copies would. Assigned AFTER the definition: a local is nil
+-- until its statement runs, so publishing it earlier would have shared nothing.
+CombatConfig.PlayWeaponHitSound = playHitSound
+
 -- The attacker's own sound: the swing, the bowstring, the spell leaving the book.
 local function playCastSound(player)
 	local cast = select(1, soundsFor(player))
