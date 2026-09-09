@@ -100,12 +100,21 @@ CombatConfig.Weapons = {
 -- and paste the ids here. An empty id is safe: that half simply stays silent, and `hit` falls back to
 -- VitalsConfig.HitSoundId so an unconfigured weapon still thumps like a punch.
 CombatConfig.Sounds = {
+	-- Bare fists. No cast sound -- a punch makes noise when it lands, not when it is thrown. The impact is
+	-- much quieter than any weapon: it is the most frequent sound in the game, and at weapon volume it
+	-- drowned everything else out. Given its own entry rather than lowering VitalsConfig.HitSoundVolume,
+	-- which is the fallback every weapon without its own hitVolume also reads.
+	Fists = {
+		cast = "",
+		hit = "rbxassetid://132299141332172",
+		hitVolume = 0.06,
+	},
 	Sword = {
 		cast = "rbxassetid://130522255329953", -- assets/sounds/sword_swing.mp3
 		hit = "rbxassetid://114083734266818",  -- assets/sounds/sword_hit.mp3
 		-- Steel on a body was the loudest thing in a fight and rang on far too long. Halved and cut short,
 		-- per weapon rather than globally, so the other three keep their own balance.
-		hitVolume = 0.15,
+		hitVolume = 0.09,
 		hitSeconds = 0.55,
 	},
 	Bow = {
@@ -135,6 +144,12 @@ CombatConfig.SkillSounds = {
 -- ratios between them are the tuned part -- the sword impact is deliberately quieter than a skill -- so
 -- they were scaled together rather than flattened to one number.
 CombatConfig.SkillSoundVolume = 0.27
+
+-- Per-skill overrides of the volume above; anything not listed uses it. LungeSlash was much louder than the
+-- other three in play, and the sword is the most used weapon, so its cast is the sound heard most often.
+CombatConfig.SkillSoundVolumes = {
+	LungeSlash = 0.027,
+}
 CombatConfig.SkillSoundMaxSeconds = 2.5
 CombatConfig.SkillSoundDistance = 110 -- a skill should be heard from further off than a swing
 

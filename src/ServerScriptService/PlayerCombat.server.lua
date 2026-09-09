@@ -108,7 +108,10 @@ end
 -- unconfigured weapon still thumps rather than landing in silence.
 local function soundsFor(player)
 	local _, entry = Inventory.EquippedWeapon(player)
-	local set = entry and CombatConfig.Sounds[entry.id]
+	-- Bare hands have no inventory entry, so they fall back to the default weapon key the same way weaponOf
+	-- resolves them. Without this the Fists sound entry could never be reached and punches took the generic
+	-- fallback volume instead of their own.
+	local set = CombatConfig.Sounds[entry and entry.id or CombatConfig.DefaultWeapon]
 	local hit = (set and set.hit ~= "" and set.hit) or VitalsConfig.HitSoundId
 	-- A weapon may override how loud and how long its impact is; the sword is much louder and longer than
 	-- the rest, so it says so here rather than every weapon being tuned to the noisiest one.

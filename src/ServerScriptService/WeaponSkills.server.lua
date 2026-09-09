@@ -308,7 +308,7 @@ Remotes.RequestSkill.OnServerEvent:Connect(function(player)
 	if soundId and skillRoot then
 		local sound = Instance.new("Sound")
 		sound.SoundId = soundId
-		sound.Volume = CombatConfig.SkillSoundVolume
+		sound.Volume = CombatConfig.SkillSoundVolumes[skill.id] or CombatConfig.SkillSoundVolume
 		sound.RollOffMaxDistance = CombatConfig.SkillSoundDistance
 		sound.Parent = skillRoot
 		sound:Play()

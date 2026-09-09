@@ -43,13 +43,13 @@ end
 -- action stops rather than left to run out, so a short slide is heard for exactly as long as it lasts.
 -- The clips begin with a moment of silence; skipping past it makes the sound land on the first frame
 -- instead of after the slide has already ended.
-local function startSound(character, soundId)
+local function startSound(character, soundId, volume)
 	if not character or not soundId or soundId == "" then return nil end
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return nil end
 	local sound = Instance.new("Sound")
 	sound.SoundId = soundId
-	sound.Volume = ActionConfig.SoundVolume
+	sound.Volume = volume
 	sound.RollOffMaxDistance = ActionConfig.SoundDistance
 	sound.Looped = true -- a slide can outlast the clip; looping is better than falling silent mid-slide
 	sound.TimePosition = ActionConfig.SoundStartOffset
@@ -125,7 +125,7 @@ Remotes.RequestRoll.OnServerEvent:Connect(function(player, direction)
 	-- A heavily loaded player rolls half as far: carrying a plate armor and a full bag should cost agility.
 	local penalty = Inventory.IsHeavilyLoaded(player) and InventoryConfig.HeavyActionPenalty or 1
 	state.mover, state.attachment = startMover(character, flat, cfg.speed * penalty)
-	state.sound = startSound(character, cfg.sound)
+	state.sound = startSound(character, cfg.sound, ActionConfig.RollVolume)
 
 	Remotes.MoveStateChanged:FireAllClients(player, "roll")
 end)
@@ -162,7 +162,7 @@ Remotes.RequestSlide.OnServerEvent:Connect(function(player)
 	state.speed = cfg.startSpeed * penalty
 	humanoid.AutoRotate = false
 	state.mover, state.attachment = startMover(character, flat, state.speed)
-	state.sound = startSound(character, cfg.sound)
+	state.sound = startSound(character, cfg.sound, ActionConfig.SlideVolume)
 
 	Remotes.MoveStateChanged:FireAllClients(player, "slide")
 end)

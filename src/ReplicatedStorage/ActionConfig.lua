@@ -43,7 +43,10 @@ ActionConfig.Slide = {
 -- exactly as long as it lasts. The clips open on a moment of silence, which would make a short slide sound
 -- like nothing at all; TimePosition skips past it so the sound is there from the first frame.
 ActionConfig.SoundStartOffset = 0.06
-ActionConfig.SoundVolume = 0.18
+-- Per action: a roll happens constantly while a slide is occasional, so the roll was the sound that wore
+-- thin first. They shared one value until the roll alone needed to come down.
+ActionConfig.RollVolume = 0.054
+ActionConfig.SlideVolume = 0.18
 ActionConfig.SoundDistance = 60
 
 --------------------------------------------------------------------------------
