@@ -25,15 +25,17 @@ MapConfig.RoadColor = Color3.fromRGB(146, 124, 92)
 MapConfig.GridColor = Color3.fromRGB(210, 200, 170)
 
 -- Height bands, so the map reads as terrain rather than a flat silhouette: beach, lowland, forest, hill,
--- mountain, snow. Ordered high to low; the first match wins. Heights are studs, from the real sample
--- (measured range 0..497).
+-- mountain, snow. Ordered high to low; the first match wins. Heights are studs, from the real sample:
+-- half the land is under 81 studs but the peaks reach 1998, so the bands are spaced to match that spread
+-- rather than being evenly divided.
 MapConfig.Bands = {
-	{ min = 320, color = Color3.fromRGB(228, 230, 236) }, -- snow
-	{ min = 220, color = Color3.fromRGB(126, 122, 124) }, -- bare rock
-	{ min = 140, color = Color3.fromRGB(104, 106, 88) },  -- high ground
-	{ min = 80, color = Color3.fromRGB(78, 100, 62) },    -- forested hill
-	{ min = 20, color = Color3.fromRGB(92, 116, 68) },    -- lowland
-	{ min = 0, color = Color3.fromRGB(146, 138, 100) },   -- beach
+	{ min = 1500, color = Color3.fromRGB(238, 240, 246) }, -- snow cap
+	{ min = 1000, color = Color3.fromRGB(150, 148, 152) }, -- bare rock
+	{ min = 600, color = Color3.fromRGB(112, 110, 96) },   -- high slopes
+	{ min = 260, color = Color3.fromRGB(88, 104, 70) },    -- upland
+	{ min = 100, color = Color3.fromRGB(78, 104, 62) },    -- forested hill
+	{ min = 16, color = Color3.fromRGB(104, 128, 74) },    -- lowland
+	{ min = 0, color = Color3.fromRGB(158, 148, 108) },    -- beach
 }
 
 function MapConfig.BandFor(height)

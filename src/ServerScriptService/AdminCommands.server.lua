@@ -253,6 +253,22 @@ Commands.level = function(admin, args)
 	reply(admin, ("%s เลเวล %d แล้ว"):format(target.Name, Progression.GetLevel(target)))
 end
 
+-- /fly [speed] -- บิน
+-- Flight itself runs on the admin's own client (it owns the character's physics); this only grants it,
+-- which is the half that must be checked server-side.
+Commands.fly = function(admin, args)
+	local speed = tonumber(args[1])
+	speed = speed and math.clamp(speed, 10, 400) or nil
+	Remotes.AdminFly:FireClient(admin, "toggle", speed)
+	reply(admin, "สลับโหมดบิน (กด Space ขึ้น, Shift ลง, WASD เคลื่อนที่)")
+end
+
+-- /land -- ลงพื้น, for when flight has been left on somewhere awkward
+Commands.land = function(admin)
+	Remotes.AdminFly:FireClient(admin, "off")
+	reply(admin, "ลงพื้นแล้ว")
+end
+
 -- /items -- the catalog ids, since /give needs them
 Commands.items = function(admin)
 	local ids = {}
@@ -271,6 +287,7 @@ Commands.admin = function(admin)
 		"/goto <x> <y> <z> - วาปไปพิกัด",
 		"/role <อาชีพ> [คน]    /unrole [คน]",
 		"/kill [คน]    /heal [คน]    /level <n> [คน]",
+		"/fly [ความเร็ว]  /land - บิน / ลงพื้น",
 		"/items - รายชื่อไอเทม",
 	}, "\n"))
 end

@@ -9,12 +9,15 @@
 -- Sample the real terrain by raycasting a grid: one ray per cell, straight down. Slower than ReadVoxels
 -- but it has no region limit and reports exactly what a player would stand on.
 local HALF = 8000
-local N = 80
+local N = 120
 local STEP = (HALF * 2) / N
 
+-- The map draws the LAND, so only terrain counts. Including parts meant sampling trees, buildings and --
+-- as this found -- a batch of cave ore props stranded at y=2859, which reported the mountains as being
+-- nearly two thousand studs tall.
 local params = RaycastParams.new()
-params.FilterType = Enum.RaycastFilterType.Exclude
-params.FilterDescendantsInstances = {}
+params.FilterType = Enum.RaycastFilterType.Include
+params.FilterDescendantsInstances = { workspace.Terrain }
 params.IgnoreWater = false
 
 local rows = {}
@@ -26,7 +29,9 @@ for gz = 0, N - 1 do
     local z = -HALF + (gz + 0.5) * STEP
     for gx = 0, N - 1 do
         local x = -HALF + (gx + 0.5) * STEP
-        local hit = workspace:Raycast(Vector3.new(x, 500, z), Vector3.new(0, -900, 0), params)
+        -- Start well ABOVE the tallest peak. The first sample started at y=500 with summits reaching 497,
+        -- so the highest ground was missed entirely and the mountains came out full of holes.
+        local hit = workspace:Raycast(Vector3.new(x, 2000, z), Vector3.new(0, -2600, 0), params)
         if hit then
             local h = hit.Position.Y
             local isWater = hit.Material == Enum.Material.Water
@@ -42,7 +47,7 @@ for gz = 0, N - 1 do
         end
     end
     rows[gz + 1] = table.concat(row, ",")
-    if gz % 20 == 0 then task.wait() end -- let the frame breathe on a big sample
+    if gz % 15 == 0 then task.wait() end -- let the frame breathe on a big sample
 end
 
 return ("N=%d land=%d water=%d miss=%d heights %d..%d\n%s"):format(

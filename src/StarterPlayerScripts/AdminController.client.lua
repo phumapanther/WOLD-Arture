@@ -173,3 +173,125 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 append("พิมพ์ /admin เพื่อดูคำสั่งทั้งหมด", ACCENT)
+
+--------------------------------------------------------------------------------
+-- Flight
+--------------------------------------------------------------------------------
+-- Driven here rather than on the server because the client owns its character's physics: a server-side
+-- mover fights the client for the same parts and stutters. The SERVER still decides who may fly -- this
+-- only listens for permission it granted.
+--
+-- Built from BodyVelocity/BodyGyro rather than by setting CFrame every frame, so the character keeps
+-- colliding with the world instead of passing through it while being scrubbed into place.
+
+local RunService = game:GetService("RunService")
+local ContextActionService = game:GetService("ContextActionService")
+
+local flying = false
+local flySpeed = 90
+local flyConnection, velocity, gyro
+local flyKeys = {}
+
+local function stopFlying()
+	flying = false
+	if flyConnection then
+		flyConnection:Disconnect()
+		flyConnection = nil
+	end
+	if velocity then velocity:Destroy() velocity = nil end
+	if gyro then gyro:Destroy() gyro = nil end
+
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.PlatformStand = false
+		-- Back to whatever the movement system wants; it sets WalkSpeed every tick anyway.
+		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)
+	end
+	for _, key in ipairs({ "WOLD_FlyUp", "WOLD_FlyDown" }) do
+		pcall(function() ContextActionService:UnbindAction(key) end)
+	end
+	flyKeys = {}
+	append("ลงพื้นแล้ว", ACCENT)
+end
+
+local function startFlying()
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not root or not humanoid then
+		append("ตัวละครยังไม่พร้อม", Color3.fromRGB(220, 120, 110))
+		return
+	end
+
+	flying = true
+	-- PlatformStand stops the humanoid trying to walk and fall while the movers hold it up.
+	humanoid.PlatformStand = true
+
+	velocity = Instance.new("BodyVelocity")
+	velocity.MaxForce = Vector3.new(1, 1, 1) * 1e6
+	velocity.Velocity = Vector3.zero
+	velocity.Parent = root
+
+	gyro = Instance.new("BodyGyro")
+	gyro.MaxTorque = Vector3.new(1, 1, 1) * 1e6
+	gyro.P = 9000
+	gyro.CFrame = root.CFrame
+	gyro.Parent = root
+
+	-- Space and Shift are claimed while flying so jumping does not fight the climb.
+	ContextActionService:BindAction("WOLD_FlyUp", function(_, state)
+		flyKeys.up = state == Enum.UserInputState.Begin
+		return Enum.ContextActionResult.Sink
+	end, false, Enum.KeyCode.Space)
+	ContextActionService:BindAction("WOLD_FlyDown", function(_, state)
+		flyKeys.down = state == Enum.UserInputState.Begin
+		return Enum.ContextActionResult.Sink
+	end, false, Enum.KeyCode.LeftShift)
+
+	flyConnection = RunService.RenderStepped:Connect(function()
+		if not flying then return end
+		local char = player.Character
+		local hrp = char and char:FindFirstChild("HumanoidRootPart")
+		local hum = char and char:FindFirstChildOfClass("Humanoid")
+		if not hrp or not hum then
+			stopFlying()
+			return
+		end
+
+		local camera = workspace.CurrentCamera
+		-- Move where the camera looks, which is what "fly" means when the point is to survey the map.
+		local move = hum.MoveDirection
+		local direction = Vector3.zero
+		if move.Magnitude > 0.1 then
+			-- MoveDirection is already in world space and camera-relative, so it needs no rotating.
+			direction = move
+		end
+		if flyKeys.up then direction = direction + Vector3.new(0, 1, 0) end
+		if flyKeys.down then direction = direction - Vector3.new(0, 1, 0) end
+
+		velocity.Velocity = direction.Magnitude > 0 and direction.Unit * flySpeed or Vector3.zero
+		gyro.CFrame = CFrame.new(hrp.Position, hrp.Position + camera.CFrame.LookVector)
+	end)
+
+	append(("บินอยู่ (ความเร็ว %d) — Space ขึ้น, Shift ลง, /land เพื่อลง"):format(flySpeed), ACCENT)
+end
+
+Remotes.AdminFly.OnClientEvent:Connect(function(action, speed)
+	if speed then flySpeed = speed end
+	if action == "off" then
+		if flying then stopFlying() end
+	elseif action == "toggle" then
+		if flying then stopFlying() else startFlying() end
+	end
+end)
+
+-- A respawn destroys the movers with the old rig, so the flag has to be cleared or the next /fly toggles
+-- flight OFF instead of on.
+player.CharacterAdded:Connect(function()
+	if flying then
+		flying = false
+		if flyConnection then flyConnection:Disconnect() flyConnection = nil end
+		velocity, gyro = nil, nil
+	end
+end)
