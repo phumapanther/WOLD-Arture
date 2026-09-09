@@ -401,11 +401,15 @@ end
 -- canvas pixels back to normalized, then normalized back to studs.
 function MapGui:pinAt(screenPosition)
 	local canvas = self.canvas
-	local scale = self.canvasScale.Scale
-	-- Where the tap landed inside the canvas, in the canvas s own unscaled pixel space.
-	local local2d = (Vector2.new(screenPosition.X, screenPosition.Y) - canvas.AbsolutePosition) / scale
-	local nx = (local2d.X / self.baseSize) * 2 - 1
-	local nz = (local2d.Y / self.baseSize) * 2 - 1
+	-- Measured from what is actually on screen, not from the scale factors. The canvas sits under TWO
+	-- UIScales: its own zoom, and the responsive scale on the panel, which is 1.0 on a wide window and
+	-- less on a narrow one. Dividing by the zoom alone was therefore correct at full size and increasingly
+	-- wrong as the window shrank. AbsoluteSize already has both applied.
+	local drawn = canvas.AbsoluteSize
+	if drawn.X <= 0 or drawn.Y <= 0 then return end
+	local local2d = Vector2.new(screenPosition.X, screenPosition.Y) - canvas.AbsolutePosition
+	local nx = (local2d.X / drawn.X) * 2 - 1
+	local nz = (local2d.Y / drawn.Y) * 2 - 1
 	if nx < -1 or nx > 1 or nz < -1 or nz > 1 then return end
 
 	local x, z = MapConfig.ToWorld(nx, nz)

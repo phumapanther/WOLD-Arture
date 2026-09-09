@@ -107,6 +107,26 @@ local function scrollList(parent, padding)
 	return list, layout
 end
 
+-- Pages whose contents are positioned in fixed pixels can be taller than the stone on a short screen, so
+-- they scroll. AutomaticCanvasSize means the canvas is exactly as tall as the content, which makes this a
+-- no-op wherever the whole page already fits.
+local function scrollPage(parent, name, contentHeight)
+	local page = Instance.new("ScrollingFrame")
+	page.Name = name
+	page.Size = UDim2.fromScale(1, 1)
+	page.BackgroundTransparency = 1
+	page.BorderSizePixel = 0
+	page.ScrollBarThickness = 4
+	page.ScrollBarImageColor3 = RUNE
+	page.ScrollingDirection = Enum.ScrollingDirection.Y
+	page.Visible = false
+	-- These pages position children absolutely rather than with a layout, so AutomaticCanvasSize has
+	-- nothing to measure; the height is stated instead.
+	page.CanvasSize = UDim2.new(0, 0, 0, contentHeight)
+	page.Parent = parent
+	return page
+end
+
 --------------------------------------------------------------------------------
 
 function SocialGui.new()
@@ -243,19 +263,35 @@ end
 --------------------------------------------------------------------------------
 
 function SocialGui:buildHome()
-	local page = Instance.new("Frame")
+	-- A ScrollingFrame, not a plain one: nine tiles need three rows, and a landscape phone is short enough
+	-- that the last row falls off the bottom of the stone. Scrolling costs nothing on a screen tall enough
+	-- to show them all, because the canvas only grows to fit what is there.
+	local page = Instance.new("ScrollingFrame")
 	page.Name = "home"
 	page.Size = UDim2.fromScale(1, 1)
 	page.BackgroundTransparency = 1
+	page.BorderSizePixel = 0
+	page.ScrollBarThickness = 4
+	page.ScrollBarImageColor3 = RUNE
+	page.ScrollingDirection = Enum.ScrollingDirection.Y
+	page.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	page.CanvasSize = UDim2.new()
 	page.Parent = self.body
 	self.screens.home = page
 
 	local grid = Instance.new("UIGridLayout")
-	grid.CellSize = UDim2.new(0.33, -8, 0, 92)
+	-- Tiles shrink a little on a small screen so three fit across without the scroll bar clipping one.
+	grid.CellSize = UDim2.new(0.33, -10, 0, Responsive.IsSmallScreen() and 82 or 92)
 	grid.CellPadding = UDim2.fromOffset(8, 8)
 	grid.SortOrder = Enum.SortOrder.LayoutOrder
 	grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	grid.Parent = page
+
+	-- Without padding the last row sits flush against the bottom edge and reads as cut off even when it
+	-- has scrolled fully into view.
+	local pad = Instance.new("UIPadding")
+	pad.PaddingBottom = UDim.new(0, 10)
+	pad.Parent = page
 
 	for i, screen in ipairs(SocialConfig.Screens) do
 		local tile = Instance.new("TextButton")
@@ -650,12 +686,7 @@ end
 --------------------------------------------------------------------------------
 
 function SocialGui:buildBank()
-	local page = Instance.new("Frame")
-	page.Name = "bank"
-	page.Size = UDim2.fromScale(1, 1)
-	page.BackgroundTransparency = 1
-	page.Visible = false
-	page.Parent = self.body
+	local page = scrollPage(self.body, "bank", 260)
 	self.screens.bank = page
 
 	-- The two balances, side by side, because the whole point is the difference between them.
@@ -719,12 +750,7 @@ end
 --------------------------------------------------------------------------------
 
 function SocialGui:buildProfile()
-	local page = Instance.new("Frame")
-	page.Name = "profile"
-	page.Size = UDim2.fromScale(1, 1)
-	page.BackgroundTransparency = 1
-	page.Visible = false
-	page.Parent = self.body
+	local page = scrollPage(self.body, "profile", 380)
 	self.screens.profile = page
 
 	local face = Instance.new("ImageLabel")
