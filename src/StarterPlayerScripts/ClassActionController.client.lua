@@ -35,7 +35,7 @@ end
 
 local function myActions()
 	local list = {}
-	for _, tier in ipairs({ "WOLD_ClassBasic", "WOLD_ClassAdvanced" }) do
+	for _, tier in ipairs({ "WOLD_ClassBasic", "WOLD_ClassAdvanced", "WOLD_ClassElite" }) do
 		for _, action in ipairs(ClassActionConfig.ForClass(player:GetAttribute(tier))) do
 			-- Two classes can grant the same action (Rogue and Beggar both rob); one prompt is enough.
 			local seen = false
@@ -120,7 +120,7 @@ Players.PlayerAdded:Connect(watch)
 Players.PlayerRemoving:Connect(clearPrompts)
 
 -- Our own class changing changes every prompt in the world.
-for _, tier in ipairs({ "WOLD_ClassBasic", "WOLD_ClassAdvanced" }) do
+for _, tier in ipairs({ "WOLD_ClassBasic", "WOLD_ClassAdvanced", "WOLD_ClassElite" }) do
 	player:GetAttributeChangedSignal(tier):Connect(rebuildAll)
 end
 

@@ -22,7 +22,7 @@ local MarkedUntil = {} -- [player] = os.clock() deadline while marked for a fail
 --------------------------------------------------------------------------------
 
 local function blank()
-	return { basic = nil, advanced = nil }
+	return { basic = nil, advanced = nil, elite = nil }
 end
 
 -- Puts a saved id in the slot its tier belongs to. Unknown ids (renamed or removed since the save) are
@@ -40,6 +40,7 @@ function Classes.Add(player, saved)
 	if type(saved) == "table" then
 		place(state, saved.Basic)
 		place(state, saved.Advanced)
+		place(state, saved.Elite)
 	elseif type(saved) == "string" then
 		place(state, saved) -- an old Role value: Guard/Priest/Architect are advanced, Merchant is basic
 	end
@@ -69,15 +70,15 @@ end
 function Classes.Has(player, classId)
 	local state = Held[player]
 	if not state then return false end
-	return state.basic == classId or state.advanced == classId
+	return state.basic == classId or state.advanced == classId or state.elite == classId
 end
 
--- The class whose colour should paint the name: the advanced one if there is one, since it outranks the
--- basic choice and is the more interesting fact about a player.
+-- The class whose colour should paint the name: the highest one held. An elite class outranks an advanced
+-- one, which outranks the basic choice, and the highest is the most interesting fact about a player.
 function Classes.Primary(player)
 	local state = Held[player]
 	if not state then return nil end
-	return state.advanced or state.basic
+	return state.elite or state.advanced or state.basic
 end
 
 -- The level `tier` was last offered at, or nil. Nil means "never offered", which is what a fresh
@@ -103,6 +104,7 @@ function Classes.Replicate(player)
 	local state = Held[player] or blank()
 	player:SetAttribute("WOLD_ClassBasic", state.basic)
 	player:SetAttribute("WOLD_ClassAdvanced", state.advanced)
+	player:SetAttribute("WOLD_ClassElite", state.elite)
 	player:SetAttribute("WOLD_Marked", Classes.IsMarked(player) or nil)
 end
 
@@ -171,6 +173,7 @@ function Classes.ResetOnDeath(player)
 	-- brand new one is.
 	state.basic = ClassConfig.DefaultClass
 	state.advanced = nil
+	state.elite = nil
 	-- Cleared so climbing back to level 5 counts as reaching it again and offers the card.
 	Offered[player] = {}
 	-- The mark goes too: it is tied to a life, and ten minutes of shame that outlived the death would be
@@ -185,7 +188,8 @@ function Classes.Serialize(player)
 	if not state then return nil end
 	-- The mark is deliberately NOT saved: ten minutes of shame should not survive a rejoin, or hiding from
 	-- it would be a matter of pressing the rejoin button.
-	return { Basic = state.basic, Advanced = state.advanced, Offered = Offered[player] or {} }
+	return { Basic = state.basic, Advanced = state.advanced, Elite = state.elite,
+		Offered = Offered[player] or {} }
 end
 
 return Classes

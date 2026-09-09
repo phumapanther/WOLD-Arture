@@ -67,6 +67,7 @@ function ClassCardGui.new()
 	corner(panel, UDim.new(0, 14))
 	stroke(panel, RUNE, 0.55, 2)
 	Responsive.Scale(panel)
+	self.panel = panel
 
 	local title = Instance.new("TextLabel")
 	title.Name = "Title"
@@ -122,8 +123,11 @@ function ClassCardGui:Show(tier, classIds)
 	end
 
 	local level = ClassConfig.LevelFor(tier)
-	self.title.Text = (tier == "advanced") and "เลือกอาชีพขั้นสูง" or "เลือกอาชีพ"
-	self.subtitle.Text = ("ถึงเลเวล %d แล้ว — เลือกได้ครั้งเดียว เปลี่ยนได้ต่อเมื่อตายแล้วไต่กลับมาใหม่")
+	local heading = "เลือกอาชีพ"
+	if tier == "advanced" then heading = "เลือกอาชีพขั้นสูง"
+	elseif tier == "elite" then heading = "เลือกยศสูงสุด" end
+	self.title.Text = heading
+	self.subtitle.Text = ("ถึงเลเวล %d แล้ว — ไม่เลือกตอนนี้ก็ได้ ถึงเลเวลนี้อีกครั้งจะถามใหม่")
 		:format(level or 0)
 
 	for i, id in ipairs(classIds or {}) do
@@ -171,6 +175,35 @@ function ClassCardGui:Show(tier, classIds)
 			end)
 		end
 	end
+
+	-- Rebuilt only if it is missing: Show runs every time the card appears, and a fresh button each time
+	-- would stack them on top of each other.
+	if self.skipButton then
+		self.gui.Enabled = true
+		return
+	end
+
+	-- A way to say no. Keeping the class you already have is a real choice -- an advanced class is not
+	-- automatically better than staying what you are -- and a card with no exit forces a decision that the
+	-- player may not want to make yet. The card comes back on reaching the level again.
+	local skip = Instance.new("TextButton")
+	skip.Name = "Skip"
+	skip.AnchorPoint = Vector2.new(0.5, 1)
+	skip.Position = UDim2.new(0.5, 0, 1, -8)
+	skip.Size = UDim2.fromOffset(180, 30)
+	skip.BackgroundColor3 = Color3.fromRGB(70, 74, 84)
+	skip.BorderSizePixel = 0
+	skip.Font = Enum.Font.GothamBold
+	skip.TextSize = 13
+	skip.TextColor3 = TEXT_MUTED
+	skip.Text = "ยังไม่เลือกตอนนี้"
+	skip.Parent = self.panel
+	corner(skip, UDim.new(0, 8))
+	skip.Activated:Connect(function()
+		UiSound.Play("Click")
+		self:Hide()
+	end)
+	self.skipButton = skip
 
 	self.gui.Enabled = true
 end

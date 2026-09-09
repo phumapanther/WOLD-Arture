@@ -32,6 +32,7 @@ if workspace:GetAttribute("IsLobby") then return end -- commands only exist in c
 local function hasCommands()
 	if ADMINS[player.UserId] then return true end
 	return player:GetAttribute("WOLD_ClassAdvanced") ~= nil
+		or player:GetAttribute("WOLD_ClassElite") ~= nil
 end
 
 --------------------------------------------------------------------------------

@@ -40,6 +40,9 @@ local function tierToOffer(player)
 	--
 	-- The offered-at check is still needed on top: without it, closing the card and rejoining at the same
 	-- level would show it again.
+	if level == ClassConfig.EliteLevel and Classes.OfferedAt(player, "elite") ~= level then
+		return "elite", level
+	end
 	if level == ClassConfig.AdvancedLevel and Classes.OfferedAt(player, "advanced") ~= level then
 		return "advanced", level
 	end

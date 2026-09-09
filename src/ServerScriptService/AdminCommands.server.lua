@@ -332,12 +332,77 @@ Commands.announce = function(admin, args)
 	Remotes.ClassAnnouncement:FireAllClients("admin", name, text)
 end
 
+--------------------------------------------------------------------------------
+-- The noble's commands of state
+--------------------------------------------------------------------------------
+
+-- A noble at the level cap governs, which is not the same as administering. They may move people about,
+-- heal, and speak to the server -- the things a ruler does.
+--
+-- They may NOT conjure items, gold or levels, hand out classes, or become invulnerable. Those are not
+-- powers of office, they are powers over the economy: one noble with /give would end item scarcity for the
+-- whole server, and there is no way to undo that once it has happened.
+--
+-- Written as their own functions rather than by pointing at the admin ones, so nobody later adds a
+-- dangerous command to a shared list and quietly hands it to every noble.
+local NobleCommands = {}
+
+-- /summon <player> -- เรียกตัวมาหา
+NobleCommands.summon = function(noble, args)
+	local target = findPlayer(args[1])
+	if not target then return reply(noble, "ไม่เจอคนชื่อนี้") end
+	if target == noble then return reply(noble, "เรียกตัวเองไม่ได้") end
+	local mine, theirs = rootOf(noble), rootOf(target)
+	if not mine or not theirs then return reply(noble, "ตัวละครยังไม่พร้อม") end
+	theirs.CFrame = mine.CFrame * CFrame.new(0, 0, -4)
+	reply(noble, ("เรียก %s มาแล้ว"):format(target.Name))
+end
+
+-- /goto <player> -- ไปหา
+NobleCommands["goto"] = function(noble, args)
+	local target = findPlayer(args[1])
+	if not target then return reply(noble, "ไม่เจอคนชื่อนี้") end
+	if target == noble then return reply(noble, "ไปหาตัวเองไม่ได้") end
+	local mine, theirs = rootOf(noble), rootOf(target)
+	if not mine or not theirs then return reply(noble, "ตัวละครยังไม่พร้อม") end
+	mine.CFrame = theirs.CFrame * CFrame.new(0, 0, 4)
+	reply(noble, ("ไปหา %s แล้ว"):format(target.Name))
+end
+
+-- /bless <player> -- ฮีลเต็ม
+NobleCommands.bless = function(noble, args)
+	local target = args[1] and findPlayer(args[1]) or noble
+	if not target then return reply(noble, "ไม่เจอคนชื่อนี้") end
+	Vitals.Heal(target, Progression.MaxHP(target))
+	Vitals.Feed(target, 1000)
+	reply(noble, ("ให้พร %s แล้ว"):format(target.Name))
+end
+
+-- /fly, /land -- ตรวจการณ์จากที่สูง
+NobleCommands.fly = function(noble)
+	Remotes.AdminFly:FireClient(noble, true)
+	reply(noble, "สลับโหมดบิน (กด Space ขึ้น, Shift ลง, WASD เคลื่อนที่)")
+end
+
+NobleCommands.land = function(noble)
+	Remotes.AdminFly:FireClient(noble, false)
+	reply(noble, "ลงพื้นแล้ว")
+end
+
 -- /help -- คำสั่งที่อาชีพของคุณใช้ได้
 ClassCommands.help = function(player, args, classId)
-	reply(player, table.concat({
+	local lines = {
 		("คำสั่งของ%s"):format(ClassConfig.DisplayName(classId)),
 		"/announce <ข้อความ> - ประกาศให้ทุกคนเห็น",
-	}, "\n"))
+	}
+	-- A noble sees the commands of state on top of the shared ones.
+	if Classes.Has(player, "Noble") then
+		table.insert(lines, "/summon <คน> - เรียกตัวมาหา")
+		table.insert(lines, "/goto <คน> - ไปหา")
+		table.insert(lines, "/bless [คน] - ฮีลเต็ม")
+		table.insert(lines, "/fly    /land - บิน/ลงพื้น")
+	end
+	reply(player, table.concat(lines, "\n"))
 end
 
 -- /announce <text> -- ประกาศจากอาชีพของคุณ
@@ -357,8 +422,9 @@ end
 local ClassCooldowns = {} -- [player] = os.clock() deadline
 
 local function mayRunClassCommand(player)
-	-- Only an ADVANCED class carries commands: a basic one would mean every villager could announce.
-	local classId = Classes.Get(player, "advanced")
+	-- An advanced OR elite class carries commands: a basic one would mean every villager could announce.
+	-- Elite first, because it is the higher office and should be the one that speaks.
+	local classId = Classes.Get(player, "elite") or Classes.Get(player, "advanced")
 	if not classId then return nil end
 	local until_ = ClassCooldowns[player]
 	if until_ and os.clock() < until_ then
@@ -390,6 +456,19 @@ local function dispatch(player, message)
 	local command = isAdmin(player) and Commands[name] or nil
 
 	if not command then
+		-- A noble's commands of state, which only a noble may run. Checked before the shared class commands
+		-- so the two tables can hold the same name without one shadowing the other.
+		if Classes.Has(player, "Noble") then
+			local nobleCommand = NobleCommands[name]
+			if nobleCommand then
+				local okNoble, errNoble = pcall(nobleCommand, player, parts)
+				if not okNoble then
+					reply(player, ("คำสั่งพัง: %s"):format(tostring(errNoble)))
+				end
+				return
+			end
+		end
+
 		-- Not an admin command they may run: try the class commands, which anyone with the right class may.
 		local classCommand = ClassCommands[name]
 		if classCommand then

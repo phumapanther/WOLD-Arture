@@ -10,6 +10,9 @@ local ClassConfig = {}
 
 ClassConfig.BasicLevel = 5
 ClassConfig.AdvancedLevel = 50
+-- The level cap. A class here is the end of a whole climb, and dying takes it like any other -- which is
+-- what stops "noble" being a permanent aristocracy.
+ClassConfig.EliteLevel = 100
 
 -- Keys are what is stored in the profile; `name` is what a player sees. `color` paints the nametag.
 --
@@ -66,10 +69,13 @@ ClassConfig.Classes = {
 		color = Color3.fromRGB(255, 140, 0),
 		blurb = "ซ่อมของทั้งตัว",
 	},
+	--------------------------------------------------------------------------
+	-- Elite, chosen at level 100 -- the cap.
+	--------------------------------------------------------------------------
 	Noble = {
-		name = "ขุนนาง", tier = "advanced",
+		name = "ขุนนาง", tier = "elite",
 		color = Color3.fromRGB(255, 215, 0),
-		blurb = "จับกุม ยึดของ ปรับเงิน",
+		blurb = "จับกุม ยึดของ ปรับเงิน สั่งการบ้านเมือง",
 	},
 	Chef = {
 		name = "เชฟ", tier = "advanced",
@@ -121,6 +127,7 @@ end
 function ClassConfig.LevelFor(tier)
 	if tier == "basic" then return ClassConfig.BasicLevel end
 	if tier == "advanced" then return ClassConfig.AdvancedLevel end
+	if tier == "elite" then return ClassConfig.EliteLevel end
 	return nil
 end
 
@@ -128,6 +135,7 @@ end
 function ClassConfig.TierUnlockedAt(level)
 	if level == ClassConfig.BasicLevel then return "basic" end
 	if level == ClassConfig.AdvancedLevel then return "advanced" end
+	if level == ClassConfig.EliteLevel then return "elite" end
 	return nil
 end
 
