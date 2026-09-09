@@ -203,6 +203,29 @@ SoundscapeConfig.Water = {
 }
 
 --------------------------------------------------------------------------------
+-- Lobby music
+--------------------------------------------------------------------------------
+
+-- Plays on the channel-select screen while people browse and wait. Every track below comes from
+-- DistrokidOfficial or APMOfficial, which are Roblox's own licensed-music partner accounts rather than
+-- community re-uploads, so publishing the game carries no takedown risk. All were load-tested here.
+SoundscapeConfig.LobbyMusic = {
+	Tracks = {
+		-- Cozy Tavern Ambience II, 5:10. The default: long enough that most players never hear it loop
+		-- while picking a server, and the tavern mood lands on medieval-fantasy without being battle music.
+		"rbxassetid://93280438567176",
+		"rbxassetid://118107681971739", -- Cozy Tavern Ambience IX, 4:49
+		"rbxassetid://140595275946952", -- Greensleeves Variations, 5:05 -- the most literally medieval
+		"rbxassetid://138384771239589", -- Cozy Tavern Ambience VII, 3:42
+		"rbxassetid://1843259503",      -- Hush Nightingale, 3:56 -- soft and pastoral
+	},
+	Volume = 0.25,
+	-- Fades in on arrival rather than starting at full, and fades out when a channel is joined so the music
+	-- does not cut off mid-note as the screen blacks out for the teleport.
+	FadeSeconds = 2,
+}
+
+--------------------------------------------------------------------------------
 -- Ambience
 --------------------------------------------------------------------------------
 

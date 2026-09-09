@@ -75,6 +75,8 @@ local function resetToError()
 	-- flight per client); Stories/Tanding aren't real per-channel tables (see ChannelSelectGui.new), so they're excluded.
 	locked = false
 	gui:Unlock() -- only a failed/timed-out join reaches here; a successful one blacks out the screen for good
+	-- Still in the lobby after all, so the music comes back with the screen.
+	workspace:SetAttribute("WOLD_MusicFadeOut", false)
 	for channel in pairs(gui.rows.Roleplay) do
 		gui:SetRowStatus("Roleplay", channel, "error")
 	end
@@ -91,6 +93,10 @@ local function onJoin(mode, channel)
 	-- click, not once the server answers, so a second click during the (network) gap in between is impossible.
 	locked = true
 	gui:Lock()
+	-- Fade the lobby music out with the screen, so it does not cut off mid-note at the teleport.
+	-- An attribute rather than a direct call: LobbyMusicController owns the music, and this only has to
+	-- say that the lobby is being left.
+	workspace:SetAttribute("WOLD_MusicFadeOut", true)
 	gui:SetRowStatus(mode, channel, "connecting")
 	Remotes.JoinChannel:FireServer(mode, channel)
 	pendingJoin += 1
