@@ -16,13 +16,13 @@ local ServerConfig = require(game.ServerScriptService.ServerConfig)
 if ServerConfig.IsLobby then return end -- nothing to administer in the lobby
 
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
-local RoleConfig = require(game.ReplicatedStorage.RoleConfig)
+local ClassConfig = require(game.ReplicatedStorage.ClassConfig)
 local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
 local Progression = require(game.ServerScriptService.Progression)
-local Roles = require(game.ServerScriptService.Roles)
+local Classes = require(game.ServerScriptService.Classes)
 
 -- The allow-list. UserIds only. There is deliberately no command that grants admin: an admin command that
 -- hands out admin is how one leaked account becomes everyone's problem.
@@ -179,26 +179,29 @@ end
 Commands.role = function(admin, args)
 	if not args[1] then
 		local names = {}
-		for id in pairs(RoleConfig.Roles) do names[#names + 1] = id end
+		for id in pairs(ClassConfig.Classes) do names[#names + 1] = id end
 		table.sort(names)
 		return reply(admin, "ใช้: /role <" .. table.concat(names, "|") .. "> [ผู้เล่น]")
 	end
-	local roleId = RoleConfig.Match(args[1])
+	local roleId = ClassConfig.Match(args[1])
 	if not roleId then return reply(admin, ("ไม่มีอาชีพชื่อ %s"):format(args[1])) end
 	local target = resolveTarget(admin, args[2])
 	if not target then return end
-	Roles.Set(target, roleId)
-	reply(admin, ("%s เป็น %s แล้ว"):format(target.Name, RoleConfig.DisplayName(roleId)))
+	local class = ClassConfig.Get(roleId)
+	Classes.Set(target, class.tier, roleId)
+	reply(admin, ("%s เป็น %s แล้ว"):format(target.Name, ClassConfig.DisplayName(roleId)))
 end
 
 -- /unrole [player] -- ลบอาชีพ
 Commands.unrole = function(admin, args)
 	local target = resolveTarget(admin, args[1])
 	if not target then return end
-	local had = Roles.Get(target)
-	Roles.Clear(target)
+	-- Clears both tiers: an admin saying "unrole" means all of it, not whichever half they guessed.
+	local had = Classes.Primary(target)
+	Classes.Clear(target, "basic")
+	Classes.Clear(target, "advanced")
 	reply(admin, had
-		and ("ลบอาชีพ %s ของ %s แล้ว"):format(RoleConfig.DisplayName(had), target.Name)
+		and ("ลบอาชีพ %s ของ %s แล้ว"):format(ClassConfig.DisplayName(had), target.Name)
 		or ("%s ไม่มีอาชีพอยู่แล้ว"):format(target.Name))
 end
 

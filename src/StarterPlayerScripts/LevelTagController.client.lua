@@ -8,8 +8,29 @@ end
 if workspace:GetAttribute("IsLobby") then return end -- no levels in the lobby
 
 local Players = game:GetService("Players")
+local ClassConfig = require(game.ReplicatedStorage.ClassConfig)
 
 local ACCENT = Color3.fromRGB(244, 197, 66)
+
+-- What colour a name should be, and what it should say. The class replicates as an attribute, so this needs
+-- no remote and is already right for players who were here before you joined.
+--
+-- The mark wins over everything: a thief who failed a robbery is red whatever they otherwise are, which is
+-- the whole point of marking them.
+local function appearance(player)
+	local level = player:GetAttribute("WOLD_Level") or 1
+	if player:GetAttribute("WOLD_Marked") then
+		return ClassConfig.MarkedColor, ("Lv. %d"):format(level)
+	end
+	-- The advanced class outranks the basic one: it is the more interesting fact about a player, and the
+	-- one whose colour carries authority.
+	local classId = player:GetAttribute("WOLD_ClassAdvanced") or player:GetAttribute("WOLD_ClassBasic")
+	if not classId then
+		return ACCENT, ("Lv. %d"):format(level)
+	end
+	return ClassConfig.ColorOf(classId),
+		("[%s] Lv. %d"):format(ClassConfig.DisplayName(classId), level)
+end
 
 local function tagFor(character)
 	local head = character:FindFirstChild("Head")
@@ -51,13 +72,18 @@ local function refresh(player)
 	if not character then return end
 	local billboard = tagFor(character)
 	if not billboard then return end
-	billboard.Label.Text = ("Lv. %d"):format(player:GetAttribute("WOLD_Level") or 1)
+	local color, text = appearance(player)
+	billboard.Label.TextColor3 = color
+	billboard.Label.Text = text
 end
 
 local function watch(player)
-	player:GetAttributeChangedSignal("WOLD_Level"):Connect(function()
-		refresh(player)
-	end)
+	-- Any of these changes the tag: the level, either class, or the mark going on or coming off.
+	for _, attribute in ipairs({ "WOLD_Level", "WOLD_ClassBasic", "WOLD_ClassAdvanced", "WOLD_Marked" }) do
+		player:GetAttributeChangedSignal(attribute):Connect(function()
+			refresh(player)
+		end)
+	end
 	player.CharacterAdded:Connect(function(character)
 		character:WaitForChild("Head", 10)
 		refresh(player)

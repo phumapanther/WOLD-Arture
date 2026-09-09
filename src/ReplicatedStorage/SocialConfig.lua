@@ -31,8 +31,10 @@ SocialConfig.MessageHistory = 30 -- messages kept per conversation, in server me
 -- Bank
 --------------------------------------------------------------------------------
 
--- Pocket gold is lost on death; banked gold is not. That difference is the whole reason the bank exists,
--- so it is stated here rather than left implicit in whatever code happens to reset gold.
+-- Gold is NOT lost on death, pocket or banked. An earlier comment here claimed the pocket was emptied and
+-- that the difference was the point of the bank, but no code ever did it -- and on the decision it stays
+-- that way: dying already costs the whole level, and taking the money too makes robbery the only way most
+-- players would ever meet a thief. The bank is for keeping money somewhere another player cannot take it.
 SocialConfig.BankMaxTransfer = 1000000 -- one transfer cannot exceed this, as a blast radius on any bug
 SocialConfig.BankMinTransfer = 1
 

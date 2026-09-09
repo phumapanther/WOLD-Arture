@@ -22,7 +22,9 @@ local ProfileTemplate = {
 	Vitals = { HP = 100, Stamina = 100, Hunger = 100 }, -- unused this phase; here so later phases don't Reconcile again
 	Progression = { Level = 1, Exp = 0 }, -- EXP/level survive a rejoin; dying is what resets them, not leaving
 	Inventory = nil, -- {Slots, Equipped, Gold} | nil (nil = never saved, so hand out the starter kit)
-	Role = nil, -- roleId from RoleConfig | nil (no role). Handed out by admin command; abilities are phase 4.
+	-- Classes: {Basic, Advanced} | nil. Named "Role" still because that is the key already written into
+	-- every saved profile; Classes.Add also accepts the bare role id those older profiles hold.
+	Role = nil,
 	-- Friend list, banked gold, and the profile fields the player will be able to set later. The three
 	-- display fields exist now so adding the editor later needs no migration.
 	Social = nil, -- {Friends, Pending, Bank, Birthday, Gender, AvatarImage} | nil
