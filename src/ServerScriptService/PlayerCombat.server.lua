@@ -117,13 +117,15 @@ local function playHitSound(character, attacker)
 	if attacker then
 		hit = select(2, soundsFor(attacker))
 	end
-	playAt(character, hit, CombatConfig.HitSoundDistance, VitalsConfig.HitSoundVolume)
+	playAt(character, hit, CombatConfig.HitSoundDistance, VitalsConfig.HitSoundVolume,
+		CombatConfig.HitSoundMaxSeconds)
 end
 
 -- The attacker's own sound: the swing, the bowstring, the spell leaving the book.
 local function playCastSound(player)
 	local cast = select(1, soundsFor(player))
-	playAt(player.Character, cast, CombatConfig.CastSoundDistance)
+	playAt(player.Character, cast, CombatConfig.CastSoundDistance, nil,
+		CombatConfig.CastSoundMaxSeconds)
 end
 
 -- Ranged attacks: the bow's arrow and the spellbook's orb travel and hit the first thing they reach; the

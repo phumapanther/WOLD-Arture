@@ -184,11 +184,25 @@ function InventoryGui.new()
 		durability.Size = UDim2.new(1, -12, 0, 14)
 		durability.Position = UDim2.new(0, 8, 0, 48)
 
+		-- The slot is square and the text only fills its top, so the artwork goes in the space below it.
+		-- Reading what you are wearing off a picture is quicker than reading a name, and the room was
+		-- already there.
+		local icon = Instance.new("ImageLabel")
+		icon.Name = "Icon"
+		icon.AnchorPoint = Vector2.new(0.5, 1)
+		icon.Position = UDim2.new(0.5, 0, 1, -6)
+		icon.Size = UDim2.new(0.62, 0, 0.5, 0)
+		icon.BackgroundTransparency = 1
+		icon.ScaleType = Enum.ScaleType.Fit
+		icon.Visible = false
+		icon.Parent = holder
+
 		holder.Activated:Connect(function()
 			if self.onEquipSlotClicked then self.onEquipSlotClicked(entry.key) end
 		end)
 
-		self.equipSlots[entry.key] = { button = holder, name = name, durability = durability, stroke = holderStroke }
+		self.equipSlots[entry.key] = { button = holder, name = name, durability = durability,
+			stroke = holderStroke, icon = icon }
 	end
 
 	--------------------------------------------------------------------------
@@ -338,11 +352,18 @@ function InventoryGui:Render(data)
 				entry.durability.Text = ""
 			end
 			entry.stroke.Transparency = 0.3
+			-- Show the artwork when there is any; an item with no icon keeps just its name, the way the bag
+			-- slots do.
+			local art = item and item.icon or ""
+			entry.icon.Image = art
+			entry.icon.Visible = art ~= ""
 		else
 			entry.name.Text = "ว่าง"
 			entry.name.TextColor3 = TEXT_MUTED
 			entry.durability.Text = ""
 			entry.stroke.Transparency = 0.8
+			entry.icon.Image = ""
+			entry.icon.Visible = false
 		end
 	end
 end

@@ -124,6 +124,13 @@ CombatConfig.CastSoundDistance = 90
 CombatConfig.HitSoundDistance = 60
 CombatConfig.AttackSoundVolume = 0.8
 
+-- How long a weapon clip may run before it is cut off. VitalsConfig.HitSoundMaxSeconds is 0.7s, tuned for
+-- the punch sound so repeated hits do not stack into a drone -- but it was silencing most of a weapon clip
+-- (measured: the sword swing is 0.79s, the spellbook 8.04s). Weapons get their own limits: long enough for
+-- the whole sound, short enough that a fast chain does not pile up.
+CombatConfig.CastSoundMaxSeconds = 1.2
+CombatConfig.HitSoundMaxSeconds = 1.5
+
 CombatConfig.DefaultWeapon = "Fists"
 
 -- Every swing costs the weapon a point of durability; at zero it breaks and is destroyed, which is what the

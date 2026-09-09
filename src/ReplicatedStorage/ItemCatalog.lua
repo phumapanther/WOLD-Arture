@@ -95,7 +95,7 @@ ItemCatalog.Items = {
 	--------------------------------------------------------------------------
 	-- Junk. No effect yet; they exist to be gathered, carried and sold later.
 	--------------------------------------------------------------------------
-	Bone = { icon = "", name = "กระดูก", kind = "junk", weight = 1, stackSize = 99, value = 2 }, -- assets/item-icons/Bone.png
+	Bone = { icon = "rbxassetid://81654456878247", name = "กระดูก", kind = "junk", weight = 1, stackSize = 99, value = 2 }, -- assets/item-icons/Bone.png
 	WoodScrap = { icon = "rbxassetid://140646776701721", name = "เศษไม้", kind = "junk", weight = 1.5, stackSize = 99, value = 1 },
 	Stone = { icon = "rbxassetid://111540893837307", name = "ก้อนหิน", kind = "junk", weight = 2.5, stackSize = 99, value = 1 },
 
@@ -103,10 +103,10 @@ ItemCatalog.Items = {
 	-- anywhere, herbs need looking for, ore has to be mined, and crystal only grows in the caves. The
 	-- gathering tags in docs/design/04-gameplay-hooks.md already name these as resources, so the catalog
 	-- entries exist before the system that drops them rather than after.
-	IronOre = { icon = "", name = "แร่เหล็ก", kind = "junk", weight = 3, stackSize = 99, value = 6 }, -- assets/item-icons/IronOre.png
-	Fiber = { icon = "", name = "เส้นใย", kind = "junk", weight = 0.3, stackSize = 99, value = 2 }, -- assets/item-icons/Fiber.png
-	Herb = { icon = "", name = "สมุนไพร", kind = "junk", weight = 0.4, stackSize = 99, value = 4 }, -- assets/item-icons/Herb.png
-	Crystal = { icon = "", name = "คริสตัล", kind = "junk", weight = 1.2, stackSize = 99, value = 15 }, -- assets/item-icons/Crystal.png
+	IronOre = { icon = "rbxassetid://103733015316333", name = "แร่เหล็ก", kind = "junk", weight = 3, stackSize = 99, value = 6 }, -- assets/item-icons/IronOre.png
+	Fiber = { icon = "rbxassetid://131394070307040", name = "เส้นใย", kind = "junk", weight = 0.3, stackSize = 99, value = 2 }, -- assets/item-icons/Fiber.png
+	Herb = { icon = "rbxassetid://108324515660668", name = "สมุนไพร", kind = "junk", weight = 0.4, stackSize = 99, value = 4 }, -- assets/item-icons/Herb.png
+	Crystal = { icon = "rbxassetid://95999193030974", name = "คริสตัล", kind = "junk", weight = 1.2, stackSize = 99, value = 15 }, -- assets/item-icons/Crystal.png
 }
 
 function ItemCatalog.Get(id)
