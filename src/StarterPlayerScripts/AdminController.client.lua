@@ -18,12 +18,21 @@ local ADMINS = {
 }
 
 local player = Players.LocalPlayer
-if not ADMINS[player.UserId] then return end
 
 while workspace:GetAttribute("IsLobby") == nil do
 	task.wait()
 end
 if workspace:GetAttribute("IsLobby") then return end -- commands only exist in channel servers
+
+-- The box is drawn for anyone who has SOMETHING to type: an admin, or a player holding an advanced class,
+-- which is what grants /announce. Everyone else never sees it, and F2 does nothing for them.
+--
+-- This is a convenience, not a permission. The server re-checks who may run what on every command, so being
+-- wrong here grants nothing -- it only decides whether a box appears.
+local function hasCommands()
+	if ADMINS[player.UserId] then return true end
+	return player:GetAttribute("WOLD_ClassAdvanced") ~= nil
+end
 
 --------------------------------------------------------------------------------
 -- UI
@@ -164,6 +173,9 @@ end)
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	if input.KeyCode ~= Enum.KeyCode.F2 then return end
+	-- Checked on every press rather than once at start-up: a class is chosen mid-session, and a player who
+	-- becomes a guard at level 50 should get the console without rejoining.
+	if not gui.Enabled and not hasCommands() then return end
 	gui.Enabled = not gui.Enabled
 	if gui.Enabled then
 		box:CaptureFocus()

@@ -30,8 +30,9 @@ local EVENTS = {
 	-- Arrest. One-sided: the guard takes, the prisoner gives. The prisoner is told so their own screen can
 	-- show what is being done to them, and so the hold ends on their client too.
 	"ArrestStateChanged", "RequestArrestTake", "RequestArrestConfirm", "RequestArrestRelease",
-	-- The F2 command menu, and the announcement a command makes.
-	"RequestClassCommand", "ClassAnnouncement",
+	-- The announcement a class command makes. The command itself is typed into the console, so it arrives
+	-- through AdminCommand like every other slash command rather than needing one of its own.
+	"ClassAnnouncement",
 	-- Handing one item to a player standing next to you, from the bag menu.
 	"RequestGiveItem",
 	-- Eating and drinking take time; every client needs to know so it can play the animation and hold the

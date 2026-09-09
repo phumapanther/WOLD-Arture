@@ -279,37 +279,6 @@ local function answerCarry(target, accepted)
 end
 
 --------------------------------------------------------------------------------
--- The F2 command menu
---------------------------------------------------------------------------------
-
--- An advanced class issuing one of its own commands. Most of these announce something to the whole server,
--- which is exactly why the class is re-checked here and the rate is limited: the menu must not become a way
--- to shout at everyone on a loop.
-Remotes.RequestClassCommand.OnServerEvent:Connect(function(player, commandId)
-	if type(commandId) ~= "string" then return end
-	if Vitals.IsDowned(player) then return end
-
-	-- Only the ADVANCED class carries commands. A basic class holding one would mean every villager could
-	-- announce, which is not what "a command of your office" means.
-	local classId = Classes.Get(player, "advanced")
-	local command = ClassActionConfig.MayCommand(classId, commandId)
-	if not command then return end
-
-	if onCooldown(player, "command") then
-		return report(player, nil, "command", false, "เพิ่งใช้คำสั่งไปเมื่อกี้")
-	end
-	startCooldown(player, "command", ClassActionConfig.CommandCooldown)
-
-	if command.announce then
-		local name = player.DisplayName ~= "" and player.DisplayName or player.Name
-		-- Everyone hears it, with the class named: an announcement whose author cannot be identified is just
-		-- noise on the screen.
-		Remotes.ClassAnnouncement:FireAllClients(classId, name, command.label)
-	end
-	report(player, nil, "command", true, command.label)
-end)
-
---------------------------------------------------------------------------------
 -- Handing an item over
 --------------------------------------------------------------------------------
 

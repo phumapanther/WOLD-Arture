@@ -17,6 +17,7 @@ if ServerConfig.IsLobby then return end -- nothing to administer in the lobby
 
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local ClassConfig = require(game.ReplicatedStorage.ClassConfig)
+local ClassActionConfig = require(game.ReplicatedStorage.ClassActionConfig)
 local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local Inventory = require(game.ServerScriptService.Inventory)
@@ -308,10 +309,72 @@ end
 -- Dispatch
 --------------------------------------------------------------------------------
 
+--------------------------------------------------------------------------------
+-- Class commands
+--------------------------------------------------------------------------------
+
+-- The commands an advanced class can issue. They live in the SAME table and the same console as the admin
+-- commands, because to the person typing there is no difference: "/" then a word. What differs is only who
+-- may run it and what it does.
+--
+-- Listed in ClassCommands rather than Commands so the permission is obvious at the call site: anything in
+-- Commands is admin-only, anything here is open to the class that owns it.
+local ClassCommands = {}
+
+-- /announce <text> -- ประกาศจากแอดมิน (ทับคำสั่งอาชีพชื่อเดียวกัน: แอดมินประกาศในนามแอดมิน)
+Commands.announce = function(admin, args)
+	local text = table.concat(args, " ")
+	if text == "" then return reply(admin, "ใช้: /announce <ข้อความ>") end
+	if #text > 140 then text = text:sub(1, 140) end
+	local name = admin.DisplayName ~= "" and admin.DisplayName or admin.Name
+	-- "admin" is not a class id, which is exactly how the client knows to paint it red instead of looking
+	-- up a class colour that does not exist.
+	Remotes.ClassAnnouncement:FireAllClients("admin", name, text)
+end
+
+-- /help -- คำสั่งที่อาชีพของคุณใช้ได้
+ClassCommands.help = function(player, args, classId)
+	reply(player, table.concat({
+		("คำสั่งของ%s"):format(ClassConfig.DisplayName(classId)),
+		"/announce <ข้อความ> - ประกาศให้ทุกคนเห็น",
+	}, "\n"))
+end
+
+-- /announce <text> -- ประกาศจากอาชีพของคุณ
+ClassCommands.announce = function(player, args, classId)
+	local text = table.concat(args, " ")
+	if text == "" then
+		return reply(player, "ใช้: /announce <ข้อความ>")
+	end
+	if #text > 140 then text = text:sub(1, 140) end
+
+	local name = player.DisplayName ~= "" and player.DisplayName or player.Name
+	Remotes.ClassAnnouncement:FireAllClients(classId, name, text)
+end
+
+-- Who may run a class command, and how often. An announcement reaches everyone, so the rate limit is the
+-- whole point -- without it the console is a way to shout at the server on a loop.
+local ClassCooldowns = {} -- [player] = os.clock() deadline
+
+local function mayRunClassCommand(player)
+	-- Only an ADVANCED class carries commands: a basic one would mean every villager could announce.
+	local classId = Classes.Get(player, "advanced")
+	if not classId then return nil end
+	local until_ = ClassCooldowns[player]
+	if until_ and os.clock() < until_ then
+		reply(player, "เพิ่งใช้คำสั่งไปเมื่อกี้")
+		return nil
+	end
+	return classId
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	ClassCooldowns[player] = nil
+end)
+
+--------------------------------------------------------------------------------
+
 local function dispatch(player, message)
-	-- The admin check comes FIRST, before the message is even parsed: a non-admin's chat is never treated as
-	-- a command whatever it contains.
-	if not isAdmin(player) then return end
 	if message:sub(1, 1) ~= "/" then return end
 
 	local parts = {}
@@ -321,8 +384,26 @@ local function dispatch(player, message)
 	local name = (parts[1] or ""):lower()
 	table.remove(parts, 1)
 
-	local command = Commands[name]
-	if not command then return end -- an unknown "/..." is left alone; other systems use chat commands too
+	-- Admin commands first, and ONLY for admins. The check is here rather than at the top of dispatch now
+	-- that non-admins have commands of their own -- but it still happens before the command is looked up, so
+	-- a non-admin typing "/gold" gets exactly the silence they got before.
+	local command = isAdmin(player) and Commands[name] or nil
+
+	if not command then
+		-- Not an admin command they may run: try the class commands, which anyone with the right class may.
+		local classCommand = ClassCommands[name]
+		if classCommand then
+			local classId = mayRunClassCommand(player)
+			if not classId then return end
+			local okClass, errClass = pcall(classCommand, player, parts, classId)
+			if okClass then
+				ClassCooldowns[player] = os.clock() + ClassActionConfig.CommandCooldown
+			else
+				reply(player, ("คำสั่งพัง: %s"):format(tostring(errClass)))
+			end
+		end
+		return -- an unknown "/..." is left alone; other systems use chat commands too
+	end
 
 	-- A command that errors must not kill the Chatted connection, or every later command silently stops.
 	local ok, err = pcall(command, player, parts)
