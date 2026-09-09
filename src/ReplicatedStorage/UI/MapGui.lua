@@ -128,6 +128,13 @@ function MapGui.new()
 	canvas.Parent = viewport
 	self.canvas = canvas
 
+	-- Zoom scales the canvas CONTENTS through this. Growing the frame instead only moved the drawing into
+	-- a corner, because every terrain piece and marker is positioned in fixed pixels inside it.
+	local canvasScale = Instance.new("UIScale")
+	canvasScale.Scale = 1
+	canvasScale.Parent = canvas
+	self.canvasScale = canvasScale
+
 	local footer = Instance.new("TextLabel")
 	footer.BackgroundTransparency = 1
 	footer.AnchorPoint = Vector2.new(0, 1)
@@ -184,7 +191,11 @@ end
 
 function MapGui:buildCanvas()
 	local canvas = self.canvas
-	for _, c in ipairs(canvas:GetChildren()) do c:Destroy() end
+	-- Keep the UIScale: it is created once with the canvas and is what zooming drives, so clearing it here
+	-- silently disabled zoom (the frames were rebuilt, the scale was not).
+	for _, c in ipairs(canvas:GetChildren()) do
+		if not c:IsA("UIScale") then c:Destroy() end
+	end
 	self.markers = {}
 
 	local size = 600 -- drawn at a fixed size, then scaled: redrawing on every zoom would be wasteful
@@ -201,12 +212,13 @@ function MapGui:buildCanvas()
 		while gx <= cells do
 			local h = row[gx]
 			if h ~= MapTerrain.Water then
-				-- Merge neighbouring cells of similar height into one frame: 6400 separate frames would
-				-- cost far more than the map is worth, and a run of coast is one shape anyway.
-				local band = MapConfig.BandFor(h)
+				-- Merge neighbouring cells of the same GROUND TYPE into one frame: 14400 separate frames
+				-- would cost far more than the map is worth, and a run of grass is one shape anyway.
+				local code = MapTerrain.MaterialAt(gx, gz)
+				local band = { color = MapConfig.ColorFor(code) }
 				local run = gx
 				while run < cells and row[run + 1] ~= MapTerrain.Water
-					and MapConfig.BandFor(row[run + 1]) == band do
+					and MapTerrain.MaterialAt(run + 1, gz) == code do
 					run += 1
 				end
 				local piece = Instance.new("Frame")
@@ -303,13 +315,15 @@ end
 --------------------------------------------------------------------------------
 
 function MapGui:apply()
-	local fit = self:canvasSize() / self.baseSize
-	local scale = fit * self.zoom
-	self.canvas.Size = UDim2.fromOffset(self.baseSize * scale, self.baseSize * scale)
+	-- The canvas keeps its drawn size; the UIScale does the zooming, so the contents grow with it and the
+	-- centre stays the centre.
+	local scale = (self:canvasSize() / self.baseSize) * self.zoom
+	self.canvasScale.Scale = scale
 	self.canvas.Position = UDim2.new(0.5, self.offset.X, 0.5, self.offset.Y)
-	-- Labels would become unreadable smears at high zoom if they scaled with the map, so they do not.
+	-- Labels would become unreadable smears at high zoom if they grew with everything else, so the scale is
+	-- divided back out of their text size.
 	for _, label in ipairs(self.markers) do
-		label.TextSize = math.clamp(11 * scale, 9, 16)
+		label.TextSize = math.clamp(11 / self.zoom, 7, 14)
 	end
 end
 
@@ -326,8 +340,10 @@ end
 
 -- Keeps the map from being dragged entirely out of its own window.
 function MapGui:clampOffset()
-	local half = self:canvasSize() * self.zoom / 2
-	local limit = math.max(0, half - self:canvasSize() / 4)
+	-- How far the map may be pushed before its edge leaves the window: half the DRAWN size, less a quarter
+	-- of the window so some map is always in view.
+	local drawn = self.baseSize * (self:canvasSize() / self.baseSize) * self.zoom
+	local limit = math.max(0, drawn / 2 - self:canvasSize() / 4)
 	self.offset = Vector2.new(
 		math.clamp(self.offset.X, -limit, limit),
 		math.clamp(self.offset.Y, -limit, limit))

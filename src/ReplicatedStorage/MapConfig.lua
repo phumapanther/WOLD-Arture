@@ -24,25 +24,20 @@ MapConfig.RiverColor = Color3.fromRGB(64, 108, 150)
 MapConfig.RoadColor = Color3.fromRGB(146, 124, 92)
 MapConfig.GridColor = Color3.fromRGB(210, 200, 170)
 
--- Height bands, so the map reads as terrain rather than a flat silhouette: beach, lowland, forest, hill,
--- mountain, snow. Ordered high to low; the first match wins. Heights are studs, from the real sample:
--- half the land is under 81 studs but the peaks reach 1998, so the bands are spaced to match that spread
--- rather than being evenly divided.
-MapConfig.Bands = {
-	{ min = 1500, color = Color3.fromRGB(238, 240, 246) }, -- snow cap
-	{ min = 1000, color = Color3.fromRGB(150, 148, 152) }, -- bare rock
-	{ min = 600, color = Color3.fromRGB(112, 110, 96) },   -- high slopes
-	{ min = 260, color = Color3.fromRGB(88, 104, 70) },    -- upland
-	{ min = 100, color = Color3.fromRGB(78, 104, 62) },    -- forested hill
-	{ min = 16, color = Color3.fromRGB(104, 128, 74) },    -- lowland
-	{ min = 0, color = Color3.fromRGB(158, 148, 108) },    -- beach
+-- Ground colours, keyed by the material the terrain generator chose. Colouring by height instead had the
+-- map disagreeing with the world: it painted 19% of the island as rock and snow when the generator had made
+-- most of that slope grass, because it decides using slope and forest cover as well as height.
+MapConfig.Materials = {
+	g = Color3.fromRGB(104, 132, 76),  -- grass
+	f = Color3.fromRGB(66, 96, 58),    -- forest
+	r = Color3.fromRGB(132, 128, 122), -- rock
+	s = Color3.fromRGB(238, 240, 246), -- snow
+	d = Color3.fromRGB(196, 180, 132), -- sand
+	b = Color3.fromRGB(72, 68, 74),    -- basalt cliff
 }
 
-function MapConfig.BandFor(height)
-	for _, band in ipairs(MapConfig.Bands) do
-		if height >= band.min then return band end
-	end
-	return MapConfig.Bands[#MapConfig.Bands]
+function MapConfig.ColorFor(code)
+	return MapConfig.Materials[code] or MapConfig.Materials.g
 end
 
 -- Everywhere worth naming. `kind` picks the marker's colour and glyph.

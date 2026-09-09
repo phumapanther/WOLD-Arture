@@ -15,6 +15,8 @@ local STEP = (HALF * 2) / N
 -- The map draws the LAND, so only terrain counts. Including parts meant sampling trees, buildings and --
 -- as this found -- a batch of cave ore props stranded at y=2859, which reported the mountains as being
 -- nearly two thousand studs tall.
+local MATCODE = { Grass = "g", LeafyGrass = "f", Rock = "r", Snow = "s", Sand = "d", Basalt = "b" }
+
 local params = RaycastParams.new()
 params.FilterType = Enum.RaycastFilterType.Include
 params.FilterDescendantsInstances = { workspace.Terrain }
@@ -35,14 +37,22 @@ for gz = 0, N - 1 do
         if hit then
             local h = hit.Position.Y
             local isWater = hit.Material == Enum.Material.Water
-            row[gx + 1] = isWater and -1 or math.floor(h)
-            if isWater then water += 1 else
+            if isWater then
+                row[gx + 1] = "w0"
+                water += 1
+            else
+                -- One letter for the material then the height, with no separator: the tool that carries
+                -- this back truncates at 100KB, and "height:MaterialName" per cell overran it and silently
+                -- lost the last thirteen rows.
+                local mat = tostring(hit.Material):gsub("Enum.Material.", "")
+                local code = MATCODE[mat] or "g"
+                row[gx + 1] = code .. math.floor(h)
                 land += 1
                 if h < minH then minH = h end
                 if h > maxH then maxH = h end
             end
         else
-            row[gx + 1] = -1 -- nothing under it at all: open sea
+            row[gx + 1] = "w0" -- nothing under it at all: open sea
             miss += 1
         end
     end
