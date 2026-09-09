@@ -20,6 +20,11 @@ local EVENTS = {
 	"ConsumeStateChanged", -- client asks for a resend: the join broadcast can land before it connects
 	"RequestSkill", "SkillUsed", -- the weapon's Q skill: intent in, playback out
 	"StatusChanged", -- knockdown / slow, so every client can render them
+	-- Footsteps: each client times its OWN steps (it knows its material and gait without asking) and reports
+	-- them; the server relays to everyone else so you hear people around you. Relaying rather than having
+	-- each client time every other character keeps one authority on who stepped when, and costs one small
+	-- event per step instead of every client running a state machine per player.
+	"Footstep",
 	-- Admin console: the command text in, the reply out. AdminCommand is guarded by a UserId allow-list on
 	-- the SERVER, so a non-admin firing it is refused exactly as if they had never found it.
 	"AdminCommand", "AdminMessage",
