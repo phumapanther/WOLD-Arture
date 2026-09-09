@@ -139,6 +139,12 @@ Remotes.ClassActionPrompt.OnClientEvent:Connect(function(actionId, fromPlayer, s
 			function(accepted)
 				Remotes.RespondClassAction:FireServer("carry", accepted)
 			end)
+	elseif actionId == "trade" then
+		gui:AskConsent(fromPlayer, seconds,
+			("%s ขอเทรดกับคุณ"):format(fromPlayer and fromPlayer.DisplayName or "ใครบางคน"),
+			function(accepted)
+				Remotes.RespondClassAction:FireServer("trade", accepted)
+			end)
 	end
 end)
 

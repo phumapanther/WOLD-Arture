@@ -24,6 +24,9 @@ local EVENTS = {
 	-- Class actions on a nearby player: one request in, and one broadcast out telling both parties what
 	-- happened so each can show it. ClassActionPrompt asks the target to agree, refuse, or defend.
 	"RequestClassAction", "ClassActionResult", "ClassActionPrompt", "RespondClassAction",
+	-- Trading. The offer is server state: both sides are sent the same picture of it after every change, so
+	-- neither can be looking at something the other is not.
+	"TradeStateChanged", "RequestTradeOffer", "RequestTradeConfirm", "RequestTradeCancel",
 	-- Eating and drinking take time; every client needs to know so it can play the animation and hold the
 	-- item to the mouth.
 	"ConsumeStateChanged", -- client asks for a resend: the join broadcast can land before it connects

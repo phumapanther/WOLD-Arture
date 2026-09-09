@@ -17,6 +17,7 @@ local Progression = require(game.ServerScriptService.Progression)
 local ClassActionConfig = require(game.ReplicatedStorage.ClassActionConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local RescueAccess = require(game.ServerScriptService.RescueAccess)
+local TradeAccess = require(game.ServerScriptService.TradeAccess)
 
 if ServerConfig.IsLobby then return end
 
@@ -296,6 +297,12 @@ Remotes.RequestClassAction.OnServerEvent:Connect(function(actor, actionId, targe
 		doRepair(actor, target)
 	elseif actionId == "carry" then
 		doAskCarry(actor, target)
+	elseif actionId == "trade" then
+		-- Trading owns its own sessions; this only asks it to start one.
+		if TradeAccess.Invite then
+			local ok, message = TradeAccess.Invite(actor, target)
+			if not ok then report(actor, nil, "trade", false, message) end
+		end
 	end
 	-- arrest is handled by its own system and is not accepted here.
 end)

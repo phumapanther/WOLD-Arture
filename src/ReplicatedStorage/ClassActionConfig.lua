@@ -47,6 +47,13 @@ ClassActionConfig.Actions = {
 		classes = { "Adventurer", "Rogue" },
 	},
 	{
+		id = "trade",
+		label = "เทรด",
+		key = Enum.KeyCode.T,
+		hold = 0, -- opens a request; the deliberation is in the window that follows
+		classes = { "Merchant" },
+	},
+	{
 		id = "arrest",
 		label = "จับกุม",
 		key = Enum.KeyCode.R,
@@ -101,6 +108,13 @@ ClassActionConfig.Heal = {
 ClassActionConfig.Repair = {
 	cost = 2500,
 	seconds = 3,
+}
+
+-- Trading. Both sides put things up, both must agree, and either can walk away.
+ClassActionConfig.Trade = {
+	askSeconds = 20, -- how long the invitation stands before it is treated as a refusal
+	offerSlots = 8, -- how many items one side can put up at once
+	range = 12, -- a little further than the other actions: a trade takes a while and people shuffle
 }
 
 -- What a guard or noble may take. Four slots is enough to strip someone's weapon and armour without it
