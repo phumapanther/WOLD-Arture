@@ -48,6 +48,7 @@ SocialConfig.BankMinTransfer = 1
 -- introduce themselves at once and each card is its own.
 SocialConfig.CardRange = 60 -- studs; beyond this a card is not worth drawing
 SocialConfig.CardMaxVisible = 8 -- cards drawn at once, nearest first, so a crowd cannot flood the screen
+SocialConfig.CardSeconds = 10 -- a card takes itself down after this, so nobody leaves a sign up all session
 
 --------------------------------------------------------------------------------
 -- Ranks
@@ -84,6 +85,9 @@ SocialConfig.Screens = {
 	{ id = "friends", name = "รายชื่อสหาย", glyph = "\240\159\145\165", ready = true },
 	{ id = "bank", name = "ธนาคาร", glyph = "\240\159\146\176", ready = true },
 	{ id = "profile", name = "โปรไฟล์", glyph = "\240\159\145\164", ready = true },
+	-- Opens the world map, which is its own screen rather than a page inside the stone: it wants the whole
+	-- window, and M has to reach it without the stone being open.
+	{ id = "map", name = "แผนที่", glyph = "\240\159\151\186", ready = true },
 	{ id = "market", name = "ราคากลาง", glyph = "\226\154\150", ready = false,
 		notice = "ตลาดกลางยังไม่เปิดใช้งาน" },
 	{ id = "callGuard", name = "เรียกทหารยาม", glyph = "\240\159\155\161", ready = false,

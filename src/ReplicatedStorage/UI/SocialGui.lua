@@ -282,7 +282,11 @@ function SocialGui:buildHome()
 		name.TextWrapped = true
 
 		tile.Activated:Connect(function()
-			if screen.ready then
+			-- The map is not a page inside the stone; it is its own screen, so the tile hands it off.
+			if screen.id == "map" then
+				self:Hide()
+				if self.callbacks.openMap then self.callbacks.openMap() end
+			elseif screen.ready then
 				self:ShowScreen(screen.id)
 			else
 				-- Not a dead button: say why, or the player will think the game froze.

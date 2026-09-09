@@ -14,6 +14,7 @@ local SocialGui = require(game.ReplicatedStorage.UI.SocialGui)
 local BoardFeedGui = require(game.ReplicatedStorage.UI.BoardFeedGui)
 local ProfileCardGui = require(game.ReplicatedStorage.UI.ProfileCardGui)
 local CallGui = require(game.ReplicatedStorage.UI.CallGui)
+local MapGui = require(game.ReplicatedStorage.UI.MapGui)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local player = Players.LocalPlayer
@@ -27,6 +28,29 @@ feed.gui.Parent = playerGui
 
 local call = CallGui.new()
 call.gui.Parent = playerGui
+
+local map = MapGui.new()
+map.gui.Parent = playerGui
+
+-- The pin only needs to move while the map is being looked at.
+local RunService = game:GetService("RunService")
+local sincePin = 0
+RunService.Heartbeat:Connect(function(dt)
+	if not map:IsOpen() then return end
+	sincePin += dt
+	if sincePin < 0.2 then return end -- five times a second is smooth enough for a map pin
+	sincePin = 0
+	map:UpdatePin()
+end)
+
+local function toggleMap()
+	if map:IsOpen() then
+		map:Hide()
+	else
+		gui:Hide() -- the map wants the whole window
+		map:Show()
+	end
+end
 
 local latest = { board = {}, friends = {}, pending = {}, bank = 0, gold = 0, level = 1 }
 local threads = {} -- [userId] = { messages }
@@ -140,6 +164,10 @@ gui:On("bank", function(action, amount, target)
 	Remotes.RequestBankAction:FireServer(action, amount, target)
 end)
 
+gui:On("openMap", function()
+	toggleMap()
+end)
+
 gui:On("showCard", function(showing)
 	Remotes.RequestShowCard:FireServer(showing)
 end)
@@ -182,6 +210,13 @@ end
 
 -- Bound through ContextActionService with Sink, the same as the bag's I: it stops the key reaching anything
 -- Roblox has bound to it, and leaves every other input alone.
+ContextActionService:BindAction("WOLD_ToggleMap", function(_, inputState)
+	if inputState == Enum.UserInputState.Begin then
+		toggleMap()
+	end
+	return Enum.ContextActionResult.Sink
+end, false, Enum.KeyCode.M)
+
 ContextActionService:BindAction("WOLD_ToggleSocial", function(_, inputState)
 	if inputState == Enum.UserInputState.Begin then
 		toggle()
@@ -191,8 +226,9 @@ end, false, Enum.KeyCode.P)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
-	if input.KeyCode == Enum.KeyCode.Escape and gui:IsOpen() then
-		gui:Hide()
+	if input.KeyCode == Enum.KeyCode.Escape then
+		if map:IsOpen() then map:Hide() end
+		if gui:IsOpen() then gui:Hide() end
 	end
 end)
 

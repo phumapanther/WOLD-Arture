@@ -137,32 +137,28 @@ function ChannelSelectGui.new()
 
 	-- Manual refresh. The list also rebroadcasts every few seconds on its own; this is for when you want to
 	-- know right now whether a server just freed up.
-	-- Where the channel list starts. Computed here rather than beside the list, because the refresh button
-	-- has to sit ABOVE that line: at a fixed offset it landed on top of the list instead (measured: the
-	-- button at y=82 over a list starting at y=94).
-	local headerDrop = portrait and 112 or (Responsive.IsSmallScreen() and 78 or 96)
-
+	--
+	-- It lives INSIDE the tab bar, as one more item in its horizontal layout. Positioned independently it
+	-- kept colliding with something: first the channel list below, then the mode tabs, because both the bar
+	-- and the button anchored to the same right edge. As a layout child it simply cannot overlap either.
 	local refreshButton = Instance.new("TextButton")
 	refreshButton.Name = "RefreshButton"
-	refreshButton.AnchorPoint = Vector2.new(1, 1)
-	refreshButton.Size = UDim2.new(0, portrait and 92 or 104, 0, portrait and 30 or 34)
-	-- Bottom-anchored to where the list begins, less a small gap, so the two cannot overlap however the
-	-- header is sized.
-	refreshButton.Position = portrait and UDim2.new(1, -24, 0, TOP_BAR + 52)
-		or UDim2.new(1, -24, 0, TOP_BAR + headerDrop - 8)
+	refreshButton.LayoutOrder = 99 -- after the mode tabs
+	refreshButton.Size = UDim2.new(0, portrait and 84 or 96, 1, 0)
 	refreshButton.BackgroundColor3 = GLASS
 	refreshButton.BackgroundTransparency = 0.82
 	refreshButton.Font = Enum.Font.SourceSansBold
 	refreshButton.TextSize = portrait and 14 or 15
 	refreshButton.TextColor3 = TEXT_LIGHT
 	refreshButton.Text = "รีเฟรช"
-	refreshButton.Parent = root
+	refreshButton.Parent = tabBar
 	corner(refreshButton, UDim.new(1, 0))
 	glassStroke(refreshButton, 0.7)
 	self.refreshButton = refreshButton
 
 	-- channel list — scale-based on every axis (including height) so it fills whatever's left below the header
 	-- instead of a fixed 560px, and AutomaticCanvasSize means it never needs a manually-computed canvas height.
+	local headerDrop = portrait and 112 or (Responsive.IsSmallScreen() and 78 or 96)
 	local list = Instance.new("ScrollingFrame")
 	list.AnchorPoint = Vector2.new(0.5, 0)
 	-- On a phone the header eats proportionally more of a short screen, so the list starts higher and keeps a

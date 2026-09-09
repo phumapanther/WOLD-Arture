@@ -219,6 +219,10 @@ end)
 -- Raising your card is public by design: everyone nearby sees it, several can be up at once, and each
 -- viewer's client decides which are close enough to draw. The server only says who is showing what, so it
 -- cannot be faked into showing someone else's card.
+-- Cards take themselves down. The timer is SERVER-side on purpose: a client-side one could simply be
+-- removed, leaving a card up all session.
+local cardTimers = {} -- [player] = token, so an older timer cannot cancel a newer card
+
 Remotes.RequestShowCard.OnServerEvent:Connect(function(player, showing)
 	if showing then
 		local level = Progression.GetLevel(player)
@@ -231,7 +235,19 @@ Remotes.RequestShowCard.OnServerEvent:Connect(function(player, showing)
 			birthday = social.Birthday,
 			gender = social.Gender,
 		})
+
+		local token = os.clock()
+		cardTimers[player] = token
+		task.delay(SocialConfig.CardSeconds, function()
+			-- Only the newest raise may lower the card; a re-raise supersedes this timer.
+			if cardTimers[player] ~= token then return end
+			cardTimers[player] = nil
+			if player.Parent then
+				Remotes.CardStateChanged:FireAllClients(player, nil)
+			end
+		end)
 	else
+		cardTimers[player] = nil
 		Remotes.CardStateChanged:FireAllClients(player, nil)
 	end
 end)

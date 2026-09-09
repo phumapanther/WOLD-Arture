@@ -26,6 +26,9 @@ local ProfileTemplate = {
 	-- Friend list, banked gold, and the profile fields the player will be able to set later. The three
 	-- display fields exist now so adding the editor later needs no migration.
 	Social = nil, -- {Friends, Pending, Bank, Birthday, Gender, AvatarImage} | nil
+	-- When the test chest was last opened, so its daily cooldown survives a rejoin. Testing only; it goes
+	-- when the chest does.
+	TestChestAt = 0,
 	-- One-off test grant. Recorded in the profile so it happens once per player, ever, rather than on every
 	-- rejoin. Bumping the number re-runs it for everyone; leave it alone to stop granting.
 	TestGrant = 0,
