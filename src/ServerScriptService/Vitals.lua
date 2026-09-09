@@ -19,6 +19,9 @@ local States = {} -- [player] = state; see NewState() for the shape
 -- Carrying suspends the prone pose without ending the downed state: a player riding on someone's back should
 -- sit upright in the Carry_Held pose, not stay face-down. Set while carried, cleared when set down.
 local ProneSuspended = {} -- [player] = true
+-- Admin godmode. Separate from the respawn invulnerability because it must also stop hunger, drowning and
+-- the void -- none of which go through ApplyDamage -- and because a respawn must not clear it.
+local Godmode = {} -- [player] = true
 
 -- [character] = the joint's upright C0, so the prone pose can always be set ABSOLUTELY rather than rotated
 -- off whatever it currently is.
@@ -78,6 +81,7 @@ function Vitals.Add(player)
 end
 
 function Vitals.Remove(player)
+	Godmode[player] = nil
 	States[player] = nil
 	ProneSuspended[player] = nil
 end
@@ -166,8 +170,29 @@ end
 
 -- Downed players take no damage at all (the countdown is the only exit), and so do players inside the
 -- post-respawn blink window.
+function Vitals.SetGodmode(player, on)
+	Godmode[player] = on or nil
+	if on then
+		-- Turning it on should also undo the damage already taken, or "immortal" starts at 3 HP.
+		local state = States[player]
+		if state then
+			if state.downed then Vitals.Recover(player, 1) end
+			state.hp = maxHP(player)
+			state.hunger = maxHunger(player)
+			state.stamina = VitalsConfig.MaxStamina
+			Vitals.Send(player, true)
+		end
+	end
+	return Godmode[player] == true
+end
+
+function Vitals.IsGodmode(player)
+	return Godmode[player] == true
+end
+
 function Vitals.IsInvulnerable(player)
 	local state = States[player]
+	if Godmode[player] then return true end
 	return state ~= nil and (state.downed or os.clock() < state.invulnUntil)
 end
 
@@ -413,6 +438,10 @@ end
 function Vitals.Kill(player)
 	local state = States[player]
 	if not state then return end
+	-- Godmode outranks even a direct kill. /kill on an immortal player would otherwise be a silent
+	-- exception to the one promise the mode makes, and the admin who typed /god is usually the same person
+	-- testing with /kill.
+	if Godmode[player] then return end
 	if state.downed then clearDowned(player, state) end
 	state.hp = 0
 	-- The level wipe is NOT done here: PlayerProgression hooks Humanoid.Died instead, so deaths that never
@@ -465,6 +494,12 @@ function Vitals.Tick(player, state, dt)
 	-- The void kills wherever you are, downed or not: there is no floor left to crawl on, and respawn
 	-- protection doesn't apply because nothing survives leaving the map.
 	if hrp.Position.Y < VitalsConfig.VoidY then
+		-- Godmode is the one thing the void respects: it deliberately clears the respawn timer, so without
+		-- this an immortal admin who flies under the map still dies.
+		if Godmode[player] then
+			hrp.CFrame = CFrame.new(hrp.Position.X, 200, hrp.Position.Z)
+			return
+		end
 		state.invulnUntil = 0
 		Vitals.Kill(player)
 		return
@@ -496,6 +531,14 @@ function Vitals.Tick(player, state, dt)
 
 	-- Drain scales with the player's own maximum, so growing does not shorten the 30-minute hunger clock.
 	local hungerScale = maxHunger(player) / VitalsConfig.MaxHunger
+	-- Hunger and stamina drain here rather than through ApplyDamage, so godmode has to stop them too or an
+	-- immortal player still starves and still drowns.
+	if Godmode[player] then
+		state.hunger = maxHunger(player)
+		state.stamina = VitalsConfig.MaxStamina
+		state.hp = maxHP(player)
+		return
+	end
 	state.hunger = math.max(0, state.hunger - VitalsConfig.HungerDrainPerSec * hungerScale * dt)
 	if state.hunger <= 0 then
 		Vitals.ApplyDamage(player, VitalsConfig.StarvationDamagePerSec * (maxHP(player) / VitalsConfig.MaxHP) * dt, "starve")

@@ -253,6 +253,14 @@ Commands.level = function(admin, args)
 	reply(admin, ("%s เลเวล %d แล้ว"):format(target.Name, Progression.GetLevel(target)))
 end
 
+-- /god [player] -- อมตะ. Toggles, and reports which way it went rather than leaving it a guess.
+Commands.god = function(admin, args)
+	local target = resolveTarget(admin, args[1])
+	if not target then return end
+	local on = Vitals.SetGodmode(target, not Vitals.IsGodmode(target))
+	reply(admin, ("%s %s"):format(target.Name, on and "อมตะแล้ว (เลือดไม่ลด ไม่หิว ไม่จมน้ำ)" or "กลับเป็นปกติ"))
+end
+
 -- /fly [speed] -- บิน
 -- Flight itself runs on the admin's own client (it owns the character's physics); this only grants it,
 -- which is the half that must be checked server-side.
@@ -288,6 +296,7 @@ Commands.admin = function(admin)
 		"/role <อาชีพ> [คน]    /unrole [คน]",
 		"/kill [คน]    /heal [คน]    /level <n> [คน]",
 		"/fly [ความเร็ว]  /land - บิน / ลงพื้น",
+		"/god [คน] - อมตะ เปิด/ปิด",
 		"/items - รายชื่อไอเทม",
 	}, "\n"))
 end
