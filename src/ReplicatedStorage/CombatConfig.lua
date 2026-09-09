@@ -105,7 +105,7 @@ CombatConfig.Sounds = {
 		hit = "rbxassetid://114083734266818",  -- assets/sounds/sword_hit.mp3
 		-- Steel on a body was the loudest thing in a fight and rang on far too long. Halved and cut short,
 		-- per weapon rather than globally, so the other three keep their own balance.
-		hitVolume = 0.5,
+		hitVolume = 0.15,
 		hitSeconds = 0.55,
 	},
 	Bow = {
@@ -131,14 +131,17 @@ CombatConfig.SkillSounds = {
 	GroupHeal = "rbxassetid://118799033183305",   -- staff_q
 }
 
-CombatConfig.SkillSoundVolume = 0.9
+-- Volumes here are 0.3x their originally tuned values: everything was 70% too loud in play. The
+-- ratios between them are the tuned part -- the sword impact is deliberately quieter than a skill -- so
+-- they were scaled together rather than flattened to one number.
+CombatConfig.SkillSoundVolume = 0.27
 CombatConfig.SkillSoundMaxSeconds = 2.5
 CombatConfig.SkillSoundDistance = 110 -- a skill should be heard from further off than a swing
 
 -- Equipping a weapon or a piece of armor. One sound for all of them: the feedback is "that went on", not
 -- which thing it was.
 CombatConfig.EquipSound = "rbxassetid://73684484951222"
-CombatConfig.EquipSoundVolume = 0.7
+CombatConfig.EquipSoundVolume = 0.21
 CombatConfig.EquipSoundMaxSeconds = 1.2
 CombatConfig.EquipSoundDistance = 40 -- a personal sound; nobody across the square needs to hear it
 
@@ -146,7 +149,7 @@ CombatConfig.EquipSoundDistance = 40 -- a personal sound; nobody across the squa
 -- you hear it land on someone else.
 CombatConfig.CastSoundDistance = 90
 CombatConfig.HitSoundDistance = 60
-CombatConfig.AttackSoundVolume = 0.8
+CombatConfig.AttackSoundVolume = 0.24
 
 -- How long a weapon clip may run before it is cut off. VitalsConfig.HitSoundMaxSeconds is 0.7s, tuned for
 -- the punch sound so repeated hits do not stack into a drone -- but it was silencing most of a weapon clip

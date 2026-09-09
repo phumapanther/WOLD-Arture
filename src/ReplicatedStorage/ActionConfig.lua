@@ -43,7 +43,7 @@ ActionConfig.Slide = {
 -- exactly as long as it lasts. The clips open on a moment of silence, which would make a short slide sound
 -- like nothing at all; TimePosition skips past it so the sound is there from the first frame.
 ActionConfig.SoundStartOffset = 0.06
-ActionConfig.SoundVolume = 0.6
+ActionConfig.SoundVolume = 0.18
 ActionConfig.SoundDistance = 60
 
 --------------------------------------------------------------------------------

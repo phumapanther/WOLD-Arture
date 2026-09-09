@@ -52,7 +52,7 @@ VitalsConfig.CrawlAnimation = "rbxassetid://913384386"
 -- Punch impact, played at the victim: the user's own uploaded ตี.mp3.
 -- Setting this to "" is safe — combat still works, just silently.
 VitalsConfig.HitSoundId = "rbxassetid://132299141332172"
-VitalsConfig.HitSoundVolume = 1
+VitalsConfig.HitSoundVolume = 0.3
 -- The clip runs 1.35s but punches land about once a second, so trim playback to keep consecutive hits
 -- from stacking into a drone.
 VitalsConfig.HitSoundMaxSeconds = 0.7
