@@ -403,6 +403,20 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	-- A ranged attack fires a single shot after its windup; only melee keeps a live hitbox.
 	if attack.projectile then
 		state.pendingAttack = nil
+		-- Turn to face the shot as it is loosed, not as it lands. Firing sideways while the body stayed put
+		-- read as a bug: the arrow left from somewhere the character was plainly not pointing.
+		--
+		-- Flattened, so aiming at the sky does not tip the character over backwards -- only the heading
+		-- changes, and only around Y.
+		local turnChar = player.Character
+		local hrp = turnChar and turnChar:FindFirstChild("HumanoidRootPart")
+		if hrp and typeof(aim) == "Vector3" then
+			local flat = (aim - hrp.Position) * Vector3.new(1, 0, 1)
+			if flat.Magnitude > 0.5 then
+				hrp.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + flat.Unit)
+			end
+		end
+
 		-- The aim is captured at the click and carried through the windup, so the shot goes where the player
 		-- was pointing when they fired rather than wherever the camera has swung to by the time it leaves.
 		task.delay(attack.windup, function()

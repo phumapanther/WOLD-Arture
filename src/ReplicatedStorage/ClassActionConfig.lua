@@ -128,6 +128,55 @@ ClassActionConfig.Arrest = {
 }
 
 --------------------------------------------------------------------------------
+-- The F2 command menu
+--------------------------------------------------------------------------------
+
+-- Commands an advanced class can issue about itself, rather than to a particular person standing next to
+-- them. F2 opens the list; only the classes with commands see anything.
+--
+-- Deliberately a LIST rather than a set of hardcoded abilities: the point of the menu is that more commands
+-- get added to it over time, and adding one should be an entry here plus a branch on the server -- not a new
+-- key, a new prompt, and a new window each time.
+--
+-- `id` is what the server is told; `label` is what the player reads; `announce` marks a command that speaks
+-- to the whole server, which is the shape most of these will take.
+ClassActionConfig.Commands = {
+	Guard = {
+		{ id = "guard_patrol", label = "ประกาศ: ออกตรวจการณ์", announce = true },
+		{ id = "guard_alert", label = "ประกาศ: แจ้งเหตุร้าย", announce = true },
+	},
+	Noble = {
+		{ id = "noble_decree", label = "ประกาศ: ออกประกาศิต", announce = true },
+	},
+	Priest = {
+		{ id = "priest_blessing", label = "ประกาศ: ให้พร", announce = true },
+		{ id = "priest_service", label = "ประกาศ: เปิดพิธี", announce = true },
+	},
+	Architect = {
+		{ id = "architect_open", label = "ประกาศ: เปิดร้านซ่อม", announce = true },
+	},
+	Chef = {
+		{ id = "chef_open", label = "ประกาศ: เปิดร้านอาหาร", announce = true },
+	},
+}
+
+-- How often one player may issue a command. Announcements reach everyone, so the limit is the whole point:
+-- without it the menu is a way to shout at the server on a loop.
+ClassActionConfig.CommandCooldown = 30
+
+function ClassActionConfig.CommandsFor(classId)
+	return (classId and ClassActionConfig.Commands[classId]) or {}
+end
+
+-- Whether `classId` may issue `commandId`. The server permission check, matching Grants above.
+function ClassActionConfig.MayCommand(classId, commandId)
+	for _, command in ipairs(ClassActionConfig.CommandsFor(classId)) do
+		if command.id == commandId then return command end
+	end
+	return nil
+end
+
+--------------------------------------------------------------------------------
 
 -- Every action a class grants, in config order so the prompts stack the same way every time.
 function ClassActionConfig.ForClass(classId)

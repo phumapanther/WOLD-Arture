@@ -448,8 +448,92 @@ function InventoryGui:GuardAgainstOpeningTap()
 	self._ignoreBackdropUntil = os.clock() + 0.35
 end
 
+--------------------------------------------------------------------------------
+-- The little menu beside a tapped item
+--------------------------------------------------------------------------------
+
+-- Built fresh each time rather than kept and re-filled: which entries it has depends on the item (only some
+-- can be used) and on who is standing nearby, and rebuilding three buttons is cheaper than reasoning about
+-- which of them should be visible this time.
+--
+-- `entries` is a list of { label, color?, onClick }. It closes on any choice, and on a tap elsewhere.
+function InventoryGui:ShowItemMenu(slotButton, entries)
+	self:CloseItemMenu()
+	if not slotButton or #entries == 0 then return end
+
+	local menu = Instance.new("Frame")
+	menu.Name = "ItemMenu"
+	menu.BackgroundColor3 = Color3.fromRGB(26, 28, 34)
+	menu.BorderSizePixel = 0
+	menu.ZIndex = 60
+	menu.Size = UDim2.fromOffset(120, #entries * 30 + 8)
+	-- Beside the slot, not over it: the player needs to still see what they tapped.
+	local p = slotButton.AbsolutePosition
+	local sz = slotButton.AbsoluteSize
+	menu.Position = UDim2.fromOffset(p.X + sz.X + 6, p.Y)
+	menu.Parent = self.gui
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, 8)
+	c.Parent = menu
+	local st = Instance.new("UIStroke")
+	st.Color = Color3.fromRGB(244, 197, 66)
+	st.Transparency = 0.5
+	st.Parent = menu
+
+	for i, entry in ipairs(entries) do
+		local b = Instance.new("TextButton")
+		b.Size = UDim2.new(1, -8, 0, 26)
+		b.Position = UDim2.new(0, 4, 0, 4 + (i - 1) * 30)
+		b.BackgroundColor3 = Color3.fromRGB(44, 46, 56)
+		b.BorderSizePixel = 0
+		b.Font = Enum.Font.GothamBold
+		b.TextSize = 13
+		b.TextColor3 = entry.color or Color3.fromRGB(232, 232, 238)
+		b.Text = entry.label
+		b.ZIndex = 61
+		b.AutoButtonColor = true
+		b.Parent = menu
+		local bc = Instance.new("UICorner")
+		bc.CornerRadius = UDim.new(0, 6)
+		bc.Parent = b
+		b.Activated:Connect(function()
+			self:CloseItemMenu()
+			entry.onClick()
+		end)
+	end
+
+	-- Nudged back on screen if it would hang off the right or bottom edge.
+	local viewport = self.gui.AbsoluteSize
+	local over = (menu.AbsolutePosition.X + menu.AbsoluteSize.X) - viewport.X
+	if over > 0 then
+		menu.Position = UDim2.fromOffset(p.X - menu.AbsoluteSize.X - 6, p.Y)
+	end
+	local under = (menu.AbsolutePosition.Y + menu.AbsoluteSize.Y) - viewport.Y
+	if under > 0 then
+		menu.Position = UDim2.fromOffset(menu.Position.X.Offset, p.Y - under - 4)
+	end
+
+	self.itemMenu = menu
+end
+
+function InventoryGui:CloseItemMenu()
+	if self.itemMenu then
+		self.itemMenu:Destroy()
+		self.itemMenu = nil
+	end
+end
+
+-- The button for a bag slot, so the menu can be placed beside the right one.
+function InventoryGui:SlotButton(index)
+	local entry = self.slotButtons and self.slotButtons[index]
+	return entry and entry.button or nil
+end
+
 function InventoryGui:IsOpen() return self.gui.Enabled end
 function InventoryGui:Show() self.gui.Enabled = true end
-function InventoryGui:Hide() self.gui.Enabled = false end
+function InventoryGui:Hide()
+	self:CloseItemMenu()
+	self.gui.Enabled = false
+end
 
 return InventoryGui

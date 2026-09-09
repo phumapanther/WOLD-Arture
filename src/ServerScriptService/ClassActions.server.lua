@@ -15,6 +15,7 @@ local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
 local Progression = require(game.ServerScriptService.Progression)
 local ClassActionConfig = require(game.ReplicatedStorage.ClassActionConfig)
+local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local RescueAccess = require(game.ServerScriptService.RescueAccess)
 local TradeAccess = require(game.ServerScriptService.TradeAccess)
@@ -276,6 +277,69 @@ local function answerCarry(target, accepted)
 	end
 	report(asker, target, "carry", true, "อุ้มขึ้นหลังแล้ว")
 end
+
+--------------------------------------------------------------------------------
+-- The F2 command menu
+--------------------------------------------------------------------------------
+
+-- An advanced class issuing one of its own commands. Most of these announce something to the whole server,
+-- which is exactly why the class is re-checked here and the rate is limited: the menu must not become a way
+-- to shout at everyone on a loop.
+Remotes.RequestClassCommand.OnServerEvent:Connect(function(player, commandId)
+	if type(commandId) ~= "string" then return end
+	if Vitals.IsDowned(player) then return end
+
+	-- Only the ADVANCED class carries commands. A basic class holding one would mean every villager could
+	-- announce, which is not what "a command of your office" means.
+	local classId = Classes.Get(player, "advanced")
+	local command = ClassActionConfig.MayCommand(classId, commandId)
+	if not command then return end
+
+	if onCooldown(player, "command") then
+		return report(player, nil, "command", false, "เพิ่งใช้คำสั่งไปเมื่อกี้")
+	end
+	startCooldown(player, "command", ClassActionConfig.CommandCooldown)
+
+	if command.announce then
+		local name = player.DisplayName ~= "" and player.DisplayName or player.Name
+		-- Everyone hears it, with the class named: an announcement whose author cannot be identified is just
+		-- noise on the screen.
+		Remotes.ClassAnnouncement:FireAllClients(classId, name, command.label)
+	end
+	report(player, nil, "command", true, command.label)
+end)
+
+--------------------------------------------------------------------------------
+-- Handing an item over
+--------------------------------------------------------------------------------
+
+-- From the bag's own menu rather than a class action: anyone can hand something to anyone. The class
+-- actions are about what your office lets you do TO someone; this is just passing something across.
+Remotes.RequestGiveItem.OnServerEvent:Connect(function(player, index, target)
+	if type(index) ~= "number" then return end
+	if typeof(target) ~= "Instance" or not target:IsA("Player") then return end
+	if player == target then return end
+	if Vitals.IsDowned(player) or Vitals.IsDowned(target) then return end
+	if not withinRange(player, target) then
+		return report(player, nil, "giveitem", false, "อยู่ไกลเกินไป")
+	end
+
+	local state = Inventory.Get(player)
+	local slot = state and state.slots[index]
+	if not slot then return end
+
+	-- The whole stack moves. Splitting one would need a number box, and the menu is meant to be two taps.
+	local id, count, durability = slot.id, slot.count or 1, slot.durability
+	if not Inventory.AddItem(target, id, count, durability) then
+		return report(player, nil, "giveitem", false, "กระเป๋าเขาเต็ม")
+	end
+	-- Removed only after the target has taken it, so a full bag cannot destroy the item.
+	Inventory.RemoveFromSlot(player, index, count)
+
+	local item = ItemCatalog.Get(id)
+	local shown = (item and item.name) or id
+	report(player, target, "giveitem", true, ("ให้ %s x%d"):format(shown, count), count)
+end)
 
 --------------------------------------------------------------------------------
 -- Requests
