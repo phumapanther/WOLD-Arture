@@ -6,6 +6,7 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local AimAccess = require(game.ReplicatedStorage.UI.AimAccess)
 
 local player = Players.LocalPlayer
 local equippedWeaponId = nil -- set from EquipmentChanged; drives which animation set is loaded
@@ -91,7 +92,9 @@ if player.Character then onCharacterAdded(player.Character) end
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end -- don't punch when the click was consumed by a button
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
-		Remotes.RequestAttack:FireServer()
+		-- The aim point rides along with every attack. The server ignores it for a weapon that does not
+		-- throw anything, so a sword is unaffected by whatever the camera happens to be looking at.
+		Remotes.RequestAttack:FireServer(AimAccess.Point and AimAccess.Point() or nil)
 	elseif input.KeyCode == Enum.KeyCode.Q then
 		-- Which skill this is depends on the equipped weapon; the server resolves that and the mana cost.
 		Remotes.RequestSkill:FireServer()

@@ -16,6 +16,7 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local TouchActionGui = require(game.ReplicatedStorage.UI.TouchActionGui)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local AimAccess = require(game.ReplicatedStorage.UI.AimAccess)
 
 -- Phones and tablets ONLY. TouchEnabled alone is not enough: a touchscreen laptop, a 2-in-1, and Studio's
 -- device emulator all report it true while still having a keyboard and mouse, and those players use Ctrl and
@@ -33,7 +34,9 @@ local gui = TouchActionGui.new()
 gui.gui.Parent = player:WaitForChild("PlayerGui")
 
 gui:OnAttack(function()
-	Remotes.RequestAttack:FireServer()
+	-- The same aim point the mouse sends: on touch the camera IS the aim, so a phone player shoots where
+	-- they are looking rather than where their character happens to be facing.
+	Remotes.RequestAttack:FireServer(AimAccess.Point and AimAccess.Point() or nil)
 end)
 
 -- The roll/slide button drives the same path as the Ctrl key, through ActionController's BindableEvent, so

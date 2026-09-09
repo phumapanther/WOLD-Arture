@@ -191,16 +191,40 @@ local function distanceToBody(origin, character)
 	return math.sqrt(dx * dx + dy * dy + dz * dz)
 end
 
-local function fireProjectile(player, attack)
+-- Where a shot is headed. `aim` is the world point under the client's crosshair; only that client knows
+-- where its own camera looks, so it has to come from there.
+--
+-- It is checked, not trusted. A shot always leaves the shooter's own hands and the direction is only ever a
+-- unit vector, so the worst a lie can do is aim somewhere strange -- it cannot reach further, fire faster,
+-- or hit around a corner, because the projectile still travels and still has to arrive. Nonsense (nil, a
+-- non-Vector3, an infinite value, or a point on top of the shooter) falls back to facing.
+local function aimDirection(hrp, origin, aim)
+	if typeof(aim) ~= "Vector3" then
+		return hrp.CFrame.LookVector
+	end
+	-- NaN and infinity would poison every position computed from them.
+	if aim.Magnitude ~= aim.Magnitude or aim.Magnitude == math.huge then
+		return hrp.CFrame.LookVector
+	end
+	local delta = aim - origin
+	if delta.Magnitude < 0.5 then
+		return hrp.CFrame.LookVector
+	end
+	return delta.Unit
+end
+
+local function fireProjectile(player, attack, aim)
 	local spec = attack.projectile
 	local character = player.Character
 	local hrp = character and character:FindFirstChild("HumanoidRootPart")
 	if not spec or not hrp then return end
 
-	local forward = hrp.CFrame.LookVector
-	-- Leaves from chest height, which is where a bow is held. Lowered while body growth was on, for the same
-	-- reason the swing was; growth is off now and an arrow fired from the shins looked wrong.
-	local origin = hrp.Position + forward * 2.5 + Vector3.new(0, 1.2, 0)
+	-- Leaves from chest height, which is where a bow is held, but offset along the AIM rather than the
+	-- character's facing -- otherwise a shot aimed sharply up or down starts beside the shooter instead of
+	-- in front of them.
+	local muzzle = hrp.Position + Vector3.new(0, 1.2, 0)
+	local forward = aimDirection(hrp, muzzle, aim)
+	local origin = muzzle + forward * 2.5
 
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
@@ -337,7 +361,7 @@ local function resolveHit(player, state, attack)
 	end
 end
 
-Remotes.RequestAttack.OnServerEvent:Connect(function(player)
+Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	local state = States[player]
 	local humanoid = humanoidOf(player)
 	if not state or not humanoid or humanoid.Health <= 0 then return end
@@ -379,8 +403,10 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player)
 	-- A ranged attack fires a single shot after its windup; only melee keeps a live hitbox.
 	if attack.projectile then
 		state.pendingAttack = nil
+		-- The aim is captured at the click and carried through the windup, so the shot goes where the player
+		-- was pointing when they fired rather than wherever the camera has swung to by the time it leaves.
 		task.delay(attack.windup, function()
-			if player.Parent then fireProjectile(player, attack) end
+			if player.Parent then fireProjectile(player, attack, aim) end
 		end)
 	else
 		state.pendingAttack = attack
