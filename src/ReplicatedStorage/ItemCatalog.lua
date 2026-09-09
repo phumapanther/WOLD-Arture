@@ -13,6 +13,10 @@
 -- item's name as text.
 local ItemCatalog = {}
 
+-- Consuming takes time: the effect lands when the animation finishes, not when the button is pressed.
+-- Long enough to be a real commitment in a fight, short enough not to feel like a punishment.
+ItemCatalog.ConsumeSeconds = 3
+
 ItemCatalog.Items = {
 	--------------------------------------------------------------------------
 	-- Weapons. Each defines the Q skill it grants and the animations its basic

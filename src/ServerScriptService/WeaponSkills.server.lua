@@ -13,6 +13,7 @@ local Debris = game:GetService("Debris")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
+local Consuming = require(game.ServerScriptService.Consuming)
 local StatusEffects = require(game.ServerScriptService.StatusEffects)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
@@ -269,6 +270,8 @@ end
 
 Remotes.RequestSkill.OnServerEvent:Connect(function(player)
 	if Vitals.IsDowned(player) then return end
+	-- Same reason attacks are blocked: both hands are busy holding food.
+	if Consuming.IsConsuming(player) then return end
 	local _, _, humanoid = characterParts(player)
 	if not humanoid or humanoid.Health <= 0 then return end
 

@@ -19,6 +19,7 @@ local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
 local Progression = require(game.ServerScriptService.Progression)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
+local Consuming = require(game.ServerScriptService.Consuming)
 local StatusEffects = require(game.ServerScriptService.StatusEffects)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
@@ -273,6 +274,9 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player)
 	local humanoid = humanoidOf(player)
 	if not state or not humanoid or humanoid.Health <= 0 then return end
 	if Vitals.IsDowned(player) then return end -- can't throw punches while crawling
+	-- Hands are full: raising a potion to your mouth and swinging a sword are the same two hands. Movement
+	-- is deliberately still allowed -- walking, running, rolling and sliding all stay available.
+	if Consuming.IsConsuming(player) then return end
 
 	local now = os.clock()
 	if now < state.busyUntil then return end -- still mid-swing; ignore the click rather than queueing it

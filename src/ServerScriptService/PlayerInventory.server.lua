@@ -106,9 +106,30 @@ local function flush(player)
 	if ProfileAccess.Flush then ProfileAccess.Flush(player) end
 end
 
+local Consuming = require(game.ServerScriptService.Consuming)
+
 local function canAct(player)
 	-- Nothing in the bag is usable while crawling: a downed player cannot rummage.
 	return not Vitals.IsDowned(player)
+end
+
+-- Applies what an item does. Split out because it now runs three seconds after the request rather than
+-- during it, and both paths have to agree on what "using" means.
+local function applyUse(player, item)
+	local use = item.use
+	if use.stat == "hp" then
+		Vitals.Heal(player, use.amount)
+	elseif use.stat == "hunger" then
+		Vitals.Feed(player, use.amount)
+	elseif use.stat == "mana" then
+		Vitals.AddMana(player, use.amount)
+	elseif use.stat == "repair" then
+		-- The repair hammer restores EVERYTHING the player owns to full: what they are wearing and wielding,
+		-- plus every worn piece sitting in the bag.
+		if not Inventory.RepairAll(player) then return false end
+		Vitals.SyncArmorFromEquipment(player)
+	end
+	return true
 end
 
 Remotes.RequestEquip.OnServerEvent:Connect(function(player, index)
@@ -150,6 +171,10 @@ end)
 
 Remotes.RequestUseItem.OnServerEvent:Connect(function(player, index)
 	if type(index) ~= "number" or not canAct(player) then return end
+	-- One at a time: a second potion while the first is going down would otherwise stack two effects for
+	-- one wait.
+	if Consuming.IsConsuming(player) then return end
+
 	local state = Inventory.Get(player)
 	local slot = state and state.slots[index]
 	if not slot then return end
@@ -157,20 +182,51 @@ Remotes.RequestUseItem.OnServerEvent:Connect(function(player, index)
 	local item = ItemCatalog.Get(slot.id)
 	if not item or item.kind ~= "consumable" or not item.use then return end
 
-	local use = item.use
-	if use.stat == "hp" then
-		Vitals.Heal(player, use.amount)
-	elseif use.stat == "hunger" then
-		Vitals.Feed(player, use.amount)
-	elseif use.stat == "mana" then
-		Vitals.AddMana(player, use.amount)
-	elseif use.stat == "repair" then
-		-- The repair hammer restores EVERYTHING the player owns to full: what they are wearing and wielding,
-		-- plus every worn piece sitting in the bag. Refuse (and keep the hammer) when nothing needs it.
-		if not Inventory.RepairAll(player) then return end
-		Vitals.SyncArmorFromEquipment(player)
+	-- The repair hammer is a tool, not food -- there is nothing to raise to the mouth, so it stays instant.
+	if item.use.stat == "repair" then
+		if not applyUse(player, item) then return end
+		Inventory.RemoveFromSlot(player, index, 1)
+		flush(player)
+		return
 	end
 
+	-- Spend the item NOW so it cannot be used twice while the animation runs, and so an interrupted meal
+	-- costs something. The effect is what waits.
+	local itemId = slot.id
 	Inventory.RemoveFromSlot(player, index, 1)
 	flush(player)
+
+	local token = Consuming.Begin(player, itemId)
+	Remotes.ConsumeStateChanged:FireAllClients(player, "start", itemId)
+
+	task.delay(ItemCatalog.ConsumeSeconds, function()
+		-- Stale finish: they were interrupted, left, or started something else.
+		if not player.Parent or not Consuming.StillCurrent(player, token) then return end
+		Consuming.Cancel(player)
+		-- Going down mid-meal wastes it, the same as any other interruption.
+		if Vitals.IsDowned(player) then
+			Remotes.ConsumeStateChanged:FireAllClients(player, "cancel", itemId)
+			return
+		end
+		applyUse(player, item)
+		Remotes.ConsumeStateChanged:FireAllClients(player, "finish", itemId)
+	end)
 end)
+
+-- Being downed or dying interrupts whatever was being eaten.
+local function interrupt(player)
+	if Consuming.Cancel(player) then
+		Remotes.ConsumeStateChanged:FireAllClients(player, "cancel")
+	end
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	Consuming.Remove(player)
+end)
+
+Players.PlayerAdded:Connect(function(player)
+	player.CharacterRemoving:Connect(function()
+		interrupt(player)
+	end)
+end)
+
