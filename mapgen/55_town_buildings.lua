@@ -33,11 +33,19 @@ local NPC_POSTS = {
 	{ "Merchant_Barnaby", "shop", 0, -26 },
 }
 
--- slimes belong outside the town, past the gathering ring, in town-local coordinates
+-- The named slimes, outside the town past the gathering ring, in town-local coordinates.
+--
+-- These are SPAWNER MARKERS, not models. They used to be decorative props from the modelkit -- a slime you
+-- could walk through, with a prompt that did nothing -- while the only monster anyone could actually fight
+-- was the plain green one. Tagged as spawners, Mobs.server builds a real monster at each: one that chases,
+-- hits back, dies, and drops.
+--
+-- MobKind names an entry in GatherConfig.Mobs. Count is 1 because a named slime is meant to be a thing you
+-- go and find, not a field of them.
 local SLIME_POSTS = {
-	{ "Monster_SteamSlime", 470, 120 },
-	{ "Monster_PlasmaSlime", -430, 300 },
-	{ "Monster_BioSlime", 180, -470 },
+	{ "SteamSlime", 470, 120 },
+	{ "PlasmaSlime", -430, 300 },
+	{ "BioSlime", 180, -470 },
 }
 
 L.runPhase("TownBuildings", function(folder)
@@ -153,10 +161,22 @@ L.runPhase("TownBuildings", function(folder)
 		end
 	end
 	for _, post in ipairs(SLIME_POSTS) do
-		local name, ox, oz = post[1], post[2], post[3]
+		local kind, ox, oz = post[1], post[2], post[3]
 		local x, z = centre.X + ox, centre.Z + oz
-		local m = K.place(name, npcFolder, CFrame.new(x, groundAt(x, z) or L.padY(x, z), z))
-		if m then K.tag(m, "Monster", {}) end
+		local y = groundAt(x, z) or L.padY(x, z)
+
+		local marker = Instance.new("Part")
+		marker.Name = "SlimeSpawner_" .. kind
+		marker.Size = Vector3.new(4, 1, 4)
+		marker.CFrame = CFrame.new(x, y + 0.5, z)
+		marker.Anchored = true
+		marker.CanCollide = false
+		marker.Transparency = 1
+		marker.Parent = npcFolder
+		marker:SetAttribute("MobKind", kind)
+		marker:SetAttribute("Count", 1)
+		marker:SetAttribute("Radius", 30)
+		game:GetService("CollectionService"):AddTag(marker, "WOLD_Spawner")
 	end
 
 	if #skipped > 0 then L.progress("no model for plot keys: " .. table.concat(skipped, ", ")) end

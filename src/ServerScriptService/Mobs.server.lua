@@ -121,13 +121,28 @@ end
 local function drop(model, config, killer)
 	if not killer or not killer.Parent then return end
 	for _, entry in ipairs(config.drops or {}) do
-		local count = math.random(entry.min, entry.max)
-		if Inventory.AddItem(killer, entry.item, count) then
-			local item = ItemCatalog.Get(entry.item)
-			Remotes.SocialNotify:FireClient(killer, "info",
-				("ได้ %s x%d"):format(item and item.name or entry.item, count))
-		else
-			Remotes.SocialNotify:FireClient(killer, "error", "กระเป๋าเต็ม ของหล่นหาย")
+		-- `chance` is optional: without one a drop is certain, which is what every material drop is. With
+		-- one it is rolled per kill, which is what makes a weapon worth hunting for rather than a reward
+		-- for showing up.
+		if not entry.chance or math.random() < entry.chance then
+			-- `oneOf` picks a single item from a list, so a rare roll gives ONE weapon rather than all of
+			-- them at once. `item` names a specific thing; the two are alternatives.
+			local id = entry.item
+			if entry.oneOf and #entry.oneOf > 0 then
+				id = entry.oneOf[math.random(1, #entry.oneOf)]
+			end
+			local count = math.random(entry.min or 1, entry.max or 1)
+			if Inventory.AddItem(killer, id, count) then
+				local item = ItemCatalog.Get(id)
+				local name = item and item.name or id
+				-- A rare drop says so. ToastController only distinguishes "error" from everything else, so
+				-- the difference has to live in the words rather than in the colour.
+				Remotes.SocialNotify:FireClient(killer, "info", entry.chance
+					and ("หายาก! ได้ %s x%d"):format(name, count)
+					or ("ได้ %s x%d"):format(name, count))
+			else
+				Remotes.SocialNotify:FireClient(killer, "error", "กระเป๋าเต็ม ของหล่นหาย")
+			end
 		end
 	end
 	if config.xp and config.xp > 0 then
@@ -141,6 +156,12 @@ local function despawn(model)
 	if state and state.spawner then
 		local alive = state.spawner:GetAttribute("Alive") or 0
 		state.spawner:SetAttribute("Alive", math.max(0, alive - 1))
+		-- The respawn clock starts HERE, at the death, rather than at the next spawn: "back in thirty
+		-- minutes" has to mean thirty minutes after it died, which is the only moment a player can see.
+		local seconds = state.config and state.config.respawnSeconds or 0
+		if seconds > 0 then
+			state.spawner:SetAttribute("ReadyAt", os.clock() + seconds)
+		end
 	end
 	if model.Parent then model:Destroy() end
 end
@@ -257,9 +278,19 @@ local function serviceSpawner(spawner)
 
 	local wanted = spawner:GetAttribute("Count") or 5
 	local alive = spawner:GetAttribute("Alive") or 0
-	if alive < wanted then
-		spawnOne(spawner, kind, config)
-	end
+	if alive >= wanted then return end
+
+	-- respawnSeconds was declared in the config from the start and never actually read, so every monster
+	-- came back on the next two-second service tick no matter what its config said. That is survivable for
+	-- a green slime worth one lump of goo; for a named slime with a weapon in its drop table it would mean
+	-- standing in one spot and emptying the table.
+	--
+	-- The clock lives on the SPAWNER as an attribute rather than in a local, so it survives this file being
+	-- reloaded and can be read from outside when something wants to show a timer.
+	local readyAt = spawner:GetAttribute("ReadyAt")
+	if readyAt and os.clock() < readyAt then return end
+
+	spawnOne(spawner, kind, config)
 end
 
 --------------------------------------------------------------------------------

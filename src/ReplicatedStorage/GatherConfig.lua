@@ -101,4 +101,69 @@ GatherConfig.Mobs = {
 	},
 }
 
+--------------------------------------------------------------------------------
+-- The special slimes
+--------------------------------------------------------------------------------
+
+-- Every weapon a special slime can drop, EXCEPT the pistol.
+--
+-- The pistol is left out deliberately: it knocks a player down for five seconds, which is the strongest
+-- thing anyone can do to someone else in this game, and it should be bought or earned rather than handed
+-- out by a monster. Everything else in the catalog's weapon kind is here, tools included -- an axe from a
+-- slime is a perfectly good axe.
+--
+-- Listed by ID rather than derived from ItemCatalog.kind so that adding a weapon tomorrow does not put it
+-- in a monster's drop table by accident. A drop table is a design decision, not a consequence.
+GatherConfig.WeaponDrops = {
+	"Sword", "Bow", "Staff", "Spellbook", "Axe", "Pickaxe", "Shovel", "FishingRod",
+}
+
+-- How often a special slime gives up a weapon. One kill in ten.
+GatherConfig.SpecialWeaponChance = 0.10
+
+-- Three named slimes, tougher than the green one and worth hunting. They share the green slime's sounds
+-- and its shape; what makes them different is that they hit harder, take longer to come back, and can
+-- drop a weapon.
+--
+-- Each also drops its own material every time, so a kill is never wasted even when the weapon roll fails.
+local function special(name, colour, extra)
+	local base = {
+		name = name,
+		hp = 90,
+		damage = 11,
+		attackCooldown = 1.5,
+		attackRange = 6,
+		aggroRange = 30,
+		leashRange = 80,
+		walkSpeed = 7,   -- still slower than a walking player, so running away always works
+		xp = 40,
+		-- Half an hour. A named slime is a thing you go looking for, not something you farm in a circle --
+		-- at the green slime's 30 seconds a player could stand in one spot and empty the weapon table.
+		respawnSeconds = 30 * 60,
+		colour = colour,
+		hitSound = "rbxassetid://127637727363472",
+		dieSound = "rbxassetid://96214777896458",
+		drops = {
+			{ item = "Slime", min = 2, max = 4 },
+			-- One roll, one weapon out of the eight. Without oneOf this would drop all of them at once.
+			{ oneOf = GatherConfig.WeaponDrops, min = 1, max = 1,
+				chance = GatherConfig.SpecialWeaponChance },
+		},
+	}
+	for k, v in pairs(extra or {}) do base[k] = v end
+	return base
+end
+
+-- Boilie: the steam slime. Slowest and toughest of the three.
+GatherConfig.Mobs.SteamSlime = special("บอยลี่ สไลม์ไอน้ำ", Color3.fromRGB(255, 160, 50),
+	{ hp = 110, damage = 13, walkSpeed = 6 })
+
+-- Volt: the plasma slime. Quick and hits fast, but softer.
+GatherConfig.Mobs.PlasmaSlime = special("โวลต์ สไลม์พลาสมา", Color3.fromRGB(0, 230, 255),
+	{ hp = 80, damage = 10, attackCooldown = 1.1, walkSpeed = 7.5, aggroRange = 36 })
+
+-- Gunk: the bio slime. Middling, but chases furthest.
+GatherConfig.Mobs.BioSlime = special("กังก์ สไลม์กรดชีวะ", Color3.fromRGB(100, 255, 80),
+	{ leashRange = 110 })
+
 return GatherConfig
