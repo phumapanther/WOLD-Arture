@@ -287,8 +287,11 @@ local function walkTo(node)
 		humanoid.MoveToFinished:Wait()
 	end
 
+	-- Deliberately generous. gatherNode closes the last few studs itself and refuses if it cannot, so
+	-- "near enough to try" is the useful answer here -- reporting failure at 9 studs when the prompt
+	-- reaches 10 would abandon a node the character is practically standing at.
 	local r = rootOf()
-	return r ~= nil and (r.Position - anchor.Position).Magnitude <= ARRIVE_DISTANCE
+	return r ~= nil and (r.Position - anchor.Position).Magnitude <= ARRIVE_DISTANCE * 3
 end
 
 -- Hold the prompt for its full duration, the way a player holding E would.
@@ -296,6 +299,40 @@ local function gatherNode(node)
 	local prompt = node:FindFirstChild("GatherPrompt", true)
 	if not prompt or not prompt.Enabled then return end
 
+	-- Close the last few studs before holding.
+	--
+	-- The walk ends when MoveToFinished fires on the last waypoint, which is not the same as being within
+	-- the prompt's reach: the humanoid stops where the PATH ends, and a path computed to a point beside the
+	-- tree regularly left the character 9 to 11 studs from the anchor. Past 10 the hold does nothing at all
+	-- -- InputHoldBegin on an out-of-range prompt is silently ignored, with no error and no refusal, which
+	-- is exactly what "it runs to the tree but never chops it" looked like.
+	local humanoid = humanoidOf()
+	local anchor = prompt.Parent
+	if humanoid and anchor then
+		-- Aim well inside the range rather than at its edge, so a step of drift cannot put it back outside.
+		local wanted = prompt.MaxActivationDistance * 0.5
+		local deadline = os.clock() + 4
+		while os.clock() < deadline do
+			local r = rootOf()
+			if not r then return end
+			local distance = (r.Position - anchor.Position).Magnitude
+			if distance <= wanted then break end
+			-- Straight at it: this is the last couple of studs on ground already proven walkable, so
+			-- pathfinding would be a lot of work to cover a step.
+			local toward = (anchor.Position - r.Position)
+			local flat = Vector3.new(toward.X, 0, toward.Z)
+			if flat.Magnitude < 0.1 then break end
+			humanoid:MoveTo(anchor.Position - flat.Unit * (wanted - 1))
+			humanoid.MoveToFinished:Wait()
+		end
+
+		local r = rootOf()
+		if not r or (r.Position - anchor.Position).Magnitude > prompt.MaxActivationDistance then
+			return -- still out of reach; the loop will pick another node
+		end
+	end
+
+	if not prompt.Enabled then return end
 	prompt:InputHoldBegin()
 	local deadline = os.clock() + prompt.HoldDuration + 1
 	while os.clock() < deadline do
