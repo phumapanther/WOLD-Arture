@@ -20,6 +20,10 @@ local Remotes = require(game.ReplicatedStorage.Remotes)
 local TAG = "WOLD_Npc"
 local RANGE = 12
 
+-- The most a single press can buy. Not a game rule so much as a guard: it bounds the loop below, so a
+-- request for a billion is a slow no rather than a frozen server.
+local MAX_BUY = 999
+
 --------------------------------------------------------------------------------
 -- Drifting prices
 --------------------------------------------------------------------------------
@@ -122,9 +126,9 @@ end)
 -- Buying and selling
 --------------------------------------------------------------------------------
 
--- `amount` is optional and only means anything for a sell: nil sells the whole stack, a number sells that
--- many. Validated here rather than trusted -- a crafted request asking to sell 1000 of a stack of 3 sells
--- 3, and a negative one sells nothing.
+-- `amount` is optional. On a sell, nil means the whole stack and a number means that many; on a buy, nil
+-- means one. Validated here rather than trusted -- a request to sell 1000 of a stack of 3 sells 3, and a
+-- request to buy more than the purse holds buys what it can afford.
 Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, amount)
 	if type(action) ~= "string" then return end
 	if action ~= "sellall" and type(index) ~= "number" then return end
@@ -139,17 +143,43 @@ Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, 
 	if action == "buy" then
 		local entry = ShopConfig.Sells[index]
 		if not entry then return end
-		if state.gold < entry.price then
+
+		-- How many. Clamped here rather than trusted: the client types a number into a box, and a box can
+		-- be made to say anything. A fraction floors, a negative or a zero buys one, and the ceiling is
+		-- whatever the purse can actually pay for.
+		local want = 1
+		if type(amount) == "number" and amount == amount then
+			want = math.clamp(math.floor(amount), 1, MAX_BUY)
+		end
+
+		local affordable = math.floor(state.gold / entry.price)
+		if affordable < 1 then
 			return Remotes.SocialNotify:FireClient(player, "error", "เงินไม่พอ")
 		end
-		-- Given BEFORE the gold is taken, so a full bag cannot charge the player for nothing.
-		if not Inventory.AddItem(player, entry.id, 1) then
+		local count = math.min(want, affordable)
+
+		-- Given one at a time BEFORE the gold is taken, so a full bag cannot charge for nothing. Stopping
+		-- at the first refusal and paying only for what landed is what makes a part-filled bag buy what
+		-- fits instead of failing outright.
+		local bought = 0
+		for _ = 1, count do
+			if not Inventory.AddItem(player, entry.id, 1) then break end
+			bought += 1
+		end
+		if bought == 0 then
 			return Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม")
 		end
-		Inventory.AddGold(player, -entry.price)
+		Inventory.AddGold(player, -entry.price * bought)
+
 		local item = ItemCatalog.Get(entry.id)
-		Remotes.SocialNotify:FireClient(player, "info",
-			("ซื้อ %s ราคา %d"):format(item and item.name or entry.id, entry.price))
+		local name = item and item.name or entry.id
+		if bought < want then
+			Remotes.SocialNotify:FireClient(player, "info",
+				("ซื้อ %s x%d ราคา %d (ได้ไม่ครบ %d)"):format(name, bought, entry.price * bought, want))
+		else
+			Remotes.SocialNotify:FireClient(player, "info",
+				("ซื้อ %s x%d ราคา %d"):format(name, bought, entry.price * bought))
+		end
 
 	elseif action == "sell" then
 		local slot = state.slots[index]

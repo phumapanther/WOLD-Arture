@@ -250,6 +250,38 @@ local function row(parent, order, icon, name, priceText, buttonText, buttonColor
 	return frame
 end
 
+-- A box to type a quantity into, in the same slot on the row that the small button uses on the sell side.
+--
+-- Empty means one, which is what the row did before this existed: a player who never touches the box gets
+-- the old behaviour. Anything that is not a number is ignored rather than corrected mid-typing, because
+-- rewriting the box under someone's fingers makes it impossible to clear.
+local function amountBox(frame, onChanged)
+	local b = Instance.new("TextBox")
+	b.Name = "Amount"
+	b.AnchorPoint = Vector2.new(1, 0.5)
+	b.Position = UDim2.new(1, -68, 0.5, 0)
+	b.Size = UDim2.fromOffset(38, 26)
+	b.BackgroundColor3 = Color3.fromRGB(30, 32, 40)
+	b.BorderSizePixel = 0
+	b.Font = Enum.Font.GothamBold
+	b.TextSize = 12
+	b.TextColor3 = Color3.fromRGB(232, 232, 238)
+	b.PlaceholderText = "1"
+	b.PlaceholderColor3 = Color3.fromRGB(120, 124, 134)
+	b.ClearTextOnFocus = false
+	b.Text = ""
+	b.Parent = frame
+	corner(b, UDim.new(0, 5))
+
+	b:GetPropertyChangedSignal("Text"):Connect(function()
+		-- Digits only. Typed rather than pasted is the normal case, so this mostly stops a stray letter.
+		local digits = b.Text:gsub("%D", "")
+		if digits ~= b.Text then b.Text = digits end
+		if onChanged then onChanged(tonumber(digits)) end
+	end)
+	return b
+end
+
 -- A second, smaller button on a row, to the left of the main one. Used for "sell just one" beside "sell
 -- the stack", so a player can part with three of a hundred without emptying the slot.
 local function smallButton(frame, text, onClick)
@@ -282,11 +314,15 @@ function ShopGui:Show(snapshot)
 	self.purse.Text = ("เงิน %d"):format(snapshot.gold or 0)
 
 	for _, entry in ipairs(snapshot.sells or {}) do
-		row(self.sellList, entry.index, entry.icon, entry.name,
+		-- The quantity lives in the closure rather than being read off the box at press time, so the row
+		-- keeps working the same way whether the number was typed or left alone.
+		local want = nil
+		local frame = row(self.sellList, entry.index, entry.icon, entry.name,
 			("ราคา %d"):format(entry.price), "ซื้อ", Color3.fromRGB(150, 200, 140),
 			function()
-				if self.onBuy then self.onBuy(entry.index) end
+				if self.onBuy then self.onBuy(entry.index, want) end
 			end)
+		amountBox(frame, function(n) want = n end)
 	end
 
 	if #(snapshot.buys or {}) == 0 then

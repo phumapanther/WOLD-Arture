@@ -4,7 +4,8 @@
 -- playtester without an admin command. Delete it, or set TestChestConfig.Enabled to false, before release.
 --
 -- Contents are DERIVED from the catalog rather than listed here, so a weapon added tomorrow is in the chest
--- tomorrow without anyone remembering to update a list.
+-- tomorrow without anyone remembering to update a list. That now includes the vehicle keys, each minted
+-- with a registration plate of its own.
 local Players = game:GetService("Players")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 
@@ -24,18 +25,37 @@ local COOLDOWN_SECONDS = 24 * 60 * 60 -- once a day, per player
 -- Written as "every kind except the exceptions" rather than a list of wanted kinds, so an item kind invented
 -- next month is in the chest the day it exists instead of being silently left out -- which is exactly how
 -- the tools and the gathering materials went missing from it before.
-local SKIP_KINDS = {
-	-- A key without a plate opens nothing: keys are issued by the vehicle system with a registration in
-	-- their meta, and a blank one from here would just be dead weight in the bag.
-	key = true,
-}
+local SKIP_KINDS = {}
+
+-- A plate for a key the chest issues.
+--
+-- One key is one vehicle, so a key is only worth having if it carries a registration -- which is why keys
+-- used to be left out of the chest entirely. The vehicle system that will normally mint these does not
+-- exist yet, so the chest mints its own: the player's id keeps two people's plates apart, and the clock
+-- keeps the same person's successive keys apart.
+--
+-- Deliberately the same SHAPE the vehicle system will use (a `plate` string in the slot's meta), so keys
+-- from the chest and keys from a dealer are the same kind of thing in the bag.
+local PLATE_LETTERS = "กขคฆงจฉชซฌญฎฏฐฑฒณดตถทธนบปผฝพฟภมยรลวศษสหฬอฮ"
+
+local function mintPlate(player)
+	-- Two Thai letters and four digits, which is what a plate looks like here.
+	local n = utf8.len(PLATE_LETTERS)
+	local function letter()
+		local i = math.random(1, n)
+		return string.sub(PLATE_LETTERS, utf8.offset(PLATE_LETTERS, i), utf8.offset(PLATE_LETTERS, i + 1) - 1)
+	end
+	return ("%s%s %04d"):format(letter(), letter(), math.random(0, 9999))
+end
 
 local function contents()
 	local out = {}
 	for id, item in pairs(ItemCatalog.Items) do
 		if not SKIP_KINDS[item.kind] then
 			local stack = ItemCatalog.StackSize(id)
-			table.insert(out, { id = id, count = stack > 1 and stack or 1 })
+			-- A key is issued one at a time with a plate of its own; everything else that stacks arrives
+			-- as a full stack.
+			table.insert(out, { id = id, count = stack > 1 and stack or 1, needsPlate = item.kind == "key" })
 		end
 	end
 	-- Sorted so the chest hands things out in a stable order rather than a random one each server.
@@ -243,7 +263,10 @@ task.spawn(function()
 
 		local given, full = 0, false
 		for _, entry in ipairs(contents()) do
-			if Inventory.AddItem(player, entry.id, entry.count) then
+			-- The meta is what makes one key a different thing from another, and Inventory.AddItem refuses
+			-- to merge anything carrying it -- so three car keys stay three cars rather than "CarKey x3".
+			local meta = entry.needsPlate and { plate = mintPlate(player) } or nil
+			if Inventory.AddItem(player, entry.id, entry.count, nil, meta) then
 				given += 1
 			else
 				full = true

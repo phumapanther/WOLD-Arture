@@ -19,9 +19,10 @@ local gui = ShopGui.new()
 -- refused purchase -- not enough gold, full bag, walked away -- stays silent instead of lying about it.
 local pendingCoin = false
 
-gui:OnBuy(function(index)
+gui:OnBuy(function(index, amount)
 	pendingCoin = true
-	Remotes.RequestShopAction:FireServer("buy", index)
+	-- amount nil means one; the server clamps whatever it is told to what the purse can afford.
+	Remotes.RequestShopAction:FireServer("buy", index, amount)
 end)
 
 gui:OnSell(function(slot, amount)

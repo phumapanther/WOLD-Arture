@@ -346,8 +346,12 @@ K.build("Monster_SteamSlime", nil, function(m)
     K.box(body, eye.CFrame * CFrame.new(-0.27, 0.11, 0) * CFrame.Angles(math.rad(30), 0, 0), Vector3.new(0.05, 0.28, 0.05), MAT.SmoothPlastic, C.black, { name = "Needle", cancollide = false })
   end
 
+  -- NO ProximityPrompt on a monster.
+  --
+  -- All three display slimes carried one -- "fight / collect steam fragments" and the like -- and none of
+  -- them did anything: pressing E collected nothing. A monster is fought, which Mobs.server.lua drives off
+  -- a WOLD_Spawner marker; a prompt on one is a button that lies about being a mechanic.
   R.nametag(m, "บอยลี่ สไลม์ไอน้ำ (Boilie)", "มอนสเตอร์จักรกลอุณหภูมิสูง", rgb(255, 160, 50), core)
-  R.prompt(m, "ต่อสู้ / เก็บสะเก็ดไอน้ำ", "บอยลี่", core)
   R.slimeController(m, { wander = 5, hopEvery = 3, hopHeight = 1.5 })
 end)
 
@@ -376,7 +380,6 @@ K.build("Monster_PlasmaSlime", nil, function(m)
   end
 
   R.nametag(m, "โวลต์ สไลม์พลาสมา (Volt)", "มอนสเตอร์แกนพลังงานควอนตัม", rgb(0, 230, 255), core)
-  R.prompt(m, "กักเก็บประจุพลังงาน", "โวลต์", core)
   R.slimeController(m, { wander = 6, hopEvery = 2.4, hopHeight = 2.2, hopTime = 0.55 })
 end)
 
@@ -396,6 +399,5 @@ K.build("Monster_BioSlime", nil, function(m)
   glow(third, rgb(255, 50, 50), 5, 1.6)
 
   R.nametag(m, "กังก์ สไลม์กรดชีวะ (Gunk)", "มอนสเตอร์ของเสียกัมมันตรังสี", rgb(100, 255, 80), core)
-  R.prompt(m, "เก็บตัวอย่างพิษ", "กังก์", core)
   R.slimeController(m, { wander = 4, hopEvery = 3.6, hopHeight = 1.2, hopTime = 0.85 })
 end)
