@@ -108,6 +108,7 @@ end
 
 -- The sound pair for whatever the player is wielding. Falls back to the punch sound for the impact so an
 -- unconfigured weapon still thumps rather than landing in silence.
+-- Returns cast, hit, hitVolume, hitSeconds, castSeconds.
 local function soundsFor(player)
 	local _, entry = Inventory.EquippedWeapon(player)
 	-- Bare hands have no inventory entry, so they fall back to the default weapon key the same way weaponOf
@@ -119,7 +120,10 @@ local function soundsFor(player)
 	-- the rest, so it says so here rather than every weapon being tuned to the noisiest one.
 	return (set and set.cast) or "", hit,
 		set and set.hitVolume or nil,
-		set and set.hitSeconds or nil
+		set and set.hitSeconds or nil,
+		-- How long the CAST sound is allowed to run. The pistol's clip is six seconds and a gunshot is a
+		-- crack, so it says half a second here rather than every weapon being cut to the shortest one.
+		set and set.castSeconds or nil
 end
 
 -- Tells the two people in a fight that a blow just landed, so their music can react. Only the pair: a
@@ -151,9 +155,9 @@ CombatConfig.PlayWeaponHitSound = playHitSound
 
 -- The attacker's own sound: the swing, the bowstring, the spell leaving the book.
 local function playCastSound(player)
-	local cast = select(1, soundsFor(player))
+	local cast, _, _, _, castSeconds = soundsFor(player)
 	playAt(player.Character, cast, CombatConfig.CastSoundDistance, nil,
-		CombatConfig.CastSoundMaxSeconds)
+		castSeconds or CombatConfig.CastSoundMaxSeconds)
 end
 
 -- Ranged attacks: the bow's arrow and the spellbook's orb travel and hit the first thing they reach; the
@@ -224,7 +228,10 @@ local function fireProjectile(player, attack, aim)
 	-- Leaves from chest height, which is where a bow is held, but offset along the AIM rather than the
 	-- character's facing -- otherwise a shot aimed sharply up or down starts beside the shooter instead of
 	-- in front of them.
-	local muzzle = hrp.Position + Vector3.new(0, 1.2, 0)
+	-- Chest height by default, which is where a bow is held. A weapon may raise it: the pistol sights just
+	-- above the head, as the user asked, so the shot clears a crowd rather than hitting the first shoulder
+	-- between shooter and target.
+	local muzzle = hrp.Position + Vector3.new(0, spec.muzzleHeight or 1.2, 0)
 	local forward = aimDirection(hrp, muzzle, aim)
 	local origin = muzzle + forward * 2.5
 

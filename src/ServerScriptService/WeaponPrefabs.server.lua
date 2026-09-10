@@ -176,6 +176,28 @@ function Builders.Shovel()
 end
 
 --------------------------------------------------------------------------------
+-- The pistol
+--------------------------------------------------------------------------------
+
+-- A steampunk flintlock: brass barrel, wooden stock, a little boiler drum where a hammer would be. Built to
+-- the same convention as the rest -- muzzle at the origin, grip out along +Y -- so it takes SWORD_GRIP.
+function Builders.Pistol()
+	local barrel = part("Barrel", Vector3.new(0.22, 1.9, 0.22), CFrame.new(0, 0, 0), GOLD, Enum.Material.Metal)
+	local others = {
+		part("Muzzle", Vector3.new(0.3, 0.24, 0.3), CFrame.new(0, -0.95, 0), DARK_STEEL, Enum.Material.Metal),
+		part("Boiler", Vector3.new(0.42, 0.5, 0.42), CFrame.new(0, 0.75, -0.18), DARK_STEEL, Enum.Material.Metal),
+		part("Valve", Vector3.new(0.16, 0.16, 0.3), CFrame.new(0.22, 0.75, -0.3), GOLD, Enum.Material.Metal),
+		part("Hammer", Vector3.new(0.12, 0.34, 0.2), CFrame.new(0, 1.15, -0.22), DARK_STEEL, Enum.Material.Metal),
+		part("Trigger", Vector3.new(0.08, 0.22, 0.1), CFrame.new(0, 1.5, -0.1), DARK_STEEL, Enum.Material.Metal),
+		-- The stock, angled back the way a pistol grip is rather than straight down the barrel.
+		part("Grip", Vector3.new(0.26, 0.95, 0.34),
+			CFrame.new(0, 2.0, -0.22) * CFrame.Angles(math.rad(18), 0, 0), WOOD),
+		part("Butt", Vector3.new(0.3, 0.18, 0.36), CFrame.new(0, 2.48, -0.36), DARK_WOOD),
+	}
+	return assemble("Pistol", barrel, others)
+end
+
+--------------------------------------------------------------------------------
 -- The fishing rod
 --------------------------------------------------------------------------------
 

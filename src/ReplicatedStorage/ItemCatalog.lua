@@ -88,6 +88,16 @@ ItemCatalog.Items = {
 		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 },
 	},
 
+	Pistol = {
+		icon = "rbxassetid://76734561926426",
+		name = "ปืน", kind = "weapon", weight = 4, stackSize = 1,
+		-- The shot does no damage at all. It floors whoever it hits for five seconds, which is a far
+		-- nastier thing to do to someone than taking a slice of their health -- and it keeps the guard's
+		-- pistol a tool of arrest rather than a way to kill people faster than a sword.
+		damage = 0, range = 6,
+		maxDurability = 120,
+		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 },
+	},
 	FishingRod = {
 		icon = "rbxassetid://108988125515479",
 		name = "คันเบ็ด", kind = "weapon", weight = 3, stackSize = 1,

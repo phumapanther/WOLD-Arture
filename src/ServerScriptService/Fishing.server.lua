@@ -101,6 +101,71 @@ local function showCard(player, on)
 	icon.Parent = back
 end
 
+-- Swaps the card's icon to whatever was just caught and puts its name under it, then goes back to the
+-- plain fish after a moment. Shown over the head rather than only in a toast so the people around you can
+-- see you landed something -- which is most of the point of fishing where others can see.
+local function showCatch(player, itemId)
+	local character = player.Character
+	local head = character and character:FindFirstChild("Head")
+	local card = head and head:FindFirstChild("FishingCard")
+	if not card then return end
+	local back = card:FindFirstChildWhichIsA("Frame")
+	local icon = back and back:FindFirstChildWhichIsA("ImageLabel")
+	if not icon then return end
+
+	local item = ItemCatalog.Get(itemId)
+	if not item then return end
+
+	icon.Image = item.icon
+	card.Size = UDim2.fromOffset(74, 74)
+
+	local name = back:FindFirstChild("CatchName")
+	if not name then
+		name = Instance.new("TextLabel")
+		name.Name = "CatchName"
+		name.AnchorPoint = Vector2.new(0.5, 0)
+		name.Position = UDim2.new(0.5, 0, 1, 2)
+		name.Size = UDim2.fromOffset(110, 16)
+		name.BackgroundTransparency = 1
+		name.Font = Enum.Font.GothamBold
+		name.TextSize = 13
+		name.TextColor3 = Color3.fromRGB(255, 226, 170)
+		name.TextStrokeTransparency = 0.4
+		name.Parent = back
+	end
+	name.Text = item.name
+
+	task.delay(3, function()
+		if not card.Parent then return end
+		icon.Image = ItemCatalog.Get("Fish").icon
+		card.Size = UDim2.fromOffset(46, 46)
+		if name.Parent then name.Text = "" end
+	end)
+end
+
+-- The rod twitches as something takes the line. Cosmetic, and short: a nudge, not a performance.
+local function twitchRod(player)
+	local character = player.Character
+	local held = character and character:FindFirstChild("EquippedWeapon")
+	local root = held and held.PrimaryPart
+	if not root then return end
+	local motor = character:FindFirstChild("RightHand")
+	motor = motor and motor:FindFirstChild("WeaponGrip")
+	if not motor then return end
+
+	-- Nudged through the joint rather than by moving the model: the model is welded to the joint, so
+	-- moving it directly would be undone on the next frame.
+	local base = motor.C0
+	task.spawn(function()
+		for _, angle in ipairs({ 14, -8, 5, 0 }) do
+			if not motor.Parent then return end
+			motor.C0 = base * CFrame.Angles(math.rad(angle), 0, 0)
+			task.wait(0.08)
+		end
+		if motor.Parent then motor.C0 = base end
+	end)
+end
+
 --------------------------------------------------------------------------------
 -- The catch
 --------------------------------------------------------------------------------
@@ -204,11 +269,13 @@ local function startFishing(player)
 			local wait = math.random(FishingConfig.MinSeconds, FishingConfig.MaxSeconds)
 			-- Waited in slices so the checks below run during the wait, not only after it: a player who
 			-- walks away should stop fishing then, not twenty seconds later.
+			-- A fifth of a second, not a whole one: walking is meant to cancel fishing IMMEDIATELY, and a
+			-- one-second sweep let the player take several steps before the line came in.
 			local elapsed = 0
 			while elapsed < wait do
 				if Sessions[player] ~= session then return end
-				task.wait(1)
-				elapsed += 1
+				task.wait(0.2)
+				elapsed += 0.2
 
 				local char = player.Character
 				local root2 = char and char:FindFirstChild("HumanoidRootPart")
@@ -222,6 +289,13 @@ local function startFishing(player)
 					> FishingConfig.LeashDistance then
 					return stop(player, "เดินออกจากน้ำ หยุดตกปลา")
 				end
+				-- Any deliberate movement reels in. Read from the humanoid rather than from a client flag:
+				-- MoveDirection is non-zero only while the player is actually asking to move, so being
+				-- shoved or standing on something moving does not count.
+				local hum = char:FindFirstChildOfClass("Humanoid")
+				if hum and hum.MoveDirection.Magnitude > 0.1 then
+					return stop(player, "เดิน หยุดตกปลา")
+				end
 			end
 
 			-- Bait first: no worm, no catch, and the session ends rather than fishing for free.
@@ -231,7 +305,24 @@ local function startFishing(player)
 
 			local caught = rollLoot()
 			local item = ItemCatalog.Get(caught)
+
+			-- The bite: the rod jerks and the cast sound plays again, so a catch is something you SEE and
+			-- hear rather than only a line of text.
+			twitchRod(player)
+			local char = player.Character
+			local root = char and char:FindFirstChild("HumanoidRootPart")
+			if root and FishingConfig.CastSound ~= "" then
+				local sound = Instance.new("Sound")
+				sound.SoundId = FishingConfig.CastSound
+				sound.Volume = FishingConfig.CastSoundVolume
+				sound.RollOffMaxDistance = FishingConfig.CastSoundDistance
+				sound.Parent = root
+				sound:Play()
+				Debris:AddItem(sound, 4)
+			end
+
 			if Inventory.AddItem(player, caught, 1) then
+				showCatch(player, caught)
 				Remotes.SocialNotify:FireClient(player, "info",
 					("ตกได้ %s"):format(item and item.name or caught))
 			else

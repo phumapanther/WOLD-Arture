@@ -100,6 +100,28 @@ CombatConfig.Weapons = {
 		chainResetDelay = 0.35,
 		chainWindow = 1.4,
 	},
+	-- The pistol. A projectile weapon, so it gets the crosshair and the auto-turn that come with one, and
+	-- the aim point is validated server-side exactly as the bow's is.
+	--
+	-- Damage 0 on purpose: the shot's whole effect is the five seconds face-down. Something that both
+	-- floored a target AND hurt them would be strictly better than every other weapon in the game.
+	Pistol = {
+		idleAnimation = "rbxassetid://109624563861296", -- Bow_Idle, the two-handed ready stance
+		guardAnimation = "",
+		guardWalkSpeed = 7,
+		idleTimeout = 4,
+		attacks = {
+			{ animation = "rbxassetid://73671392887806", damage = 0, windup = 0.1, active = 0.05, recovery = 0.55, range = 0, -- Bow_Shoot
+				effect = "knockdown", effectSeconds = 5,
+				projectile = { kind = "bullet", speed = 320, life = 0.5, size = Vector3.new(0.12, 0.12, 0.6),
+					color = Color3.fromRGB(255, 232, 160), material = Enum.Material.Neon,
+					-- Sighted above the head rather than from the chest: a head-height line clears the
+					-- shoulders of anyone standing between the shooter and what they are aiming at.
+					muzzleHeight = 3.2 } },
+		},
+		chainResetDelay = 0.6,
+		chainWindow = 1.4,
+	},
 	Bow = {
 		idleAnimation = "rbxassetid://109624563861296", -- Bow_Idle
 		guardAnimation = "",
@@ -187,6 +209,12 @@ CombatConfig.Sounds = {
 		hit = "rbxassetid://114083734266818",
 		hitVolume = 0.09,
 		hitSeconds = 0.55,
+	},
+	Pistol = {
+		cast = "rbxassetid://110507208537712",
+		-- The clip runs 5.95 seconds; a gunshot is a crack, not a drone. Cut to the first half second.
+		castSeconds = 0.5,
+		hit = "",
 	},
 	Bow = {
 		cast = "rbxassetid://110510289237765", -- assets/sounds/bow_shoot.mp3
