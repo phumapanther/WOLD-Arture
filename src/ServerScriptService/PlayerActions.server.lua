@@ -58,6 +58,17 @@ local function startSound(character, soundId, volume)
 	return sound
 end
 
+-- What the character could jump before an action took it away, so it can be handed back exactly. Keyed by
+-- player rather than character: a roll never outlives its character, and a stale entry would be replaced by
+-- the next blockJump anyway.
+local JumpBefore = {}
+
+local function blockJump(player, humanoid)
+	JumpBefore[player] = { power = humanoid.JumpPower, height = humanoid.JumpHeight }
+	humanoid.JumpPower = 0
+	humanoid.JumpHeight = 0
+end
+
 local function stopAction(player, state)
 	if state.mover then state.mover:Destroy() end
 	if state.attachment then state.attachment:Destroy() end
@@ -67,6 +78,15 @@ local function stopAction(player, state)
 	local humanoid = humanoidOf(player)
 	if humanoid then
 		humanoid.AutoRotate = true
+		-- Jumping again, restored to whatever this character actually had rather than to a constant: the
+		-- place is configured at JumpPower 60, so writing back the Roblox default of 50 would quietly nerf
+		-- every jump after the first roll.
+		local saved = JumpBefore[player]
+		if saved then
+			humanoid.JumpPower = saved.power
+			humanoid.JumpHeight = saved.height
+			JumpBefore[player] = nil
+		end
 		-- PlayerMovement owns WalkSpeed; putting back the normal value is enough, its state machine will
 		-- correct it on the next intent change.
 		if humanoid.WalkSpeed == 0 then humanoid.WalkSpeed = 8 end
@@ -122,6 +142,9 @@ Remotes.RequestRoll.OnServerEvent:Connect(function(player, direction)
 	character.HumanoidRootPart.CFrame = CFrame.lookAt(character.HumanoidRootPart.Position,
 		character.HumanoidRootPart.Position + flat)
 	humanoid.AutoRotate = false
+	-- No jumping out of a roll. The mover already overrides gravity for its duration, so a jump mid-roll
+	-- launched the character instead of hopping, and cancelled the animation into a floating pose.
+	blockJump(player, humanoid)
 	-- A heavily loaded player rolls half as far: carrying a plate armor and a full bag should cost agility.
 	local penalty = Inventory.IsHeavilyLoaded(player) and InventoryConfig.HeavyActionPenalty or 1
 	state.mover, state.attachment = startMover(character, flat, cfg.speed * penalty)
@@ -161,6 +184,8 @@ Remotes.RequestSlide.OnServerEvent:Connect(function(player)
 	local penalty = Inventory.IsHeavilyLoaded(player) and InventoryConfig.HeavyActionPenalty or 1
 	state.speed = cfg.startSpeed * penalty
 	humanoid.AutoRotate = false
+	-- No jumping out of a slide either, for the same reason as the roll above.
+	blockJump(player, humanoid)
 	state.mover, state.attachment = startMover(character, flat, state.speed)
 	state.sound = startSound(character, cfg.sound, ActionConfig.SlideVolume)
 
@@ -176,11 +201,15 @@ Players.PlayerAdded:Connect(function(player)
 			state.action, state.mover, state.attachment, state.sound = nil, nil, nil, nil
 			state.endsAt, state.nextAllowedAt = 0, 0
 		end
+		-- A new Humanoid already has the place's jump values, so a reading taken from the dead one must not
+		-- be written over them.
+		JumpBefore[player] = nil
 	end)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
 	States[player] = nil
+	JumpBefore[player] = nil
 end)
 
 RunService.Heartbeat:Connect(function(dt)
