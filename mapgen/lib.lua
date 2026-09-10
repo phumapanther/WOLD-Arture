@@ -331,6 +331,15 @@ function L.manualFolder()
   if not f then f = Instance.new("Folder"); f.Name = "Manual"; f.Parent = root end
   return f
 end
+-- Rerunning a phase DESTROYS everything that phase built last time. That is what makes a phase repeatable,
+-- and it is also how a whole evening of hand-editing went in one command: the Manual attribute is the only
+-- thing that survives, and nothing dragged around in Studio has it.
+--
+-- So before destroying anything, the old folder is copied to WOLD.Backup.<name>. It costs one copy of a
+-- folder that was about to be deleted anyway, and it means the answer to "you just overwrote my work" is a
+-- drag rather than a restore from the website.
+--
+-- Set L.NO_BACKUP = true to skip it, for a phase being run over and over during development.
 function L.runPhase(name, fn)
   local root = L.root()
   local old = root:FindFirstChild(name)
@@ -338,6 +347,26 @@ function L.runPhase(name, fn)
     local kept = 0
     for _, d in ipairs(old:GetDescendants()) do if d.Parent and d:GetAttribute("Manual") then d.Parent = L.manualFolder(); kept += 1 end end
     if kept > 0 then print(("[WOLD] kept %d manual instances from %s"):format(kept, name)) end
+
+    if not L.NO_BACKUP and #old:GetChildren() > 0 then
+      local bin = root:FindFirstChild("Backup")
+      if not bin then bin = Instance.new("Folder"); bin.Name = "Backup"; bin.Parent = root end
+      -- Only ONE backup per phase is kept: the previous one is replaced. Keeping every generation would
+      -- quietly double the place file every time a phase is tuned.
+      local prev = bin:FindFirstChild(name)
+      if prev then prev:Destroy() end
+      local ok, copy = pcall(function() return old:Clone() end)
+      if ok and copy then
+        copy.Name = name
+        copy:SetAttribute("BackedUpAt", os.date("%Y-%m-%d %H:%M:%S"))
+        copy.Parent = bin
+        print(("[WOLD] backed up %d instances from %s to WOLD.Backup.%s"):format(#old:GetDescendants(), name, name))
+      else
+        warn(("[WOLD] could NOT back up %s -- refusing to destroy it. Rename or delete it by hand first."):format(name))
+        return
+      end
+    end
+
     old:Destroy()
   end
   local folder = Instance.new("Folder"); folder.Name = name; folder.Parent = root
