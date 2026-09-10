@@ -281,11 +281,13 @@ return L.runPhase("Heartland", function(folder)
 					if y and material ~= Enum.Material.Water then
 						local rng = Random.new(math.floor(jx * 31 + jz * 17))
 						-- More stone by the river, where a bank would be strewn with it.
-						local isRock = rng:NextNumber() < (river > 0.4 and 0.34 or 0.18)
+						-- Fewer rocks: at a third by the water they read as mounds of stone rather than as
+						-- a bank with stones on it.
+						local isRock = rng:NextNumber() < (river > 0.4 and 0.16 or 0.07)
 
 						local model
 						if isRock then
-							model = L.placeAsset(nodes, "rock", jx, y, jz, rng, 0.3, 0.55)
+							model = L.placeAsset(nodes, "rock", jx, y, jz, rng, 0.22, 0.4)
 						else
 							-- Oak in the open, pine on the higher and further ground.
 							local kind = (y > 120 or rng:NextNumber() < 0.18) and "pine" or "oak"

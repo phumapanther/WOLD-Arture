@@ -249,10 +249,18 @@ return L.runPhase("FirstTown", function(folder)
 			local wobble = math.sin(t * math.pi * 2.2 + ax * 0.01) * 1.6
 			px += math.cos(heading) * wobble
 			pz -= math.sin(heading) * wobble
-			-- Thick and raised for the same reason as the plaza: a thin slab lets the grass through.
-			part(paths, "PathSlab", Vector3.new(width, 3, 8.4),
-				CFrame.new(px, groundAt(px, pz) + 1.7, pz) * CFrame.Angles(0, heading, 0),
-				DIRT, Enum.Material.Ground)
+			-- A footpath is WORN INTO the ground, not laid on top of it.
+			--
+			-- These used to be raised slabs, which gave every path a kerb to trip over and made the town
+			-- read as decked rather than trodden. A shallow scoop of bare earth is what a track actually
+			-- is: FillBall with Ground, centred just under the surface so it cuts a dish a few inches
+			-- deep and paints it brown at the same time.
+			--
+			-- The ball is much wider than it is deep at the surface, which is why a big radius set only
+			-- slightly below ground gives a shallow hollow rather than a crater.
+			local py = groundAt(px, pz)
+			workspace.Terrain:FillBall(Vector3.new(px, py - width * 0.5 + 1.2, pz),
+				width * 0.5, Enum.Material.Ground)
 		end
 		table.insert(pathSegments, { ax, az, bx, bz })
 	end

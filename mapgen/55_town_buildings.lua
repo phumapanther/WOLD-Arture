@@ -43,8 +43,25 @@ local SLIME_POSTS = {
 L.runPhase("TownBuildings", function(folder)
 	local town = workspace.WOLD:FindFirstChild("FirstTown")
 	assert(town, "FirstTown is not built -- run mapgen/50_first_town.lua first")
-	local plots = town:FindFirstChild("Plots")
-	assert(plots, "FirstTown has no Plots folder")
+
+	-- Plots come from EITHER phase. 50_first_town cuts the small original town; 52_city_districts spreads
+	-- the city across its walls. Reading both means the districts can be added without this file caring
+	-- which one produced a given pad -- every plot carries a PlotKey either way, and that is all it needs.
+	local plots = Instance.new("Folder")
+	plots.Name = "AllPlots"
+	local sources = { town:FindFirstChild("Plots") }
+	local districts = workspace.WOLD:FindFirstChild("CityDistricts")
+	if districts then table.insert(sources, districts:FindFirstChild("Plots")) end
+
+	local plotList = {}
+	for _, src in ipairs(sources) do
+		if src then
+			for _, p in ipairs(src:GetChildren()) do
+				if p:IsA("BasePart") then table.insert(plotList, p) end
+			end
+		end
+	end
+	assert(#plotList > 0, "no plots found -- run 50_first_town or 52_city_districts first")
 
 	-- the town centre, so slime posts can be given in town-local coordinates
 	local plaza = town:FindFirstChild("Plaza") and town.Plaza:FindFirstChild("PlazaFloor")
@@ -66,8 +83,8 @@ L.runPhase("TownBuildings", function(folder)
 	local houseIndex = 0
 	local built, skipped = 0, {}
 
-	for _, plot in ipairs(plots:GetChildren()) do
-		if plot:IsA("BasePart") then
+	for _, plot in ipairs(plotList) do
+		do
 			local key = plot:GetAttribute("PlotKey")
 			local name = PLOT_MODEL[key]
 			if key == "house" then
