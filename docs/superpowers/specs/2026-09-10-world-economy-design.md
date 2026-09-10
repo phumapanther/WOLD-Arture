@@ -91,13 +91,13 @@ GatherConfig.Nodes = {
 
 ```lua
 GatherConfig.Mobs = {
-    Slime    = { hp = 40,  damage = 6,  drops = {{ "SlimeMeat", 1, 2 }}, xp = 10, respawn = 30 },
+    Slime    = { hp = 40,  damage = 6,  drops = {{ "Slime", 1, 2 }},     xp = 10, respawn = 30 },
     Spider   = { hp = 60,  damage = 10, drops = {{ "Fiber", 1, 3 }},     xp = 18, respawn = 40 },
     Skeleton = { hp = 100, damage = 16, drops = {{ "Bone", 1, 2 }},      xp = 30, respawn = 60 },
 }
 ```
 
-`SlimeMeat` เป็นไอเทมใหม่ตัวเดียวที่ต้องเพิ่มใน `ItemCatalog` (อีกสองตัวมีแล้ว)
+ของที่มอนสเตอร์ดรอปมีครบใน `ItemCatalog` แล้วทั้งสามตัว (`Slime` เพิ่มเมื่อ 2026-09-10)
 
 **AI ของมอนสเตอร์:** เดินสุ่มในรัศมี เห็นผู้เล่นในระยะ → เดินเข้าหา → ตีตามคูลดาวน์
 ใช้ `Humanoid:MoveTo` ธรรมดา ไม่ใช้ PathfindingService ในเฟสแรก

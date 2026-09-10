@@ -138,6 +138,9 @@ ItemCatalog.Items = {
 	-- Junk. No effect yet; they exist to be gathered, carried and sold later.
 	--------------------------------------------------------------------------
 	Bone = { icon = "rbxassetid://81654456878247", name = "กระดูก", kind = "junk", weight = 1, stackSize = 99, value = 2 }, -- assets/item-icons/Bone.png
+	-- Dropped by slimes, the way bone comes off skeletons and fibre off spiders. Light and cheap: it is the
+	-- drop from the weakest thing in the world, so it has to be the least worth carrying home.
+	Slime = { icon = "rbxassetid://113368831869839", name = "เมือกสไลม์", kind = "junk", weight = 0.5, stackSize = 99, value = 3 },
 	WoodScrap = { icon = "rbxassetid://140646776701721", name = "เศษไม้", kind = "junk", weight = 1.5, stackSize = 99, value = 1 },
 	Stone = { icon = "rbxassetid://111540893837307", name = "ก้อนหิน", kind = "junk", weight = 2.5, stackSize = 99, value = 1 },
 
