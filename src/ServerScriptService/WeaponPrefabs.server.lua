@@ -176,6 +176,28 @@ function Builders.Shovel()
 end
 
 --------------------------------------------------------------------------------
+-- The fishing rod
+--------------------------------------------------------------------------------
+
+-- Same convention as the sword and the tools: working end at the origin, grip 2.0 studs out along +Y, so
+-- it takes the shared SWORD_GRIP unchanged. The "working end" here is the rod tip, which is why the pole
+-- runs DOWN from the grip rather than up.
+function Builders.FishingRod()
+	local pole = part("Pole", Vector3.new(0.12, 3.2, 0.12), CFrame.new(0, 0, 0), WOOD)
+	local others = {
+		part("Tip", Vector3.new(0.08, 0.7, 0.08), CFrame.new(0, -1.85, 0), DARK_WOOD),
+		-- The reel, sitting just above the hand.
+		part("Reel", Vector3.new(0.5, 0.5, 0.28), CFrame.new(0, 1.5, 0.2), DARK_STEEL, Enum.Material.Metal),
+		part("ReelHandle", Vector3.new(0.12, 0.12, 0.36), CFrame.new(0.28, 1.5, 0.34), GOLD, Enum.Material.Metal),
+		part("Grip", Vector3.new(0.2, 0.9, 0.2), CFrame.new(0, 2.0, 0), LEATHER),
+		part("Butt", Vector3.new(0.24, 0.2, 0.24), CFrame.new(0, 2.5, 0), DARK_WOOD),
+		-- The line: a thin pale strand from the tip back to the reel, so it reads as a rod and not a stick.
+		part("Line", Vector3.new(0.03, 3.1, 0.03), CFrame.new(0, -0.2, 0.12), PAGES),
+	}
+	return assemble("FishingRod", pole, others)
+end
+
+--------------------------------------------------------------------------------
 
 -- Rebuilt on every server start rather than trusted to survive in the place file: that is exactly how the
 -- originals were lost. Cheap enough (four models of five parts) that there is no reason to cache them.

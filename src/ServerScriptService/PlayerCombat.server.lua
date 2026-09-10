@@ -14,6 +14,7 @@ local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
 local CollectionService = game:GetService("CollectionService")
 local MobAccess = require(game.ServerScriptService.MobAccess)
+local FishingAccess = require(game.ServerScriptService.FishingAccess)
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
@@ -399,6 +400,26 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 		state.lastAttackAt = now
 		state.chainIndex = 0
 		setGuard(player, state, true)
+		return
+	end
+
+	-- A fishing rod casts rather than fights. The swing still plays -- the cast IS a swing, which is what
+	-- the user asked for -- but the hitbox never opens, so a cast beside someone does not hit them.
+	--
+	-- Checked after the guard, so the first click still raises the rod into the two-handed hold and the
+	-- second one casts. That falls out of the existing guard rule rather than needing its own.
+	if FishingAccess.TryCast and FishingAccess.TryCast(player) then
+		local rodWeapon = weaponOf(player)
+		local rodAttack = rodWeapon.attacks[1]
+		state.lastAttackAt = now
+		state.chainIndex = 1
+		state.busyUntil = now + rodAttack.windup + rodAttack.active + rodAttack.recovery
+		-- activeUntil left in the past: the swing animates, the hitbox never opens.
+		state.activeUntil = 0
+		state.hitThisSwing = {}
+		-- Same shape as the real attack broadcast below: the client looks the animation up from the
+		-- chain index and the weapon it knows the player is holding.
+		Remotes.CombatStateChanged:FireAllClients(player, "attack", state.chainIndex)
 		return
 	end
 

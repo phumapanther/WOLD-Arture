@@ -86,6 +86,20 @@ CombatConfig.Weapons = {
 		chainResetDelay = 0.35,
 		chainWindow = 1.4,
 	},
+	-- The fishing rod. It swings with the sword's animation because a cast IS a swing, and it holds with
+	-- the sword's two-handed idle. The damage never lands -- PlayerCombat routes a rod click to the fishing
+	-- system and leaves the hitbox shut -- so these numbers only shape the timing of the animation.
+	FishingRod = {
+		idleAnimation = "rbxassetid://103704114129246", -- Sword_Idle, the two-handed hold
+		guardAnimation = "",
+		guardWalkSpeed = 7,
+		idleTimeout = 4,
+		attacks = {
+			{ animation = "rbxassetid://138133285610075", damage = 3, windup = 0.24, active = 0.12, recovery = 0.3, range = 6 }, -- Sword_Slash
+		},
+		chainResetDelay = 0.35,
+		chainWindow = 1.4,
+	},
 	Bow = {
 		idleAnimation = "rbxassetid://109624563861296", -- Bow_Idle
 		guardAnimation = "",

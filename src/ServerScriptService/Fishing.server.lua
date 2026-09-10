@@ -1,0 +1,281 @@
+-- Fishing.server.lua: cast a line into any water and let it fish itself.
+--
+-- Equip the rod, stand near water, click once. The swing animation plays, the line goes out, and from then
+-- on a catch lands every twenty to thirty seconds until the worms run out or the player walks away. A card
+-- over their head says they are fishing, so it reads to everyone else as an activity rather than idling.
+--
+-- Everything that matters is decided here. The client asks to cast and is told whether it worked; it never
+-- says what was caught, how long it took, or how many worms are left.
+local Players = game:GetService("Players")
+local Debris = game:GetService("Debris")
+local ServerConfig = require(game.ServerScriptService.ServerConfig)
+
+if ServerConfig.IsLobby then return end
+
+local FishingConfig = require(game.ReplicatedStorage.FishingConfig)
+local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
+local Inventory = require(game.ServerScriptService.Inventory)
+local Vitals = require(game.ServerScriptService.Vitals)
+local FishingAccess = require(game.ServerScriptService.FishingAccess)
+local Remotes = require(game.ReplicatedStorage.Remotes)
+
+-- [player] = { anchor = Vector3 where they cast from, thread }
+local Sessions = {}
+
+--------------------------------------------------------------------------------
+-- Is there water in front of them?
+--------------------------------------------------------------------------------
+
+-- Looks ahead of the player and down. Terrain water is the only thing that counts -- a Part painted blue
+-- is scenery, and letting it fish would make every decorative pond in a model a fishing spot.
+--
+-- IgnoreWater must be FALSE or the ray passes straight through the thing being looked for, which is the
+-- single easiest way to get this wrong.
+local function waterAhead(character)
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then return false end
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character }
+	params.IgnoreWater = false
+
+	-- Several points along the look direction rather than one: a single ray at a fixed distance misses
+	-- water the player is standing right at the edge of, and misses it again if they are a little far back.
+	local forward = root.CFrame.LookVector
+	for _, distance in ipairs({ 4, 8, 12, FishingConfig.CastDistance }) do
+		local origin = root.Position + forward * distance + Vector3.new(0, 3, 0)
+		local hit = workspace:Raycast(origin, Vector3.new(0, -FishingConfig.CastDepth, 0), params)
+		if hit and hit.Material == Enum.Material.Water then
+			return true, hit.Position
+		end
+	end
+	return false
+end
+
+--------------------------------------------------------------------------------
+-- The card over their head
+--------------------------------------------------------------------------------
+
+-- A fish icon on a billboard, so everyone nearby can see who is fishing. Built on the server because it is
+-- for other people to see as much as for the player themselves.
+local function showCard(player, on)
+	local character = player.Character
+	local head = character and character:FindFirstChild("Head")
+	if not head then return end
+
+	local existing = head:FindFirstChild("FishingCard")
+	if not on then
+		if existing then existing:Destroy() end
+		return
+	end
+	if existing then return end
+
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "FishingCard"
+	gui.Size = UDim2.fromOffset(46, 46)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, 2.6, 0)
+	gui.MaxDistance = 90
+	gui.AlwaysOnTop = false
+	gui.Parent = head
+
+	local back = Instance.new("Frame")
+	back.Size = UDim2.fromScale(1, 1)
+	back.BackgroundColor3 = Color3.fromRGB(26, 28, 34)
+	back.BackgroundTransparency = 0.25
+	back.BorderSizePixel = 0
+	back.Parent = gui
+	local corner = Instance.new("UICorner")
+	corner.CornerRadius = UDim.new(0, 8)
+	corner.Parent = back
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(244, 197, 66)
+	stroke.Transparency = 0.4
+	stroke.Parent = back
+
+	local icon = Instance.new("ImageLabel")
+	icon.Size = UDim2.fromScale(0.72, 0.72)
+	icon.Position = UDim2.fromScale(0.14, 0.14)
+	icon.BackgroundTransparency = 1
+	icon.Image = ItemCatalog.Get("Fish").icon
+	icon.Parent = back
+end
+
+--------------------------------------------------------------------------------
+-- The catch
+--------------------------------------------------------------------------------
+
+-- One weighted roll. Nine lines, which is why no library is involved.
+local function rollLoot()
+	local total = 0
+	for _, entry in ipairs(FishingConfig.Loot) do total += entry.weight end
+	local roll = math.random() * total
+	local running = 0
+	for _, entry in ipairs(FishingConfig.Loot) do
+		running += entry.weight
+		if roll <= running then return entry.item end
+	end
+	return FishingConfig.Loot[1].item
+end
+
+local function baitCount(player)
+	local state = Inventory.Get(player)
+	if not state then return 0 end
+	local n = 0
+	for _, slot in pairs(state.slots) do
+		if slot.id == FishingConfig.BaitItem then n += (slot.count or 1) end
+	end
+	return n
+end
+
+-- Spends one worm. Returns false if there were none, which ends the session.
+local function spendBait(player)
+	local state = Inventory.Get(player)
+	if not state then return false end
+	for index, slot in pairs(state.slots) do
+		if slot.id == FishingConfig.BaitItem then
+			Inventory.RemoveFromSlot(player, index, FishingConfig.BaitPerCatch)
+			return true
+		end
+	end
+	return false
+end
+
+--------------------------------------------------------------------------------
+-- Sessions
+--------------------------------------------------------------------------------
+
+local function stop(player, reason)
+	local session = Sessions[player]
+	if not session then return end
+	Sessions[player] = nil
+	showCard(player, false)
+	player:SetAttribute("WOLD_Fishing", nil)
+	if reason then
+		Remotes.SocialNotify:FireClient(player, "info", reason)
+	end
+end
+
+local function holdingRod(player)
+	local _, slot = Inventory.EquippedWeapon(player)
+	local item = slot and ItemCatalog.Get(slot.id)
+	return item ~= nil and item.fishing == true
+end
+
+local function startFishing(player)
+	if Sessions[player] then return false end
+	local character = player.Character
+	if not character or Vitals.IsDowned(player) then return false end
+	if not holdingRod(player) then return false end
+
+	local found = waterAhead(character)
+	if not found then
+		Remotes.SocialNotify:FireClient(player, "error", "ตรงนี้ไม่มีน้ำ")
+		return false
+	end
+	if baitCount(player) <= 0 then
+		Remotes.SocialNotify:FireClient(player, "error", "ไม่มีหนอนเป็นเหยื่อ")
+		return false
+	end
+
+	local root = character:FindFirstChild("HumanoidRootPart")
+	local anchor = root and root.Position
+
+	-- The cast: heard by everyone nearby, because it happens in the world.
+	if root and FishingConfig.CastSound ~= "" then
+		local sound = Instance.new("Sound")
+		sound.SoundId = FishingConfig.CastSound
+		sound.Volume = FishingConfig.CastSoundVolume
+		sound.RollOffMaxDistance = FishingConfig.CastSoundDistance
+		sound.Parent = root
+		sound:Play()
+		Debris:AddItem(sound, 4)
+	end
+
+	showCard(player, true)
+	player:SetAttribute("WOLD_Fishing", true)
+	Remotes.SocialNotify:FireClient(player, "info", "เริ่มตกปลา")
+
+	local session = { anchor = anchor }
+	Sessions[player] = session
+
+	session.thread = task.spawn(function()
+		while Sessions[player] == session do
+			local wait = math.random(FishingConfig.MinSeconds, FishingConfig.MaxSeconds)
+			-- Waited in slices so the checks below run during the wait, not only after it: a player who
+			-- walks away should stop fishing then, not twenty seconds later.
+			local elapsed = 0
+			while elapsed < wait do
+				if Sessions[player] ~= session then return end
+				task.wait(1)
+				elapsed += 1
+
+				local char = player.Character
+				local root2 = char and char:FindFirstChild("HumanoidRootPart")
+				if not root2 or Vitals.IsDowned(player) then
+					return stop(player, "หยุดตกปลา")
+				end
+				if not holdingRod(player) then
+					return stop(player, "เก็บคันเบ็ดแล้ว หยุดตกปลา")
+				end
+				if session.anchor and (root2.Position - session.anchor).Magnitude
+					> FishingConfig.LeashDistance then
+					return stop(player, "เดินออกจากน้ำ หยุดตกปลา")
+				end
+			end
+
+			-- Bait first: no worm, no catch, and the session ends rather than fishing for free.
+			if not spendBait(player) then
+				return stop(player, "หนอนหมด หยุดตกปลา")
+			end
+
+			local caught = rollLoot()
+			local item = ItemCatalog.Get(caught)
+			if Inventory.AddItem(player, caught, 1) then
+				Remotes.SocialNotify:FireClient(player, "info",
+					("ตกได้ %s"):format(item and item.name or caught))
+			else
+				Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม ปลาหลุดไป")
+			end
+		end
+	end)
+
+	return true
+end
+
+--------------------------------------------------------------------------------
+-- Hooks for the rest of the game
+--------------------------------------------------------------------------------
+
+-- Called by PlayerCombat when a click lands. Returns true if the swing was a cast, so the combat system
+-- knows not to also resolve it as an attack -- otherwise every cast would swing a fishing rod at whatever
+-- happened to be standing in front of the player.
+FishingAccess.TryCast = function(player)
+	if not holdingRod(player) then return false end
+	-- Clicking again while fishing reels in, which is the obvious thing for a second click to do.
+	if Sessions[player] then
+		stop(player, "เก็บสายแล้ว")
+		return true
+	end
+	startFishing(player)
+	-- True either way: the swing belonged to the rod, whether or not the water was there.
+	return true
+end
+
+FishingAccess.IsFishing = function(player)
+	return Sessions[player] ~= nil
+end
+
+FishingAccess.Stop = function(player)
+	stop(player)
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	Sessions[player] = nil
+end)
+
+Players.PlayerAdded:Connect(function(player)
+	player.CharacterRemoving:Connect(function()
+		stop(player)
+	end)
+end)

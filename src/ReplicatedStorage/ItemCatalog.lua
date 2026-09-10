@@ -88,6 +88,18 @@ ItemCatalog.Items = {
 		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 },
 	},
 
+	FishingRod = {
+		icon = "rbxassetid://108988125515479",
+		name = "คันเบ็ด", kind = "weapon", weight = 3, stackSize = 1,
+		-- A weapon in the mechanical sense only: it equips to the weapon slot so it can be held in two
+		-- hands, and swinging it is what casts the line. The damage is deliberately pitiful -- hitting
+		-- someone with a fishing rod should not be a strategy.
+		damage = 3, range = 6,
+		maxDurability = 80,
+		fishing = true,
+		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 },
+	},
+
 	--------------------------------------------------------------------------
 	-- Armor. `armor` is the pool it grants; `absorbFraction` is how much of an
 	-- incoming hit it eats. Heavier armor lasts longer but costs carry weight.
@@ -155,6 +167,22 @@ ItemCatalog.Items = {
 	Fiber = { icon = "rbxassetid://89290089367939", name = "เส้นใย", kind = "junk", weight = 0.3, stackSize = 99, value = 2 }, -- assets/item-icons/Fiber.png
 	Herb = { icon = "rbxassetid://87753072302137", name = "สมุนไพร", kind = "junk", weight = 0.4, stackSize = 99, value = 4 }, -- assets/item-icons/Herb.png
 	Crystal = { icon = "rbxassetid://76877650996022", name = "คริสตัล", kind = "junk", weight = 1.2, stackSize = 99, value = 15 }, -- assets/item-icons/Crystal.png
+
+	--------------------------------------------------------------------------
+	-- The sea's catch. Value tracks rarity: a shark is worth eighty of the commonest fish, which is what
+	-- makes a long session at the water worth the worms it costs.
+	--------------------------------------------------------------------------
+	Fish = { icon = "rbxassetid://122960988755820", name = "ปลา", kind = "junk", weight = 1.2, stackSize = 99, value = 8 },
+	Crab = { icon = "rbxassetid://73086014428726", name = "ปู", kind = "junk", weight = 1, stackSize = 99, value = 12 },
+	Shell = { icon = "rbxassetid://105080925349379", name = "หอย", kind = "junk", weight = 0.6, stackSize = 99, value = 10 },
+	Shrimp = { icon = "rbxassetid://87303093153934", name = "กุ้ง", kind = "junk", weight = 0.5, stackSize = 99, value = 18 },
+	Squid = { icon = "rbxassetid://128279410160112", name = "หมึก", kind = "junk", weight = 1.4, stackSize = 99, value = 24 },
+	Pufferfish = { icon = "rbxassetid://122396428148223", name = "ปลาปักเป้า", kind = "junk", weight = 1.1, stackSize = 99, value = 55 },
+	Anglerfish = { icon = "rbxassetid://89621592057467", name = "ปลาแองเกลอ", kind = "junk", weight = 2, stackSize = 99, value = 180 },
+	Shark = { icon = "rbxassetid://105856971417865", name = "ฉลาม", kind = "junk", weight = 8, stackSize = 99, value = 320 },
+
+	-- Bait. One is spent per catch, so a stack of worms is how long a session lasts.
+	Worm = { icon = "rbxassetid://91361977777697", name = "หนอน", kind = "junk", weight = 0.05, stackSize = 99, value = 1 },
 
 	--------------------------------------------------------------------------
 	-- Vehicle keys. One key is one vehicle: each carries its own plate in the

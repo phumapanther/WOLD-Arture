@@ -13,6 +13,10 @@ ShopConfig.Sells = {
 	{ id = "Axe", price = 140 },
 	{ id = "Bread", price = 12 },
 	{ id = "Water", price = 8 },
+	-- Fishing. The rod is a one-off purchase; worms are the running cost, and one is spent per catch, so a
+	-- stack is how long a session at the water lasts.
+	{ id = "FishingRod", price = 90 },
+	{ id = "Worm", price = 2 },
 }
 
 -- What the shopkeeper buys, and for how much of the catalog `value`. Well under 1 on purpose: the gap

@@ -37,6 +37,9 @@ local GRIP = {
 	Axe = SWORD_GRIP,
 	Pickaxe = SWORD_GRIP,
 	Shovel = SWORD_GRIP,
+	-- The rod is built to the same layout, so it takes the same grip. Held in two hands like the sword,
+	-- which is what the user asked for -- the two-handed look comes from Sword_Idle, not from the offset.
+	FishingRod = SWORD_GRIP,
 	-- The bow's belly has to face out to the RIGHT while it is held in the right hand, so the limbs curve away
 	-- from the character rather than into it. The 180 is on ROLL, not yaw: the bow lies in a plane, so yawing
 	-- it only spins that plane about the arm while rolling it turns the belly over.
