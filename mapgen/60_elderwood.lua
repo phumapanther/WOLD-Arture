@@ -12,79 +12,108 @@
 -- Shape
 --------------------------------------------------------------------------------
 
-local RADIUS = 1500 -- how far the forest reaches from the village
-local CORE = 700 -- inside this, the ground is broken up; outside it flattens toward the plain
+-- The forest is the whole DARK GREEN BAND, not a circle around the village.
+--
+-- layout.forest defines it: everything west of x = -0.25 and within |z| < 0.45, which L.base turns into the
+-- leafy ground cover. Measured 4000 x 6250 studs, reaching 4085 studs from the village -- so the first
+-- version's 1500-stud circle covered barely a third of it and left most of the band bare.
+--
+-- Rather than restate those numbers, `forestWeight` asks L.base for the density it already computed. The
+-- wood and the ground it grows on then agree by construction.
+local FOREST_MIN = 0.35 -- below this the band is only thinly wooded; treat it as the edge
 
--- The user asked for broken ground CONCENTRATED IN THE MIDDLE and mostly flat around the edges, with a few
--- cliffs. That is one weight -- how "forest-like" a point is -- driving every rule below, so the whole
--- region reads as one place rather than three effects layered on top of each other.
-local function coreWeight(x, z)
-	local cx, cz = L.placePos("Elderwood")
-	local d = math.sqrt((x - cx) ^ 2 + (z - cz) ^ 2)
-	if d >= RADIUS then return 0 end
-	if d <= CORE then return 1 end
-	return 1 - L.smooth((d - CORE) / (RADIUS - CORE))
+local function forestWeight(x, z)
+	local _, fm = L.base(x / L.HALF, z / L.HALF)
+	if not fm or fm <= FOREST_MIN then return 0 end
+	return math.min(1, (fm - FOREST_MIN) / (1 - FOREST_MIN))
 end
 
--- The sandy hollow: a small desert in the woods, deliberately off-centre so it is something you FIND rather
--- than something you spawn next to.
-local DESERT_OFFSET = { 520, -380 }
-local DESERT_RADIUS = 260
+-- Where the phase writes terrain. The whole band, in world studs.
+local BAND = { x0 = -6600, x1 = -2000, z0 = -3700, z1 = 3500 }
 
-local function desertWeight(x, z)
-	local cx, cz = L.placePos("Elderwood")
-	local dx = x - (cx + DESERT_OFFSET[1])
-	local dz = z - (cz + DESERT_OFFSET[2])
-	local d = math.sqrt(dx * dx + dz * dz)
-	if d >= DESERT_RADIUS then return 0 end
-	return 1 - L.smooth(d / DESERT_RADIUS)
+--------------------------------------------------------------------------------
+-- Water and sand
+--------------------------------------------------------------------------------
+
+-- Two lakes and two sandy places, each with its own character, as asked:
+--   * lake 1 sits in DEEP wood, ringed by trees right to the shore
+--   * lake 2 sits in the open, with a clearing around it
+--   * one desert is wrapped by thick forest, the other has open ground around it
+local FEATURES = {
+	{ kind = "lake",   x = -4300, z = -900,  radius = 300, depth = 26, clearing = 0 },
+	{ kind = "lake",   x = -3300, z = 1500,  radius = 340, depth = 22, clearing = 620 },
+	{ kind = "desert", x = -3480, z = -220,  radius = 260, depth = 16, clearing = 0 },
+	{ kind = "desert", x = -5200, z = 1100,  radius = 300, depth = 14, clearing = 700 },
+}
+
+-- How strongly a feature claims this point: 1 at its middle, 0 at its rim.
+local function featureWeight(f, x, z)
+	local d = math.sqrt((x - f.x) ^ 2 + (z - f.z) ^ 2)
+	if d >= f.radius then return 0 end
+	return 1 - L.smooth(d / f.radius)
+end
+
+-- How much a feature keeps trees away. Nothing grows IN a lake or on its sand, and a feature with a
+-- `clearing` also thins the wood for some distance around it -- which is what makes one lake feel hidden
+-- in the trees and the other feel like open country.
+local function clearingWeight(x, z)
+	local worst = 0
+	for _, f in ipairs(FEATURES) do
+		local d = math.sqrt((x - f.x) ^ 2 + (z - f.z) ^ 2)
+		if d < f.radius then
+			worst = math.max(worst, 1)
+		elseif f.clearing > 0 and d < f.radius + f.clearing then
+			worst = math.max(worst, 1 - L.smooth((d - f.radius) / f.clearing))
+		end
+	end
+	return worst
 end
 
 -- The height shaper. Runs for every terrain column in the region and returns a new height, or nil to leave
 -- it alone -- which is what it does everywhere outside the forest.
 local function shapeForest(x, z, h, fm, land)
 	if land <= 0.5 then return nil end -- never reshape water or seabed
-	local w = coreWeight(x, z)
+	local w = forestWeight(x, z)
 	if w <= 0.001 then return nil end
 
 	local u, v = x / L.HALF, z / L.HALF
 
-	-- Rolling hillocks: low-frequency noise, strongest in the middle. This is the "พื้นต่างระดับ" -- ground
-	-- that is never quite level, so walking through the wood is always a small climb or descent.
+	-- Rolling hillocks: low-frequency noise, strongest where the wood is thickest. This is the
+	-- "พื้นต่างระดับ" -- ground that is never quite level, so walking through the wood is always a small
+	-- climb or descent.
 	local rolling = (L.fbm(u * 26, v * 26, 7701) - 0.5) * 2 -- roughly -1..1
-	local height = rolling * 34 * w
+	local shaped = h + rolling * 34 * w
 
 	-- Terraces: the ground steps rather than ramping, which is what makes a slope read as LEDGES you can
-	-- stand on instead of a smooth hill. Only in the core, and only where the roll is already going up.
-	local stepped = math.floor((h + height) / 7) * 7
+	-- stand on instead of a smooth hill.
+	local stepped = math.floor(shaped / 7) * 7
 	local terrace = w * w -- squared, so terracing fades out faster than the hills themselves
-	local shaped = (h + height) * (1 - terrace) + stepped * terrace
+	shaped = shaped * (1 - terrace) + stepped * terrace
 
-	-- A handful of genuine cliffs around the rim, where the user asked for them. Sharp, local, and rare:
-	-- a second noise field thresholded high, so most of the rim stays walkable.
-	local rim = 1 - w -- strongest at the edge of the forest
+	-- A handful of genuine cliffs where the band thins out, which is its edge.
+	local rim = 1 - w
 	local cliffNoise = L.fbm(u * 55, v * 55, 3313)
 	if rim > 0.35 and cliffNoise > 0.74 then
 		shaped = shaped + (cliffNoise - 0.74) * 240 * rim
 	end
 
-	-- The desert hollow: scooped out and flattened, so it sits BELOW the wood around it and reads as a
-	-- clearing rather than a sandy hill.
-	local dw = desertWeight(x, z)
-	if dw > 0 then
-		local floor = h - 16
-		shaped = shaped * (1 - dw) + floor * dw
+	-- Lakes and hollows. Each is scooped out and flattened so it sits BELOW the wood around it.
+	local forced
+	for _, f in ipairs(FEATURES) do
+		local fw = featureWeight(f, x, z)
+		if fw > 0 then
+			local floor = h - f.depth
+			shaped = shaped * (1 - fw) + floor * fw
+			-- A lake needs a sandy shore and water in the middle; the water itself is filled after the
+			-- terrain is written, since WriteVoxels here only lays ground.
+			if fw > 0.2 then
+				forced = Enum.Material.Sand
+			end
+		end
 	end
 
-	-- Three returns: height, forest density, and a forced material.
-	--
-	-- Density alone could not make sand: materialFor only lays Sand near sea level, and this hollow sits
-	-- around y=61 -- measured Grass all the way through it on the first run. So the hollow names Sand
-	-- outright, and drops the density so the leafy ground cover stops at its edge.
-	if dw > 0.25 then
-		return shaped, 0, Enum.Material.Sand
-	end
-	return shaped, dw > 0.1 and 0 or nil
+	if forced then return shaped, 0, forced end
+	return shaped
 end
 
 --------------------------------------------------------------------------------
@@ -99,9 +128,33 @@ return L.runPhase("Elderwood", function(folder)
 
 	L.shapers = { shapeForest }
 	L.progress("Elderwood: rewriting terrain")
-	local chunks = L.writeArea(cx, cz, RADIUS + 200, function(i, n)
-		L.progress(("Elderwood terrain %d/%d"):format(i, n))
-	end)
+
+	-- The whole band, written chunk by chunk. writeArea takes a circle, which is the wrong shape here --
+	-- the forest is a long strip down the west of the map, and a circle big enough to cover it would
+	-- rewrite thousands of chunks of sea and mountain for nothing.
+	local CH = L.LAYOUT.generator.terrain_chunk_studs
+	local jobs = {}
+	for x = math.floor(BAND.x0 / CH) * CH, BAND.x1, CH do
+		for z = math.floor(BAND.z0 / CH) * CH, BAND.z1, CH do
+			-- Only chunks the band actually touches. Sampling the corners and middle is enough at this
+			-- size and skips the ones entirely outside it.
+			local touches = false
+			for _, c in ipairs({ { x, z }, { x + CH, z }, { x, z + CH }, { x + CH, z + CH },
+				{ x + CH / 2, z + CH / 2 } }) do
+				if forestWeight(c[1], c[2]) > 0 then touches = true break end
+			end
+			if touches then table.insert(jobs, { x, z }) end
+		end
+	end
+
+	for i, j in ipairs(jobs) do
+		L.writeChunk(j[1], j[2], CH / 4)
+		if i % 4 == 0 then
+			L.progress(("Elderwood terrain %d/%d"):format(i, #jobs))
+			task.wait()
+		end
+	end
+	local chunks = #jobs
 	L.progress(("Elderwood terrain done (%d chunks)"):format(chunks))
 
 	----------------------------------------------------------------------------
@@ -182,70 +235,99 @@ return L.runPhase("Elderwood", function(folder)
 	local SPACING = 22
 	local planted, rocks, tinted = 0, 0, 0
 
-	for x = cx - RADIUS, cx + RADIUS, SPACING do
-		for z = cz - RADIUS, cz + RADIUS, SPACING do
-			local w = coreWeight(x, z)
+	for x = BAND.x0, BAND.x1, SPACING do
+		for z = BAND.z0, BAND.z1, SPACING do
+			local w = forestWeight(x, z)
 			if w > 0.02 then
 				-- Jittered off the grid, or the wood reads as an orchard.
 				local jx = x + (math.random() - 0.5) * SPACING * 0.9
 				local jz = z + (math.random() - 0.5) * SPACING * 0.9
-				local dw = desertWeight(jx, jz)
 
-				-- Thicker toward the middle, and the sand stays bare.
-				--
-				-- Clumped rather than evenly spread: a second slow noise field decides where the wood is
-				-- thickest, so there are genuine thickets and genuine clearings instead of one uniform
-				-- scatter. Evenly-spaced trees are the strongest tell that a forest was generated.
-				local clump = L.fbm(jx / L.HALF * 90, jz / L.HALF * 90, 4421)
-				local chance = w * (0.45 + clump * 0.85) * (1 - dw)
-				if math.random() < chance and L.isLand(jx, jz) then
-					local y, material = groundAt(jx, jz)
-					if y and material ~= Enum.Material.Water then
-						local rng = Random.new(math.floor(jx * 31 + jz * 17))
-						local isRock = rng:NextNumber() < 0.22
+				-- Nothing grows in a lake, on its sand, or in a clearing. The user asked for bare sand
+				-- specifically, and clearingWeight returns 1 inside any feature, so this covers both.
+				local clear = clearingWeight(jx, jz)
+				if clear < 0.98 then
+					-- Clumped rather than evenly spread: a second slow noise field decides where the wood
+					-- is thickest, so there are genuine thickets and genuine clearings instead of one
+					-- uniform scatter. Evenly-spaced trees are the strongest tell of a generated forest.
+					local clump = L.fbm(jx / L.HALF * 90, jz / L.HALF * 90, 4421)
+					local chance = w * (0.45 + clump * 0.85) * (1 - clear)
 
-						local model
-						if isRock then
-							model = L.placeAsset(nodes, "rock", jx, y, jz, rng, 0.35, 0.6)
-						else
-							local kind = rng:NextNumber() < 0.8 and "oak" or "pine"
-							model = L.placeAsset(nodes, kind, jx, y, jz, rng, 0.85, 1.3)
-							-- Roughly a third of the wood turns. Pines are left green: a red conifer
-							-- reads as broken rather than as autumn.
-							if kind == "oak" and rng:NextNumber() < 0.38 then
-								tint(model, AUTUMN[rng:NextInteger(1, #AUTUMN)])
-								tinted += 1
+					if math.random() < chance and L.isLand(jx, jz) then
+						local y, material = groundAt(jx, jz)
+						-- Belt and braces: never plant on water or on sand, whatever the weights said.
+						if y and material ~= Enum.Material.Water and material ~= Enum.Material.Sand then
+							local rng = Random.new(math.floor(jx * 31 + jz * 17))
+							local isRock = rng:NextNumber() < 0.22
+
+							local model
+							if isRock then
+								model = L.placeAsset(nodes, "rock", jx, y, jz, rng, 0.35, 0.6)
+							else
+								local kind = rng:NextNumber() < 0.8 and "oak" or "pine"
+								model = L.placeAsset(nodes, kind, jx, y, jz, rng, 0.85, 1.3)
+								-- Roughly a third of the wood turns. Pines are left green: a red conifer
+								-- reads as broken rather than as autumn.
+								if kind == "oak" and rng:NextNumber() < 0.38 then
+									tint(model, AUTUMN[rng:NextInteger(1, #AUTUMN)])
+									tinted += 1
+								end
 							end
-						end
 
-						if model then
-							settle(model)
-							model:SetAttribute("NodeKind", isRock and "Rock" or "Tree")
-							CollectionService:AddTag(model, "WOLD_Node")
-							if isRock then rocks += 1 else planted += 1 end
+							if model then
+								settle(model)
+								model:SetAttribute("NodeKind", isRock and "Rock" or "Tree")
+								CollectionService:AddTag(model, "WOLD_Node")
+								if isRock then rocks += 1 else planted += 1 end
+							end
 						end
 					end
 				end
 			end
 		end
+		task.wait()
 	end
 
 	-- Undergrowth. Purely decorative, thickest where the trees are, and a lot of it: the difference
 	-- between a wood you look at and a wood you are IN is what fills the space between the trunks.
 	local bushes = 0
-	for _ = 1, 1400 do
-		local a = math.random() * math.pi * 2
-		local r = math.sqrt(math.random()) * RADIUS
-		local x, z = cx + math.cos(a) * r, cz + math.sin(a) * r
-		if L.isLand(x, z) and coreWeight(x, z) > 0.15 and desertWeight(x, z) < 0.2 then
+	for _ = 1, 5000 do
+		local x = BAND.x0 + math.random() * (BAND.x1 - BAND.x0)
+		local z = BAND.z0 + math.random() * (BAND.z1 - BAND.z0)
+		if L.isLand(x, z) and forestWeight(x, z) > 0.15 and clearingWeight(x, z) < 0.9 then
 			local y, material = groundAt(x, z)
-			if y and material ~= Enum.Material.Water then
+			if y and material ~= Enum.Material.Water and material ~= Enum.Material.Sand then
 				local rng = Random.new(math.floor(x * 13 + z * 29))
 				-- A wide scale range rather than one size: the prototypes run from 3 to 24 studs tall, so
 				-- letting them vary this much gives everything from ankle scrub to a bush taller than a
-				-- player -- which is what the user asked for by "พุ่มใหญ่ๆ".
+				-- player.
 				local b = L.placeAsset(decor, "bush", x, y, z, rng, 0.9, 2.4)
 				if b then settle(b) bushes += 1 end
+			end
+		end
+		if bushes % 250 == 0 then task.wait() end
+	end
+
+	----------------------------------------------------------------------------
+	-- 3. Filling the lakes
+	----------------------------------------------------------------------------
+
+	-- The shaper scooped the basins and sanded them; the water goes in afterwards, because WriteVoxels in
+	-- writeChunk only lays ground. Each lake is filled to a level just under its rim, so it reads as water
+	-- sitting in a hollow rather than a blue disc painted on the floor.
+	local Terrain = workspace.Terrain
+	local lakes = 0
+	for _, f in ipairs(FEATURES) do
+		if f.kind == "lake" then
+			-- The rim height, measured rather than assumed: the ground here has just been reshaped.
+			local rimY = groundAt(f.x + f.radius * 0.95, f.z) or groundAt(f.x, f.z)
+			local floorY = groundAt(f.x, f.z)
+			if rimY and floorY then
+				local surface = floorY + (rimY - floorY) * 0.72
+				Terrain:FillCylinder(
+					CFrame.new(f.x, (floorY + surface) / 2, f.z) * CFrame.Angles(0, 0, math.rad(90)),
+					math.max(2, surface - floorY), f.radius * 0.92, Enum.Material.Water)
+				lakes += 1
 			end
 		end
 	end
@@ -253,6 +335,6 @@ return L.runPhase("Elderwood", function(folder)
 	-- Cleared so no later phase inherits the forest's shaper and reshapes ground it knows nothing about.
 	L.shapers = {}
 
-	print(("[WOLD] Elderwood: %d trees (%d autumn), %d rocks, %d bushes over %d chunks")
-		:format(planted, tinted, rocks, bushes, chunks))
+	print(("[WOLD] Elderwood: %d trees (%d autumn), %d rocks, %d bushes, %d lakes, %d chunks")
+		:format(planted, tinted, rocks, bushes, lakes, chunks))
 end)
