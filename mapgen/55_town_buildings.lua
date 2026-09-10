@@ -81,6 +81,18 @@ L.runPhase("TownBuildings", function(folder)
 		end
 	end
 
+	-- The clock tower goes on the plaza, which world-layout.json says the market square should have.
+	-- It stands off to one side rather than dead centre: the ruined gazebo phase 50 builds is already
+	-- the orienting landmark there, and a square with both reads as one that has a history.
+	if plaza then
+		local towerAt = CFrame.new(plaza.Position.X + 46, plaza.Position.Y + plaza.Size.Y / 2, plaza.Position.Z - 30)
+		local tower = K.place("Village_ClockTower", folder, towerAt * CFrame.Angles(0, math.rad(200), 0))
+		if tower then
+			K.tag(tower, "Building", { PlotKey = "clocktower", PlotName = "หอนาฬิกา" })
+			built += 1
+		end
+	end
+
 	-- NPCs stand in front of their building, on the ground rather than on the pad
 	local npcFolder = Instance.new("Folder")
 	npcFolder.Name = "TownNPCs"
