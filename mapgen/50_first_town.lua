@@ -28,9 +28,14 @@
 -- The shape of the town
 --------------------------------------------------------------------------------
 
-local PLAZA_RADIUS = 46 -- the open ground around the gazebo; generous on purpose
-local PATH_WIDTH = 10
-local DECOR_CLEARANCE = 7 -- nothing decorative closer than this to a path centre-line
+-- Scale note (2026-09-10): the plots below were first sized for the small building models. Those
+-- models were then rebuilt with 26 stud ceilings and 12 x 18 doorways so a character can run and
+-- jump indoors, which made every footprint 2.5-3x wider. The composition described above is
+-- unchanged -- same street, same civic quarter, same two house pockets, same uneven distances --
+-- only the ruler is bigger. Plot sizes are the model footprint plus a 14 stud margin.
+local PLAZA_RADIUS = 110 -- holds the clock tower (56 x 58) with open ground left over
+local PATH_WIDTH = 22
+local DECOR_CLEARANCE = 16 -- nothing decorative closer than this to a path centre-line
 
 -- Each plot: a name, the angle it sits at (degrees, 0 = +X), its distance from the centre, and the pad
 -- size the user's model needs. Distances are deliberately uneven -- an equal ring would read as a dial.
@@ -49,24 +54,24 @@ local DECOR_CLEARANCE = 7 -- nothing decorative closer than this to a path centr
 local PLOTS = {
 	-- The commercial street, east of the plaza. Shop nearest the spawn: it is the only building a new
 	-- player actually needs, so it should be the first one they walk into.
-	{ name = "ร้านขายของ", key = "shop", x = 68, z = 14, rot = -80, size = Vector3.new(38, 1, 34) },
-	{ name = "โรงเตี๊ยม", key = "inn", x = 74, z = -46, rot = -95, size = Vector3.new(52, 1, 44) },
-	{ name = "ช่างฝีมือ", key = "smithy", x = 58, z = 74, rot = -68, size = Vector3.new(40, 1, 36) },
+	{ name = "ร้านขายของ", key = "shop", x = 177, z = 36, rot = -80, size = Vector3.new(80, 1, 68) },
+	{ name = "โรงเตี๊ยม", key = "inn", x = 192, z = -120, rot = -95, size = Vector3.new(156, 1, 134) },
+	{ name = "ช่างฝีมือ", key = "smithy", x = 151, z = 192, rot = -68, size = Vector3.new(138, 1, 102) },
 
 	-- The civic quarter, west, set further back so the walk there feels like going somewhere official.
-	{ name = "กองอัศวิน", key = "barracks", x = -96, z = -30, rot = 84, size = Vector3.new(58, 1, 50) },
-	{ name = "โรงหมอ", key = "clinic", x = -78, z = 52, rot = 72, size = Vector3.new(46, 1, 42) },
+	{ name = "กองอัศวิน", key = "barracks", x = -250, z = -78, rot = 84, size = Vector3.new(180, 1, 170) },
+	{ name = "โรงหมอ", key = "clinic", x = -203, z = 135, rot = 72, size = Vector3.new(130, 1, 94) },
 
 	-- The warehouse sits north, on its own, where carts would come in from the road.
-	{ name = "คลังสินค้า", key = "warehouse", x = -18, z = -102, rot = 8, size = Vector3.new(44, 1, 40) },
+	{ name = "คลังสินค้า", key = "warehouse", x = -47, z = -265, rot = 8, size = Vector3.new(158, 1, 114) },
 
 	-- Houses: two pockets, deliberately uneven. The south pocket is denser than the north-east one.
-	{ name = "บ้าน", key = "house", x = 30, z = 118, rot = -22, size = Vector3.new(26, 1, 24) },
-	{ name = "บ้าน", key = "house", x = -14, z = 132, rot = 12, size = Vector3.new(26, 1, 24) },
-	{ name = "บ้าน", key = "house", x = -52, z = 116, rot = 40, size = Vector3.new(26, 1, 24) },
-	{ name = "บ้าน", key = "house", x = 116, z = -104, rot = -128, size = Vector3.new(26, 1, 24) },
-	{ name = "บ้าน", key = "house", x = 146, z = -58, rot = -104, size = Vector3.new(26, 1, 24) },
-	{ name = "บ้าน", key = "house", x = -122, z = -96, rot = 130, size = Vector3.new(26, 1, 24) },
+	{ name = "บ้าน", key = "house", x = 78, z = 307, rot = -22, size = Vector3.new(112, 1, 92) },
+	{ name = "บ้าน", key = "house", x = -56, z = 350, rot = 12, size = Vector3.new(112, 1, 92) },
+	{ name = "บ้าน", key = "house", x = -135, z = 302, rot = 40, size = Vector3.new(112, 1, 92) },
+	{ name = "บ้าน", key = "house", x = 290, z = -262, rot = -128, size = Vector3.new(112, 1, 92) },
+	{ name = "บ้าน", key = "house", x = 336, z = -151, rot = -104, size = Vector3.new(112, 1, 92) },
+	{ name = "บ้าน", key = "house", x = -317, z = -250, rot = 130, size = Vector3.new(112, 1, 92) },
 }
 
 local DIRT = Color3.fromRGB(126, 100, 72)

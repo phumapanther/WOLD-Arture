@@ -9,7 +9,15 @@ const scale = opt("--scale", "1"), timeout = Number(opt("--timeout", "1800"));
 const root = path.join(__dirname, "..");
 const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
 const lib = args.includes("--no-lib") ? "" : read("mapgen/lib.lua");
-const code = `local SCALE = ${scale}\nlocal LAYOUT_JSON = [==[${read("docs/design/world-layout.json")}]==]\n${lib}\n${read(file)}\n`;
+// --kit also concatenates the modelkit chain, so one phase can shape terrain with L and raise buildings with K
+const kit = args.includes("--kit")
+  ? `local K = (function()\n${read("modelkit/kit.lua")}\nend)()\n${read("modelkit/interior.lua")}\n${read("modelkit/interior2.lua")}\nlocal R = (function()\n${read("modelkit/rig.lua")}\nend)()\n`
+  : "";
+// --models loads the building generators in register-only mode, so a phase can call K.place("Village_Tavern", ...)
+const models = args.includes("--models")
+  ? `K.REGISTER_ONLY = true\n${["village", "houses", "npcs"].map((n) => read(`models/${n}.lua`)).join("\n")}\nK.REGISTER_ONLY = false\n`
+  : "";
+const code = `local SCALE = ${scale}\nlocal LAYOUT_JSON = [==[${read("docs/design/world-layout.json")}]==]\n${lib}\n${kit}\n${models}\n${read(file)}\n`;
 const POLL = `local r = workspace:FindFirstChild("WOLD"); return r and ((r:GetAttribute("Status") or "?") .. " | " .. (r:GetAttribute("Progress") or "")) or "no WOLD folder"`;
 (async () => {
   const c = await connect();

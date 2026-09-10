@@ -458,9 +458,34 @@ local function makePad(root, i, name)
   return m
 end
 
+-- when REGISTER_ONLY is set, K.build only files the builder away under K.builders instead of
+-- raising it on the workshop grid. that is how a mapgen phase reuses the same model files to put
+-- buildings on real plots: load the model files, then call K.place for the ones it wants.
+K.builders = {}
+K.REGISTER_ONLY = false
+
+-- raise a registered model into `parent` and set it down on `cf`: base at cf, front along cf's -Z
+function K.place(name, parent, cf)
+  local b = K.builders[name]
+  if not b then warn("[MODELKIT] no builder named " .. tostring(name)); return nil end
+  local m = Instance.new("Model")
+  m.Name = name
+  b.fn(m)
+  local anchor = Instance.new("Part")
+  anchor.Name = "Root"; anchor.Size = Vector3.new(1, 1, 1); anchor.CFrame = CFrame.new(0, 0, 0)
+  anchor.Transparency = 1; anchor.CanCollide = false; anchor.Anchored = true; anchor.Massless = true
+  anchor.Parent = m
+  m.PrimaryPart = anchor
+  m.Parent = parent
+  m:PivotTo(cf)
+  K.attrs(m, { Kit = true, Parts = K.countParts(m) })
+  return m
+end
+
 -- build one model: K.build("Name", { pad = false }, function(m) ... end)
 function K.build(name, opts, fn)
   opts = opts or {}
+  if K.REGISTER_ONLY then K.builders[name] = { opts = opts, fn = fn }; return end
   local root = K.root()
   K.setupLighting()
   root:SetAttribute("Status", "running")
