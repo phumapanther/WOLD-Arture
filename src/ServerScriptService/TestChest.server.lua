@@ -13,6 +13,7 @@ if ServerConfig.IsLobby then return end
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Inventory = require(game.ServerScriptService.Inventory)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
+local Classes = require(game.ServerScriptService.Classes)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local COOLDOWN_SECONDS = 24 * 60 * 60 -- once a day, per player
@@ -114,7 +115,7 @@ local function buildChest(position)
 	text.TextSize = 14
 	text.TextColor3 = Color3.fromRGB(255, 226, 170)
 	text.TextStrokeTransparency = 0.4
-	text.Text = "หีบทดสอบ (วันละครั้ง)"
+	text.Text = "หีบขุนนาง (วันละครั้ง)"
 	text.Parent = sign
 
 	model.Parent = workspace
@@ -200,6 +201,14 @@ task.spawn(function()
 	end)
 
 	prompt.Triggered:Connect(function(player)
+		-- Nobles only, as the user asked. Noble is the level-100 class and a death takes it, so this is a
+		-- deliberately narrow door -- the chest is a reward for reaching the cap and holding it, not a
+		-- starter kit.
+		if not Classes.Has(player, "Noble") then
+			Remotes.SocialNotify:FireClient(player, "error", "หีบนี้เปิดได้เฉพาะขุนนาง")
+			return
+		end
+
 		local data = ProfileAccess.Get(player)
 		if not data then
 			Remotes.SocialNotify:FireClient(player, "error", "ยังโหลดข้อมูลไม่เสร็จ")

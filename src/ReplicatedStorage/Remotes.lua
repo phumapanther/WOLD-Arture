@@ -62,6 +62,9 @@ local EVENTS = {
 	"RequestBankAction",
 	"RequestShowCard", "CardStateChanged", -- profile card raised over a player, seen by everyone nearby
 	"RequestCall", "CallStateChanged", -- telepathy: ring, answer, decline, hang up (UI only, no audio yet)
+	-- The shopkeeper. ShopOpen carries the whole price list down when a player walks up, so the client
+	-- never computes a price and never has one to lie about; RequestShopAction is buy/sell by slot or id.
+	"RequestShopOpen", "ShopOpen", "RequestShopAction",
 }
 local FUNCTIONS = { "GetSpawnPosition" } -- DataStore-backed lookups can only run server-side; the client must ask
 

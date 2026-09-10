@@ -13,6 +13,7 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
 local CollectionService = game:GetService("CollectionService")
+local MobAccess = require(game.ServerScriptService.MobAccess)
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
@@ -274,6 +275,13 @@ local function fireProjectile(player, attack, aim)
 				playHitSound(dummy, player)
 			end
 		end
+		for _, mob in ipairs(CollectionService:GetTagged("WOLD_Mob")) do
+			if distanceToBody(position, mob) <= CombatConfig.ProjectileHitRadius then
+				if MobAccess.Damage and MobAccess.Damage(mob, attack.damage, player) then
+					playHitSound(mob, player)
+				end
+			end
+		end
 	end
 
 	if spec.kind == "beam" then
@@ -334,6 +342,17 @@ local function resolveHit(player, state, attack)
 			state.hitThisSwing[dummy] = true
 			Progression.AwardExp(player, ProgressionConfig.ExpPerDummyHit)
 			playHitSound(dummy, player)
+		end
+	end
+
+	-- Monsters. Checked alongside the dummies and for the same reason -- they are not Players, so the loop
+	-- below never sees them -- but unlike a dummy they have hit points and die.
+	for _, mob in ipairs(CollectionService:GetTagged("WOLD_Mob")) do
+		if not state.hitThisSwing[mob] and distanceToBody(origin, mob) <= attack.range then
+			state.hitThisSwing[mob] = true
+			if MobAccess.Damage and MobAccess.Damage(mob, attack.damage, player) then
+				playHitSound(mob, player)
+			end
 		end
 	end
 
