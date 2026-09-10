@@ -249,18 +249,20 @@ return L.runPhase("FirstTown", function(folder)
 			local wobble = math.sin(t * math.pi * 2.2 + ax * 0.01) * 1.6
 			px += math.cos(heading) * wobble
 			pz -= math.sin(heading) * wobble
-			-- A footpath is WORN INTO the ground, not laid on top of it.
+			-- A path is a SUNK slab, flush with the ground.
 			--
-			-- These used to be raised slabs, which gave every path a kerb to trip over and made the town
-			-- read as decked rather than trodden. A shallow scoop of bare earth is what a track actually
-			-- is: FillBall with Ground, centred just under the surface so it cuts a dish a few inches
-			-- deep and paints it brown at the same time.
+			-- It was briefly a FillBall of Ground, on the theory that it would scoop a hollow. It does the
+			-- opposite: FillBall ADDS terrain, so every path point dumped a ball of soil, and wherever the
+			-- centre sat above the surface it left a mound hanging in the air -- measured one at y=132
+			-- between neighbours at y=53, and the city was full of them.
 			--
-			-- The ball is much wider than it is deep at the surface, which is why a big radius set only
-			-- slightly below ground gives a shallow hollow rather than a crater.
+			-- Carving would mean filling with Air and then repainting the floor, which is a lot of work to
+			-- avoid a kerb. Burying a thick slab so its top is level does the same job: no step to trip
+			-- over, no terrain touched.
 			local py = groundAt(px, pz)
-			workspace.Terrain:FillBall(Vector3.new(px, py - width * 0.5 + 1.2, pz),
-				width * 0.5, Enum.Material.Ground)
+			part(paths, "PathSlab", Vector3.new(width, 6, 8.4),
+				CFrame.new(px, py - 2.7, pz) * CFrame.Angles(0, heading, 0),
+				DIRT, Enum.Material.Ground)
 		end
 		table.insert(pathSegments, { ax, az, bx, bz })
 	end

@@ -27,6 +27,12 @@ local STONE_PALE = Color3.fromRGB(158, 154, 146)
 local MAIN_W = 44
 local LANE_W = 26
 
+-- How far a bridge deck rides above the water, so a boat can pass beneath it.
+local BRIDGE_CLEAR = 14
+
+-- How many samples the road takes to climb from the ground up to the deck at each end.
+local RAMP_STEPS = 6
+
 -- Painted down the middle of the main street only, so the two lanes read as two lanes.
 local CENTRE_LINE = Color3.fromRGB(206, 198, 176)
 
@@ -81,6 +87,26 @@ return L.runPhase("CityDistricts", function(folder)
 	local function groundAt(x, z)
 		local hit = workspace:Raycast(Vector3.new(x, 1200, z), Vector3.new(0, -2000, 0), probe)
 		return hit and hit.Position.Y or L.heightAt(x, z)
+	end
+
+	-- The RIVERBED, ignoring water. A plain ground ray stops at the water's surface, which is how the
+	-- main street came to be paved straight across the river as though it were a field. Piers need to
+	-- stand on the bed, so they need the ray that goes through.
+	local bedProbe = RaycastParams.new()
+	bedProbe.FilterType = Enum.RaycastFilterType.Exclude
+	bedProbe.FilterDescendantsInstances = { L.root() }
+	bedProbe.IgnoreWater = true
+
+	local function bedAt(x, z)
+		local hit = workspace:Raycast(Vector3.new(x, 1200, z), Vector3.new(0, -2000, 0), bedProbe)
+		return hit and hit.Position.Y or L.heightAt(x, z)
+	end
+
+	-- Is this point over the river? Half the width is the water's edge; a little past it is the bank the
+	-- bridge should land on rather than stop short of.
+	local function overRiver(x, z)
+		local d, surface, w = L.riverAt(x, z)
+		return d < w * 0.5 + 8, surface, w
 	end
 
 	local function part(parent, name, size, cf, colour, material)
@@ -139,14 +165,78 @@ return L.runPhase("CityDistricts", function(folder)
 		if length < 4 then return end
 		local heading = math.atan2(dx, dz)
 		local steps = math.max(1, math.floor(length / 12))
+		-- Find the span of samples that lie over water, so the bridge can be one continuous deck at one
+		-- height rather than a road that dips into the river and climbs out again.
+		local firstWet, lastWet
+		for i = 0, steps do
+			local t = i / steps
+			if (overRiver(ax + dx * t, az + dz * t)) then
+				firstWet = firstWet or i
+				lastWet = i
+			end
+		end
+
+		-- The deck runs level, clear of the water, from the bank on one side to the bank on the other.
+		local deckY
+		if firstWet then
+			-- One stud short of each bank so the road slabs either side overlap the abutment rather than
+			-- leaving a seam, and high enough that a boat has headroom under it.
+			local _, surface = overRiver(ax + dx * (firstWet / steps), az + dz * (firstWet / steps))
+			deckY = surface + BRIDGE_CLEAR
+			-- ...but never below the ground it lands on, or the approach ramps down into a hillside.
+			local bankA = groundAt(ax + dx * (math.max(0, firstWet - 1) / steps), az + dz * (math.max(0, firstWet - 1) / steps))
+			local bankB = groundAt(ax + dx * (math.min(steps, lastWet + 1) / steps), az + dz * (math.min(steps, lastWet + 1) / steps))
+			deckY = math.max(deckY, bankA, bankB)
+		end
+
+		-- The ground height at every sample, SMOOTHED along the run.
+		--
+		-- Taken raw, each slab sits at its own spot height, and on a hillside consecutive slabs step apart
+		-- far enough to see daylight between them -- the road climbing out of the river read as a flight
+		-- of loose stairs. Averaging each height with its neighbours turns the steps into a grade.
+		local ys = {}
+		for i = 0, steps do
+			local t = i / steps
+			ys[i] = groundAt(ax + dx * t, az + dz * t)
+		end
+		local smooth = {}
+		for i = 0, steps do
+			local sum, cnt = 0, 0
+			for k = math.max(0, i - 2), math.min(steps, i + 2) do sum, cnt = sum + ys[k], cnt + 1 end
+			smooth[i] = sum / cnt
+		end
+
 		for i = 0, steps do
 			local t = i / steps
 			local x, z = ax + dx * t, az + dz * t
+
+			if firstWet and i >= firstWet and i <= lastWet then
+				-- BRIDGE. A road cannot simply be paved across a river -- and it was, because the ground
+				-- ray stops at the water's surface and happily reported solid footing mid-channel.
+				local deckW = width + 6
+				part(streets, "BridgeDeck", Vector3.new(deckW, 3, 13),
+					CFrame.new(x, deckY, z) * CFrame.Angles(0, heading, 0),
+					STONE_PALE, Enum.Material.Slate)
+				-- Parapets down both sides, so you cannot walk off the edge into the water.
+				for _, side in ipairs({ -1, 1 }) do
+					local off = CFrame.new(x, deckY, z) * CFrame.Angles(0, heading, 0)
+						* CFrame.new(side * deckW / 2, 2.6, 0)
+					part(streets, "BridgeRail", Vector3.new(2, 5, 13), off, STONE_PALE, Enum.Material.Slate)
+				end
+				-- Piers every few samples, standing on the riverbed rather than hanging off the deck.
+				if (i - firstWet) % 3 == 0 and i ~= firstWet and i ~= lastWet then
+					local bed = bedAt(x, z)
+					local h = math.max(4, deckY - 1.5 - bed)
+					part(streets, "BridgePier", Vector3.new(10, h, 10),
+						CFrame.new(x, bed + h / 2, z) * CFrame.Angles(0, heading, 0),
+						STONE_PALE, Enum.Material.Slate)
+				end
+			else
 			-- SUNK, not raised. A 3-stud slab set 1.6 above the ground stood proud of the grass with a
 			-- visible step along both kerbs -- a road you trip over rather than walk on. Thick and
 			-- buried, the top sits just at the surface: 6 studs deep with only the top half stud
 			-- showing, which also stops the ends poking out where the ground rises between samples.
-			local y = groundAt(x, z)
+			local y = smooth[i]
 			if width >= MAIN_W then
 				-- The paved main street: a real road surface, sunk so its top is level with the ground
 				-- rather than standing proud with a kerb to trip over.
@@ -154,11 +244,12 @@ return L.runPhase("CityDistricts", function(folder)
 					CFrame.new(x, y - 2.6, z) * CFrame.Angles(0, heading, 0),
 					STONE_PALE, Enum.Material.Cobblestone)
 			else
-				-- Back lanes are WORN INTO the ground, not laid on it -- a shallow scoop of bare earth,
-				-- which is what a track people walk actually is. FillBall centred just under the surface
-				-- cuts a dish a few inches deep and paints it brown in the same call.
-				workspace.Terrain:FillBall(Vector3.new(x, y - width * 0.5 + 1.2, z),
-					width * 0.5, Enum.Material.Ground)
+				-- Back lanes: bare earth rather than cobbles, but the same sunk slab as the main street.
+				-- A FillBall of Ground was tried here and ADDS terrain rather than carving it, which
+				-- littered the city with floating mounds of soil.
+				part(streets, "LaneSlab", Vector3.new(width, 6, 13),
+					CFrame.new(x, y - 2.7, z) * CFrame.Angles(0, heading, 0),
+					Color3.fromRGB(126, 100, 72), Enum.Material.Ground)
 			end
 			-- A dashed centre line, on the main street only. Laid a hair above the road's top so it is
 			-- not lost inside it, and dashed by skipping every other slab.
@@ -167,7 +258,31 @@ return L.runPhase("CityDistricts", function(folder)
 					CFrame.new(x, y - 2.35, z) * CFrame.Angles(0, heading, 0),
 					CENTRE_LINE, Enum.Material.Concrete)
 			end
+			end
 		end
+
+		-- Ramp the road up to meet the deck. Without this the road runs along the ground and the bridge
+		-- starts 14 studs above it, which is a wall at each end rather than a crossing.
+		if firstWet then
+			for _, side in ipairs({ { firstWet - 1, -1 }, { lastWet + 1, 1 } }) do
+				local from, dir = side[1], side[2]
+				for k = 0, RAMP_STEPS do
+					local i = from + dir * k
+					if i >= 0 and i <= steps then
+						local t = i / steps
+						local x, z = ax + dx * t, az + dz * t
+						local g = smooth[i]
+						-- Blend from deck height back down to the ground over the length of the ramp.
+						local f = k / RAMP_STEPS
+						local y = deckY * (1 - f) + g * f
+						part(streets, "BridgeRamp", Vector3.new(width + 6, 6, 13),
+							CFrame.new(x, y - 1.5, z) * CFrame.Angles(0, heading, 0),
+							STONE_PALE, Enum.Material.Slate)
+					end
+				end
+			end
+		end
+
 		table.insert(laid, { ax, az, bx, bz, width })
 	end
 
@@ -316,6 +431,34 @@ return L.runPhase("CityDistricts", function(folder)
 		end
 	end
 
-	print(("[WOLD] CityDistricts: %d plots across %d districts, %d streets")
-		:format(built, #districts, #laid))
+	----------------------------------------------------------------------------
+	-- Clear the roadway
+	----------------------------------------------------------------------------
+
+	-- Trees and rocks were scattered by the countryside phases, which ran BEFORE any of these streets
+	-- existed and so had no way to avoid them. The result is a pine growing up through the middle of a
+	-- bridge deck. Anything standing in the roadway now gets removed.
+	local cleared = 0
+	for _, holder in ipairs({ "Heartland", "Elderwood", "Villages" }) do
+		local h = L.root():FindFirstChild(holder)
+		if h then
+			for _, group in ipairs(h:GetChildren()) do
+				if group.Name == "Decor" or group.Name == "Nodes" then
+					for _, m in ipairs(group:GetChildren()) do
+						local pos = m:IsA("Model") and m:GetPivot().Position
+							or (m:IsA("BasePart") and m.Position)
+						-- Half the widest street plus its verge: a trunk this close is either in the road
+						-- or overhanging it.
+						if pos and toStreet(pos.X, pos.Z) < 6 then
+							m:Destroy()
+							cleared += 1
+						end
+					end
+				end
+			end
+		end
+	end
+
+	print(("[WOLD] CityDistricts: %d plots across %d districts, %d streets, %d cleared from the road")
+		:format(built, #districts, #laid, cleared))
 end)
