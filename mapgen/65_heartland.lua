@@ -55,7 +55,14 @@ end
 local function corridorWeight(x, z)
 	local d = toSpine(x, z)
 	if d >= CORRIDOR then return 0 end
-	return 1 - L.smooth(d / CORRIDOR)
+	-- FULL strength across the inner two thirds, falling away only near the rim.
+	--
+	-- The first version faded from the spine outward, which multiplied every other weight down almost
+	-- everywhere -- 221 trees across the whole corridor, because a copse at half corridor weight is half
+	-- a copse. The corridor decides WHERE the countryside is dressed, not how thickly.
+	local inner = CORRIDOR * 0.65
+	if d <= inner then return 1 end
+	return 1 - L.smooth((d - inner) / (CORRIDOR - inner))
 end
 
 -- Keep clear of the places themselves. A settlement's own phase owns what stands in it, and scattering
@@ -80,7 +87,16 @@ end
 --
 -- Thresholded rather than used directly: below COPSE_FLOOR nothing grows at all, which is what produces
 -- genuine open ground between the patches instead of everywhere being a little bit wooded.
-local COPSE_FLOOR = 0.52
+--
+-- MEASURED against L.fbm's real output over this corridor, not assumed. The values run 0.254 to 0.748
+-- with a median of 0.500 -- a narrow band, nothing like the 0..1 spread the name suggests. That matters:
+--
+--   0.52 -> 45% of the land wooded (a thin forest, not downland)
+--   0.60 ->  9% wooded (islands of trees in open field -- what was asked for)
+--   0.72 ->  0.1% wooded (the whole corridor came out empty: 61 trees in total)
+--
+-- The 0.72 attempt came from guessing the distribution instead of sampling it, and produced a bare map.
+local COPSE_FLOOR = 0.60
 
 local function copseWeight(x, z)
 	local n = L.fbm(x / L.HALF * 70, z / L.HALF * 70, 8821)
@@ -94,7 +110,9 @@ end
 -- and which side that is changes as you walk downstream. So the bank weight answers three questions --
 -- how close to the water, WHICH SIDE, and how far along -- and only rewards the side the river happens to
 -- favour at that point.
-local RIVERBANK = 150
+-- Narrow. The wooded bank should be a ribbon along the water, not a belt 300 studs across -- at 150 the
+-- two banks together took up more ground than the copses did.
+local RIVERBANK = 90
 
 -- Which side of the river's line a point falls on, and how far along the river it is.
 -- Returns nil when the point is not near the main river at all.
@@ -203,8 +221,10 @@ return L.runPhase("Heartland", function(folder)
 	-- Written with FillBall rather than through a height shaper, because the ground itself must not move
 	-- -- the user was explicit that the geography stays as it is.
 	L.progress("Heartland: bare ground")
+	-- Fewer and larger than the first pass, which scattered 260 small dark blots that read as stains on
+	-- the grass rather than as worn ground.
 	local patches = 0
-	for _ = 1, 260 do
+	for _ = 1, 90 do
 		local x = BAND.x0 + math.random() * (BAND.x1 - BAND.x0)
 		local z = BAND.z0 + math.random() * (BAND.z1 - BAND.z0)
 		local w = corridorWeight(x, z)
@@ -214,8 +234,11 @@ return L.runPhase("Heartland", function(folder)
 				local river = riverWeight(x, z)
 				-- Gravel by the water, worn ground up on the slopes. The noise decides which parts of the
 				-- open country wear through, so the patches sit where the copses are not.
-				local mat = river > 0.35 and Enum.Material.Ground or Enum.Material.Slate
-				local radius = 14 + math.random() * 26
+				-- Ground either way. Slate read as dark round blots on the grass -- a stain rather than
+				-- worn earth -- because a hard grey circle on green has no edge to soften it. Ground is
+				-- close enough in tone to look like bare soil showing through.
+				local mat = Enum.Material.Ground
+				local radius = 26 + math.random() * 44
 				-- A shallow ball centred just below the surface paints the top without moving it: a
 				-- sphere that big is nearly flat where it crosses the ground.
 				Terrain:FillBall(Vector3.new(x, y - radius + 2.5, z), radius, mat)
@@ -245,7 +268,12 @@ return L.runPhase("Heartland", function(folder)
 				-- in otherwise open country.
 				local river = riverWeight(jx, jz)
 				local copse = copseWeight(jx, jz)
-				local density = math.max(river * 0.85, copse * 0.55) * w
+				-- The bank is the dense place; a copse is thinner even at its middle, so you can see
+				-- through one rather than being walled in by it.
+				-- A copse is thick where it exists, because there are few of them. The bank is denser
+				-- still. Both are scaled hard by the corridor weight, so this is a ribbon of dressed
+				-- country through open downland rather than a blanket.
+				local density = math.max(river * 0.85, copse * 0.75) * w
 				density = density * (1 - nearSettlement(jx, jz))
 
 				if math.random() < density and L.isLand(jx, jz) then
@@ -283,12 +311,12 @@ return L.runPhase("Heartland", function(folder)
 
 	-- Bushes fill the copses and line the water. Fewer than the forest gets: this is open country, and
 	-- scrub everywhere would close it in.
-	for _ = 1, 1800 do
+	for _ = 1, 1600 do
 		local x = BAND.x0 + math.random() * (BAND.x1 - BAND.x0)
 		local z = BAND.z0 + math.random() * (BAND.z1 - BAND.z0)
 		local w = corridorWeight(x, z)
 		local here = math.max(riverWeight(x, z), copseWeight(x, z)) * w
-		if here > 0.25 and nearSettlement(x, z) < 0.4 and L.isLand(x, z) then
+		if here > 0.35 and nearSettlement(x, z) < 0.4 and L.isLand(x, z) then
 			local y, material = groundAt(x, z)
 			if y and material ~= Enum.Material.Water then
 				local rng = Random.new(math.floor(x * 13 + z * 29))
