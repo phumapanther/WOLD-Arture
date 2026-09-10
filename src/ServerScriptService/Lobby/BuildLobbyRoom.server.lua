@@ -10,10 +10,18 @@ if not ServerConfig.IsLobby then return end
 -- per-server one, so it can't check IsLobby) at real map coordinates. That SpawnLocation is baked into every
 -- server including the lobby, so Roblox's own respawn picks it over LobbySpawn below and drops players back on
 -- the open map mid-lobby-session. Disable it here, lobby-only, until Brasshaven replaces it for real.
-local tempSpawn = workspace:FindFirstChild("WOLD"):FindFirstChild("TempSpawn")
-if tempSpawn then
-	local spawn = tempSpawn:FindFirstChildWhichIsA("SpawnLocation")
-	if spawn then spawn.Enabled = false end
+-- Every SpawnLocation the MAP bakes into the place file, not just TempSpawn by name. This used to look for
+-- TempSpawn alone, which broke the day FirstTown deleted it and provided its own spawn under the gazebo:
+-- that one stayed enabled in the lobby, so any respawn there dropped the player onto the open map at
+-- 2080,49,3760 instead of keeping them in the room.
+--
+-- Anything under the generated world is a map spawn by definition, so the rule is the folder rather than
+-- any particular name -- a spawn added by a future phase is covered without editing this again.
+local world = workspace:FindFirstChild("WOLD")
+if world then
+	for _, d in ipairs(world:GetDescendants()) do
+		if d:IsA("SpawnLocation") then d.Enabled = false end
+	end
 end
 
 local existing = workspace:FindFirstChild("LobbyRoom")
