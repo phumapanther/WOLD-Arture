@@ -457,7 +457,9 @@ end
 -- which of them should be visible this time.
 --
 -- `entries` is a list of { label, color?, onClick }. It closes on any choice, and on a tap elsewhere.
-function InventoryGui:ShowItemMenu(slotButton, entries)
+-- `title` names the item the menu belongs to: with three identically-worded menus on screen over a grid of
+-- small icons, "ทิ้ง" alone does not say what is about to be destroyed.
+function InventoryGui:ShowItemMenu(slotButton, entries, title)
 	self:CloseItemMenu()
 	if not slotButton or #entries == 0 then return end
 
@@ -466,9 +468,11 @@ function InventoryGui:ShowItemMenu(slotButton, entries)
 	menu.BackgroundColor3 = Color3.fromRGB(26, 28, 34)
 	menu.BorderSizePixel = 0
 	menu.ZIndex = 60
-	-- The extra 26 is the close strip along the top; without it the X would sit over the first button.
+	-- The extra 26 is the close strip along the top; without it the X would sit over the first button. The
+	-- title sits inside that same strip, to the left of the X, so naming the item costs no extra height.
 	local CLOSE_STRIP = 26
-	menu.Size = UDim2.fromOffset(120, #entries * 30 + 8 + CLOSE_STRIP)
+	-- Wider than it was: an item name has to fit beside the close button without being cut to two letters.
+	menu.Size = UDim2.fromOffset(168, #entries * 30 + 8 + CLOSE_STRIP)
 	-- Beside the slot, not over it: the player needs to still see what they tapped.
 	local p = slotButton.AbsolutePosition
 	local sz = slotButton.AbsoluteSize
@@ -504,6 +508,24 @@ function InventoryGui:ShowItemMenu(slotButton, entries)
 	close.Activated:Connect(function()
 		self:CloseItemMenu()
 	end)
+
+	-- The item's name, filling the strip left of the X. Truncated with an ellipsis rather than wrapped: the
+	-- strip is one line tall, and a wrapped name would push into the first button.
+	if title then
+		local heading = Instance.new("TextLabel")
+		heading.Name = "Title"
+		heading.Position = UDim2.fromOffset(8, 4)
+		heading.Size = UDim2.new(1, -36, 0, 18)
+		heading.BackgroundTransparency = 1
+		heading.Font = Enum.Font.GothamBold
+		heading.TextSize = 12
+		heading.TextColor3 = Color3.fromRGB(244, 197, 66)
+		heading.TextXAlignment = Enum.TextXAlignment.Left
+		heading.TextTruncate = Enum.TextTruncate.AtEnd
+		heading.Text = title
+		heading.ZIndex = 61
+		heading.Parent = menu
+	end
 
 	for i, entry in ipairs(entries) do
 		local b = Instance.new("TextButton")

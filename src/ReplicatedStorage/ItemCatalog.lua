@@ -11,6 +11,9 @@
 -- (create.roblox.com -> Creations -> Images), since image upload is a website action. Paste each returned
 -- rbxassetid:// into the matching `icon` field below; an empty string is safe -- the UI falls back to the
 -- item's name as text.
+-- ICON IDS: an ImageLabel needs the IMAGE asset id, not the DECAL id. Uploading a picture through the
+-- Creator Dashboard gives you a Decal id, and pasting that here shows a blank square with no error at all.
+-- To find the real one: InsertService:LoadAsset(decalId) in Studio, then read the Decal's Texture property.
 local ItemCatalog = {}
 
 -- Consuming takes time: the effect lands when the animation finishes, not when the button is pressed.
@@ -61,7 +64,7 @@ ItemCatalog.Items = {
 	-- worse than a weapon made for it, or nobody would ever carry a sword.
 	--------------------------------------------------------------------------
 	Axe = {
-		icon = "rbxassetid://137529937435477",
+		icon = "rbxassetid://94868056279785",
 		name = "ขวาน", kind = "weapon", weight = 5, stackSize = 1,
 		damage = 14, range = 7,
 		maxDurability = 100,
@@ -69,7 +72,7 @@ ItemCatalog.Items = {
 		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 },
 	},
 	Pickaxe = {
-		icon = "rbxassetid://130562574546342",
+		icon = "rbxassetid://71353632810064",
 		name = "อีเต้อ", kind = "weapon", weight = 6, stackSize = 1,
 		damage = 13, range = 7,
 		maxDurability = 110,
@@ -77,7 +80,7 @@ ItemCatalog.Items = {
 		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 },
 	},
 	Shovel = {
-		icon = "rbxassetid://80436457004875",
+		icon = "rbxassetid://111182494345005",
 		name = "พลั่ว", kind = "weapon", weight = 4, stackSize = 1,
 		damage = 11, range = 7,
 		maxDurability = 90,
@@ -137,21 +140,21 @@ ItemCatalog.Items = {
 	--------------------------------------------------------------------------
 	-- Junk. No effect yet; they exist to be gathered, carried and sold later.
 	--------------------------------------------------------------------------
-	Bone = { icon = "rbxassetid://81654456878247", name = "กระดูก", kind = "junk", weight = 1, stackSize = 99, value = 2 }, -- assets/item-icons/Bone.png
+	Bone = { icon = "rbxassetid://97472792310870", name = "กระดูก", kind = "junk", weight = 1, stackSize = 99, value = 2 }, -- assets/item-icons/Bone.png
 	-- Dropped by slimes, the way bone comes off skeletons and fibre off spiders. Light and cheap: it is the
 	-- drop from the weakest thing in the world, so it has to be the least worth carrying home.
-	Slime = { icon = "rbxassetid://113368831869839", name = "เมือกสไลม์", kind = "junk", weight = 0.5, stackSize = 99, value = 3 },
-	WoodScrap = { icon = "rbxassetid://140646776701721", name = "เศษไม้", kind = "junk", weight = 1.5, stackSize = 99, value = 1 },
-	Stone = { icon = "rbxassetid://111540893837307", name = "ก้อนหิน", kind = "junk", weight = 2.5, stackSize = 99, value = 1 },
+	Slime = { icon = "rbxassetid://127535718276590", name = "เมือกสไลม์", kind = "junk", weight = 0.5, stackSize = 99, value = 3 },
+	WoodScrap = { icon = "rbxassetid://133089629701208", name = "เศษไม้", kind = "junk", weight = 1.5, stackSize = 99, value = 1 },
+	Stone = { icon = "rbxassetid://115614728197402", name = "ก้อนหิน", kind = "junk", weight = 2.5, stackSize = 99, value = 1 },
 
 	-- Gathered materials. Priced and weighted by where they come from: fibre is picked off a bush
 	-- anywhere, herbs need looking for, ore has to be mined, and crystal only grows in the caves. The
 	-- gathering tags in docs/design/04-gameplay-hooks.md already name these as resources, so the catalog
 	-- entries exist before the system that drops them rather than after.
-	IronOre = { icon = "rbxassetid://103733015316333", name = "แร่เหล็ก", kind = "junk", weight = 3, stackSize = 99, value = 6 }, -- assets/item-icons/IronOre.png
-	Fiber = { icon = "rbxassetid://131394070307040", name = "เส้นใย", kind = "junk", weight = 0.3, stackSize = 99, value = 2 }, -- assets/item-icons/Fiber.png
-	Herb = { icon = "rbxassetid://108324515660668", name = "สมุนไพร", kind = "junk", weight = 0.4, stackSize = 99, value = 4 }, -- assets/item-icons/Herb.png
-	Crystal = { icon = "rbxassetid://95999193030974", name = "คริสตัล", kind = "junk", weight = 1.2, stackSize = 99, value = 15 }, -- assets/item-icons/Crystal.png
+	IronOre = { icon = "rbxassetid://85652195246479", name = "แร่เหล็ก", kind = "junk", weight = 3, stackSize = 99, value = 6 }, -- assets/item-icons/IronOre.png
+	Fiber = { icon = "rbxassetid://89290089367939", name = "เส้นใย", kind = "junk", weight = 0.3, stackSize = 99, value = 2 }, -- assets/item-icons/Fiber.png
+	Herb = { icon = "rbxassetid://87753072302137", name = "สมุนไพร", kind = "junk", weight = 0.4, stackSize = 99, value = 4 }, -- assets/item-icons/Herb.png
+	Crystal = { icon = "rbxassetid://76877650996022", name = "คริสตัล", kind = "junk", weight = 1.2, stackSize = 99, value = 15 }, -- assets/item-icons/Crystal.png
 
 	--------------------------------------------------------------------------
 	-- Vehicle keys. One key is one vehicle: each carries its own plate in the
@@ -159,11 +162,11 @@ ItemCatalog.Items = {
 	-- into a stack. stackSize = 1 states that in the catalog; Inventory.AddItem
 	-- refuses to merge anything carrying meta, which is what actually enforces it.
 	--------------------------------------------------------------------------
-	CarKey = { icon = "rbxassetid://75692504586023", name = "กุญแจรถ",
+	CarKey = { icon = "rbxassetid://123656993683458", name = "กุญแจรถ",
 		kind = "key", vehicle = "car", weight = 0.2, stackSize = 1, value = 0 },
-	BoatKey = { icon = "rbxassetid://115230378950461", name = "กุญแจเรือ",
+	BoatKey = { icon = "rbxassetid://101179246285116", name = "กุญแจเรือ",
 		kind = "key", vehicle = "boat", weight = 0.2, stackSize = 1, value = 0 },
-	AirshipKey = { icon = "rbxassetid://99701273420303", name = "กุญแจเรือเหาะ",
+	AirshipKey = { icon = "rbxassetid://85317443858917", name = "กุญแจเรือเหาะ",
 		kind = "key", vehicle = "airship", weight = 0.2, stackSize = 1, value = 0 },
 }
 

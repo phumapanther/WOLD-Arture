@@ -118,6 +118,13 @@ gui:OnSlotClicked(function(index)
 	local button = gui:SlotButton(index)
 	if not button then return end
 
+	-- Shown at the top of the menu. The catalog name rather than the id, because that is what the player
+	-- sees on the icon, and the count so "ทิ้ง" on a stack says how much is about to go.
+	local title = item.name or "?"
+	if (slot.count or 1) > 1 then
+		title = ("%s x%d"):format(title, slot.count)
+	end
+
 	local entries = {}
 
 	-- "Use" only for things that can be used. Junk has no use, so it gets no button rather than a button
@@ -135,7 +142,7 @@ gui:OnSlotClicked(function(index)
 	table.insert(entries, { label = "ให้", onClick = function()
 		local nearby = nearbyPlayers()
 		if #nearby == 0 then
-			gui:ShowItemMenu(button, { { label = "ไม่มีใครอยู่ใกล้", onClick = function() end } })
+			gui:ShowItemMenu(button, { { label = "ไม่มีใครอยู่ใกล้", onClick = function() end } }, title)
 			return
 		end
 		-- A second menu of names, in the same place, so it reads as one flow rather than a new window.
@@ -149,7 +156,7 @@ gui:OnSlotClicked(function(index)
 				end,
 			})
 		end
-		gui:ShowItemMenu(button, people)
+		gui:ShowItemMenu(button, people, ("ให้ใคร: %s"):format(title))
 	end })
 
 	table.insert(entries, {
@@ -160,7 +167,7 @@ gui:OnSlotClicked(function(index)
 		end,
 	})
 
-	gui:ShowItemMenu(button, entries)
+	gui:ShowItemMenu(button, entries, title)
 end)
 
 --------------------------------------------------------------------------------

@@ -17,14 +17,24 @@ local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local COOLDOWN_SECONDS = 24 * 60 * 60 -- once a day, per player
 
--- Everything the chest gives: one of each weapon and armor, a full stack of each consumable.
+-- Everything the chest gives: EVERY item in the catalog, which is what a test chest is for. Weapons and
+-- armor come one at a time because they do not stack; anything that stacks arrives as a full stack.
+--
+-- Written as "every kind except the exceptions" rather than a list of wanted kinds, so an item kind invented
+-- next month is in the chest the day it exists instead of being silently left out -- which is exactly how
+-- the tools and the gathering materials went missing from it before.
+local SKIP_KINDS = {
+	-- A key without a plate opens nothing: keys are issued by the vehicle system with a registration in
+	-- their meta, and a blank one from here would just be dead weight in the bag.
+	key = true,
+}
+
 local function contents()
 	local out = {}
 	for id, item in pairs(ItemCatalog.Items) do
-		if item.kind == "weapon" or item.kind == "armor" then
-			table.insert(out, { id = id, count = 1 })
-		elseif item.kind == "consumable" then
-			table.insert(out, { id = id, count = ItemCatalog.StackSize(id) })
+		if not SKIP_KINDS[item.kind] then
+			local stack = ItemCatalog.StackSize(id)
+			table.insert(out, { id = id, count = stack > 1 and stack or 1 })
 		end
 	end
 	-- Sorted so the chest hands things out in a stable order rather than a random one each server.
@@ -164,6 +174,31 @@ task.spawn(function()
 
 	local _, prompt = buildChest(spawnPosition())
 
+	-- Each player's next-claim time, published as an attribute rather than pushed down a remote: attributes
+	-- replicate on their own and are already correct for a client that joins later, which is exactly what a
+	-- countdown needs. The BillboardGui above cannot show this -- it is one object shared by everyone, so it
+	-- would show one player's timer to the whole server. The client draws its own from this.
+	local function publishClaim(player)
+		local data = ProfileAccess.Get(player)
+		if not data then return end
+		player:SetAttribute("WOLD_ChestReadyAt", (data.TestChestAt or 0) + COOLDOWN_SECONDS)
+	end
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		task.spawn(publishClaim, player)
+	end
+	Players.PlayerAdded:Connect(function(player)
+		-- The profile arrives after the player does, so wait for it rather than publishing a zero.
+		task.spawn(function()
+			for _ = 1, 300 do
+				if ProfileAccess.Get(player) then break end
+				if not player.Parent then return end
+				task.wait(0.1)
+			end
+			publishClaim(player)
+		end)
+	end)
+
 	prompt.Triggered:Connect(function(player)
 		local data = ProfileAccess.Get(player)
 		if not data then
@@ -196,6 +231,7 @@ task.spawn(function()
 		if given > 0 then
 			data.TestChestAt = now
 			if ProfileAccess.Flush then ProfileAccess.Flush(player) end
+			publishClaim(player)
 		end
 
 		Remotes.SocialNotify:FireClient(player, given > 0 and "info" or "error",
