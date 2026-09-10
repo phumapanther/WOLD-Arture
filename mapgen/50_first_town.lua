@@ -384,23 +384,71 @@ return L.runPhase("FirstTown", function(folder)
 	--
 	-- Falls back to nothing rather than to home-made parts: if the prototypes are missing, an empty town
 	-- is a clearer signal to run assets_setup than a town full of lollipops.
+	-- L.placeAsset sinks every model exactly 1 stud, which is right for a 50-stud pine (it hides the seam
+	-- where trunk meets ground) and badly wrong for anything small: measured a 1.1-stud rock 93% buried,
+	-- and a dozen bushes losing a third of themselves.
+	--
+	-- So: place it, measure what actually arrived, and lift it back up until no more than a fixed fraction
+	-- of its height is under the ground. Measuring afterwards rather than predicting is the only reliable
+	-- way -- the prototypes are random sizes, randomly scaled, with their own base offsets.
+	local MAX_SUNK_FRACTION = 0.08 -- at most 8% of a model's height may be below ground
+	local MAX_SUNK_STUDS = 1.0     -- and never more than the original stud, however tall it is
+
+	local function settle(model)
+		if not model then return nil end
+		local low, high = math.huge, -math.huge
+		for _, d in ipairs(model:GetDescendants()) do
+			-- Ignore near-invisible parts: some prototypes carry a large transparent collision hull that
+			-- would otherwise decide the model's height for it.
+			if d:IsA("BasePart") and d.Transparency < 0.9 then
+				low = math.min(low, d.Position.Y - d.Size.Y / 2)
+				high = math.max(high, d.Position.Y + d.Size.Y / 2)
+			end
+		end
+		if low == math.huge then return model end
+
+		local height = high - low
+		local allowed = math.min(MAX_SUNK_STUDS, height * MAX_SUNK_FRACTION)
+
+		-- Where the ground under this model actually is. The town's own parts are excluded, or a ray
+		-- dropped near a tree finds the neighbouring canopy and calls it the floor -- which is how an
+		-- earlier measurement of this reported rocks 40 studs underground.
+		local pivot = model:GetPivot().Position
+		local probe = RaycastParams.new()
+		probe.FilterType = Enum.RaycastFilterType.Exclude
+		probe.FilterDescendantsInstances = { L.root() }
+		local hit = workspace:Raycast(Vector3.new(pivot.X, low + 60, pivot.Z),
+			Vector3.new(0, -200, 0), probe)
+		if not hit then return model end
+
+		-- Put the base exactly `allowed` studs under the surface, whichever side of it we started on.
+		-- Correcting both directions matters: one oak prototype's measured BaseOffset leaves it hovering
+		-- up to 2.7 studs in the air, which no amount of sinking would have fixed.
+		local wanted = hit.Position.Y - allowed
+		local shift = wanted - low
+		if math.abs(shift) > 0.05 then
+			model:PivotTo(model:GetPivot() + Vector3.new(0, shift, 0))
+		end
+		return model
+	end
+
 	local function placeTree(parent, x, z, y, seed)
 		local rng = Random.new(seed)
 		-- Oak near the town, pine occasionally, for a little variety without a rule anyone has to read.
 		local kind = rng:NextNumber() < 0.78 and "oak" or "pine"
-		return L.placeAsset(parent, kind, x, y, z, rng, 0.85, 1.25)
+		return settle(L.placeAsset(parent, kind, x, y, z, rng, 0.85, 1.25))
 	end
 
 	local function placeRock(parent, x, z, y, seed)
 		local rng = Random.new(seed)
-		-- Rock prototypes run from 8 to 38 studs tall; the big ones are cliff pieces, not boulders. Scaled
-		-- down hard so a gathering rock stays something a player can walk up to and hit.
-		return L.placeAsset(parent, "rock", x, y, z, rng, 0.25, 0.5)
+		-- Rock prototypes run from 8 to 38 studs tall; the big ones are cliff pieces, not boulders. The
+		-- floor of 0.35 stops a scaled-down one becoming a pebble the sink would swallow whole.
+		return settle(L.placeAsset(parent, "rock", x, y, z, rng, 0.35, 0.55))
 	end
 
 	local function placeBush(parent, x, z, y, seed)
 		local rng = Random.new(seed)
-		return L.placeAsset(parent, "bush", x, y, z, rng, 0.7, 1.1)
+		return settle(L.placeAsset(parent, "bush", x, y, z, rng, 0.8, 1.2))
 	end
 
 	-- Gathering nodes ring the town, outside the plots. Tagged so Gathering.server picks them up with no
