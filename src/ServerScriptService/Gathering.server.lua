@@ -110,6 +110,10 @@ local Faded = {} -- [node] = { [part] = originalTransparency }
 local function setSpent(node, spent)
 	local prompt = node:FindFirstChildWhichIsA("ProximityPrompt", true)
 	if prompt then prompt.Enabled = not spent end
+	-- Published so the client can tell "taken by someone else" from "hidden because you hold the wrong
+	-- tool". Without it the auto-farm would keep walking to a node that is already gone, and the client's
+	-- own prompt hiding would fight the server over Enabled.
+	node:SetAttribute("Spent", spent or nil)
 
 	if spent then
 		if Faded[node] then return end
@@ -184,6 +188,10 @@ end
 -- Wiring nodes up
 --------------------------------------------------------------------------------
 
+-- Declared ahead of `register`, which calls it, because it is defined below alongside the rest of the
+-- per-player visibility handling.
+local publishRequirementLater
+
 local function register(node)
 	local config, kind = configFor(node)
 	if not config then
@@ -200,16 +208,34 @@ local function register(node)
 	prompt.Name = "GatherPrompt"
 	prompt.ActionText = config.prompt or "เก็บ"
 	prompt.ObjectText = config.object or kind
-	-- F rather than E: E already opens the daily chest and every class action, and the user asked for F.
-	prompt.KeyboardKeyCode = Enum.KeyCode.F
+	-- E for a normal gather; F is the auto-farm toggle and is handled on the client, not by a prompt.
+	-- E is shared with the chest, the shopkeeper and the class actions, which is fine: those are prompts
+	-- on different objects, and Roblox offers whichever is nearest.
+	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.MaxActivationDistance = GatherConfig.Range
 	prompt.HoldDuration = config.seconds or 2
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = anchor
+	publishRequirementLater(node)
 
 	prompt.Triggered:Connect(function(player)
 		gather(node, player)
 	end)
+end
+
+--------------------------------------------------------------------------------
+-- Showing the prompt only to someone holding the right tool
+--------------------------------------------------------------------------------
+
+-- A ProximityPrompt is one object shared by the whole server: it cannot be shown to one player and hidden
+-- from another. What CAN be done is decide it per player on the client, which is what GatherController
+-- does -- it reads the node's RequiredTool attribute and hides prompts it cannot use.
+--
+-- The attribute is published here rather than looked up in GatherConfig by the client, so a node whose
+-- kind is renamed carries its own answer with it.
+function publishRequirementLater(node)
+	local config = configFor(node)
+	if config then node:SetAttribute("RequiredTool", config.tool) end
 end
 
 for _, node in ipairs(CollectionService:GetTagged(TAG)) do
