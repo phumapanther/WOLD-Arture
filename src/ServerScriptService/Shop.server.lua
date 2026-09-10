@@ -122,8 +122,12 @@ end)
 -- Buying and selling
 --------------------------------------------------------------------------------
 
-Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index)
-	if type(action) ~= "string" or type(index) ~= "number" then return end
+-- `amount` is optional and only means anything for a sell: nil sells the whole stack, a number sells that
+-- many. Validated here rather than trusted -- a crafted request asking to sell 1000 of a stack of 3 sells
+-- 3, and a negative one sells nothing.
+Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, amount)
+	if type(action) ~= "string" then return end
+	if action ~= "sellall" and type(index) ~= "number" then return end
 	-- Re-checked on every action, not just on opening: a player could walk away with the window still up.
 	if not nearShop(player) then
 		return Remotes.SocialNotify:FireClient(player, "error", "อยู่ไกลจากร้านเกินไป")
@@ -154,7 +158,13 @@ Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index)
 		if not price then
 			return Remotes.SocialNotify:FireClient(player, "error", "ร้านไม่รับซื้อของชิ้นนี้")
 		end
-		local count = slot.count or 1
+		local held = slot.count or 1
+		-- How many to sell. Clamped to what is actually in the slot, so a request for more than the player
+		-- has sells what they have rather than being refused or paying for items that do not exist.
+		local count = held
+		if type(amount) == "number" then
+			count = math.clamp(math.floor(amount), 1, held)
+		end
 		local item = ItemCatalog.Get(slot.id)
 		-- Removed first here, the opposite way round from buying, and for the same reason: whichever side
 		-- can fail must go first. A slot always removes cleanly, and paying afterwards cannot fail.
@@ -162,6 +172,31 @@ Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index)
 		Inventory.AddGold(player, price * count)
 		Remotes.SocialNotify:FireClient(player, "info",
 			("ขาย %s x%d ได้ %d"):format(item and item.name or slot.id, count, price * count))
+
+	elseif action == "sellall" then
+		-- Everything the shop will take, in one press. Collected first and sold afterwards, because
+		-- RemoveFromSlot renumbers nothing but the slot it empties -- iterating and removing at the same
+		-- time would still be reading the table it is changing.
+		local sellable = {}
+		for slotIndex, slot in pairs(state.slots) do
+			local price = buyPrice(slot.id)
+			if price then
+				table.insert(sellable, { index = slotIndex, count = slot.count or 1, price = price })
+			end
+		end
+		if #sellable == 0 then
+			return Remotes.SocialNotify:FireClient(player, "error", "ไม่มีของที่ร้านรับซื้อ")
+		end
+
+		local earned, items = 0, 0
+		for _, entry in ipairs(sellable) do
+			Inventory.RemoveFromSlot(player, entry.index, entry.count)
+			earned += entry.price * entry.count
+			items += entry.count
+		end
+		Inventory.AddGold(player, earned)
+		Remotes.SocialNotify:FireClient(player, "info",
+			("ขายทั้งหมด %d ชิ้น ได้ %d"):format(items, earned))
 	else
 		return
 	end

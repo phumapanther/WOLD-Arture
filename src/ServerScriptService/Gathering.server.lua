@@ -108,8 +108,11 @@ end
 local Faded = {} -- [node] = { [part] = originalTransparency }
 
 local function setSpent(node, spent)
-	local prompt = node:FindFirstChildWhichIsA("ProximityPrompt", true)
-	if prompt then prompt.Enabled = not spent end
+	-- Both prompts: the gather one and the auto-farm one. FindFirstChildWhichIsA returns only the first,
+	-- which would have left the F prompt lit on a node that was already taken.
+	for _, d in ipairs(node:GetDescendants()) do
+		if d:IsA("ProximityPrompt") then d.Enabled = not spent end
+	end
 	-- Published so the client can tell "taken by someone else" from "hidden because you hold the wrong
 	-- tool". Without it the auto-farm would keep walking to a node that is already gone, and the client's
 	-- own prompt hiding would fight the server over Enabled.
@@ -202,7 +205,7 @@ local function register(node)
 
 	local anchor = anchorOf(node)
 	if not anchor then return end
-	if anchor:FindFirstChildWhichIsA("ProximityPrompt") then return end -- already wired
+	if anchor:FindFirstChild("GatherPrompt") then return end -- already wired
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "GatherPrompt"
@@ -220,6 +223,28 @@ local function register(node)
 
 	prompt.Triggered:Connect(function(player)
 		gather(node, player)
+	end)
+
+	-- A second prompt for auto-farm, so the F key is VISIBLE. The first version bound F on the client with
+	-- nothing on screen to say so, and a key nobody is told about may as well not exist -- the user pressed
+	-- it and reasonably concluded it was broken.
+	--
+	-- The server only draws it. Firing it tells the client to toggle its own loop, which is where auto-farm
+	-- has to live: it drives the local character's movement.
+	local auto = Instance.new("ProximityPrompt")
+	auto.Name = "AutoFarmPrompt"
+	auto.ActionText = "ฟาร์มออโต้"
+	auto.ObjectText = config.object or kind
+	auto.KeyboardKeyCode = Enum.KeyCode.F
+	auto.MaxActivationDistance = GatherConfig.Range
+	auto.HoldDuration = 0
+	auto.RequiresLineOfSight = false
+	-- Under the gather prompt rather than over it, so [E] reads first.
+	auto.UIOffset = Vector2.new(0, 44)
+	auto.Parent = anchor
+
+	auto.Triggered:Connect(function(player)
+		Remotes.ToggleAutoFarm:FireClient(player)
 	end)
 end
 

@@ -150,6 +150,26 @@ function ShopGui.new()
 	self.sellList = column(0, "ของขาย")
 	self.buyList = column(0.5, "ร้านรับซื้อ")
 
+	-- Sell everything the shop will take, in one press. Sitting in the heading rather than at the bottom of
+	-- the list so it does not move as the list grows and shrinks.
+	local sellAll = Instance.new("TextButton")
+	sellAll.Name = "SellAll"
+	sellAll.AnchorPoint = Vector2.new(1, 0)
+	sellAll.Position = UDim2.new(1, -10, 0, 5)
+	sellAll.Size = UDim2.fromOffset(84, 22)
+	sellAll.BackgroundColor3 = GOLD
+	sellAll.BorderSizePixel = 0
+	sellAll.Font = Enum.Font.GothamBold
+	sellAll.TextSize = 12
+	sellAll.TextColor3 = Color3.fromRGB(24, 26, 32)
+	sellAll.Text = "ขายทั้งหมด"
+	sellAll.Parent = self.buyList.Parent
+	corner(sellAll, UDim.new(0, 5))
+	sellAll.Activated:Connect(function()
+		UiSound.Play("Click")
+		if self.onSellAll then self.onSellAll() end
+	end)
+
 	local hint = Instance.new("TextLabel")
 	hint.Name = "Hint"
 	hint.AnchorPoint = Vector2.new(0.5, 1)
@@ -163,12 +183,13 @@ function ShopGui.new()
 	hint.Parent = panel
 	self.hint = hint
 
-	self.onBuy, self.onSell = nil, nil
+	self.onBuy, self.onSell, self.onSellAll = nil, nil, nil
 	return self
 end
 
 function ShopGui:OnBuy(callback) self.onBuy = callback end
 function ShopGui:OnSell(callback) self.onSell = callback end
+function ShopGui:OnSellAll(callback) self.onSellAll = callback end
 
 -- One row: icon, name, price, and the button that acts on it.
 local function row(parent, order, icon, name, priceText, buttonText, buttonColor, onClick)
@@ -189,7 +210,7 @@ local function row(parent, order, icon, name, priceText, buttonText, buttonColor
 
 	local label = Instance.new("TextLabel")
 	label.Position = UDim2.fromOffset(40, 4)
-	label.Size = UDim2.new(1, -110, 0, 16)
+	label.Size = UDim2.new(1, -142, 0, 16)
 	label.BackgroundTransparency = 1
 	label.Font = Enum.Font.GothamBold
 	label.TextSize = 12
@@ -201,7 +222,7 @@ local function row(parent, order, icon, name, priceText, buttonText, buttonColor
 
 	local price = Instance.new("TextLabel")
 	price.Position = UDim2.fromOffset(40, 20)
-	price.Size = UDim2.new(1, -110, 0, 14)
+	price.Size = UDim2.new(1, -142, 0, 14)
 	price.BackgroundTransparency = 1
 	price.Font = Enum.Font.Gotham
 	price.TextSize = 11
@@ -226,6 +247,29 @@ local function row(parent, order, icon, name, priceText, buttonText, buttonColor
 		UiSound.Play("Click")
 		onClick()
 	end)
+	return frame
+end
+
+-- A second, smaller button on a row, to the left of the main one. Used for "sell just one" beside "sell
+-- the stack", so a player can part with three of a hundred without emptying the slot.
+local function smallButton(frame, text, onClick)
+	local b = Instance.new("TextButton")
+	b.AnchorPoint = Vector2.new(1, 0.5)
+	b.Position = UDim2.new(1, -68, 0.5, 0)
+	b.Size = UDim2.fromOffset(30, 26)
+	b.BackgroundColor3 = Color3.fromRGB(70, 74, 84)
+	b.BorderSizePixel = 0
+	b.Font = Enum.Font.GothamBold
+	b.TextSize = 12
+	b.TextColor3 = Color3.fromRGB(232, 232, 238)
+	b.Text = text
+	b.Parent = frame
+	corner(b, UDim.new(0, 5))
+	b.Activated:Connect(function()
+		UiSound.Play("Click")
+		onClick()
+	end)
+	return b
 end
 
 function ShopGui:Show(snapshot)
@@ -256,13 +300,20 @@ function ShopGui:Show(snapshot)
 		empty.Parent = self.buyList
 	end
 	for order, entry in ipairs(snapshot.buys or {}) do
-		row(self.buyList, order, entry.icon,
+		local frame = row(self.buyList, order, entry.icon,
 			("%s x%d"):format(entry.name, entry.count),
 			("ชิ้นละ %d — รวม %d"):format(entry.each, entry.total),
-			"ขาย", GOLD,
+			"ขายหมด", GOLD,
 			function()
-				if self.onSell then self.onSell(entry.slot) end
+				-- nil amount means the whole stack.
+				if self.onSell then self.onSell(entry.slot, nil) end
 			end)
+		-- Only worth offering on a stack: on a single item "sell 1" and "sell all" are the same press.
+		if entry.count > 1 then
+			smallButton(frame, "x1", function()
+				if self.onSell then self.onSell(entry.slot, 1) end
+			end)
+		end
 	end
 
 	-- Prices drift on a server-wide timer, and saying when makes a low price feel like a reason to come

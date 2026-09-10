@@ -39,13 +39,18 @@ return L.runPhase("TrainingDummies", function(folder)
       -- The REAL surface, by raycast. L.heightAt returns the height the terrain generator was ASKED to
       -- write, and voxel terrain lands somewhere else -- measured up to 2.3 studs high, which sank every
       -- dummy's post into the ground. Falls back to heightAt if nothing is hit.
+      -- Excludes only this phase's own folder, so the ray finds whatever the player would actually stand
+      -- on -- the plaza floor at the spawn, bare terrain elsewhere. Excluding the whole WOLD folder would
+      -- put the spawn dummy on the terrain UNDER the plaza, a stud deep in the stone.
       local probe = RaycastParams.new()
       probe.FilterType = Enum.RaycastFilterType.Exclude
       probe.FilterDescendantsInstances = { folder }
       local groundHit = workspace:Raycast(Vector3.new(x, 600, z), Vector3.new(0, -900, 0), probe)
-      -- Plus a stud and a half so the post stands ABOVE the terrain grass rather than in it: the grass
-      -- decoration is about 3 studs tall, and a post based exactly at the surface is swallowed by it.
-      local y = (groundHit and groundHit.Position.Y or L.heightAt(x, z)) + 1.5
+      -- The surface itself, with NO offset. Adding 1.5 studs to keep the post clear of the terrain grass
+      -- left all five dummies visibly hovering -- and on the plaza, whose stone floor the ray also finds,
+      -- the spawn dummy hung 5 studs in the air. A post is meant to be driven INTO the ground; the base
+      -- part below extends past this point, which covers the grass without lifting the model.
+      local y = groundHit and groundHit.Position.Y or L.heightAt(x, z)
 
       local model = Instance.new("Model")
       model.Name = spot.name
@@ -54,8 +59,12 @@ return L.runPhase("TrainingDummies", function(folder)
       local post = Instance.new("Part")
       post.Name = "Post"
       post.Anchored = true
-      post.Size = Vector3.new(0.8, 4, 0.8)
-      post.Position = Vector3.new(x, y + 2, z)
+      -- Long enough to REACH the body, and sunk a stud into the ground so it reads as driven in rather
+      -- than balanced on the surface. The body's underside is at y+3.6, so a post spanning y-1 to y+3.8
+      -- meets it with no gap -- the previous 4-stud post stopped at y+3 and left the whole scarecrow
+      -- hanging visibly in the air above it.
+      post.Size = Vector3.new(0.8, 4.8, 0.8)
+      post.Position = Vector3.new(x, y + 1.4, z)
       post.Material = Enum.Material.Wood
       post.Color = Color3.fromRGB(104, 78, 48)
       post.Parent = model

@@ -24,9 +24,15 @@ gui:OnBuy(function(index)
 	Remotes.RequestShopAction:FireServer("buy", index)
 end)
 
-gui:OnSell(function(slot)
+gui:OnSell(function(slot, amount)
 	pendingCoin = true
-	Remotes.RequestShopAction:FireServer("sell", slot)
+	-- amount nil means the whole stack; the server clamps whatever it is told to what the slot holds.
+	Remotes.RequestShopAction:FireServer("sell", slot, amount)
+end)
+
+gui:OnSellAll(function()
+	pendingCoin = true
+	Remotes.RequestShopAction:FireServer("sellall")
 end)
 
 -- Sent both when the prompt is used and after every purchase, so the window redraws itself from the

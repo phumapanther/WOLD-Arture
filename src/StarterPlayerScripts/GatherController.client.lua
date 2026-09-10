@@ -74,11 +74,13 @@ end
 -- the server switched off. `spentPrompts` remembers which those are.
 local function refreshPrompts()
 	for _, node in ipairs(CollectionService:GetTagged(TAG)) do
-		local prompt = node:FindFirstChildWhichIsA("ProximityPrompt", true)
-		-- A spent node has no RequiredTool problem -- it is simply gone -- and the server has already
-		-- disabled it. Enabled is left alone in that case by only ever writing the AND of both conditions.
-		if prompt and node:GetAttribute("Spent") ~= true then
-			prompt.Enabled = canUse(node)
+		-- BOTH prompts -- the [E] gather and the [F] auto-farm. Taking only the first would have left the
+		-- F prompt showing on nodes this player cannot use.
+		if node:GetAttribute("Spent") ~= true then
+			local usable = canUse(node)
+			for _, d in ipairs(node:GetDescendants()) do
+				if d:IsA("ProximityPrompt") then d.Enabled = usable end
+			end
 		end
 	end
 end
@@ -144,6 +146,40 @@ ProximityPromptService.PromptTriggered:Connect(stopSwing)
 local autoFarming = false
 local autoThread = nil
 
+-- On-screen state. The first version reported everything through print(), which no player ever sees -- so
+-- auto-farm looked broken whether it was running or not.
+local banner
+local function setBanner(text)
+	if not banner then
+		local gui = Instance.new("ScreenGui")
+		gui.Name = "GatherStatusGui"
+		gui.ResetOnSpawn = false
+		gui.IgnoreGuiInset = true
+		gui.DisplayOrder = 12
+		gui.Parent = player:WaitForChild("PlayerGui")
+
+		local label = Instance.new("TextLabel")
+		label.AnchorPoint = Vector2.new(0.5, 0)
+		label.Position = UDim2.new(0.5, 0, 0, 74)
+		label.Size = UDim2.fromOffset(260, 30)
+		label.BackgroundColor3 = Color3.fromRGB(26, 28, 34)
+		label.BackgroundTransparency = 0.2
+		label.BorderSizePixel = 0
+		label.Font = Enum.Font.GothamBold
+		label.TextSize = 14
+		label.TextColor3 = Color3.fromRGB(244, 197, 66)
+		label.Text = ""
+		label.Visible = false
+		label.Parent = gui
+		local c = Instance.new("UICorner")
+		c.CornerRadius = UDim.new(0, 8)
+		c.Parent = label
+		banner = label
+	end
+	banner.Text = text or ""
+	banner.Visible = (text ~= nil)
+end
+
 local function rootOf()
 	local character = player.Character
 	return character and character:FindFirstChild("HumanoidRootPart")
@@ -159,7 +195,7 @@ local function isAvailable(node)
 	if not node or not node.Parent then return false end
 	if node:GetAttribute("Spent") == true then return false end
 	if not canUse(node) then return false end
-	local prompt = node:FindFirstChildWhichIsA("ProximityPrompt", true)
+	local prompt = node:FindFirstChild("GatherPrompt", true)
 	return prompt ~= nil
 end
 
@@ -171,7 +207,7 @@ local function nearestNode(exclude)
 	local best, bestDistance
 	for _, node in ipairs(CollectionService:GetTagged(TAG)) do
 		if node ~= exclude and isAvailable(node) then
-			local prompt = node:FindFirstChildWhichIsA("ProximityPrompt", true)
+			local prompt = node:FindFirstChild("GatherPrompt", true)
 			local anchor = prompt and prompt.Parent
 			if anchor then
 				local d = (anchor.Position - root.Position).Magnitude
@@ -192,7 +228,7 @@ local function walkTo(node)
 	local humanoid = humanoidOf()
 	local root = rootOf()
 	if not humanoid or not root then return false end
-	local prompt = node:FindFirstChildWhichIsA("ProximityPrompt", true)
+	local prompt = node:FindFirstChild("GatherPrompt", true)
 	local anchor = prompt and prompt.Parent
 	if not anchor then return false end
 
@@ -257,7 +293,7 @@ end
 
 -- Hold the prompt for its full duration, the way a player holding E would.
 local function gatherNode(node)
-	local prompt = node:FindFirstChildWhichIsA("ProximityPrompt", true)
+	local prompt = node:FindFirstChild("GatherPrompt", true)
 	if not prompt or not prompt.Enabled then return end
 
 	prompt:InputHoldBegin()
@@ -277,18 +313,18 @@ local function stopAuto(reason)
 	local humanoid = humanoidOf()
 	if humanoid then humanoid:MoveTo(rootOf() and rootOf().Position or humanoid.RootPart.Position) end
 	if track and track.IsPlaying then track:Stop(0.2) end
-	if reason then
-		print("[Gather] auto-farm stopped: " .. reason)
-	end
+	setBanner(nil)
 end
 
 local function startAuto()
 	if autoFarming then return end
 	if not heldTool then
-		print("[Gather] ต้องถือเครื่องมือก่อนถึงจะฟาร์มออโต้ได้")
+		setBanner("ต้องถือเครื่องมือก่อน")
+		task.delay(2, function() if not autoFarming then setBanner(nil) end end)
 		return
 	end
 	autoFarming = true
+	setBanner("ฟาร์มออโต้: เปิด — กด F เพื่อหยุด")
 
 	autoThread = task.spawn(function()
 		local lastFailed = nil
@@ -324,26 +360,42 @@ end
 -- F toggles it
 --------------------------------------------------------------------------------
 
+local function toggleAuto()
+	if autoFarming then stopAuto() else startAuto() end
+end
+
+-- Two ways in, on purpose. The prompt is how a player DISCOVERS it -- walking up to a tree and seeing
+-- [F] ฟาร์มออโต้ -- and the bare key is how they stop it again once they have walked away from any node.
+Remotes.ToggleAutoFarm.OnClientEvent:Connect(toggleAuto)
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	if input.KeyCode ~= Enum.KeyCode.F then return end
-	if autoFarming then
-		stopAuto("กดปิดเอง")
-	else
-		startAuto()
+	-- The prompt already fired for us if one was in range; this only covers being away from a node.
+	local nearPrompt = false
+	local r = rootOf()
+	if r then
+		for _, node in ipairs(CollectionService:GetTagged(TAG)) do
+			local pr = node:FindFirstChild("AutoFarmPrompt", true)
+			if pr and pr.Enabled and (pr.Parent.Position - r.Position).Magnitude <= pr.MaxActivationDistance then
+				nearPrompt = true
+				break
+			end
+		end
 	end
+	if not nearPrompt then toggleAuto() end
 end)
 
 -- Putting the tool away stops the run: the prompts it was using are about to vanish anyway.
 Remotes.EquipmentChanged.OnClientEvent:Connect(function(who)
 	if who == player and not heldTool then
-		stopAuto("ถอดเครื่องมือออก")
+		stopAuto()
 	end
 end)
 
 player.CharacterAdded:Connect(function()
 	track = nil
-	stopAuto("เกิดใหม่")
+	stopAuto()
 end)
 
 -- Prompt visibility also has to follow the SPENT state, which the server changes as nodes are taken and
