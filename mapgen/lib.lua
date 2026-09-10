@@ -135,6 +135,9 @@ function L.river(u, v)                            -- -> dist(studs), surfaceY, w
 end
 -- ---------- settlement pads: flat ground with walkable sloped skirts, baked into the height function ----------
 L.pads = {}
+-- Height shapers installed by a phase, run at the end of L.sample. Empty for every phase that does not
+-- want one, which is all of them but the forest.
+L.shapers = {}
 local function addPad(pos, radiusStuds, name) L.pads[#L.pads + 1] = { u = pos[1], v = pos[2], r = radiusStuds, name = name } end
 for key, d in pairs(Y.capital.districts) do
   if key == "residential" then for i, r in ipairs(d) do addPad(r.center, r.radius * Y.half_size_studs, "residential" .. i) end
@@ -189,15 +192,38 @@ function L.sample(u, v)
     local edge = L.yard.rad - 400
     if dy > edge then h = h + (Y.sea.seabed_y * L.VS - h) * L.smooth((dy - edge) / 400) end
   end
-  return h, fm, cliff, land, d, hs, w
+  -- A phase may reshape its own patch of ground. Applied LAST so it wins over pads and the river, and only
+  -- where it chooses to: a shaper returns nil to leave a column alone. This is how the forest gets its
+  -- hillocks and ledges without every other phase learning about them.
+  local forced
+  if L.shapers then
+    for _, shape in ipairs(L.shapers) do
+      -- Returns a new height, and optionally a new FOREST DENSITY (0..1) -- not a Material. materialFor
+      -- turns density into LeafyGrass above 0.5 and plain Grass below, so a shaper says "bare" by
+      -- returning 0 rather than by naming a material it has no say over.
+      local nh, nfm, nmat = shape(u * L.HALF, v * L.HALF, h, fm, land)
+      if nh then h = nh end
+      if nfm then fm = nfm end
+      -- A third return FORCES a material. The density trick cannot reach Sand -- materialFor only lays it
+      -- near sea level -- so a sandy hollow in an upland wood has to say so outright.
+      -- Returned to the caller rather than stashed in a global: writeChunk samples every column into
+      -- arrays FIRST and assigns materials in a second pass, so a global set during sampling is long
+      -- stale by the time it would be read.
+      if nmat then forced = nmat end
+    end
+  end
+  return h, fm, cliff, land, d, hs, w, forced
 end
 function L.heightAt(x, z) return (L.sample(x / L.HALF, z / L.HALF)) end
 function L.isLand(x, z) local _, _, _, land = L.base(x / L.HALF, z / L.HALF); return land > 0.5 end
 function L.riverAt(x, z) local _, _, _, _, d, hs, w = L.sample(x / L.HALF, z / L.HALF); return d, hs, w end
 
 -- ---------- terrain chunk writer ----------
-function L.materialFor(h, yc, fm, cliff, slope, SNOW, MTN)
+function L.materialFor(h, yc, fm, cliff, slope, SNOW, MTN, forced)
   if yc < h - 12 * L.VS then return MAT.Rock end
+  -- A material a shaper demanded for this column. Checked after the deep-rock rule, so forcing a sandy
+  -- surface never turns the stone underneath it to sand as well.
+  if forced then return forced end
   if h < 4 * L.VS then return MAT.Sand end
   if h >= SNOW then return MAT.Snow end
   if cliff > 60 * L.VS then return MAT.Basalt end
@@ -207,13 +233,13 @@ function L.materialFor(h, yc, fm, cliff, slope, SNOW, MTN)
 end
 function L.writeChunk(x0, z0, n, waterCut)         -- x0,z0 multiples of 4; n columns (n*4 studs square); waterCut(x,z) -> true suppresses river water
   local HALF, VS = L.HALF, L.VS
-  local H, FM, CL, RD, RH, RW = {}, {}, {}, {}, {}, {}
+  local H, FM, CL, RD, RH, RW, FMAT = {}, {}, {}, {}, {}, {}, {}
   local minH, maxH = math.huge, -math.huge
   for i = 1, n + 1 do
-    H[i], FM[i], CL[i], RD[i], RH[i], RW[i] = {}, {}, {}, {}, {}, {}
+    H[i], FM[i], CL[i], RD[i], RH[i], RW[i], FMAT[i] = {}, {}, {}, {}, {}, {}, {}
     for k = 1, n + 1 do
-      local h, fm, c, _, d, hs, w = L.sample((x0 + (i - 1) * 4) / HALF, (z0 + (k - 1) * 4) / HALF)   -- 7 returns: h, forest, cliff, land, riverDist, riverSurface, riverWidth
-      H[i][k], FM[i][k], CL[i][k], RD[i][k], RH[i][k], RW[i][k] = h, fm, c, d, hs, w
+      local h, fm, c, _, d, hs, w, fmat = L.sample((x0 + (i - 1) * 4) / HALF, (z0 + (k - 1) * 4) / HALF)   -- h, forest, cliff, land, riverDist, riverSurface, riverWidth, forcedMaterial
+      H[i][k], FM[i][k], CL[i][k], RD[i][k], RH[i][k], RW[i][k], FMAT[i][k] = h, fm, c, d, hs, w, fmat
       if h < minH then minH = h end; if h > maxH then maxH = h end
       if d <= w / 2 and hs > maxH then maxH = hs end
     end
@@ -243,8 +269,11 @@ function L.writeChunk(x0, z0, n, waterCut)         -- x0,z0 multiples of 4; n co
       for j = 1, ny do
         local ybot = y0 + (j - 1) * 4; local ytop = ybot + 4; local yc = ybot + 2
         local m, o
-        if ytop <= h then m, o = L.materialFor(h, yc, fm, c, slope, SNOW, MTN), 1
-        elseif ybot < h then m, o = L.materialFor(h, yc, fm, c, slope, SNOW, MTN), (h - ybot) / 4
+        if ytop <= h then m, o = L.materialFor(h, yc, fm, c, slope, SNOW, MTN, FMAT[i][k]), 1
+        -- The PARTIAL voxel is the visible surface, so it needs the forced material too. Leaving it off
+        -- here sanded the buried voxels and left the top layer grass -- which looked exactly like the
+        -- material never being applied at all.
+        elseif ybot < h then m, o = L.materialFor(h, yc, fm, c, slope, SNOW, MTN, FMAT[i][k]), (h - ybot) / 4
         elseif waterTop and ybot < waterTop then m, o = MAT.Water, math.min((waterTop - ybot) / 4, 1)
         else m, o = MAT.Air, 0 end
         mats[i][j][k], occ[i][j][k] = m, o
