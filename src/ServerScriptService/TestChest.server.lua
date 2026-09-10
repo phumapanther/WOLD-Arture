@@ -147,29 +147,43 @@ local function spawnPosition()
 		base = spawnLocation and spawnLocation.Position or Vector3.new(0, 100, 0)
 	end
 
-	local beside = base + Vector3.new(10, 0, 0)
+	-- Well clear of the gazebo, which is 26 studs across: 10 studs put the chest inside it, wedged among
+	-- the columns. 30 stands it out on the open plaza where it can be seen and walked up to.
+	local beside = base + Vector3.new(30, 0, 0)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	-- Exclude any chest already standing here. On the first run there is none, and a stale lookup that
 	-- returns nil filters nothing -- which is how a re-run measured the ground as its own lid (y=50.1).
+	-- Ignore the chest already standing here AND the whole generated town. The spawn is under a gazebo, so
+	-- a ray dropped from 400 studs up hits the ROOF first -- which put the chest on top of it, hanging in
+	-- the air above the players (seen in docs/shots/spawn-area.png). Only terrain should answer this.
+	local ignore = {}
 	local existingChest = workspace:FindFirstChild("WOLD_TestChest")
-	params.FilterDescendantsInstances = existingChest and { existingChest } or {}
+	if existingChest then table.insert(ignore, existingChest) end
+	local worldRoot = workspace:FindFirstChild("WOLD")
+	if worldRoot then table.insert(ignore, worldRoot) end
+	params.FilterDescendantsInstances = ignore
 	-- Terrain counts as a hit, so the ray has to start well ABOVE the ground and travel down through it.
 	-- Starting from the pad height alone buried the chest 3 studs (measured: chest y=47.3, ground y=50.2).
 	local hit = workspace:Raycast(beside + Vector3.new(0, 400, 0), Vector3.new(0, -1200, 0), params)
 	-- The model is built around this point with the body 1.2 studs up and 2.4 tall, so sitting the origin
 	-- ON the ground puts the chest on the ground rather than half inside it.
-	local groundY = hit and hit.Position.Y or base.Y
+	-- Lifted clear of the terrain, not laid flush on it. Roblox grass decoration stands about 3 studs proud
+	-- of the surface, so a chest whose base sits exactly at the raycast hit is buried to the lid in grass --
+	-- measured 0.88 studs under the visible ground. A stud and a half puts its base above the blades while
+	-- still reading as standing on the ground rather than hovering.
+	local groundY = (hit and hit.Position.Y or base.Y) + 1.5
 	return Vector3.new(beside.X, groundY, beside.Z)
 end
 
 --------------------------------------------------------------------------------
 
 task.spawn(function()
-	-- The spawn pad is built by another script, so wait for it rather than racing it.
+	-- Wait for a SpawnLocation to exist rather than for TempSpawn by name: FirstTown deletes TempSpawn and
+	-- provides its own spawn under the gazebo, so waiting on the old name spun for ten seconds and then
+	-- placed the chest from a fallback position.
 	for _ = 1, 40 do
-		local root = workspace:FindFirstChild("WOLD")
-		if root and root:FindFirstChild("TempSpawn") then break end
+		if workspace:FindFirstChildWhichIsA("SpawnLocation", true) then break end
 		task.wait(0.25)
 	end
 

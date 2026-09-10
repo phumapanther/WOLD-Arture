@@ -72,10 +72,6 @@ local PLOTS = {
 local DIRT = Color3.fromRGB(126, 100, 72)
 local STONE_PALE = Color3.fromRGB(158, 154, 146)
 local STONE_DARK = Color3.fromRGB(118, 114, 108)
-local BARK = Color3.fromRGB(94, 68, 46)
-local LEAF = Color3.fromRGB(74, 132, 68)
-local BUSH = Color3.fromRGB(88, 146, 78)
-local ROCK = Color3.fromRGB(136, 134, 130)
 
 --------------------------------------------------------------------------------
 
@@ -130,8 +126,11 @@ return L.runPhase("FirstTown", function(folder)
 		CFrame.new(cx, groundY + 0.5, cz), STONE_PALE, Enum.Material.Cobblestone)
 	floor.Shape = Enum.PartType.Cylinder
 	-- A cylinder's length runs along X, so it has to be tipped on its side to lie flat.
-	floor.Size = Vector3.new(1, PLAZA_RADIUS * 2, PLAZA_RADIUS * 2)
-	floor.CFrame = CFrame.new(cx, groundY + 0.9, cz) * CFrame.Angles(0, 0, math.rad(90))
+	-- 4 studs thick, sunk into the ground so its TOP clears the terrain grass. Roblox grass decoration
+	-- stands about 3 studs proud of the surface, so a thin slab laid flush has grass growing through it --
+	-- which is exactly how the first version looked.
+	floor.Size = Vector3.new(4, PLAZA_RADIUS * 2, PLAZA_RADIUS * 2)
+	floor.CFrame = CFrame.new(cx, groundY + 1.6, cz) * CFrame.Angles(0, 0, math.rad(90))
 
 	-- The gazebo: a stone platform, six columns, and a roof with a piece missing. The gap is deliberate --
 	-- a broken roof tells a player this place is old without a word of text, and the hole lets light in so
@@ -245,8 +244,9 @@ return L.runPhase("FirstTown", function(folder)
 			local wobble = math.sin(t * math.pi * 2.2 + ax * 0.01) * 1.6
 			px += math.cos(heading) * wobble
 			pz -= math.sin(heading) * wobble
-			part(paths, "PathSlab", Vector3.new(width, 0.6, 8.4),
-				CFrame.new(px, groundAt(px, pz) + 0.35, pz) * CFrame.Angles(0, heading, 0),
+			-- Thick and raised for the same reason as the plaza: a thin slab lets the grass through.
+			part(paths, "PathSlab", Vector3.new(width, 3, 8.4),
+				CFrame.new(px, groundAt(px, pz) + 1.7, pz) * CFrame.Angles(0, heading, 0),
 				DIRT, Enum.Material.Ground)
 		end
 		table.insert(pathSegments, { ax, az, bx, bz })
@@ -273,8 +273,12 @@ return L.runPhase("FirstTown", function(folder)
 		local pz = cz + plot.z
 		local py = groundAt(px, pz)
 
-		local pad = part(plots, "Plot_" .. plot.key, plot.size,
-			CFrame.new(px, py + 0.45, pz) * CFrame.Angles(0, math.rad(plot.rot), 0),
+		-- The pad is built 3 studs thick regardless of what the table says, and raised so its top clears
+		-- the terrain grass. The table's Y is ignored on purpose: it describes the footprint a model needs,
+		-- not how deep the foundation should be.
+		local pad = part(plots, "Plot_" .. plot.key,
+			Vector3.new(plot.size.X, 3, plot.size.Z),
+			CFrame.new(px, py + 1.7, pz) * CFrame.Angles(0, math.rad(plot.rot), 0),
 			DIRT, Enum.Material.Ground)
 		pad:SetAttribute("PlotKey", plot.key)
 		pad:SetAttribute("PlotName", plot.name)
@@ -370,46 +374,33 @@ return L.runPhase("FirstTown", function(folder)
 		return true
 	end
 
-	local function buildTree(parent, x, z, y)
-		local tree = Instance.new("Model")
-		tree.Name = "Tree"
-		tree.Parent = parent
-		local height = 14 + math.random() * 8
-		local trunk = part(tree, "Trunk", Vector3.new(2.2, height, 2.2),
-			CFrame.new(x, y + height / 2, z), BARK, Enum.Material.Wood)
-		tree.PrimaryPart = trunk
-		for i = 1, 3 do
-			local r = 7.5 - i * 1.4
-			local crown = part(tree, "Crown", Vector3.new(r * 2, r * 1.5, r * 2),
-				CFrame.new(x + (math.random() - 0.5) * 2, y + height - 1 + i * 2.6,
-					z + (math.random() - 0.5) * 2), LEAF, Enum.Material.Grass)
-			crown.Shape = Enum.PartType.Ball
-			crown.CanCollide = false
-		end
-		return tree
+	-- Trees, bushes and rocks come from the APPROVED Creator Store prototypes in
+	-- ServerStorage.WOLD_Assets, loaded by mapgen/assets_setup.lua and listed in layout.nature.assets --
+	-- 9 oaks, 2 pines, 15 bushes and 16 rocks, already stripped of scripts and measured for base offset.
+	--
+	-- The first draft built trees out of a cylinder and three spheres, which was wrong twice over: it
+	-- looked like a lollipop, and it ignored prototypes the user had already picked and approved for
+	-- exactly this. L.placeAsset handles the clone, the random yaw, the scale and the base offset.
+	--
+	-- Falls back to nothing rather than to home-made parts: if the prototypes are missing, an empty town
+	-- is a clearer signal to run assets_setup than a town full of lollipops.
+	local function placeTree(parent, x, z, y, seed)
+		local rng = Random.new(seed)
+		-- Oak near the town, pine occasionally, for a little variety without a rule anyone has to read.
+		local kind = rng:NextNumber() < 0.78 and "oak" or "pine"
+		return L.placeAsset(parent, kind, x, y, z, rng, 0.85, 1.25)
 	end
 
-	local function buildRock(parent, x, z, y)
-		local rock = Instance.new("Model")
-		rock.Name = "Rock"
-		rock.Parent = parent
-		local size = 3 + math.random() * 2.5
-		local body = part(rock, "Body", Vector3.new(size, size * 0.8, size * 1.1),
-			CFrame.new(x, y + size * 0.3, z) * CFrame.Angles(math.random() * 0.4, math.random() * 6, 0),
-			ROCK, Enum.Material.Rock)
-		rock.PrimaryPart = body
-		part(rock, "Chip", Vector3.new(size * 0.5, size * 0.4, size * 0.5),
-			CFrame.new(x + size * 0.7, y + size * 0.2, z - size * 0.4)
-				* CFrame.Angles(0, math.random() * 6, 0), ROCK, Enum.Material.Rock)
-		return rock
+	local function placeRock(parent, x, z, y, seed)
+		local rng = Random.new(seed)
+		-- Rock prototypes run from 8 to 38 studs tall; the big ones are cliff pieces, not boulders. Scaled
+		-- down hard so a gathering rock stays something a player can walk up to and hit.
+		return L.placeAsset(parent, "rock", x, y, z, rng, 0.25, 0.5)
 	end
 
-	local function buildBush(parent, x, z, y)
-		local bush = part(parent, "Bush", Vector3.new(4 + math.random() * 2, 3, 4 + math.random() * 2),
-			CFrame.new(x, y + 1.2, z), BUSH, Enum.Material.Grass)
-		bush.Shape = Enum.PartType.Ball
-		bush.CanCollide = false
-		return bush
+	local function placeBush(parent, x, z, y, seed)
+		local rng = Random.new(seed)
+		return L.placeAsset(parent, "bush", x, y, z, rng, 0.7, 1.1)
 	end
 
 	-- Gathering nodes ring the town, outside the plots. Tagged so Gathering.server picks them up with no
@@ -429,11 +420,16 @@ return L.runPhase("FirstTown", function(folder)
 		if L.isLand(x, z) and isClear(x, z, 4) then
 			local y = groundAt(x, z)
 			local isTree = math.random() < 0.62
-			local node = isTree and buildTree(nodes, x, z, y) or buildRock(nodes, x, z, y)
-			node:SetAttribute("NodeKind", isTree and "Tree" or "Rock")
-			CollectionService:AddTag(node, "WOLD_Node")
-			CollectionService:AddTag(node, isTree and "Tree" or "Rock")
-			placed += 1
+			local node = isTree and placeTree(nodes, x, z, y, attempts)
+				or placeRock(nodes, x, z, y, attempts)
+			if node then
+				-- placeAsset has already tagged it Tree or Rock with the gathering attributes from
+				-- 04-gameplay-hooks. WOLD_Node and NodeKind are what THIS system reads, so only those
+				-- are added here.
+				node:SetAttribute("NodeKind", isTree and "Tree" or "Rock")
+				CollectionService:AddTag(node, "WOLD_Node")
+				placed += 1
+			end
 		end
 	end
 
@@ -447,12 +443,10 @@ return L.runPhase("FirstTown", function(folder)
 		local z = cz + math.sin(angle) * distance
 		if L.isLand(x, z) and isClear(x, z, 0) then
 			local y = groundAt(x, z)
-			if math.random() < 0.45 then
-				buildTree(decor, x, z, y)
-			else
-				buildBush(decor, x, z, y)
-			end
-			decorated += 1
+			local placedOne = (math.random() < 0.45)
+				and placeTree(decor, x, z, y, tries + 5000)
+				or placeBush(decor, x, z, y, tries + 5000)
+			if placedOne then decorated += 1 end
 		end
 	end
 

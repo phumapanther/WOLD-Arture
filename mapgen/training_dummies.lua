@@ -36,7 +36,16 @@ return L.runPhase("TrainingDummies", function(folder)
   for _, spot in ipairs(SPOTS) do
     local x, z = findLand(sx + spot.dx, sz + spot.dz)
     if x then
-      local y = L.heightAt(x, z)
+      -- The REAL surface, by raycast. L.heightAt returns the height the terrain generator was ASKED to
+      -- write, and voxel terrain lands somewhere else -- measured up to 2.3 studs high, which sank every
+      -- dummy's post into the ground. Falls back to heightAt if nothing is hit.
+      local probe = RaycastParams.new()
+      probe.FilterType = Enum.RaycastFilterType.Exclude
+      probe.FilterDescendantsInstances = { folder }
+      local groundHit = workspace:Raycast(Vector3.new(x, 600, z), Vector3.new(0, -900, 0), probe)
+      -- Plus a stud and a half so the post stands ABOVE the terrain grass rather than in it: the grass
+      -- decoration is about 3 studs tall, and a post based exactly at the surface is swallowed by it.
+      local y = (groundHit and groundHit.Position.Y or L.heightAt(x, z)) + 1.5
 
       local model = Instance.new("Model")
       model.Name = spot.name
