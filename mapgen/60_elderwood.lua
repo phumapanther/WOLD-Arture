@@ -75,6 +75,9 @@ local function shapeForest(x, z, h, fm, land)
 	if land <= 0.5 then return nil end -- never reshape water or seabed
 	local w = forestWeight(x, z)
 	if w <= 0.001 then return nil end
+	-- Leave the mountains alone. The forest band overlaps their feet, and rolling and terracing a
+	-- mountainside produced a smooth dome hundreds of studs tall in the middle of the wood.
+	if h > 220 * L.VS then return nil end
 
 	local u, v = x / L.HALF, z / L.HALF
 
@@ -86,9 +89,14 @@ local function shapeForest(x, z, h, fm, land)
 
 	-- Terraces: the ground steps rather than ramping, which is what makes a slope read as LEDGES you can
 	-- stand on instead of a smooth hill.
-	local stepped = math.floor(shaped / 7) * 7
+	--
+	-- Applied to the OFFSET rather than to the absolute height. Snapping the absolute height to a 7-stud
+	-- grid moved the ground by up to 7 studs everywhere, including under mountains, which is how the band
+	-- ended up spanning 4 to 1127 studs and grew a smooth dome where the hills already were.
+	local offset = shaped - h
+	local stepped = math.floor(offset / 7) * 7
 	local terrace = w * w -- squared, so terracing fades out faster than the hills themselves
-	shaped = shaped * (1 - terrace) + stepped * terrace
+	shaped = h + offset * (1 - terrace) + stepped * terrace
 
 	-- A handful of genuine cliffs where the band thins out, which is its edge.
 	local rim = 1 - w
@@ -104,9 +112,10 @@ local function shapeForest(x, z, h, fm, land)
 		local fw = featureWeight(f, x, z)
 		if fw > 0 then
 			if f.kind == "lake" then
-				-- A basin with a rounded bottom rather than a flat one, so the water deepens toward the
-				-- middle instead of sitting in a bathtub. fw^0.6 makes the sides steepen near the shore,
-				-- which is what gives a lake an edge you can stand at.
+				-- Cut DOWN from the surrounding land, and remember how far, so the fill can put the
+				-- waterline below the shore rather than above it. The first attempt filled to a height
+				-- measured after the terracing had already raised the ground, so the "lake" sat 30 studs
+				-- ABOVE its own banks and flooded the wood.
 				shaped = shaped - f.depth * (fw ^ 0.6)
 				-- NO forced material. The floor keeps whatever the wood has -- rock where it is steep,
 				-- grass where it is not -- which is what makes the water read as a mountain lake rather
@@ -135,6 +144,22 @@ return L.runPhase("Elderwood", function(folder)
 	----------------------------------------------------------------------------
 
 	L.shapers = { shapeForest }
+
+	-- Wipe any water a PREVIOUS run left in the lake basins, before the ground is written.
+	--
+	-- writeChunk lays ground and never removes water, so an old lake survives a rebuild untouched and the
+	-- new fill stacks on top of it -- which is why three attempts in a row measured water sitting 60 studs
+	-- above its own banks no matter what the fill code did. Clearing to Air here is safe because the
+	-- ground is about to be written back over the whole band; clearing it AFTER would leave holes.
+	L.progress("Elderwood: clearing old water")
+	for _, f in ipairs(FEATURES) do
+		if f.kind == "lake" then
+			workspace.Terrain:FillCylinder(CFrame.new(f.x, 400, f.z), 1400, f.radius * 2.2,
+				Enum.Material.Air)
+		end
+	end
+	task.wait(0.5)
+
 	L.progress("Elderwood: rewriting terrain")
 
 	-- The whole band, written chunk by chunk. writeArea takes a circle, which is the wrong shape here --
@@ -346,8 +371,11 @@ return L.runPhase("Elderwood", function(folder)
 				local y = groundAt(sx, sz)
 				if y and (not shoreY or y < shoreY) then shoreY = y end
 			end
-			if floorY and shoreY and shoreY > floorY then
-				local surface = floorY + (shoreY - floorY) * 0.8
+			if floorY and shoreY and shoreY > floorY + 4 then
+				-- Strictly BELOW the lowest shore, so the lake keeps a bank. Filling to a fraction of the
+				-- way up is not enough on sloping ground: measured a surface at 152 against banks at 122,
+				-- which flooded the wood rather than making a lake.
+				local surface = math.min(floorY + (shoreY - floorY) * 0.75, shoreY - 3)
 				-- Filled a touch WIDER than the basin so the water meets the bank rather than leaving a
 				-- dry ring, and from well below the floor so no shallow spot is missed.
 				-- FillCylinder's axis runs along the CFrame's UP vector, so a cylinder built with no
