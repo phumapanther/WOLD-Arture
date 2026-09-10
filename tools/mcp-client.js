@@ -20,7 +20,27 @@ module.exports = async function connect() {
   let tools = [];
   for (let t = 0; t < 40 && tools.length === 0; t++) { await new Promise((r) => setTimeout(r, 250)); tools = (await call("tools/list", {})).result?.tools ?? []; }
   if (tools.length === 0) throw new Error("Studio MCP not reachable: open the place and enable MCP server");
-  const tool = async (name, args) => { const r = await call("tools/call", { name, arguments: args }); return r.result ?? r.error; };
+  const rawTool = async (name, args) => { const r = await call("tools/call", { name, arguments: args }); return r.result ?? r.error; };
   const text = (r) => (r?.content ?? []).map((c) => c.text ?? "").join("\n");
-  return { tools, tool, text, close: () => p.kill() };
+
+  // with more than one Studio open the proxy demands studio_id on every call. WOLD_PLACE names the
+  // target place (its id, or any part of its window title); here it defaults to the game place, so
+  // work never lands in the WOLD-Models workshop place by accident.
+  let studioId = process.env.WOLD_STUDIO_ID || null;
+  if (!studioId) {
+    let list = [];
+    try { list = JSON.parse(text(await rawTool("list_roblox_studios", {})) || "{}").studios ?? []; } catch {}
+    if (list.length > 1) {
+      const want = process.env.WOLD_PLACE || "88774255487951";
+      const hit = list.find((s) => (s.name || "").includes(want));
+      if (!hit) {
+        throw new Error(`several Studio windows are open and none matches "${want}":\n  ` +
+          list.map((s) => s.name).join("\n  ") + `\nset WOLD_PLACE to part of the right title, or WOLD_STUDIO_ID to its id`);
+      }
+      studioId = hit.id;
+      if (process.env.MCP_VERBOSE) console.error("studio:", hit.name);
+    } else if (list.length === 1) studioId = list[0].id;
+  }
+  const tool = (name, args) => rawTool(name, studioId ? { ...args, studio_id: studioId } : args);
+  return { tools, tool, text, studioId, close: () => p.kill() };
 };
