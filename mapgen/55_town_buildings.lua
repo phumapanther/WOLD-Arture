@@ -23,17 +23,14 @@ local PLOT_MODEL = {
 -- the six house plots cycle through the three house types, so no two neighbours are the same build
 local HOUSE_CYCLE = { "House_StoneCottage", "House_Roundhouse", "House_PipeWorker" }
 
--- NPCs: which building each one stands by, and where relative to that plot (plot-local studs)
+-- NPCs. ONLY the shopkeeper, as asked: the smith, the mechanic, the gunsmith and the rest have no
+-- systems behind them yet, and an NPC you can walk up to and get nothing from is worse than no NPC.
+-- They stay in models/npcs.lua, ready for the day crafting and banking exist.
+--
+-- Barnaby is the one the shop system actually reads -- tagged WOLD_Npc with NpcKind="shop" below, which
+-- is what Shop.server looks for.
 local NPC_POSTS = {
 	{ "Merchant_Barnaby", "shop", 0, -26 },
-	{ "Merchant_Zael", "shop", 24, -20 },
-	{ "Merchant_Grick", "warehouse", -20, -30 },
-	{ "Baron_Vane", "barracks", 26, -34 },
-	{ "Madam_Aurelia", "warehouse", 22, -26 },
-	{ "Don_Tiberius", "inn", -30, -36 },
-	{ "Blacksmith_Brannoc", "smithy", 0, -30 },
-	{ "Mechanic_Lyra", "smithy", 26, -22 },
-	{ "Gunsmith_Jax", "barracks", -26, -30 },
 }
 
 -- slimes belong outside the town, past the gathering ring, in town-local coordinates
@@ -52,6 +49,18 @@ L.runPhase("TownBuildings", function(folder)
 	-- the town centre, so slime posts can be given in town-local coordinates
 	local plaza = town:FindFirstChild("Plaza") and town.Plaza:FindFirstChild("PlazaFloor")
 	local centre = plaza and Vector3.new(plaza.Position.X, 0, plaza.Position.Z) or Vector3.new(0, 0, 0)
+
+	-- Excludes everything the world generator built, so a ray dropped near a tree finds the ground
+	-- rather than the neighbouring canopy -- a mistake that put a lake floor 240 studs in the air
+	-- earlier in this project.
+	local probe = RaycastParams.new()
+	probe.FilterType = Enum.RaycastFilterType.Exclude
+	probe.FilterDescendantsInstances = { L.root() }
+
+	local function groundAt(x, z)
+		local hit = workspace:Raycast(Vector3.new(x, 900, z), Vector3.new(0, -1400, 0), probe)
+		return hit and hit.Position.Y or nil
+	end
 
 	local byKey = {}
 	local houseIndex = 0
@@ -97,20 +106,39 @@ L.runPhase("TownBuildings", function(folder)
 	local npcFolder = Instance.new("Folder")
 	npcFolder.Name = "TownNPCs"
 	npcFolder.Parent = folder
+
+	-- Phase 50 stands a box-and-sphere shopkeeper on the plaza as a placeholder. The real model goes in
+	-- below, and two tagged shop NPCs would leave the shop system picking whichever it found first --
+	-- so the placeholder goes now.
+	local placeholder = town:FindFirstChild("Shopkeeper")
+	if placeholder then
+		placeholder:Destroy()
+		L.progress("removed the placeholder shopkeeper from phase 50")
+	end
 	for _, post in ipairs(NPC_POSTS) do
 		local name, key, ox, oz = post[1], post[2], post[3], post[4]
 		local plot = byKey[key]
 		if plot then
 			local at = plot.CFrame * CFrame.new(ox, 0, oz)
-			local ground = L.padY(at.Position.X, at.Position.Z)
+			-- The real surface, by raycast. L.padY reads heightAt, which reports where the terrain was
+			-- ASKED to go rather than where the voxels landed -- measured up to 2.3 studs out, which is
+			-- enough to leave an NPC shin-deep in the ground or hovering above it.
+			local ground = groundAt(at.Position.X, at.Position.Z) or L.padY(at.Position.X, at.Position.Z)
 			local m = K.place(name, npcFolder, CFrame.new(at.Position.X, ground, at.Position.Z) * (plot.CFrame - plot.CFrame.Position))
-			if m then K.tag(m, "NPC", { Post = key }) end
+			if m then
+				K.tag(m, "NPC", { Post = key })
+				-- The tags Shop.server actually reads. Without these the model is scenery: the shop
+				-- finds its counter by tag, not by name.
+				game:GetService("CollectionService"):AddTag(m, "WOLD_Npc")
+				m:SetAttribute("NpcKind", "shop")
+				m:SetAttribute("NpcName", "เฒ่าแก่")
+			end
 		end
 	end
 	for _, post in ipairs(SLIME_POSTS) do
 		local name, ox, oz = post[1], post[2], post[3]
 		local x, z = centre.X + ox, centre.Z + oz
-		local m = K.place(name, npcFolder, CFrame.new(x, L.padY(x, z), z))
+		local m = K.place(name, npcFolder, CFrame.new(x, groundAt(x, z) or L.padY(x, z), z))
 		if m then K.tag(m, "Monster", {}) end
 	end
 
