@@ -127,7 +127,7 @@ local function completeTrade(session)
 			local slot = state.slots[index]
 			if not slot then return nil end -- it is gone; the trade is off rather than partly done
 			table.insert(taking, { index = index, id = slot.id, count = slot.count or 1,
-				durability = slot.durability })
+				durability = slot.durability, meta = slot.meta })
 		end
 		return taking
 	end
@@ -151,8 +151,8 @@ local function completeTrade(session)
 	Inventory.AddGold(a, -offerA.gold)
 	Inventory.AddGold(b, -offerB.gold)
 
-	for _, entry in ipairs(takingA) do Inventory.AddItem(b, entry.id, entry.count, entry.durability) end
-	for _, entry in ipairs(takingB) do Inventory.AddItem(a, entry.id, entry.count, entry.durability) end
+	for _, entry in ipairs(takingA) do Inventory.AddItem(b, entry.id, entry.count, entry.durability, entry.meta) end
+	for _, entry in ipairs(takingB) do Inventory.AddItem(a, entry.id, entry.count, entry.durability, entry.meta) end
 	Inventory.AddGold(a, offerB.gold)
 	Inventory.AddGold(b, offerA.gold)
 

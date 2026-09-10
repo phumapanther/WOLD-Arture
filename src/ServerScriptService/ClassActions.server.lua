@@ -298,8 +298,8 @@ Remotes.RequestGiveItem.OnServerEvent:Connect(function(player, index, target)
 	if not slot then return end
 
 	-- The whole stack moves. Splitting one would need a number box, and the menu is meant to be two taps.
-	local id, count, durability = slot.id, slot.count or 1, slot.durability
-	if not Inventory.AddItem(target, id, count, durability) then
+	local id, count, durability, meta = slot.id, slot.count or 1, slot.durability, slot.meta
+	if not Inventory.AddItem(target, id, count, durability, meta) then
 		return report(player, nil, "giveitem", false, "กระเป๋าเขาเต็ม")
 	end
 	-- Removed only after the target has taken it, so a full bag cannot destroy the item.

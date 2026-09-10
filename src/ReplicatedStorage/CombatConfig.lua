@@ -49,6 +49,43 @@ CombatConfig.Weapons = {
 		chainResetDelay = 0.35, -- the user asked for a beat between swings
 		chainWindow = 1.4,
 	},
+	-- The three tools fight exactly as the sword does -- same idle, same slash, same timing -- because that
+	-- is what the user asked for, and because a tool is a heavy thing on a stick, which is what the sword
+	-- animation already shows. Only the damage differs, and it is lower than the sword's 18: a tool swung at
+	-- a person should lose to a weapon built for it.
+	Axe = {
+		idleAnimation = "rbxassetid://103704114129246", -- Sword_Idle
+		guardAnimation = "",
+		guardWalkSpeed = 6,
+		idleTimeout = 4,
+		attacks = {
+			{ animation = "rbxassetid://138133285610075", damage = 14, windup = 0.24, active = 0.12, recovery = 0.3, range = 7 }, -- Sword_Slash
+		},
+		chainResetDelay = 0.35,
+		chainWindow = 1.4,
+	},
+	Pickaxe = {
+		idleAnimation = "rbxassetid://103704114129246", -- Sword_Idle
+		guardAnimation = "",
+		guardWalkSpeed = 6,
+		idleTimeout = 4,
+		attacks = {
+			{ animation = "rbxassetid://138133285610075", damage = 13, windup = 0.24, active = 0.12, recovery = 0.3, range = 7 }, -- Sword_Slash
+		},
+		chainResetDelay = 0.35,
+		chainWindow = 1.4,
+	},
+	Shovel = {
+		idleAnimation = "rbxassetid://103704114129246", -- Sword_Idle
+		guardAnimation = "",
+		guardWalkSpeed = 6,
+		idleTimeout = 4,
+		attacks = {
+			{ animation = "rbxassetid://138133285610075", damage = 11, windup = 0.24, active = 0.12, recovery = 0.3, range = 7 }, -- Sword_Slash
+		},
+		chainResetDelay = 0.35,
+		chainWindow = 1.4,
+	},
 	Bow = {
 		idleAnimation = "rbxassetid://109624563861296", -- Bow_Idle
 		guardAnimation = "",
@@ -114,6 +151,26 @@ CombatConfig.Sounds = {
 		hit = "rbxassetid://114083734266818",  -- assets/sounds/sword_hit.mp3
 		-- Steel on a body was the loudest thing in a fight and rang on far too long. Halved and cut short,
 		-- per weapon rather than globally, so the other three keep their own balance.
+		hitVolume = 0.09,
+		hitSeconds = 0.55,
+	},
+	-- The tools borrow the sword's steel entirely. Without an entry here they would fall back to Fists, and
+	-- an axe landing with a bare-knuckle thud is worse than it sharing a sound it plausibly makes.
+	Axe = {
+		cast = "rbxassetid://130522255329953", -- assets/sounds/sword_swing.mp3
+		hit = "rbxassetid://114083734266818",  -- assets/sounds/sword_hit.mp3
+		hitVolume = 0.09,
+		hitSeconds = 0.55,
+	},
+	Pickaxe = {
+		cast = "rbxassetid://130522255329953",
+		hit = "rbxassetid://114083734266818",
+		hitVolume = 0.09,
+		hitSeconds = 0.55,
+	},
+	Shovel = {
+		cast = "rbxassetid://130522255329953",
+		hit = "rbxassetid://114083734266818",
 		hitVolume = 0.09,
 		hitSeconds = 0.55,
 	},

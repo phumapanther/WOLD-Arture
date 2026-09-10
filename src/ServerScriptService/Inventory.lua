@@ -74,12 +74,16 @@ local function firstFreeSlot(state)
 end
 
 -- Fills existing stacks before opening a new slot, so picking up ten stones does not eat ten slots.
-function Inventory.AddItem(player, id, count, durability)
+-- `meta` is per-ITEM data that makes two otherwise identical items different things: a vehicle key's plate,
+-- for one. Anything carrying it is never merged into a stack, because merging would throw away every copy's
+-- meta but the first -- two car keys would become "CarKey x2" for a single car.
+function Inventory.AddItem(player, id, count, durability, meta)
 	local state = States[player]
 	if not state or not ItemCatalog.Exists(id) then return false end
 	count = count or 1
 
 	local stackSize = ItemCatalog.StackSize(id)
+	if meta then stackSize = 1 end
 	if stackSize > 1 then
 		for i = 1, InventoryConfig.SlotCount do
 			local slot = state.slots[i]
@@ -108,6 +112,9 @@ function Inventory.AddItem(player, id, count, durability)
 			count = put,
 			-- Weapons and armor track wear; nothing else does.
 			durability = durability or item.maxDurability or item.armor,
+			-- Only present on items that carry their own identity. Absent everywhere else, so the slot
+			-- shape is unchanged for the things that were working before.
+			meta = meta,
 		}
 		count -= put
 	end
@@ -144,7 +151,9 @@ function Inventory.AutoSort(player)
 	for i = 1, InventoryConfig.SlotCount do
 		local slot = state.slots[i]
 		if slot then
-			if ItemCatalog.StackSize(slot.id) > 1 then
+			-- A slot with meta keeps its own identity, so it is sorted as a single rather than counted into
+			-- a total -- the same reason weapons and armor are.
+			if ItemCatalog.StackSize(slot.id) > 1 and not slot.meta then
 				totals[slot.id] = (totals[slot.id] or 0) + (slot.count or 1)
 			else
 				table.insert(singles, slot)
@@ -210,7 +219,7 @@ function Inventory.Equip(player, index)
 	state.slots[index] = nil
 	-- The piece coming off goes back into the bag rather than vanishing.
 	if previous then
-		Inventory.AddItem(player, previous.id, 1, previous.durability)
+		Inventory.AddItem(player, previous.id, 1, previous.durability, previous.meta)
 	end
 
 	broadcastEquipment(player, state)
@@ -255,7 +264,7 @@ function Inventory.Unequip(player, kind)
 	local entry = state and state.equipped[kind]
 	if not entry then return false end
 	state.equipped[kind] = nil
-	Inventory.AddItem(player, entry.id, 1, entry.durability)
+	Inventory.AddItem(player, entry.id, 1, entry.durability, entry.meta)
 	broadcastEquipment(player, state)
 	return true
 end

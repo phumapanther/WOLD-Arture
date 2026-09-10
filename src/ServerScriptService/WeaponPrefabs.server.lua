@@ -125,6 +125,57 @@ function Builders.Spellbook()
 end
 
 --------------------------------------------------------------------------------
+-- The three tools
+--------------------------------------------------------------------------------
+
+-- All three follow the sword's convention exactly: the working end sits at the origin and the grip runs out
+-- to +Y, with the hand meeting the shaft 2.0 studs along it. That is not a coincidence to be tidied away --
+-- WeaponVisuals reuses the sword's GRIP offset for these, and it was measured against precisely this layout.
+-- Move the handle and the tool ends up held by its blade.
+
+-- Axe: a wedge head on one side of the haft, with a small back-spike to balance it visually.
+function Builders.Axe()
+	local haft = part("Haft", Vector3.new(0.16, 3.0, 0.16), CFrame.new(0, 0, 0), WOOD)
+	local others = {
+		part("Head", Vector3.new(0.2, 0.85, 0.9), CFrame.new(0, -1.1, 0.42), STEEL, Enum.Material.Metal),
+		part("Edge", Vector3.new(0.1, 1.05, 0.24), CFrame.new(0, -1.1, 0.92), STEEL, Enum.Material.Metal),
+		part("Spike", Vector3.new(0.16, 0.4, 0.34), CFrame.new(0, -1.1, -0.22), DARK_STEEL, Enum.Material.Metal),
+		part("Collar", Vector3.new(0.22, 0.26, 0.22), CFrame.new(0, -0.6, 0), DARK_STEEL, Enum.Material.Metal),
+		part("Grip", Vector3.new(0.2, 0.9, 0.2), CFrame.new(0, 2.0, 0), LEATHER),
+		part("Butt", Vector3.new(0.24, 0.2, 0.24), CFrame.new(0, 2.5, 0), DARK_STEEL, Enum.Material.Metal),
+	}
+	return assemble("Axe", haft, others)
+end
+
+-- Pickaxe: a head crossing the haft, pointed one way and chisel-flat the other.
+function Builders.Pickaxe()
+	local haft = part("Haft", Vector3.new(0.16, 3.0, 0.16), CFrame.new(0, 0, 0), WOOD)
+	local others = {
+		part("Head", Vector3.new(0.18, 0.3, 2.0), CFrame.new(0, -1.15, 0), DARK_STEEL, Enum.Material.Metal),
+		part("Point", Vector3.new(0.14, 0.2, 0.5), CFrame.new(0, -1.15, 1.15), STEEL, Enum.Material.Metal),
+		part("Chisel", Vector3.new(0.16, 0.42, 0.4), CFrame.new(0, -1.15, -1.1), STEEL, Enum.Material.Metal),
+		part("Collar", Vector3.new(0.22, 0.3, 0.22), CFrame.new(0, -0.75, 0), DARK_STEEL, Enum.Material.Metal),
+		part("Grip", Vector3.new(0.2, 0.9, 0.2), CFrame.new(0, 2.0, 0), LEATHER),
+		part("Butt", Vector3.new(0.24, 0.2, 0.24), CFrame.new(0, 2.5, 0), DARK_STEEL, Enum.Material.Metal),
+	}
+	return assemble("Pickaxe", haft, others)
+end
+
+-- Shovel: a dished blade at the bottom, a T-handle at the top so it reads as a shovel and not a paddle.
+function Builders.Shovel()
+	local haft = part("Haft", Vector3.new(0.16, 3.0, 0.16), CFrame.new(0, 0, 0), WOOD)
+	local others = {
+		part("Blade", Vector3.new(0.9, 1.0, 0.12), CFrame.new(0, -1.35, 0.06), STEEL, Enum.Material.Metal),
+		part("Lip", Vector3.new(0.9, 0.16, 0.24), CFrame.new(0, -1.8, 0.14), STEEL, Enum.Material.Metal),
+		part("Wing", Vector3.new(0.18, 0.5, 0.2), CFrame.new(0, -0.95, -0.04), DARK_STEEL, Enum.Material.Metal),
+		part("Socket", Vector3.new(0.22, 0.4, 0.22), CFrame.new(0, -0.7, 0), DARK_STEEL, Enum.Material.Metal),
+		part("Grip", Vector3.new(0.2, 0.7, 0.2), CFrame.new(0, 1.9, 0), LEATHER),
+		part("Crossbar", Vector3.new(0.7, 0.18, 0.18), CFrame.new(0, 2.4, 0), DARK_WOOD),
+	}
+	return assemble("Shovel", haft, others)
+end
+
+--------------------------------------------------------------------------------
 
 -- Rebuilt on every server start rather than trusted to survive in the place file: that is exactly how the
 -- originals were lost. Cheap enough (four models of five parts) that there is no reason to cache them.

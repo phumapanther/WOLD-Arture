@@ -20,6 +20,8 @@ local PREFABS = ReplicatedStorage:WaitForChild("WOLD_Weapons", 20)
 -- the sword: Handle +2.00, Pommel +2.50, Blade 0.00). So leaving the rotation alone hangs the sword point
 -- DOWN; it has to be flipped 180 degrees for the blade to stand up, then leaned forward.
 local BLADE_UP = CFrame.Angles(math.rad(180), 0, 0)
+-- Named because four things use it: the sword and the three tools, which are all built to the same layout.
+local SWORD_GRIP = CFrame.new(0, -0.3, 0) * BLADE_UP * CFrame.Angles(math.rad(-90), 0, 0) * CFrame.new(0, -2.0, 0)
 local GRIP = {
 	-- Gripped in the right hand, by the HANDLE. The joint drives the PrimaryPart, which is the Blade, and the
 	-- Handle sits 2.0 studs along the blade's local +Y — so the offset has to pull the model back by that much
@@ -28,7 +30,13 @@ local GRIP = {
 	-- that flip, which reverses it.
 	-- Leaned forward from -20 to -90: the blade was standing bolt upright. The lean is applied BEFORE the
 	-- handle offset below, so the grip stays put in the palm and only the blade swings down and forward.
-	Sword = CFrame.new(0, -0.3, 0) * BLADE_UP * CFrame.Angles(math.rad(-90), 0, 0) * CFrame.new(0, -2.0, 0),
+	Sword = SWORD_GRIP,
+	-- The three tools are built on the sword's layout on purpose -- working end at the origin, grip 2.0 studs
+	-- out along +Y -- so they take the sword's offset unchanged. Sharing the value rather than copying the
+	-- number three times means a future correction to the sword's grip fixes all four together.
+	Axe = SWORD_GRIP,
+	Pickaxe = SWORD_GRIP,
+	Shovel = SWORD_GRIP,
 	-- The bow's belly has to face out to the RIGHT while it is held in the right hand, so the limbs curve away
 	-- from the character rather than into it. The 180 is on ROLL, not yaw: the bow lies in a plane, so yawing
 	-- it only spins that plane about the arm while rolling it turns the belly over.

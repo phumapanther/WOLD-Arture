@@ -200,7 +200,7 @@ Remotes.RequestArrestConfirm.OnServerEvent:Connect(function(guard)
 		local slot = state.slots[index]
 		if slot then
 			table.insert(taking, { index = index, id = slot.id, count = slot.count or 1,
-				durability = slot.durability })
+				durability = slot.durability, meta = slot.meta })
 		end
 	end
 	local fine = math.min(session.fine, state.gold)
@@ -213,7 +213,7 @@ Remotes.RequestArrestConfirm.OnServerEvent:Connect(function(guard)
 		Inventory.AddGold(guard, fine)
 	end
 	for _, entry in ipairs(taking) do
-		Inventory.AddItem(guard, entry.id, entry.count, entry.durability)
+		Inventory.AddItem(guard, entry.id, entry.count, entry.durability, entry.meta)
 	end
 
 	Remotes.ArrestStateChanged:FireClient(guard, "completed", session.prisoner, { items = #taking, fine = fine })

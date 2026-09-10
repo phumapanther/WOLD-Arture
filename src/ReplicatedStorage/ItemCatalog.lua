@@ -52,6 +52,40 @@ ItemCatalog.Items = {
 	},
 
 	--------------------------------------------------------------------------
+	-- Tools. Weapons in every mechanical sense -- they equip to the weapon slot
+	-- and swing with the sword's own animation, which is what the user asked for
+	-- -- but each one is also the key to a kind of gathering node. `gathers`
+	-- names the GatherConfig tool it satisfies; combat does not read it.
+	--
+	-- Damage sits below the sword's 18: a pickaxe swung at a person should be
+	-- worse than a weapon made for it, or nobody would ever carry a sword.
+	--------------------------------------------------------------------------
+	Axe = {
+		icon = "rbxassetid://137529937435477",
+		name = "ขวาน", kind = "weapon", weight = 5, stackSize = 1,
+		damage = 14, range = 7,
+		maxDurability = 100,
+		gathers = "axe",
+		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 },
+	},
+	Pickaxe = {
+		icon = "rbxassetid://130562574546342",
+		name = "อีเต้อ", kind = "weapon", weight = 6, stackSize = 1,
+		damage = 13, range = 7,
+		maxDurability = 110,
+		gathers = "pickaxe",
+		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 },
+	},
+	Shovel = {
+		icon = "rbxassetid://80436457004875",
+		name = "พลั่ว", kind = "weapon", weight = 4, stackSize = 1,
+		damage = 11, range = 7,
+		maxDurability = 90,
+		gathers = "shovel",
+		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 },
+	},
+
+	--------------------------------------------------------------------------
 	-- Armor. `armor` is the pool it grants; `absorbFraction` is how much of an
 	-- incoming hit it eats. Heavier armor lasts longer but costs carry weight.
 	--------------------------------------------------------------------------
@@ -115,6 +149,19 @@ ItemCatalog.Items = {
 	Fiber = { icon = "rbxassetid://131394070307040", name = "เส้นใย", kind = "junk", weight = 0.3, stackSize = 99, value = 2 }, -- assets/item-icons/Fiber.png
 	Herb = { icon = "rbxassetid://108324515660668", name = "สมุนไพร", kind = "junk", weight = 0.4, stackSize = 99, value = 4 }, -- assets/item-icons/Herb.png
 	Crystal = { icon = "rbxassetid://95999193030974", name = "คริสตัล", kind = "junk", weight = 1.2, stackSize = 99, value = 15 }, -- assets/item-icons/Crystal.png
+
+	--------------------------------------------------------------------------
+	-- Vehicle keys. One key is one vehicle: each carries its own plate in the
+	-- slot's `meta`, so two keys are two different vehicles and must never merge
+	-- into a stack. stackSize = 1 states that in the catalog; Inventory.AddItem
+	-- refuses to merge anything carrying meta, which is what actually enforces it.
+	--------------------------------------------------------------------------
+	CarKey = { icon = "rbxassetid://75692504586023", name = "กุญแจรถ",
+		kind = "key", vehicle = "car", weight = 0.2, stackSize = 1, value = 0 },
+	BoatKey = { icon = "rbxassetid://115230378950461", name = "กุญแจเรือ",
+		kind = "key", vehicle = "boat", weight = 0.2, stackSize = 1, value = 0 },
+	AirshipKey = { icon = "rbxassetid://99701273420303", name = "กุญแจเรือเหาะ",
+		kind = "key", vehicle = "airship", weight = 0.2, stackSize = 1, value = 0 },
 }
 
 function ItemCatalog.Get(id)
