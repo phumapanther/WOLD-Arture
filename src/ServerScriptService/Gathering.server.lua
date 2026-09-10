@@ -22,6 +22,13 @@ local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local TAG = "WOLD_Node"
 
+-- Which item satisfies each `tool` value, by the name the player sees on it. Derived from the catalog
+-- rather than typed out again, so renaming an item renames it here too.
+local TOOL_NAMES = {}
+for _, item in pairs(ItemCatalog.Items) do
+	if item.gathers then TOOL_NAMES[item.gathers] = item.name end
+end
+
 -- [node] = os.clock() when it becomes available again. A deadline rather than a timer per node, so a
 -- thousand trees cost one table entry each and no running tasks.
 local SpentUntil = {}
@@ -33,14 +40,46 @@ local function configFor(node)
 	return kind and GatherConfig.Nodes[kind], kind
 end
 
--- The part the prompt should hang on. A node is usually a Model, and a prompt on a Model does nothing --
--- it has to be on a BasePart.
+-- Where the prompt should hang. A prompt on a Model does nothing -- it needs a BasePart -- but which part
+-- matters enormously, because a ProximityPrompt measures its range from that PART's origin.
+--
+-- Taking the first part found put the prompt on a tree's trunk mesh, whose origin sits in the MIDDLE of a
+-- 45-stud trunk: measured 13 to 22 studs above the ground on real trees. Against a 10-stud range that made
+-- most trees literally unreachable -- a player standing at the base was 18.9 studs from the prompt.
+--
+-- So the prompt gets its own small invisible part, planted at the model's base. It is the only way to be
+-- sure the range is measured from where the player actually stands, whatever shape the model is.
 local function anchorOf(node)
 	if node:IsA("BasePart") then return node end
-	if node:IsA("Model") then
+	if not node:IsA("Model") then return nil end
+
+	local existing = node:FindFirstChild("GatherAnchor")
+	if existing then return existing end
+
+	-- The base: the lowest point of the visible geometry, at the model's own centre in plan.
+	local low, minX, maxX, minZ, maxZ = math.huge, math.huge, -math.huge, math.huge, -math.huge
+	for _, d in ipairs(node:GetDescendants()) do
+		if d:IsA("BasePart") and d.Transparency < 0.9 then
+			low = math.min(low, d.Position.Y - d.Size.Y / 2)
+			minX, maxX = math.min(minX, d.Position.X), math.max(maxX, d.Position.X)
+			minZ, maxZ = math.min(minZ, d.Position.Z), math.max(maxZ, d.Position.Z)
+		end
+	end
+	if low == math.huge then
 		return node.PrimaryPart or node:FindFirstChildWhichIsA("BasePart", true)
 	end
-	return nil
+
+	local anchor = Instance.new("Part")
+	anchor.Name = "GatherAnchor"
+	anchor.Size = Vector3.new(1, 1, 1)
+	anchor.Position = Vector3.new((minX + maxX) / 2, low + 2, (minZ + maxZ) / 2)
+	anchor.Transparency = 1
+	anchor.Anchored = true
+	anchor.CanCollide = false
+	anchor.CanQuery = false
+	anchor.CanTouch = false
+	anchor.Parent = node
+	return anchor
 end
 
 -- Does this player hold the tool this node needs? Reads the EQUIPPED weapon rather than the whole bag: a
@@ -76,7 +115,8 @@ local function setSpent(node, spent)
 		if Faded[node] then return end
 		local originals = {}
 		for _, d in ipairs(node:GetDescendants()) do
-			if d:IsA("BasePart") then
+			-- Skip the invisible prompt anchor: fading it would make a floating white cube appear.
+			if d:IsA("BasePart") and d.Name ~= "GatherAnchor" then
 				originals[d] = d.Transparency
 				d.Transparency = math.min(0.85, d.Transparency + 0.65)
 			end
@@ -106,7 +146,10 @@ local function gather(node, player)
 	if isSpent(node) then return end
 
 	if not hasTool(player, config.tool) then
-		Remotes.SocialNotify:FireClient(player, "error", "ต้องถือเครื่องมือให้ถูกก่อน")
+		-- Name the tool. "Wrong tool" leaves the player to guess which of three it wants, and the whole
+		-- point of the gate is to send them to the shop for a specific thing.
+		local needed = TOOL_NAMES[config.tool] or config.tool
+		Remotes.SocialNotify:FireClient(player, "error", ("ต้องถือ%sก่อน"):format(needed))
 		return
 	end
 

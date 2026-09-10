@@ -30,6 +30,13 @@ end
 local STARTER_KIT = {
 	{ id = "Sword", count = 1 },
 	{ id = "LeatherArmor", count = 1 },
+	-- An axe, because gathering now REQUIRES the right tool and a new player has no gold. Without one the
+	-- only income is slimes at 2 gold each, and the cheapest tool is 120 -- around seventy kills, against
+	-- seven slimes alive at a time, before the player could chop their first tree.
+	--
+	-- One tool rather than three on purpose: wood is the way in, and buying the pickaxe and shovel is then
+	-- a real first goal with a real cost, which is the point of gating them at all.
+	{ id = "Axe", count = 1 },
 	{ id = "Bread", count = 3 },
 	{ id = "HealthPotion", count = 2 },
 }

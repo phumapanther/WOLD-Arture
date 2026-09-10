@@ -19,10 +19,13 @@ GatherConfig.Nodes = {
 		item = "WoodScrap", min = 2, max = 4,
 		seconds = 2.5,
 		xp = 5,
-		-- Nil means bare hands are fine. An axe is not required yet because the shops sell one but nothing
-		-- guarantees a new player has any money; making wood unreachable would stall the whole economy at
-		-- its first step. The field exists so requiring it later is a data change, not new logic.
-		tool = nil,
+		-- An axe, and nothing else. This is what makes the three tools worth buying rather than ornaments,
+		-- and it means a new player's first goal is a specific purchase rather than a vague one.
+		--
+		-- The starting gold has to cover the cheapest tool or a new player is stuck with no way to earn --
+		-- see the note on Shop prices. Killing slimes needs no tool at all, which is the way out if it ever
+		-- goes wrong.
+		tool = "axe",
 		prompt = "เก็บไม้",
 		object = "ต้นไม้",
 	},
@@ -30,7 +33,7 @@ GatherConfig.Nodes = {
 		item = "Stone", min = 1, max = 3,
 		seconds = 3.0,
 		xp = 6,
-		tool = nil,
+		tool = "pickaxe",
 		prompt = "ทุบหิน",
 		object = "ก้อนหิน",
 	},
@@ -48,7 +51,8 @@ GatherConfig.Nodes = {
 	},
 	Herb = {
 		item = "Herb", min = 1, max = 2,
-		seconds = 1.5, xp = 4, tool = nil,
+		-- A shovel, per the user. Digging a root out is a shovel's job even though picking a leaf is not.
+		seconds = 1.5, xp = 4, tool = "shovel",
 		prompt = "เก็บสมุนไพร", object = "สมุนไพร",
 	},
 }

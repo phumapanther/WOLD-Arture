@@ -10,15 +10,22 @@ end
 if workspace:GetAttribute("IsLobby") then return end
 
 local ShopGui = require(game.ReplicatedStorage.UI.ShopGui)
+local UiSound = require(game.ReplicatedStorage.UI.UiSound)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local gui = ShopGui.new()
 
+-- Coins, on money actually changing hands. Played when the SERVER confirms rather than on the tap, so a
+-- refused purchase -- not enough gold, full bag, walked away -- stays silent instead of lying about it.
+local pendingCoin = false
+
 gui:OnBuy(function(index)
+	pendingCoin = true
 	Remotes.RequestShopAction:FireServer("buy", index)
 end)
 
 gui:OnSell(function(slot)
+	pendingCoin = true
 	Remotes.RequestShopAction:FireServer("sell", slot)
 end)
 
@@ -26,6 +33,12 @@ end)
 -- server's own figures rather than guessing what changed.
 Remotes.ShopOpen.OnClientEvent:Connect(function(snapshot)
 	gui:Show(snapshot)
+	-- A snapshot arriving with a trade outstanding IS the confirmation: the server only re-sends one after
+	-- a buy or sell it accepted. A refusal comes back as a SocialNotify and no snapshot at all.
+	if pendingCoin then
+		pendingCoin = false
+		UiSound.Play("Coin")
+	end
 end)
 
 -- Walking away closes the counter. Checked here rather than on the server because it is a matter of
