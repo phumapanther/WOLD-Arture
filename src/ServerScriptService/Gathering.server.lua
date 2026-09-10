@@ -9,6 +9,7 @@
 -- is the same for everybody -- unlike a class action, whose buttons depend on who is looking -- and a
 -- spent node has to look spent to the whole server, which a client-built prompt could not guarantee.
 local CollectionService = game:GetService("CollectionService")
+local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 
@@ -144,6 +145,53 @@ local function setSpent(node, spent)
 end
 
 --------------------------------------------------------------------------------
+-- The sound of the work
+--------------------------------------------------------------------------------
+
+-- Played AT the node, so everyone nearby hears where the chopping is. Driven from the server rather than
+-- the client for the same reason the prompt is: a strike is a thing happening in the world, and the player
+-- swinging is not the only one who should hear it.
+local function playStrike(node, config)
+	local anchor = node:FindFirstChild("GatherAnchor") or node.PrimaryPart
+		or node:FindFirstChildWhichIsA("BasePart", true)
+	if not anchor or not config.sound then return end
+	local sound = Instance.new("Sound")
+	sound.SoundId = config.sound
+	sound.Volume = GatherConfig.HitVolume
+	sound.RollOffMaxDistance = GatherConfig.HitDistance
+	-- A little variation so a long chop does not sound like a machine.
+	sound.PlaybackSpeed = 1 + (math.random() - 0.5) * 0.12
+	sound.Parent = anchor
+	sound:Play()
+	Debris:AddItem(sound, 4)
+end
+
+-- One strike per interval for as long as the hold lasts. Stopped by the hold ending, however it ends --
+-- released early, completed, or the player walking out of range.
+local Striking = {} -- [player] = true while a hold is running
+
+local function startStriking(node, player, config)
+	if Striking[player] then return end
+	Striking[player] = true
+	task.spawn(function()
+		while Striking[player] do
+			playStrike(node, config)
+			-- Checked again after the wait: the hold usually ends during it.
+			local elapsed = 0
+			while elapsed < GatherConfig.HitInterval do
+				if not Striking[player] then return end
+				task.wait(0.1)
+				elapsed += 0.1
+			end
+		end
+	end)
+end
+
+local function stopStriking(player)
+	Striking[player] = nil
+end
+
+--------------------------------------------------------------------------------
 -- Gathering
 --------------------------------------------------------------------------------
 
@@ -221,7 +269,16 @@ local function register(node)
 	prompt.Parent = anchor
 	publishRequirementLater(node)
 
+	-- The strike sound runs for as long as the hold does, on whichever way it ends.
+	prompt.PromptButtonHoldBegan:Connect(function(player)
+		startStriking(node, player, config)
+	end)
+	prompt.PromptButtonHoldEnded:Connect(function(player)
+		stopStriking(player)
+	end)
+
 	prompt.Triggered:Connect(function(player)
+		stopStriking(player)
 		gather(node, player)
 	end)
 
@@ -275,6 +332,8 @@ CollectionService:GetInstanceRemovedSignal(TAG):Connect(function(node)
 	Faded[node] = nil
 end)
 
-Players.PlayerRemoving:Connect(function()
-	-- Nothing per-player is held here: a spent node belongs to the server, not to whoever took it.
+Players.PlayerRemoving:Connect(function(player)
+	-- A spent node belongs to the server rather than to whoever took it, so nothing else is per-player --
+	-- but a strike loop left running for a player who has gone would never stop.
+	stopStriking(player)
 end)

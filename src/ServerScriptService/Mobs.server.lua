@@ -10,6 +10,7 @@
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
+local Debris = game:GetService("Debris")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 
 if ServerConfig.IsLobby then return end
@@ -144,12 +145,28 @@ local function despawn(model)
 	if model.Parent then model:Destroy() end
 end
 
+-- Played at the monster, so a fight sounds like it is happening where it is rather than in the attacker's
+-- ear. One helper for both the hit and the death, since they differ only in which id and how loud.
+local function playAt(model, soundId, volume)
+	local root = model.PrimaryPart
+	if not root or not soundId then return end
+	local sound = Instance.new("Sound")
+	sound.SoundId = soundId
+	sound.Volume = volume
+	sound.RollOffMaxDistance = GatherConfig.MobSoundDistance
+	sound.PlaybackSpeed = 1 + (math.random() - 0.5) * 0.1
+	sound.Parent = root
+	sound:Play()
+	Debris:AddItem(sound, 4)
+end
+
 -- Public through MobAccess so PlayerCombat can call it without requiring this file.
 local function damage(model, amount, attacker)
 	local state = Live[model]
 	if not state then return false end
 
 	state.hp -= amount
+	playAt(model, state.config.hitSound, GatherConfig.MobHitVolume)
 	setHealthBar(model, state.hp / state.config.hp)
 	-- Being hit makes it care about whoever hit it, even from outside its notice range: a monster that
 	-- ignored an archer shooting it from a hill would look broken.
@@ -158,6 +175,26 @@ local function damage(model, amount, attacker)
 	end
 
 	if state.hp <= 0 then
+		-- The death sound has to outlive the model, so it plays from a bare part left behind rather than
+		-- from the monster that is about to be destroyed underneath it.
+		local root = model.PrimaryPart
+		if root and state.config.dieSound then
+			local marker = Instance.new("Part")
+			marker.Anchored = true
+			marker.CanCollide = false
+			marker.CanQuery = false
+			marker.Transparency = 1
+			marker.Size = Vector3.new(1, 1, 1)
+			marker.Position = root.Position
+			marker.Parent = workspace
+			local sound = Instance.new("Sound")
+			sound.SoundId = state.config.dieSound
+			sound.Volume = GatherConfig.MobDieVolume
+			sound.RollOffMaxDistance = GatherConfig.MobSoundDistance
+			sound.Parent = marker
+			sound:Play()
+			Debris:AddItem(marker, 5)
+		end
 		drop(model, state.config, attacker)
 		despawn(model)
 	end
