@@ -40,8 +40,21 @@ local GRIP = {
 	-- The rod is built to the same layout, so it takes the same grip. Held in two hands like the sword,
 	-- which is what the user asked for -- the two-handed look comes from Sword_Idle, not from the offset.
 	FishingRod = SWORD_GRIP,
-	-- Same layout again: muzzle at the origin, grip 2.0 studs out.
-	Pistol = SWORD_GRIP,
+	-- The pistol needs its OWN grip, not the sword's.
+	--
+	-- SWORD_GRIP stands its model bolt upright, which is right for a blade and wrong for a gun: measured
+	-- the barrel pointing straight up (vertical component 1.00) while the character faced forward. A gun
+	-- has to lie along the aim.
+	--
+	-- The model is built muzzle-at-origin with the grip 2.0 studs out along +Y, so the whole thing is
+	-- rotated to lay that axis FORWARD rather than upward, then pulled back by the same 2.0 to put the
+	-- stock in the palm instead of the muzzle.
+	-- No rotation at all, which is the surprising part. The hand's own axes already lay the model's +Y
+	-- backward along the body's facing, so leaving the orientation alone points the barrel FORWARD and
+	-- level -- measured 0.34, 0.04, -0.94 against a body facing 0, 0, -1, versus 1.00 straight up under
+	-- SWORD_GRIP. All that remains is pulling the model back 2.0 studs so the palm holds the stock rather
+	-- than the muzzle.
+	Pistol = CFrame.new(0, -0.2, 0) * CFrame.new(0, -2.0, 0),
 	-- The bow's belly has to face out to the RIGHT while it is held in the right hand, so the limbs curve away
 	-- from the character rather than into it. The 180 is on ROLL, not yaw: the bow lies in a plane, so yawing
 	-- it only spins that plane about the arm while rolling it turns the belly over.

@@ -31,10 +31,15 @@ local function applyKnockdownPosture(player, down)
 	if not humanoid then return end
 
 	if down then
-		-- PlatformStand rather than a WalkSpeed of 0: it also drops the character to the floor, which is what
-		-- "ล้มลงไปนอน" means, and the engine stops driving the rig upright.
+		-- PlatformStand rather than a WalkSpeed of 0: it stops the engine driving the rig upright and
+		-- ignores input entirely, which is what "ขยับไม่ได้" needs.
 		humanoid.PlatformStand = true
+		-- But PlatformStand ALONE just goes limp and settles wherever physics puts it, which reads as a
+		-- bug rather than as being shot. Lay them deliberately on their back, using the same root-joint
+		-- pose the downed crawl uses.
+		Vitals.SetProne(player, true, true)
 	else
+		Vitals.SetProne(player, false)
 		humanoid.PlatformStand = false
 		-- The engine leaves a platform-standing humanoid lying there; nudge it back onto its feet.
 		humanoid:ChangeState(Enum.HumanoidStateType.GettingUp)

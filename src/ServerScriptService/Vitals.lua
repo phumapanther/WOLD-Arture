@@ -574,4 +574,40 @@ function Vitals.Tick(player, state, dt)
 	end
 end
 
+--------------------------------------------------------------------------------
+-- Lending the prone pose to other systems
+--------------------------------------------------------------------------------
+
+-- Lays a character flat, or stands them back up. Published because being shot should look like being shot
+-- rather than like a dropped puppet: PlatformStand alone leaves the rig limp and at whatever angle physics
+-- happens to settle at, which is why a knockdown read as a glitch rather than a pose.
+--
+-- `onBack` chooses which way up. The pitch sign is the same one the downed crawl uses -- negative is
+-- face-down, positive lays them on their back, which is what a shot to the front produces.
+--
+-- Deliberately NOT the downed state: this is cosmetic only. Nothing here touches health, the revive
+-- prompts, or anything else that being downed means.
+function Vitals.SetProne(player, prone, onBack)
+	local character = player.Character
+	if not character then return end
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+	-- A genuinely downed player owns their own pose; a knockdown must not fight the crawl.
+	if Vitals.IsDowned(player) then return end
+
+	if prone then
+		local joint, upright = uprightC0(character)
+		if joint and upright then
+			joint.C0 = upright * CFrame.Angles(onBack and -PRONE_PITCH or PRONE_PITCH, 0, 0)
+		end
+		humanoid.HipHeight = VitalsConfig.DownedHipHeight
+	else
+		humanoid.HipHeight = 2
+		local joint = rootJointOf(character)
+		if joint and UPRIGHT_C0[character] then
+			joint.C0 = UPRIGHT_C0[character]
+		end
+	end
+end
+
 return Vitals

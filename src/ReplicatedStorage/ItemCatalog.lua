@@ -191,6 +191,10 @@ ItemCatalog.Items = {
 	Anglerfish = { icon = "rbxassetid://89621592057467", name = "ปลาแองเกลอ", kind = "junk", weight = 2, stackSize = 99, value = 180 },
 	Shark = { icon = "rbxassetid://105856971417865", name = "ฉลาม", kind = "junk", weight = 8, stackSize = 99, value = 320 },
 
+	-- Pistol ammunition. Sixteen to a stack, as the user asked, so carrying a lot of shots costs real bag
+	-- space rather than one slot holding a war's worth.
+	Bullet = { icon = "rbxassetid://99384118358133", name = "กระสุน", kind = "junk", weight = 0.1, stackSize = 16, value = 3 },
+
 	-- Bait. One is spent per catch, so a stack of worms is how long a session lasts.
 	Worm = { icon = "rbxassetid://91361977777697", name = "หนอน", kind = "junk", weight = 0.05, stackSize = 99, value = 1 },
 

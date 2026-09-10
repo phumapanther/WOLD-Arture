@@ -106,6 +106,9 @@ CombatConfig.Weapons = {
 	-- Damage 0 on purpose: the shot's whole effect is the five seconds face-down. Something that both
 	-- floored a target AND hurt them would be strictly better than every other weapon in the game.
 	Pistol = {
+		-- Every shot spends one of these from the bag. Named here rather than checked for by name in the
+		-- combat code, so a crossbow added later only has to say which bolt it eats.
+		ammo = "Bullet",
 		idleAnimation = "rbxassetid://109624563861296", -- Bow_Idle, the two-handed ready stance
 		guardAnimation = "",
 		guardWalkSpeed = 7,

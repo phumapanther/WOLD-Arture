@@ -16,6 +16,7 @@ local CollectionService = game:GetService("CollectionService")
 local MobAccess = require(game.ServerScriptService.MobAccess)
 local FishingAccess = require(game.ServerScriptService.FishingAccess)
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
+local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
 local Progression = require(game.ServerScriptService.Progression)
@@ -431,6 +432,28 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	end
 
 	local weapon = weaponOf(player)
+
+	-- A weapon that eats ammunition spends one per shot, and refuses when the bag is empty. Checked before
+	-- anything else is committed, so a dry click costs no cooldown and plays no animation.
+	if weapon.ammo then
+		local spent = false
+		local invState = Inventory.Get(player)
+		if invState then
+			for index, slot in pairs(invState.slots) do
+				if slot.id == weapon.ammo then
+					Inventory.RemoveFromSlot(player, index, 1)
+					spent = true
+					break
+				end
+			end
+		end
+		if not spent then
+			local ammoItem = ItemCatalog.Get(weapon.ammo)
+			Remotes.SocialNotify:FireClient(player, "error",
+				("ไม่มี%s"):format(ammoItem and ammoItem.name or weapon.ammo))
+			return
+		end
+	end
 
 	-- Continue the chain only if this click is soon enough after the last one, otherwise restart at attack 1.
 	if now - state.lastAttackAt > weapon.chainWindow then
