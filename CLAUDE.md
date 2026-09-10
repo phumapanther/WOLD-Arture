@@ -3,6 +3,13 @@
 เกม Roblox แนว Roleplay ธีม **ยุคกลาง + แฟนตาซี/เวทมนตร์ + สตีมพังก์/ไซไฟ (เครื่องจักรไอน้ำ)**
 Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapanther) ผู้ใช้สื่อสารภาษาไทย ตอบภาษาไทย
 
+## โมเดลจากโค้ด (modelkit)
+ชุดสร้างโมเดลด้วยโค้ดอยู่ที่ `modelkit/` + `models/` — **อ่าน `docs/modelkit-reference.md` ก่อนแตะ**
+มีของพร้อมใช้: แลนด์มาร์ก 5 หลัง บ้าน 5 แบบ NPC 12 ตัว (rig R15 เดินได้จริง) ทุกอาคารเข้าไปอยู่ได้
+รัน: `node tools/run-luau.js <phase>.lua --kit --models` แล้วเรียก `K.place(ชื่อ, parent, cf)`
+ตัวอย่างการวางลงแมพจริง: `mapgen/55_town_buildings.lua` (ยังไม่ได้รัน จะทับ FirstTown เดิม)
+ต้นทางพัฒนา + CLI ถ่ายภาพ/โชว์กริด: โปรเจ็ค WOLD-Models ที่ `C:\Users\watch\WOLD-Models`
+
 ## เป้าหมายโปรเจ็ค
 1. วิเคราะห์ระบบเกมที่ออกแบบไว้เดิม (เศรษฐกิจ รัฐสภา ภาษี ธนาคาร อาชีพ กฎหมาย UI flow) จาก `docs/chat-history-chatgpt.txt`
    ระบบเดิมออกแบบไว้สำหรับธีมอื่น → **คงระบบเดิม เปลี่ยนธีมใหม่**
