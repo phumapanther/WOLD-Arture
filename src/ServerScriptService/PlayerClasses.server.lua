@@ -113,18 +113,32 @@ end)
 --------------------------------------------------------------------------------
 
 local function load(player)
-	-- Wait briefly for the profile session, so a returning player keeps their classes rather than appearing
-	-- with none. If it never arrives (a failed load) they start with none, which is the safe direction.
-	local saved
-	for _ = 1, 40 do
+	-- Wait for the profile session. A returning player must keep their classes AND the record of which tiers
+	-- they have already been offered -- starting them with neither is not "the safe direction", it hands a
+	-- level-100 player the class card again on every slow join.
+	--
+	-- The wait is generous because the cost of being wrong is asymmetric: a few more seconds without a class
+	-- costs nothing, while giving up early silently erases what they chose.
+	local arrived = false
+	for _ = 1, 300 do
 		local data = ProfileAccess.Get(player)
 		if data then
-			saved = data.Role
+			Classes.Add(player, data.Role)
+			arrived = true
 			break
 		end
+		if not player.Parent then return end
 		task.wait(0.1)
 	end
-	Classes.Add(player, saved)
+
+	if not arrived then
+		-- The profile genuinely never came (a failed load; PlayerProfile kicks in that case). Give them the
+		-- starting class so the game is playable, but do NOT mark them loaded: an offer decided from blank
+		-- data would overwrite a real saved class with whatever they picked.
+		Classes.Add(player, nil)
+		warn("[Classes] profile never arrived for", player.Name, "-- not offering any class card")
+		return
+	end
 	Loaded[player] = true
 end
 
