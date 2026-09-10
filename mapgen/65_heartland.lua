@@ -224,7 +224,7 @@ return L.runPhase("Heartland", function(folder)
 	-- Fewer and larger than the first pass, which scattered 260 small dark blots that read as stains on
 	-- the grass rather than as worn ground.
 	local patches = 0
-	for _ = 1, 90 do
+	for _ = 1, 30 do
 		local x = BAND.x0 + math.random() * (BAND.x1 - BAND.x0)
 		local z = BAND.z0 + math.random() * (BAND.z1 - BAND.z0)
 		local w = corridorWeight(x, z)
