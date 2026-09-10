@@ -27,8 +27,19 @@ local ROOF_COLOUR = Color3.fromRGB(92, 74, 66)
 --
 -- Taken as fractions rather than coordinates because the polygon is what the layout owns: if it moves,
 -- the gates stay at the same relative points on it rather than floating in a field.
-local GATES = { 0.06, 0.30, 0.55, 0.82 }
+-- The sea gate at 0.44 is on edge 4, the seaward face -- 57 of its 88 samples stand over water, up to
+-- 38 studs deep. It is the way in for anything arriving by ship, so it is far wider than a road gate.
+local GATES = {
+	{ at = 0.06 },
+	{ at = 0.30 },
+	{ at = 0.44, width = 300, sea = true },
+	{ at = 0.55 },
+	{ at = 0.82 },
+}
 local GATE_WIDTH = 130
+
+-- How much higher a sea gate's arch rides than a road gate's, so a ship passes beneath it.
+local SEA_ARCH_LIFT = 46
 
 return L.runPhase("Capital", function(folder)
 	local Y = L.LAYOUT
@@ -48,6 +59,21 @@ return L.runPhase("Capital", function(folder)
 
 	local function groundAt(x, z)
 		local hit = workspace:Raycast(Vector3.new(x, 1200, z), Vector3.new(0, -2000, 0), probe)
+		return hit and hit.Position.Y or L.heightAt(x, z)
+	end
+
+	-- The SEABED, ignoring water.
+	--
+	-- A plain ground ray stops at the water's surface, so along the coast the wall was founded on the sea
+	-- itself: 52 blocks stood up to 38 studs clear of the sand, with daylight and open water underneath.
+	-- Anything that must be founded rather than merely placed uses this instead.
+	local bedProbe = RaycastParams.new()
+	bedProbe.FilterType = Enum.RaycastFilterType.Exclude
+	bedProbe.FilterDescendantsInstances = { L.root() }
+	bedProbe.IgnoreWater = true
+
+	local function bedAt(x, z)
+		local hit = workspace:Raycast(Vector3.new(x, 1200, z), Vector3.new(0, -2000, 0), bedProbe)
 		return hit and hit.Position.Y or L.heightAt(x, z)
 	end
 
@@ -71,8 +97,17 @@ return L.runPhase("Capital", function(folder)
 	-- Is this distance along the perimeter inside a gateway?
 	local function inGate(dist)
 		for _, g in ipairs(GATES) do
-			local at = g * total
-			if math.abs(dist - at) < GATE_WIDTH / 2 then return true end
+			if math.abs(dist - g.at * total) < (g.width or GATE_WIDTH) / 2 then return true end
+		end
+		return false
+	end
+
+	-- Is this inside a gateway OR close enough to its drum towers to collide with them? The opening test
+	-- alone let an ordinary wall tower stand right beside a gate tower -- at the sea gate two roof cones
+	-- ended up 28 studs apart, which read as one beige house growing out of the wall.
+	local function nearGate(dist)
+		for _, g in ipairs(GATES) do
+			if math.abs(dist - g.at * total) < (g.width or GATE_WIDTH) / 2 + 60 then return true end
 		end
 		return false
 	end
@@ -100,13 +135,16 @@ return L.runPhase("Capital", function(folder)
 			local here = walked + length * t
 
 			if not inGate(here) then
+				-- The TOP is set by the ground people walk on; the BOTTOM by whatever is actually under
+				-- it. Along the sea those are different things -- the water surface and the sand well
+				-- below it -- and using the first for both is what left the sea wall standing on water.
 				local y = groundAt(p.X, p.Y)
-				-- Sunk 4 studs so the base never shows daylight under it on uneven ground.
-				local h = WALL_H + 4
-				K.box(wallFolder, CFrame.new(p.X, y + h / 2 - 4, p.Y) * CFrame.Angles(0, heading, 0),
+				local base = bedAt(p.X, p.Y) - 4
+				local h = (y + WALL_H) - base
+				K.box(wallFolder, CFrame.new(p.X, base + h / 2, p.Y) * CFrame.Angles(0, heading, 0),
 					Vector3.new(WALL_T, h, STEP + 2), WALL_MAT, WALL_COLOUR, { name = "Wall" })
 				-- The parapet: a thinner run on top, so the wall reads as something with a walkway.
-				K.box(wallFolder, CFrame.new(p.X, y + h - 4 + 1.6, p.Y) * CFrame.Angles(0, heading, 0),
+				K.box(wallFolder, CFrame.new(p.X, y + WALL_H + 1.6, p.Y) * CFrame.Angles(0, heading, 0),
 					Vector3.new(WALL_T * 0.45, 3.2, STEP + 2), WALL_MAT, TRIM_COLOUR, { name = "Parapet" })
 				blocks += 1
 			end
@@ -118,14 +156,18 @@ return L.runPhase("Capital", function(folder)
 			local t = towerCount > 0 and (k / towerCount) or 0
 			local p = a + (b - a) * t
 			local here = walked + length * t
-			if not inGate(here) then
+			if not nearGate(here) then
 				local y = groundAt(p.X, p.Y)
-				local r, th = 16, WALL_H + 16
+				local r = 16
+				-- Founded on the seabed like the wall, so a tower on the coast is a tower standing in the
+				-- water rather than one floating on it.
+				local base = bedAt(p.X, p.Y) - 4
+				local th = (y + WALL_H + 16) - base
 				-- K.cyl CENTRES on the CFrame it is given -- it does not treat it as a base. Passing the
 				-- ground height directly sank every tower half its own height and left its crown, cone
 				-- and banner hanging in the air by the same amount.
-				local top = y - 4 + th
-				K.cyl(wallFolder, CFrame.new(p.X, y - 4 + th / 2, p.Y), r, th, WALL_MAT, WALL_COLOUR,
+				local top = base + th
+				K.cyl(wallFolder, CFrame.new(p.X, base + th / 2, p.Y), r, th, WALL_MAT, WALL_COLOUR,
 					{ name = "Tower" })
 				K.cyl(wallFolder, CFrame.new(p.X, top + 1.75, p.Y), r + 2.5, 3.5, WALL_MAT, TRIM_COLOUR,
 					{ name = "TowerCrown" })
@@ -143,7 +185,8 @@ return L.runPhase("Capital", function(folder)
 	-- Gatehouses: a pair of drum towers either side of each opening, so a gate reads as a way IN rather
 	-- than as a hole where the wall forgot to happen.
 	for _, g in ipairs(GATES) do
-		local at = g * total
+		local at = g.at * total
+		local halfW = (g.width or GATE_WIDTH) / 2
 		-- Walk the perimeter to that distance.
 		local acc = 0
 		for i = 1, #pts - 1 do
@@ -155,11 +198,13 @@ return L.runPhase("Capital", function(folder)
 				local heading = math.atan2(dir.X, dir.Y)
 
 				for _, side in ipairs({ -1, 1 }) do
-					local q = p + dir * (side * (GATE_WIDTH / 2 + 12))
+					local q = p + dir * (side * (halfW + 12))
 					local y = groundAt(q.X, q.Y)
-					local r, th = 20, WALL_H + 26
-					local top = y - 4 + th
-					K.cyl(wallFolder, CFrame.new(q.X, y - 4 + th / 2, q.Y), r, th, WALL_MAT, WALL_COLOUR,
+					local r = 20
+					local base = bedAt(q.X, q.Y) - 4
+					local th = (y + WALL_H + 26 + (g.sea and SEA_ARCH_LIFT or 0)) - base
+					local top = base + th
+					K.cyl(wallFolder, CFrame.new(q.X, base + th / 2, q.Y), r, th, WALL_MAT, WALL_COLOUR,
 						{ name = "GateTower" })
 					K.cyl(wallFolder, CFrame.new(q.X, top + 2, q.Y), r + 3, 4, WALL_MAT, TRIM_COLOUR,
 						{ name = "GateCrown" })
@@ -167,10 +212,36 @@ return L.runPhase("Capital", function(folder)
 						Enum.Material.Slate, ROOF_COLOUR, 5)
 				end
 
-				-- The arch over the road, carried on the two towers.
+				-- The arch over the opening, carried on the two towers. On a SEA gate it is lifted clear
+				-- of the water so a ship can sail under it: at WALL_H it sat barely above the waves.
 				local y = groundAt(p.X, p.Y)
-				K.box(wallFolder, CFrame.new(p.X, y + WALL_H + 6, p.Y) * CFrame.Angles(0, heading, 0),
-					Vector3.new(WALL_T + 4, 14, GATE_WIDTH), WALL_MAT, WALL_COLOUR, { name = "GateArch" })
+				local archY = y + WALL_H + 6 + (g.sea and SEA_ARCH_LIFT or 0)
+				K.box(wallFolder, CFrame.new(p.X, archY, p.Y) * CFrame.Angles(0, heading, 0),
+					Vector3.new(WALL_T + 4, 14, halfW * 2), WALL_MAT, WALL_COLOUR, { name = "GateArch" })
+
+				if g.sea then
+					-- A SEA gate has to be a hole a ship sails through, so the opening is left clear from
+					-- the water right up to the arch. The piers either side carry that span down to the
+					-- seabed, and are what makes it read as a gateway rather than a gap in the wall.
+					for _, side in ipairs({ -1, 1 }) do
+						local q = p + dir * (side * (halfW - 16))
+						local base = bedAt(q.X, q.Y) - 4
+						local ph = (archY - 7) - base
+						K.box(wallFolder, CFrame.new(q.X, base + ph / 2, q.Y) * CFrame.Angles(0, heading, 0),
+							Vector3.new(WALL_T + 8, ph, 34), WALL_MAT, WALL_COLOUR, { name = "SeaGatePier" })
+					end
+					-- Twin lamps on the arch, marking the channel.
+					for _, side in ipairs({ -1, 1 }) do
+						local q = p + dir * (side * (halfW - 16))
+						K.cyl(wallFolder, CFrame.new(q.X, archY + 11, q.Y), 5, 8,
+							Enum.Material.Slate, TRIM_COLOUR, { name = "SeaGateLamp" })
+						local lamp = Instance.new("PointLight")
+						lamp.Range = 60
+						lamp.Brightness = 2
+						lamp.Color = Color3.fromRGB(255, 210, 150)
+						lamp.Parent = wallFolder:FindFirstChild("SeaGateLamp", true)
+					end
+				end
 				gates += 1
 				break
 			end

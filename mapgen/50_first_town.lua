@@ -233,6 +233,14 @@ return L.runPhase("FirstTown", function(folder)
 	--
 	-- Slabs are short and follow the ground one at a time. A single long part would bury one end of itself
 	-- on any slope.
+	-- The dirt paths are NOT built any more.
+	--
+	-- The user is laying them by hand -- "just add soil and smooth it" -- which is a better tool for the
+	-- job than this one: a path drawn from a table of junctions cannot see where people would actually
+	-- walk. The junction network below is kept because decoration still uses it to keep its distance,
+	-- and because the town's shape is described by it.
+	local LAY_PATHS = false
+
 	local function layPath(ax, az, bx, bz, width)
 		width = width or PATH_WIDTH
 		local dx, dz = bx - ax, bz - az
@@ -259,10 +267,12 @@ return L.runPhase("FirstTown", function(folder)
 			-- Carving would mean filling with Air and then repainting the floor, which is a lot of work to
 			-- avoid a kerb. Burying a thick slab so its top is level does the same job: no step to trip
 			-- over, no terrain touched.
-			local py = groundAt(px, pz)
-			part(paths, "PathSlab", Vector3.new(width, 6, 8.4),
-				CFrame.new(px, py - 2.7, pz) * CFrame.Angles(0, heading, 0),
-				DIRT, Enum.Material.Ground)
+			if LAY_PATHS then
+				local py = groundAt(px, pz)
+				part(paths, "PathSlab", Vector3.new(width, 6, 8.4),
+					CFrame.new(px, py - 2.7, pz) * CFrame.Angles(0, heading, 0),
+					DIRT, Enum.Material.Ground)
+			end
 		end
 		table.insert(pathSegments, { ax, az, bx, bz })
 	end
@@ -283,36 +293,46 @@ return L.runPhase("FirstTown", function(folder)
 
 	local plotCentres = {}
 
+	-- The PLOTS are not built here any more either.
+	--
+	-- 52_city_districts spreads the same buildings across the capital's seven districts, and this town's
+	-- twelve pads sat inside that footprint -- two towns stacked on one patch of ground, with seven pairs
+	-- of buildings overlapping each other. Their centres are still computed, because decoration and the
+	-- gathering nodes place themselves relative to them.
+	local BUILD_PLOTS = false
+
 	for _, plot in ipairs(PLOTS) do
 		local px = cx + plot.x
 		local pz = cz + plot.z
 		local py = groundAt(px, pz)
 
-		-- The pad is built 3 studs thick regardless of what the table says, and raised so its top clears
-		-- the terrain grass. The table's Y is ignored on purpose: it describes the footprint a model needs,
-		-- not how deep the foundation should be.
-		local pad = part(plots, "Plot_" .. plot.key,
-			Vector3.new(plot.size.X, 3, plot.size.Z),
-			CFrame.new(px, py + 1.7, pz) * CFrame.Angles(0, math.rad(plot.rot), 0),
-			DIRT, Enum.Material.Ground)
-		pad:SetAttribute("PlotKey", plot.key)
-		pad:SetAttribute("PlotName", plot.name)
+		if BUILD_PLOTS then
+			-- The pad is built 3 studs thick regardless of what the table says, and raised so its top
+			-- clears the terrain grass. The table's Y is ignored on purpose: it describes the footprint a
+			-- model needs, not how deep the foundation should be.
+			local pad = part(plots, "Plot_" .. plot.key,
+				Vector3.new(plot.size.X, 3, plot.size.Z),
+				CFrame.new(px, py + 1.7, pz) * CFrame.Angles(0, math.rad(plot.rot), 0),
+				DIRT, Enum.Material.Ground)
+			pad:SetAttribute("PlotKey", plot.key)
+			pad:SetAttribute("PlotName", plot.name)
 
-		-- A sign so the user knows what belongs here before any model exists.
-		local sign = Instance.new("BillboardGui")
-		sign.Size = UDim2.fromOffset(150, 26)
-		sign.StudsOffsetWorldSpace = Vector3.new(0, 6, 0)
-		sign.MaxDistance = 220
-		sign.Parent = pad
-		local label = Instance.new("TextLabel")
-		label.Size = UDim2.fromScale(1, 1)
-		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.GothamBold
-		label.TextSize = 13
-		label.TextColor3 = Color3.fromRGB(255, 226, 170)
-		label.TextStrokeTransparency = 0.4
-		label.Text = plot.name
-		label.Parent = sign
+			-- A sign so the user knows what belongs here before any model exists.
+			local sign = Instance.new("BillboardGui")
+			sign.Size = UDim2.fromOffset(150, 26)
+			sign.StudsOffsetWorldSpace = Vector3.new(0, 6, 0)
+			sign.MaxDistance = 220
+			sign.Parent = pad
+			local label = Instance.new("TextLabel")
+			label.Size = UDim2.fromScale(1, 1)
+			label.BackgroundTransparency = 1
+			label.Font = Enum.Font.GothamBold
+			label.TextSize = 13
+			label.TextColor3 = Color3.fromRGB(255, 226, 170)
+			label.TextStrokeTransparency = 0.4
+			label.Text = plot.name
+			label.Parent = sign
+		end
 
 		table.insert(plotCentres, { px, pz, math.max(plot.size.X, plot.size.Z) * 0.5, plot.key })
 	end

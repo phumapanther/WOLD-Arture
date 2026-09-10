@@ -33,6 +33,9 @@ local BRIDGE_CLEAR = 14
 -- How many samples the road takes to climb from the ground up to the deck at each end.
 local RAMP_STEPS = 6
 
+-- The unpaved back lanes. The user lays dirt roads by hand, so this phase does not draw them.
+local LAY_DIRT_LANES = false
+
 -- Painted down the middle of the main street only, so the two lanes read as two lanes.
 local CENTRE_LINE = Color3.fromRGB(206, 198, 176)
 
@@ -243,10 +246,9 @@ return L.runPhase("CityDistricts", function(folder)
 				part(streets, "StreetSlab", Vector3.new(width, 6, 13),
 					CFrame.new(x, y - 2.6, z) * CFrame.Angles(0, heading, 0),
 					STONE_PALE, Enum.Material.Cobblestone)
-			else
-				-- Back lanes: bare earth rather than cobbles, but the same sunk slab as the main street.
-				-- A FillBall of Ground was tried here and ADDS terrain rather than carving it, which
-				-- littered the city with floating mounds of soil.
+			elseif LAY_DIRT_LANES then
+				-- Back lanes in bare earth. Off by default: the user lays the dirt roads by hand, by
+				-- adding soil and smoothing it, which puts them where people would actually walk.
 				part(streets, "LaneSlab", Vector3.new(width, 6, 13),
 					CFrame.new(x, y - 2.7, z) * CFrame.Angles(0, heading, 0),
 					Color3.fromRGB(126, 100, 72), Enum.Material.Ground)
