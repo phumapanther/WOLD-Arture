@@ -6,8 +6,9 @@
 --
 -- The land stays what it is: open downland with rolling hills. What changes is what stands on it.
 --
---   * Riverbank first. The corridor's whole reason for existing is the river, so the thickest planting
---     follows it -- willows and rocks along the water, thinning as you climb away from it.
+--   * Riverbank first, but ONE BANK AT A TIME. The thickest planting follows the water -- on whichever
+--     side the river happens to favour there. Walk downstream and the wood changes banks, so you get
+--     thicket on one shore looking across at open field, which is what a real river looks like.
 --   * Copses, not a forest. Trees come in patches with real gaps between them, which is what makes open
 --     country read as open rather than as a thin wood.
 --   * Bare ground here and there. Not everything is grass: worn earth on the hilltops where the wind gets
@@ -87,13 +88,63 @@ local function copseWeight(x, z)
 	return (n - COPSE_FLOOR) / (1 - COPSE_FLOOR)
 end
 
--- The riverbank. Trees crowd the water and thin out as the ground climbs away from it.
+-- The riverbank -- but ONLY ONE BANK AT A TIME.
+--
+-- A river with matching banks reads as generated: real ones are wooded on one side and open on the other,
+-- and which side that is changes as you walk downstream. So the bank weight answers three questions --
+-- how close to the water, WHICH SIDE, and how far along -- and only rewards the side the river happens to
+-- favour at that point.
 local RIVERBANK = 150
+
+-- Which side of the river's line a point falls on, and how far along the river it is.
+-- Returns nil when the point is not near the main river at all.
+local function riverSide(x, z)
+	local river = L.rivers and L.rivers[1]
+	if not river then return nil end
+	local u, v = x / L.HALF, z / L.HALF
+	local pts = river.pts
+
+	-- The nearest segment, and the cross product against it: positive on one side, negative on the other.
+	local best, bestCross, bestT, acc = math.huge, 0, 0, 0
+	for i = 1, #pts - 1 do
+		local a, b = pts[i], pts[i + 1]
+		local abx, abz = b[1] - a[1], b[2] - a[2]
+		local len2 = abx * abx + abz * abz
+		local t = len2 > 0 and math.clamp(((u - a[1]) * abx + (v - a[2]) * abz) / len2, 0, 1) or 0
+		local px, pz = a[1] + abx * t, a[2] + abz * t
+		local d = math.sqrt((u - px) ^ 2 + (v - pz) ^ 2)
+		if d < best then
+			best = d
+			-- Sign of the 2D cross product of the segment against the point: the side of the line.
+			bestCross = abx * (v - a[2]) - abz * (u - a[1])
+			local segLen = math.sqrt(len2)
+			bestT = (acc + segLen * t) / math.max(river.total, 1e-6)
+		end
+		acc += math.sqrt(len2)
+	end
+	return (bestCross >= 0) and 1 or -1, bestT
+end
 
 local function riverWeight(x, z)
 	local d = select(1, L.riverAt(x, z))
 	if not d or d >= RIVERBANK then return 0 end
-	return 1 - L.smooth(d / RIVERBANK)
+	local near = 1 - L.smooth(d / RIVERBANK)
+
+	local side, along = riverSide(x, z)
+	if not side then return near * 0.3 end
+
+	-- Which bank is the wooded one, as a slow wave down the length of the river. It swaps every few
+	-- hundred studs, so a walk downstream passes wood on the left, then open ground, then wood on the
+	-- right -- rather than one side being green for the whole map.
+	local favour = math.sin(along * math.pi * 3.4 + 0.7)
+	local wooded = (favour >= 0) and 1 or -1
+
+	if side == wooded then
+		return near
+	end
+	-- The far bank is not bare -- a handful of trees still stand there -- but it reads as open field
+	-- against the thicket opposite.
+	return near * 0.12
 end
 
 --------------------------------------------------------------------------------
