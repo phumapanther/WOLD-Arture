@@ -5,34 +5,48 @@
 -- character is ~5.5 studs tall and jumps ~7.5, so a 26 stud ceiling is the "room to run and
 -- jump" height, and a doorway is 12 x 18 so two players can run through it side by side.
 
--- floor deck with joists under it. opts.hole = { x = 0, z = 0, w = 12, d = 20 } leaves a
--- stairwell opening, built as four bands around it so the hole is a real gap.
+-- A floor deck with any number of holes cut in it -- a courtyard void AND a stairwell, which is
+-- what a house with a yard and a stair needs. The deck is laid as whole rectangles left over after
+-- each hole is subtracted, so cutting a second hole costs a handful of parts rather than a grid.
+-- opts.hole is the single-hole shorthand; opts.holes takes a list. Both are { x, z, w, d }.
 function K.floorSlab(parent, cf, w, d, mat, color, opts)
   opts = opts or {}
   local m = K.model(parent, opts.name or "Floor")
   local material = mat or K.MAT.WoodPlanks
   local col = color or K.C.plank
-  local function band(x0, x1, z0, z1)
-    local bw, bd = x1 - x0, z1 - z0
-    if bw < 0.05 or bd < 0.05 then return end
-    K.box(m, cf * CFrame.new((x0 + x1) / 2, -0.4, (z0 + z1) / 2), Vector3.new(bw, 0.8, bd), material, col, { name = "Deck" })
-    local n = math.max(1, math.floor(bd / 6))
-    for i = 0, n do
-      K.box(m, cf * CFrame.new((x0 + x1) / 2, -1.25, z0 + bd * i / n), Vector3.new(bw, 0.9, 0.9), K.MAT.Wood,
-        col:Lerp(K.C.black, 0.35), { name = "Joist", cancollide = false })
+  local rects = { { -w / 2, w / 2, -d / 2, d / 2 } }
+  local holes = opts.holes or (opts.hole and { opts.hole }) or {}
+  for _, h in ipairs(holes) do
+    local hx0, hx1, hz0, hz1 = h.x - h.w / 2, h.x + h.w / 2, h.z - h.d / 2, h.z + h.d / 2
+    local out = {}
+    for _, r in ipairs(rects) do
+      if hx0 >= r[2] or hx1 <= r[1] or hz0 >= r[4] or hz1 <= r[3] then
+        table.insert(out, r)
+      else
+        if r[3] < hz0 then table.insert(out, { r[1], r[2], r[3], hz0 }) end
+        if hz1 < r[4] then table.insert(out, { r[1], r[2], hz1, r[4] }) end
+        local z0, z1 = math.max(r[3], hz0), math.min(r[4], hz1)
+        if r[1] < hx0 then table.insert(out, { r[1], hx0, z0, z1 }) end
+        if hx1 < r[2] then table.insert(out, { hx1, r[2], z0, z1 }) end
+      end
+    end
+    rects = out
+  end
+  for _, r in ipairs(rects) do
+    local bw, bd = r[2] - r[1], r[4] - r[3]
+    if bw > 0.05 and bd > 0.05 then
+      local cx, cz = (r[1] + r[2]) / 2, (r[3] + r[4]) / 2
+      K.box(m, cf * CFrame.new(cx, -0.4, cz), Vector3.new(bw, 0.8, bd), material, col, { name = "Deck" })
+      local n = math.max(1, math.floor(bd / 6))
+      for i = 0, n do
+        K.box(m, cf * CFrame.new(cx, -1.25, r[3] + bd * i / n), Vector3.new(bw, 0.9, 0.9), K.MAT.Wood,
+          col:Lerp(K.C.black, 0.35), { name = "Joist", cancollide = false })
+      end
     end
   end
-  local h = opts.hole
-  if not h then
-    band(-w / 2, w / 2, -d / 2, d / 2)
-  else
-    local hx0, hx1 = h.x - h.w / 2, h.x + h.w / 2
-    local hz0, hz1 = h.z - h.d / 2, h.z + h.d / 2
-    band(-w / 2, hx0, -d / 2, d / 2)
-    band(hx1, w / 2, -d / 2, d / 2)
-    band(math.max(-w / 2, hx0), math.min(w / 2, hx1), -d / 2, hz0)
-    band(math.max(-w / 2, hx0), math.min(w / 2, hx1), hz1, d / 2)
-    K.box(m, cf * CFrame.new(h.x, 0.15, hz1 - 0.3), Vector3.new(h.w, 0.5, 0.6), K.MAT.Wood, col:Lerp(K.C.black, 0.4), { name = "WellTrim", cancollide = false })
+  for _, h in ipairs(holes) do
+    K.box(m, cf * CFrame.new(h.x, 0.15, h.z + h.d / 2 - 0.3), Vector3.new(h.w, 0.5, 0.6), K.MAT.Wood,
+      col:Lerp(K.C.black, 0.4), { name = "WellTrim", cancollide = false })
   end
   return m
 end
@@ -47,9 +61,17 @@ function K.stairFlight(parent, cf, width, rise, mat, color, opts)
   -- and a 1.35 run needs 35 studs of floor for one storey, which no room this size can spare.
   local run = opts.run or rise * 1.05
   local m = K.model(parent, opts.name or "Stairs")
+  -- A step is normally a solid column from the flight's base plane to its own tread, which reads as
+  -- cut stone and is right for a flight standing on the ground. Where flights STACK in a well --
+  -- the same well on every floor of a tower -- that column is a slab of rock filling the space the
+  -- flight below has to climb out into: the last five treads of every flight were unusable. Passing
+  -- open = true makes each tread its own slab, so the soffit steps up with the flight, the way the
+  -- underside of a real stair does.
+  local tread = rise / steps + 1.6
   for i = 1, steps do
     local y = rise * i / steps
-    K.box(m, cf * CFrame.new(0, y / 2, run * (i - 0.5) / steps), Vector3.new(width, y, run / steps * 1.04),
+    local t = opts.open and math.min(y, tread) or y
+    K.box(m, cf * CFrame.new(0, y - t / 2, run * (i - 0.5) / steps), Vector3.new(width, t, run / steps * 1.04),
       mat or K.MAT.WoodPlanks, color or K.C.plankDark, { name = "Step" })
   end
   if opts.rails ~= false then
@@ -65,6 +87,102 @@ function K.stairFlight(parent, cf, width, rise, mat, color, opts)
     end
   end
   return run
+end
+-- A spiral stair winding round a newel, for a turret too narrow to take a straight flight: an
+-- 18-stud bell tower cannot hold a 36-stud run, and a stair modelled straight through it just ends
+-- up buried in the wall. Climbs by `advance` studs of arc per step at the walking radius, which is
+-- what keeps the treads walkable rather than merely drawn.
+-- Returns the number of steps and the angle it finished at, so a landing can be aimed at the head.
+function K.spiralStair(parent, cf, radius, rise, mat, color, opts)
+  opts = opts or {}
+  local inner = opts.newel or 1.6
+  local steps = math.max(4, math.ceil(rise / (opts.stepRise or 1.15)))
+  local tread = opts.tread or (rise / steps + 1.4)
+  local rm = (inner + radius) / 2                        -- the radius a person actually walks at
+  local dA = (opts.dir or 1) * (opts.advance or 1.5) / rm
+  local start = opts.start or 0
+  local m = K.model(parent, opts.name or "Stairs")
+  m:SetAttribute("Spiral", true)
+  K.cyl(m, cf * CFrame.new(0, rise / 2, 0), inner, rise + 2, mat or K.MAT.Rock, color or K.C.stone, { name = "Newel" })
+  for i = 1, steps do
+    local y = rise * i / steps
+    local a = start + (i - 1) * dA
+    K.box(m, cf * CFrame.new(0, y - tread / 2, 0) * K.yaw(a) * CFrame.new(rm, 0, 0),
+      Vector3.new(radius - inner, tread, math.abs(dA) * rm * 1.4), mat or K.MAT.Rock, color or K.C.stone, { name = "Step" })
+  end
+  return steps, start + (steps - 1) * dA
+end
+
+
+-- A drum wall with a room inside it: a ring of collidable staves rather than one solid cylinder.
+--
+-- The first towers were a single stone cylinder with the floors and furniture modelled INSIDE it.
+-- From the outside that is indistinguishable from this; from the inside it is a rock, and a walk
+-- test found beds, stairs and lanterns all buried in solid stone with no way in.
+--
+-- openings are { a = angle in radians, w = clear width in studs, h = height, sill = height off the floor }
+-- `base` is the frame at the foot of the wall, so a tower can stand anywhere, not just at the
+-- model's own origin. `mat` defaults to Rock.
+function K.drumShell(m, base, r, h, thick, segs, col, openings, name, mat)
+  local g = K.model(m, name or "Shell")
+  local mid = r - thick / 2                      -- the staves' own centreline
+  local arc = 2 * math.pi * mid / segs
+  for i = 0, segs - 1 do
+    local a = i * 2 * math.pi / segs
+    local cuts = {}
+    for _, o in ipairs(openings or {}) do
+      local off = math.abs((a - o.a + math.pi) % (2 * math.pi) - math.pi) * mid
+      if off < o.w / 2 then table.insert(cuts, o) end
+    end
+    table.sort(cuts, function(p, q) return (p.sill or 0) < (q.sill or 0) end)
+    local cf = base * CFrame.new(math.cos(a) * mid, 0, math.sin(a) * mid) * K.yaw(math.pi / 2 - a)
+    local function seg(y, height, tag)
+      if height > 0.15 then
+        K.box(g, cf * CFrame.new(0, y + height / 2, 0), Vector3.new(arc * 1.06, height, thick), mat or K.MAT.Rock, col, { name = tag })
+      end
+    end
+    -- stone between the openings on this stave, from the floor up
+    local cursor = 0
+    for _, o in ipairs(cuts) do
+      local sill = o.sill or 0
+      seg(cursor, sill - cursor, cursor == 0 and "Course" or "Apron")
+      cursor = math.max(cursor, sill + o.h)
+    end
+    seg(cursor, h - cursor, cursor == 0 and "Course" or "Lintel")
+  end
+  return g
+end
+
+-- A floor that fills a round tower, with the stairwell cut out of it.
+-- K.floorSlab is square, and a square deck big enough to live on pokes out through a drum wall,
+-- so this lays the deck as strips clipped to the circle instead.
+function K.roundFloor(m, cf, r, hole, mat, col, name)
+  local g = K.model(m, name or "TowerFloor")
+  local strips = 22
+  local dz = 2 * r / strips
+  for i = 0, strips - 1 do
+    local z0, z1 = -r + i * dz, -r + (i + 1) * dz
+    local edge = math.max(math.abs(z0), math.abs(z1))       -- measure the chord at the strip's tightest end
+    local half = math.sqrt(math.max(r * r - edge * edge, 0))
+    local zc = (z0 + z1) / 2
+    local function band(x0, x1)
+      if x1 - x0 > 0.6 then
+        K.box(g, cf * CFrame.new((x0 + x1) / 2, -0.4, zc), Vector3.new(x1 - x0, 0.8, dz * 1.02), mat or K.MAT.WoodPlanks,
+          col or K.C.plankDark, { name = "Deck" })
+        K.box(g, cf * CFrame.new((x0 + x1) / 2, -1.25, zc), Vector3.new(x1 - x0, 0.9, 0.9), K.MAT.Wood,
+          (col or K.C.plankDark):Lerp(K.C.black, 0.35), { name = "Joist", cancollide = false })
+      end
+    end
+    if half > 0.5 then
+      if hole and zc > hole.z - hole.d / 2 and zc < hole.z + hole.d / 2 then
+        band(-half, math.min(hole.x - hole.w / 2, half))
+        band(math.max(hole.x + hole.w / 2, -half), half)
+      else
+        band(-half, half)
+      end
+    end
+  end
+  return g
 end
 
 -- ---------- doors that swing open when a character runs into them ----------

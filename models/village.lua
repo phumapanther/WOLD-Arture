@@ -99,16 +99,21 @@ local function garrison(m)
   for _, sx in ipairs({ -1, 1 }) do crenellate(m, CFrame.new(sx * (W / 2 + 1.6), ST * 3 - 3, 0) * K.yaw(math.pi / 2), D + 4, 7, 4.6, MAT.Sandstone, stone) end
 
   -- ---- round stair tower behind, climbing to the battlement
+  --
+  -- It was a solid stone cylinder with three flights and their landings modelled inside it, so the
+  -- battlement had no way up at all and the tower was a rock. A drum 26 across cannot take a
+  -- straight flight anyway -- 21 studs of run in 20 of room -- so it gets what a round stair tower
+  -- actually has: a spiral round a newel, a door in from the courtyard and a door out onto the walk.
   local so = CFrame.new(W / 2 - 8, 0, D / 2 + 13)
-  K.cyl(m, so * CFrame.new(0, ST * 1.6, 0), 13, ST * 3.2, MAT.Sandstone, stone:Lerp(C.black, 0.06), { name = "StairTower" })
+  local TH = ST * 3 - 3                                       -- level with the battlement walk
+  K.drumShell(m, so, 13, ST * 3.2, 3, 28, stone:Lerp(C.black, 0.06), {
+    { a = math.pi / 2, w = DOOR_W, h = DOOR_H, sill = 0 },
+    { a = -math.pi / 2, w = DOOR_W, h = DOOR_H, sill = TH },
+  }, "StairTower", MAT.Sandstone)
   K.roofCone(m, so * CFrame.new(0, ST * 3.2, 0), 14.6, 16, MAT.Slate, C.slateRoof, 9)
+  K.spiralStair(m, so, 9, TH, MAT.Sandstone, stone, { newel = 1.4, advance = 1.6 })
   for i = 0, 2 do
     K.window(m, so * CFrame.new(0, 9 + i * ST, -12.9), 4, 7, C.iron, true)
-    -- the tower is only 26 across, so the flight gets an explicit short run and the landing
-    -- hole is placed over where it actually ends. all three climb the same way, not alternating.
-    K.stairFlight(m, so * CFrame.new(0, i * ST, -10), 9, ST, MAT.Sandstone, stone, { railColor = C.iron, run = 21 })
-    K.floorSlab(m, so * CFrame.new(0, (i + 1) * ST, 0), 24, 24, MAT.Slate, C.stone,
-      { name = "Landing", hole = { x = 0, z = 1, w = 13, d = 28 } })
   end
 
   -- ---- gatehouse wing thrown forward on the left
@@ -213,12 +218,14 @@ local function garrison(m)
     K.wedge(m, CFrame.new(-W / 2 + 3.4, 19, z) * K.yaw(math.pi / 2), Vector3.new(0.5, 3, 1.6), MAT.Metal, C.steel)
   end
   ceilingLamps(m, CFrame.new(0, ST - 1, 0), { -18, 0, 18 }, { -10, 10 }, 4)
-  for i = 0, 4 do                                    -- five bunks a side; the sixth used to sit in the stairwell
-    local x = -26 + i * 9
+  -- three bunks a side, between the two stair wells: at five a side the outer bunks and their
+  -- chests stood on the flights coming up either end of the hall
+  for i = 0, 2 do
+    local x = -9 + i * 9
     K.bed(m, CFrame.new(x, ST, -D / 2 + 12), 8, 15, C.wood, C.canvas)
     K.bed(m, CFrame.new(x, ST, D / 2 - 12) * K.yaw(math.pi), 8, 15, C.wood, C.canvas)
-    K.chest(m, CFrame.new(x + 6, ST, -D / 2 + 12), 3)
-    K.chest(m, CFrame.new(x + 6, ST, D / 2 - 12), 3)
+    K.chest(m, CFrame.new(x, ST, -D / 2 + 21), 3)
+    K.chest(m, CFrame.new(x, ST, D / 2 - 21), 3)
   end
   ceilingLamps(m, CFrame.new(0, ST * 2 - 1, 0), { -16, 16 }, { 0 }, 4)
   K.table(m, CFrame.new(-8, ST * 2, 0), 20, 13, 5.2, C.oak)
@@ -262,7 +269,7 @@ local function clinic(m)
     { { x = -12, w = DOOR_W + 2, h = DOOR_H }, win(8), win(22) },
     { win(-18), win(0), win(18) },
     { win(-12), win(6) }, { { x = 4, w = DOOR_W, h = DOOR_H }, win(-14) }, "G")
-  local hole = flight(m, W / 2 - 12, 0, -D / 2 + 7, 11, ST, MAT.WoodPlanks, C.plankDark)
+  local hole = flight(m, 9, 0, -D / 2 + 7, 9, ST, MAT.WoodPlanks, C.plankDark)
   K.floorSlab(m, CFrame.new(0, ST, 0), W, D, MAT.WoodPlanks, C.plank, { name = "UpperFloor", hole = hole })
   K.railing(m, CFrame.new(hole.x, ST, hole.z + hole.d / 2 - 0.5), hole.w, 5, C.wood)
   walls4(m, CFrame.new(0, ST, 0), W, D, ST - 2, 2.4, MAT.Plaster, plaster,
@@ -280,7 +287,11 @@ local function clinic(m)
   for i = 0, 5 do
     local z = -D / 2 + 9 + i * 6.4
     for _, s in ipairs({ -1, 1 }) do
-      K.bed(m, CFrame.new(s * (W / 2 - 10), 0, z) * K.yaw(s > 0 and -math.pi / 2 or math.pi / 2), 8, 15, C.white, rgb(206, 220, 226))
+      -- the east beds are shorter and set against their wall: the stair runs up that flank, and at
+      -- 15 studs long every one of them was laid across the treads
+      local reach = s > 0 and 12 or 15
+      K.bed(m, CFrame.new(s * (W / 2 - 10.5 + (s > 0 and 3 or 0)), 0, z) * K.yaw(s > 0 and -math.pi / 2 or math.pi / 2),
+        8, reach, C.white, rgb(206, 220, 226))
       K.box(m, CFrame.new(s * (W / 2 - 3.4), 2.6, z), Vector3.new(4, 5.2, 4), MAT.WoodPlanks, C.plankDark, { name = "Nightstand" })
       local vial = K.cyl(m, CFrame.new(s * (W / 2 - 3.4), 6.2, z), 0.8, 2.2, MAT.Neon, rgb(150, 230, 180), { name = "Draught", cancollide = false })
       glow(vial, rgb(150, 230, 180), 8, 0.8)
@@ -307,7 +318,8 @@ local function clinic(m)
   K.chair(m, CFrame.new(-14, ST, 5) * K.yaw(math.pi))
   K.chair(m, CFrame.new(-24, ST, -12))
   K.shelf(m, CFrame.new(-W / 2 + 3, ST, 4) * K.yaw(-math.pi / 2), 26, 15, 4, C.plankDark, 4)
-  for i = 0, 2 do K.bed(m, CFrame.new(14, ST, -12 + i * 9) * K.yaw(-math.pi / 2), 8, 15, C.white, rgb(206, 220, 226)) end
+  -- the recovery beds are on the west side: on the east they lay across the head of the stair
+  for i = 0, 2 do K.bed(m, CFrame.new(-14, ST, -12 + i * 9) * K.yaw(math.pi / 2), 8, 15, C.white, rgb(206, 220, 226)) end
   for i = 0, 4 do
     local x = -8 + i * 7
     K.box(m, CFrame.new(x, ST + 18, 12), Vector3.new(0.6, 0.6, 18), MAT.Wood, C.wood, { name = "DryRail", cancollide = false })
@@ -363,7 +375,9 @@ local function tavern(m)
     { win(-10), win(10) }, { { x = 0, w = DOOR_W, h = DOOR_H } }, "G")
   local hole1 = flight(m, W / 2 - 12, 0, -D / 2 + 7, 11, ST, MAT.WoodPlanks, C.plankDark)
   local o1 = CFrame.new(0, ST, -2.5)
-  K.box(m, CFrame.new(0, ST - 0.9, -2.5), Vector3.new(W + 5, 1.4, D + 6), MAT.Wood, C.wood, { name = "Jetty" })
+  -- the jetty carries the stairwell too: it was a solid slab under the hole in the floor above it
+  K.floorSlab(m, CFrame.new(0, ST, -2.5), W + 5, D + 6, MAT.Wood, C.wood,
+    { name = "Jetty", hole = { x = hole1.x, z = hole1.z + 2.5, w = hole1.w, d = hole1.d } })
   K.floorSlab(m, o1, W + 4, D + 5, MAT.WoodPlanks, C.plank,
     { name = "GuestFloor", hole = { x = hole1.x, z = hole1.z + 2.5, w = hole1.w, d = hole1.d } })
   K.railing(m, o1 * CFrame.new(hole1.x, 0, hole1.z + 2.5 + hole1.d / 2 - 0.5), hole1.w, 5, C.wood)
@@ -376,7 +390,8 @@ local function tavern(m)
 
   local hole2 = flight(m, -W / 2 + 12, ST, -D / 2 + 7, 11, ST - 2, MAT.WoodPlanks, C.plankDark)
   local o2 = CFrame.new(2.5, ST * 2 - 2, -1)
-  K.box(m, o2 * CFrame.new(0, -0.9, 0), Vector3.new(W + 8, 1.4, D + 5), MAT.Wood, C.wood, { name = "Jetty2" })
+  K.floorSlab(m, o2, W + 8, D + 5, MAT.Wood, C.wood,
+    { name = "Jetty2", hole = { x = hole2.x - 2.5, z = hole2.z + 1, w = hole2.w, d = hole2.d } })
   K.floorSlab(m, o2, W + 7, D + 4, MAT.WoodPlanks, C.plank,
     { name = "AtticFloor", hole = { x = hole2.x - 2.5, z = hole2.z + 1, w = hole2.w, d = hole2.d } })
   walls4(m, o2, W + 7, D + 4, ST - 6, 2, MAT.Plaster, C.plaster,
@@ -385,13 +400,18 @@ local function tavern(m)
   K.roofGable(m, o2 * CFrame.new(0, ST - 6, 0), W + 7, D + 4, 22, MAT.RoofShingles, rgb(122, 70, 58), 4)
   K.dormer(m, o2 * CFrame.new(-14, ST - 3, -(D + 4) / 2 + 7), 12, 10, 11, MAT.Plaster, C.plaster, MAT.RoofShingles, rgb(122, 70, 58))
 
-  K.box(m, CFrame.new(0, ST - 1, -D / 2 - 11), Vector3.new(W + 4, 1.6, 20), MAT.WoodPlanks, C.plankDark, { name = "GalleryDeck" })
-  K.railing(m, CFrame.new(0, ST, -D / 2 - 20.4), W + 4, 5, C.wood)
+  K.box(m, CFrame.new(0, ST - 0.8, -D / 2 - 11), Vector3.new(W + 4, 1.6, 20), MAT.WoodPlanks, C.plankDark, { name = "GalleryDeck" })
+  for _, seg in ipairs({ { -(W + 4) / 2, W / 2 - 14 }, { W / 2 - 2, (W + 4) / 2 } }) do
+    K.railing(m, CFrame.new((seg[1] + seg[2]) / 2, ST, -D / 2 - 20.4), seg[2] - seg[1], 5, C.wood)
+  end
   for _, x in ipairs({ -24, -8, 8, 24 }) do
     K.cyl(m, CFrame.new(x, ST / 2 - 1, -D / 2 - 20), 1.2, ST - 2, MAT.Wood, C.wood, { name = "GalleryPost" })
     K.wedge(m, CFrame.new(x + 3, ST - 5, -D / 2 - 20) * K.yaw(-math.pi / 2), Vector3.new(1.6, 4, 5), MAT.Wood, C.wood)
   end
-  K.stairFlight(m, CFrame.new(W / 2 + 11, 0, -D / 2 - 14) * K.yaw(math.pi / 2), 11, ST, MAT.WoodPlanks, C.plankDark, { railColor = C.wood })
+  -- The gallery stair comes up at the front of the gallery and stops at its edge. It used to run
+  -- east-west THROUGH the gallery: yawed one way it topped out 36 studs clear of the deck in open
+  -- air, yawed the other it climbed along underneath the deck for its last six treads.
+  K.stairFlight(m, CFrame.new(W / 2 - 8, 0, -D / 2 - 48), 11, ST, MAT.WoodPlanks, C.plankDark, { railColor = C.wood })
   K.autoDoor(m, o1 * CFrame.new(4, 0, -(D + 5) / 2 - 1.2), DOOR_W, DOOR_H, { color = C.wood })
 
   -- ---- kitchen wing
@@ -478,7 +498,8 @@ local function tavern(m)
   end
   K.box(m, CFrame.new(-W / 2 + 15, 5, D / 2 - 13), Vector3.new(30, 1, 4), MAT.Wood, C.wood, { name = "BarrelRack" })
   K.fireplace(m, CFrame.new(W / 2 - 9, 0, D / 2 - 3) * K.yaw(math.pi), 18, 17, C.darkStone)
-  for i, p in ipairs({ { -18, -12 }, { 2, -12 }, { 20, -8 }, { -8, 4 }, { 14, 8 }, { -20, 8 } }) do
+  -- five tables, not six: the sixth stood in the stair well with its chairs round it
+  for i, p in ipairs({ { -18, -12 }, { 2, -12 }, { -8, 4 }, { 14, 8 }, { -20, 8 } }) do
     K.table(m, CFrame.new(p[1], 0, p[2]), 11, 11, 5.4, C.plank)
     for j = 0, 3 do
       local a = j * math.pi / 2 + i * 0.3
@@ -489,7 +510,8 @@ local function tavern(m)
   K.rug(m, CFrame.new(0, 0.1, -2), 34, 24, rgb(120, 66, 58))
   ceilingLamps(m, CFrame.new(0, ST - 1, 0), { -18, 0, 18 }, { -10, 10 }, 4)
 
-  for i = 0, 3 do
+  -- three alcoves, not four: the fourth sat over the stair well
+  for i = 0, 2 do
     local x = -21 + i * 14
     K.box(m, o1 * CFrame.new(x - 7, (ST - 2) / 2, 6), Vector3.new(0.8, ST - 2, D - 8), MAT.WoodPlanks, C.plankDark, { name = "Partition" })
     K.bed(m, o1 * CFrame.new(x, 0, 12) * K.yaw(math.pi), 8, 15, C.wood, C.canvas)
@@ -497,7 +519,7 @@ local function tavern(m)
     K.table(m, o1 * CFrame.new(x + 4, 0, 2), 5, 5, 4.4, C.plank)
     K.lantern(m, o1 * CFrame.new(x, ST - 10, 6), 3.4)
   end
-  for i = 0, 2 do K.bed(m, o2 * CFrame.new(-16 + i * 16, 0, 8) * K.yaw(math.pi), 7, 14, C.plankDark, C.canvas) end
+  for i = 0, 2 do K.bed(m, o2 * CFrame.new(-2 + i * 13, 0, 8) * K.yaw(math.pi), 7, 14, C.plankDark, C.canvas) end
   K.crate(m, o2 * CFrame.new(-22, 0, -8), 5)
   K.barrel(m, o2 * CFrame.new(20, 0, -6), 2.4, 5.4)
   ceilingLamps(m, o2 * CFrame.new(0, ST - 8, 0), { -12, 12 }, { 0 }, 3.4)
@@ -538,14 +560,17 @@ local function workshop(m)
   end
 
   local MZ = 26
-  K.floorSlab(m, CFrame.new(W / 2 - 11, MZ, 0), 22, D - 8, MAT.DiamondPlate, C.steel, { name = "MezzR" })
+  -- the flight comes first so the mezzanine can be cut for it: it used to be an unbroken deck and
+  -- the last six treads climbed into its underside
+  local mz = flight(m, W / 2 - 11, 0, -D / 2 + 6, 11, MZ, MAT.Metal, C.steel, C.iron)
+  K.floorSlab(m, CFrame.new(W / 2 - 11, MZ, 0), 22, D - 8, MAT.DiamondPlate, C.steel,
+    { name = "MezzR", hole = { x = 0, z = mz.z, w = mz.w, d = mz.d } })
   K.floorSlab(m, CFrame.new(-4, MZ, D / 2 - 9), W - 26, 18, MAT.DiamondPlate, C.steel, { name = "MezzB" })
   K.railing(m, CFrame.new(W / 2 - 22, MZ, 0) * K.yaw(math.pi / 2), D - 8, 5, C.iron, MAT.Metal)
   K.railing(m, CFrame.new(-4, MZ, D / 2 - 18), W - 26, 5, C.iron, MAT.Metal)
   for _, p in ipairs({ { W / 2 - 22, -16 }, { W / 2 - 22, 8 }, { -16, D / 2 - 18 }, { 6, D / 2 - 18 } }) do
     K.cyl(m, CFrame.new(p[1], MZ / 2, p[2]), 1.2, MZ, MAT.Metal, C.iron, { name = "Column" })
   end
-  K.stairFlight(m, CFrame.new(W / 2 - 11, 0, -D / 2 + 6), 11, MZ, MAT.Metal, C.steel, { railColor = C.iron })
 
   K.box(m, CFrame.new(-W / 2 + 13, 4, D / 2 - 12), Vector3.new(22, 8, 16), MAT.Cobblestone, C.darkStone, { name = "ForgeBase" })
   local fire = K.box(m, CFrame.new(-W / 2 + 13, 8.4, D / 2 - 12), Vector3.new(17, 1.4, 11), MAT.Neon, rgb(255, 118, 26), { name = "ForgeFire", cancollide = false })
@@ -602,9 +627,10 @@ local function workshop(m)
     { { x = -5, w = DOOR_W, h = DOOR_H }, { x = 8, w = 8, h = 9, sill = 7 } },
     { { x = 0, w = 8, h = 9, sill = 7 } }, { { x = 0, w = 8, h = 9, sill = 7 } },
     { { x = 4, w = DOOR_W, h = DOOR_H } }, "Office")
-  K.stairFlight(m, ao * CFrame.new(9, 0, -9), 9, 22, MAT.WoodPlanks, C.plankDark, { railColor = C.wood })
+  -- a shorter run from further back: at 23 studs the head of the flight met the office back wall
+  K.stairFlight(m, ao * CFrame.new(9, 0, -11), 9, 22, MAT.WoodPlanks, C.plankDark, { railColor = C.wood, run = 21 })
   K.floorSlab(m, ao * CFrame.new(0, 22, 0), 28, 26, MAT.WoodPlanks, C.plank,
-    { name = "OfficeUpper", hole = { x = 9, z = 9, w = 13, d = 38 } })
+    { name = "OfficeUpper", hole = { x = 9, z = 0, w = 11, d = 26 } })
   walls4(m, ao * CFrame.new(0, 22, 0), 28, 26, 20, 2, MAT.Plaster, C.plaster,
     { { x = -7, w = 8, h = 9, sill = 7 }, { x = 7, w = 8, h = 9, sill = 7 } },
     { { x = 0, w = 8, h = 9, sill = 7 } }, { { x = 0, w = 8, h = 9, sill = 7 } }, {}, "OfficeU")
@@ -648,38 +674,51 @@ local function clockTower(m)
   K.wallRun(m, CFrame.new(base / 2, y0, 0) * K.yaw(math.pi / 2), base, ST + 4, 3, MAT.Sandstone, stone, { win(0, 8) }, { name = "R" })
 
   local y1 = y0 + ST + 4
-  K.stairFlight(m, CFrame.new(-9, y0, -11), 9, ST + 4, MAT.Sandstone, stone, { railColor = C.iron })
-  K.floorSlab(m, CFrame.new(0, y1, 0), base, base, MAT.WoodPlanks, C.plankDark, { name = "Landing", hole = { x = -9, z = 12, w = 13, d = 36 } })
-  K.cyl(m, CFrame.new(0, y1 + 20, 0), 13, 40, MAT.Sandstone, stone, { name = "Shaft" })
+  -- ONE spiral from the ground room to the clock chamber, with every floor a ring round it.
+  --
+  -- The tower was solid above the first landing: the shaft was a stone cylinder with two flights
+  -- modelled inside it and the clock stage a stone block. The room below is 30 across and the old
+  -- flight to the landing needed 31 studs of run, so it drove through the back wall as well.
+  local _, aEnd = K.spiralStair(m, CFrame.new(0, y0, 0), 7, ST + 26, MAT.Sandstone, stone, { newel = 1.4, advance = 1.6 })
+  K.floorSlab(m, CFrame.new(0, y1, 0), base, base, MAT.WoodPlanks, C.plankDark,
+    { name = "Landing", hole = { x = 0, z = 0, w = 16, d = 16 } })
+  K.drumShell(m, CFrame.new(0, y1, 0), 13, 40, 3, 26, stone, {
+    { a = math.pi / 2, w = 4, h = 10, sill = 8 },
+    { a = aEnd, w = 11, h = 16, sill = 22 },     -- out onto the chamber floor, where the spiral ends
+  }, "Shaft", MAT.Sandstone)
   for i = 1, 5 do K.band(m, CFrame.new(0, y1 + i * 7, 0), 13.6, 1.6, C.brassDark) end
-  K.stairFlight(m, CFrame.new(-5, y1, -9), 8, 22, MAT.WoodPlanks, C.plankDark, { railColor = C.iron })
-  K.floorSlab(m, CFrame.new(0, y1 + 22, 0), 24, 24, MAT.WoodPlanks, C.plankDark, { name = "ClockFloor", hole = { x = -5, z = 10, w = 12, d = 32 } })
-
+  -- the clock chamber floor is a ring round the shaft: inside the shaft the spiral is the floor
+  K.floorSlab(m, CFrame.new(0, y1 + 22, 0), 40, 40, MAT.WoodPlanks, C.plankDark,
+    { name = "ClockFloor", hole = { x = 0, z = 0, w = 21, d = 21 } })
   local cy = y1 + 40
-  K.box(m, CFrame.new(0, cy - 9, 0), Vector3.new(32, 18, 32), MAT.Sandstone, stone:Lerp(C.white, 0.06), { name = "ClockStage" })
+  -- the clock chamber: four walls carrying the four faces, not a block of stone
+  for _, e in ipairs({ { 0, -18.5, 0 }, { 0, 18.5, math.pi }, { -18.5, 0, -math.pi / 2 }, { 18.5, 0, math.pi / 2 } }) do
+    K.wallRun(m, CFrame.new(e[1], cy - 18, e[2]) * K.yaw(e[3]), 40, 18, 3, MAT.Sandstone, stone:Lerp(C.white, 0.06),
+      { { x = 0, w = 9, h = 9, sill = 5 } }, { name = "ClockStage" })
+  end
   for i = 0, 3 do
     local a = i * math.pi / 2
-    K.gauge(m, CFrame.new(math.cos(a) * 16.2, cy - 9, math.sin(a) * 16.2) * K.yaw(math.pi / 2 - a), 6.4, BRASS)
+    K.gauge(m, CFrame.new(math.cos(a) * 20.2, cy - 9, math.sin(a) * 20.2) * K.yaw(math.pi / 2 - a), 6.4, BRASS)
   end
-  K.box(m, CFrame.new(0, cy, 0), Vector3.new(40, 2, 40), MAT.Slate, C.darkStone, { name = "Gallery" })
-  for _, e in ipairs({ { 0, -19, 0 }, { 0, 19, 0 }, { -19, 0, math.pi / 2 }, { 19, 0, math.pi / 2 } }) do
-    K.railing(m, CFrame.new(e[1], cy + 1, e[2]) * K.yaw(e[3]), 38, 5, C.iron, MAT.Metal)
+  K.box(m, CFrame.new(0, cy, 0), Vector3.new(46, 2, 46), MAT.Slate, C.darkStone, { name = "Gallery" })
+  for _, e in ipairs({ { 0, -22, 0 }, { 0, 22, 0 }, { -22, 0, math.pi / 2 }, { 22, 0, math.pi / 2 } }) do
+    K.railing(m, CFrame.new(e[1], cy + 1, e[2]) * K.yaw(e[3]), 44, 5, C.iron, MAT.Metal)
   end
-  K.roofCone(m, CFrame.new(0, cy + 1, 0), 18, 22, MAT.Metal, C.verdigris, 11)
+  K.roofCone(m, CFrame.new(0, cy + 1, 0), 21, 22, MAT.Metal, C.verdigris, 11)
   local bell = K.ball(m, CFrame.new(0, cy + 27, 0), 8, MAT.Metal, BRASS, { name = "Bell", cancollide = false })
   glow(bell, rgb(255, 214, 140), 44, 1.8)
 
   for i, g in ipairs({ { 24, 6, 18 }, { 34, 4, 12 }, { 44, 5.4, 15 } }) do
     K.gear(m, CFrame.new(-9, y0 + g[1], -9) * K.yaw(math.rad(45)), g[2], g[3], 1.4, i % 2 == 0 and C.copper or BRASS)
   end
-  K.chain(m, Vector3.new(6, cy - 16, 0), Vector3.new(6, 14, 0), 22, 0.36)
-  K.box(m, CFrame.new(6, 12, 0), Vector3.new(4.4, 7, 4.4), MAT.Metal, C.iron, { name = "ClockWeight" })
+  K.chain(m, Vector3.new(9, cy - 16, 0), Vector3.new(9, 14, 0), 22, 0.36)
+  K.box(m, CFrame.new(9, 12, 0), Vector3.new(3.4, 7, 3.4), MAT.Metal, C.iron, { name = "ClockWeight" })
   K.pipe(m, { Vector3.new(11, 10, 11), Vector3.new(11, cy - 16, 11), Vector3.new(5, cy - 12, 5) }, 1, C.copper)
   local vent = K.cyl(m, CFrame.new(11, cy - 7, 11), 1.6, 6, MAT.Metal, C.brassDark, { name = "Vent" })
   steamJet(vent, 10)
 
-  K.table(m, CFrame.new(8, y0, 7), 12, 8, 5.2, C.oak)
-  K.chair(m, CFrame.new(8, y0, 14) * K.yaw(math.pi))
+  K.table(m, CFrame.new(-10, y0, 10), 8, 8, 5.2, C.oak)
+  K.chair(m, CFrame.new(-10, y0, 4) * K.yaw(math.pi))
   K.shelf(m, CFrame.new(12.6, y0, -4) * K.yaw(-math.pi / 2), 16, 14, 4, C.plankDark, 4)
   ceilingLamps(m, CFrame.new(0, y1 - 2, 0), { 4 }, { 4 }, 4)
   for _, a in ipairs({ math.rad(45), math.rad(135), math.rad(225), math.rad(315) }) do

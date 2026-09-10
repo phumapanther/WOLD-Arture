@@ -105,7 +105,9 @@ K.build("House_Roundhouse", nil, function(m)
   })
   for _, y in ipairs({ 4, ST - 1, H - 3 }) do K.band(m, CFrame.new(0, y, 0), R * 1.04, 1.6, C.brassDark) end
 
-  local hole = flight(m, R * 0.5, 0, -6, 11, ST, MAT.WoodPlanks, C.plankDark, { railColor = C.wood })
+  -- nearer the middle and shorter: out at half the radius the head of the flight, and its whole
+  -- outer edge, stood outside the drum wall
+  local hole = flight(m, R * 0.3, 0, -6, 11, ST, MAT.WoodPlanks, C.plankDark, { railColor = C.wood, run = 22 })
   K.floorSlab(m, CFrame.new(0, ST, 0), R * 1.9, R * 1.9, MAT.WoodPlanks, C.plank, { name = "UpperFloor", hole = hole })
   K.railing(m, CFrame.new(hole.x, ST, hole.z + hole.d / 2 - 0.5), hole.w, 5, C.wood)
   K.roofCone(m, CFrame.new(0, H, 0), R * 1.14, 20, MAT.Grass, C.moss, 16)
@@ -169,11 +171,16 @@ K.build("House_Townhouse", nil, function(m)
   walls4(m, CFrame.new(0, 0, 0), W, D, ST, 2.2, MAT.Brick, C.brick,
     { { x = -7, w = 14, h = 19 }, { x = 10, w = 11, h = 12, sill = 6 } },
     { { x = 4, w = DOOR_W, h = DOOR_H } }, { win(-5) }, { win(5) }, "G")
-  local hole1 = flight(m, W / 2 - 10, 0, -D / 2 + 3, 10, ST, MAT.WoodPlanks, C.plankDark, { railColor = C.wood })
+  -- a shorter run: at 27 the head of the flight reached the back wall, the first-floor wall above it
+  -- and the fireplace on that floor, all within a stud of each other
+  local hole1 = flight(m, W / 2 - 10, 0, -D / 2 + 3, 10, ST, MAT.WoodPlanks, C.plankDark, { railColor = C.wood, run = 22 })
 
   local W2, D2 = W + 6, D + 6
   local o1 = CFrame.new(-1.6, ST, -1.6)
-  K.box(m, CFrame.new(-1.6, ST - 0.8, -1.6), Vector3.new(W2 + 2, 1.6, D2 + 2), MAT.Wood, C.wood, { name = "Jetty1" })
+  -- the jetty is a floor too, so it carries the same stairwell hole: it used to be a solid slab
+  -- under the hole in the deck above it, which is what the flight actually hit
+  K.floorSlab(m, CFrame.new(-1.6, ST, -1.6), W2 + 2, D2 + 2, MAT.Wood, C.wood,
+    { name = "Jetty1", hole = { x = hole1.x + 1.6, z = hole1.z + 1.6, w = hole1.w, d = hole1.d } })
   for _, s in ipairs({ -1, 1 }) do
     K.wedge(m, CFrame.new(s * (W / 2 - 2), ST - 3.4, -D / 2 - 3) * K.yaw(math.pi), Vector3.new(4, 4, 5), MAT.Wood, C.wood)
   end
@@ -185,10 +192,13 @@ K.build("House_Townhouse", nil, function(m)
   K.timberWall(m, o1 * CFrame.new(0, 0, -D2 / 2 - 1.1), W2, ST, 0.5, C.plaster, C.wood)
   K.timberWall(m, o1 * CFrame.new(-W2 / 2 - 1.1, 0, 0) * K.yaw(-math.pi / 2), D2, ST, 0.5, C.plaster, C.wood)
 
-  local hole2 = flight(m, -W / 2 + 10, ST, -D / 2 + 3, 10, ST - 4, MAT.WoodPlanks, C.plankDark, { railColor = C.wood })
+  -- the rise is ST: the second floor is a full storey up, and at ST - 4 the flight stopped four
+  -- studs under it with nothing to climb
+  local hole2 = flight(m, -W / 2 + 10, ST, -D / 2 + 3, 10, ST, MAT.WoodPlanks, C.plankDark, { railColor = C.wood, run = 24 })
   local W3, D3 = W2 + 5, D2
   local o2 = CFrame.new(1.2, ST * 2, -3.2)
-  K.box(m, o2 * CFrame.new(0, -0.8, 0), Vector3.new(W3 + 2, 1.6, D3 + 2), MAT.Wood, C.wood, { name = "Jetty2" })
+  K.floorSlab(m, o2, W3 + 2, D3 + 2, MAT.Wood, C.wood,
+    { name = "Jetty2", hole = { x = hole2.x - 1.2, z = hole2.z + 3.2, w = hole2.w, d = hole2.d } })
   K.floorSlab(m, o2, W3, D3, MAT.WoodPlanks, C.plank,
     { name = "Floor2", hole = { x = hole2.x - 1.2, z = hole2.z + 3.2, w = hole2.w, d = hole2.d } })
   walls4(m, o2, W3, D3, ST - 4, 2, MAT.Plaster, C.plaster,
@@ -262,7 +272,7 @@ K.build("House_Longhouse", nil, function(m)
   K.floorSlab(m, bo, BW, BD, MAT.Ground, C.soil, { name = "ByreFloor" })
   walls4(m, bo, BW, BD, ST, 2.6, MAT.WoodPlanks, rgb(112, 82, 56),
     { { x = 0, w = 18, h = 20 } }, { win(0, 8) }, {}, { win(0, 8) }, "Byre")
-  local bhole = flight(m, bo.X + 13, 0, bo.Z - BD / 2 + 5, 10, ST, MAT.WoodPlanks, C.plankDark, { railColor = C.wood })
+  local bhole = flight(m, bo.X + 13, 0, bo.Z - BD / 2 + 5, 10, ST, MAT.WoodPlanks, C.plankDark, { railColor = C.wood, run = 22 })   -- one tread short of the byre back wall at 27
   K.floorSlab(m, bo * CFrame.new(0, ST, 3), BW - 3, BD - 12, MAT.WoodPlanks, C.plank,
     { name = "HayLoft", hole = { x = bhole.x - bo.X, z = bhole.z - bo.Z - 3, w = bhole.w, d = bhole.d } })
   K.roofGable(m, bo * CFrame.new(0, ST + 8, 0), BW, BD, 14, MAT.Grass, C.thatch:Lerp(C.black, 0.15), 3)
@@ -276,7 +286,8 @@ K.build("House_Longhouse", nil, function(m)
   for i = 0, 2 do K.box(m, bo * CFrame.new(-BW / 2 + 8 + i * 10, 5, 6), Vector3.new(0.8, 10, 16), MAT.WoodPlanks, C.plankDark, { name = "StallDivider" }) end
   K.box(m, bo * CFrame.new(0, 2.4, BD / 2 - 6), Vector3.new(BW - 10, 4.8, 4.4), MAT.Wood, C.wood, { name = "Trough" })
   K.box(m, bo * CFrame.new(0, 5, BD / 2 - 6), Vector3.new(BW - 12, 1, 3.4), MAT.Grass, C.thatch, { name = "Feed", cancollide = false })
-  for i = 0, 5 do K.box(m, bo * CFrame.new(-12 + i * 5, ST + 2.4, 4) * K.yaw(i * 0.3), Vector3.new(7, 5, 7), MAT.Fabric, C.thatch, { name = "LoftHay" }) end
+  -- four bales: the last two were stacked on the head of the loft stair
+  for i = 0, 3 do K.box(m, bo * CFrame.new(-12 + i * 5, ST + 2.4, 4) * K.yaw(i * 0.3), Vector3.new(7, 5, 7), MAT.Fabric, C.thatch, { name = "LoftHay" }) end
   ceilingLamps(m, bo * CFrame.new(0, ST - 1, -8), { -8, 8 }, { 0 }, 4)
 
   -- hall interior: central hearth, long table, sleeping alcoves along the back
@@ -348,11 +359,15 @@ K.build("House_PipeWorker", nil, function(m)
   K.box(m, bay * CFrame.new(0, 4.6, -8.3), Vector3.new(13, 17, 0.4), MAT.Glass, C.glass, { name = "BayGlass", transparency = 0.42, cancollide = false })
   K.rod(m, (bay * CFrame.new(5, -1.4, 0)).Position, (o * CFrame.new(W / 2 - 2, -2, -D / 2 + 9)).Position, 0.6, MAT.Metal, C.steel, { name = "BayStrut" })
 
-  K.stairFlight(m, CFrame.new(-W / 2 - 11, 0, D / 2 + 6) * K.yaw(math.pi), 10, 11, MAT.Metal, C.steel, { railColor = C.iron })
-  K.box(m, CFrame.new(-W / 2 - 11, 11.4, D / 2 - 10), Vector3.new(11, 1.2, 11), MAT.DiamondPlate, C.steel, { name = "Landing" })
-  K.stairFlight(m, CFrame.new(-W / 2 - 11, 11.4, D / 2 - 14) * K.yaw(math.pi / 2), 10, 9.4, MAT.Metal, C.steel, { railColor = C.iron })
-  K.railing(m, CFrame.new(-W / 2 - 16.5, 11.4, D / 2 - 10) * K.yaw(math.pi / 2), 11, 5, C.iron, MAT.Metal)
-  K.box(m, CFrame.new(-W / 2 - 5, LIFT - 0.8, 2), Vector3.new(14, 1.6, 12), MAT.DiamondPlate, C.steel, { name = "Catwalk" })
+  -- Getting onto the catwalk: the landing used to sit across the head of the first flight, and the
+  -- second flight climbed straight through the catwalk deck to finish a stud above it. Each flight
+  -- now tops out level with what it arrives at, and the catwalk has the hatch it needs.
+  K.stairFlight(m, CFrame.new(-W / 2 - 11, 0, D / 2 + 6) * K.yaw(math.pi), 10, 12, MAT.Metal, C.steel, { railColor = C.iron })
+  K.box(m, CFrame.new(-W / 2 - 11, 11.4, D / 2 - 12.1), Vector3.new(11, 1.2, 11), MAT.DiamondPlate, C.steel, { name = "Landing" })
+  K.stairFlight(m, CFrame.new(-W / 2 - 11, 12, D / 2 - 14) * K.yaw(math.pi / 2), 10, LIFT - 12, MAT.Metal, C.steel, { railColor = C.iron })
+  K.railing(m, CFrame.new(-W / 2 - 16.5, 11.4, D / 2 - 12.1) * K.yaw(math.pi / 2), 11, 5, C.iron, MAT.Metal)
+  K.floorSlab(m, CFrame.new(-W / 2 - 5, LIFT, 2), 14, 12, MAT.DiamondPlate, C.steel,
+    { name = "Catwalk", hole = { x = -2, z = 1, w = 10, d = 6 } })
   K.railing(m, CFrame.new(-W / 2 - 5, LIFT, -4), 14, 5, C.iron, MAT.Metal)
 
   K.boiler(m, o * CFrame.new(W / 2 + 10, -6, 8), 5, 20, { bands = 3, rivets = 12, firebox = true })
@@ -401,7 +416,9 @@ K.build("House_StoneCottage", nil, function(m)
       K.box(m, CFrame.new(sx * (W / 2 - 0.6), 2 + i * 4, -D / 2 + 1), Vector3.new(4.4, 3.4, 4.4), MAT.Rock, wall:Lerp(C.white, 0.18), { name = "Quoin", cancollide = false })
     end
   end
-  local hole = flight(m, W / 2 - 9, 0, -8, 10, ST + 2, MAT.WoodPlanks, C.plankDark, { railColor = C.wood })
+  -- toward the ridge and shorter: against the wall the loft has no headroom at all, and the roof
+  -- slope came down onto the last five treads
+  local hole = flight(m, 12, 0, -8, 10, ST + 2, MAT.WoodPlanks, C.plankDark, { railColor = C.wood, run = 24 })
   K.floorSlab(m, CFrame.new(0, ST + 2, 4), W - 4, D - 12, MAT.WoodPlanks, C.plank, { name = "Loft", hole = { x = hole.x, z = hole.z - 4, w = hole.w, d = hole.d } })
   K.railing(m, CFrame.new(hole.x, ST + 2, hole.z + hole.d / 2 - 0.5), hole.w, 5, C.wood)
   K.roofGable(m, CFrame.new(0, ST + 2, 0), W, D, 20, MAT.Slate, C.slateRoof, 4)
@@ -445,18 +462,19 @@ K.build("House_StoneCottage", nil, function(m)
   end
 
   K.fireplace(m, CFrame.new(-W / 2 + 4, 0, 6) * K.yaw(-math.pi / 2), 18, 18, C.darkStone)
-  K.table(m, CFrame.new(4, 0, 2), 18, 11, 5.2, C.plank)
-  K.chair(m, CFrame.new(-6, 0, 2) * K.yaw(math.pi / 2))
-  K.chair(m, CFrame.new(14, 0, 2) * K.yaw(-math.pi / 2))
-  K.chair(m, CFrame.new(4, 0, -7) * K.yaw(math.pi))
-  K.shelf(m, CFrame.new(0, 0, D / 2 - 2.4) * K.yaw(math.pi), 22, 16, 4, C.plankDark, 4)
+  -- the room sits west of the stair: the board and its chairs used to stand on the flight
+  K.table(m, CFrame.new(-6, 0, 2), 18, 11, 5.2, C.plank)
+  K.chair(m, CFrame.new(-16, 0, 2) * K.yaw(math.pi / 2))
+  K.chair(m, CFrame.new(4, 0, 2) * K.yaw(-math.pi / 2))
+  K.chair(m, CFrame.new(-6, 0, -7) * K.yaw(math.pi))
+  K.shelf(m, CFrame.new(-6, 0, D / 2 - 2.4) * K.yaw(math.pi), 22, 16, 4, C.plankDark, 4)
   K.counter(m, CFrame.new(-16, 0, D / 2 - 3) * K.yaw(math.pi), 18, 5, 6.4, C.plankDark)
-  K.rug(m, CFrame.new(4, 0.1, 2), 26, 20, rgb(120, 70, 66))
+  K.rug(m, CFrame.new(-6, 0.1, 2), 26, 20, rgb(120, 70, 66))
   K.barrel(m, CFrame.new(W / 2 - 6, 0, 14), 2.6, 6)
   ceilingLamps(m, CFrame.new(0, ST + 1, 0), { -10, 10 }, { -4, 8 }, 4)
   K.bed(m, CFrame.new(-8, ST + 2, 8) * K.yaw(math.pi / 2), 8, 15, C.wood)
   K.bed(m, CFrame.new(-8, ST + 2, -4) * K.yaw(math.pi / 2), 7, 14, C.oak)
-  K.chest(m, CFrame.new(10, ST + 2, 12), 3)
+  K.chest(m, CFrame.new(-16, ST + 2, 12), 3)   -- off the head of the loft stair
   ceilingLamps(m, CFrame.new(0, ST + 16, 4), { -6 }, { 0 }, 3.6)
   K.lampPost(m, CFrame.new(-W / 2 - 4, 0, -D / 2 - 14), 17, rgb(255, 204, 148))
 end)

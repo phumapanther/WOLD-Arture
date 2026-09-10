@@ -289,14 +289,26 @@ function K.sign(parent, cf, text, w, h, color, textColor)      -- board reading 
 end
 
 -- ---------- buildings ----------
--- gable roof: ridge runs along Z, slopes fall toward -X and +X.
--- a WedgePart's tall face is its +Z side, so each half is yawed to point that face at the ridge.
-function K.roofGable(parent, cf, w, d, h, mat, color, overhang)
+-- A gable roof as a SHELL: two sloped slabs and a triangle closing each end.
+--
+-- It used to be two solid wedges, which fills the whole attic with stone: a loft laid at the eaves
+-- line had its beds inside the roof and no way to stand up in it. Same shape from outside, hollow
+-- underneath, which is what a roof is.
+function K.roofGable(parent, cf, w, d, h, mat, color, overhang, thick)
   local m = K.model(parent, "Roof")
   local o = overhang or 0
   local W, D = w + o * 2, d + o * 2
-  K.wedge(m, cf * CFrame.new(-W / 4, h / 2, 0) * K.yaw(math.pi / 2), Vector3.new(D, h, W / 2), mat, color)
-  K.wedge(m, cf * CFrame.new(W / 4, h / 2, 0) * K.yaw(-math.pi / 2), Vector3.new(D, h, W / 2), mat, color)
+  local t = thick or 1.8
+  local slope = math.sqrt((W / 2) ^ 2 + h ^ 2)
+  local ang = math.atan2(h, W / 2)
+  for _, s in ipairs({ -1, 1 }) do
+    K.box(m, cf * CFrame.new(s * W / 4, h / 2, 0) * CFrame.Angles(0, 0, -s * ang) * CFrame.new(0, t / 2, 0),
+      Vector3.new(slope, t, D), mat, color, { name = "Slope" })
+    for _, sz in ipairs({ -1, 1 }) do              -- the gable ends, so the attic is closed
+      K.wedge(m, cf * CFrame.new(s * W / 4, h / 2, sz * (D / 2 - 0.9)) * K.yaw(-s * math.pi / 2),
+        Vector3.new(1.8, h, W / 2), mat, color, { name = "GableEnd" })
+    end
+  end
   return m
 end
 -- stepped cone, the shape a thatched or shingled round roof reads as
