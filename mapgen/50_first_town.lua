@@ -396,24 +396,23 @@ return L.runPhase("FirstTown", function(folder)
 
 	local function settle(model)
 		if not model then return nil end
-		local low, high = math.huge, -math.huge
-		for _, d in ipairs(model:GetDescendants()) do
-			-- Ignore near-invisible parts: some prototypes carry a large transparent collision hull that
-			-- would otherwise decide the model's height for it.
-			if d:IsA("BasePart") and d.Transparency < 0.9 then
-				low = math.min(low, d.Position.Y - d.Size.Y / 2)
-				high = math.max(high, d.Position.Y + d.Size.Y / 2)
-			end
-		end
-		if low == math.huge then return model end
 
-		local height = high - low
+		-- Model:GetBoundingBox() rather than each part's Position minus half its Size.
+		--
+		-- These prototypes are MeshParts, and a MeshPart's mesh does not fill its box: measuring part by
+		-- part put the "base" well below the visible geometry, so models that looked like they were
+		-- hovering measured as correctly planted. Two were left 1.4 and 3.75 studs in the air by exactly
+		-- that mistake. The model bounding box is what the eye sees.
+		local box, size = model:GetBoundingBox()
+		local low = box.Position.Y - size.Y / 2
+		local height = size.Y
+		if height <= 0 then return model end
 		local allowed = math.min(MAX_SUNK_STUDS, height * MAX_SUNK_FRACTION)
 
 		-- Where the ground under this model actually is. The town's own parts are excluded, or a ray
 		-- dropped near a tree finds the neighbouring canopy and calls it the floor -- which is how an
 		-- earlier measurement of this reported rocks 40 studs underground.
-		local pivot = model:GetPivot().Position
+		local pivot = box.Position
 		local probe = RaycastParams.new()
 		probe.FilterType = Enum.RaycastFilterType.Exclude
 		probe.FilterDescendantsInstances = { L.root() }
