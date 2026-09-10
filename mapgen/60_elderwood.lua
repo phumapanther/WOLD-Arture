@@ -97,17 +97,25 @@ local function shapeForest(x, z, h, fm, land)
 		shaped = shaped + (cliffNoise - 0.74) * 240 * rim
 	end
 
-	-- Lakes and hollows. Each is scooped out and flattened so it sits BELOW the wood around it.
+	-- Lakes and hollows. Each is scooped out so it sits BELOW the wood around it -- but they are scooped
+	-- to DIFFERENT shapes, and only one of them is sand.
 	local forced
 	for _, f in ipairs(FEATURES) do
 		local fw = featureWeight(f, x, z)
 		if fw > 0 then
-			local floor = h - f.depth
-			shaped = shaped * (1 - fw) + floor * fw
-			-- A lake needs a sandy shore and water in the middle; the water itself is filled after the
-			-- terrain is written, since WriteVoxels here only lays ground.
-			if fw > 0.2 then
-				forced = Enum.Material.Sand
+			if f.kind == "lake" then
+				-- A basin with a rounded bottom rather than a flat one, so the water deepens toward the
+				-- middle instead of sitting in a bathtub. fw^0.6 makes the sides steepen near the shore,
+				-- which is what gives a lake an edge you can stand at.
+				shaped = shaped - f.depth * (fw ^ 0.6)
+				-- NO forced material. The floor keeps whatever the wood has -- rock where it is steep,
+				-- grass where it is not -- which is what makes the water read as a mountain lake rather
+				-- than a puddle in a sandpit. Sanding it was the mistake: measured 23 sand columns
+				-- against 18 of water, so the lakes looked like deserts with a wet middle.
+			else
+				local floor = h - f.depth
+				shaped = shaped * (1 - fw) + floor * fw
+				if fw > 0.2 then forced = Enum.Material.Sand end
 			end
 		end
 	end
@@ -163,9 +171,15 @@ return L.runPhase("Elderwood", function(folder)
 
 	-- The REAL surface, by raycast rather than by asking L.heightAt: voxel terrain snaps to its own grid
 	-- and lands somewhere else, which buried an entire town's worth of parts once already.
+	-- Excludes THIS PHASE's own folder, so a ray dropped near a tree finds the ground rather than the
+	-- neighbouring canopy. Measured a lake "floor" at y=344 against a shore at 101 -- that 344 was a
+	-- treetop, and filling from it produced a 240-stud column of water standing in the wood.
+	--
+	-- The whole generated world is excluded, not just this folder: the town, the dummies and the caves are
+	-- all things a ray could land on, and none of them is ground.
 	local probe = RaycastParams.new()
 	probe.FilterType = Enum.RaycastFilterType.Exclude
-	probe.FilterDescendantsInstances = { folder }
+	probe.FilterDescendantsInstances = { L.root() }
 
 	local function groundAt(x, z)
 		local hit = workspace:Raycast(Vector3.new(x, 900, z), Vector3.new(0, -1400, 0), probe)
@@ -319,14 +333,30 @@ return L.runPhase("Elderwood", function(folder)
 	local lakes = 0
 	for _, f in ipairs(FEATURES) do
 		if f.kind == "lake" then
-			-- The rim height, measured rather than assumed: the ground here has just been reshaped.
-			local rimY = groundAt(f.x + f.radius * 0.95, f.z) or groundAt(f.x, f.z)
+			-- The waterline, measured rather than assumed: the ground here has just been reshaped.
+			--
+			-- Taken from the shore rather than the rim, and a little BELOW it, so the water stops short of
+			-- spilling over -- a lake filled to its rim has no bank, and every tree at the edge ends up
+			-- standing in it.
 			local floorY = groundAt(f.x, f.z)
-			if rimY and floorY then
-				local surface = floorY + (rimY - floorY) * 0.72
+			local shoreY
+			for _, a in ipairs({ 0, 90, 180, 270 }) do
+				local sx = f.x + math.cos(math.rad(a)) * f.radius
+				local sz = f.z + math.sin(math.rad(a)) * f.radius
+				local y = groundAt(sx, sz)
+				if y and (not shoreY or y < shoreY) then shoreY = y end
+			end
+			if floorY and shoreY and shoreY > floorY then
+				local surface = floorY + (shoreY - floorY) * 0.8
+				-- Filled a touch WIDER than the basin so the water meets the bank rather than leaving a
+				-- dry ring, and from well below the floor so no shallow spot is missed.
+				-- FillCylinder's axis runs along the CFrame's UP vector, so a cylinder built with no
+				-- rotation already lies flat with its height vertical. Rotating it 90 degrees stood it on
+				-- end and produced a tall column of water instead of a lake (see docs/shots/lake1.png).
+				local depth = math.max(4, surface - (floorY - 6))
 				Terrain:FillCylinder(
-					CFrame.new(f.x, (floorY + surface) / 2, f.z) * CFrame.Angles(0, 0, math.rad(90)),
-					math.max(2, surface - floorY), f.radius * 0.92, Enum.Material.Water)
+					CFrame.new(f.x, surface - depth / 2, f.z),
+					depth, f.radius * 1.02, Enum.Material.Water)
 				lakes += 1
 			end
 		end
