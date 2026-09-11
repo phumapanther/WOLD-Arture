@@ -9,6 +9,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local Inventory = require(game.ServerScriptService.Inventory)
+local WeaponVisualsAccess = require(game.ServerScriptService.WeaponVisualsAccess)
 
 if ServerConfig.IsLobby then return end
 
@@ -66,23 +67,58 @@ local GRIP = {
 	-- the torso instead. Attached to the hand it sat off to one side (measured x=2.5 instead of centred).
 	Spellbook = CFrame.new(0, 0.4, -2) * CFrame.Angles(math.rad(-70), 0, 0),
 }
--- Which body part each weapon joints to. Anything not listed here is held in the hand.
+-- Which body part each weapon joints to WHILE FIGHTING. Anything not listed here is held in the hand.
+--
+-- These two are the exception because their attack poses put them in front of the chest rather than in a
+-- fist: the spellbook floats open between both hands, and the staff is brought across the body. Jointed to
+-- the hand they went where the hand went, which is off to one side (measured: spellbook at x=2.5 instead of
+-- centred).
 local ATTACH_TO = {
-	-- The spellbook is the only one that floats: it hangs off the chest between the open hands. Everything
-	-- else is gripped, so it goes to the hand (the default) and moves with it under animation.
 	Spellbook = "UpperTorso",
 	Staff = "UpperTorso",
 }
+
+-- ...but that is only right while the attack pose is up.
+--
+-- Out of combat there is no pose holding the arms in place, so a book hanging in front of a chest that is
+-- walking normally looks like it is stuck to the character rather than carried by them. Carried in the right
+-- hand it reads as something a person is holding.
+--
+-- So both of these move: hand while idle, chest while fighting. The grip differs too, because a thing held
+-- at arm's length needs a different offset from one floating at the sternum.
+local CARRY_GRIP = {
+	-- Tucked against the palm with its spine down, the way a book is carried rather than read.
+	Spellbook = CFrame.new(0, -0.6, 0) * CFrame.Angles(math.rad(-90), 0, math.rad(90)),
+	-- Upright in the fist, ornamented head up, the way a walking staff is carried.
+	Staff = CFrame.new(0, -1.6, 0) * CFrame.Angles(math.rad(-90), 0, 0),
+}
 local DEFAULT_GRIP = CFrame.new(0, -1, 0) * CFrame.Angles(math.rad(-90), 0, 0)
 
--- Where a given weapon should be jointed: the hand by default, the torso for the floating spellbook.
-local function anchorPartFor(character, weaponId)
-	local wanted = ATTACH_TO[weaponId]
+-- Who is currently mid-attack, so the two chest-mounted weapons know which way round they should be.
+-- Cleared by a timer rather than by an "attack ended" event, because there is no such event: an attack is
+-- a moment, and the pose that follows it lets go on its own.
+local Fighting = {}
+
+-- Matches STANCE_SECONDS in CombatController, which is how long the attack pose lingers on the client. If
+-- the two disagree the weapon snaps back to the hand while the arms are still posed, or hangs at the chest
+-- after they have relaxed.
+local STANCE_SECONDS = 1.5
+
+-- Where a given weapon should be jointed. The hand by default; the chest for the spellbook and staff, but
+-- only while their attack pose is actually up.
+local function anchorPartFor(character, weaponId, fighting)
+	local wanted = fighting and ATTACH_TO[weaponId] or nil
 	if wanted then
 		local part = character:FindFirstChild(wanted)
 		if part then return part end
 	end
 	return character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm")
+end
+
+-- And the offset that goes with wherever it ended up.
+local function gripFor(weaponId, fighting)
+	if not fighting and CARRY_GRIP[weaponId] then return CARRY_GRIP[weaponId] end
+	return GRIP[weaponId] or DEFAULT_GRIP
 end
 
 local function clearHeldWeapon(character)
@@ -102,8 +138,9 @@ local function holdWeapon(player, weaponId)
 	clearHeldWeapon(character)
 	if not weaponId or not PREFABS then return end
 
+	local fighting = Fighting[player] == true
 	local prefab = PREFABS:FindFirstChild(weaponId)
-	local anchor = anchorPartFor(character, weaponId)
+	local anchor = anchorPartFor(character, weaponId, fighting)
 	if not prefab or not anchor then return end
 
 	local model = prefab:Clone()
@@ -121,7 +158,7 @@ local function holdWeapon(player, weaponId)
 	motor.Name = "WeaponGrip"
 	motor.Part0 = anchor
 	motor.Part1 = root
-	motor.C0 = GRIP[weaponId] or DEFAULT_GRIP
+	motor.C0 = gripFor(weaponId, fighting)
 	motor.Parent = anchor
 end
 
@@ -175,3 +212,46 @@ for _, player in ipairs(Players:GetPlayers()) do
 	refreshUntilArmed(player)
 	if player.Character then task.spawn(refresh, player) end
 end
+
+--------------------------------------------------------------------------------
+-- Moving the chest-mounted weapons between the hand and the chest
+--------------------------------------------------------------------------------
+
+-- Only the spellbook and the staff care, so only an attack with one of those rebuilds anything. Every other
+-- weapon is in the hand either way, and re-jointing it on every swing would be work for nothing.
+local function movesWhileFighting(player)
+	local item, entry = Inventory.EquippedWeapon(player)
+	local id = (item and entry) and entry.id or nil
+	return id ~= nil and ATTACH_TO[id] ~= nil
+end
+
+-- Bumped on every attack so a second swing during the countdown extends the pose rather than the first
+-- swing's timer dropping the weapon back to the hand while the arms are still raised.
+local stanceToken = {}
+
+-- CombatStateChanged is fired BY the server at clients, so it cannot be listened to here. WeaponVisuals is
+-- told directly instead, through a function PlayerCombat calls -- the same hand-off pattern the rest of the
+-- server uses rather than a second copy of the combat state.
+local function onAttack(player)
+	if not movesWhileFighting(player) then return end
+
+	local wasFighting = Fighting[player] == true
+	Fighting[player] = true
+	-- Only rebuild when it actually moves. A chain of swings should not re-joint the weapon on every one.
+	if not wasFighting then refresh(player) end
+
+	stanceToken[player] = (stanceToken[player] or 0) + 1
+	local mine = stanceToken[player]
+	task.delay(STANCE_SECONDS, function()
+		if stanceToken[player] ~= mine then return end
+		Fighting[player] = nil
+		if player.Parent then refresh(player) end
+	end)
+end
+
+WeaponVisualsAccess.OnAttack = onAttack
+
+Players.PlayerRemoving:Connect(function(player)
+	Fighting[player] = nil
+	stanceToken[player] = nil
+end)

@@ -21,6 +21,7 @@ local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
 local Progression = require(game.ServerScriptService.Progression)
 local Inventory = require(game.ServerScriptService.Inventory)
+local WeaponVisualsAccess = require(game.ServerScriptService.WeaponVisualsAccess)
 local Vitals = require(game.ServerScriptService.Vitals)
 local Consuming = require(game.ServerScriptService.Consuming)
 local StatusEffects = require(game.ServerScriptService.StatusEffects)
@@ -504,6 +505,13 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	-- just the shooter, so a player can also see that someone else is lining a shot up on them.
 	Remotes.CombatStateChanged:FireAllClients(player, "attack", state.chainIndex,
 		attack.projectile and attack.windup or nil)
+
+	-- The spellbook and the staff move from the hand to the chest for the duration of their attack pose;
+	-- WeaponVisuals owns that and needs telling, since CombatStateChanged is fired at clients and cannot be
+	-- listened to here. Guarded because the hand-off is nil until WeaponVisuals has published itself.
+	if WeaponVisualsAccess.OnAttack then
+		WeaponVisualsAccess.OnAttack(player)
+	end
 end)
 
 Players.PlayerAdded:Connect(function(player)
