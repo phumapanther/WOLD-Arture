@@ -62,13 +62,22 @@ FishingConfig.MaxKg = 50
 -- twenty-five seconds, about two hours of fishing -- which is the "rare and exciting" that was asked for.
 -- Purple is the number to move if it ever feels common: it is the steepest part of the curve, and raising 42
 -- to 45 roughly halves it.
+-- Three colours, not six.
+--
+-- A six-rung ladder meant most catches were coloured something, which is the same as none of them being
+-- coloured: a green fish every other cast is just what a fish looks like. Blue, red and purple only, with
+-- everything below blue staying the card's usual cream -- so a colour means the fish is worth keeping.
+--
+-- The cuts are placed against the measured distribution rather than by spacing 1-50 evenly. Over 40,000
+-- simulated catches: blue lands about 1 in 14, red 1 in 59, purple 1 in 246.
+--
+-- `big` marks the tiers that count as a trophy. That flag is what decides whether the weight is recorded on
+-- the item at all, which in turn decides whether it stacks -- see the note in Fishing.server.
 FishingConfig.KgTiers = {
-	{ from = 0,  color = Color3.fromRGB(255, 226, 170), name = "" },   -- plain: the card's usual cream
-	{ from = 5,  color = Color3.fromRGB(126, 217, 87),  name = "ตัวใหญ่" },
-	{ from = 11, color = Color3.fromRGB(88, 168, 255),  name = "ตัวโต" },
-	{ from = 19, color = Color3.fromRGB(255, 200, 60),  name = "ตัวยักษ์" },
-	{ from = 30, color = Color3.fromRGB(240, 88, 76),   name = "ขนาดมหึมา" },
-	{ from = 42, color = Color3.fromRGB(180, 110, 255), name = "ตำนาน" },
+	{ from = 0,  color = Color3.fromRGB(255, 226, 170), name = "", big = false },
+	{ from = 19, color = Color3.fromRGB(88, 168, 255),  name = "ตัวใหญ่", big = true },
+	{ from = 30, color = Color3.fromRGB(240, 88, 76),   name = "ตัวมหึมา", big = true },
+	{ from = 42, color = Color3.fromRGB(180, 110, 255), name = "ตำนาน", big = true },
 }
 
 function FishingConfig.TierFor(kg)
@@ -77,6 +86,13 @@ function FishingConfig.TierFor(kg)
 		if kg >= tier.from then found = tier end
 	end
 	return found
+end
+
+-- Is this catch a trophy? Answered by asking the tier rather than comparing against a number written here
+-- as well, so moving a threshold above cannot leave a second copy behind disagreeing with it.
+function FishingConfig.IsBig(kg)
+	local tier = FishingConfig.TierFor(kg)
+	return tier ~= nil and tier.big == true
 end
 
 -- How rare a fish is, from 0 for the commonest in the loot table to 1 for the rarest. Read off the loot

@@ -51,10 +51,28 @@ task.spawn(function()
 end)
 
 -- What the shop pays for one of `id`. Always at least 1, so a cheap material is never literally worthless.
-local function buyPrice(id)
+-- What the shop pays for one of `id`. `meta` is the slot's per-item data when it has any, which is how a
+-- trophy fish's weight reaches the price.
+--
+-- Taking meta rather than reading the slot means every caller goes through the same arithmetic: the price
+-- shown in the window, the price paid on a single sell, and the price paid by "sell everything" cannot
+-- drift apart, which they would the moment one of the three computed its own.
+local function buyPrice(id, meta)
 	local item = ItemCatalog.Get(id)
 	if not item or not ShopConfig.Buys[item.kind] then return nil end
 	local base = (item.value or 0) * ShopConfig.BuyFraction * (Multipliers[id] or 1)
+
+	-- A heavy fish is worth more than a small one, because otherwise the weight is decoration: a 45 kg
+	-- legendary and a 1 kg minnow fetched the same coins, and the only reason to keep the big one was to
+	-- look at it.
+	--
+	-- Paid per kilo on top of the base rather than as a multiplier of it, so the size is what is being
+	-- bought. A fish with no recorded weight -- every common one, which does not carry meta so that it can
+	-- still stack -- is priced exactly as it was before.
+	if meta and type(meta.kg) == "number" then
+		base += meta.kg * ShopConfig.GoldPerKg
+	end
+
 	return math.max(1, math.floor(base + 0.5))
 end
 
@@ -97,7 +115,7 @@ local function snapshot(player)
 	local state = Inventory.Get(player)
 	if state then
 		for slotIndex, slot in pairs(state.slots) do
-			local price = buyPrice(slot.id)
+			local price = buyPrice(slot.id, slot.meta)
 			if price then
 				local item = ItemCatalog.Get(slot.id)
 				table.insert(buys, {
@@ -184,7 +202,7 @@ Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, 
 	elseif action == "sell" then
 		local slot = state.slots[index]
 		if not slot then return end
-		local price = buyPrice(slot.id)
+		local price = buyPrice(slot.id, slot.meta)
 		if not price then
 			return Remotes.SocialNotify:FireClient(player, "error", "ร้านไม่รับซื้อของชิ้นนี้")
 		end
@@ -209,7 +227,7 @@ Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, 
 		-- time would still be reading the table it is changing.
 		local sellable = {}
 		for slotIndex, slot in pairs(state.slots) do
-			local price = buyPrice(slot.id)
+			local price = buyPrice(slot.id, slot.meta)
 			if price then
 				table.insert(sellable, { index = slotIndex, count = slot.count or 1, price = price })
 			end

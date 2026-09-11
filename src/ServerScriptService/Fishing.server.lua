@@ -360,10 +360,18 @@ local function startFishing(player)
 			local kg = FishingConfig.RollKg(caught)
 			local tier = FishingConfig.TierFor(kg)
 
+			-- Only a TROPHY carries its weight into the bag.
+			--
 			-- The kilograms ride in the slot's `meta`, which is the only per-item store the bag has -- the
-			-- same shape a vehicle key's plate uses. That carries a real cost: see the note by AddItem, a
-			-- slot with meta never merges, so every fish takes a slot of its own.
-			if Inventory.AddItem(player, caught, 1, nil, { kg = kg }) then
+			-- same shape a vehicle key's plate uses -- and a slot carrying meta never merges into a stack.
+			-- Recording every catch therefore meant a fishing trip filling ninety-nine slots where it used
+			-- to fill one, which turns bag space into the thing that ends a session.
+			--
+			-- So the common fish stack as they always did and are simply fish, while anything from the blue
+			-- tier up keeps its weight, its colour and its own slot. The size still shows on the card either
+			-- way, so nothing is hidden -- it just is not hoarded.
+			local meta = FishingConfig.IsBig(kg) and { kg = kg } or nil
+			if Inventory.AddItem(player, caught, 1, nil, meta) then
 				showCatch(player, caught, kg)
 				Remotes.SocialNotify:FireClient(player, "info",
 					("ตกได้ %s %.1f กก.%s"):format(item and item.name or caught, kg,

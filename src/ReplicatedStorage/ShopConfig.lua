@@ -31,6 +31,14 @@ ShopConfig.Buys = { junk = true }
 -- Prices drift so the same material is not worth the same forever. Rerolled on a timer shared by the whole
 -- server, not per player, so everyone standing at the counter sees one price.
 ShopConfig.PriceSwing = 0.35 -- +/- 35% around the catalog value
+
+-- Coins paid per kilogram on a fish that carries a recorded weight.
+--
+-- Only trophies carry one, so this never touches a common catch. Added on top of the base rather than
+-- multiplying it, which keeps the species the bigger part of the price: a 42 kg legendary common fish is
+-- worth about 130 against its usual 5, and still well under a shark's 190 -- so a lucky monster of a minnow
+-- is a good day, not a reason to stop fishing for anything rarer.
+ShopConfig.GoldPerKg = 3
 ShopConfig.RerollSeconds = 1800 -- half an hour, as asked
 
 return ShopConfig

@@ -118,14 +118,15 @@ GatherConfig.WeaponDrops = {
 	"Sword", "Bow", "Staff", "Spellbook", "Axe", "Pickaxe", "Shovel", "FishingRod",
 }
 
--- How often a special slime gives up a weapon. One kill in ten.
-GatherConfig.SpecialWeaponChance = 0.10
-
--- Ore and crystal sit ABOVE the weapon chance and below a certainty, which is the order the user asked
--- for: low, but likelier than the weapon. Iron is the commoner of the two because crystal is worth more
--- than twice as much in the shop and is wanted three at a time by the pistol recipe.
-GatherConfig.SpecialOreChance = 0.35
-GatherConfig.SpecialCrystalChance = 0.22
+-- How often a named slime gives up each of its drops. The user set these four numbers directly.
+--
+-- They are CHANCES, and the amounts stay what they always were -- two to four lumps of goo, one to three
+-- iron, one to two crystal. The order is what each is worth to someone trying to craft: goo most often,
+-- then iron, then crystal, with the weapon the thing you actually hope for.
+GatherConfig.SpecialSlimeChance = 0.70
+GatherConfig.SpecialOreChance = 0.15
+GatherConfig.SpecialCrystalChance = 0.10
+GatherConfig.SpecialWeaponChance = 0.05
 
 -- Three named slimes, tougher than the green one and worth hunting. They share the green slime's sounds
 -- and its shape; what makes them different is that they hit harder, take longer to come back, and can
@@ -157,10 +158,7 @@ local function special(name, colour, extra)
 		hitSound = "rbxassetid://127637727363472",
 		dieSound = "rbxassetid://96214777896458",
 		drops = {
-			{ item = "Slime", min = 2, max = 4 },
-			-- Ore and crystal: uncommon, but a good deal more likely than the weapon. A named slime is a
-			-- long walk and a thirty-minute wait, so a trip that yields nothing but goo is a wasted one --
-			-- these are what make the walk pay for itself while the weapon stays the thing you hope for.
+			{ item = "Slime", min = 2, max = 4, chance = GatherConfig.SpecialSlimeChance },
 			{ item = "IronOre", min = 1, max = 3, chance = GatherConfig.SpecialOreChance },
 			{ item = "Crystal", min = 1, max = 2, chance = GatherConfig.SpecialCrystalChance },
 			-- One roll, one weapon out of the eight. Without oneOf this would drop all of them at once.
