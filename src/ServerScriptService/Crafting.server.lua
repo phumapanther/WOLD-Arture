@@ -136,6 +136,9 @@ local function snapshot(player)
 				index = index, tab = recipe.tab, id = recipe.id, name = item.name,
 				icon = item.icon, materials = materials, affordable = affordable,
 				chance = recipe.chance or 1, gold = fee, goldHave = purse,
+				-- So the row can say "x8" before the player commits, rather than the batch being a surprise
+				-- that only shows up in the bag afterwards.
+				yields = recipe.yields or 1,
 			})
 		end
 	end
@@ -199,7 +202,11 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 	-- protects the player instead is asking the bag up front whether the result would fit, and refusing the
 	-- whole attempt if it would not -- otherwise a successful craft could burn the materials and then find
 	-- nowhere to put the sword.
-	if not Inventory.HasRoomFor(player, recipe.id, 1) then
+	-- How many this recipe makes. Read from the recipe rather than assumed to be one, and checked for room
+	-- at its full size: a batch of eight bullets needs somewhere to put eight.
+	local yields = recipe.yields or 1
+
+	if not Inventory.HasRoomFor(player, recipe.id, yields) then
 		return Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม")
 	end
 
@@ -241,7 +248,7 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 			return
 		end
 
-		if not Inventory.AddItem(player, recipe.id, 1) then
+		if not Inventory.AddItem(player, recipe.id, yields) then
 			-- The bag had room when the attempt started and does not now, which means the player filled it
 			-- from somewhere else mid-swing. Rare, and the honest thing is to say so rather than pretend.
 			Remotes.CraftFinished:FireClient(player, index, false)
@@ -250,7 +257,9 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 		end
 
 		Remotes.CraftFinished:FireClient(player, index, true)
-		Remotes.SocialNotify:FireClient(player, "info", ("สร้าง %s สำเร็จ"):format(item.name))
+		Remotes.SocialNotify:FireClient(player, "info", yields > 1
+			and ("สร้าง %s x%d สำเร็จ"):format(item.name, yields)
+			or ("สร้าง %s สำเร็จ"):format(item.name))
 
 		-- The window redraws from a fresh snapshot rather than patching itself, so the have-counts on every
 		-- other recipe sharing a material move at the same moment this one's do.

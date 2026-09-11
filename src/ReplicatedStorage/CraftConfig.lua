@@ -39,9 +39,13 @@ CraftConfig.Recipes = {
 
 	-- Bullets moved off the weapon bench and in here with the everyday goods, where a near-certain 95% is
 	-- what makes ammunition something you top up rather than gamble on.
-	{ id = "Bullet", tab = "misc", chance = 0.95, gold = 300,
+	-- `yields` is how many come out of one attempt; absent means one, which is what every other recipe
+	-- wants. Ammunition and medicine are made in batches because a single bullet for 300 gold and twenty
+	-- iron would be a worse deal than buying one, and the crafting bench should not be the expensive way to
+	-- get something.
+	{ id = "Bullet", tab = "misc", chance = 0.95, gold = 300, yields = 8,
 		cost = { IronOre = 10, Bone = 15, Stone = 20 } },
-	{ id = "HealthPotion", tab = "misc", chance = 0.95, gold = 500,
+	{ id = "HealthPotion", tab = "misc", chance = 0.95, gold = 500, yields = 2,
 		cost = { Crystal = 10, Herb = 15 } },
 
 	{ id = "ChainmailArmor", tab = "armor", chance = 0.75, gold = 6000,

@@ -266,7 +266,11 @@ local function recipeRow(parent, order, entry, onClick)
 	label.TextColor3 = TEXT_LIGHT
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.TextTruncate = Enum.TextTruncate.AtEnd
-	label.Text = entry.name
+	-- A batch says so on the row. Without it the only clue that one press makes eight bullets is counting
+	-- them in the bag afterwards.
+	label.Text = (entry.yields or 1) > 1
+		and ("%s  x%d"):format(entry.name, entry.yields)
+		or entry.name
 	label.Parent = frame
 
 	for i, material in ipairs(entry.materials) do
