@@ -39,9 +39,7 @@ VitalsConfig.FallDamagePerStud = 3
 VitalsConfig.VoidY = -200
 
 VitalsConfig.DownedSeconds = 10 * 60 -- the countdown shown in the centre of the screen
--- Crawling. Deliberately slower than the deliberate walk (6), so being floored is always the slowest way to
--- move -- at equal speeds a downed player would crawl as fast as someone choosing to walk.
-VitalsConfig.DownedWalkSpeed = 4
+VitalsConfig.DownedWalkSpeed = 6 -- crawling pace
 VitalsConfig.DownedHipHeight = 0.6 -- lowers the capsule so the prone body rests near the floor
 VitalsConfig.RespawnInvulnSeconds = 10 -- blinking, immune to every damage source
 

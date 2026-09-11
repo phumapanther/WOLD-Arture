@@ -15,9 +15,7 @@ local Remotes = require(game.ReplicatedStorage.Remotes)
 -- the value back through Vitals.GetStamina. The lobby has no vitals at all, so the machine idles there.
 local ACTIVE = not ServerConfig.IsLobby
 
--- The user's numbers. Faster across the board than the Roblox default of 16, which suits a map this size:
--- the walk from Brasshaven to the keep is thousands of studs, and at 8 it was a chore rather than a journey.
-local SPEED = { Normal = 14, Walk = 6, Run = 21 }
+local SPEED = { Normal = 8, Walk = 4, Run = 16 }
 local STAMINA_DRAIN_PER_SEC = 20 -- empties in ~5s from full
 local STAMINA_REGEN_PER_SEC = 100 / 3 -- fills in ~3s from empty
 local FORCED_WALK_SECONDS = 2
