@@ -477,12 +477,23 @@ K.builders = {}
 K.REGISTER_ONLY = false
 
 -- raise a registered model into `parent` and set it down on `cf`: base at cf, front along cf's -Z
+-- True only while K.place is running a builder, so a builder can tell the difference between being made for
+-- the world and being made for the showcase. The showcase seats each model on a dark disc; out in the world
+-- that disc is a black plate stuck to the model's feet, following it around.
+--
+-- REGISTER_ONLY cannot answer this: it is true while the builders are being FILED AWAY and false again by
+-- the time one of them actually runs, so a builder reading it during a place always sees false.
+K.IN_WORLD = false
+
 function K.place(name, parent, cf)
   local b = K.builders[name]
   if not b then warn("[MODELKIT] no builder named " .. tostring(name)); return nil end
   local m = Instance.new("Model")
   m.Name = name
-  b.fn(m)
+  K.IN_WORLD = true
+  local ok, err = pcall(b.fn, m)
+  K.IN_WORLD = false
+  if not ok then warn("[MODELKIT] " .. name .. " failed: " .. tostring(err)); m:Destroy(); return nil end
   local anchor = Instance.new("Part")
   anchor.Name = "Root"; anchor.Size = Vector3.new(1, 1, 1); anchor.CFrame = CFrame.new(0, 0, 0)
   anchor.Transparency = 1; anchor.CanCollide = false; anchor.Anchored = true; anchor.Massless = true

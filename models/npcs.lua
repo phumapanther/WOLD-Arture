@@ -35,7 +35,15 @@ local function glow(part, color, range, brightness)
   return l
 end
 
+-- The dark disc a figure stands on.
+--
+-- It belongs to the SHOWCASE, where models are lined up one per pad and the disc is what visually seats each
+-- one. Out in the world it is a black plate stuck to a monster's feet, following it around -- which is
+-- exactly what the user saw under the slimes.
+--
+-- K.IN_WORLD is set by K.place while it runs a builder, which is exactly the case where the disc is wrong.
 local function pedestal(m, r)
+  if K.IN_WORLD then return end
   K.cyl(m, CFrame.new(0, 0.2, 0), r or 1.7, 0.4, MAT.Slate, rgb(45, 45, 52), { name = "Pedestal" })
 end
 
@@ -316,7 +324,11 @@ end)
 -- ===================================================================== SLIMES
 -- the jelly lives in a "Body" child so SlimeController can bob and hop it while the pedestal stays put
 local function slimeBody(m, size, jelly, mat, trans)
-  K.cyl(m, CFrame.new(0, 0.2, 0), size * 0.62, 0.4, MAT.Slate, rgb(35, 35, 40), { name = "Pedestal" })
+  -- Showcase only, for the same reason as the one above: a slime that hops around the world should not drag
+  -- a black plate along under it.
+  if not K.IN_WORLD then
+    K.cyl(m, CFrame.new(0, 0.2, 0), size * 0.62, 0.4, MAT.Slate, rgb(35, 35, 40), { name = "Pedestal" })
+  end
   local body = K.model(m, "Body")
   local r = size / 2
   local C0 = CFrame.new(0, 0.4 + r, 0)
