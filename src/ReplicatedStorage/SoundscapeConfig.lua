@@ -238,6 +238,11 @@ SoundscapeConfig.Interface = {
 	Drink = "rbxassetid://139274681710432",
 	Hammer = "rbxassetid://114020474816962",
 
+	-- The forge working. Looped for as long as a craft takes rather than played once, because the wait is
+	-- the point: the bar filling and the sound running are the same piece of feedback, and a single clang
+	-- against a two-and-a-half-second wait would leave most of it silent.
+	Craft = "rbxassetid://99358431994374",
+
 	-- Money changing hands: giving, robbing, a fine paid, a trade closing. Heard by both parties, since a
 	-- transfer is a thing that happens between two people rather than to one.
 	Coin = "rbxassetid://117316732298294",

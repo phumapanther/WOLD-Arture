@@ -29,17 +29,33 @@ Remotes.CraftOpen.OnClientEvent:Connect(function(snapshot)
 	gui:Show(snapshot)
 end)
 
+-- The forge, running for as long as the craft does.
+--
+-- Held here rather than inside UiSound because only this file knows when the work stops: UiSound.Loop hands
+-- back a Sound and leaves the caller to end it, the same way the ringtone works.
+local forgeSound = nil
+
+local function stopForge()
+	if not forgeSound then return end
+	forgeSound:Stop()
+	forgeSound:Destroy()
+	forgeSound = nil
+end
+
 -- The hammer starts. Fired only for an attempt the server accepted and already charged, so this is the point
 -- at which the sound is honest -- a refused craft comes back as a SocialNotify and nothing else, and stays
 -- silent.
 Remotes.CraftStarted.OnClientEvent:Connect(function(index, seconds)
-	UiSound.Play("Hammer")
+	-- A second craft should not stack a second loop on top of the first.
+	stopForge()
+	forgeSound = UiSound.Loop("Craft")
 	gui:Begin(index, seconds)
 end)
 
 -- The answer. The window shows it on the row; the wording of what was lost or gained comes separately as a
 -- SocialNotify from the server, which is also what reaches a player who closed the window mid-swing.
 Remotes.CraftFinished.OnClientEvent:Connect(function(index, success)
+	stopForge()
 	gui:Finish(index, success)
 end)
 
@@ -53,6 +69,10 @@ task.spawn(function()
 			local character = Players.LocalPlayer.Character
 			local root = character and character:FindFirstChild("HumanoidRootPart")
 			if not root then
+				-- Leaving mid-craft must take the sound with it, or the forge follows the player around
+				-- ringing. The craft itself still finishes on the server -- the materials were spent when
+				-- the hammer started -- and its result arrives as a SocialNotify.
+				stopForge()
 				gui:Hide()
 			else
 				local near = false
@@ -62,7 +82,10 @@ task.spawn(function()
 						if (position - root.Position).Magnitude <= 16 then near = true break end
 					end
 				end
-				if not near then gui:Hide() end
+				if not near then
+					stopForge()
+					gui:Hide()
+				end
 			end
 		end
 	end
