@@ -70,7 +70,16 @@ Remotes.ChannelList.OnClientEvent:Connect(applySnapshot)
 
 local pendingJoin = 0 -- bumped on every click; a timeout only acts if it's still the most recent attempt
 
-local function resetToError()
+-- How long to wait for ANY word from the server before unsticking the button.
+--
+-- Sixty seconds rather than fifteen. A cross-server teleport reserving a fresh server can take far longer
+-- than fifteen, and the old value was declaring those a failure while they were still in progress.
+local JOIN_TIMEOUT = 60
+
+-- Put the lobby back the way it was, and say why. `status` is "error" when the server actually refused, and
+-- "slow" when the clock simply ran out -- which is not the same claim, because a slow teleport is usually
+-- still coming.
+local function resetToLobby(status)
 	-- ponytail: reset every Roleplay row's status rather than tracking which one was mid-join (only ever one in
 	-- flight per client); Stories/Tanding aren't real per-channel tables (see ChannelSelectGui.new), so they're excluded.
 	locked = false
@@ -78,14 +87,14 @@ local function resetToError()
 	-- Still in the lobby after all, so the music comes back with the screen.
 	workspace:SetAttribute("WOLD_MusicFadeOut", false)
 	for channel in pairs(gui.rows.Roleplay) do
-		gui:SetRowStatus("Roleplay", channel, "error")
+		gui:SetRowStatus("Roleplay", channel, status or "error")
 	end
 end
 
 Remotes.JoinFailed.OnClientEvent:Connect(function(reason)
 	warn("[ChannelSelect] join failed:", reason)
 	pendingJoin += 1 -- a real answer arrived; any in-flight timeout for this attempt should no-op
-	resetToError()
+	resetToLobby("error")
 end)
 
 local function onJoin(mode, channel)
@@ -101,12 +110,22 @@ local function onJoin(mode, channel)
 	Remotes.JoinChannel:FireServer(mode, channel)
 	pendingJoin += 1
 	local myAttempt = pendingJoin
-	task.delay(15, function()
-		-- covers any case the server never answers at all (e.g. Studio's TeleportService 403 doesn't reach
-		-- TeleportInitFailed) so the button never gets stuck on "connecting..." forever
+	task.delay(JOIN_TIMEOUT, function()
+		-- The last-resort net, for the case where the server never answers at all -- Studio's TeleportService
+		-- 403, for instance, does not reach TeleportInitFailed -- so the button cannot sit on
+		-- "connecting..." for ever.
+		--
+		-- It is NOT a judgement that the join failed, and it used to fire after fifteen seconds, which is
+		-- well inside the time a real cross-server teleport can take. The result was a player being told
+		-- "เชื่อมต่อไม่สำเร็จ" and then being teleported into the game a moment later anyway, by the very
+		-- attempt that had just been declared dead.
+		--
+		-- A genuine failure has its own path: the server watches TeleportInitFailed and sends JoinFailed,
+		-- which arrives in a fraction of a second. So this only has to outlast a slow success, and being
+		-- generous here costs nothing.
 		if pendingJoin == myAttempt then
 			warn("[ChannelSelect] join timed out waiting for a server response")
-			resetToError()
+			resetToLobby("slow")
 		end
 	end)
 end

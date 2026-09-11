@@ -406,7 +406,16 @@ end
 function ChannelSelectGui:SetRowStatus(mode, channel, status)
 	local row = self.rows[mode] and self.rows[mode][channel]
 	if not row then return end
-	local text = { idle = "", connecting = "กำลังเชื่อมต่อ...", error = "เชื่อมต่อไม่สำเร็จ ลองอีกครั้ง" }
+	-- "error" is for a refusal the server actually reported. "slow" is for the timeout, which is a different
+	-- thing and must not claim the join failed: a teleport that outruns the clock is usually still on its
+	-- way, and telling the player it failed a moment before dropping them into the game is a lie the screen
+	-- then contradicts.
+	local text = {
+		idle = "",
+		connecting = "กำลังเชื่อมต่อ...",
+		slow = "ใช้เวลานานกว่าปกติ กดใหม่ได้",
+		error = "เชื่อมต่อไม่สำเร็จ ลองอีกครั้ง",
+	}
 	row.statusLabel.Text = text[status] or ""
 	row.joinButton.Active = (status ~= "connecting") and not self._locked
 end

@@ -70,7 +70,10 @@ local function buyPrice(id, meta)
 	-- bought. A fish with no recorded weight -- every common one, which does not carry meta so that it can
 	-- still stack -- is priced exactly as it was before.
 	if meta and type(meta.kg) == "number" then
-		base += meta.kg * ShopConfig.GoldPerKg
+		-- Multiplied by the same drift as the base, so a trophy fish rises and falls with the market like
+		-- everything else. Left out of the drift it would have been a fixed floor under the price, and a big
+		-- fish would have been oddly steady on a day when every other catch had moved.
+		base += meta.kg * ShopConfig.GoldPerKg * (Multipliers[id] or 1)
 	end
 
 	return math.max(1, math.floor(base + 0.5))

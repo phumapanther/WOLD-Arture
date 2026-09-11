@@ -7,6 +7,7 @@
 -- an INDEX into that list and carries nothing else -- no item id, no material, no quantity. There is nothing
 -- in the request for a modified client to lie about.
 local CollectionService = game:GetService("CollectionService")
+local Players = game:GetService("Players")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 
 if ServerConfig.IsLobby then return end
@@ -54,6 +55,14 @@ end
 -- The slot list is collected before anything is removed rather than iterated while removing, for the reason
 -- the shop's "sell all" gives: RemoveFromSlot empties slots, and walking a table while emptying it is reading
 -- the thing you are changing.
+-- Who is mid-swing. The hammer takes a couple of seconds and the button stays clickable, so without this a
+-- player could spend one set of materials several times over.
+local Busy = {}
+
+Players.PlayerRemoving:Connect(function(player)
+	Busy[player] = nil
+end)
+
 local function takeMaterial(player, state, id, count)
 	local found = {}
 	for index, slot in pairs(state.slots) do
@@ -93,6 +102,7 @@ end
 -- craftable -- the greyed-out row and the refusal come from the same numbers.
 local function snapshot(player)
 	local state = Inventory.Get(player)
+	local purse = state and state.gold or 0
 
 	local recipes = {}
 	for index, recipe in ipairs(CraftConfig.Recipes) do
@@ -112,9 +122,19 @@ local function snapshot(player)
 			-- materials on a row between one redraw and the next. Sorted by id so a row looks the same twice.
 			table.sort(materials, function(a, b) return a.id < b.id end)
 
+			-- Coin is a cost like any other material, so a row the player cannot pay the smith for is greyed
+			-- the same way one they lack iron for is. Without this the button would invite a craft the server
+			-- had already decided to refuse.
+			local fee = recipe.gold or 0
+			if purse < fee then affordable = false end
+
+			-- The odds and the fee ride down with the row for the same reason the have-counts do: the player is
+			-- being asked to gamble materials and coin, and the numbers they read before pressing have to be
+			-- the ones the server will actually charge and roll. The client never opens CraftConfig itself.
 			table.insert(recipes, {
 				index = index, tab = recipe.tab, id = recipe.id, name = item.name,
 				icon = item.icon, materials = materials, affordable = affordable,
+				chance = recipe.chance or 1, gold = fee, goldHave = purse,
 			})
 		end
 	end
@@ -156,27 +176,78 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 		end
 	end
 
-	-- The product is given BEFORE the materials are taken, the same way the shop hands over goods before it
-	-- charges: whichever side can fail has to go first. Adding can fail on a full bag; removing from a slot
-	-- that was just counted cannot. Done the other way round, a full bag would swallow the materials and
-	-- hand back nothing.
+	-- The smith's fee, checked in the same breath as the materials so a player short of coin is told before
+	-- anything is spent rather than after.
+	local fee = recipe.gold or 0
+	if fee > 0 and (state.gold or 0) < fee then
+		return Remotes.SocialNotify:FireClient(player, "error",
+			("เงินไม่พอ ต้องมี %d"):format(fee))
+	end
+
+	-- Room for the result has to be checked BEFORE the hammer starts, not after.
 	--
-	-- ponytail: the cost of that ordering is that a completely full bag refuses a craft which would in fact
-	-- have freed a slot by consuming a whole stack. Refusing is the safe direction -- the player keeps their
-	-- materials and drops one thing -- and the alternative is taking the materials first and needing a way to
-	-- put them all back when the add fails. Worth revisiting only if players actually hit it.
-	if not Inventory.AddItem(player, recipe.id, 1) then
+	-- The materials are consumed whether the attempt works or not, so there is no ordering trick available
+	-- any more: the product cannot be handed over first, because most of the time there is no product. What
+	-- protects the player instead is asking the bag up front whether the result would fit, and refusing the
+	-- whole attempt if it would not -- otherwise a successful craft could burn the materials and then find
+	-- nowhere to put the sword.
+	if not Inventory.HasRoomFor(player, recipe.id, 1) then
 		return Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม")
 	end
+
+	-- One craft at a time. The hammer takes a couple of seconds and the player is free to press the button
+	-- again during it, which without this would spend the materials twice over from one set.
+	if Busy[player] then
+		return Remotes.SocialNotify:FireClient(player, "error", "กำลังตีอยู่ รอสักครู่")
+	end
+	Busy[player] = true
+
+	-- Taken NOW rather than after the wait, so walking away or logging out mid-swing cannot dodge the cost.
+	-- The fee goes with them: the smith is paid for the attempt, not for the result.
 	for material, need in pairs(recipe.cost) do
 		takeMaterial(player, state, material, need)
 	end
+	if fee > 0 then
+		Inventory.AddGold(player, -fee)
+	end
 
-	Remotes.SocialNotify:FireClient(player, "info", ("สร้าง %s สำเร็จ"):format(item.name))
-
-	-- The window redraws from a fresh snapshot rather than patching itself, so the have-counts on every other
-	-- recipe sharing a material move at the same moment this one's do.
+	-- Tell the client to run its progress bar, and redraw the window so the materials visibly leave the bag
+	-- as the hammer starts.
+	Remotes.CraftStarted:FireClient(player, index, CraftConfig.CraftSeconds)
 	Remotes.CraftOpen:FireClient(player, snapshot(player))
+
+	task.delay(CraftConfig.CraftSeconds, function()
+		Busy[player] = nil
+		-- The player may have left while the hammer was swinging.
+		if not player.Parent then return end
+
+		-- Rolled on the server, at the END of the wait. Rolling it up front would be the same odds, but the
+		-- result would already exist while the bar was still filling -- and anything that exists can leak.
+		local chance = recipe.chance or 1
+		if math.random() >= chance then
+			Remotes.CraftFinished:FireClient(player, index, false)
+			Remotes.SocialNotify:FireClient(player, "error",
+				fee > 0 and ("สร้าง %s ล้มเหลว เสียวัสดุและเงิน %d"):format(item.name, fee)
+					or ("สร้าง %s ล้มเหลว วัสดุเสียไป"):format(item.name))
+			Remotes.CraftOpen:FireClient(player, snapshot(player))
+			return
+		end
+
+		if not Inventory.AddItem(player, recipe.id, 1) then
+			-- The bag had room when the attempt started and does not now, which means the player filled it
+			-- from somewhere else mid-swing. Rare, and the honest thing is to say so rather than pretend.
+			Remotes.CraftFinished:FireClient(player, index, false)
+			Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม ของที่สร้างหล่นหาย")
+			return
+		end
+
+		Remotes.CraftFinished:FireClient(player, index, true)
+		Remotes.SocialNotify:FireClient(player, "info", ("สร้าง %s สำเร็จ"):format(item.name))
+
+		-- The window redraws from a fresh snapshot rather than patching itself, so the have-counts on every
+		-- other recipe sharing a material move at the same moment this one's do.
+		Remotes.CraftOpen:FireClient(player, snapshot(player))
+	end)
 end)
 
 --------------------------------------------------------------------------------

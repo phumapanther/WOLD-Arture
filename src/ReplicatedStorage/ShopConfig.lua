@@ -30,7 +30,10 @@ ShopConfig.Buys = { junk = true }
 
 -- Prices drift so the same material is not worth the same forever. Rerolled on a timer shared by the whole
 -- server, not per player, so everyone standing at the counter sees one price.
-ShopConfig.PriceSwing = 0.35 -- +/- 35% around the catalog value
+-- How far a price may drift from the catalog value, either way. Half, so a material can be worth anything
+-- from 50% to 150% of its usual price depending on when you walk in -- which is what makes checking the
+-- board before selling worth doing.
+ShopConfig.PriceSwing = 0.50
 
 -- Coins paid per kilogram on a fish that carries a recorded weight.
 --

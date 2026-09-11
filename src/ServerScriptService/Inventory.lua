@@ -123,6 +123,41 @@ function Inventory.AddItem(player, id, count, durability, meta)
 	return true
 end
 
+-- Would `count` of `id` fit, without actually putting them anywhere?
+--
+-- Crafting needs this because it spends the materials before it knows whether the attempt worked, so it has
+-- no chance to hand the product over first and find out the bag is full. Asking up front is what stops a
+-- successful craft burning the cost and then having nowhere to put the sword.
+--
+-- Deliberately mirrors AddItem's own reasoning -- top up part-filled stacks first, then take empty slots --
+-- because an answer that disagreed with what AddItem then does would be worse than no answer at all.
+function Inventory.HasRoomFor(player, id, count, meta)
+	local state = States[player]
+	if not state or not ItemCatalog.Exists(id) then return false end
+	count = count or 1
+
+	local stackSize = ItemCatalog.StackSize(id)
+	if meta then stackSize = 1 end
+
+	if stackSize > 1 then
+		for i = 1, InventoryConfig.SlotCount do
+			local slot = state.slots[i]
+			if slot and slot.id == id and slot.count < stackSize then
+				count -= math.min(stackSize - slot.count, count)
+				if count <= 0 then return true end
+			end
+		end
+	end
+
+	for i = 1, InventoryConfig.SlotCount do
+		if not state.slots[i] then
+			count -= stackSize
+			if count <= 0 then return true end
+		end
+	end
+	return false
+end
+
 function Inventory.RemoveFromSlot(player, index, count)
 	local state = States[player]
 	local slot = state and state.slots[index]

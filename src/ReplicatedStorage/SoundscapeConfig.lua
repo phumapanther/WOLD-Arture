@@ -262,7 +262,10 @@ SoundscapeConfig.LobbyMusic = {
 		"rbxassetid://138384771239589", -- Cozy Tavern Ambience VII, 3:42
 		"rbxassetid://1843259503",      -- Hush Nightingale, 3:56 -- soft and pastoral
 	},
-	Volume = 0.125,
+	-- Raised 40% from 0.125 at the user's request. Every music level in this file moved by the same 40%, so
+	-- the balance BETWEEN them -- lobby over world, combat over both -- is exactly what it was; only the
+	-- whole mix is louder.
+	Volume = 0.175,
 	-- Fades in on arrival rather than starting at full, and fades out when a channel is joined so the music
 	-- does not cut off mid-note as the screen blacks out for the teleport.
 	FadeSeconds = 2,
@@ -283,7 +286,7 @@ SoundscapeConfig.LobbyMusic = {
 -- Every id is from APMOfficial or DistrokidOfficial, Roblox's licensed-music partner accounts, so publishing
 -- carries no takedown risk. All were load-tested in this place.
 SoundscapeConfig.WorldMusic = {
-	Volume = 0.07, -- quieter than the lobby's: this plays under footsteps and ambience, not instead of them
+	Volume = 0.098, -- +40%; still quieter than the lobby's, since this plays under footsteps and ambience
 	FadeSeconds = 3, -- slow, so a track arriving or leaving is never a noticeable event
 
 	-- Combat. Fades in the moment a real blow lands (dealt or taken, not a swing at air) and fades out
@@ -297,7 +300,7 @@ SoundscapeConfig.WorldMusic = {
 			"rbxassetid://9043602056",       -- Ghost Ship, 1:02 -- agitated strings and gothic choir
 			"rbxassetid://139997523791273",  -- Boss Battle Burnout, 2:52
 		},
-		Volume = 0.11, -- louder than the rest: it is meant to take over
+		Volume = 0.154, -- +40%; still the loudest of the three, because it is meant to take over
 		FadeInSeconds = 1.5, -- quick enough to feel like a reaction to being hit
 		FadeOutSeconds = 4, -- slow, so the fight ending settles rather than stops
 		LingerSeconds = 10, -- quiet for this long after the last blow before it lets go

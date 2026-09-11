@@ -16,13 +16,10 @@ local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local gui = CraftGui.new()
 
--- The hammer, on something actually being made. Played when the SERVER confirms rather than on the tap, so a
--- refused craft -- missing materials, full bag, walked away -- stays silent instead of lying about it.
-local pendingHammer = false
-
 gui:OnCraft(function(index)
-	pendingHammer = true
-	-- The index is the whole request: the server holds the recipe and works out the cost from it.
+	-- The index is the whole request: the server holds the recipe and works out the cost from it. Nothing is
+	-- shown yet -- the bar starts on CraftStarted, which only comes back for an attempt the server took the
+	-- materials for.
 	Remotes.RequestCraft:FireServer(index)
 end)
 
@@ -30,12 +27,20 @@ end)
 -- counts rather than guessing what the craft consumed.
 Remotes.CraftOpen.OnClientEvent:Connect(function(snapshot)
 	gui:Show(snapshot)
-	-- A snapshot arriving with a craft outstanding IS the confirmation: the server only re-sends one after a
-	-- craft it accepted. A refusal comes back as a SocialNotify and no snapshot at all.
-	if pendingHammer then
-		pendingHammer = false
-		UiSound.Play("Hammer")
-	end
+end)
+
+-- The hammer starts. Fired only for an attempt the server accepted and already charged, so this is the point
+-- at which the sound is honest -- a refused craft comes back as a SocialNotify and nothing else, and stays
+-- silent.
+Remotes.CraftStarted.OnClientEvent:Connect(function(index, seconds)
+	UiSound.Play("Hammer")
+	gui:Begin(index, seconds)
+end)
+
+-- The answer. The window shows it on the row; the wording of what was lost or gained comes separately as a
+-- SocialNotify from the server, which is also what reaches a player who closed the window mid-swing.
+Remotes.CraftFinished.OnClientEvent:Connect(function(index, success)
+	gui:Finish(index, success)
 end)
 
 -- Walking away closes the forge. Checked here rather than on the server because it is a matter of

@@ -68,7 +68,10 @@ local EVENTS = {
 	-- The blacksmith. CraftOpen carries the whole recipe list down along with how much of each material the
 	-- player already has, so the client never counts a bag and never has a cost to lie about; RequestCraft
 	-- names nothing but a position in that list.
-	"RequestCraftOpen", "CraftOpen", "RequestCraft",
+	-- CraftStarted tells the client to run its progress bar and for how long; CraftFinished says whether the
+	-- attempt worked. Both are needed because the swing takes a couple of seconds and the roll happens at
+	-- the END of it, so the window cannot know the outcome when the button is pressed.
+	"RequestCraftOpen", "CraftOpen", "RequestCraft", "CraftStarted", "CraftFinished",
 	-- Gathering: the server draws the [F] prompt on a node and fires this to tell the client to toggle its
 	-- own auto-farm loop. The loop lives on the client because it drives the local character's movement.
 	"ToggleAutoFarm",

@@ -4,6 +4,7 @@
 -- material, never decides what is craftable, and holds no state between snapshots beyond which tab is open --
 -- every redraw is a fresh picture of what the server currently says.
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
 
@@ -16,6 +17,13 @@ local RUNE = Color3.fromRGB(244, 197, 66)
 -- the row is answering "can I make this yet", so the answer is a colour rather than a number to read.
 local ENOUGH = Color3.fromRGB(150, 200, 140)
 local SHORT = Color3.fromRGB(214, 106, 96)
+-- The two endings, deliberately far apart. A player who just burned 25,000 gold and a bag of ore on a failed
+-- pistol should never have to squint at the row to work out which of the two it was.
+local WIN = Color3.fromRGB(120, 206, 128)
+local LOSE = Color3.fromRGB(206, 72, 62)
+-- How long the outcome sits on the row before the window goes back to normal. Long enough to read a short
+-- sentence, short enough that it is gone before the player finishes deciding what to make next.
+local OUTCOME_SECONDS = 1.6
 
 local CraftGui = {}
 CraftGui.__index = CraftGui
@@ -146,11 +154,93 @@ end
 
 function CraftGui:OnCraft(callback) self.onCraft = callback end
 
+-- Puts every button to sleep and runs the bar on the one row that is being made. Split out from Begin because
+-- a redraw arriving mid-swing has to re-apply exactly the same thing to a brand new set of rows, and the bar
+-- has to pick up where the old one left off rather than starting over -- so the finish TIME is what is
+-- remembered, not how far along it was.
+function CraftGui:ApplyBusy()
+	local remaining = math.max(0, self.busyUntil - os.clock())
+	for index, row in pairs(self.rows or {}) do
+		if index == self.busyIndex then
+			row.odds.Visible = false
+			row.track.Visible = true
+			row.fill.Size = UDim2.new(1 - remaining / math.max(self.busySeconds, 0.001), 0, 1, 0)
+			-- Linear, because this bar is a clock: the server finishes at a fixed time and an eased bar would
+			-- crawl at the end while the hammer had plainly already stopped.
+			TweenService:Create(row.fill, TweenInfo.new(remaining, Enum.EasingStyle.Linear), {
+				Size = UDim2.fromScale(1, 1),
+			}):Play()
+			row.button.Text = "กำลังตี..."
+		else
+			row.button.Text = "รอ..."
+		end
+		-- Every button, not just the busy row's: the server refuses a second craft anyway, and a window that
+		-- lets the player press and then tells them off is worse than one that simply does not offer. Greyed
+		-- AND flagged -- the colour is for the player, the attribute is what the tap handler actually reads.
+		row.button:SetAttribute("Busy", true)
+		row.button.AutoButtonColor = false
+		row.button.BackgroundColor3 = Color3.fromRGB(70, 74, 84)
+		row.button.TextColor3 = TEXT_MUTED
+	end
+end
+
+-- The hammer has started on `index` and will take `seconds`.
+function CraftGui:Begin(index, seconds)
+	-- A new swing ends the last one's outcome early, whichever row it was on: the player has moved on.
+	self.outcomeIndex = nil
+	self.busyIndex = index
+	self.busySeconds = seconds
+	self.busyUntil = os.clock() + seconds
+	self:ApplyBusy()
+end
+
+-- Paints the outcome onto the row that was being made: green and a word for a sword that exists now, red and
+-- a word for a pile of materials that does not. Split out for the same reason ApplyBusy is -- the server
+-- sends a snapshot immediately after a craft, and without re-applying it the redraw would wipe the answer off
+-- the screen in the same frame it appeared.
+function CraftGui:ApplyOutcome()
+	local row = self.rows and self.rows[self.outcomeIndex]
+	if not row then return end
+
+	row.track.Visible = false
+	row.odds.Visible = true
+	row.odds.Font = Enum.Font.GothamBold
+	-- The colour carries it rather than the wording, because the one thing a player must not have to read
+	-- twice is whether the 25,000 they just spent bought anything.
+	row.odds.Text = self.outcomeOk and "สำเร็จ!" or "ล้มเหลว! เสียวัสดุและค่าจ้างไปแล้ว"
+	row.odds.TextColor3 = self.outcomeOk and WIN or LOSE
+	row.frame.BackgroundColor3 = self.outcomeOk and Color3.fromRGB(40, 66, 44) or Color3.fromRGB(72, 38, 36)
+	-- Fading back to the row's normal colour is what ends the moment, so the outcome does not need clearing by
+	-- hand and a row left on screen never stays stained.
+	TweenService:Create(row.frame, TweenInfo.new(OUTCOME_SECONDS), {
+		BackgroundColor3 = row.baseColor,
+	}):Play()
+end
+
+-- The answer. Unlocks the buttons, shows the outcome, and puts the row back to normal a moment later.
+function CraftGui:Finish(index, success)
+	self.busyIndex = nil
+	self.outcomeIndex = index
+	self.outcomeOk = success
+	self:ApplyOutcome()
+
+	-- Redrawn rather than undone by hand, so the row comes back holding the server's current counts. Guarded
+	-- on the outcome still being THIS one: by the time it fires the player may have started another craft, and
+	-- a stale timer must not redraw over a bar that is filling.
+	task.delay(OUTCOME_SECONDS, function()
+		if self.outcomeIndex ~= index then return end
+		self.outcomeIndex = nil
+		if self.gui.Enabled then self:Render() end
+	end)
+end
+
 -- One recipe: what it makes on the left, the materials it eats underneath, and the button on the right.
 -- Sized by the material count rather than fixed, so a five-material recipe is not squeezed into the same
--- height as a two-material one.
+-- height as a two-material one. The odds-and-fee line and the progress bar each add their own fixed strip on
+-- the bottom, so a row is as tall as what it actually has to show.
 local function recipeRow(parent, order, entry, onClick)
-	local height = 34 + #entry.materials * 16
+	local materialsBottom = 26 + #entry.materials * 16
+	local height = materialsBottom + 22
 
 	local frame = Instance.new("Frame")
 	frame.LayoutOrder = order
@@ -194,6 +284,47 @@ local function recipeRow(parent, order, entry, onClick)
 		line.Parent = frame
 	end
 
+	-- What the attempt is worth risking, on one line: the odds it works and what the smith charges either
+	-- way. Both come from the snapshot, never from CraftConfig -- the client is told the price, it does not
+	-- decide it. The fee is coloured like a material, red when the purse is short, for the same reason: the
+	-- row should say WHICH part of the cost is the one stopping you.
+	local odds = Instance.new("TextLabel")
+	odds.Name = "Odds"
+	odds.Position = UDim2.fromOffset(40, materialsBottom)
+	odds.Size = UDim2.new(1, -120, 0, 15)
+	odds.BackgroundTransparency = 1
+	odds.Font = Enum.Font.Gotham
+	odds.TextSize = 11
+	odds.TextColor3 = TEXT_MUTED
+	odds.TextXAlignment = Enum.TextXAlignment.Left
+	odds.RichText = true
+	local fee = entry.gold or 0
+	local feeColor = (entry.goldHave or 0) >= fee and ENOUGH or SHORT
+	odds.Text = ("โอกาสสำเร็จ %d%%  ·  ค่าจ้าง <font color=\"#%s\">%d</font> เหรียญ")
+		:format(math.floor((entry.chance or 1) * 100 + 0.5), feeColor:ToHex(), fee)
+	odds.Parent = frame
+
+	-- The bar sits where the odds line is and is only shown while the hammer swings, so a row at rest is no
+	-- taller and no busier than it was before. An empty rail rather than a hidden one would be five pieces of
+	-- furniture that mean nothing until something happens.
+	local track = Instance.new("Frame")
+	track.Name = "Track"
+	track.Position = UDim2.fromOffset(40, materialsBottom + 2)
+	track.Size = UDim2.new(1, -120, 0, 10)
+	track.BackgroundColor3 = STONE_DEEP
+	track.BorderSizePixel = 0
+	track.Visible = false
+	track.Parent = frame
+	corner(track, UDim.new(1, 0))
+
+	local fill = Instance.new("Frame")
+	fill.Name = "Fill"
+	fill.Size = UDim2.new(0, 0, 1, 0)
+	fill.BackgroundColor3 = RUNE
+	fill.BorderSizePixel = 0
+	fill.Parent = track
+	corner(fill, UDim.new(1, 0))
+
 	local button = Instance.new("TextButton")
 	button.AnchorPoint = Vector2.new(1, 0.5)
 	button.Position = UDim2.new(1, -6, 0.5, 0)
@@ -212,11 +343,20 @@ local function recipeRow(parent, order, entry, onClick)
 	button.Activated:Connect(function()
 		-- Silent when it is not craftable rather than firing a request the server would only refuse. The
 		-- server still checks: this is presentation, not the rule.
-		if not entry.affordable then return end
+		--
+		-- The busy test is read off the button itself rather than passed in, because greying it out happens
+		-- long after this closure was made -- the lock has to be a thing the row can be PUT INTO, not a value
+		-- captured when it was drawn.
+		if not entry.affordable or button:GetAttribute("Busy") then return end
 		UiSound.Play("Click")
 		onClick()
 	end)
-	return frame
+
+	-- The pieces the window has to reach back into once the row is drawn: the bar to fill, the button to put
+	-- to sleep while another row is busy, and the odds line to swap for the outcome and back. The row's own
+	-- colour is kept so the outcome flash has something to fade home to.
+	return { frame = frame, track = track, fill = fill, button = button, odds = odds,
+		baseColor = frame.BackgroundColor3 }
 end
 
 -- Redraws the recipe list for whichever tab is open. Separate from Show because switching tabs must not need
@@ -227,14 +367,24 @@ function CraftGui:Render()
 	end
 	if not self.snapshot then return end
 
+	self.rows = {}
 	local shown = 0
 	for _, entry in ipairs(self.snapshot.recipes or {}) do
 		if entry.tab == self.activeTab then
 			shown += 1
-			recipeRow(self.list, shown, entry, function()
+			self.rows[entry.index] = recipeRow(self.list, shown, entry, function()
 				if self.onCraft then self.onCraft(entry.index) end
 			end)
 		end
+	end
+
+	-- A craft in flight survives a redraw. The server sends a fresh snapshot the moment the hammer starts --
+	-- that is what makes the materials visibly leave the bag -- and it destroys every row, so without this the
+	-- bar would appear and vanish in the same frame and every button would come back live mid-swing.
+	if self.busyIndex then
+		self:ApplyBusy()
+	elseif self.outcomeIndex then
+		self:ApplyOutcome()
 	end
 
 	if shown == 0 then
@@ -299,6 +449,11 @@ end
 
 function CraftGui:Hide()
 	self.gui.Enabled = false
+	-- Forgotten on close. The craft itself carries on at the smith's end -- the server took the materials
+	-- before the first swing -- but a bar and an outcome are things being SHOWN, and there is nobody left to
+	-- show them to. Reopening draws whatever the server says by then.
+	self.busyIndex = nil
+	self.outcomeIndex = nil
 end
 
 function CraftGui:IsOpen()
