@@ -46,6 +46,15 @@ local function mayAct(actor, target, actionId)
 	-- Both must be up. Downed players belong to the rescue prompts, and acting on someone who cannot
 	-- respond is exactly what the consent handshake exists to prevent.
 	if Vitals.IsDowned(actor) or Vitals.IsDowned(target) then return false end
+	-- Neither may be a passenger. Being carried is not the same as being downed -- a consented carry picks
+	-- up someone perfectly healthy -- so the downed test above lets a passenger through, and without this a
+	-- carried player could still be sent consent popups and still send their own.
+	--
+	-- The carry itself would fail anyway, since beginCarry re-checks canRescue. What this stops is the
+	-- pointless popup in between: an offer the server has already decided to refuse.
+	if RescueAccess.IsCarried then
+		if RescueAccess.IsCarried(actor) or RescueAccess.IsCarried(target) then return false end
+	end
 	if not withinRange(actor, target) then return false end
 
 	local basic = Classes.Get(actor, "basic")
