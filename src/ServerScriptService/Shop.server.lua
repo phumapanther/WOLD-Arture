@@ -16,6 +16,7 @@ local ShopConfig = require(game.ReplicatedStorage.ShopConfig)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
+local MarketAccess = require(game.ServerScriptService.MarketAccess)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local TAG = "WOLD_Npc"
@@ -78,6 +79,34 @@ local function buyPrice(id, meta)
 	end
 
 	return math.max(1, math.floor(base + 0.5))
+end
+
+--------------------------------------------------------------------------------
+-- The price board the speaking stone reads
+--------------------------------------------------------------------------------
+
+-- What the shop pays for one of everything it buys, for the "ราคากลาง" screen on the stone.
+--
+-- Priced through buyPrice with no meta, exactly as an ordinary stack of that item would be: the trophy
+-- surcharge depends on the fish in your bag, so a board that included it would be quoting a price nobody
+-- could get for the item as listed.
+--
+-- Sorted by price, dearest first, and not alphabetically: the question a player opens this screen to answer
+-- is "what is worth carrying home", and the answer is the top of the list. Ties are broken by name only so
+-- the order is stable between rerolls rather than shuffling every half hour.
+MarketAccess.Quote = function()
+	local prices = {}
+	for id, item in pairs(ItemCatalog.Items) do
+		local price = buyPrice(id, nil)
+		if price then
+			table.insert(prices, { id = id, name = item.name, icon = item.icon, price = price })
+		end
+	end
+	table.sort(prices, function(a, b)
+		if a.price ~= b.price then return a.price > b.price end
+		return a.name < b.name
+	end)
+	return { prices = prices, rerollIn = math.max(0, NextRerollAt - os.time()) }
 end
 
 --------------------------------------------------------------------------------

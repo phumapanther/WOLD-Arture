@@ -42,6 +42,22 @@ function UiSound.Loop(name)
 	sound.Looped = true
 	sound.Parent = SoundService
 	sound:Play()
+
+	-- Play() on a sound Roblox has not finished fetching does nothing, and there is no second attempt: the
+	-- asset arrives a moment later and sits there silent. A one-shot can live with that, since it is over
+	-- before anyone notices; a loop cannot, because the whole point is that it runs for a while.
+	--
+	-- So a loop that was not ready is started again when it becomes ready. Loaded already, this never fires.
+	if not sound.IsLoaded then
+		sound.Loaded:Once(function()
+			-- Unless whoever asked for it has already stopped it -- a craft that finished during the fetch
+			-- must not leave a loop running behind it.
+			if sound.Parent and not sound.IsPlaying then
+				sound:Play()
+			end
+		end)
+	end
+
 	return sound
 end
 

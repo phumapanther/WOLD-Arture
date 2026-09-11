@@ -264,6 +264,7 @@ function SocialGui.new()
 	self:buildBoard()
 	self:buildFriends()
 	self:buildBank()
+	self:buildMarket()
 	self:buildProfile()
 	self:buildSettings()
 	self:buildNotice()
@@ -1116,6 +1117,87 @@ function SocialGui:RenderBank(gold, bank)
 end
 
 --------------------------------------------------------------------------------
+-- Market: what the shop is paying today
+--------------------------------------------------------------------------------
+
+-- Read-only, like the bank's two balances: a list and a line saying when it changes. Nothing here is
+-- actionable on purpose -- selling still happens at the counter, and the point of the screen is knowing
+-- whether the walk is worth making before you take it.
+function SocialGui:buildMarket()
+	local page = Instance.new("Frame")
+	page.Name = "market"
+	page.Size = UDim2.fromScale(1, 1)
+	page.BackgroundTransparency = 1
+	page.Visible = false
+	page.Parent = self.body
+	self.screens.market = page
+
+	local list = scrollList(page, 6)
+	list.Size = UDim2.new(1, 0, 1, -26)
+	self.marketList = list
+
+	-- The countdown along the bottom, worded exactly as the shop window words it: the same fact told two
+	-- different ways would read as two different timers.
+	local hint = label(page, "", 12, TEXT_MUTED, Enum.TextXAlignment.Center)
+	hint.AnchorPoint = Vector2.new(0, 1)
+	hint.Position = UDim2.new(0, 0, 1, 0)
+	hint.Size = UDim2.new(1, 0, 0, 20)
+	self.marketHint = hint
+end
+
+function SocialGui:RenderMarket(market)
+	local list = self.marketList
+	for _, child in ipairs(list:GetChildren()) do
+		if not child:IsA("UIListLayout") then child:Destroy() end
+	end
+
+	-- Nothing has arrived yet. This is a real state rather than a defensive nicety: the stone can be opened
+	-- in the first seconds of a server, before the shop has published its prices, and an empty list there
+	-- would read as "the shop buys nothing" -- the opposite of the truth.
+	if not market or not market.prices or #market.prices == 0 then
+		local empty = label(list, "กำลังถามราคาจากตลาด...", 13, TEXT_MUTED, Enum.TextXAlignment.Center)
+		empty.Size = UDim2.new(1, 0, 0, 60)
+		self.marketHint.Text = ""
+		return
+	end
+
+	for order, entry in ipairs(market.prices) do
+		local row = Instance.new("Frame")
+		row.LayoutOrder = order
+		row.Size = UDim2.new(1, -6, 0, 40)
+		row.BackgroundColor3 = STONE_DEEP
+		row.BackgroundTransparency = 0.35
+		row.BorderSizePixel = 0
+		row.Parent = list
+		corner(row, UDim.new(0, 8))
+
+		-- An empty icon id is a blank square, not an error, so the name carries the row either way -- the
+		-- same fallback the catalog's own comment describes.
+		if entry.icon and entry.icon ~= "" then
+			local icon = Instance.new("ImageLabel")
+			icon.Position = UDim2.new(0, 8, 0.5, -13)
+			icon.Size = UDim2.fromOffset(26, 26)
+			icon.BackgroundTransparency = 1
+			icon.Image = entry.icon
+			icon.Parent = row
+		end
+
+		local name = label(row, entry.name, 13, TEXT_LIGHT)
+		name.Position = UDim2.new(0, 42, 0, 0)
+		name.Size = UDim2.new(1, -130, 1, 0)
+		name.TextTruncate = Enum.TextTruncate.AtEnd
+
+		-- In gold, right-aligned, so the column of numbers can be read down without reading the names.
+		local price = label(row, ("%d"):format(entry.price), 14, ACCENT, Enum.TextXAlignment.Right)
+		price.Position = UDim2.new(1, -84, 0, 0)
+		price.Size = UDim2.new(0, 76, 1, 0)
+		price.Font = Enum.Font.GothamBold
+	end
+
+	self.marketHint.Text = ("ราคารับซื้อเปลี่ยนใหม่ใน %d นาที"):format(math.max(0, (market.rerollIn or 0) // 60))
+end
+
+--------------------------------------------------------------------------------
 -- Profile
 --------------------------------------------------------------------------------
 
@@ -1289,6 +1371,7 @@ local TITLES = {
 	board = "บอร์ดกิลด์",
 	friends = "รายชื่อสหาย",
 	bank = "ธนาคาร",
+	market = "ราคากลาง",
 	profile = "โปรไฟล์",
 }
 

@@ -47,6 +47,13 @@ gui:OnRoll(function()
 	if bindable then bindable:Fire() end
 end)
 
+-- The weapon skill is bound to Q on desktop, which touch cannot press either. Fires the same remote the
+-- keyboard path does, so the server sees one kind of request and the cooldown, the cost and the refusal
+-- messages are all whatever they already were.
+gui:OnSkill(function()
+	Remotes.RequestSkill:FireServer()
+end)
+
 -- Dropping a carried player is bound to F on desktop, which touch cannot press. This button drives the same
 -- remote. Carry state comes straight from the server event, so it matches RescueController without either
 -- script having to reach into the other.

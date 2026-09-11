@@ -90,7 +90,11 @@ local CARRY_GRIP = {
 	-- Tucked against the palm with its spine down, the way a book is carried rather than read.
 	Spellbook = CFrame.new(0, -0.6, 0) * CFrame.Angles(math.rad(-90), 0, math.rad(90)),
 	-- Upright in the fist, ornamented head up, the way a walking staff is carried.
-	Staff = CFrame.new(0, -1.6, 0) * CFrame.Angles(math.rad(-90), 0, 0),
+	--
+	-- The offset pulls the model DOWN its own length so the hand meets the shaft rather than the tip. At 1.6
+	-- the staff floated clear of the fist; 0.6 puts the grip in the palm. Small numbers here because the
+	-- staff's origin already sits near its middle, unlike the sword's, which hangs from the hilt at +2.
+	Staff = CFrame.new(0, -0.6, 0) * CFrame.Angles(math.rad(-90), 0, 0),
 }
 local DEFAULT_GRIP = CFrame.new(0, -1, 0) * CFrame.Angles(math.rad(-90), 0, 0)
 

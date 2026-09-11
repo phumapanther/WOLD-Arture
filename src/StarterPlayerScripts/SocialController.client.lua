@@ -101,6 +101,10 @@ local function redraw()
 		end
 	elseif screen == "bank" then
 		gui:RenderBank(latest.gold, latest.bank)
+	elseif screen == "market" then
+		-- Nil on the first draw of a freshly-opened stone, and the screen says so rather than showing an
+		-- empty board; screenChanged has already asked the server, so the answer redraws this a moment later.
+		gui:RenderMarket(latest.market)
 	elseif screen == "profile" then
 		gui:RenderProfile(latest)
 	end

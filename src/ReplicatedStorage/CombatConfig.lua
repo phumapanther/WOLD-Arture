@@ -225,8 +225,11 @@ CombatConfig.Sounds = {
 	},
 	Pistol = {
 		cast = "rbxassetid://110507208537712",
-		-- The clip runs 5.95 seconds; a gunshot is a crack, not a drone. Cut to the first half second.
-		castSeconds = 0.5,
+		-- The clip runs 5.95 seconds. Half a second cut it off mid-crack -- the shot had no tail, so it
+		-- sounded like a click rather than a gun. Two and a half seconds is long enough for the report and
+		-- its echo to finish on their own, and still short enough that firing twice does not stack into a
+		-- drone the way the whole six-second clip would.
+		castSeconds = 2.5,
 		hit = "",
 	},
 	Bow = {

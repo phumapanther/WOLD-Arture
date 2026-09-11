@@ -90,8 +90,9 @@ SocialConfig.Screens = {
 	-- Opens the world map, which is its own screen rather than a page inside the stone: it wants the whole
 	-- window, and M has to reach it without the stone being open.
 	{ id = "map", name = "แผนที่", glyph = "\240\159\151\186", ready = true },
-	{ id = "market", name = "ราคากลาง", glyph = "\226\154\150", ready = false,
-		notice = "ตลาดกลางยังไม่เปิดใช้งาน" },
+	-- Reads the shop's live prices without walking to the counter. Read-only: selling is still done at the
+	-- shopkeeper, and the screen exists so the walk can be decided on before it is made.
+	{ id = "market", name = "ราคากลาง", glyph = "\226\154\150", ready = true },
 	{ id = "callGuard", name = "เรียกทหารยาม", glyph = "\240\159\155\161", ready = false,
 		notice = "ปุ่มฉุกเฉินจะใช้ได้เมื่อระบบอาชีพเปิด" },
 	{ id = "callPriest", name = "เรียกนักบวช", glyph = "\226\156\154", ready = false,

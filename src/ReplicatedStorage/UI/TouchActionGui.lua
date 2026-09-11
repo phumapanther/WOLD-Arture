@@ -99,6 +99,15 @@ function Icons.drop(holder)
 	bar(holder, 0.5, 0.76, 0.44, 0.09, 0, 0.4, 0.3)
 end
 
+-- Skill: a four-pointed spark, which reads as "something magic happens" without committing to a particular
+-- spell -- the skill a weapon casts depends on the weapon.
+function Icons.skill(holder)
+	bar(holder, 0.5, 0.5, 0.14, 0.62, 0, 0.4)
+	bar(holder, 0.5, 0.5, 0.62, 0.14, 0, 0.4)
+	bar(holder, 0.5, 0.5, 0.1, 0.4, 45, 0.3)
+	bar(holder, 0.5, 0.5, 0.4, 0.1, 45, 0.3)
+end
+
 -- Attack: crossed blades.
 function Icons.attack(holder)
 	bar(holder, 0.5, 0.5, 0.12, 0.66, 42, 0.3)
@@ -167,7 +176,11 @@ function TouchActionGui.new()
 	cluster.AnchorPoint = Vector2.new(1, 1)
 	-- Shifted left to leave the corner for the bag/social column.
 	cluster.Position = UDim2.new(1, -(EDGE_MARGIN + ROLL_SIZE + GAP), 1, -EDGE_MARGIN)
-	cluster.Size = UDim2.fromOffset(ATTACK_SIZE, ATTACK_SIZE + GAP + ROLL_SIZE + GAP + ROLL_SIZE)
+	-- Tall enough for all four: attack, roll, skill, and the drop button that appears above them while
+	-- carrying. Sized for the full stack even though drop is usually hidden, because a Frame that grew when
+	-- the button appeared would push the whole cluster off the bottom of the screen.
+	cluster.Size = UDim2.fromOffset(ATTACK_SIZE,
+		ATTACK_SIZE + GAP + ROLL_SIZE + GAP + ROLL_SIZE + GAP + ROLL_SIZE)
 	cluster.BackgroundTransparency = 1
 	cluster.Parent = gui
 	self.cluster = cluster
@@ -187,12 +200,21 @@ function TouchActionGui.new()
 	self.rollButton = roll
 	self.rollIcon = rollIcon
 
-	-- Drop: only visible while carrying someone. Sits above the roll button so it never covers the two
-	-- buttons that are always there, and dropping is keyboard-F on desktop — touch had no way to do it at all.
+	-- Skill: above the roll button, where the user asked for it. Always there, because a skill is keyboard-Q
+	-- on desktop and touch had no way to reach it at all -- the same gap the drop button was added to close.
+	local skill = circle(cluster, ROLL_SIZE, ROLL_COLOR, "skill")
+	skill.Name = "SkillButton"
+	skill.AnchorPoint = Vector2.new(1, 1)
+	skill.Position = UDim2.new(1, 0, 1, -(ATTACK_SIZE + GAP + ROLL_SIZE + GAP))
+	self.skillButton = skill
+
+	-- Drop: only visible while carrying someone, so it sits at the TOP of the stack rather than in the
+	-- middle. Putting it below the skill button would make the skill button jump up and down as a carry
+	-- starts and ends, and a control that moves under the thumb is worse than one that is simply higher up.
 	local drop, dropIcon = circle(cluster, ROLL_SIZE, ROLL_COLOR, "drop")
 	drop.Name = "DropButton"
 	drop.AnchorPoint = Vector2.new(1, 1)
-	drop.Position = UDim2.new(1, 0, 1, -(ATTACK_SIZE + GAP + ROLL_SIZE + GAP))
+	drop.Position = UDim2.new(1, 0, 1, -(ATTACK_SIZE + GAP + ROLL_SIZE + GAP + ROLL_SIZE + GAP))
 	drop.Visible = false
 	self.dropButton = drop
 	self.dropIcon = dropIcon
@@ -301,6 +323,10 @@ end
 
 function TouchActionGui:OnRoll(callback)
 	self.rollButton.MouseButton1Down:Connect(callback)
+end
+
+function TouchActionGui:OnSkill(callback)
+	self.skillButton.MouseButton1Down:Connect(callback)
 end
 
 -- Roll becomes Slide while the player is sprinting. Presses are not wired to anything yet.

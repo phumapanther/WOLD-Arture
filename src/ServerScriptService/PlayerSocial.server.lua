@@ -19,6 +19,7 @@ local Inventory = require(game.ServerScriptService.Inventory)
 local Progression = require(game.ServerScriptService.Progression)
 local Classes = require(game.ServerScriptService.Classes)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
+local MarketAccess = require(game.ServerScriptService.MarketAccess)
 
 -- Injected rather than required inside Bank, so the money module does not depend on the bag's lifecycle.
 Bank.Inventory = Inventory
@@ -117,6 +118,10 @@ local function send(player)
 		gold = (Inventory.Get(player) or {}).gold or 0,
 		level = Progression.GetLevel(player),
 		class = Classes.Primary(player),
+		-- The shop's own prices, quoted by the shop. Nil until Shop.server has published itself, which is a
+		-- state the market screen has to draw anyway -- a player can open the stone in the first second of a
+		-- server, before any of this has run.
+		market = MarketAccess.Quote and MarketAccess.Quote() or nil,
 	})
 end
 
