@@ -4,6 +4,7 @@
 -- as presentation.
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local AimAccess = require(game.ReplicatedStorage.UI.AimAccess)
@@ -48,16 +49,67 @@ local function loadTracksFor(character)
 	end
 end
 
--- The weapon's held stance plays for as long as one is equipped, not only while guarding.
+-- How fast counts as moving. Above a crawl, so a character nudged by a slope or settling against a wall does
+-- not flicker between standing and walking.
+local MOVING_SPEED = 1.5
+
+-- The weapon's held stance plays while STANDING STILL, and stops the moment the player walks.
+--
+-- It poses both shoulders and the waist at Movement priority, which is the same priority Roblox's own walk
+-- and run animations use. Played last it wins, so a player carrying a sword walked with their arms locked in
+-- front of them and their body rigid -- no swing, no stride. Dropping it while moving hands those joints
+-- back to the default walk, and the stance returns the moment they stop.
+--
+-- The alternative, lowering its priority below Movement, does not work: at Idle it ties with Roblox's own
+-- idle and mood tracks at equal weight and the default wins, which is the bug the original comment here was
+-- written about. Playing and stopping it is the only lever that behaves.
 local function playHeldStance()
-	if tracks.idle and not tracks.idle.IsPlaying then
-		tracks.idle:Play(0.25)
-	end
+	if not tracks.idle or tracks.idle.IsPlaying then return end
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	-- Never start the stance mid-stride; the movement watcher below will start it when they stop.
+	if humanoid and humanoid.MoveDirection.Magnitude > 0 then return end
+	tracks.idle:Play(0.25)
+end
+
+-- Watches the character's own movement and swaps the stance out while they are on the move.
+local function watchMovement(character)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+
+	local wasMoving = false
+	local connection
+	connection = RunService.RenderStepped:Connect(function()
+		if not character.Parent or humanoid.Health <= 0 then
+			connection:Disconnect()
+			return
+		end
+		-- MoveDirection rather than the assembly's velocity: it is what the player is ASKING for, so it goes
+		-- to zero the instant they let go of the key rather than trailing off as the character slides to a
+		-- halt, and it is not fooled by being pushed, carried or shoved by a mob.
+		local moving = humanoid.MoveDirection.Magnitude > 0
+			and humanoid.AssemblyLinearVelocity.Magnitude > MOVING_SPEED
+		if moving == wasMoving then return end
+		wasMoving = moving
+
+		-- A swing owns the arms while it lasts; the stance is restored by the swing's own Stopped handler.
+		for _, track in pairs(tracks.attacks or {}) do
+			if track.IsPlaying then return end
+		end
+
+		if not tracks.idle then return end
+		if moving then
+			tracks.idle:Stop(0.15)
+		elseif not tracks.idle.IsPlaying then
+			tracks.idle:Play(0.2)
+		end
+	end)
 end
 
 local function onCharacterAdded(character)
 	loadTracksFor(character)
 	playHeldStance()
+	watchMovement(character)
 end
 
 -- The weapon decides which animations play, so a change has to rebuild the cache.

@@ -174,18 +174,25 @@ build("Bow_Idle", Enum.AnimationPriority.Idle, true, {
 })
 
 -- Loosing an arrow: the draw hand snaps open and back, the bow arm holds steady.
+-- The draw is slow and the release is instant, because that is the shape of the act: a bow is hauled back
+-- against its own resistance and then lets go all at once.
+--
+-- The timings here MUST line up with the windup in CombatConfig, which is when the arrow actually leaves.
+-- They used to release at 0.20 against a windup of 0.15, so the string snapped open a frame before the shot
+-- and the draw itself was over too quickly to see. The release keyframe now sits at 0.38, just under the
+-- bow's 0.4 windup, so the arrow leaves on the frame the hand opens.
 build("Bow_Shoot", Enum.AnimationPriority.Action, false, {
 	{ 0.0, BOW_IDLE },
-	{ 0.10, copy(BOW_IDLE, { -- full draw: shoulder pulls further behind, elbow folds tight
+	{ 0.30, copy(BOW_IDLE, { -- full draw: shoulder pulls further behind, elbow folds tight
 		lShoulder = CFrame.Angles(rad(-26), 0, rad(-30)),
 		lElbow = CFrame.Angles(rad(158), 0, 0),
 	}) },
-	{ 0.20, copy(BOW_IDLE, { -- release: string hand snaps open and away
+	{ 0.38, copy(BOW_IDLE, { -- release: string hand snaps open and away
 		lShoulder = CFrame.Angles(rad(-34), 0, rad(-40)),
 		lElbow = CFrame.Angles(rad(110), 0, 0),
 		rShoulder = CFrame.Angles(rad(92), 0, rad(-10)),
 	}) },
-	{ 0.50, BOW_IDLE },
+	{ 0.70, BOW_IDLE },
 })
 
 --------------------------------------------------------------------------------

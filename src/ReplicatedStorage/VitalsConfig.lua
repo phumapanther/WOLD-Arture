@@ -26,6 +26,13 @@ VitalsConfig.DrowningDamagePerSec = VitalsConfig.MaxHP / 10
 
 -- Falling: harmless below the safe height, then scaling damage. A fall of about 45 studs exceeds MaxHP and
 -- kills outright, which is the "ตกที่สูงตายทันที" case.
+-- How far you can fall unhurt, as a multiple of your OWN HEIGHT. Two body-lengths: a drop you could have
+-- climbed down should not cost blood, and measuring it against the character rather than in studs keeps it
+-- fair for avatars of different sizes.
+VitalsConfig.SafeFallBodyLengths = 2
+
+-- The fallback, used only when the character cannot be measured -- roughly two body-lengths of a default
+-- R15 rig, so the behaviour is the same rather than merely similar.
 VitalsConfig.SafeFallStuds = 12
 VitalsConfig.FallDamagePerStud = 3
 -- Below this Y the player has left the map entirely: instant death, no damage curve.

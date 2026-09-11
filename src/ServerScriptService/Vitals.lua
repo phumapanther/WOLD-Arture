@@ -567,8 +567,27 @@ function Vitals.Tick(player, state, dt)
 			-- Landed: bill the drop from the highest point reached.
 			local drop = state.peakFallY - hrp.Position.Y
 			state.peakFallY = nil
-			if drop > VitalsConfig.SafeFallStuds then
-				Vitals.ApplyDamage(player, (drop - VitalsConfig.SafeFallStuds) * VitalsConfig.FallDamagePerStud, "fall")
+
+			-- A fall shorter than twice your own height does not hurt.
+			--
+			-- Measured off the character rather than fixed in the config, because a rig's height is not a
+			-- constant: R15 avatars scale, so a flat number is a different fraction of one body for a tall
+			-- avatar than for a short one. Dropping from a height you could climb down should never cost
+			-- blood, and two body-lengths is that height.
+			--
+			-- GetExtentsSize is the whole standing rig, head to sole. The config value survives as a floor
+			-- for the case where the character has gone missing mid-fall and there is nothing to measure.
+			local safe = VitalsConfig.SafeFallStuds
+			local model = hrp.Parent
+			if model then
+				local ok, extents = pcall(function() return model:GetExtentsSize() end)
+				if ok and extents and extents.Y > 0 then
+					safe = extents.Y * VitalsConfig.SafeFallBodyLengths
+				end
+			end
+
+			if drop > safe then
+				Vitals.ApplyDamage(player, (drop - safe) * VitalsConfig.FallDamagePerStud, "fall")
 			end
 		end
 	end

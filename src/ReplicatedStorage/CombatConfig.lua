@@ -114,7 +114,12 @@ CombatConfig.Weapons = {
 		guardWalkSpeed = 7,
 		idleTimeout = 4,
 		attacks = {
-			{ animation = "rbxassetid://73671392887806", damage = 0, windup = 0.1, active = 0.05, recovery = 0.55, range = 0, -- Bow_Shoot
+			-- Windup 0.35 rather than 0.1, so the shot READS. At a tenth of a second the ready stance was
+			-- over before it registered and the bullet appeared to leave on the click itself; a third of a
+			-- second is long enough to see the pistol come up and be aimed, and short enough that it still
+			-- feels like a reaction rather than a wait. The aim is captured at the click and carried
+			-- through the windup, so the delay never costs the player the shot they lined up.
+			{ animation = "rbxassetid://73671392887806", damage = 0, windup = 0.35, active = 0.05, recovery = 0.55, range = 0, -- Bow_Shoot
 				effect = "knockdown", effectSeconds = 5,
 				projectile = { kind = "bullet", speed = 320, life = 0.5, size = Vector3.new(0.12, 0.12, 0.6),
 					color = Color3.fromRGB(255, 232, 160), material = Enum.Material.Neon,
@@ -131,7 +136,10 @@ CombatConfig.Weapons = {
 		guardWalkSpeed = 7,
 		idleTimeout = 4,
 		attacks = {
-			{ animation = "rbxassetid://73671392887806", damage = 16, windup = 0.15, active = 0.05, recovery = 0.45, range = 0, -- Bow_Shoot
+			-- Longer than it was, for the same reason as the pistol: a draw that cannot be seen is not a
+			-- draw. A fraction more than the pistol's, since drawing a bow is visibly more work than
+			-- raising a handgun.
+			{ animation = "rbxassetid://73671392887806", damage = 16, windup = 0.4, active = 0.05, recovery = 0.45, range = 0, -- Bow_Shoot
 				-- An arrow floors whoever it hits for a few seconds.
 				effect = "knockdown", effectSeconds = 3,
 				projectile = { kind = "arrow", speed = 110, life = 0.7, size = Vector3.new(0.18, 0.18, 2.4),
