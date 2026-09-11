@@ -43,13 +43,17 @@ end
 
 -- The slider, as a number from 1 to 10.
 --
--- Automatic means the player has not chosen and Roblox is deciding per-frame, so there is no number to read;
--- it is treated as "leave everything on" rather than guessed at. A player who wants the savings picks a
--- level, which is what this setting means everywhere else in Roblox.
+-- Phones read it the same way desktops do rather than being pinned to the bottom. A phone that can afford
+-- the scenery should be allowed to show it, and the player is the one who can tell.
+--
+-- Automatic means the player has not chosen and Roblox is deciding per-frame, so there is no number to read.
+-- A desktop is given the benefit of the doubt and left at full; a phone is not, because a phone on Automatic
+-- that renders this map at four frames a second has no way to tell anyone.
 local function qualityLevel()
-	if isTouchOnlyDevice() then return 1 end
 	local saved = GameSettings.SavedQualityLevel
-	if saved == Enum.SavedQualitySetting.Automatic then return 10 end
+	if saved == Enum.SavedQualitySetting.Automatic then
+		return isTouchOnlyDevice() and 5 or 10
+	end
 	return saved.Value
 end
 
@@ -174,6 +178,68 @@ local function applyLamps(off)
 end
 
 --------------------------------------------------------------------------------
+-- Post-processing and water
+--------------------------------------------------------------------------------
+
+-- Sun rays, bloom and atmosphere are full-screen passes: they cost the same whether the scene in front of
+-- them is a castle or an empty field, which makes them some of the best value to switch off on a device that
+-- is struggling. Depth of field is already off in this place and is left alone either way.
+--
+-- Water reflection is the other one. A reflective surface renders the world a second time to put it in the
+-- water, and this map has a sea and two lakes.
+local EFFECT_NAMES = { "SunRays", "Bloom", "Atmosphere" }
+
+local disabledEffects = {}
+local waterWas = nil
+
+local function applyEffects(off)
+	if off then
+		for _, name in ipairs(EFFECT_NAMES) do
+			local effect = Lighting:FindFirstChild(name)
+			-- Atmosphere has no Enabled property, so it is removed from Lighting and parented back later
+			-- rather than switched -- pcall because which of these exist is the place's business, not this
+			-- file's.
+			if effect then
+				pcall(function()
+					if effect.Enabled ~= nil then
+						if effect.Enabled then
+							disabledEffects[effect] = "enabled"
+							effect.Enabled = false
+						end
+					end
+				end)
+				if disabledEffects[effect] == nil and effect:IsA("Atmosphere") then
+					disabledEffects[effect] = Lighting
+					effect.Parent = nil
+				end
+			end
+		end
+		if waterWas == nil then
+			waterWas = {
+				reflectance = Workspace.Terrain.WaterReflectance,
+				wave = Workspace.Terrain.WaterWaveSize,
+			}
+			Workspace.Terrain.WaterReflectance = 0
+			Workspace.Terrain.WaterWaveSize = 0
+		end
+	else
+		for effect, how in pairs(disabledEffects) do
+			if how == "enabled" then
+				pcall(function() effect.Enabled = true end)
+			else
+				effect.Parent = how
+			end
+		end
+		disabledEffects = {}
+		if waterWas then
+			Workspace.Terrain.WaterReflectance = waterWas.reflectance
+			Workspace.Terrain.WaterWaveSize = waterWas.wave
+			waterWas = nil
+		end
+	end
+end
+
+--------------------------------------------------------------------------------
 -- Applying a tier
 --------------------------------------------------------------------------------
 
@@ -191,8 +257,17 @@ local function apply()
 	local wantScenery = level > SCENERY_BELOW
 	local wantLamps = level > EVERYTHING_BELOW
 
+	-- The floor a phone gets that a desktop does not.
+	--
+	-- At the bottom of the slider a phone gives up the full-screen effects and the water reflection as well,
+	-- which a desktop at the same setting keeps. They are the cheapest things to lose and among the most
+	-- expensive to draw, and somebody who has dragged the slider to the bottom on a phone has already said
+	-- what they want: frames, not sun rays.
+	local wantEffects = wantLamps or not isTouchOnlyDevice()
+
 	-- Nothing to do if the tier has not actually changed; the slider fires this on every nudge.
-	local signature = ("%s|%s|%s"):format(tostring(wantShadows), tostring(wantScenery), tostring(wantLamps))
+	local signature = ("%s|%s|%s|%s"):format(tostring(wantShadows), tostring(wantScenery),
+		tostring(wantLamps), tostring(wantEffects))
 	if signature == applied then return end
 	applied = signature
 
@@ -210,11 +285,13 @@ local function apply()
 	applyClutter(not wantScenery)
 
 	applyLamps(not wantLamps)
+	applyEffects(not wantEffects)
 	Lighting.FogEnd = wantLamps and fullFogEnd or math.min(fullFogEnd, 12000)
 	Lighting.FogStart = wantLamps and fullFogStart or math.min(fullFogStart, 6000)
 
-	print(("[Quality] level %d: shadows=%s scenery=%s lamps=%s"):format(
-		level, tostring(wantShadows), tostring(wantScenery), tostring(wantLamps)))
+	print(("[Quality] level %d%s: shadows=%s scenery=%s lamps=%s effects=%s"):format(
+		level, isTouchOnlyDevice() and " (touch)" or "", tostring(wantShadows), tostring(wantScenery),
+		tostring(wantLamps), tostring(wantEffects)))
 end
 
 -- Re-applied whenever the player moves the slider, so the effect is immediate rather than needing a rejoin.
