@@ -568,23 +568,13 @@ function Vitals.Tick(player, state, dt)
 			local drop = state.peakFallY - hrp.Position.Y
 			state.peakFallY = nil
 
-			-- A fall shorter than twice your own height does not hurt.
+			-- A fall shorter than the safe height does not hurt at all.
 			--
-			-- Measured off the character rather than fixed in the config, because a rig's height is not a
-			-- constant: R15 avatars scale, so a flat number is a different fraction of one body for a tall
-			-- avatar than for a short one. Dropping from a height you could climb down should never cost
-			-- blood, and two body-lengths is that height.
-			--
-			-- GetExtentsSize is the whole standing rig, head to sole. The config value survives as a floor
-			-- for the case where the character has gone missing mid-fall and there is nothing to measure.
+			-- A flat number of studs, not a multiple of the character's height. Measuring it off the rig was
+			-- fairer to avatars of different sizes, but it made the safe height invisible: two players
+			-- standing together took damage at different heights and neither could tell why. One number
+			-- everyone shares is something a player can learn.
 			local safe = VitalsConfig.SafeFallStuds
-			local model = hrp.Parent
-			if model then
-				local ok, extents = pcall(function() return model:GetExtentsSize() end)
-				if ok and extents and extents.Y > 0 then
-					safe = extents.Y * VitalsConfig.SafeFallBodyLengths
-				end
-			end
 
 			if drop > safe then
 				Vitals.ApplyDamage(player, (drop - safe) * VitalsConfig.FallDamagePerStud, "fall")

@@ -4,7 +4,6 @@
 -- as presentation.
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local AimAccess = require(game.ReplicatedStorage.UI.AimAccess)
@@ -49,67 +48,50 @@ local function loadTracksFor(character)
 	end
 end
 
--- How fast counts as moving. Above a crawl, so a character nudged by a slope or settling against a wall does
--- not flicker between standing and walking.
-local MOVING_SPEED = 1.5
-
--- The weapon's held stance plays while STANDING STILL, and stops the moment the player walks.
+-- The weapon's stance is NOT held while simply carrying something.
 --
--- It poses both shoulders and the waist at Movement priority, which is the same priority Roblox's own walk
--- and run animations use. Played last it wins, so a player carrying a sword walked with their arms locked in
--- front of them and their body rigid -- no swing, no stride. Dropping it while moving hands those joints
--- back to the default walk, and the stance returns the moment they stop.
+-- It used to play the whole time a weapon was equipped, and it poses both shoulders and the waist at
+-- Movement priority -- the same priority Roblox's own walk and run use -- so whoever played last won. A
+-- player carrying a sword walked rigid: arms locked in front, no stride, no swing. Stopping it while moving
+-- and restarting it when they stopped was the first fix, and it still left the character frozen whenever
+-- they stood still.
 --
--- The alternative, lowering its priority below Movement, does not work: at Idle it ties with Roblox's own
--- idle and mood tracks at equal weight and the default wins, which is the bug the original comment here was
--- written about. Playing and stopping it is the only lever that behaves.
-local function playHeldStance()
-	if not tracks.idle or tracks.idle.IsPlaying then return end
-	local character = player.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	-- Never start the stance mid-stride; the movement watcher below will start it when they stop.
-	if humanoid and humanoid.MoveDirection.Magnitude > 0 then return end
-	tracks.idle:Play(0.25)
+-- So the stance is now only worn AROUND A SWING. Carry a weapon and you move exactly as you would
+-- empty-handed; attack and the weapon's own pose takes over; stop attacking and after a few seconds the
+-- body goes back to being a body.
+--
+-- How long that takes is the weapon's own idleTimeout, which already existed for the bare-hands guard and
+-- means the same thing here: seconds without an attack before the pose lets go.
+local function stanceSeconds()
+	local weapon = equippedWeaponId and CombatConfig.Weapons[equippedWeaponId]
+	return (weapon and weapon.idleTimeout) or 4
 end
 
--- Watches the character's own movement and swaps the stance out while they are on the move.
-local function watchMovement(character)
-	local humanoid = character:FindFirstChildOfClass("Humanoid")
-	if not humanoid then return end
+-- Bumped every time a swing lands, so an attack during the countdown extends it rather than the first
+-- attack's timer cutting the second one short.
+local stanceToken = 0
 
-	local wasMoving = false
-	local connection
-	connection = RunService.RenderStepped:Connect(function()
-		if not character.Parent or humanoid.Health <= 0 then
-			connection:Disconnect()
-			return
-		end
-		-- MoveDirection rather than the assembly's velocity: it is what the player is ASKING for, so it goes
-		-- to zero the instant they let go of the key rather than trailing off as the character slides to a
-		-- halt, and it is not fooled by being pushed, carried or shoved by a mob.
-		local moving = humanoid.MoveDirection.Magnitude > 0
-			and humanoid.AssemblyLinearVelocity.Magnitude > MOVING_SPEED
-		if moving == wasMoving then return end
-		wasMoving = moving
-
-		-- A swing owns the arms while it lasts; the stance is restored by the swing's own Stopped handler.
-		for _, track in pairs(tracks.attacks or {}) do
-			if track.IsPlaying then return end
-		end
-
-		if not tracks.idle then return end
-		if moving then
-			tracks.idle:Stop(0.15)
-		elseif not tracks.idle.IsPlaying then
-			tracks.idle:Play(0.2)
+local function dropStanceSoon()
+	if not tracks.idle then return end
+	stanceToken += 1
+	local mine = stanceToken
+	task.delay(stanceSeconds(), function()
+		if stanceToken ~= mine then return end
+		if tracks.idle and tracks.idle.IsPlaying then
+			tracks.idle:Stop(0.3)
 		end
 	end)
 end
 
+-- Hold the weapon's pose now, and start the countdown that puts it away again.
+local function wearStanceBriefly()
+	if not tracks.idle then return end
+	if not tracks.idle.IsPlaying then tracks.idle:Play(0.15) end
+	dropStanceSoon()
+end
+
 local function onCharacterAdded(character)
 	loadTracksFor(character)
-	playHeldStance()
-	watchMovement(character)
 end
 
 -- The weapon decides which animations play, so a change has to rebuild the cache.
@@ -120,7 +102,8 @@ local function useWeapon(weaponId)
 	equippedWeaponId = weaponId
 	if player.Character then
 		loadTracksFor(player.Character)
-		playHeldStance()
+		-- No pose on equipping. Picking a sword up should not change how you walk; the stance is worn only
+		-- around a swing now.
 	end
 end
 
@@ -182,9 +165,11 @@ Remotes.CombatStateChanged.OnClientEvent:Connect(function(who, event, chainIndex
 					if other.IsPlaying then swinging = true end
 				end
 				if swinging then return end
-				-- Back to whichever held pose this weapon has: its own stance, or the bare-hands guard.
+				-- Hold the weapon's pose for a few seconds after the swing, then let the body go back to
+				-- normal. Standing ready between blows is what a fight looks like; standing ready while
+				-- walking across a field is what made the character look broken.
 				if tracks.idle then
-					if not tracks.idle.IsPlaying then tracks.idle:Play(0.15) end
+					wearStanceBriefly()
 				elseif tracks.guard and not tracks.guard.IsPlaying then
 					tracks.guard:Play(0.1)
 				end
