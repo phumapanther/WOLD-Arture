@@ -4,6 +4,7 @@
 -- as presentation.
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local AimAccess = require(game.ReplicatedStorage.UI.AimAccess)
@@ -60,22 +61,33 @@ end
 -- empty-handed; attack and the weapon's own pose takes over; stop attacking and after a few seconds the
 -- body goes back to being a body.
 --
--- How long that takes is the weapon's own idleTimeout, which already existed for the bare-hands guard and
--- means the same thing here: seconds without an attack before the pose lets go.
-local function stanceSeconds()
-	local weapon = equippedWeaponId and CombatConfig.Weapons[equippedWeaponId]
-	return (weapon and weapon.idleTimeout) or 4
-end
+-- How long the pose lingers after a swing. Deliberately short: it is there to carry one blow into the next,
+-- not to be a posture the character adopts. Its own constant rather than the weapon's idleTimeout, which
+-- means something different -- how long the SERVER keeps a combat stance alive -- and should not be dragged
+-- around by an animation decision.
+local STANCE_SECONDS = 1.5
+
+-- Above this the character is running, and a runner does not hold a guard. Halfway between the normal walk
+-- (8) and the sprint (16), so it catches a sprint without being tripped by a downhill stumble.
+local RUNNING_SPEED = 12
 
 -- Bumped every time a swing lands, so an attack during the countdown extends it rather than the first
--- attack's timer cutting the second one short.
+-- attack's timer cutting the second one short. Also bumped when the pose is dropped early, so a timer
+-- already in flight cannot fire afterwards and stop a pose that a newer swing has since started.
 local stanceToken = 0
+
+local function dropStanceNow()
+	stanceToken += 1
+	if tracks.idle and tracks.idle.IsPlaying then
+		tracks.idle:Stop(0.2)
+	end
+end
 
 local function dropStanceSoon()
 	if not tracks.idle then return end
 	stanceToken += 1
 	local mine = stanceToken
-	task.delay(stanceSeconds(), function()
+	task.delay(STANCE_SECONDS, function()
 		if stanceToken ~= mine then return end
 		if tracks.idle and tracks.idle.IsPlaying then
 			tracks.idle:Stop(0.3)
@@ -90,8 +102,34 @@ local function wearStanceBriefly()
 	dropStanceSoon()
 end
 
+-- Break out of the pose the moment the player breaks into a run.
+--
+-- Measured from the character's actual speed rather than from a sprint flag, because the flag lives on the
+-- server and there are three ways to ask for a sprint -- shift, a gamepad stick, a touch thumbstick. Speed
+-- is the one thing all three end up agreeing on.
+local function watchForRunning(character)
+	local humanoid = character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+	local connection
+	connection = RunService.RenderStepped:Connect(function()
+		if not character.Parent or humanoid.Health <= 0 then
+			connection:Disconnect()
+			return
+		end
+		if not tracks.idle or not tracks.idle.IsPlaying then return end
+		-- A swing owns the arms while it lasts; interrupting it would cut the attack animation in half.
+		for _, track in pairs(tracks.attacks or {}) do
+			if track.IsPlaying then return end
+		end
+		if humanoid.AssemblyLinearVelocity.Magnitude > RUNNING_SPEED then
+			dropStanceNow()
+		end
+	end)
+end
+
 local function onCharacterAdded(character)
 	loadTracksFor(character)
+	watchForRunning(character)
 end
 
 -- The weapon decides which animations play, so a change has to rebuild the cache.

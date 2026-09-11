@@ -51,6 +51,10 @@ local function canRescue(rescuer, target, range, consented)
 	if not consented and not Vitals.IsDowned(target) then return false end
 	if Vitals.IsDowned(rescuer) then return false end
 	if CarriedBy[target] then return false end
+	-- Nor can someone who is BEING carried pick anybody up. Checked here rather than only at the prompt,
+	-- because a player can ask to carry somebody and be picked up themselves before the request lands --
+	-- the answer has to be decided when the carry actually starts, not when it was requested.
+	if CarriedBy[rescuer] then return false end
 	if Carrying[rescuer] or Reviving[rescuer] then return false end
 	return withinRange(rescuer, target, range)
 end
@@ -162,6 +166,11 @@ end
 -- file duplicating the joint, the physics group and the network ownership this sets up. Through a module
 -- rather than a global, the same hand-off ProfileAccess and HudAccess use.
 RescueAccess.BeginCarry = beginCarry
+
+-- Published for the same reason: being carried has consequences in files that must not require this one.
+RescueAccess.IsCarried = function(player)
+	return CarriedBy[player] ~= nil
+end
 
 Remotes.RequestCarry.OnServerEvent:Connect(function(carrier, target)
 	if typeof(target) ~= "Instance" or not target:IsA("Player") then return end

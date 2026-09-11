@@ -170,5 +170,38 @@ end
 
 task.defer(hideClutter)
 
+--------------------------------------------------------------------------------
+-- Lamps
+--------------------------------------------------------------------------------
+
+-- The 1,203 lamps, hearths and lanterns in the houses.
+--
+-- Each one is a light source the renderer has to resolve every frame against everything near it, and unlike
+-- shadows the cost does not go away when you turn shadows off -- a phone still pays for the light itself.
+-- With shadows already gone they contribute far less than they cost.
+--
+-- Only Lights parented INSIDE the world are touched. Lighting's own sun and sky are a different thing
+-- entirely and are what stops the map going pitch black; a phone keeps those.
+local function dimLamps()
+	local off = 0
+	for _, instance in ipairs(Workspace:GetDescendants()) do
+		if instance:IsA("PointLight") or instance:IsA("SpotLight") or instance:IsA("SurfaceLight") then
+			instance.Enabled = false
+			off += 1
+		end
+	end
+	print(("[Quality] phone: switched off %d lamps"):format(off))
+end
+
+task.defer(dimLamps)
+
+-- Anything that streams in later gets the same treatment; otherwise walking into a fresh village would
+-- light every window in it.
+Workspace.DescendantAdded:Connect(function(instance)
+	if instance:IsA("PointLight") or instance:IsA("SpotLight") or instance:IsA("SurfaceLight") then
+		instance.Enabled = false
+	end
+end)
+
 -- Let Roblox pick the rest. Automatic already scales texture and effect quality to the device, and overriding
 -- it with a fixed low number would also punish a new flagship phone that could have handled more.

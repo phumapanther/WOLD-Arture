@@ -64,7 +64,15 @@ local function requiredToolOf(node)
 	return node:GetAttribute("RequiredTool")
 end
 
+-- True while somebody is carrying this player. Tracked from CarryStateChanged, which the server already
+-- broadcasts as (carrier, event, target) for every carry that starts and ends.
+local beingCarried = false
+
 local function canUse(node)
+	-- A passenger gets no prompts at all. Someone slung over another player's shoulder is not chopping a
+	-- tree, and offering them the button is offering something the server would refuse anyway -- worse, the
+	-- auto-farm one would start walking a character who is not driving.
+	if beingCarried then return false end
 	local needed = requiredToolOf(node)
 	if not needed then return true end -- a node anyone can gather
 	return heldTool == needed
@@ -84,6 +92,20 @@ local function refreshPrompts()
 		end
 	end
 end
+
+-- Connected here rather than beside the flag it sets, because it has to call refreshPrompts and a Lua local
+-- declared further down the file is a different name to anything above it.
+Remotes.CarryStateChanged.OnClientEvent:Connect(function(_carrier, event, target)
+	if target ~= player then return end
+	if event == "carry_start" then
+		beingCarried = true
+	elseif event == "carry_end" then
+		beingCarried = false
+	else
+		return
+	end
+	refreshPrompts()
+end)
 
 -- Re-evaluated when the held tool changes, and when nodes appear.
 Remotes.EquipmentChanged.OnClientEvent:Connect(function(who)

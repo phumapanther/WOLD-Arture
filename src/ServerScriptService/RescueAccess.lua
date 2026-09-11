@@ -12,4 +12,11 @@ local RescueAccess = {}
 -- `consented` lifts the requirement that the target be downed, and only that.
 RescueAccess.BeginCarry = nil
 
+-- IsCarried(player) -> boolean, true while somebody is carrying them.
+--
+-- Published because being carried has consequences outside this file: a passenger cannot be hit, cannot pick
+-- anyone else up, and is offered no prompts of their own. Each of those lives in the system that owns it,
+-- and all of them need to ask the same question.
+RescueAccess.IsCarried = nil
+
 return RescueAccess
