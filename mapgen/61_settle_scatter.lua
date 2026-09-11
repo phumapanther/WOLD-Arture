@@ -15,13 +15,29 @@
 -- on a slope; two studs is a rock hanging in the air.
 local FLOAT_TOLERANCE = 1.5
 
--- How deep to bury the base. A tree whose base exactly touches the ground shows a seam wherever the terrain
--- is not perfectly flat under it, so everything sinks a little.
-local SINK = 0.4
+-- How deep to bury the model.
+--
+-- Just enough to touch, not a third of the way in. Sinking by a third was tried and previewed first: on a
+-- 54-stud pine that is eighteen studs of tree underground, and the preview put the average sink at 5.7
+-- studs across thirteen thousand models -- which would have planted the forest rather than settled it.
+--
+-- What actually stops the daylight is not depth but measuring the ground across the model's whole
+-- FOOTPRINT (below) instead of at one point. With that fixed, a small bite is all that is needed: enough to
+-- hide the seam where a flat-bottomed mesh meets tilted terrain.
+--
+-- Scaled a little by size, because a boulder needs a deeper bite than a fern to hide the same tilt, and
+-- capped at both ends so nothing disappears and nothing merely kisses the surface.
+local SINK_FRACTION = 0.06
+local SINK_MIN = 0.4
+local SINK_MAX = 2.0
 
--- ...but a model that is ALREADY buried deeper than this is left alone. Half-sunk boulders and tree stumps
--- are a deliberate look, and hauling them up to sit neatly on the surface would undo that.
-local SUNK_TOLERANCE = 3.0
+-- How much deeper than intended a model may be before it is left alone.
+--
+-- Measured against the sink the model is SUPPOSED to have rather than a flat number of studs: now that a
+-- tree sinks by a third of its own height, a fixed threshold of three studs would class every correctly
+-- planted tree as "already buried" and skip it. Half-sunk boulders and stumps -- genuinely deeper than the
+-- rule wants -- still get left where they are.
+local EXTRA_SUNK_ALLOWED = 4.0
 
 -- What counts as scatter. Matched on the model's name, which is how the Creator Store assets and the
 -- generator's own props are both named.
@@ -89,34 +105,51 @@ return L.runPhase("SettleScatter", function(folder)
 		local box, size = inst:GetBoundingBox()
 		local base = box.Position.Y - size.Y / 2
 
-		-- Cast from a little ABOVE the base, not from high overhead.
+		-- The ground is sampled across the model's FOOTPRINT, not at its centre alone.
 		--
-		-- High overhead is what found the zone volumes and the canopies. Starting just above the base finds
-		-- the hillside this model is standing over -- and the small lift is what lets a model that is
-		-- already slightly sunk still see the surface it should be resting on.
-		local hit = workspace:Raycast(
-			Vector3.new(box.Position.X, base + 4, box.Position.Z),
-			Vector3.new(0, -12000, 0), params)
+		-- One reading at the centre is what left trees hovering on rough ground: the centre can sit over a
+		-- dip while the model straddles a rise a few studs away, and a model settled to the dip hangs over
+		-- the rise. Taking the HIGHEST terrain under the footprint plants it against the highest thing it
+		-- covers, which is what stops the daylight.
+		local cx, cz = box.Position.X, box.Position.Z
+		local rx, rz = size.X * 0.35, size.Z * 0.35
+		local from = base + size.Y + 4
 
-		if not hit then
+		local highest = nil
+		for _, o in ipairs({ { 0, 0 }, { rx, 0 }, { -rx, 0 }, { 0, rz }, { 0, -rz },
+			{ rx, rz }, { -rx, -rz }, { rx, -rz }, { -rx, rz } }) do
+			local hit = workspace:Raycast(
+				Vector3.new(cx + o[1], from, cz + o[2]), Vector3.new(0, -12000, 0), params)
+			if hit and (not highest or hit.Position.Y > highest) then
+				highest = hit.Position.Y
+			end
+		end
+
+		if not highest then
 			noGround += 1
 		else
-			local gap = base - hit.Position.Y
-			if gap > FLOAT_TOLERANCE then
-				local wanted = hit.Position.Y - SINK
+			local sink = math.clamp(size.Y * SINK_FRACTION, SINK_MIN, SINK_MAX)
+			-- Where the base SHOULD end up, and how far it is from there. Positive means it is hanging
+			-- above where it belongs; negative means it is deeper than the rule intends.
+			local wanted = highest - sink
+			local off = base - wanted
+
+			if off > FLOAT_TOLERANCE then
 				inst:PivotTo(inst:GetPivot() + Vector3.new(0, wanted - base, 0))
 				moved += 1
-				biggest = math.max(biggest, gap)
-			elseif gap < -SUNK_TOLERANCE then
+				biggest = math.max(biggest, base - highest)
+			elseif off < -EXTRA_SUNK_ALLOWED then
 				buried += 1
 			else
 				alreadyOk += 1
 			end
 		end
 
-		-- Yielding keeps Studio responsive; without it a job this size locks the window for a minute.
-		if i % 300 == 0 then
-			L.progress(("settling %d/%d"):format(i, #jobs))
+		-- Yield often. Each model costs NINE raycasts now rather than one, so the same 300-model stride that
+		-- was comfortable before became a quarter of a million rays between breaths -- which locked Studio
+		-- hard enough that the run had to be abandoned halfway.
+		if i % 60 == 0 then
+			if i % 3000 == 0 then L.progress(("settling %d/%d"):format(i, #jobs)) end
 			task.wait()
 		end
 	end
