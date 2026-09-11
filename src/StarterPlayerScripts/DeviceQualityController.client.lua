@@ -1,74 +1,101 @@
--- DeviceQualityController: makes the world cheaper to draw on a phone.
+-- DeviceQualityController: turns the scene down in steps, following the player's own graphics slider.
 --
--- The map is 187,000 parts and every one of them casts a shadow, which is the single most expensive thing in
--- the scene -- shadow cost scales with how many casters are in view, not with how big they are, so a hillside
--- of pebbles costs more than the castle. A desktop absorbs that; a phone renders it at single-figure frame
--- rates and gets hot doing it.
+-- The map is 187,000 parts, every one of them casting a shadow, with 1,203 lamps and 25,000 scattered trees
+-- and rocks. A desktop absorbs that; a phone renders it at single-figure frame rates and gets hot doing it.
 --
--- So the phone gets a cheaper version of the same world rather than a different world: same geometry, same
--- layout, fewer of the effects that cost the most per frame.
+-- Rather than one all-or-nothing switch, the scene sheds load in tiers as the slider comes down, so a player
+-- can buy back frames a step at a time instead of choosing between beautiful and unplayable:
 --
--- Everything here is CLIENT-side. Shadows, quality level and fog are rendering properties, so turning them
--- down for one player changes nothing for anybody else.
+--   level 9-10  everything on
+--   level 6-8   shadows off            -- the single most expensive thing in the scene
+--   level 3-5   + scenery and clutter hidden
+--   level 1-2   + lamps off, draw distance halved
+--
+-- Phones are pinned to the bottom tier whatever their slider says.
+--
+-- Every change here is CLIENT-side -- transparency, collision on this client, light Enabled, fog. Nothing
+-- reaches the server or another player, and nothing is destroyed: a player who slides the quality back up
+-- gets the whole world back, which is why this file hides rather than deletes.
+local CollectionService = game:GetService("CollectionService")
 local Lighting = game:GetService("Lighting")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
+local GameSettings = UserSettings():GetService("UserGameSettings")
+
+--------------------------------------------------------------------------------
+-- Which tier the player is in
+--------------------------------------------------------------------------------
+
+-- The thresholds the user set, converted from their 0-100 wording to the 1-10 scale Roblox exposes:
+-- 80% -> 8, 50% -> 5, 20% -> 2.
+local SHADOWS_BELOW = 8
+local SCENERY_BELOW = 5
+local EVERYTHING_BELOW = 2
+
 -- Phones and tablets ONLY, using the same test TouchActionController settled on: a touchscreen laptop and
--- Studio's device emulator both report TouchEnabled while still having a keyboard and mouse, and those
--- machines can afford the full scene.
+-- Studio's device emulator both report TouchEnabled while still having a keyboard and mouse.
 local function isTouchOnlyDevice()
 	return UserInputService.TouchEnabled
 		and not UserInputService.KeyboardEnabled
 		and not UserInputService.MouseEnabled
 end
 
-if not isTouchOnlyDevice() then return end
-
--- Shadows off. This is the big one, and the reason this file exists: 187,198 casters is not a number a phone
--- can light. Everything is still lit, just not shadowed -- the scene reads slightly flatter and runs several
--- times faster.
-Lighting.GlobalShadows = false
-
--- Grass and other terrain decoration is drawn per-blade over the whole visible ground. It is the second
--- biggest per-frame cost after shadows and the easiest thing to lose: nobody looks at a phone screen and
--- misses individual blades of grass.
-pcall(function()
-	Workspace.Terrain.Decoration = false
-end)
-
--- Pull the far plane in to HALF what the desktop sees.
+-- The slider, as a number from 1 to 10.
 --
--- Fog is not decoration here: it is what lets the renderer stop drawing the far side of the map. FogEnd was
--- 24,000, which is far enough that nothing was ever culled by it. Cut to 12,000 for phones, the distance
--- halves, and the horizon fades rather than pops -- which is what makes a draw limit look deliberate instead
--- of broken.
-Lighting.FogEnd = math.min(Lighting.FogEnd, 12000)
-Lighting.FogStart = math.min(Lighting.FogStart, 6000)
+-- Automatic means the player has not chosen and Roblox is deciding per-frame, so there is no number to read;
+-- it is treated as "leave everything on" rather than guessed at. A player who wants the savings picks a
+-- level, which is what this setting means everywhere else in Roblox.
+local function qualityLevel()
+	if isTouchOnlyDevice() then return 1 end
+	local saved = GameSettings.SavedQualityLevel
+	if saved == Enum.SavedQualitySetting.Automatic then return 10 end
+	return saved.Value
+end
 
 --------------------------------------------------------------------------------
--- Scenery a phone does not have to draw
+-- The things that can be turned down
 --------------------------------------------------------------------------------
 
--- Trees, rocks and bushes that cannot be harvested are pure decoration, and there are 11,759 parts of them
--- -- most of it in Elderwood, which is exactly where a phone struggles most.
---
+-- Remembered so the world can be handed back intact. A part's own values are captured the first time it is
+-- hidden rather than assumed to be the defaults: some of this map is deliberately semi-transparent, and
+-- restoring everything to 0 would make those solid.
+local hiddenParts = {}
+local disabledLights = {}
+
+local function hidePart(part)
+	if hiddenParts[part] then return end
+	hiddenParts[part] = { collide = part.CanCollide }
+	part.LocalTransparencyModifier = 1
+	part.CanCollide = false
+end
+
+local function showPart(part)
+	local saved = hiddenParts[part]
+	if not saved then return end
+	hiddenParts[part] = nil
+	if part.Parent then
+		part.LocalTransparencyModifier = 0
+		part.CanCollide = saved.collide
+	end
+end
+
+local function showEverything()
+	for part in pairs(hiddenParts) do showPart(part) end
+	for light in pairs(disabledLights) do
+		if light.Parent then light.Enabled = true end
+	end
+	disabledLights = {}
+end
+
+--------------------------------------------------------------------------------
+-- Scenery: trees, rocks and bushes nobody can harvest
+--------------------------------------------------------------------------------
+
 -- The test is whether the game USES the thing, not what it looks like: anything tagged WOLD_Node is a
--- resource someone can chop, mine or pick, and is never touched however scenic it is. What is left over is
--- tagged Tree/Rock/Bush for the sake of the world generator and does nothing else.
---
--- Hidden, not destroyed, and made walk-through with it.
---
--- Hiding alone would be worse than leaving them: an invisible tree you bump into is a bug, not a saving. So
--- collision goes as well, and on a phone these stop existing as far as the player is concerned.
---
--- Both properties are client-side. LocalTransparencyModifier is the display-only channel, and CanCollide set
--- on the client governs that client's own physics, so neither reaches the server or anybody else. Destroying
--- them instead would leave this client disagreeing with the server about what is in the world.
-local CollectionService = game:GetService("CollectionService")
-
+-- resource someone can chop, mine or pick and is never touched however scenic it is. Measured over the whole
+-- world: 20,294 harvestable nodes kept, 5,278 decorative models hidden.
 local function isHarvestable(instance)
-	-- Walk up as well as check the instance itself: the tag can sit on the model while the parts hang below.
 	local at = instance
 	while at and at ~= Workspace do
 		if CollectionService:HasTag(at, "WOLD_Node") then return true end
@@ -77,77 +104,38 @@ local function isHarvestable(instance)
 	return false
 end
 
-local function hideScenery()
-	local hidden, kept = 0, 0
+local function eachSceneryPart(instance, fn)
+	for _, part in ipairs(instance:GetDescendants()) do
+		if part:IsA("BasePart") then fn(part) end
+	end
+	if instance:IsA("BasePart") then fn(instance) end
+end
+
+local function applyScenery(hide)
 	for _, tag in ipairs({ "Tree", "Rock", "Bush" }) do
 		for _, instance in ipairs(CollectionService:GetTagged(tag)) do
-			if isHarvestable(instance) then
-				kept += 1
-			else
-				hidden += 1
-				for _, part in ipairs(instance:GetDescendants()) do
-					if part:IsA("BasePart") then
-						-- LocalTransparencyModifier rather than Transparency: it is the client-only channel,
-						-- so a later server update to Transparency does not fight it.
-						part.LocalTransparencyModifier = 1
-						part.CanCollide = false
-					end
-				end
-				if instance:IsA("BasePart") then
-					instance.LocalTransparencyModifier = 1
-					instance.CanCollide = false
-				end
+			if not isHarvestable(instance) then
+				eachSceneryPart(instance, hide and hidePart or showPart)
 			end
 		end
 	end
-	print(("[Quality] phone: hid %d scenery models, kept %d harvestable"):format(hidden, kept))
-end
-
--- Deferred, because the world streams in: running immediately would only catch whatever had arrived by the
--- time this script ran, and the tags arrive with the models.
-task.defer(hideScenery)
-
--- Anything that streams in later gets the same treatment, so walking into a fresh chunk does not bring the
--- scenery back with it.
-for _, tag in ipairs({ "Tree", "Rock", "Bush" }) do
-	CollectionService:GetInstanceAddedSignal(tag):Connect(function(instance)
-		if isHarvestable(instance) then return end
-		for _, part in ipairs(instance:GetDescendants()) do
-			if part:IsA("BasePart") then
-				part.LocalTransparencyModifier = 1
-				part.CanCollide = false
-			end
-		end
-		if instance:IsA("BasePart") then
-			instance.LocalTransparencyModifier = 1
-			instance.CanCollide = false
-		end
-	end)
 end
 
 --------------------------------------------------------------------------------
--- Small clutter inside buildings
+-- Clutter: the small ornament inside buildings
 --------------------------------------------------------------------------------
 
--- The trim, tableware and ornament that fills a room: 32,926 parts of it.
---
--- The rule is SMALL AND WALK-THROUGH, not walk-through alone. Seventy percent of the whole map does not
--- collide -- including the roof joists, balusters and arch stones that hold a building up visually -- so
--- hiding everything a player can walk through would take the roofs off the houses. Measured on one longhouse
--- first: 213 walk-through parts, 71 of them large, and the largest were 78-stud roof beams.
---
--- Volume 2 is the cut. A mug, a book, a candlestick, a door handle and a bit of moulding all fall under it;
--- a joist, a rafter and a floorboard do not. Nobody on a phone screen misses the cutlery, and the room still
--- has its shape.
+-- SMALL AND walk-through, not walk-through alone. Seventy percent of the map does not collide, including the
+-- roof joists and balusters that hold a building up visually, so hiding everything a player can pass through
+-- would take the roofs off the houses. Volume 2 is where a mug and a candlestick fall and a floorboard does
+-- not.
 local CLUTTER_MAX_VOLUME = 2
 
--- Never hidden, however small: things that carry meaning rather than decoration. A sign a player has to read
--- and a light that lights the room are not clutter, and neither is anything the game has tagged.
 local function isClutter(part)
 	if part.CanCollide then return false end
-	if part.Transparency > 0.9 then return false end -- already invisible; nothing to gain
+	if part.Transparency > 0.9 then return false end
 	if part.Size.X * part.Size.Y * part.Size.Z > CLUTTER_MAX_VOLUME then return false end
-	-- A part carrying a sign, a light or a prompt is doing a job.
+	-- A part carrying a sign, a light, a prompt, a sound or an effect is doing a job rather than decorating.
 	for _, child in ipairs(part:GetChildren()) do
 		if child:IsA("Light") or child:IsA("GuiBase3d") or child:IsA("ProximityPrompt")
 			or child:IsA("ParticleEmitter") or child:IsA("Sound") then
@@ -157,51 +145,111 @@ local function isClutter(part)
 	return true
 end
 
-local function hideClutter()
-	local hidden = 0
+local function applyClutter(hide)
+	if not hide then return end
+	-- Nothing to do when showing: showEverything restores every hidden part at once, and re-testing isClutter
+	-- afterwards would fail anyway, since a hidden part has already had its CanCollide taken away.
 	for _, part in ipairs(Workspace:GetDescendants()) do
-		if part:IsA("BasePart") and isClutter(part) then
-			part.LocalTransparencyModifier = 1
-			hidden += 1
-		end
+		if part:IsA("BasePart") and isClutter(part) then hidePart(part) end
 	end
-	print(("[Quality] phone: hid %d small clutter parts"):format(hidden))
 end
-
-task.defer(hideClutter)
 
 --------------------------------------------------------------------------------
 -- Lamps
 --------------------------------------------------------------------------------
 
--- The 1,203 lamps, hearths and lanterns in the houses.
---
--- Each one is a light source the renderer has to resolve every frame against everything near it, and unlike
--- shadows the cost does not go away when you turn shadows off -- a phone still pays for the light itself.
--- With shadows already gone they contribute far less than they cost.
---
--- Only Lights parented INSIDE the world are touched. Lighting's own sun and sky are a different thing
--- entirely and are what stops the map going pitch black; a phone keeps those.
-local function dimLamps()
-	local off = 0
+-- Each of the 1,203 house lights is resolved every frame against everything near it, and that cost does not
+-- go away when shadows are off. Lighting's own sun and sky are a different thing and are what stops the map
+-- going pitch black, so even the bottom tier keeps those.
+local function applyLamps(off)
+	if not off then return end
 	for _, instance in ipairs(Workspace:GetDescendants()) do
 		if instance:IsA("PointLight") or instance:IsA("SpotLight") or instance:IsA("SurfaceLight") then
-			instance.Enabled = false
-			off += 1
+			if instance.Enabled then
+				disabledLights[instance] = true
+				instance.Enabled = false
+			end
 		end
 	end
-	print(("[Quality] phone: switched off %d lamps"):format(off))
 end
 
-task.defer(dimLamps)
+--------------------------------------------------------------------------------
+-- Applying a tier
+--------------------------------------------------------------------------------
 
--- Anything that streams in later gets the same treatment; otherwise walking into a fresh village would
--- light every window in it.
-Workspace.DescendantAdded:Connect(function(instance)
+-- Fog doubles as the draw limit: pulled in, the renderer stops drawing the far side of the map and the
+-- horizon fades rather than pops. Captured once so it can be handed back.
+local fullFogEnd = Lighting.FogEnd
+local fullFogStart = Lighting.FogStart
+
+local applied = nil
+
+local function apply()
+	local level = qualityLevel()
+
+	local wantShadows = level > SHADOWS_BELOW
+	local wantScenery = level > SCENERY_BELOW
+	local wantLamps = level > EVERYTHING_BELOW
+
+	-- Nothing to do if the tier has not actually changed; the slider fires this on every nudge.
+	local signature = ("%s|%s|%s"):format(tostring(wantShadows), tostring(wantScenery), tostring(wantLamps))
+	if signature == applied then return end
+	applied = signature
+
+	-- Everything comes back first, then the current tier is re-applied. Restoring and re-hiding is a few
+	-- thousand property writes on a change the player made by hand, and it is far easier to be sure of than
+	-- working out the difference between two tiers.
+	showEverything()
+
+	Lighting.GlobalShadows = wantShadows
+
+	pcall(function()
+		Workspace.Terrain.Decoration = wantScenery
+	end)
+	applyScenery(not wantScenery)
+	applyClutter(not wantScenery)
+
+	applyLamps(not wantLamps)
+	Lighting.FogEnd = wantLamps and fullFogEnd or math.min(fullFogEnd, 12000)
+	Lighting.FogStart = wantLamps and fullFogStart or math.min(fullFogStart, 6000)
+
+	print(("[Quality] level %d: shadows=%s scenery=%s lamps=%s"):format(
+		level, tostring(wantShadows), tostring(wantScenery), tostring(wantLamps)))
+end
+
+-- Re-applied whenever the player moves the slider, so the effect is immediate rather than needing a rejoin.
+GameSettings:GetPropertyChangedSignal("SavedQualityLevel"):Connect(apply)
+
+-- Anything that streams in later gets whatever the current tier says, so walking into a fresh village does
+-- not bring back the scenery and lamps the tier had already turned off.
+--
+-- This is also what makes the setting apply to models added to the game in FUTURE: a new tree is hidden by
+-- the same rule the existing ones are -- provided it carries the same tag. An untagged tree is invisible to
+-- this file, exactly as it is to the gathering system.
+local function catchUp(instance)
+	if applied == nil then return end
+	local level = qualityLevel()
 	if instance:IsA("PointLight") or instance:IsA("SpotLight") or instance:IsA("SurfaceLight") then
-		instance.Enabled = false
+		if level <= EVERYTHING_BELOW then
+			disabledLights[instance] = true
+			instance.Enabled = false
+		end
+		return
 	end
-end)
+	if level > SCENERY_BELOW then return end
+	if instance:IsA("BasePart") and isClutter(instance) then hidePart(instance) end
+end
 
--- Let Roblox pick the rest. Automatic already scales texture and effect quality to the device, and overriding
--- it with a fixed low number would also punish a new flagship phone that could have handled more.
+Workspace.DescendantAdded:Connect(catchUp)
+
+for _, tag in ipairs({ "Tree", "Rock", "Bush" }) do
+	CollectionService:GetInstanceAddedSignal(tag):Connect(function(instance)
+		if qualityLevel() > SCENERY_BELOW then return end
+		if isHarvestable(instance) then return end
+		eachSceneryPart(instance, hidePart)
+	end)
+end
+
+-- Deferred, because the world streams in: running immediately would only catch whatever had arrived by the
+-- time this script ran.
+task.defer(apply)
