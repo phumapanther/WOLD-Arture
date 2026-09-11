@@ -242,9 +242,12 @@ end)
 
 local function register(npc)
 	if npc:GetAttribute("NpcKind") ~= "shop" then return end
+	-- HumanoidRootPart FIRST, because a prompt measures its range and draws its icon from the part it is
+	-- parented to. The kit's NPC models set PrimaryPart to a 1x1 pivot handle at the model's feet, so
+	-- preferring PrimaryPart put the shop button on the ground by the shopkeeper's shoes.
 	local anchor = npc:IsA("BasePart") and npc
-		or (npc:IsA("Model") and (npc.PrimaryPart or npc:FindFirstChild("HumanoidRootPart")
-			or npc:FindFirstChildWhichIsA("BasePart", true)))
+		or (npc:IsA("Model") and (npc:FindFirstChild("HumanoidRootPart") or npc:FindFirstChild("UpperTorso")
+			or npc.PrimaryPart or npc:FindFirstChildWhichIsA("BasePart", true)))
 	if not anchor then return end
 	if anchor:FindFirstChild("ShopPrompt") then return end
 

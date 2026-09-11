@@ -306,10 +306,19 @@ function R.slimeController(m, opts)
   return s
 end
 
+-- How close you have to be to read an NPC's name. Roughly the distance at which you can tell one villager
+-- from another by sight -- close enough to walk up and talk, not so far that a town reads as a wall of
+-- floating labels.
+R.NAMETAG_DISTANCE = 40
+
 function R.nametag(m, title, role, color, anchor)
   local head = anchor or R.limb(m, "Head")
   local b = Instance.new("BillboardGui")
   b.Name = "NameTag"; b.Size = UDim2.new(0, 190, 0, 52); b.StudsOffset = Vector3.new(0, 2.6, 0)
+  -- A BillboardGui with no MaxDistance is visible from ANY range, and AlwaysOnTop draws it through the
+  -- terrain -- so every name in the capital hung in the sky above the hills, legible from the far shore.
+  -- The cap is what turns a label into something you discover by walking up to someone.
+  b.MaxDistance = R.NAMETAG_DISTANCE
   b.AlwaysOnTop = true; b.Parent = head
   local t = Instance.new("TextLabel")
   t.Size = UDim2.new(1, 0, 0.55, 0); t.BackgroundTransparency = 1; t.Text = title
