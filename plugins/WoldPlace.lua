@@ -61,7 +61,7 @@ local widget = plugin:CreateDockWidgetPluginGui(
 widget.Title = "WOLD Place"
 
 local text = Instance.new("TextLabel")
-text.Size = UDim2.fromScale(1, 1)
+text.Size = UDim2.new(1, 0, 1, -34)
 text.BackgroundColor3 = Color3.fromRGB(30, 32, 38)
 text.BorderSizePixel = 0
 text.Font = Enum.Font.Code
@@ -71,6 +71,24 @@ text.TextXAlignment = Enum.TextXAlignment.Left
 text.TextYAlignment = Enum.TextYAlignment.Top
 text.Text = ""
 text.Parent = widget
+
+-- A real button for the drop, because the keyboard shortcut cannot always be reached.
+--
+-- InputBegan is skipped whenever Studio reports gameProcessed, which it does while the Explorer has focus --
+-- and clicking a model in the Explorer is exactly how you select the thing you want to drop. So the moment
+-- G is most wanted is the moment it is least likely to arrive. A button in the plugin's own panel has no
+-- such problem.
+local dropButton = Instance.new("TextButton")
+dropButton.AnchorPoint = Vector2.new(0.5, 1)
+dropButton.Position = UDim2.new(0.5, 0, 1, -4)
+dropButton.Size = UDim2.new(1, -12, 0, 26)
+dropButton.BackgroundColor3 = Color3.fromRGB(86, 132, 96)
+dropButton.BorderSizePixel = 0
+dropButton.Font = Enum.Font.GothamBold
+dropButton.TextSize = 13
+dropButton.TextColor3 = Color3.fromRGB(240, 240, 244)
+dropButton.Text = "วางลงพื้น (G)"
+dropButton.Parent = widget
 
 -- Declared up here because refreshHelp below prints it, and a local declared further down the file would be
 -- a different (global, always nil) name to everything above it.
@@ -213,12 +231,20 @@ local function dropToGround()
 			local params = RaycastParams.new()
 			params.FilterType = Enum.RaycastFilterType.Exclude
 			params.FilterDescendantsInstances = { inst }
+			-- Cast from just under the model's own base, straight down to the bottom of the world.
+			--
+			-- It used to start 200 studs ABOVE the base and reach only 800 down, which quietly failed twice
+			-- over: a model parked high above the terrain ran out of ray before reaching the ground, and
+			-- starting overhead meant the ray could strike a neighbour's roof on the way past and call that
+			-- the floor. Starting at the base and reaching far enough to leave the map cannot do either.
 			local hit = workspace:Raycast(
-				Vector3.new(box.Position.X, base + 200, box.Position.Z),
-				Vector3.new(0, -800, 0), params)
+				Vector3.new(box.Position.X, base - 0.1, box.Position.Z),
+				Vector3.new(0, -8000, 0), params)
 			if hit then
 				local wanted = hit.Position.Y - SINK
 				inst:PivotTo(inst:GetPivot() + Vector3.new(0, wanted - base, 0))
+			else
+				warn(("[WoldPlace] %s: ไม่เจอพื้นข้างใต้ — ไม่ได้ขยับ"):format(inst.Name))
 			end
 		end
 	end)
@@ -389,6 +415,8 @@ local function duplicateToMouse()
 			destinationName() and (" ใน " .. destination.Name) or ""))
 	end
 end
+
+dropButton.Activated:Connect(dropToGround)
 
 local function applyTag()
 	local items = selected()
