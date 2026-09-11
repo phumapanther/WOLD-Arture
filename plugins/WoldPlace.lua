@@ -72,6 +72,10 @@ text.TextYAlignment = Enum.TextYAlignment.Top
 text.Text = ""
 text.Parent = widget
 
+-- Declared up here because refreshHelp below prints it, and a local declared further down the file would be
+-- a different (global, always nil) name to everything above it.
+local destination = nil
+
 local function refreshHelp()
 	text.Text = table.concat({
 		active and "  ●  เปิดอยู่" or "  ○  ปิดอยู่ (กดปุ่ม WOLD Place)",
@@ -83,10 +87,15 @@ local function refreshHelp()
 		"  R          หมุนสุ่ม",
 		"  T          ขนาดสุ่ม (±15%)",
 		"  Ctrl+D     คัดลอกวางข้างๆ",
+		"  Ctrl+F     ตั้งโฟลเดอร์ปลายทาง",
+		"  Ctrl+B     ย้ายของที่เลือกเข้าโฟลเดอร์",
 		"  Tab        เปลี่ยนชนิดแท็ก",
 		"  Enter      ติดแท็กที่เลือก",
 		"",
 		"  Shift = ละเอียด   Alt = หยาบ",
+		"",
+		"  ปลายทางตอนนี้:",
+		"    " .. (destination and destination.Parent and destination.Name or "ไม่ได้ตั้ง (วางตามต้นฉบับ)"),
 		"",
 		"  แท็กตอนนี้:",
 		"    " .. TAG_PRESETS[presetIndex].label,
@@ -241,6 +250,66 @@ local function randomScale()
 	end)
 end
 
+--------------------------------------------------------------------------------
+-- The destination folder
+--------------------------------------------------------------------------------
+
+-- Where new copies go.
+--
+-- Studio's own Ctrl+V pastes into Workspace, never into the folder you are working in, so an afternoon of
+-- copying buildings leaves them scattered at the top of the tree and they have to be dragged back in one at
+-- a time. Pinning a folder here means every copy lands where it belongs.
+--
+-- Held as a reference rather than a path, so renaming the folder does not break it. Cleared automatically
+-- if the folder is deleted.
+
+local function destinationName()
+	if destination and destination.Parent then return destination:GetFullName() end
+	destination = nil
+	return nil
+end
+
+-- Pin whatever is selected. A Folder is used as-is; anything else pins the folder it sits in, so you can
+-- click a building already in the right place instead of hunting for the folder itself.
+local function pinDestination()
+	local items = Selection:Get()
+	if #items == 0 then
+		destination = nil
+		print("[WoldPlace] ยกเลิกโฟลเดอร์ปลายทาง — วางตามต้นฉบับเหมือนเดิม")
+		refreshHelp()
+		return
+	end
+	local first = items[1]
+	destination = first:IsA("Folder") and first or first.Parent
+	print(("[WoldPlace] โฟลเดอร์ปลายทาง = %s"):format(destination:GetFullName()))
+	refreshHelp()
+end
+
+-- Move the selection into the destination, for things that have already escaped -- a Ctrl+V that landed in
+-- Workspace, or a model dragged out by accident. World position is preserved: reparenting alone would keep
+-- the pivot, but only if the new parent has no offset of its own, and a Model's pivot is cheap to restore
+-- exactly.
+local function collectIntoDestination()
+	if not destinationName() then
+		print("[WoldPlace] ยังไม่ได้ตั้งโฟลเดอร์ปลายทาง (Ctrl+F)")
+		return
+	end
+	local items = Selection:Get()
+	if #items == 0 then return end
+	local moved = 0
+	withUndo("WOLD collect", function()
+		for _, inst in ipairs(items) do
+			if inst ~= destination and not destination:IsDescendantOf(inst) and inst.Parent ~= destination then
+				local pivot = inst:IsA("Model") and inst:GetPivot() or nil
+				inst.Parent = destination
+				if pivot then inst:PivotTo(pivot) end
+				moved += 1
+			end
+		end
+	end)
+	print(("[WoldPlace] ย้าย %d ชิ้นเข้า %s"):format(moved, destination.Name))
+end
+
 -- Duplicate beside the original rather than exactly on top of it, so the copy is visible and immediately
 -- draggable instead of hidden inside what it was copied from.
 local function duplicate()
@@ -252,7 +321,8 @@ local function duplicate()
 		for _, inst in ipairs(items) do
 			local _, size = extents(inst)
 			local copy = inst:Clone()
-			copy.Parent = inst.Parent
+			-- The pinned folder wins; without one the copy stays beside its original, as before.
+			copy.Parent = destinationName() and destination or inst.Parent
 			copy:PivotTo(inst:GetPivot() + right * (math.max(size.X, size.Z) + 4))
 			table.insert(copies, copy)
 		end
@@ -313,6 +383,10 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		randomScale()
 	elseif key == Enum.KeyCode.D and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
 		duplicate()
+	elseif key == Enum.KeyCode.F and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+		pinDestination()
+	elseif key == Enum.KeyCode.B and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
+		collectIntoDestination()
 	elseif key == Enum.KeyCode.Tab then
 		presetIndex = presetIndex % #TAG_PRESETS + 1
 		refreshHelp()
