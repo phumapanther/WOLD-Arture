@@ -140,8 +140,10 @@ CombatConfig.Weapons = {
 			-- draw. A fraction more than the pistol's, since drawing a bow is visibly more work than
 			-- raising a handgun.
 			{ animation = "rbxassetid://73671392887806", damage = 16, windup = 0.4, active = 0.05, recovery = 0.45, range = 0, -- Bow_Shoot
-				-- An arrow floors whoever it hits for a few seconds.
-				effect = "knockdown", effectSeconds = 3,
+				-- An arrow floors whoever it hits, the same way a pistol shot does -- but briefly. Two
+				-- seconds against the pistol's five, because an arrow also does 16 damage where the pistol
+				-- does none: the pistol buys nothing but the time on the floor, so the time is all it has.
+				effect = "knockdown", effectSeconds = 2,
 				projectile = { kind = "arrow", speed = 110, life = 0.7, size = Vector3.new(0.18, 0.18, 2.4),
 					color = Color3.fromRGB(222, 198, 152), material = Enum.Material.Wood } },
 		},
