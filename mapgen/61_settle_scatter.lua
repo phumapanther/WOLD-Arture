@@ -55,6 +55,20 @@ local function isScatter(name)
 	return false
 end
 
+-- Ground-standing props that are not scatter: a well belongs on the ground exactly as a boulder does.
+--
+-- Buildings are deliberately NOT in this list. Their placement is the user's arrangement, and a hall built
+-- to sit on a levelled pad would be dragged down onto the hillside beneath it.
+local PROP_WORDS = { "well", "fence", "signpost", "crate", "barrel", "cart", "bench", "lantern" }
+
+local function isProp(name)
+	local lower = name:lower()
+	for _, word in ipairs(PROP_WORDS) do
+		if lower:find(word, 1, true) then return true end
+	end
+	return false
+end
+
 --------------------------------------------------------------------------------
 
 return L.runPhase("SettleScatter", function(folder)
@@ -75,7 +89,7 @@ return L.runPhase("SettleScatter", function(folder)
 				-- A whole tree is one Model containing its trunk and canopy meshes, so only the top-level
 				-- Model is settled: walking into it as well would try to settle the canopy separately and
 				-- tear the tree apart.
-				if inst:IsA("Model") and isScatter(inst.Name)
+				if inst:IsA("Model") and (isScatter(inst.Name) or isProp(inst.Name))
 					and not (inst.Parent and inst.Parent:IsA("Model")) then
 					table.insert(jobs, inst)
 				end
@@ -125,7 +139,24 @@ return L.runPhase("SettleScatter", function(folder)
 			end
 		end
 
-		if not highest then
+		-- Is it standing on something BUILT? Then it is where it belongs, however high that is.
+		--
+		-- Fifty-one cone roofs sit on parapets, a tower sits on a deck, a gear hangs off an awning. Judged
+		-- against the terrain alone every one of them "floats" -- one by 43 studs -- and dropping them to
+		-- the ground would dismantle the castle. A short ray straight down finds whatever is carrying it.
+		local carried = false
+		do
+			local solid = RaycastParams.new()
+			solid.FilterType = Enum.RaycastFilterType.Exclude
+			solid.FilterDescendantsInstances = { inst }
+			local under = workspace:Raycast(
+				Vector3.new(cx, base - 0.2, cz), Vector3.new(0, -60, 0), solid)
+			carried = under ~= nil and under.Instance ~= workspace.Terrain
+		end
+
+		if carried then
+			alreadyOk += 1
+		elseif not highest then
 			noGround += 1
 		else
 			local sink = math.clamp(size.Y * SINK_FRACTION, SINK_MIN, SINK_MAX)
