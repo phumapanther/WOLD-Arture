@@ -497,7 +497,13 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	end
 	wearWeapon(player)
 
-	Remotes.CombatStateChanged:FireAllClients(player, "attack", state.chainIndex)
+	-- The windup rides along so the client can show how long the aim takes.
+	--
+	-- Sent only for a ranged attack, because only those have a delay worth drawing: a sword lands on the
+	-- click and a bar that appeared and vanished in a frame would be noise. Sent to EVERYONE rather than
+	-- just the shooter, so a player can also see that someone else is lining a shot up on them.
+	Remotes.CombatStateChanged:FireAllClients(player, "attack", state.chainIndex,
+		attack.projectile and attack.windup or nil)
 end)
 
 Players.PlayerAdded:Connect(function(player)

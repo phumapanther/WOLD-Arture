@@ -64,6 +64,84 @@ tick(UDim2.fromOffset(LEN, THICK), UDim2.new(0.5, -GAP, 0.5, 0), Vector2.new(1, 
 tick(UDim2.fromOffset(LEN, THICK), UDim2.new(0.5, GAP, 0.5, 0), Vector2.new(0, 0.5)) -- right
 
 --------------------------------------------------------------------------------
+-- The charge bar
+--------------------------------------------------------------------------------
+
+-- A bar under the crosshair that fills while a ranged weapon is being aimed.
+--
+-- The pistol and the bow take a third of a second to come up before the shot leaves, and without something
+-- on screen that delay reads as the game ignoring the click. The bar is what turns a wait into an aim.
+--
+-- It lives inside the crosshair's own ScreenGui, so it inherits everything already decided about when a
+-- crosshair should be on screen at all: hidden without a ranged weapon, hidden while downed.
+local BAR_W, BAR_H, BAR_DROP = 46, 4, 22
+
+local barBack = Instance.new("Frame")
+barBack.Name = "ChargeBack"
+barBack.AnchorPoint = Vector2.new(0.5, 0)
+barBack.Position = UDim2.new(0.5, 0, 0.5, BAR_DROP)
+barBack.Size = UDim2.fromOffset(BAR_W, BAR_H)
+barBack.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
+barBack.BackgroundTransparency = 0.35
+barBack.BorderSizePixel = 0
+barBack.Visible = false
+barBack.Parent = gui
+
+local barStroke = Instance.new("UIStroke")
+barStroke.Color = Color3.fromRGB(0, 0, 0)
+barStroke.Transparency = 0.5
+barStroke.Thickness = 1
+barStroke.Parent = barBack
+
+local barFill = Instance.new("Frame")
+barFill.Name = "ChargeFill"
+barFill.Size = UDim2.fromScale(0, 1)
+barFill.BackgroundColor3 = Color3.fromRGB(255, 226, 170)
+barFill.BorderSizePixel = 0
+barFill.Parent = barBack
+
+-- Which shot the bar is currently drawing. Bumped on every start, so a second shot fired before the first
+-- bar finished takes the bar over rather than both writing to it at once.
+local chargeToken = 0
+
+local function showCharge(seconds)
+	if not seconds or seconds <= 0 then return end
+	chargeToken += 1
+	local mine = chargeToken
+
+	barFill.Size = UDim2.fromScale(0, 1)
+	barBack.Visible = true
+
+	local started = os.clock()
+	local connection
+	connection = RunService.RenderStepped:Connect(function()
+		-- A newer shot owns the bar now, or the aim has been put away mid-draw.
+		if chargeToken ~= mine or not gui.Enabled then
+			connection:Disconnect()
+			if chargeToken == mine then barBack.Visible = false end
+			return
+		end
+		local progress = (os.clock() - started) / seconds
+		if progress >= 1 then
+			connection:Disconnect()
+			barFill.Size = UDim2.fromScale(1, 1)
+			-- Held for a beat at full so the shot is seen to complete rather than the bar just vanishing.
+			task.delay(0.12, function()
+				if chargeToken == mine then barBack.Visible = false end
+			end)
+			return
+		end
+		barFill.Size = UDim2.fromScale(progress, 1)
+	end)
+end
+
+-- Fired for every attack; only a ranged one carries a windup, so only those draw a bar.
+Remotes.CombatStateChanged.OnClientEvent:Connect(function(who, event, _chainIndex, windup)
+	if who ~= player or event ~= "attack" then return end
+	showCharge(windup)
+end)
+
+--------------------------------------------------------------------------------
 -- Where the weapon is pointed
 --------------------------------------------------------------------------------
 
@@ -109,6 +187,12 @@ end
 local function refresh(equipped)
 	local weapon = equipped and equipped.weapon
 	gui.Enabled = usesAim(weapon and weapon.id)
+	-- Putting the weapon away mid-draw must not leave a half-filled bar waiting to reappear with the next
+	-- one. Bumping the token also tells any live fill loop that it no longer owns the bar.
+	if not gui.Enabled then
+		chargeToken += 1
+		barBack.Visible = false
+	end
 end
 
 Remotes.InventoryUpdate.OnClientEvent:Connect(function(inventory)
