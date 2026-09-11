@@ -89,6 +89,7 @@ local function refreshHelp()
 		"  Ctrl+D     คัดลอกวางข้างๆ",
 		"  Ctrl+F     ตั้งโฟลเดอร์ปลายทาง",
 		"  Ctrl+B     ย้ายของที่เลือกเข้าโฟลเดอร์",
+		"  Shift+V    ก็อปไปวางตรงปลายเมาส์",
 		"  Tab        เปลี่ยนชนิดแท็ก",
 		"  Enter      ติดแท็กที่เลือก",
 		"",
@@ -330,6 +331,65 @@ local function duplicate()
 	if #copies > 0 then Selection:Set(copies) end
 end
 
+-- Copy the selection to wherever the mouse is pointing, into the pinned folder.
+--
+-- This is the "take one from the parts yard and put it over there" move: Ctrl+D drops a copy beside the
+-- original, which is right for filling a row of houses and useless for fetching a building from a store
+-- across the map.
+--
+-- The ray is cast from the CAMERA through the cursor rather than straight down from it, because a cursor is
+-- a direction on screen, not a place in the world -- it only becomes a point when it hits something.
+local function duplicateToMouse()
+	local items = selected()
+	if #items == 0 then return end
+
+	local mouse = plugin:GetMouse()
+	local ray = workspace.CurrentCamera:ViewportPointToRay(mouse.X, mouse.Y)
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	-- The originals are excluded so that pointing AT the thing being copied still finds the ground behind
+	-- it rather than landing the copy on its own roof.
+	params.FilterDescendantsInstances = items
+	local hit = workspace:Raycast(ray.Origin, ray.Direction * 6000, params)
+	if not hit then
+		print("[WoldPlace] เล็งไม่โดนพื้น — เลื่อนเมาส์ไปตรงพื้นดินแล้วลองใหม่")
+		return
+	end
+
+	local copies = {}
+	withUndo("WOLD duplicate to mouse", function()
+		-- Several selected items keep their arrangement relative to each other: the group is moved as a
+		-- whole, rather than every piece being stacked on the same spot.
+		local anchorPivot = items[1]:GetPivot()
+		for _, inst in ipairs(items) do
+			local copy = inst:Clone()
+			copy.Parent = destinationName() and destination or inst.Parent
+			local offset = inst:GetPivot().Position - anchorPivot.Position
+			copy:PivotTo(inst:GetPivot() - inst:GetPivot().Position + hit.Position + offset)
+
+			-- Then sit it ON the ground, the same way G does, so it does not land half-buried or hovering.
+			local box, size = extents(copy)
+			local base = box.Position.Y - size.Y / 2
+			local down = RaycastParams.new()
+			down.FilterType = Enum.RaycastFilterType.Exclude
+			down.FilterDescendantsInstances = { copy }
+			local floor = workspace:Raycast(
+				Vector3.new(box.Position.X, base + 200, box.Position.Z),
+				Vector3.new(0, -800, 0), down)
+			if floor then
+				copy:PivotTo(copy:GetPivot() + Vector3.new(0, (floor.Position.Y - SINK) - base, 0))
+			end
+			table.insert(copies, copy)
+		end
+	end)
+	if #copies > 0 then
+		Selection:Set(copies)
+		print(("[WoldPlace] วาง %d ชิ้นที่ปลายเมาส์%s"):format(#copies,
+			destinationName() and (" ใน " .. destination.Name) or ""))
+	end
+end
+
 local function applyTag()
 	local items = selected()
 	if #items == 0 then return end
@@ -387,6 +447,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		pinDestination()
 	elseif key == Enum.KeyCode.B and UserInputService:IsKeyDown(Enum.KeyCode.LeftControl) then
 		collectIntoDestination()
+	elseif key == Enum.KeyCode.V and UserInputService:IsKeyDown(Enum.KeyCode.LeftShift) then
+		duplicateToMouse()
 	elseif key == Enum.KeyCode.Tab then
 		presetIndex = presetIndex % #TAG_PRESETS + 1
 		refreshHelp()
