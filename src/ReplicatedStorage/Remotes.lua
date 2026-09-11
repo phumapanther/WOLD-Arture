@@ -65,6 +65,10 @@ local EVENTS = {
 	-- The shopkeeper. ShopOpen carries the whole price list down when a player walks up, so the client
 	-- never computes a price and never has one to lie about; RequestShopAction is buy/sell by slot or id.
 	"RequestShopOpen", "ShopOpen", "RequestShopAction",
+	-- The blacksmith. CraftOpen carries the whole recipe list down along with how much of each material the
+	-- player already has, so the client never counts a bag and never has a cost to lie about; RequestCraft
+	-- names nothing but a position in that list.
+	"RequestCraftOpen", "CraftOpen", "RequestCraft",
 	-- Gathering: the server draws the [F] prompt on a node and fires this to tell the client to toggle its
 	-- own auto-farm loop. The loop lives on the client because it drives the local character's movement.
 	"ToggleAutoFarm",

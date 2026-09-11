@@ -14,12 +14,22 @@
 
 --------------------------------------------------------------------------------
 
--- Where the user put them, read off the models they placed. Ground height is measured at run time rather
--- than stored, so a marker sits on the terrain even if the ground is later reshaped.
-local SPOTS = {
-	{ kind = "BioSlime",    x = 1555, z = 3401 },
-	{ kind = "PlasmaSlime", x = 2633, z = 3641 },
-	{ kind = "SteamSlime",  x = 1981, z = 4417 },
+-- Read straight off the models the user placed, rather than copied down here by hand.
+--
+-- The user arranges a display model where they want the monster, and this phase turns each one into a
+-- spawner at the same spot. Reading the positions live means moving a model in Studio moves the monster:
+-- there is no second list of coordinates to keep in step with the first.
+local PROTOTYPE_FOLDER = "Model_moster"
+
+-- Which model name means which entry in GatherConfig.Mobs, and how many of that monster the spot keeps
+-- alive. A named slime is ONE rare thing in one place; spiders and skeletons come in a group.
+local SPAWN_KINDS = {
+	Monster_BioSlime    = { kind = "BioSlime",    count = 1, radius = 20 },
+	Monster_PlasmaSlime = { kind = "PlasmaSlime", count = 1, radius = 20 },
+	Monster_SteamSlime  = { kind = "SteamSlime",  count = 1, radius = 20 },
+	-- Around the spot rather than on it, which is what the user asked for: a nest you walk into.
+	Monster_Spider      = { kind = "Spider",      count = 4, radius = 90 },
+	Monster_Skeleton    = { kind = "Skeleton",    count = 4, radius = 90 },
 }
 
 --------------------------------------------------------------------------------
@@ -39,41 +49,45 @@ return L.runPhase("RareSpawners", function(folder)
 
 	local CollectionService = game:GetService("CollectionService")
 
-	for _, spot in ipairs(SPOTS) do
-		local y = groundAt(spot.x, spot.z)
+	local prototypes = L.root():FindFirstChild(PROTOTYPE_FOLDER, true)
+	assert(prototypes, PROTOTYPE_FOLDER .. " not found -- it holds the models each monster is built from")
 
-		local marker = Instance.new("Part")
-		marker.Name = "RareSpawner_" .. spot.kind
-		marker.Size = Vector3.new(4, 1, 4)
-		marker.CFrame = CFrame.new(spot.x, y + 0.5, spot.z)
-		marker.Anchored = true
-		marker.CanCollide = false
-		marker.Transparency = 1
-		marker.Parent = folder
+	local placed, unknown = 0, {}
+	for _, model in ipairs(prototypes:GetChildren()) do
+		local spec = SPAWN_KINDS[model.Name]
+		if not spec then
+			table.insert(unknown, model.Name)
+		else
+			local at = model:IsA("Model") and model:GetPivot().Position
+				or (model:IsA("BasePart") and model.Position)
+			if at then
+				local y = groundAt(at.X, at.Z)
 
-		marker:SetAttribute("MobKind", spot.kind)
-		-- One each: a rare slime is something to go and find, not a field of them.
-		marker:SetAttribute("Count", 1)
-		-- Tight, so it respawns where the user put it rather than wandering off across the map.
-		marker:SetAttribute("Radius", 20)
-		CollectionService:AddTag(marker, "WOLD_Spawner")
-	end
+				local marker = Instance.new("Part")
+				marker.Name = "Spawner_" .. spec.kind
+				marker.Size = Vector3.new(4, 1, 4)
+				marker.CFrame = CFrame.new(at.X, y + 0.5, at.Z)
+				marker.Anchored = true
+				marker.CanCollide = false
+				marker.Transparency = 1
+				marker.Parent = folder
 
-	-- The display props these replace. Removed only if they are still sitting where they were read from,
-	-- so a prop the user has since moved somewhere deliberate is left alone.
-	local removed = 0
-	for _, name in ipairs({ "RareMoster", "RareMonster" }) do
-		local f = L.root():FindFirstChild("Backup") and L.root().Backup:FindFirstChild(name)
-		if f then
-			for _, m in ipairs(f:GetChildren()) do
-				if m.Name:find("Monster_") then
-					m:Destroy()
-					removed += 1
-				end
+				marker:SetAttribute("MobKind", spec.kind)
+				marker:SetAttribute("Count", spec.count)
+				marker:SetAttribute("Radius", spec.radius)
+				CollectionService:AddTag(marker, "WOLD_Spawner")
+				placed += 1
 			end
 		end
 	end
 
-	print(("[WOLD] RareSpawners: %d spawners placed, %d display props removed")
-		:format(#SPOTS, removed))
+	if #unknown > 0 then
+		L.progress("no monster kind for: " .. table.concat(unknown, ", "))
+	end
+
+	-- The prototype models are deliberately LEFT ALONE. They are what Mobs.server clones to build each
+	-- monster, so deleting them would leave the spawners with nothing to build from -- and they are the
+	-- user's own arrangement besides.
+	print(("[WOLD] RareSpawners: %d spawners placed from the models in %s")
+		:format(placed, PROTOTYPE_FOLDER))
 end)

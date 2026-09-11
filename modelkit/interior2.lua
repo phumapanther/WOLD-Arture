@@ -251,21 +251,31 @@ function K.autoDoor(parent, cf, w, h, opts)
     K.attrs(part, { SwingDeg = swing, HingeX = hingeX - partX, HingeZ = 0 })
     return part
   end
-  local function leaf(centreX, lw, swing)
-    local hingeX = centreX + (swing > 0 and -lw / 2 or lw / 2)
+  -- hingeSide says which edge of the leaf is nailed to the frame, -1 for its left edge and 1 for its
+  -- right, and it is deliberately a separate argument from swing. tying the two together is what made
+  -- double doors flap like butterfly wings: asking for a hinge on the far left edge used to force a
+  -- positive swing, so the left leaf turned one way while the right leaf turned the other.
+  local function leaf(centreX, lw, swing, hingeSide)
+    local hingeX = centreX + hingeSide * lw / 2
     moving(K.box(m, cf * CFrame.new(centreX, h / 2, 0), Vector3.new(lw, h, thick), mat, col, { name = "Leaf" }), centreX, hingeX, swing)
     for _, f in ipairs({ 0.24, 0.76 }) do
       moving(K.box(m, cf * CFrame.new(centreX, h * f, -thick * 0.6), Vector3.new(lw * 0.94, 1, 0.4), K.MAT.Metal, K.C.iron, { name = "Band", cancollide = false }), centreX, hingeX, swing)
     end
-    local hx = centreX + (swing > 0 and lw * 0.36 or -lw * 0.36)
+    local hx = centreX - hingeSide * lw * 0.36     -- the handle belongs on the free edge, away from the hinge
     moving(K.ball(m, cf * CFrame.new(hx, h * 0.46, -thick * 0.9), 1, K.MAT.Metal, K.C.brass, { name = "Handle", cancollide = false }), hx, hingeX, swing)
   end
 
   if opts.single or w < 9 then
-    leaf(0, w, opts.swing or -95)
+    local swing = opts.swing or -95
+    leaf(0, w, swing, swing > 0 and -1 or 1)
   else
-    leaf(-w / 4, w / 2 - 0.1, -95)
-    leaf(w / 4, w / 2 - 0.1, 95)
+    -- a real double door hangs its leaves on the two far outer edges and swings them both the same way,
+    -- out through the opening. the old code derived the hinge from the swing sign, so both hinges landed
+    -- on the inner edges where the leaves meet and the pair flapped open like butterfly wings. now that
+    -- the hinge edge is chosen separately, the two rotation signs are opposite on purpose: a rotation
+    -- about the left edge and the mirrored rotation about the right edge carry both leaves out to -Z.
+    leaf(-w / 4, w / 2 - 0.1, 95, -1)
+    leaf(w / 4, w / 2 - 0.1, -95, 1)
   end
 
   K.box(m, cf * CFrame.new(0, h / 2, 0), Vector3.new(w + 3, h, 12), K.MAT.SmoothPlastic, K.C.white,

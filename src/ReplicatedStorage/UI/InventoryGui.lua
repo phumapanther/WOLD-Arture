@@ -7,6 +7,7 @@ local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
 local UiSound = require(script.Parent.UiSound)
 local InventoryConfig = require(script.Parent.Parent.InventoryConfig)
 local Responsive = require(script.Parent.Responsive)
+local FishingConfig = require(script.Parent.Parent.FishingConfig)
 
 local InventoryGui = {}
 InventoryGui.__index = InventoryGui
@@ -340,8 +341,19 @@ function InventoryGui:Render(data)
 			entry.icon.Visible = art ~= ""
 			-- The name only shows when there is no artwork, so an icon is never covered by its own label.
 			entry.name.Text = (art == "") and (item and item.name or slot.id) or ""
-			entry.count.Text = (slot.count or 1) > 1 and ("x%d"):format(slot.count) or ""
-			entry.stroke.Color = item and KIND_TINT[item.kind] or GLASS
+			-- A fish carries its own kilograms in `meta`, and it is never stacked, so the corner that would
+			-- have read "x12" shows the size instead. Without this the weight would only ever be visible for
+			-- the three seconds the card is up, and a prize catch would be indistinguishable in the bag.
+			local kg = slot.meta and slot.meta.kg
+			if kg then
+				entry.count.Text = ("%.1f"):format(kg)
+				entry.count.TextColor3 = FishingConfig.TierFor(kg).color
+			else
+				entry.count.Text = (slot.count or 1) > 1 and ("x%d"):format(slot.count) or ""
+				entry.count.TextColor3 = ACCENT
+			end
+			entry.stroke.Color = kg and FishingConfig.TierFor(kg).color
+				or (item and KIND_TINT[item.kind] or GLASS)
 			entry.stroke.Transparency = 0.35
 		else
 			entry.icon.Image = ""

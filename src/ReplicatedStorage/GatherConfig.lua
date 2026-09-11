@@ -121,6 +121,12 @@ GatherConfig.WeaponDrops = {
 -- How often a special slime gives up a weapon. One kill in ten.
 GatherConfig.SpecialWeaponChance = 0.10
 
+-- Ore and crystal sit ABOVE the weapon chance and below a certainty, which is the order the user asked
+-- for: low, but likelier than the weapon. Iron is the commoner of the two because crystal is worth more
+-- than twice as much in the shop and is wanted three at a time by the pistol recipe.
+GatherConfig.SpecialOreChance = 0.35
+GatherConfig.SpecialCrystalChance = 0.22
+
 -- Three named slimes, tougher than the green one and worth hunting. They share the green slime's sounds
 -- and its shape; what makes them different is that they hit harder, take longer to come back, and can
 -- drop a weapon.
@@ -129,6 +135,13 @@ GatherConfig.SpecialWeaponChance = 0.10
 local function special(name, colour, extra)
 	local base = {
 		name = name,
+		-- The model to build this monster FROM.
+		--
+		-- Mobs.server used to sculpt a translucent ball with two eyes for every monster, which was fine as
+		-- a placeholder and wrong now that the user has modelled these. Naming the model here means the
+		-- kit's own slime is what walks around, and Mobs.server falls back to the ball only if the model
+		-- cannot be found.
+		model = nil,
 		hp = 90,
 		damage = 11,
 		attackCooldown = 1.5,
@@ -145,6 +158,11 @@ local function special(name, colour, extra)
 		dieSound = "rbxassetid://96214777896458",
 		drops = {
 			{ item = "Slime", min = 2, max = 4 },
+			-- Ore and crystal: uncommon, but a good deal more likely than the weapon. A named slime is a
+			-- long walk and a thirty-minute wait, so a trip that yields nothing but goo is a wasted one --
+			-- these are what make the walk pay for itself while the weapon stays the thing you hope for.
+			{ item = "IronOre", min = 1, max = 3, chance = GatherConfig.SpecialOreChance },
+			{ item = "Crystal", min = 1, max = 2, chance = GatherConfig.SpecialCrystalChance },
 			-- One roll, one weapon out of the eight. Without oneOf this would drop all of them at once.
 			{ oneOf = GatherConfig.WeaponDrops, min = 1, max = 1,
 				chance = GatherConfig.SpecialWeaponChance },
@@ -156,14 +174,67 @@ end
 
 -- Boilie: the steam slime. Slowest and toughest of the three.
 GatherConfig.Mobs.SteamSlime = special("บอยลี่ สไลม์ไอน้ำ", Color3.fromRGB(255, 160, 50),
-	{ hp = 110, damage = 13, walkSpeed = 6 })
+	{ hp = 110, damage = 13, walkSpeed = 6, model = "Monster_SteamSlime" })
 
 -- Volt: the plasma slime. Quick and hits fast, but softer.
 GatherConfig.Mobs.PlasmaSlime = special("โวลต์ สไลม์พลาสมา", Color3.fromRGB(0, 230, 255),
-	{ hp = 80, damage = 10, attackCooldown = 1.1, walkSpeed = 7.5, aggroRange = 36 })
+	{ hp = 80, damage = 10, attackCooldown = 1.1, walkSpeed = 7.5, aggroRange = 36,
+		model = "Monster_PlasmaSlime" })
 
 -- Gunk: the bio slime. Middling, but chases furthest.
 GatherConfig.Mobs.BioSlime = special("กังก์ สไลม์กรดชีวะ", Color3.fromRGB(100, 255, 80),
-	{ leashRange = 110 })
+	{ leashRange = 110, model = "Monster_BioSlime" })
+
+--------------------------------------------------------------------------------
+-- The spider and the skeleton
+--------------------------------------------------------------------------------
+
+-- Built from the user's own models rather than from the placeholder ball, and deliberately NOT given the
+-- weapon table: these are ordinary monsters that live in numbers around the spot where their model stands,
+-- where a named slime is one rare thing in one place.
+GatherConfig.Mobs.Spider = {
+	name = "แมงมุมยักษ์",
+	model = "Monster_Spider",
+	hp = 55,
+	damage = 8,
+	attackCooldown = 1.2,
+	attackRange = 7,
+	-- Sees further and chases harder than a slime, which is what makes a spider a spider.
+	aggroRange = 40,
+	leashRange = 95,
+	-- Faster than a walking player but slower than a running one, so it is a threat you outrun rather than
+	-- out-walk.
+	walkSpeed = 11,
+	xp = 20,
+	respawnSeconds = 90,
+	colour = Color3.fromRGB(70, 50, 60),
+	hitSound = "rbxassetid://127637727363472",
+	dieSound = "rbxassetid://96214777896458",
+	drops = {
+		{ item = "Fiber", min = 1, max = 3 },
+		{ item = "Bone", min = 1, max = 2, chance = 0.4 },
+	},
+}
+
+GatherConfig.Mobs.Skeleton = {
+	name = "โครงกระดูก",
+	model = "Monster_Skeleton",
+	hp = 70,
+	damage = 12,
+	attackCooldown = 1.6,
+	attackRange = 6,
+	aggroRange = 32,
+	leashRange = 85,
+	walkSpeed = 8,
+	xp = 25,
+	respawnSeconds = 90,
+	colour = Color3.fromRGB(220, 214, 198),
+	hitSound = "rbxassetid://127637727363472",
+	dieSound = "rbxassetid://96214777896458",
+	drops = {
+		{ item = "Bone", min = 2, max = 4 },
+		{ item = "IronOre", min = 1, max = 2, chance = 0.25 },
+	},
+}
 
 return GatherConfig

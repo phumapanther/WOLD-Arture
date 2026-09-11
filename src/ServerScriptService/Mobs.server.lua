@@ -107,6 +107,113 @@ local function buildSlime(config)
 end
 
 --------------------------------------------------------------------------------
+-- Building one from the user's own model
+--------------------------------------------------------------------------------
+
+-- Where the hand-placed monster models live. The user arranged one of each in this folder; they are the
+-- PROTOTYPES, not monsters -- each is cloned to make the real thing, and the original never moves or fights.
+local PROTOTYPE_FOLDER = "Model_moster"
+
+local function prototypeFor(config)
+    if not config.model then return nil end
+    local root = workspace:FindFirstChild("WOLD")
+    local folderInstance = root and root:FindFirstChild(PROTOTYPE_FOLDER, true)
+    local found = folderInstance and folderInstance:FindFirstChild(config.model)
+    -- Searched by name across the whole world as a fallback, because the user is free to move the folder.
+    if not found and root then found = root:FindFirstChild(config.model, true) end
+    return found
+end
+
+-- A monster built by CLONING what the user modelled, rather than the placeholder ball.
+--
+-- Returns nil if the prototype is missing or unusable, and the caller falls back to buildSlime -- a missing
+-- model should cost you the artwork, not the monster.
+local function buildFromModel(config)
+    local prototype = prototypeFor(config)
+    if not prototype or not prototype:IsA("Model") then return nil end
+
+    local model = prototype:Clone()
+    model.Name = config.model
+
+    -- A monster has to be driveable, and a display model is not. It needs a part the Humanoid can steer
+    -- from, and that part has to be called HumanoidRootPart -- the kit names its pivot handle "Root", which
+    -- Roblox does not recognise.
+    local rootPart = model:FindFirstChild("HumanoidRootPart")
+    if not rootPart then
+        local candidate = model.PrimaryPart or model:FindFirstChild("Root")
+            or model:FindFirstChildWhichIsA("BasePart", true)
+        if not candidate then model:Destroy(); return nil end
+        candidate.Name = "HumanoidRootPart"
+        rootPart = candidate
+    end
+    model.PrimaryPart = rootPart
+
+    -- The kit's pivot handle is a transparent 1x1 marker that does not collide, which is exactly wrong for
+    -- the part a Humanoid stands on: without collision it sinks through the floor.
+    rootPart.Transparency = 1
+    rootPart.CanCollide = true
+    rootPart.Anchored = false
+
+    -- Everything else rides along rather than fighting the physics: an anchored limb would pin the monster
+    -- in place, and a colliding one would trip it over its own body.
+    for _, d in ipairs(model:GetDescendants()) do
+        if d:IsA("BasePart") and d ~= rootPart then
+            d.Anchored = false
+            d.CanCollide = false
+            d.Massless = true
+            if not d:FindFirstChildWhichIsA("WeldConstraint") then
+                local weld = Instance.new("WeldConstraint")
+                weld.Part0 = rootPart
+                weld.Part1 = d
+                weld.Parent = rootPart
+            end
+        end
+        -- A prompt or a name tag belongs to the display model, not to something you are meant to fight.
+        if d:IsA("ProximityPrompt") or (d:IsA("BillboardGui") and d.Name == "NameTag") then
+            d:Destroy()
+        end
+    end
+
+    local humanoid = model:FindFirstChildOfClass("Humanoid")
+    if not humanoid then
+        humanoid = Instance.new("Humanoid")
+        humanoid.Parent = model
+    end
+    humanoid.MaxHealth = config.hp
+    humanoid.Health = config.hp
+    humanoid.WalkSpeed = config.walkSpeed
+    humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+
+    -- The same health bar the placeholder carries, so every monster reads the same way in a fight.
+    local health = Instance.new("BillboardGui")
+    health.Name = "Health"
+    health.Size = UDim2.fromOffset(70, 8)
+    local _, size = model:GetBoundingBox()
+    health.StudsOffsetWorldSpace = Vector3.new(0, size.Y * 0.6 + 1.5, 0)
+    health.MaxDistance = 60
+    health.Parent = rootPart
+    local back = Instance.new("Frame")
+    back.Size = UDim2.fromScale(1, 1)
+    back.BackgroundColor3 = Color3.fromRGB(28, 30, 36)
+    back.BorderSizePixel = 0
+    back.Parent = health
+    local bar = Instance.new("Frame")
+    bar.Name = "Bar"
+    bar.Size = UDim2.fromScale(1, 1)
+    bar.BackgroundColor3 = Color3.fromRGB(212, 84, 74)
+    bar.BorderSizePixel = 0
+    bar.Parent = back
+
+    CollectionService:AddTag(model, MOB_TAG)
+    return model
+end
+
+-- The monster for a config: the user's model where there is one, the placeholder ball otherwise.
+local function buildMonster(config)
+    return buildFromModel(config) or buildSlime(config)
+end
+
+--------------------------------------------------------------------------------
 -- Living and dying
 --------------------------------------------------------------------------------
 
@@ -249,7 +356,7 @@ local function spawnOne(spawner, kind, config)
 		local z = origin.Z + math.sin(angle) * distance
 		local y = groundAt(x, z)
 		if y then
-			local model = buildSlime(config)
+			local model = buildMonster(config)
 			model:PivotTo(CFrame.new(x, y + 2, z))
 			model.Parent = folder
 			Live[model] = {

@@ -104,7 +104,10 @@ end
 -- Swaps the card's icon to whatever was just caught and puts its name under it, then goes back to the
 -- plain fish after a moment. Shown over the head rather than only in a toast so the people around you can
 -- see you landed something -- which is most of the point of fishing where others can see.
-local function showCatch(player, itemId)
+--
+-- `kg` colours the card through the tier ladder, so how big a catch was is something the people around you
+-- read at a glance from across the bank rather than something only the angler is told.
+local function showCatch(player, itemId, kg)
 	local character = player.Character
 	local head = character and character:FindFirstChild("Head")
 	local card = head and head:FindFirstChild("FishingCard")
@@ -119,27 +122,58 @@ local function showCatch(player, itemId)
 	icon.Image = item.icon
 	card.Size = UDim2.fromOffset(74, 74)
 
+	local tier = kg and FishingConfig.TierFor(kg) or nil
+	-- The stroke as well as the text, because the outline is the part that reads from a distance: at ninety
+	-- studs the label is a smudge but the glowing edge of the card is still plainly purple.
+	local stroke = back:FindFirstChildWhichIsA("UIStroke")
+	if stroke and tier then
+		stroke.Color = tier.color
+		-- A heavy catch glows rather than merely being tinted. The plain tier keeps the card's usual
+		-- half-faded edge so an ordinary fish does not announce itself.
+		stroke.Transparency = (tier.from > 0) and 0 or 0.4
+		stroke.Thickness = (tier.from > 0) and 2 or 1
+	end
+
 	local name = back:FindFirstChild("CatchName")
 	if not name then
 		name = Instance.new("TextLabel")
 		name.Name = "CatchName"
 		name.AnchorPoint = Vector2.new(0.5, 0)
 		name.Position = UDim2.new(0.5, 0, 1, 2)
-		name.Size = UDim2.fromOffset(110, 16)
+		-- Tall enough for two lines and wrapping on, because the heavy tiers add a word under the name.
+		name.Size = UDim2.fromOffset(130, 34)
 		name.BackgroundTransparency = 1
 		name.Font = Enum.Font.GothamBold
 		name.TextSize = 13
 		name.TextColor3 = Color3.fromRGB(255, 226, 170)
+		name.TextWrapped = true
+		name.TextYAlignment = Enum.TextYAlignment.Top
 		name.TextStrokeTransparency = 0.4
 		name.Parent = back
 	end
-	name.Text = item.name
+	-- The kilograms go on the card itself. A tier that has a word for itself ("ตำนาน") says it too, because
+	-- a number alone does not tell a new player that 44 kg was remarkable.
+	if kg then
+		name.Text = (tier.name ~= "")
+			and ("%s %.1f กก.\n%s"):format(item.name, kg, tier.name)
+			or ("%s %.1f กก."):format(item.name, kg)
+		name.TextColor3 = tier.color
+	else
+		name.Text = item.name
+	end
 
 	task.delay(3, function()
 		if not card.Parent then return end
 		icon.Image = ItemCatalog.Get("Fish").icon
 		card.Size = UDim2.fromOffset(46, 46)
 		if name.Parent then name.Text = "" end
+		-- Put the edge back to the fishing card's resting look, or the colour of one lucky catch would stay
+		-- on the card for the rest of the session.
+		if stroke and stroke.Parent then
+			stroke.Color = Color3.fromRGB(244, 197, 66)
+			stroke.Transparency = 0.4
+			stroke.Thickness = 1
+		end
 	end)
 end
 
@@ -321,10 +355,19 @@ local function startFishing(player)
 				Debris:AddItem(sound, 4)
 			end
 
-			if Inventory.AddItem(player, caught, 1) then
-				showCatch(player, caught)
+			-- Rolled HERE, on the server, for the same reason the catch itself is: the client is told what it
+			-- got and never asked. A weight decided client-side would be a fifty-kilo legendary every cast.
+			local kg = FishingConfig.RollKg(caught)
+			local tier = FishingConfig.TierFor(kg)
+
+			-- The kilograms ride in the slot's `meta`, which is the only per-item store the bag has -- the
+			-- same shape a vehicle key's plate uses. That carries a real cost: see the note by AddItem, a
+			-- slot with meta never merges, so every fish takes a slot of its own.
+			if Inventory.AddItem(player, caught, 1, nil, { kg = kg }) then
+				showCatch(player, caught, kg)
 				Remotes.SocialNotify:FireClient(player, "info",
-					("ตกได้ %s"):format(item and item.name or caught))
+					("ตกได้ %s %.1f กก.%s"):format(item and item.name or caught, kg,
+						tier.name ~= "" and (" (%s)"):format(tier.name) or ""))
 			else
 				Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม ปลาหลุดไป")
 			end
