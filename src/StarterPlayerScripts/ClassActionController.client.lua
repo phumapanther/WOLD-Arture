@@ -57,6 +57,17 @@ local function buildPrompts(target)
 	-- Downed players belong to the rescue prompts. Checked from the attribute the server keeps in step,
 	-- rather than guessed at.
 	if target:GetAttribute("WOLD_Downed") then return end
+	-- Nothing at all is offered on or by a passenger.
+	--
+	-- Being carried is NOT being downed -- a consented carry lifts someone perfectly healthy -- so the test
+	-- above lets a passenger straight through, and these prompts went on appearing over the head of someone
+	-- riding on a back. The server already refuses every one of them; this is what stops the button being
+	-- drawn in the first place.
+	--
+	-- Both directions: no prompts ON someone being carried, and none AT ALL for a player who is being
+	-- carried themselves, whoever they belong to.
+	if target:GetAttribute("WOLD_BeingCarried") then return end
+	if player:GetAttribute("WOLD_BeingCarried") then return end
 
 	local actions = myActions()
 	if #actions == 0 then return end
@@ -112,8 +123,16 @@ local function watch(target)
 	target:GetAttributeChangedSignal("WOLD_Downed"):Connect(function()
 		buildPrompts(target)
 	end)
+	-- Being picked up and put down does the same.
+	target:GetAttributeChangedSignal("WOLD_BeingCarried"):Connect(function()
+		buildPrompts(target)
+	end)
 	buildPrompts(target)
 end
+
+-- When WE are picked up or put down, every prompt we can see has to be re-decided at once: the per-target
+-- listeners above only fire for the player they watch, and none of them watches us.
+player:GetAttributeChangedSignal("WOLD_BeingCarried"):Connect(rebuildAll)
 
 for _, other in ipairs(Players:GetPlayers()) do watch(other) end
 Players.PlayerAdded:Connect(watch)
