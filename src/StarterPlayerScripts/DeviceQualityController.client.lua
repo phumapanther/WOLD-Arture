@@ -125,5 +125,50 @@ for _, tag in ipairs({ "Tree", "Rock", "Bush" }) do
 	end)
 end
 
+--------------------------------------------------------------------------------
+-- Small clutter inside buildings
+--------------------------------------------------------------------------------
+
+-- The trim, tableware and ornament that fills a room: 32,926 parts of it.
+--
+-- The rule is SMALL AND WALK-THROUGH, not walk-through alone. Seventy percent of the whole map does not
+-- collide -- including the roof joists, balusters and arch stones that hold a building up visually -- so
+-- hiding everything a player can walk through would take the roofs off the houses. Measured on one longhouse
+-- first: 213 walk-through parts, 71 of them large, and the largest were 78-stud roof beams.
+--
+-- Volume 2 is the cut. A mug, a book, a candlestick, a door handle and a bit of moulding all fall under it;
+-- a joist, a rafter and a floorboard do not. Nobody on a phone screen misses the cutlery, and the room still
+-- has its shape.
+local CLUTTER_MAX_VOLUME = 2
+
+-- Never hidden, however small: things that carry meaning rather than decoration. A sign a player has to read
+-- and a light that lights the room are not clutter, and neither is anything the game has tagged.
+local function isClutter(part)
+	if part.CanCollide then return false end
+	if part.Transparency > 0.9 then return false end -- already invisible; nothing to gain
+	if part.Size.X * part.Size.Y * part.Size.Z > CLUTTER_MAX_VOLUME then return false end
+	-- A part carrying a sign, a light or a prompt is doing a job.
+	for _, child in ipairs(part:GetChildren()) do
+		if child:IsA("Light") or child:IsA("GuiBase3d") or child:IsA("ProximityPrompt")
+			or child:IsA("ParticleEmitter") or child:IsA("Sound") then
+			return false
+		end
+	end
+	return true
+end
+
+local function hideClutter()
+	local hidden = 0
+	for _, part in ipairs(Workspace:GetDescendants()) do
+		if part:IsA("BasePart") and isClutter(part) then
+			part.LocalTransparencyModifier = 1
+			hidden += 1
+		end
+	end
+	print(("[Quality] phone: hid %d small clutter parts"):format(hidden))
+end
+
+task.defer(hideClutter)
+
 -- Let Roblox pick the rest. Automatic already scales texture and effect quality to the device, and overriding
 -- it with a fixed low number would also punish a new flagship phone that could have handled more.

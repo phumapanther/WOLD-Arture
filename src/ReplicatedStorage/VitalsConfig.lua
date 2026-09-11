@@ -34,7 +34,9 @@ VitalsConfig.SafeFallBodyLengths = 2
 -- The fallback, used only when the character cannot be measured -- roughly two body-lengths of a default
 -- R15 rig, so the behaviour is the same rather than merely similar.
 VitalsConfig.SafeFallStuds = 12
-VitalsConfig.FallDamagePerStud = 3
+-- Cut 80% at the user's request: 3 a stud to 0.6. A fall is now a setback rather than a death sentence --
+-- past the safe height of two body-lengths, a 30-stud drop costs about 12 blood instead of 60.
+VitalsConfig.FallDamagePerStud = 0.6
 -- Below this Y the player has left the map entirely: instant death, no damage curve.
 VitalsConfig.VoidY = -200
 
