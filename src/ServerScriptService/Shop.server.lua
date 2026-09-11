@@ -15,6 +15,7 @@ if ServerConfig.IsLobby then return end
 local ShopConfig = require(game.ReplicatedStorage.ShopConfig)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Inventory = require(game.ServerScriptService.Inventory)
+local Vitals = require(game.ServerScriptService.Vitals)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local TAG = "WOLD_Npc"
@@ -138,7 +139,14 @@ local function snapshot(player)
 	}
 end
 
+-- Trading is a conversation, and you cannot have one face-down in the dirt. Checked on opening AND on every
+-- action, the same way distance is: a player could be knocked down with the counter already up.
+local function canTrade(player)
+	return not Vitals.IsDowned(player)
+end
+
 Remotes.RequestShopOpen.OnServerEvent:Connect(function(player)
+	if not canTrade(player) then return end
 	if not nearShop(player) then return end
 	Remotes.ShopOpen:FireClient(player, snapshot(player))
 end)
@@ -152,6 +160,7 @@ end)
 -- request to buy more than the purse holds buys what it can afford.
 Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, amount)
 	if type(action) ~= "string" then return end
+	if not canTrade(player) then return end
 	if action ~= "sellall" and type(index) ~= "number" then return end
 	-- Re-checked on every action, not just on opening: a player could walk away with the window still up.
 	if not nearShop(player) then

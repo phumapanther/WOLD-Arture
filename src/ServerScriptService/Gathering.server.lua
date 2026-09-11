@@ -18,6 +18,7 @@ if ServerConfig.IsLobby then return end
 local GatherConfig = require(game.ReplicatedStorage.GatherConfig)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Inventory = require(game.ServerScriptService.Inventory)
+local Vitals = require(game.ServerScriptService.Vitals)
 local Progression = require(game.ServerScriptService.Progression)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
@@ -196,6 +197,11 @@ end
 --------------------------------------------------------------------------------
 
 local function gather(node, player)
+	-- Nothing but crawling, while crawling. A player on their hands and knees with the last of their blood
+	-- draining should not be chopping a tree, and both prompts -- the manual one and the auto-farm -- come
+	-- through here, so one check covers both.
+	if Vitals.IsDowned(player) then return end
+
 	local config = configFor(node)
 	if not config then return end
 	if isSpent(node) then return end

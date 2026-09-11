@@ -15,6 +15,7 @@ if ServerConfig.IsLobby then return end
 local CraftConfig = require(game.ReplicatedStorage.CraftConfig)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Inventory = require(game.ServerScriptService.Inventory)
+local Vitals = require(game.ServerScriptService.Vitals)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local TAG = "WOLD_Npc"
@@ -142,7 +143,13 @@ local function snapshot(player)
 	return { tabs = CraftConfig.Tabs, recipes = recipes }
 end
 
+-- Same rule as the shop: no smithing from the floor.
+local function canCraft(player)
+	return not Vitals.IsDowned(player)
+end
+
 Remotes.RequestCraftOpen.OnServerEvent:Connect(function(player)
+	if not canCraft(player) then return end
 	if not nearSmith(player) then return end
 	Remotes.CraftOpen:FireClient(player, snapshot(player))
 end)
@@ -153,6 +160,7 @@ end)
 
 Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 	if type(index) ~= "number" then return end
+	if not canCraft(player) then return end
 	-- Re-checked on every craft, not just on opening: a player could walk away with the window still up.
 	if not nearSmith(player) then
 		return Remotes.SocialNotify:FireClient(player, "error", "อยู่ไกลจากช่างตีเหล็กเกินไป")

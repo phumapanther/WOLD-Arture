@@ -211,7 +211,12 @@ RunService.Heartbeat:Connect(function()
 		-- up, in which case being fine is the normal state and dropping them would end every such carry on
 		-- the frame it started.
 		local lostReason = not entry.consented and not Vitals.IsDowned(entry.target)
-		if not entry.target.Parent or lostReason or not characterOf(carrier) then
+		-- And a CARRIER who goes down drops what they were carrying. canRescue already refuses to start a
+		-- carry while downed, but nothing was watching for someone collapsing mid-carry -- so a player who
+		-- was floored while hauling a friend went on hauling them, crawling, with the friend riding along.
+		-- Someone on their hands and knees is not carrying anybody.
+		local carrierDown = Vitals.IsDowned(carrier)
+		if not entry.target.Parent or lostReason or carrierDown or not characterOf(carrier) then
 			dropCarried(carrier)
 		end
 	end

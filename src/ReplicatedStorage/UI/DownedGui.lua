@@ -36,11 +36,16 @@ function DownedGui.new()
 
 	-- Dark overlay. Not fully opaque: the spec calls for the surroundings faintly visible, and a fully black
 	-- screen would make crawling impossible.
+	--
+	-- Transparency 0.18 meant the screen was 82% black, which was dark enough that crawling for help was
+	-- mostly guesswork. Lightened by 30% at the user's request: 82 * 0.7 is a hair over 57, so the shade is
+	-- now 0.43 transparent. Written as the darkness rather than the transparency would be clearer, but this
+	-- is the property Roblox exposes, so the arithmetic is recorded here instead.
 	local shade = Instance.new("Frame")
 	shade.Name = "Shade"
 	shade.Size = UDim2.fromScale(1, 1)
 	shade.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-	shade.BackgroundTransparency = 0.18
+	shade.BackgroundTransparency = 0.43
 	shade.BorderSizePixel = 0
 	shade.Parent = gui
 	self.shade = shade

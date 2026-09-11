@@ -211,6 +211,13 @@ local function doUseItem(player, index)
 	local item = ItemCatalog.Get(slot.id)
 	if not item or item.kind ~= "consumable" or not item.use then return end
 
+	-- Nothing but crawling, while crawling -- and that includes drinking.
+	--
+	-- Deliberately covers the health potion too. Letting a downed player heal themselves out of it would
+	-- make the whole rescue system optional: there would be no reason to wait for help, and no reason for
+	-- anyone to come. Being floored has to be something another player gets you out of.
+	if Vitals.IsDowned(player) then return end
+
 	-- The repair hammer is a tool, not food -- there is nothing to raise to the mouth, so it stays instant.
 	if item.use.stat == "repair" then
 		if not applyUse(player, item) then return end
