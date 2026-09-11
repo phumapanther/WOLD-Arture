@@ -98,17 +98,37 @@ Remotes.DownedStateChanged.OnClientEvent:Connect(function(isDowned)
 	end
 end)
 
+-- Nobody gets a prompt on a passenger, and a passenger gets no prompts on anybody.
+--
+-- Someone slung over another player's shoulder is still downed, so the downed attribute alone went on
+-- offering them as a rescue target -- to everyone walking past AND to the passenger themselves, who could
+-- keep pressing F to be picked up again by whoever was already carrying them.
+--
+-- Two separate cases, both of which have to be covered:
+--   * a carried TARGET is not someone you can revive or lift, so their prompts come down for everyone;
+--   * a carried VIEWER cannot act at all, so every prompt they can see comes down, whoever it belongs to.
+local function amCarried()
+	return player:GetAttribute("WOLD_BeingCarried") == true
+end
+
+local function shouldOffer(target)
+	if amCarried() then return false end
+	if target:GetAttribute("WOLD_BeingCarried") then return false end
+	return target:GetAttribute("WOLD_Downed") == true
+end
+
 -- The server marks downed players with an attribute so every client can see who to offer prompts on.
 local function watchPlayer(target)
 	if target == player then return end
 	local function refresh()
-		if target:GetAttribute("WOLD_Downed") then
+		if shouldOffer(target) then
 			addPrompts(target)
 		else
 			removePrompts(target)
 		end
 	end
 	target:GetAttributeChangedSignal("WOLD_Downed"):Connect(refresh)
+	target:GetAttributeChangedSignal("WOLD_BeingCarried"):Connect(refresh)
 	target.CharacterAdded:Connect(function()
 		removePrompts(target)
 		task.wait(0.5)
@@ -116,6 +136,18 @@ local function watchPlayer(target)
 	end)
 	refresh()
 end
+
+-- When WE are picked up or put down, every prompt we can see has to be re-decided at once -- not just the
+-- one on our carrier.
+local function refreshEveryone()
+	for _, other in ipairs(Players:GetPlayers()) do
+		if other ~= player then
+			if shouldOffer(other) then addPrompts(other) else removePrompts(other) end
+		end
+	end
+end
+
+player:GetAttributeChangedSignal("WOLD_BeingCarried"):Connect(refreshEveryone)
 
 for _, other in ipairs(Players:GetPlayers()) do watchPlayer(other) end
 Players.PlayerAdded:Connect(watchPlayer)

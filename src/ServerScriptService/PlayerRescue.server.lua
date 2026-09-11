@@ -102,6 +102,7 @@ local function dropCarried(carrier)
 	if not entry then return end
 	Carrying[carrier] = nil
 	CarriedBy[entry.target] = nil
+	entry.target:SetAttribute("WOLD_BeingCarried", false)
 
 	if entry.joint then entry.joint:Destroy() end
 
@@ -154,6 +155,14 @@ local function beginCarry(carrier, target, consented)
 	-- Remembered, because the upkeep loop below needs to know whether being un-downed should end this carry.
 	Carrying[carrier] = { target = target, joint = joint, consented = consented }
 	CarriedBy[target] = carrier
+	-- Published as an attribute, the way Vitals publishes WOLD_Downed, so every CLIENT can see who is being
+	-- carried. CarriedBy is server-only, and the prompts are drawn client-side -- without this a passenger
+	-- went on being offered as a rescue target to everyone around them, including themselves.
+	--
+	-- Named WOLD_BeingCarried rather than WOLD_Carried because the CollisionGroup above already owns that
+	-- name. They are different namespaces and would not have collided, but two unrelated things called the
+	-- same thing in one file is a trap for whoever reads it next.
+	target:SetAttribute("WOLD_BeingCarried", true)
 
 	local carrierHumanoid = carrierChar:FindFirstChildOfClass("Humanoid")
 	if carrierHumanoid then carrierHumanoid.WalkSpeed = ActionConfig.Carry.walkSpeed end
