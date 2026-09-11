@@ -21,7 +21,7 @@ local WIN_W, WIN_H, SILL = 9, 11, 7
 
 local function glow(part, color, range, brightness)
   local l = Instance.new("PointLight")
-  l.Color = color or C.lamp; l.Range = range or 26; l.Brightness = brightness or 1.5; l.Parent = part
+  l.Color = color or C.lamp; l.Range = range or 26; l.Brightness = brightness or 0.6; l.Parent = part
   return l
 end
 local function smoke(part, color, size)

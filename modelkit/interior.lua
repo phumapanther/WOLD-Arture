@@ -188,7 +188,7 @@ function K.fireplace(parent, cf, w, h, color, lit)
   K.box(m, cf * CFrame.new(0, h * 0.92, -0.9), Vector3.new(w + 1.2, 0.6, 3.2), K.MAT.Wood, K.C.wood, { name = "Mantel" })
   if lit ~= false then
     local fire = K.box(m, cf * CFrame.new(0, 0.7, -0.2), Vector3.new(math.max(1.5, w - 4), 1.2, 1.8), K.MAT.Neon, K.C.ember, { name = "Fire", cancollide = false })
-    local l = Instance.new("PointLight"); l.Color = K.C.ember; l.Range = 26; l.Brightness = 2.4; l.Parent = fire
+    local l = Instance.new("PointLight"); l.Color = K.C.ember; l.Range = 26; l.Brightness = 0.96; l.Parent = fire
     for i = 0, 3 do
       K.rod(m, (cf * CFrame.new(-1.4 + i * 0.9, 0.3, -0.9)).Position, (cf * CFrame.new(-0.6 + i * 0.6, 1.5, 0.2)).Position, 0.22, K.MAT.Wood, K.C.wood, { name = "Log", cancollide = false })
     end

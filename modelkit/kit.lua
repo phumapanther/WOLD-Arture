@@ -193,7 +193,7 @@ function K.lantern(parent, cf, s, color)                       -- caged glass la
     local a = i * math.pi / 2
     K.box(m, cf * CFrame.new(math.cos(a) * s * 0.42, s * 0.5, math.sin(a) * s * 0.42), Vector3.new(s * 0.08, s, s * 0.08), MAT.Metal, K.C.brassDark, { cancollide = false })
   end
-  local l = Instance.new("PointLight"); l.Color = color or K.C.lamp; l.Range = s * 10; l.Brightness = 1.6; l.Parent = flame
+  local l = Instance.new("PointLight"); l.Color = color or K.C.lamp; l.Range = s * 10; l.Brightness = 0.64; l.Parent = flame
   return m
 end
 function K.propeller(parent, cf, r, blades, color)             -- spins about the cf's own X axis
@@ -333,7 +333,7 @@ function K.window(parent, cf, w, h, frameColor, lit)
   K.box(m, cf * CFrame.new(0, 0, -0.2), Vector3.new(0.18, h, 0.2), MAT.Wood, fc, { name = "Mullion", cancollide = false })
   K.box(m, cf * CFrame.new(0, 0, -0.2), Vector3.new(w, 0.18, 0.2), MAT.Wood, fc, { name = "Mullion", cancollide = false })
   if lit then
-    local l = Instance.new("PointLight"); l.Color = K.C.lamp; l.Range = 14; l.Brightness = 1.1; l.Parent = glass
+    local l = Instance.new("PointLight"); l.Color = K.C.lamp; l.Range = 14; l.Brightness = 0.44; l.Parent = glass
   end
   return m
 end

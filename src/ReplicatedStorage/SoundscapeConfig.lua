@@ -134,9 +134,14 @@ SoundscapeConfig.FootstepPitchJitter = 0.08
 
 -- Seconds between steps at each gait. The engine gives no "foot planted" event, so steps are timed from
 -- speed: these are the intervals that looked right against the walk and run animations.
-SoundscapeConfig.StepIntervalWalk = 0.55 -- WalkSpeed 4, the deliberate walk
-SoundscapeConfig.StepIntervalNormal = 0.42 -- WalkSpeed 8
-SoundscapeConfig.StepIntervalRun = 0.28 -- WalkSpeed 16
+--
+-- Rescaled when the speeds changed from 4/8/16 to 6/14/21. Each interval was divided by the same factor the
+-- speed was multiplied by, which keeps the STRIDE LENGTH what it was -- a character covering more ground per
+-- second takes more steps per second, not longer ones. Left alone, the old intervals would have had a
+-- sprinting player gliding between footfalls.
+SoundscapeConfig.StepIntervalWalk = 0.37 -- WalkSpeed 6, the deliberate walk
+SoundscapeConfig.StepIntervalNormal = 0.24 -- WalkSpeed 14
+SoundscapeConfig.StepIntervalRun = 0.21 -- WalkSpeed 21
 
 -- Below this the character is shuffling in place rather than travelling, and should make no sound at all.
 SoundscapeConfig.MinStepSpeed = 1.5

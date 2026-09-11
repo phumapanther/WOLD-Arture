@@ -21,7 +21,7 @@ local BRASS = rgb(205, 140, 45)
 
 local function glow(part, color, range, brightness)
   local l = Instance.new("PointLight")
-  l.Color = color or C.lamp; l.Range = range or 26; l.Brightness = brightness or 1.4; l.Parent = part
+  l.Color = color or C.lamp; l.Range = range or 26; l.Brightness = brightness or 0.56; l.Parent = part
   return l
 end
 local function smoke(part, color, size)
