@@ -63,8 +63,29 @@ return L.runPhase("V1Interactables", function(folder)
 	local farms, transformers = 0, 0
 	local prototypes = nil
 
+	-- Is one of these models already inside another one of them?
+	--
+	-- The kit's props nest under their own name: a still in this place is a Model "DistillSet" holding the
+	-- bench, the carboy, the chest AND an inner Model "DistillSet" that is the still itself. Tagging every
+	-- match would put two nodes on every station, one inside the other -- two [E] prompts in the same spot,
+	-- two separate half-hour cooldowns, and a player who works the outer one finding the inner one still
+	-- available. Measured in the real place: six stations, twelve matches.
+	--
+	-- The OUTER one wins. Its bounding box is the whole workbench, which is where a player actually stands;
+	-- the inner model is one piece of glassware in the middle of it.
+	local function nestedInsideAnother(m)
+		local parent = m.Parent
+		while parent and parent ~= workspace do
+			if parent:IsA("Model") and (FARMS[parent.Name] or parent.Name == "Transformer") then
+				return true
+			end
+			parent = parent.Parent
+		end
+		return false
+	end
+
 	for _, m in ipairs(workspace:GetDescendants()) do
-		if m:IsA("Model") then
+		if m:IsA("Model") and not nestedInsideAnother(m) then
 			local kind = FARMS[m.Name]
 			if kind then
 				m:SetAttribute("FarmKind", kind)
