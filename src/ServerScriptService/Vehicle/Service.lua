@@ -411,7 +411,15 @@ function VehicleService.summon(player, plate, station)
   local paid, reason = charge(player, fee)
   if not paid then return false, reason end
 
-  local record = VehicleService.build(vtype, freeSpot(base), plate, owner and owner.UserId or player.UserId, data)
+  -- สร้างตัวถังใน pcall แล้วคืนเงินถ้าล้ม: เงินถูกหักไปก่อนแล้ว (ต้องหักก่อน ไม่งั้นจะมีพาหนะที่เกิดมาแต่ไม่ได้
+  -- จ่าย) จึงต้องมีทางกลับสำหรับกรณีที่การสร้างพัง
+  local ok, record = pcall(VehicleService.build, vtype, freeSpot(base), plate,
+    owner and owner.UserId or player.UserId, data)
+  if not ok or not record then
+    if fee > 0 then Inventory.AddGold(player, fee) end
+    warn("[VehicleService] สร้าง " .. plate .. " ไม่สำเร็จ: " .. tostring(record))
+    return false, "สร้างพาหนะไม่สำเร็จ คืนเงินให้แล้ว"
+  end
   record.fee = fee
   record.summonedBy = player.UserId
   if data and data.Trunk then
@@ -430,17 +438,9 @@ function VehicleService.stow(plate, byPlayer)
     return false, "ต้องมีกุญแจถึงจะฝากได้"
   end
 
-  -- ค่าฝาก คิดจากระยะระหว่างบารอนเวนกับตัวพาหนะตรงที่มันจอดอยู่จริง ทิ้งเรือเหาะไว้ยอดเขาแล้วสั่งเก็บจากในเมือง
-  -- ย่อมแพงกว่าบินกลับมาจอดเอง — คิดเฉพาะตอนคนสั่ง ส่วนการเก็บอัตโนมัติ (ไม่มีคนแตะนาน / เจ้าของออกจากเกม)
-  -- ไม่มีใครต้องจ่าย
-  local fee = 0
-  if byPlayer then
-    local reason
-    fee = VehicleService.quote("stow", record.hull.Position)
-    local paid
-    paid, reason = charge(byPlayer, fee)
-    if not paid then return false, reason end
-  end
+  -- เช็กว่ามีคนนั่งอยู่ไหม **ก่อน** เก็บเงินเสมอ: ทางที่ยังปฏิเสธได้ต้องอยู่หน้าทางที่หักเงินไปแล้ว ไม่งั้น
+  -- คนที่สั่งฝากตอนเพื่อนนั่งอยู่จะเสียค่าบริการให้กับงานที่ไม่ได้เกิดขึ้น
+  local sitters = {}
   for _, seat in ipairs(record.seats) do
     local occ = seat.Occupant
     if occ then
@@ -448,9 +448,21 @@ function VehicleService.stow(plate, byPlayer)
       if sitter and byPlayer and sitter ~= byPlayer then
         return false, "ยังมีคนนั่งอยู่ในพาหนะ"
       end
-      occ.Sit = false
+      table.insert(sitters, occ)
     end
   end
+
+  -- ค่าฝาก คิดจากระยะระหว่างบารอนเวนกับตัวพาหนะตรงที่มันจอดอยู่จริง ทิ้งเรือเหาะไว้ยอดเขาแล้วสั่งเก็บจากในเมือง
+  -- ย่อมแพงกว่าบินกลับมาจอดเอง — คิดเฉพาะตอนคนสั่ง ส่วนการเก็บอัตโนมัติ (ไม่มีคนแตะนาน / เจ้าของออกจากเกม)
+  -- ไม่มีใครต้องจ่าย
+  local fee = 0
+  if byPlayer then
+    fee = VehicleService.quote("stow", record.hull.Position)
+    local paid, reason = charge(byPlayer, fee)
+    if not paid then return false, reason end
+  end
+
+  for _, occ in ipairs(sitters) do occ.Sit = false end
   VehicleService.saveTrunk(record)
   record.model:Destroy()
   VehicleService.Active[plate] = nil
