@@ -146,12 +146,18 @@ end
 function EventBannerGui:build(spec)
 	local frame = Instance.new("Frame")
 	frame.Name = spec.id
-	frame.Size = UDim2.fromOffset(520, 44)
+	-- Full width of the holder, capped rather than fixed: a fixed 520 is wider than a phone screen, and a
+	-- banner that runs off both edges is worse than one that is merely narrow.
+	frame.Size = UDim2.new(1, 0, 0, 44)
 	frame.BackgroundColor3 = BACK
 	frame.BackgroundTransparency = 0.15
 	frame.BorderSizePixel = 0
 	frame.Parent = self.holder
 	corner(frame, UDim.new(0, 10))
+
+	local cap = Instance.new("UISizeConstraint")
+	cap.MaxSize = Vector2.new(560, 44)
+	cap.Parent = frame
 
 	local edge = Instance.new("UIStroke")
 	edge.Color = spec.colour or Color3.fromRGB(244, 197, 66)
@@ -173,7 +179,9 @@ function EventBannerGui:build(spec)
 	middle.Name = "Message"
 	middle.AnchorPoint = Vector2.new(0.5, 0.5)
 	middle.Position = UDim2.fromScale(0.5, 0.5)
-	middle.Size = UDim2.new(1, -200, 1, 0)
+	-- Whatever is left after the icon (48) and the timer (100). Kept in offsets so the wave's own maths --
+	-- which measures letters in pixels -- lines up with the space it actually has.
+	middle.Size = UDim2.new(1, -148, 1, 0)
 	middle.BackgroundTransparency = 1
 	middle.Parent = frame
 

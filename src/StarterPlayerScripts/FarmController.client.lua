@@ -56,10 +56,19 @@ local function attach(node)
 	Labels[node] = gui
 end
 
-for _, node in ipairs(CollectionService:GetTagged(TAG)) do
-	attach(node)
-end
-CollectionService:GetInstanceAddedSignal(TAG):Connect(attach)
+-- Given a moment before attaching. The label hangs off the invisible FarmAnchor the SERVER plants at the
+-- model's base, and that part is created when IllegalFarm registers the node -- which may be a frame or two
+-- after this script starts. Attaching early would fall back to whatever part came first and hang the clock
+-- in the middle of a reactor tank.
+task.spawn(function()
+	task.wait(3)
+	for _, node in ipairs(CollectionService:GetTagged(TAG)) do
+		attach(node)
+	end
+end)
+CollectionService:GetInstanceAddedSignal(TAG):Connect(function(node)
+	task.delay(1, attach, node)
+end)
 CollectionService:GetInstanceRemovedSignal(TAG):Connect(function(node)
 	local gui = Labels[node]
 	Labels[node] = nil
