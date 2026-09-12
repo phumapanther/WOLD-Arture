@@ -1,16 +1,38 @@
--- EventState.lua: what the world is currently doing, for the systems that have to care.
+-- EventState.lua: what the world is currently doing, and where the pieces of an event meet.
 --
--- WorldEvents.server owns the schedule and writes here; the NPC systems (shop, forge, vault, and anything
--- added later) only ever read. A tiny module rather than a require of WorldEvents, for the reason
--- ProfileAccess exists: the shopkeeper must not depend on the event scheduler's lifecycle, and the scheduler
--- must not have to know every system that reacts to it.
+-- Three jobs, all of them about keeping the event system from turning into a knot of mutual requires:
+--
+--   1. THE ANSWER. `IsBlackout()` is asked by every NPC prompt in the game. The shopkeeper must not have to
+--      require the event scheduler to find out whether the lights are on.
+--   2. THE BOARD. `Active` is the live set of events, written by WorldEvents and read by anything that cares.
+--   3. THE SOCKET. An event's *effects* live with the system that owns them -- the transformers own the
+--      blackout, the monsters own the slimes -- so each registers a pair of handlers here and the scheduler
+--      calls them without knowing what they do.
+--
+-- Same reasoning as ProfileAccess: somebody has to be the shallow module in the middle, and it is this one.
 local EventState = {}
 
--- [eventId] = { startedAt, endsAt | nil, ... } for every event running right now. Written by WorldEvents.
+-- [eventId] = { startedAt, endsAt | nil, detail | nil }. Written only by WorldEvents.
 EventState.Active = {}
 
--- The one rule that reaches outside the event system: while the city's engines are down, an NPC will not talk
--- to you. Asked by every NPC prompt, so the answer lives in one place.
+-- [eventId] = { start = function() end, stop = function() end }. Registered by whichever system implements
+-- the event. A missing entry is not an error -- it means that event has no world effects yet, and the
+-- announcement still runs.
+EventState.Hooks = {}
+
+-- Set by WorldEvents: call it after changing anything a player can see, and the new picture goes out.
+EventState.Publish = nil
+
+function EventState.Register(id, handlers)
+	EventState.Hooks[id] = handlers
+end
+
+function EventState.IsActive(id)
+	return EventState.Active[id] ~= nil
+end
+
+-- The one rule that reaches outside the event system: while the city's engines are down, an NPC will not
+-- talk to you. Asked by every NPC prompt, so the answer lives in one place.
 function EventState.IsBlackout()
 	return EventState.Active.blackout ~= nil
 end
@@ -24,6 +46,16 @@ EventState.BlackoutRefusal = "ไฟดับอยากรุณาไปซ�
 function EventState.NpcAvailable()
 	if EventState.IsBlackout() then return false, EventState.BlackoutRefusal end
 	return true
+end
+
+-- The line on the right-hand side of the banner, for an event with no clock. The blackout uses it to count
+-- machines still broken; anything with an `endsAt` shows a countdown instead and never calls this.
+function EventState.SetDetail(id, detail)
+	local entry = EventState.Active[id]
+	if not entry then return end
+	if entry.detail == detail then return end -- nothing to say, so nothing to send
+	entry.detail = detail
+	if EventState.Publish then EventState.Publish() end
 end
 
 return EventState

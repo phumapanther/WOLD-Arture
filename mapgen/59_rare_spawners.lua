@@ -49,7 +49,11 @@ return L.runPhase("RareSpawners", function(folder)
 
 	local CollectionService = game:GetService("CollectionService")
 
-	local prototypes = L.root():FindFirstChild(PROTOTYPE_FOLDER, true)
+	-- ServerStorage first: mapgen/63_v1_interactables.lua moves the folder out of the world, because those
+	-- display models carry the kit's own [E] prompts and stand exactly where the real monster spawns. Moving
+	-- does not change a model's CFrame, so the positions this phase reads are the same either way.
+	local prototypes = game:GetService("ServerStorage"):FindFirstChild(PROTOTYPE_FOLDER)
+		or L.root():FindFirstChild(PROTOTYPE_FOLDER, true)
 	assert(prototypes, PROTOTYPE_FOLDER .. " not found -- it holds the models each monster is built from")
 
 	local placed, unknown = 0, {}

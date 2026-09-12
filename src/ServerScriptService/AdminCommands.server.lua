@@ -24,6 +24,8 @@ local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
 local Progression = require(game.ServerScriptService.Progression)
 local Classes = require(game.ServerScriptService.Classes)
+local EventState = require(game.ServerScriptService.EventState)
+local EventConfig = require(game.ReplicatedStorage.EventConfig)
 
 -- The allow-list. UserIds only. There is deliberately no command that grants admin: an admin command that
 -- hands out admin is how one leaked account becomes everyone's problem.
@@ -174,6 +176,40 @@ Commands["goto"] = function(admin, args)
 	end
 	mine.CFrame = CFrame.new(x, y, z)
 	reply(admin, ("วาปไป %.0f, %.0f, %.0f"):format(x, y, z))
+end
+
+-- /event [name] -- เริ่ม/จบอีเวนต์เดี๋ยวนี้
+--
+-- The events need ten players and up to forty-five minutes of waiting before they fire on their own, which
+-- makes them untestable in a Studio session with one person in it. This is the door round that, and it is
+-- admin-only for the same reason every other command here is.
+Commands.event = function(admin, args)
+	local names = {}
+	for id in pairs(EventConfig.Events) do names[#names + 1] = id end
+	table.sort(names)
+
+	if not args[1] then
+		local running = {}
+		for id in pairs(EventState.Active) do running[#running + 1] = id end
+		return reply(admin, ("ใช้: /event <%s>  ·  กำลังทำงาน: %s"):format(
+			table.concat(names, "|"),
+			#running > 0 and table.concat(running, ", ") or "ไม่มี"))
+	end
+
+	local id = matchKey(args[1], EventConfig.Events)
+	if not id then return reply(admin, ("ไม่มีอีเวนต์ชื่อ %s"):format(args[1])) end
+
+	-- One command, both directions: a running event is stopped and a stopped one is started, because the
+	-- thing an admin wants after watching an event is almost always to see it again from the top.
+	if EventState.Active[id] then
+		if EventState.Stop then EventState.Stop(id) end
+		return reply(admin, ("จบอีเวนต์ %s แล้ว"):format(id))
+	end
+	if EventState.Start then EventState.Start(id) end
+	-- Reported from the board rather than assumed: an event whose world effects refuse to apply (a blackout
+	-- in a place with no transformers, say) never actually starts.
+	reply(admin, EventState.Active[id] and ("เริ่มอีเวนต์ %s แล้ว"):format(id)
+		or ("เริ่มอีเวนต์ %s ไม่ได้ ดู Output"):format(id))
 end
 
 -- /role <role> [player] -- แอดอาชีพ

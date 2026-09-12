@@ -55,6 +55,50 @@ map:On("pin", function(position)
 	map:SetWaypoint(ok and position or nil)
 end)
 
+--------------------------------------------------------------------------------
+-- The blackout's "find me a broken machine" button
+--------------------------------------------------------------------------------
+
+-- Which transformers still need fixing. Read straight off the world: the server marks each one `Broken` and
+-- everything tagged WOLD_Transformer is visible to every client, so the route needs no round trip.
+local function brokenMachines()
+	local out = {}
+	for _, machine in ipairs(game:GetService("CollectionService"):GetTagged("WOLD_Transformer")) do
+		if machine:GetAttribute("Broken") == true then table.insert(out, machine) end
+	end
+	return out
+end
+
+-- Remembered so pressing the button twice sends you somewhere NEW rather than rolling the same machine again
+-- -- which, with three of them left, would happen a third of the time and read as a broken button.
+local lastRouted = nil
+
+map:On("repairRoute", function()
+	local candidates = brokenMachines()
+	if #candidates == 0 then
+		return map:SetStatus("ไม่มีเครื่องที่ต้องซ่อมแล้ว")
+	end
+
+	local pick = candidates[math.random(1, #candidates)]
+	if #candidates > 1 and pick == lastRouted then
+		-- One re-roll is enough: with the previous pick excluded in spirit rather than by filtering, a second
+		-- roll lands somewhere else the great majority of the time, and the rare repeat costs nothing.
+		pick = candidates[math.random(1, #candidates)]
+	end
+	lastRouted = pick
+
+	local position = pick:IsA("BasePart") and pick.Position or pick:GetPivot().Position
+	local ok, message = nav:SetDestination(position, "หม้อแปลงไฟ")
+	map:SetStatus(ok and ("นำทางไปหม้อแปลง (%s) — กดซ้ำเพื่อสุ่มเครื่องใหม่"):format(message) or message)
+	map:SetWaypoint(ok and position or nil)
+end)
+
+-- The button exists only while the lights are out. Same source of truth as the banner: the server's own
+-- picture of what is running.
+Remotes.EventStateChanged.OnClientEvent:Connect(function(events)
+	map:SetRepairVisible(events ~= nil and events.blackout ~= nil)
+end)
+
 -- Keep the path fresh while travelling, and clear it on arrival.
 task.spawn(function()
 	while true do

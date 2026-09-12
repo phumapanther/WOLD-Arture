@@ -143,7 +143,10 @@ local function special(name, colour, extra)
 		-- kit's own slime is what walks around, and Mobs.server falls back to the ball only if the model
 		-- cannot be found.
 		model = nil,
-		hp = 90,
+		-- Roughly three times what it was (90). As an event boss three of them land at once, for half an
+		-- hour, in a server of at least ten people -- at ninety a named slime died to two players before the
+		-- rest of the town could walk over, which made the announcement pointless.
+		hp = 280,
 		damage = 11,
 		attackCooldown = 1.5,
 		attackRange = 6,
@@ -157,6 +160,11 @@ local function special(name, colour, extra)
 		colour = colour,
 		hitSound = "rbxassetid://127637727363472",
 		dieSound = "rbxassetid://96214777896458",
+		-- The wet slap of a huge slime landing, played at the monster while it is chasing someone. It is how
+		-- you hear one coming before you see it, which matters for a thing this size.
+		hopSound = "rbxassetid://75878881956542", -- assets/sounds/boings
+		hopInterval = 0.9,
+		hopVolume = 0.35,
 		drops = {
 			{ item = "Slime", min = 2, max = 4, chance = GatherConfig.SpecialSlimeChance },
 			{ item = "IronOre", min = 1, max = 3, chance = GatherConfig.SpecialOreChance },
@@ -172,11 +180,11 @@ end
 
 -- Boilie: the steam slime. Slowest and toughest of the three.
 GatherConfig.Mobs.SteamSlime = special("บอยลี่ สไลม์ไอน้ำ", Color3.fromRGB(255, 160, 50),
-	{ hp = 110, damage = 13, walkSpeed = 6, model = "Monster_SteamSlime" })
+	{ hp = 340, damage = 13, walkSpeed = 6, model = "Monster_SteamSlime" })
 
 -- Volt: the plasma slime. Quick and hits fast, but softer.
 GatherConfig.Mobs.PlasmaSlime = special("โวลต์ สไลม์พลาสมา", Color3.fromRGB(0, 230, 255),
-	{ hp = 80, damage = 10, attackCooldown = 1.1, walkSpeed = 7.5, aggroRange = 36,
+	{ hp = 240, damage = 10, attackCooldown = 1.1, walkSpeed = 7.5, aggroRange = 36,
 		model = "Monster_PlasmaSlime" })
 
 -- Gunk: the bio slime. Middling, but chases furthest.

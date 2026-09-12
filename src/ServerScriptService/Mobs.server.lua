@@ -21,6 +21,8 @@ local Inventory = require(game.ServerScriptService.Inventory)
 local Progression = require(game.ServerScriptService.Progression)
 local Vitals = require(game.ServerScriptService.Vitals)
 local MobAccess = require(game.ServerScriptService.MobAccess)
+local EventState = require(game.ServerScriptService.EventState)
+local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local SPAWNER_TAG = "WOLD_Spawner"
@@ -116,9 +118,19 @@ local PROTOTYPE_FOLDER = "Model_moster"
 
 local function prototypeFor(config)
     if not config.model then return nil end
+
+    -- ServerStorage FIRST. V1 moved the prototype folder out of the world: those display models carried the
+    -- kit's own [E] prompts and name tags, so a player walking up to the spot where a rare slime spawns found
+    -- a second, fake slime standing there offering a button that did nothing. They are still needed -- every
+    -- monster is a clone of one -- so they moved rather than being deleted, and this looks in the new home
+    -- first and the old one after, which means a place that has not run the phase yet still works.
+    local stored = game:GetService("ServerStorage"):FindFirstChild(PROTOTYPE_FOLDER)
+    local found = stored and stored:FindFirstChild(config.model)
+    if found then return found end
+
     local root = workspace:FindFirstChild("WOLD")
     local folderInstance = root and root:FindFirstChild(PROTOTYPE_FOLDER, true)
-    local found = folderInstance and folderInstance:FindFirstChild(config.model)
+    found = folderInstance and folderInstance:FindFirstChild(config.model)
     -- Searched by name across the whole world as a fallback, because the user is free to move the folder.
     if not found and root then found = root:FindFirstChild(config.model, true) end
     return found
@@ -383,6 +395,12 @@ local function serviceSpawner(spawner)
 		return
 	end
 
+	-- A spawner that belongs to an event stands empty between events. Before V1 the three named slimes were
+	-- permanently in the world and came back half an hour after dying, which made them a PLACE you visited;
+	-- as an event they are a THING THAT HAPPENS, and the difference is entirely this check.
+	local eventId = spawner:GetAttribute("EventOnly")
+	if eventId and not EventState.IsActive(eventId) then return end
+
 	local wanted = spawner:GetAttribute("Count") or 5
 	local alive = spawner:GetAttribute("Alive") or 0
 	if alive >= wanted then return end
@@ -464,9 +482,28 @@ RunService.Heartbeat:Connect(function(dt)
 							-- Through Vitals, the one door every kind of damage goes through: armor,
 							-- invulnerability and the downed state are all decided there.
 							Vitals.ApplyDamage(state.target, config.damage, "combat")
+							-- And it should be HEARD. A monster landing a blow used to be silent, which made
+							-- being chewed on across a field something you noticed only by watching the health
+							-- bar. The sound is the game's existing generic impact -- the same thud a punch
+							-- makes -- played at the person being hit rather than at the monster, because it
+							-- is their body making the noise.
+							local victim = state.target.Character
+							if victim then
+								playAt(victim, VitalsConfig.HitSoundId, VitalsConfig.HitSoundVolume)
+							end
 						end
 					else
 						humanoid:MoveTo(targetRoot.Position)
+						-- The wet slap of something large moving. Only a mob that declares a hop sound makes
+						-- one, and only while it is actually going somewhere: a slime sitting in a field
+						-- should be silent.
+						if config.hopSound then
+							local hopNow = os.clock()
+							if hopNow >= (state.nextHopAt or 0) then
+								state.nextHopAt = hopNow + (config.hopInterval or 1)
+								playAt(model, config.hopSound, config.hopVolume or 0.3)
+							end
+						end
 					end
 				else
 					-- Nobody about: drift slowly around home so the field is not a still life.
@@ -501,3 +538,43 @@ CollectionService:GetInstanceRemovedSignal(SPAWNER_TAG):Connect(function(spawner
 		if state.spawner == spawner then despawn(model) end
 	end
 end)
+
+--------------------------------------------------------------------------------
+-- The mutant slime event
+--------------------------------------------------------------------------------
+
+-- Which spawners belong to an event, and what to do to them when it starts and stops. The event system knows
+-- nothing about monsters; it calls these and this file does the rest.
+local function eventSpawners(id)
+	local out = {}
+	for _, spawner in ipairs(CollectionService:GetTagged(SPAWNER_TAG)) do
+		if spawner:GetAttribute("EventOnly") == id then table.insert(out, spawner) end
+	end
+	return out
+end
+
+EventState.Register("slime", {
+	start = function()
+		for _, spawner in ipairs(eventSpawners("slime")) do
+			-- The respawn clock is cleared rather than waited out. It was set by whatever killed the last one,
+			-- possibly during the previous event, and an announcement that produced nothing for twenty-nine
+			-- minutes would be a lie.
+			spawner:SetAttribute("ReadyAt", nil)
+			spawner:SetAttribute("Alive", 0)
+		end
+		-- Nothing else to do: the stocking loop runs every two seconds and its EventOnly check now passes, so
+		-- the three of them walk into the world on the next tick.
+	end,
+
+	stop = function()
+		-- Gone when the half hour is up, killed or not. A mutant left standing after the event would be a
+		-- free weapon roll for whoever wandered past afterwards.
+		for _, spawner in ipairs(eventSpawners("slime")) do
+			for model, state in pairs(Live) do
+				if state.spawner == spawner then despawn(model) end
+			end
+			spawner:SetAttribute("ReadyAt", nil)
+			spawner:SetAttribute("Alive", 0)
+		end
+	end,
+})

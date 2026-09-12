@@ -169,6 +169,35 @@ function MapGui.new()
 	zoomButton("+", MapConfig.ZoomStep, 0)
 	zoomButton("\226\136\146", -MapConfig.ZoomStep, 1) -- minus sign
 
+	-- The blackout's button: find me a machine that still needs fixing.
+	--
+	-- Hidden unless the lights are actually out, which is the user's rule -- during ordinary play there is
+	-- nothing to repair and a permanent button would be a promise the map cannot keep. Pressing it again
+	-- picks a DIFFERENT machine, so a player who does not fancy the walk to the one they were given can ask
+	-- for another.
+	local repairButton = Instance.new("ImageButton")
+	repairButton.Name = "RepairRoute"
+	repairButton.AnchorPoint = Vector2.new(1, 1)
+	repairButton.Position = UDim2.new(1, -12 - 2 * 40, 1, -12)
+	repairButton.Size = UDim2.fromOffset(34, 28)
+	repairButton.BackgroundColor3 = Color3.fromRGB(74, 56, 30)
+	repairButton.BackgroundTransparency = 0.1
+	repairButton.BorderSizePixel = 0
+	repairButton.Image = "rbxassetid://115675604536116" -- assets/item-icons/event_electric
+	repairButton.ScaleType = Enum.ScaleType.Fit
+	repairButton.Visible = false
+	repairButton.Parent = panel
+	corner(repairButton, UDim.new(0, 8))
+	local repairEdge = Instance.new("UIStroke")
+	repairEdge.Color = Color3.fromRGB(255, 196, 92)
+	repairEdge.Transparency = 0.3
+	repairEdge.Thickness = 1
+	repairEdge.Parent = repairButton
+	repairButton.Activated:Connect(function()
+		if self.callbacks.repairRoute then self.callbacks.repairRoute() end
+	end)
+	self.repairButton = repairButton
+
 	self:buildCanvas()
 	self:bindInput()
 	Responsive.Scale(panel, small and 0.95 or 0.8)
@@ -434,6 +463,12 @@ end
 
 function MapGui:On(name, fn)
 	self.callbacks[name] = fn
+end
+
+-- Shown only while the city's engines are down. Driven from the event banner's own state, so the button and
+-- the announcement appear and disappear together.
+function MapGui:SetRepairVisible(visible)
+	self.repairButton.Visible = visible and true or false
 end
 
 -- Moves the pin to wherever the player is. Called on a loop while the map is open.
