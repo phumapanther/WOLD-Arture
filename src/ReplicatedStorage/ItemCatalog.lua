@@ -14,6 +14,10 @@
 -- ICON IDS: an ImageLabel needs the IMAGE asset id, not the DECAL id. Uploading a picture through the
 -- Creator Dashboard gives you a Decal id, and pasting that here shows a blank square with no error at all.
 -- To find the real one: InsertService:LoadAsset(decalId) in Studio, then read the Decal's Texture property.
+-- Pure data, and the only thing this file requires. See ItemCatalog.IsSellable for what it is read for and
+-- why the direction of the dependency matters.
+local CraftConfig = require(script.Parent.CraftConfig)
+
 local ItemCatalog = {}
 
 -- Consuming takes time: the effect lands when the animation finishes, not when the button is pressed.
@@ -248,12 +252,37 @@ function ItemCatalog.Exists(id)
 	return ItemCatalog.Items[id] ~= nil
 end
 
--- May the shop put a price on this? Absent means yes, which is what every item written before V0.5 wants;
--- `sellable = false` is the opt-out, and it is read by the counter, the "sell everything" button and the
--- price board alike so an item cannot be refused in one place and bought in another.
+-- Everything the forge can make, derived from the recipe list rather than typed out again.
+--
+-- Read once at load, into a set. CraftConfig is pure data and requires nothing at all, so this cannot loop
+-- back around -- but that is the reason it works, so **CraftConfig must stay data-only**; the day it requires
+-- this file back, both stop loading.
+local CraftableOutput = {}
+for _, recipe in ipairs(CraftConfig.Recipes) do
+	CraftableOutput[recipe.id] = true
+end
+
+-- May the shop put a price on this? Absent means yes, which is what every item written before V0.5 wants.
+-- Read by the counter, the "sell everything" button and the price board alike, so an item cannot be refused
+-- in one place and bought in another.
+--
+-- Two ways to be unsellable:
+--
+--   `sellable = false` in the entry -- the steam-age materials, which are the price of the new recipes.
+--
+--   BEING CRAFTABLE. Anything on the forge's list is refused, and the list is what decides rather than a flag
+--   somebody has to remember to add. That gap is exactly how bullets ended up sellable: they are `kind =
+--   "junk"` like every other material, and the shop buys by kind. Crafting one costs iron, gears, bone,
+--   stone, silver and a 300-coin fee -- a counter that then bought it back is a route from materials to coin
+--   that the fixed prices were never balanced against.
+--
+-- Weapons, armour and potions were never at risk (the shop only buys `junk`), but they are covered by the
+-- same rule now, so the answer does not depend on which kind a future recipe happens to make.
 function ItemCatalog.IsSellable(id)
 	local item = ItemCatalog.Items[id]
-	return item ~= nil and item.sellable ~= false
+	if not item then return false end
+	if item.sellable == false then return false end
+	return not CraftableOutput[id]
 end
 
 -- Weapons and armor carry durability, so they can never stack; everything else stacks by its own limit.
