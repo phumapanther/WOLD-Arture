@@ -26,6 +26,9 @@ local Progression = require(game.ServerScriptService.Progression)
 local Classes = require(game.ServerScriptService.Classes)
 local EventState = require(game.ServerScriptService.EventState)
 local EventConfig = require(game.ReplicatedStorage.EventConfig)
+local VehicleConfig = require(game.ReplicatedStorage.Vehicle.Config)
+local VehicleService = require(game.ServerScriptService.Vehicle.Service)
+local VehicleStations = require(game.ServerScriptService.Vehicle.Stations)
 
 -- The allow-list. UserIds only. There is deliberately no command that grants admin: an admin command that
 -- hands out admin is how one leaked account becomes everyone's problem.
@@ -210,6 +213,57 @@ Commands.event = function(admin, args)
 	-- in a place with no transformers, say) never actually starts.
 	reply(admin, EventState.Active[id] and ("เริ่มอีเวนต์ %s แล้ว"):format(id)
 		or ("เริ่มอีเวนต์ %s ไม่ได้ ดู Output"):format(id))
+end
+
+-- /veh <key|here|stow|status> [ชนิด|ทะเบียน] -- เครื่องมือทดสอบพาหนะ
+--
+-- แทนคำสั่งแชท /veh ของโปรเจ็ค WOLD-Vehicle ที่ไม่ได้ยกมา (ไฟล์นั้นตั้งใจให้ลบก่อนปล่อยเกม) เอาเฉพาะสี่
+-- คำสั่งที่จำเป็นต่อการทดสอบจริง และอยู่หลังรั้ว UserId เดียวกับคำสั่งแอดมินอื่นทั้งหมด
+Commands.veh = function(admin, args)
+	local sub = (args[1] or ""):lower()
+
+	if sub == "key" then
+		local vtype = matchKey(args[2] or "Car", VehicleConfig.Types)
+		if not vtype then return reply(admin, "ใช้: /veh key <Car|Boat|Airship>") end
+		local plate, err = VehicleService.register(admin, vtype)
+		if not plate then return reply(admin, tostring(err)) end
+		return reply(admin, ("จดทะเบียน %s แล้ว กุญแจอยู่ในกระเป๋า"):format(plate))
+
+	elseif sub == "here" then
+		local plate = args[2]
+		if not plate then return reply(admin, "ใช้: /veh here <ทะเบียน>") end
+		-- ไม่ผ่านสถานี = เกิดข้างหน้าผู้เรียก 20 studs และไม่มีลานจอดให้คิดระยะ ค่าบริการจึงคิดจากจุดนั้น
+		local ok, result = VehicleService.summon(admin, plate:upper(), nil)
+		return reply(admin, ok and ("เรียก %s มาแล้ว"):format(plate:upper()) or tostring(result))
+
+	elseif sub == "stow" then
+		local plate = args[2]
+		if plate then
+			local ok, err = VehicleService.stow(plate:upper(), admin)
+			return reply(admin, ok and ("ฝาก %s แล้ว"):format(plate:upper()) or tostring(err))
+		end
+		local n = 0
+		for active in pairs(VehicleService.Active) do
+			if VehicleService.stow(active) then n += 1 end
+		end
+		return reply(admin, ("เก็บพาหนะในโลกทั้งหมด %d คัน"):format(n))
+
+	elseif sub == "status" then
+		local lines = {}
+		for _, station in pairs(VehicleStations.List) do
+			local at = station.resolvedPos
+			lines[#lines + 1] = ("%s %s ที่ %d,%d,%d"):format(station.id, station.vtype,
+				at and at.X or 0, at and at.Y or 0, at and at.Z or 0)
+		end
+		for plate, record in pairs(VehicleService.Active) do
+			lines[#lines + 1] = ("%s อยู่ที่ %d,%d,%d เชื้อเพลิง %d%%"):format(plate,
+				record.hull.Position.X, record.hull.Position.Y, record.hull.Position.Z,
+				VehicleService.fuelPercent(record))
+		end
+		return reply(admin, #lines > 0 and table.concat(lines, " · ") or "ยังไม่มีจุดเรียกและไม่มีพาหนะในโลก")
+	end
+
+	reply(admin, "ใช้: /veh key <ชนิด> · /veh here <ทะเบียน> · /veh stow [ทะเบียน] · /veh status")
 end
 
 -- /role <role> [player] -- แอดอาชีพ

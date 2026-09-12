@@ -32,6 +32,12 @@ local ProfileTemplate = {
 	-- Inventory rather than folded into it because the whole point of the vault is that it is NOT the bag:
 	-- it does not travel, does not weigh anything, and survives what the bag does not.
 	Vault = nil,
+	-- Vehicle registrations. {Vehicles = {[plate] = {...}}} | nil. Written straight into Data by
+	-- Vehicle/Store, which binds to the same table rather than keeping a copy -- so unlike the fields above
+	-- there is no serializer for it and nothing for saveAll to do. The KEYS are not here: a vehicle key is a
+	-- real item in the bag (ItemCatalog CarKey/BoatKey/AirshipKey, with the plate in the slot's meta), so it
+	-- saves with the inventory and can be handed to somebody else.
+	Vehicles = nil,
 	-- When the test chest was last opened, so its daily cooldown survives a rejoin. Testing only; it goes
 	-- when the chest does.
 	TestChestAt = 0,
