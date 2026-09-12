@@ -26,4 +26,13 @@ end
 -- client") — replicate the one bit clients actually need via a Workspace Attribute, which replicates automatically.
 workspace:SetAttribute("IsLobby", ServerConfig.IsLobby)
 
+-- Printed once, from the module every server script requires before anything else, so the first line in a
+-- server's log says which build is running and which half of the game it is. Worth its own line now that
+-- there are real players: a bug report that begins "it happened in the lobby on V1" is a different bug from
+-- the same words about a channel server.
+local GameVersion = require(game.ReplicatedStorage.GameVersion)
+ServerConfig.Version = GameVersion.Number
+print(("[WOLD] %s (%s) -- %s"):format(GameVersion.Label(), GameVersion.Number,
+	ServerConfig.IsLobby and "ล็อบบี้" or ("ช่อง " .. tostring(ServerConfig.Channel))))
+
 return ServerConfig
