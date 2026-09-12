@@ -6,3 +6,7 @@ plugins/Rojo.rbxm
 *.info.json
 docs/shots/
 temp_refs/
+
+node_modules/
+package-lock.json
+package.json
