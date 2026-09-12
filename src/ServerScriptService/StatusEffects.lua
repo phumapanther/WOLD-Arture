@@ -57,6 +57,78 @@ function StatusEffects.Knockdown(player, seconds)
 end
 
 --------------------------------------------------------------------------------
+-- Dizzy: rooted where you stand, seeing stars, for a few seconds.
+--------------------------------------------------------------------------------
+
+-- What a botched minigame costs. Deliberately NOT a knockdown: being shot with an arrow lays you out flat,
+-- while fumbling a lock or a repair should leave you standing there swearing at it. So the body stays upright
+-- and only the ability to go anywhere is taken away.
+--
+-- Rooting is done through the speed multiplier PlayerMovement already asks for every tick, rather than with
+-- PlatformStand. PlatformStand would fight the movement state machine for the same body, and the crawl and
+-- the carry have both already been through that argument.
+local function applyDizzyMark(player, dizzy)
+	local character = player.Character
+	local head = character and character:FindFirstChild("Head")
+	if not head then return end
+
+	local existing = head:FindFirstChild("DizzyMark")
+	if not dizzy then
+		if existing then existing:Destroy() end
+		return
+	end
+	if existing then return end
+
+	-- Built on the server so everyone nearby sees it, the same way a monster's health bar is: being stunned
+	-- in front of other people is part of the cost.
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "DizzyMark"
+	gui.Size = UDim2.fromOffset(60, 30)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, 1.8, 0)
+	gui.MaxDistance = 60
+	gui.AlwaysOnTop = true
+	gui.Parent = head
+
+	local stars = Instance.new("TextLabel")
+	stars.Size = UDim2.fromScale(1, 1)
+	stars.BackgroundTransparency = 1
+	stars.Font = Enum.Font.GothamBold
+	stars.TextScaled = true
+	stars.TextColor3 = Color3.fromRGB(255, 232, 140)
+	stars.Text = "\240\159\146\171" -- the dizzy-symbol emoji
+	stars.Parent = gui
+end
+
+local function setJumping(player, allowed)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if not humanoid then return end
+	-- Both properties, because which one the engine reads depends on UseJumpPower and a rig may be set either
+	-- way. Restoring to Roblox's own defaults rather than to what was there before is safe here: nothing else
+	-- in the game changes them.
+	humanoid.JumpPower = allowed and 50 or 0
+	humanoid.JumpHeight = allowed and 7.2 or 0
+end
+
+function StatusEffects.Dizzy(player, seconds)
+	-- Already on the floor: leave the crawl alone, exactly as Knockdown does.
+	if Vitals.IsDowned(player) then return end
+	local state = stateFor(player)
+	local wasDizzy = state.dizzyUntil ~= nil
+	state.dizzyUntil = os.clock() + seconds
+	if not wasDizzy then
+		applyDizzyMark(player, true)
+		setJumping(player, false)
+		Remotes.StatusChanged:FireAllClients(player, "dizzy", true)
+	end
+end
+
+function StatusEffects.IsDizzy(player)
+	local state = Active[player]
+	return state ~= nil and state.dizzyUntil ~= nil and os.clock() < state.dizzyUntil
+end
+
+--------------------------------------------------------------------------------
 -- Slow: movement speed cut for a few seconds.
 --------------------------------------------------------------------------------
 
@@ -71,9 +143,13 @@ end
 -- carry weight already decided rather than fighting them for the WalkSpeed property.
 function StatusEffects.SpeedMultiplier(player)
 	local state = Active[player]
-	if not state or not state.slowUntil then return 1 end
-	if os.clock() >= state.slowUntil then return 1 end
-	return state.slowFactor or 0.5
+	if not state then return 1 end
+	local now = os.clock()
+	-- Dizzy wins over slow, and is checked first: it is the stronger of the two, and a slow that happened to
+	-- expire in the same second must not hand the legs back to someone who is still seeing stars.
+	if state.dizzyUntil and now < state.dizzyUntil then return 0 end
+	if state.slowUntil and now < state.slowUntil then return state.slowFactor or 0.5 end
+	return 1
 end
 
 function StatusEffects.IsKnockedDown(player)
@@ -103,6 +179,20 @@ function StatusEffects.Tick()
 			if state.slowUntil and now >= state.slowUntil then
 				state.slowUntil = nil
 				Remotes.StatusChanged:FireAllClients(player, "slow", false)
+			end
+			if state.dizzyUntil and now >= state.dizzyUntil then
+				state.dizzyUntil = nil
+				applyDizzyMark(player, false)
+				setJumping(player, true)
+				Remotes.StatusChanged:FireAllClients(player, "dizzy", false)
+			end
+			-- Going down overrides being dizzy for the same reason it overrides a knockdown: from then on the
+			-- crawl owns the body, and a rooted-in-place multiplier would stop the crawl dead.
+			if state.dizzyUntil and Vitals.IsDowned(player) then
+				state.dizzyUntil = nil
+				applyDizzyMark(player, false)
+				setJumping(player, true)
+				Remotes.StatusChanged:FireAllClients(player, "dizzy", false)
 			end
 			-- Going down overrides a knockdown: the crawl owns the body from then on.
 			if state.knockdownUntil and Vitals.IsDowned(player) then

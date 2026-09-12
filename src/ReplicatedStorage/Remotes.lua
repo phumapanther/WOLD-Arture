@@ -75,6 +75,20 @@ local EVENTS = {
 	-- Gathering: the server draws the [F] prompt on a node and fires this to tell the client to toggle its
 	-- own auto-farm loop. The loop lives on the client because it drives the local character's movement.
 	"ToggleAutoFarm",
+	-- The banker-and-warehouse NPC. Shaped exactly like the shop: the server pushes a whole picture of the
+	-- purse, the bag and the vault, and the client names a row in it. No amount the client sends is believed
+	-- without being clamped against what the server can see.
+	"RequestVaultOpen", "VaultOpen", "RequestVaultAction",
+	-- The minigames (V1). One pair for both of them: the server decides that a minigame should happen and
+	-- describes it, the client plays it and reports the single bit that came out. The server never takes the
+	-- client's word for anything but that bit -- what the attempt was worth, and whether it was allowed at
+	-- all, were both decided before MinigameStart was ever sent.
+	"MinigameStart", "MinigameFinish",
+	-- Repairing a transformer during the blackout: the thirty-second hold, and everything that ends it.
+	"RepairStateChanged",
+	-- World events. One event in, one out: the banner at the top of the screen is driven entirely by these,
+	-- and a player joining mid-event is sent the live ones as they load in.
+	"EventStateChanged", "RequestEventState",
 }
 local FUNCTIONS = { "GetSpawnPosition" } -- DataStore-backed lookups can only run server-side; the client must ask
 

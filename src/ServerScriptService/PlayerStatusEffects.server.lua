@@ -17,6 +17,8 @@ Players.PlayerAdded:Connect(function(player)
 		if humanoid then humanoid.PlatformStand = false end
 		Remotes.StatusChanged:FireAllClients(player, "knockdown", false)
 		Remotes.StatusChanged:FireAllClients(player, "slow", false)
+		-- The stars go with the old body; the new one starts clean and able to jump.
+		Remotes.StatusChanged:FireAllClients(player, "dizzy", false)
 	end)
 end)
 

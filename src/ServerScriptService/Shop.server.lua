@@ -17,6 +17,7 @@ local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
 local MarketAccess = require(game.ServerScriptService.MarketAccess)
+local EventState = require(game.ServerScriptService.EventState)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local TAG = "WOLD_Npc"
@@ -62,6 +63,11 @@ end)
 local function buyPrice(id, meta)
 	local item = ItemCatalog.Get(id)
 	if not item or not ShopConfig.Buys[item.kind] then return nil end
+	-- One item may refuse to be sold even though its whole kind is bought. The steam-age materials do: they
+	-- are the price of the new recipes, and a counter that turned them into coin would let a player skip the
+	-- farming the recipes exist to ask for. Returning nil here is the single gate -- the window, the single
+	-- sell, "sell everything" and the price board all price through this function.
+	if not ItemCatalog.IsSellable(id) then return nil end
 	local base = (item.value or 0) * ShopConfig.BuyFraction * (Multipliers[id] or 1)
 
 	-- A heavy fish is worth more than a small one, because otherwise the weight is decoration: a 45 kg
@@ -171,7 +177,10 @@ end
 -- Trading is a conversation, and you cannot have one face-down in the dirt. Checked on opening AND on every
 -- action, the same way distance is: a player could be knocked down with the counter already up.
 local function canTrade(player)
-	return not Vitals.IsDowned(player)
+	if Vitals.IsDowned(player) then return false end
+	-- And not while the city's engines are down. The blackout is meant to stop the town working, and a
+	-- shopkeeper trading by candlelight would leave the event with no teeth at all.
+	return EventState.NpcAvailable()
 end
 
 Remotes.RequestShopOpen.OnServerEvent:Connect(function(player)
@@ -321,6 +330,13 @@ local function register(npc)
 	prompt.Parent = anchor
 
 	prompt.Triggered:Connect(function(player)
+		-- Gated here as well as on the remote, for the reason the forge's prompt gives: E is how the counter
+		-- is actually opened, and a window that opens and then refuses everything reads as a bug.
+		local ok, reason = canTrade(player)
+		if not ok then
+			if reason then Remotes.SocialNotify:FireClient(player, "error", reason) end
+			return
+		end
 		Remotes.ShopOpen:FireClient(player, snapshot(player))
 	end)
 end

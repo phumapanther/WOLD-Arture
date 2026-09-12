@@ -199,6 +199,34 @@ ItemCatalog.Items = {
 	Worm = { icon = "rbxassetid://91361977777697", name = "หนอน", kind = "junk", weight = 0.05, stackSize = 99, value = 1 },
 
 	--------------------------------------------------------------------------
+	-- The steam age's own materials (V0.5). Every one of them is `sellable = false`: they are the currency of
+	-- the illegal trades and the crafting bench, and a shopkeeper who bought them would turn every one of
+	-- them straight back into gold -- which is exactly what the fixed prices on the crafting recipes are
+	-- meant to stop.
+	--
+	-- The stack sizes are the user's, and they are the whole pacing of the farm: chemicals and gears come
+	-- eight to a slot, so a night of distilling fills the bag rather than one corner of it.
+	--------------------------------------------------------------------------
+	-- "Unlimited" as the user asked, expressed as a number rather than math.huge: an infinite stack cannot be
+	-- written to a DataStore (JSON has no inf) and would come back from a save as nil, emptying the slot. Ten
+	-- thousand of anything is past the point where a real player notices a ceiling.
+	Silver = { icon = "rbxassetid://135974684914132", -- assets/item-icons/Silver.png
+		name = "ซิลเวอร์", kind = "junk", weight = 0.02, stackSize = 9999, value = 1, sellable = false },
+	-- The consolation prize for a craft that failed: a gold coin stamped with a broken hammer. Spent at the
+	-- smith's "unlucky" page, which is the only thing in the game that takes them.
+	Insignia = { icon = "rbxassetid://76808778183807", -- assets/item-icons/coin.png
+		name = "เหรียญตราค้อนพัง", kind = "junk", weight = 0.05, stackSize = 9999, value = 0, sellable = false },
+	Blueprint = { icon = "rbxassetid://100494667680016", -- assets/item-icons/print.png
+		name = "แบบแปลน", kind = "junk", weight = 0.3, stackSize = 16, value = 0, sellable = false },
+	-- Also the fuel every vehicle burns: one lump is Config.FuelPerCoal units in the tank.
+	Coal = { icon = "rbxassetid://138735405435297", -- assets/item-icons/coal.png
+		name = "ถ่านหิน", kind = "junk", weight = 2, stackSize = 16, value = 0, sellable = false },
+	Chemical = { icon = "rbxassetid://133356301567666", -- assets/item-icons/chemical.png
+		name = "สารเคมี", kind = "junk", weight = 1, stackSize = 8, value = 0, sellable = false },
+	GearSpare = { icon = "rbxassetid://115193645709696", -- assets/item-icons/gear.png
+		name = "เฟืองอะไหล่", kind = "junk", weight = 1.5, stackSize = 8, value = 0, sellable = false },
+
+	--------------------------------------------------------------------------
 	-- Vehicle keys. One key is one vehicle: each carries its own plate in the
 	-- slot's `meta`, so two keys are two different vehicles and must never merge
 	-- into a stack. stackSize = 1 states that in the catalog; Inventory.AddItem
@@ -218,6 +246,14 @@ end
 
 function ItemCatalog.Exists(id)
 	return ItemCatalog.Items[id] ~= nil
+end
+
+-- May the shop put a price on this? Absent means yes, which is what every item written before V0.5 wants;
+-- `sellable = false` is the opt-out, and it is read by the counter, the "sell everything" button and the
+-- price board alike so an item cannot be refused in one place and bought in another.
+function ItemCatalog.IsSellable(id)
+	local item = ItemCatalog.Items[id]
+	return item ~= nil and item.sellable ~= false
 end
 
 -- Weapons and armor carry durability, so they can never stack; everything else stacks by its own limit.

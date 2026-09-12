@@ -16,6 +16,7 @@ local CraftConfig = require(game.ReplicatedStorage.CraftConfig)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
+local EventState = require(game.ServerScriptService.EventState)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local TAG = "WOLD_Npc"
@@ -148,7 +149,9 @@ end
 
 -- Same rule as the shop: no smithing from the floor.
 local function canCraft(player)
-	return not Vitals.IsDowned(player)
+	if Vitals.IsDowned(player) then return false end
+	-- The forge is cold during a blackout, like every other counter in town.
+	return EventState.NpcAvailable()
 end
 
 Remotes.RequestCraftOpen.OnServerEvent:Connect(function(player)
@@ -241,9 +244,28 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 		local chance = recipe.chance or 1
 		if math.random() >= chance then
 			Remotes.CraftFinished:FireClient(player, index, false)
-			Remotes.SocialNotify:FireClient(player, "error",
-				fee > 0 and ("สร้าง %s ล้มเหลว เสียวัสดุและเงิน %d"):format(item.name, fee)
-					or ("สร้าง %s ล้มเหลว วัสดุเสียไป"):format(item.name))
+
+			-- A failure is not nothing any more. The smith stamps a coin with a broken hammer and hands it
+			-- over, and enough of them buy the weapon outright at the "unlucky" page -- so a run of bad luck
+			-- is progress towards a guarantee rather than a pile of lost ore.
+			--
+			-- Given BEFORE the message so the two arrive together, and quietly skipped when the bag is full:
+			-- the player has just lost a craft, and a second red line telling them off for it would be the
+			-- wrong moment. Awarded only for a recipe that could actually fail, which is what keeps the
+			-- unlucky page itself from minting the coins it spends.
+			local awarded = 0
+			if chance < 1 then
+				local coins = CraftConfig.InsigniaPerFailure or 1
+				if Inventory.AddItem(player, CraftConfig.InsigniaItem, coins) then awarded = coins end
+			end
+
+			local reason = fee > 0 and ("สร้าง %s ล้มเหลว เสียวัสดุและเงิน %d"):format(item.name, fee)
+				or ("สร้าง %s ล้มเหลว วัสดุเสียไป"):format(item.name)
+			if awarded > 0 then
+				local coin = ItemCatalog.Get(CraftConfig.InsigniaItem)
+				reason ..= ("  ·  ได้ %s x%d"):format(coin and coin.name or CraftConfig.InsigniaItem, awarded)
+			end
+			Remotes.SocialNotify:FireClient(player, "error", reason)
 			Remotes.CraftOpen:FireClient(player, snapshot(player))
 			return
 		end
@@ -293,6 +315,14 @@ local function register(npc)
 	prompt.Parent = anchor
 
 	prompt.Triggered:Connect(function(player)
+		-- Gated here as well as on the remote. Pressing E is the only way most players ever open the forge, so
+		-- a check that lived only on RequestCraftOpen would let the window open during a blackout and refuse
+		-- every button inside it -- which reads as a broken forge rather than a dark town.
+		local ok, reason = canCraft(player)
+		if not ok then
+			if reason then Remotes.SocialNotify:FireClient(player, "error", reason) end
+			return
+		end
 		Remotes.CraftOpen:FireClient(player, snapshot(player))
 	end)
 end

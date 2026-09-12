@@ -27,6 +27,9 @@ local NAMETAG_DISTANCE = 40
 local WORKERS = {
 	Merchant_Barnaby = { kind = "shop", name = "บาร์นาบี" },
 	Blacksmith_Brannoc = { kind = "smith", name = "แบรนน็อค" },
+	-- V0.5: the banker who also keeps a warehouse, and the man who keeps everyone's vehicles.
+	Madam_Aurelia = { kind = "bank", name = "มาดามออเรเลีย" },
+	Baron_Vane = { kind = "vehicle", name = "บารอนเวน" },
 }
 
 --------------------------------------------------------------------------------
@@ -57,7 +60,7 @@ return L.runPhase("NpcSetup", function(folder)
 	-- The prompts the working systems add for themselves. Named here so the cleanup below can tell a live
 	-- prompt from the kit's dead one and leave it alone -- rerunning this phase in a running game would
 	-- otherwise strip the button the server just built.
-	local LIVE_PROMPTS = { ShopPrompt = true, CraftPrompt = true }
+	local LIVE_PROMPTS = { ShopPrompt = true, CraftPrompt = true, VaultPrompt = true, VehiclePrompt = true }
 
 	local workers, cleaned = 0, 0
 	for _, m in ipairs(workspace:GetDescendants()) do

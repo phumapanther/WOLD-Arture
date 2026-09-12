@@ -274,9 +274,26 @@ local function recipeRow(parent, order, entry, onClick)
 	label.Parent = frame
 
 	for i, material in ipairs(entry.materials) do
+		local y = 26 + (i - 1) * 16
+
+		-- The material's own icon, small, in front of its name. Six recipes now share the same handful of
+		-- greyish steam-age materials, and "แบบแปลน 2/5" next to "เฟืองอะไหล่ 5/10" is a line to read where a
+		-- picture is a thing to recognise. The id comes down in the snapshot, so the window still decides
+		-- nothing -- it draws what the server sent.
+		local pip = Instance.new("ImageLabel")
+		pip.Name = "Pip"
+		pip.Position = UDim2.fromOffset(40, y + 1)
+		pip.Size = UDim2.fromOffset(13, 13)
+		pip.BackgroundTransparency = 1
+		pip.Image = material.icon or ""
+		-- Faded with the text when the player is short, so the whole line reads as one state rather than a
+		-- bright picture next to a red number.
+		pip.ImageTransparency = material.have >= material.need and 0 or 0.45
+		pip.Parent = frame
+
 		local line = Instance.new("TextLabel")
-		line.Position = UDim2.fromOffset(40, 26 + (i - 1) * 16)
-		line.Size = UDim2.new(1, -120, 0, 15)
+		line.Position = UDim2.fromOffset(57, y)
+		line.Size = UDim2.new(1, -137, 0, 15)
 		line.BackgroundTransparency = 1
 		line.Font = Enum.Font.Gotham
 		line.TextSize = 11
@@ -284,6 +301,7 @@ local function recipeRow(parent, order, entry, onClick)
 		-- one still missing rather than only that something is.
 		line.TextColor3 = material.have >= material.need and ENOUGH or SHORT
 		line.TextXAlignment = Enum.TextXAlignment.Left
+		line.TextTruncate = Enum.TextTruncate.AtEnd
 		line.Text = ("%s %d/%d"):format(material.name, material.have, material.need)
 		line.Parent = frame
 	end
@@ -304,8 +322,14 @@ local function recipeRow(parent, order, entry, onClick)
 	odds.RichText = true
 	local fee = entry.gold or 0
 	local feeColor = (entry.goldHave or 0) >= fee and ENOUGH or SHORT
-	odds.Text = ("โอกาสสำเร็จ %d%%  ·  ค่าจ้าง <font color=\"#%s\">%d</font> เหรียญ")
-		:format(math.floor((entry.chance or 1) * 100 + 0.5), feeColor:ToHex(), fee)
+	if (entry.chance or 1) >= 1 and fee <= 0 then
+		-- A straight exchange, which is what the unlucky page is. Printing "100% · 0 เหรียญ" would dress a
+		-- certainty up as a bet and invite the player to read odds that are not there.
+		odds.Text = "<font color=\"#" .. ENOUGH:ToHex() .. "\">แลกได้แน่นอน ไม่มีค่าจ้าง</font>"
+	else
+		odds.Text = ("โอกาสสำเร็จ %d%%  ·  ค่าจ้าง <font color=\"#%s\">%d</font> เหรียญ")
+			:format(math.floor((entry.chance or 1) * 100 + 0.5), feeColor:ToHex(), fee)
+	end
 	odds.Parent = frame
 
 	-- The bar sits where the odds line is and is only shown while the hammer swings, so a row at rest is no
@@ -341,7 +365,7 @@ local function recipeRow(parent, order, entry, onClick)
 	button.Font = Enum.Font.GothamBold
 	button.TextSize = 12
 	button.TextColor3 = entry.affordable and Color3.fromRGB(24, 26, 32) or TEXT_MUTED
-	button.Text = "สร้าง"
+	button.Text = ((entry.chance or 1) >= 1 and (entry.gold or 0) <= 0) and "แลก" or "สร้าง"
 	button.Parent = frame
 	corner(button, UDim.new(0, 5))
 	button.Activated:Connect(function()
@@ -432,7 +456,9 @@ function CraftGui:Show(snapshot)
 	for order, tab in ipairs(tabs) do
 		local button = Instance.new("TextButton")
 		button.LayoutOrder = order
-		button.Size = UDim2.fromOffset(120, 28)
+		-- Narrow enough that the fourth page added in V0.5 still fits the panel's 536 usable pixels
+		-- (4 x 118 + 3 x 6 = 490) without the row wrapping or the last tab being clipped off the edge.
+		button.Size = UDim2.fromOffset(118, 28)
 		button.BorderSizePixel = 0
 		button.Font = Enum.Font.GothamBold
 		button.TextSize = 12

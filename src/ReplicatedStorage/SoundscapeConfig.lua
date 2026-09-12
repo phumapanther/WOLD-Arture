@@ -248,6 +248,31 @@ SoundscapeConfig.Interface = {
 	Coin = "rbxassetid://117316732298294",
 	-- The architect putting someone gear back together. Longer and more mechanical than the hand hammer.
 	Repair = "rbxassetid://129031223149367",
+
+	--------------------------------------------------------------------------
+	-- V1: the minigames, and the two world events.
+	--
+	-- Ding and Fail are shared by BOTH minigames on purpose -- the arrow game at the illegal farms and the
+	-- skill-check bar at the transformers are different games asking the same question, and a player should
+	-- learn one pair of sounds rather than four.
+	--------------------------------------------------------------------------
+
+	-- Rummaging through a crate or a still, played while the character searches. One-shot, at the start of
+	-- the attempt, before the minigame appears.
+	Rummage = "rbxassetid://113584262071963",
+	-- Hit the beat.
+	Ding = "rbxassetid://96197551641029",
+	-- Missed it. Ends the minigame wherever it was.
+	Fail = "rbxassetid://130496762736639",
+	-- The skill-check bar springing up mid-repair. A warning, not a reward: it means "press now".
+	SkillCheck = "rbxassetid://118583229541459",
+	-- The engine being worked on, looped for the whole thirty seconds of a repair.
+	RepairLoop = "rbxassetid://126212750200158",
+
+	-- The two event announcements. Played once when the banner appears, alongside it rather than as part of
+	-- it, so a player who has the interface hidden still hears the city break down.
+	EventSlime = "rbxassetid://96435027172919",
+	EventBlackout = "rbxassetid://114222303730351",
 }
 
 --------------------------------------------------------------------------------

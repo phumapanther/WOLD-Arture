@@ -28,6 +28,10 @@ local ProfileTemplate = {
 	-- Friend list, banked gold, and the profile fields the player will be able to set later. The three
 	-- display fields exist now so adding the editor later needs no migration.
 	Social = nil, -- {Friends, Pending, Bank, Birthday, Gender, AvatarImage} | nil
+	-- The warehouse behind Madam Aurelia's counter. {Slots} | nil (nil = never used one). Kept out of
+	-- Inventory rather than folded into it because the whole point of the vault is that it is NOT the bag:
+	-- it does not travel, does not weigh anything, and survives what the bag does not.
+	Vault = nil,
 	-- When the test chest was last opened, so its daily cooldown survives a rejoin. Testing only; it goes
 	-- when the chest does.
 	TestChestAt = 0,
@@ -104,12 +108,23 @@ local function saveSocial(player)
 	end
 end
 
+local function saveVault(player)
+	local profile = Profiles[player]
+	local serialize = ProfileAccess.SerializeVault
+	if not profile or not serialize then return end
+	local data = serialize(player)
+	-- Guarded like Role's: nil means "not loaded here", and writing it through would empty a warehouse that
+	-- is merely not in memory yet.
+	if data then profile.Data.Vault = data end
+end
+
 local function saveAll(player)
 	savePosition(player)
 	saveProgression(player)
 	saveInventory(player)
 	saveRole(player)
 	saveSocial(player)
+	saveVault(player)
 end
 
 -- Published so the systems that OWN the data can flush it the moment it changes. ProfileStore only writes to
