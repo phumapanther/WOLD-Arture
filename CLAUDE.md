@@ -85,6 +85,61 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 ผู้ใช้สั่งว่า "อ่านประวัติสนทนาเดิมทั้งหมด ใช้เป็นบริบท แต่อย่าเพิ่งสรุปจนกว่าจะถาม"
 หมายเหตุ: ไฟล์ประวัติมีแค่ส่วนวิเคราะห์ UI 16 หน้าจอ + UI Flow รายละเอียดระบบเศรษฐกิจ/รัฐฉบับเต็มยังไม่มีในไฟล์ ถ้าผู้ใช้หามาได้จะอยู่ใน `docs/`
 
+**อัปเดต V0.5 + V1 (2026-09-12) — เขียนโค้ดครบแล้ว ยังไม่ได้ติดตั้งลง Studio และยังไม่ได้ทดสอบเลย**
+แบ็กอัพก่อนแก้: git tag `rolplayV_0` + `backups/rolplayV_0.zip` (สถานะ ณ commit `4f945f6`)
+
+**V0.5**
+- ไอเทมใหม่ 6 ชิ้นใน `ItemCatalog`: Silver / Insignia / Blueprint / Coal / Chemical / GearSpare ทั้งหมด `sellable = false`
+  ("สแตคไม่จำกัด" ใช้ 9999 ไม่ใช่ `math.huge` — DataStore เขียน inf ไม่ได้ โหลดกลับมาจะกลายเป็น nil แล้วช่องหาย)
+- คราฟล้มเหลว → ได้ `Insignia` 1 เหรียญ และเพิ่มหน้า **"คนดวงซวย"** (`CraftConfig.Tabs`) แลกอาวุธด้วยเหรียญ
+  ดาบ 2 / คฑา 10 / สมุดเวท 10 / ธนู 15 / ปืน 25 · แถววัสดุในหน้าคราฟโชว์ไอคอนไอเทมแล้ว
+- **มาดามออเรเลีย = ธนาคาร + คลังสินค้า** (`NpcKind = "bank"`) — `Vault.lua` (60 ช่อง เซฟใน profile.Data.Vault)
+  + `BankVault.server.lua` + `UI/VaultGui.lua` + `VaultController.client.lua` ส่วนเงินใช้ `Bank.lua` เดิม
+- **บารอนเวน = โรงรถ** (`NpcKind = "vehicle"`) ดูหัวข้อพาหนะข้างล่าง
+
+**V1**
+- `Minigames.lua` + `UI/MinigameGui.lua` — มินิเกมสองแบบใช้ร่วมกันทั้งเกม: **ลูกศรตามจังหวะ** (ฟาร์ม) กับ
+  **แถบตีปัง** (ซ่อมไฟ) เซิร์ฟเวอร์สุ่มโจทย์+ถือรางวัลไว้ ไคลเอนต์ส่งกลับแค่บิตเดียวว่าทำได้ไหม
+  - ลูกศรวาดจาก **Frame หมุน ไม่ใช่ตัวอักษร**: ฟอนต์ Roblox วาดสัญลักษณ์สามเหลี่ยมเป็นกล่องเปล่า (บทเรียนจาก WOLD-Vehicle)
+  - ปุ่มลูกศรผูกผ่าน `ContextActionService` priority 5000 แบบ Sink เพราะปุ่มลูกศร**เดินตัวละคร**โดยปริยาย
+- `IllegalFarm.server.lua` + `FarmConfig.lua` — DistillSet (สารเคมี 2-3) / Reactor (เฟือง 2-3) / Boxs (สุ่ม
+  ถ่านหิน·แบบแปลน·ซิลเวอร์ 30-100) คูลดาวน์ 30 นาที **ทั้งเซิร์ฟ เริ่มนับทันทีที่กด** ล้มเหลว = มึนหัว 5 วิ
+- `StatusEffects.Dizzy` ใหม่ (ยืนอยู่กับที่ ขยับไม่ได้ มีดาวลอยเหนือหัว) ไม่ใช่ Knockdown ซึ่งเป็นการนอนหงาย
+- **ระบบอีเวนต์**: `WorldEvents.server.lua` ถือนาฬิกา+ประกาศ ส่วน "อีเวนต์ทำอะไรกับโลก" อยู่กับระบบที่เป็น
+  เจ้าของโลกส่วนนั้น (`Mobs.server` ทำสไลม์ · `Transformers.server` ทำไฟดับ) ต่อกันผ่าน `EventState.Register`
+  - **สไลม์กลายพันธุ์**: ทุก 30 นาที อยู่ 30 นาที เกิดพร้อมกัน 3 ตัว เลือดขึ้นเป็น ~3 เท่า มีเสียงกระโดด
+    สปอว์เนอร์ติด `EventOnly = "slime"` จึงว่างเปล่าระหว่างอีเวนต์
+  - **เครื่องยนต์ไอน้ำขัดข้อง**: ไม่มีเวลาจำกัด จบเมื่อซ่อม Transformer ครบทุกตัว · ไฟทั้งเมืองดับ ·
+    จอมืดลง 25% (ColorCorrection ฝั่งไคลเอนต์) · NPC ทุกตัวไม่คุยด้วย (`EventState.NpcAvailable`)
+    ซ่อม = ยืนนิ่ง 30 วิ มีตีปังแทรก 2-4 ครั้ง เดินหนี = หลุดทั้งยก · ปุ่มบนแผนที่สุ่มนำทางไปเครื่องที่ยังพัง
+  - `UI/EventBannerGui.lua` แถบประกาศบนสุด: ไอคอนซ้าย · ข้อความตัวอักษรลอยคลื่นทีละตัว · นับถอยหลัง/นับเครื่องขวา
+- สูตรคราฟใหม่ตามที่ผู้ใช้กำหนด (ปืน/ดาบ/กระสุน/เกราะ ใช้ GearSpare, Blueprint, Silver)
+
+**ระบบพาหนะ (ยกทั้งโปรเจ็ค WOLD-Vehicle เข้ามา)**
+- `src/ReplicatedStorage/Vehicle/{Config,Net}.lua` · `src/ServerScriptService/Vehicle/{Kit,Chassis,Models,Drive,Store,Service,Stations}.lua`
+  · `VehicleMain.server.lua` · `StarterPlayerScripts/Vehicle{Controller,SoundController}.client.lua`
+- **ห้ามแก้ค่าฟิสิกส์โดยไม่อ่าน `CLAUDE.md` ของโปรเจ็ค `WOLD-Vehicle` ก่อน** ทุกค่าเป็นผลของบั๊กที่กว่าจะแก้ได้ใช้เวลานาน
+  (ล้อส่าย · เรือดีดขึ้นฟ้าเพราะเจ้าของฟิสิกส์ผิดฝั่ง · เรือเหาะเกยหินเพราะเชื่อพิกัดที่ตั้งใจไว้)
+- ที่ต่างจากต้นทาง 3 ข้อ: **กุญแจเป็นไอเทมในกระเป๋า** (CarKey/BoatKey/AirshipKey + `meta.plate`) ·
+  **ท้ายพาหนะใช้ Inventory ของเกม** · **มีค่าเบิก/ค่าฝากคิดตามระยะจากบารอนเวน** (`Config.Fee`)
+- จุดเรียก 3 จุดสร้างเองตอนเซิร์ฟเวอร์สตาร์ต และ**หาผิวจริงเอง** (ground / shore / peak) พิกัดตั้งต้นใน
+  `Config.Presets.Arture` มาจาก `world-layout.json` **ยังไม่ได้ยืนยันกับแมพจริง ต้องเปิด Studio ดู**
+
+**ขั้นตอนติดตั้ง (ยังไม่ได้ทำ — ต้องเปิด Studio ก่อน)**
+1. `serve-background.bat` แล้ว Connect ที่ปลั๊กอิน Rojo (หรือดันตรงผ่าน MCP ถ้า Rojo หลุด)
+2. `node tools/run-luau.js mapgen/60_npc_setup.lua` — แท็ก Madam_Aurelia (bank) + Baron_Vane (vehicle)
+3. `node tools/run-luau.js mapgen/63_v1_interactables.lua` — แท็ก DistillSet/Reactor/Boxs, Transformer,
+   ตั้งสปอว์เนอร์สไลม์เป็น EventOnly และ**ย้ายโฟลเดอร์ `Model_moster` ไป ServerStorage** (ซ่อนโมเดลโชว์ที่กด E ได้)
+4. (ถ้าต้องการท่าคุ้ยของ) `node tools/run-luau.js animgen/farm.lua --no-lib` → Save to Roblox → เอา id ใส่
+   `FarmConfig.SearchAnimation` (ปล่อยว่างไว้ระบบก็ทำงาน แค่ไม่มีท่า)
+5. ทดสอบด้วย `/event slime` · `/event blackout` · `/veh key Car` (คำสั่งแอดมิน ไม่ต้องรอ 10 คน)
+
+**สิ่งที่ยังไม่ได้ทำ / ต้องตรวจ**
+- ยังไม่เคยรันในเกมเลยสักบรรทัด — Studio ปิดอยู่ตลอดเซสชันที่เขียน ตรวจได้แค่ว่าไวยากรณ์ Lua ผ่าน
+- พิกัดจุดเรียกพาหนะ 3 จุดเป็นค่าคำนวณจากเอกสาร ไม่ใช่จากแมพจริง
+- `EventConfig.MinPlayers = 10` ทำให้อีเวนต์ไม่เกิดเองตอนทดสอบคนเดียว ใช้ `/event` แทน
+- สไลม์: ตีความว่า "เกิด 30 นาที แล้วว่าง 30 นาที" ถ้าผู้ใช้อยากให้มีตลอดเวลาให้ลด `everySeconds`
+
 ## เครื่องมือที่พร้อมใช้
 - **Studio MCP** (MCP server ในตัว Roblox Studio) ลงทะเบียน user-scope ชื่อ `Roblox_Studio` → เครื่องมือ `mcp__Roblox_Studio__*`
   ต้องเปิด Studio + place ก่อน และเปิดสวิตช์ที่ Assistant → … → Manage MCP Servers → Enable Studio as MCP server
