@@ -108,7 +108,9 @@ box.BorderSizePixel = 0
 box.Font = Enum.Font.Code
 box.TextSize = 14
 box.TextColor3 = TEXT
-box.PlaceholderText = "/give Sword 1     /gold 1000     /tpto ชื่อ"
+-- The two event commands sit in the hint because they are the ones an admin reaches for and cannot guess:
+-- everything else in here is named after the noun it acts on, while "make the lights go out" is not.
+box.PlaceholderText = "/give Sword 1   /gold 1000   /blackout   /slime"
 box.ClearTextOnFocus = false
 box.Text = ""
 box.Parent = panel

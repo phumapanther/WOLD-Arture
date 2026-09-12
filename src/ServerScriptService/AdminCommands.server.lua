@@ -215,6 +215,52 @@ Commands.event = function(admin, args)
 		or ("เริ่มอีเวนต์ %s ไม่ได้ ดู Output"):format(id))
 end
 
+-- /blackout และ /slime -- บังคับให้อีเวนต์นั้นเกิดเดี๋ยวนี้
+--
+-- /event ทำได้อยู่แล้ว แต่มันเป็นปุ่มสลับ: กดตอนอีเวนต์ยังไม่เกิด = เริ่ม กดตอนกำลังเกิด = จบ ซึ่งอันตราย
+-- เวลาอยากได้แค่ "ให้เกิดเดี๋ยวนี้" แล้วเผลอกดซ้ำ สองคำสั่งนี้จึงมีทิศทางเดียว: เรียกเปล่าๆ = เริ่ม
+-- ต้องพิมพ์ off ถึงจะจบ และไม่สนใจเงื่อนไข "ผู้เล่นครบ 10 คน" เลย เพราะทั้งคู่มีไว้ทดสอบคนเดียว
+--
+-- สถานะที่รายงานกลับอ่านจาก EventState ไม่ใช่จากการเดา: อีเวนต์ที่ผลกับโลกใช้ไม่ได้ (ไฟดับในเพลสที่ยังไม่มี
+-- โมเดล Transformer) จะถูก WorldEvents ยกเลิกตัวเองทิ้ง แล้วบรรทัดตอบกลับจะบอกว่าไม่ได้เริ่ม
+local function forceEvent(admin, id, args, label)
+	local sub = (args[1] or ""):lower()
+	local entry = EventState.Active[id]
+
+	if sub == "off" or sub == "stop" or sub == "end" then
+		if not entry then return reply(admin, ("%s ไม่ได้เกิดอยู่"):format(label)) end
+		if EventState.Stop then EventState.Stop(id) end
+		return reply(admin, ("จบ%sแล้ว"):format(label))
+	end
+
+	if entry then
+		-- กำลังเกิดอยู่แล้ว บอกว่าเหลืออะไรแทนที่จะเริ่มซ้ำ (เริ่มซ้ำไม่ได้อยู่แล้ว WorldEvents กันไว้)
+		local detail = entry.detail
+		if not detail and entry.endsAt then
+			local left = math.max(0, entry.endsAt - workspace:GetServerTimeNow())
+			detail = ("เหลืออีก %d:%02d"):format(math.floor(left / 60), math.floor(left % 60))
+		end
+		return reply(admin, ("%s กำลังเกิดอยู่แล้ว%s  ·  พิมพ์ /%s off เพื่อจบ")
+			:format(label, detail and (" (" .. detail .. ")") or "", id))
+	end
+
+	if EventState.Start then EventState.Start(id) end
+	if not EventState.Active[id] then
+		return reply(admin, ("เริ่ม%sไม่ได้ ดูข้อความใน Output"):format(label))
+	end
+	reply(admin, ("บังคับให้เกิด%sแล้ว  ·  พิมพ์ /%s off เพื่อจบ"):format(label, id))
+end
+
+-- /blackout [off] -- บังคับให้ไฟดับทั้งเมืองเดี๋ยวนี้
+Commands.blackout = function(admin, args)
+	forceEvent(admin, "blackout", args, "อีเวนต์ไฟดับ")
+end
+
+-- /slime [off] -- บังคับให้สไลม์กลายพันธุ์โผล่เดี๋ยวนี้
+Commands.slime = function(admin, args)
+	forceEvent(admin, "slime", args, "อีเวนต์สไลม์กลายพันธุ์")
+end
+
 -- /veh <key|here|stow|status> [ชนิด|ทะเบียน] -- เครื่องมือทดสอบพาหนะ
 --
 -- แทนคำสั่งแชท /veh ของโปรเจ็ค WOLD-Vehicle ที่ไม่ได้ยกมา (ไฟล์นั้นตั้งใจให้ลบก่อนปล่อยเกม) เอาเฉพาะสี่
