@@ -336,6 +336,84 @@ async function push(event) {
 // ---------------------------------------------------------------------------- HTTP
 let polls = 0, lastPollAt = 0, lastAfter = -1;
 
+// ---------------------------------------------------------------------------- the test panel
+// A page of buttons at / so the whole thing can be tested WITHOUT spending a single coin, and while
+// genuinely live. Every button posts the same shape the TikTok side would produce, which means it tests the
+// real path -- queue, cursor or Open Cloud push, game handler -- and not a simulation of it.
+//
+// It matters most for the published game: a gift costs money and a subscription costs more, so the only
+// affordable way to know the chest tiers and the sub-boss work in production is to send the events by hand.
+const PANEL = `<!doctype html><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TikTok -> WOLD</title>
+<style>
+ body{font:15px system-ui,sans-serif;background:#15161a;color:#e8e8ea;margin:0;padding:18px;max-width:560px}
+ h1{font-size:17px;margin:0 0 4px}
+ .sub{color:#9a9aa2;font-size:13px;margin-bottom:16px}
+ h2{font-size:13px;color:#9a9aa2;margin:20px 0 8px;text-transform:uppercase;letter-spacing:.05em}
+ button{font:inherit;padding:11px 14px;margin:0 6px 6px 0;border:1px solid #34353c;border-radius:9px;
+   background:#22232a;color:#e8e8ea;cursor:pointer}
+ button:active{background:#2e2f38}
+ .gold{border-color:#8a6a1e}.silver{border-color:#5c6470}.iron{border-color:#4a4a52}
+ .boss{border-color:#7a2f2f}.mob{border-color:#2f5f7a}
+ #log{margin-top:18px;padding:10px;background:#0e0f12;border-radius:9px;font:12px ui-monospace,monospace;
+   white-space:pre-wrap;color:#8fd39a;min-height:40px}
+ #stat{font:12px ui-monospace,monospace;color:#9a9aa2;margin-top:14px}
+</style>
+<h1>แผงทดสอบ TikTok &rarr; WOLD Arture</h1>
+<div class="sub">ปุ่มเหล่านี้ยิงอีเวนต์รูปแบบเดียวกับที่ TikTok ส่งมาจริง ใช้ทดสอบได้โดยไม่ต้องเสียเหรียญ</div>
+
+<h2>ไลก์</h2>
+<button class="mob" onclick="go({kind:'mob',count:1,by:'ทดสอบ'})">มอน 1 ตัว</button>
+<button class="mob" onclick="go({kind:'mob',count:3,by:'ทดสอบ'})">มอน 3 ตัว</button>
+
+<h2>ของขวัญ</h2>
+<button class="iron" onclick="go({kind:'chest',tier:'Chest_Ironbound',label:'เล็ก',coins:5,by:'ทดสอบ'})">หีบเล็ก (5 coins)</button>
+<button class="silver" onclick="go({kind:'chest',tier:'Chest_Silver',label:'กลาง',coins:30,by:'ทดสอบ'})">หีบกลาง (30)</button>
+<button class="gold" onclick="go({kind:'chest',tier:'Chest_Gold',label:'ใหญ่',coins:150,by:'ทดสอบ'})">หีบทอง (150)</button>
+
+<h2>กดซับ</h2>
+<button class="boss" onclick="go({kind:'boss',by:name()})">บอสชื่อที่กรอก</button>
+
+<h2>คำสั่งแชท</h2>
+<button onclick="cmd('!มึน')">!มึน</button>
+<button onclick="cmd('!นอน')">!นอน</button>
+<button onclick="cmd('!ชุบ')">!ชุบ</button>
+<button onclick="cmd('!เต้น')">!เต้น</button>
+<button onclick="cmd('!ไหว้')">!ไหว้</button>
+<button onclick="cmd('!ตกใจ')">!ตกใจ</button>
+<button onclick="cmd('!เป็นลม')">!เป็นลม</button>
+
+<h2>ท็อป 3 เท่านั้น</h2>
+<button onclick="cmd('!time กลางคืน',true)">!time กลางคืน</button>
+<button onclick="cmd('!time auto',true)">!time auto</button>
+<button onclick="cmd('!weather พายุ',true)">!weather พายุ</button>
+<button onclick="cmd('!weather auto',true)">!weather auto</button>
+<div style="margin-top:10px">ชื่อคนส่ง <input id="who" value="ทดสอบ" style="font:inherit;padding:7px;border-radius:7px;border:1px solid #34353c;background:#22232a;color:#e8e8ea"></div>
+
+<div id="stat"></div>
+<div id="log">พร้อม</div>
+<script>
+const name = () => document.getElementById('who').value || 'ทดสอบ';
+async function go(ev){
+  ev.by = ev.by || name();
+  const r = await fetch('/mock'+location.search,{method:'POST',body:JSON.stringify(ev)});
+  const j = await r.json();
+  document.getElementById('log').textContent = (j.ok ? 'ส่งแล้ว #'+j.event.id+'  ' : 'พลาด  ') + JSON.stringify(ev);
+}
+const cmd = (text,top=false) => go({kind:'cmd',text,top,by:name()});
+async function stat(){
+  try{
+    const j = await (await fetch('/health'+location.search)).json();
+    document.getElementById('stat').textContent =
+      'ไลฟ์: '+(j.connected?'ต่ออยู่':'ยังไม่ต่อ')+'   เกมถามล่าสุด: '+
+      (j.lastPollSecondsAgo===null?'ยังไม่เคย':j.lastPollSecondsAgo+' วิที่แล้ว')+
+      '   polls '+j.polls;
+  }catch(e){}
+}
+stat(); setInterval(stat,2000);
+</script>`;
+
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, "http://x");
   const send = (code, body) => {
@@ -346,6 +424,11 @@ const server = http.createServer((req, res) => {
 
   if (CFG.key && url.searchParams.get("key") !== CFG.key && req.headers["x-key"] !== CFG.key) {
     return send(403, { ok: false, error: "bad key" });
+  }
+
+  if (url.pathname === "/" || url.pathname === "/panel") {
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    return res.end(PANEL);
   }
 
   if (url.pathname === "/health") {
@@ -400,6 +483,7 @@ server.listen(CFG.port, CFG.host, () => {
   console.log("  4. ต้องมีตัวแอดมินยืนอยู่ในเซิร์ฟ ไม่งั้นเกมจะไม่ถามอะไรมาเลย");
   console.log("=".repeat(64));
   log(`ฟังอยู่ที่ http://${CFG.host}:${CFG.port}`);
+  log(`  แผงทดสอบ: เปิดเบราว์เซอร์ไปที่ http://${CFG.host}:${CFG.port}/  (ยิงอีเวนต์ได้โดยไม่ต้องเสียเหรียญ)`);
   log(`  /events?after=<id>   เกมดึงจากตรงนี้`);
   log(`  /health              สถานะ`);
   if (CFG.key) log("  ต้องส่ง ?key=... มาด้วย");
