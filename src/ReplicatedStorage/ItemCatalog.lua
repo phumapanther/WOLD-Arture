@@ -74,7 +74,12 @@ ItemCatalog.Items = {
 		icon = "rbxassetid://109719252233813", -- Greatsword (ภาพจริงใน decal 131042286719658)
 		name = "ดาบใหญ่", kind = "weapon", weight = 14, stackSize = 1,
 		value = 0, sellable = false,
-		skill = { name = "ฟันสังหาร", cooldown = 14 },
+		damage = 42, range = 9,
+		-- Heavier than the sword's 120: it is the thing you gamble a 25% craft for.
+		maxDurability = 200,
+		-- The SAME skill as the sword, by the user's instruction: one leap, one sound, one handler. Only the
+		-- name on the button differs, because a greatsword lunging is not called the same thing.
+		skill = { id = "LungeSlash", name = "ฟันสังหาร", manaCost = 1, cooldown = 3 },
 	},
 
 	Axe = {

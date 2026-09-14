@@ -283,6 +283,19 @@ CombatConfig.SkillSounds = {
 	GroupHeal = "rbxassetid://118799033183305",   -- staff_q
 }
 
+-- The animation a skill plays, keyed by SKILL id the same way the sounds above are -- so the two halves of
+-- "what a skill looks and sounds like" sit together and are looked up the same way.
+--
+-- LungeSlash is the sword's leap AND the greatsword's, by the user's instruction, and both swing the
+-- greatsword's chop while airborne. That is why this is keyed by skill rather than by weapon: the animation
+-- belongs to the move, not to whichever blade is in the hand.
+--
+-- A skill with no entry here simply has no animation, which is what every skill had before this table
+-- existed.
+CombatConfig.SkillAnimations = {
+	LungeSlash = "rbxassetid://121629606581159", -- Greatsword_Swing
+}
+
 -- Volumes here are 0.3x their originally tuned values: everything was 70% too loud in play. The
 -- ratios between them are the tuned part -- the sword impact is deliberately quieter than a skill -- so
 -- they were scaled together rather than flattened to one number.

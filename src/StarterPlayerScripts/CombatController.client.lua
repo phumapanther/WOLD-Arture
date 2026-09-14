@@ -47,6 +47,13 @@ local function loadTracksFor(character)
 	for i, attack in ipairs(weapon.attacks) do
 		tracks.attacks[i] = load(attack.animation, Enum.AnimationPriority.Action4)
 	end
+
+	-- Every skill animation this character might play, loaded once with the rest. Keyed by skill id, not by
+	-- weapon: LungeSlash looks the same whichever blade threw it, which is what the user asked for.
+	tracks.skills = {}
+	for skillId, animationId in pairs(CombatConfig.SkillAnimations or {}) do
+		tracks.skills[skillId] = load(animationId, Enum.AnimationPriority.Action4)
+	end
 end
 
 -- The weapon's stance is NOT held while simply carrying something.
@@ -121,6 +128,11 @@ local function watchForRunning(character)
 		for _, track in pairs(tracks.attacks or {}) do
 			if track.IsPlaying then return end
 		end
+		-- And so does a skill. A leap is faster than the running threshold by design, so without this the
+		-- watcher would drop the stance and cut the chop halfway through every single time.
+		for _, track in pairs(tracks.skills or {}) do
+			if track.IsPlaying then return end
+		end
 		if humanoid.AssemblyLinearVelocity.Magnitude > RUNNING_SPEED then
 			dropStanceNow()
 		end
@@ -157,6 +169,37 @@ end)
 -- it is the reliable source for the initial state.
 Remotes.InventoryUpdate.OnClientEvent:Connect(function(data)
 	useWeapon(data and data.equipped and data.equipped.weapon and data.equipped.weapon.id or nil)
+end)
+
+-- The Q skill's animation. Fired for EVERY player, and unlike the attack broadcast this one is worth
+-- playing for other people too -- but their characters animate from their own client's tracks, so as with
+-- CombatStateChanged only our own is handled here.
+--
+-- A skill is a swing: it has to stop the stance and the ordinary attack tracks first, exactly as the attack
+-- branch does, or it blends underneath them and barely moves.
+Remotes.SkillUsed.OnClientEvent:Connect(function(who, skillId)
+	if who ~= player then return end
+	local track = tracks.skills and tracks.skills[skillId]
+	if not track then return end
+
+	for _, other in pairs(tracks.attacks or {}) do other:Stop(0) end
+	for _, other in pairs(tracks.skills or {}) do
+		if other ~= track then other:Stop(0) end
+	end
+	if tracks.guard then tracks.guard:Stop(0.05) end
+	if tracks.idle then tracks.idle:Stop(0.05) end
+
+	track:Play(0.05)
+	track.Stopped:Once(function()
+		-- Don't restore the stance if another swing or skill has already started.
+		for _, other in pairs(tracks.attacks or {}) do
+			if other.IsPlaying then return end
+		end
+		for _, other in pairs(tracks.skills or {}) do
+			if other.IsPlaying then return end
+		end
+		if tracks.idle then wearStanceBriefly() end
+	end)
 end)
 
 player.CharacterAdded:Connect(onCharacterAdded)
