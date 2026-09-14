@@ -16,4 +16,9 @@ MobAccess.Damage = nil
 -- without the other. Left nil in the lobby, so every caller must check.
 MobAccess.Stun = nil
 
+-- Set by Mobs.server at startup. Takes (victim, distance, count) and conjures that many monsters in a ring
+-- around them, each picked at random from every kind in the game. They have no spawner, never respawn, and
+-- chase that one player and no other. Left nil in the lobby, so every caller must check.
+MobAccess.SpawnHunters = nil
+
 return MobAccess

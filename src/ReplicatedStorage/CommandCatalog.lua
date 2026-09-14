@@ -32,6 +32,7 @@ CommandCatalog.Commands = {
 	{ name = "event", args = "<ชื่ออีเวนต์>", desc = "สั่งอีเวนต์", scope = "admin" },
 	{ name = "blackout", args = "", desc = "ไฟดับทั้งเมือง", scope = "admin" },
 	{ name = "slime", args = "", desc = "สไลม์กลายพันธุ์", scope = "admin" },
+	{ name = "mob", args = "[จำนวน]", desc = "เสกมอนสุ่มรอบตัว ไล่ล่าคุณไม่เลิก", scope = "admin" },
 	{ name = "chest", args = "[ไม้|เหล็ก|เงิน|ทอง]", desc = "วางหีบสมบัติข้างตัว (ไม่ใส่ = สุ่มระดับ)", scope = "admin" },
 	{ name = "weather", args = "<ชนิด|auto>", desc = "ตั้งสภาพอากาศ หรือปล่อยให้สุ่มเอง", scope = "admin" },
 	{ name = "veh", args = "<คำสั่งย่อย>", desc = "ระบบพาหนะ", scope = "admin" },

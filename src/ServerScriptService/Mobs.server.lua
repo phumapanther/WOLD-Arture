@@ -436,6 +436,78 @@ local function spawnOne(spawner, kind, config)
 	return false
 end
 
+-- Conjures one monster that exists only to chase `victim`, with no spawner behind it.
+--
+-- Deliberately NOT spawnOne: that function belongs to a spawner -- it counts against its Alive attribute and
+-- sets its respawn clock -- and a monster called up by an admin has neither. When this one dies it is simply
+-- gone, which is what despawn already does for a state with no spawner.
+local function spawnHunter(kind, config, victim, origin, distance)
+	-- Ringed around them rather than dropped on top: a monster spawned inside someone's body shoves them.
+	for attempt = 1, 12 do
+		local angle = math.random() * math.pi * 2
+		-- Widen the ring a little on each retry, so a wall on one side does not mean no monster at all.
+		local reach = distance + (attempt - 1) * 4
+			local x = origin.X + math.cos(angle) * reach
+			local z = origin.Z + math.sin(angle) * reach
+		local y = groundAt(x, z)
+		if y then
+			local model = buildMonster(config)
+			model:PivotTo(CFrame.new(x, y + 2, z))
+			model.Parent = folder
+
+			local scale = nightScale()
+			local maxHp = config.hp * scale
+			local humanoid = model:FindFirstChildOfClass("Humanoid")
+			if humanoid and scale ~= 1 then
+				humanoid.MaxHealth = maxHp
+				humanoid.Health = maxHp
+			end
+
+			Live[model] = {
+				config = config,
+				hp = maxHp,
+				maxHp = maxHp,
+				damageScale = scale,
+				-- No spawner: nothing counts it, and nothing brings it back.
+				spawner = nil,
+				home = Vector3.new(x, y, z),
+				nextAttackAt = 0,
+				target = victim,
+				-- The whole point of it.
+				hunt = victim,
+			}
+			return model
+		end
+	end
+	return nil
+end
+
+-- Published for the admin command. Takes (victim, distance, count) and returns how many actually landed,
+-- picking a random kind from EVERY monster in the game -- both batches, since GatherConfig.Mobs holds them
+-- all in one table.
+MobAccess.SpawnHunters = function(victim, distance, count)
+	local character = victim and victim.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then return 0, {} end
+
+	local kinds = {}
+	for kind in pairs(GatherConfig.Mobs) do kinds[#kinds + 1] = kind end
+	-- Sorted before picking so the choice is reproducible from the seed rather than from hash order.
+	table.sort(kinds)
+	if #kinds == 0 then return 0, {} end
+
+	local spawned, names = 0, {}
+	for _ = 1, math.max(1, count or 1) do
+		local kind = kinds[math.random(#kinds)]
+		local config = GatherConfig.Mobs[kind]
+		if config and spawnHunter(kind, config, victim, root.Position, distance or 15) then
+			spawned += 1
+			names[#names + 1] = config.name or kind
+		end
+	end
+	return spawned, names
+end
+
 local function serviceSpawner(spawner)
 	local kind = spawner:GetAttribute("MobKind")
 	local config = kind and GatherConfig.Mobs[kind]
@@ -514,8 +586,32 @@ RunService.Heartbeat:Connect(function(dt)
 				continue
 			end
 
+			-- A HUNTED monster has no home and no leash: it was conjured to chase one person and it does not stop.
+			-- Checked before the leash so it never walks back, and before the retarget so it never picks
+			-- someone closer -- "ตามไม่เลิก" means this one player and no other.
+			local hunted = state.hunt
+			local huntRoot = hunted and hunted.Character
+				and hunted.Character:FindFirstChild("HumanoidRootPart")
+
+			-- Once they are down, stop. Vitals already refuses the damage, but a monster standing over a
+			-- crawling player still blocks the rescue -- which is exactly why nearestPlayer skips the downed,
+			-- and a hunter must not be the exception that undoes it. It waits where it is and resumes when
+			-- they are back up.
+			if hunted and huntRoot and hunted:GetAttribute("WOLD_Downed") then
+				humanoid:MoveTo(position)
+				continue
+			end
+
+			if hunted and not huntRoot then
+				-- Their character is gone for the moment (dead, respawning, streamed out). Stand still and
+				-- wait rather than falling back to ordinary behaviour, which would re-home a monster that
+				-- has no home.
+				humanoid:MoveTo(position)
+				continue
+			end
+
 			-- Too far from home: stop chasing and walk back, so a chase cannot drag monsters into town.
-			if (position - state.home).Magnitude > config.leashRange then
+			if not hunted and (position - state.home).Magnitude > config.leashRange then
 				state.target = nil
 				humanoid:MoveTo(state.home)
 			else
@@ -523,8 +619,11 @@ RunService.Heartbeat:Connect(function(dt)
 				local targetRoot = target and target.Character
 					and target.Character:FindFirstChild("HumanoidRootPart")
 
-				-- Lost them (left, died, went down, or outran the leash): look for someone else.
-				if not targetRoot or (targetRoot.Position - position).Magnitude > config.leashRange then
+				if hunted then
+					-- One target, forever. No aggro range to enter and no leash to escape.
+					state.target, targetRoot = hunted, huntRoot
+				elseif not targetRoot or (targetRoot.Position - position).Magnitude > config.leashRange then
+					-- Lost them (left, died, went down, or outran the leash): look for someone else.
 					state.target = nearestPlayer(position, config.aggroRange)
 					targetRoot = state.target and state.target.Character
 						and state.target.Character:FindFirstChild("HumanoidRootPart")

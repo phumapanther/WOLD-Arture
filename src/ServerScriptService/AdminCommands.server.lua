@@ -262,6 +262,26 @@ Commands.slime = function(admin, args)
 	forceEvent(admin, "slime", args, "อีเวนต์สไลม์กลายพันธุ์")
 end
 
+-- /mob [จำนวน] -- เสกมอนสุ่มรอบตัว ห่าง 15 สตัด ไล่ล่าเฉพาะคนสั่ง ไม่เลิกตาม
+--
+-- Picks from EVERY monster in the game, both batches: GatherConfig.Mobs is one table, so a kind added
+-- tomorrow is in the pool tomorrow with nothing here to change.
+Commands.mob = function(admin, args)
+	local MobAccess = require(game.ServerScriptService.MobAccess)
+	if not MobAccess.SpawnHunters then
+		return reply(admin, "ระบบมอนยังไม่พร้อม (อยู่ในล็อบบี้?)")
+	end
+
+	-- Capped rather than trusted: a mistyped /mob 9999 would be unrecoverable for whoever typed it.
+	local count = math.clamp(tonumber(args[1]) or 1, 1, 20)
+	local spawned, names = MobAccess.SpawnHunters(admin, 15, count)
+	if spawned == 0 then
+		return reply(admin, "หาที่วางมอนไม่ได้ ลองขยับที่")
+	end
+	reply(admin, ("เสกมอน %d ตัว: %s (ไล่ล่าคุณคนเดียว ไม่เลิกตาม)")
+		:format(spawned, table.concat(names, ", ")))
+end
+
 -- /chest [ไม้|เหล็ก|เงิน|ทอง] -- ทำให้หีบสมบัติเกิดข้างตัว
 --
 -- The chests have no timer of their own: this and the chest items in a player's bag are the only two ways
