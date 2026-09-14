@@ -18,6 +18,10 @@
 --   * Shoulders/elbows rotate the limb FORWARD on positive X.
 --   * On the RIGHT arm, negative Z pulls the hand inward across the chest; the left arm mirrors it.
 --   * The waist's Y turns the chest; positive turns it to the character's left.
+--   * The waist's X leans the chest: NEGATIVE folds it FORWARD over the legs, positive arches it back.
+--     Measured off the working Sword_Slash, whose wind-up is +10 (leaning back) and whose strike is -15
+--     then -20 (folding forward through the blow). Getting this backwards makes the character lie back as
+--     it swings down, which is what the first version of this file did.
 
 local ServerStorage = game:GetService("ServerStorage")
 
@@ -92,7 +96,7 @@ end
 -- hold the sword out horizontally like a spear, which is not the pose described.
 --------------------------------------------------------------------------------
 local IDLE = {
-	waist = CFrame.Angles(rad(6), 0, 0), -- leaning very slightly over the weight of it
+	waist = CFrame.Angles(rad(-6), 0, 0), -- leaning very slightly FORWARD over the weight of it
 	rShoulder = CFrame.Angles(rad(62), 0, rad(-16)),
 	rElbow = CFrame.Angles(0, 0, 0), -- straight
 	lShoulder = CFrame.Angles(rad(62), 0, rad(16)),
@@ -103,7 +107,7 @@ local IDLE = {
 build("Greatsword_Idle", Enum.AnimationPriority.Idle, true, {
 	{ 0.0, IDLE },
 	{ 1.6, copy(IDLE, {
-		waist = CFrame.Angles(rad(8), 0, 0),
+		waist = CFrame.Angles(rad(-8), 0, 0),
 		rShoulder = CFrame.Angles(rad(65), 0, rad(-16)),
 		lShoulder = CFrame.Angles(rad(65), 0, rad(16)),
 	}) },
@@ -125,8 +129,8 @@ build("Greatsword_Idle", Enum.AnimationPriority.Idle, true, {
 -- the ground, which reads as the swing running out of strength rather than burying itself.
 --------------------------------------------------------------------------------
 local OVERHEAD = {
-	-- Straight arms directly above the head, leaning back to load the swing.
-	waist = CFrame.Angles(rad(-22), 0, 0),
+	-- Straight arms directly above the head, arching BACK to load the swing: positive X on the waist.
+	waist = CFrame.Angles(rad(22), 0, 0),
 	rShoulder = CFrame.Angles(rad(172), 0, rad(-8)),
 	rElbow = CFrame.Angles(0, 0, 0),
 	lShoulder = CFrame.Angles(rad(172), 0, rad(8)),
@@ -134,8 +138,8 @@ local OVERHEAD = {
 }
 
 local GROUND = {
-	-- Arms straight down in front, body folded over them: the blade is in the earth.
-	waist = CFrame.Angles(rad(48), 0, 0),
+	-- Arms straight down in front, body folded FORWARD over them: the blade is in the earth.
+	waist = CFrame.Angles(rad(-42), 0, 0),
 	rShoulder = CFrame.Angles(rad(14), 0, rad(-10)),
 	rElbow = CFrame.Angles(0, 0, 0),
 	lShoulder = CFrame.Angles(rad(14), 0, rad(10)),
@@ -143,7 +147,7 @@ local GROUND = {
 	easing = Enum.PoseEasingStyle.Linear,
 }
 
-build("Greatsword_Swing", Enum.AnimationPriority.Action, false, {
+build("Greatsword_Swing", Enum.AnimationPriority.Action4, false, {
 	{ 0.00, IDLE },
 	-- Up, and slightly past the vertical: the pause at the top is what makes a two-second swing read as
 	-- heavy rather than slow.
@@ -153,7 +157,7 @@ build("Greatsword_Swing", Enum.AnimationPriority.Action, false, {
 	{ 1.45, GROUND },
 	-- Hauling it back out.
 	{ 1.75, copy(IDLE, {
-		waist = CFrame.Angles(rad(26), 0, 0),
+		waist = CFrame.Angles(rad(-18), 0, 0),
 		rShoulder = CFrame.Angles(rad(44), 0, rad(-16)),
 		lShoulder = CFrame.Angles(rad(44), 0, rad(16)),
 	}) },
