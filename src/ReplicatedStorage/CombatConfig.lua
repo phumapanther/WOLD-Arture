@@ -56,12 +56,13 @@ CombatConfig.Weapons = {
 	-- `slam` is the moment the blade reaches the ground. It fires whether or not the swing connected, which
 	-- is why it is a separate time rather than part of the hit sound: the sword hits the earth either way.
 	Greatsword = {
-		idleAnimation = "rbxassetid://103704114129246", -- Greatsword_Idle, replaced when animgen publishes
+		idleAnimation = "rbxassetid://129260203063887", -- Greatsword_Idle
 		guardAnimation = "",
 		guardWalkSpeed = 5, -- heavier than the sword's 6: you carry this thing, it does not carry you
 		idleTimeout = 4,
 		attacks = {
-			{ animation = "", damage = 42, windup = 1.2, active = 0.25, recovery = 0.55, range = 9,
+			{ animation = "rbxassetid://74391864762569", damage = 42, -- Greatsword_Swing
+			  windup = 1.2, active = 0.25, recovery = 0.55, range = 9,
 			  effect = "dizzy", effectSeconds = 3, slam = 1.45 },
 		},
 		chainResetDelay = 0.5,
