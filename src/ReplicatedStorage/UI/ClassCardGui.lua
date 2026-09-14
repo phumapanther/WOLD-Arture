@@ -169,6 +169,29 @@ function ClassCardGui:Show(tier, classIds)
 			blurb.Text = class.blurb or ""
 			blurb.Parent = card
 
+			-- The passive, under the list of things the class can do. Shown on the card because it is the
+			-- half of the choice a player cannot find out any other way: the actions announce themselves the
+			-- first time you press E, but nothing tells you your armour stopped wearing out.
+			--
+			-- In the class colour rather than the plain text colour, so it reads as the thing that makes
+			-- this card different from the one beside it.
+			local perk = ClassConfig.Perks and ClassConfig.Perks[id]
+			if perk then
+				blurb.Size = UDim2.new(1, -16, 1, -104)
+
+				local bonus = Instance.new("TextLabel")
+				bonus.Size = UDim2.new(1, -16, 0, 30)
+				bonus.Position = UDim2.new(0, 8, 1, -34)
+				bonus.BackgroundTransparency = 1
+				bonus.Font = Enum.Font.GothamBold
+				bonus.TextSize = 11
+				bonus.TextWrapped = true
+				bonus.TextYAlignment = Enum.TextYAlignment.Bottom
+				bonus.TextColor3 = class.color
+				bonus.Text = ("✦ %s"):format(perk.blurb)
+				bonus.Parent = card
+			end
+
 			card.Activated:Connect(function()
 				UiSound.Play("Click")
 				if self.onChosen then self.onChosen(id) end

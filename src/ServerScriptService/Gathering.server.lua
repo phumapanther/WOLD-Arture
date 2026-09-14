@@ -19,6 +19,7 @@ local GatherConfig = require(game.ReplicatedStorage.GatherConfig)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
+local ClassPerks = require(game.ServerScriptService.ClassPerks)
 local Progression = require(game.ServerScriptService.Progression)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
@@ -220,6 +221,9 @@ local function gather(node, player)
 	setSpent(node, true)
 
 	local count = math.random(config.min, config.max)
+	-- The merchant's sharp eye. Doubled before the bag is asked, so a full bag refuses the whole doubled
+	-- amount rather than quietly handing over half of it.
+	count = ClassPerks.HarvestFor(player, count)
 	local given = Inventory.AddItem(player, config.item, count)
 	if not given then
 		Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม")

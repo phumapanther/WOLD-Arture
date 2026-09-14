@@ -84,6 +84,29 @@ ClassConfig.Classes = {
 	},
 }
 
+--------------------------------------------------------------------------------
+-- Passive perks
+--------------------------------------------------------------------------------
+
+-- The one standing benefit each class carries. Passive: true for as long as the class is held, with nothing
+-- to press -- which is what separates these from ClassActionConfig, the menu of things a class can DO.
+--
+-- Kept in ClassConfig rather than on the server so the class card can show a player what they are choosing
+-- BEFORE they choose it. ServerScriptService.ClassPerks reads the same table to decide what actually
+-- happens, so the promise on the card and the behaviour in the game cannot drift apart.
+--
+-- The villager has none on purpose: it is the class you hold before choosing and return to on death, so an
+-- empty row is a real answer rather than a gap.
+ClassConfig.Perks = {
+	Adventurer = { id = "doubleExp", name = "การเรียนรู้", blurb = "ได้ EXP สองเท่า" },
+	Merchant = { id = "doubleHarvest", name = "ตาดีได้", blurb = "ได้ของจากการฟาร์มสองเท่า" },
+	Rogue = { id = "doubleDamage", name = "การทำร้ายทุกสิ่งคือพร", blurb = "ทำดาเมจสองเท่า" },
+	Guard = { id = "armorNeverBreaks", name = "ความเที่ยงธรรมเป็นเกราะ", blurb = "เกราะไม่พัง" },
+	Priest = { id = "noStaminaDrain", name = "หมอไม่เหนื่อย", blurb = "สตามินาไม่ลด" },
+	Chef = { id = "noHunger", name = "คนทำอาหารไม่หิวหรอกนะ", blurb = "ความหิวไม่ลด" },
+	Architect = { id = "weaponNeverBreaks", name = "จะพังได้ไง ซ่อมได้ตลอด", blurb = "อาวุธไม่พัง" },
+}
+
 -- A failed robbery marks the thief for everyone to see. Not a class, a temporary state -- so it overrides
 -- whatever colour the class would have painted, and expires on its own.
 ClassConfig.MarkedColor = Color3.fromRGB(255, 0, 0)

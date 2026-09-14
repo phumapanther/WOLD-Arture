@@ -21,11 +21,13 @@ local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
 local Progression = require(game.ServerScriptService.Progression)
 local Inventory = require(game.ServerScriptService.Inventory)
+local ClassPerks = require(game.ServerScriptService.ClassPerks)
 local WeaponVisualsAccess = require(game.ServerScriptService.WeaponVisualsAccess)
 local Vitals = require(game.ServerScriptService.Vitals)
 local Consuming = require(game.ServerScriptService.Consuming)
 local StatusEffects = require(game.ServerScriptService.StatusEffects)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 
 local States = {} -- [player] = { weapon, guarding, lastAttackAt, chainIndex, busyUntil, activeUntil, hitThisSwing }
 
@@ -60,6 +62,9 @@ end
 local function wearWeapon(player)
 	local item, entry = Inventory.EquippedWeapon(player)
 	if not item or not entry or not entry.durability then return end
+	-- The inventor's weapons do not wear. Returning before the subtraction rather than healing it afterwards
+	-- means the durability the player sees never moves, instead of flickering down and back on every swing.
+	if ClassPerks.Has(player, "weaponNeverBreaks") then return end
 	entry.durability -= CombatConfig.DurabilityPerSwing
 	if entry.durability <= 0 then
 		-- Through Inventory rather than clearing the slot here: doing it by hand skipped OnWeaponChanged, so
@@ -261,6 +266,11 @@ local function fireProjectile(player, attack, aim)
 		light.Parent = part
 	end
 
+	-- The rogue's doubling is applied ONCE here rather than at each of the places the number is used, so a
+	-- player, a training dummy and a monster all take the same blow. Working it out per target would mean
+	-- four copies of the same condition and a fifth the next time something becomes hittable.
+	local dealt = ClassPerks.DamageFor(player, attack.damage)
+
 	local function damageAt(position)
 		for _, other in ipairs(Players:GetPlayers()) do
 			if other ~= player then
@@ -268,7 +278,7 @@ local function fireProjectile(player, attack, aim)
 				if otherChar and distanceToBody(position, otherChar) <= CombatConfig.ProjectileHitRadius
 					and not Vitals.IsInvulnerable(other) then
 					local wasDowned = Vitals.IsDowned(other)
-					Vitals.ApplyDamage(other, attack.damage, "combat")
+					Vitals.ApplyDamage(other, dealt, "combat")
 					reportHit(player, other)
 					applyEffect(attack, other)
 					playHitSound(otherChar, player)
@@ -287,7 +297,7 @@ local function fireProjectile(player, attack, aim)
 		end
 		for _, mob in ipairs(CollectionService:GetTagged("WOLD_Mob")) do
 			if distanceToBody(position, mob) <= CombatConfig.ProjectileHitRadius then
-				if MobAccess.Damage and MobAccess.Damage(mob, attack.damage, player) then
+				if MobAccess.Damage and MobAccess.Damage(mob, dealt, player) then
 					playHitSound(mob, player)
 				end
 			end
@@ -344,6 +354,10 @@ local function resolveHit(player, state, attack)
 	local origin = hrp.Position + hrp.CFrame.LookVector * (attack.range * 0.5)
 		+ Vector3.new(0, CombatConfig.HitboxHeightOffset, 0)
 
+	-- Worked out once per swing, for the same reason as the projectile path above: a monster and a player
+	-- struck by the same blow must take the same number.
+	local dealt = ClassPerks.DamageFor(player, attack.damage)
+
 	-- Training dummies: static targets that pay a little EXP per punch. Checked before players because they
 	-- are not Players at all, so the loop below would never see them.
 	for _, dummy in ipairs(CollectionService:GetTagged("WOLD_Dummy")) do
@@ -360,7 +374,7 @@ local function resolveHit(player, state, attack)
 	for _, mob in ipairs(CollectionService:GetTagged("WOLD_Mob")) do
 		if not state.hitThisSwing[mob] and distanceToBody(origin, mob) <= attack.range then
 			state.hitThisSwing[mob] = true
-			if MobAccess.Damage and MobAccess.Damage(mob, attack.damage, player) then
+			if MobAccess.Damage and MobAccess.Damage(mob, dealt, player) then
 				playHitSound(mob, player)
 			end
 		end
@@ -375,7 +389,7 @@ local function resolveHit(player, state, attack)
 				-- players take nothing, and HP reaching 0 downs them rather than killing.
 				if not Vitals.IsInvulnerable(other) then
 					local wasDowned = Vitals.IsDowned(other)
-					Vitals.ApplyDamage(other, attack.damage, "combat")
+					Vitals.ApplyDamage(other, dealt, "combat")
 					reportHit(player, other)
 					applyEffect(attack, other)
 					playHitSound(otherChar, player)
@@ -514,7 +528,7 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	end
 end)
 
-Players.PlayerAdded:Connect(function(player)
+PlayerJoin.Each(function(player)
 	States[player] = {
 		weapon = CombatConfig.DefaultWeapon,
 		guarding = false,

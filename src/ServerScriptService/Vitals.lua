@@ -11,6 +11,7 @@
 local Players = game:GetService("Players")
 local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local ClassPerks = require(game.ServerScriptService.ClassPerks)
 local RescueAccess = require(game.ServerScriptService.RescueAccess)
 
 local Vitals = {}
@@ -76,6 +77,9 @@ function Vitals.Add(player)
 		invulnUntil = 0,
 
 		peakFallY = nil, -- highest Y of the current fall, nil when not falling
+		nextStarveSoundAt = 0, -- next moment an empty stomach is allowed to be heard
+		lastHurtAt = 0, -- os.clock() of the last damage that actually landed, and what kind it was
+		lastHurtKind = nil,
 		lastSentAt = 0,
 	}
 	return States[player]
@@ -107,6 +111,13 @@ end
 function Vitals.SetStamina(player, value)
 	local state = States[player]
 	if not state then return end
+	-- The priest never tires. Refusing only DECREASES rather than pinning the bar full lets everything else
+	-- keep working normally -- regeneration still writes through here, and a future effect that grants
+	-- stamina is not blocked by the perk meant to protect it.
+	--
+	-- Both ways stamina is spent -- sprinting in PlayerMovement and swimming below -- come through this one
+	-- function, so this is the only place the perk has to exist.
+	if value < state.stamina and ClassPerks.Has(player, "noStaminaDrain") then return end
 	state.stamina = math.clamp(value, 0, VitalsConfig.MaxStamina)
 end
 
@@ -230,30 +241,50 @@ end
 --   kind: "combat" | "fall" | "drown" | "starve" | "void"
 -- Only "combat" is reduced by armor — armor doesn't help you stop being hungry. Only combat/fall/starve can
 -- down a player; drowning and the void kill outright, because you cannot crawl underwater or in the void.
+--
+-- Returns true only if blood was actually taken. Callers read that to decide whether the player should HEAR
+-- anything: a slime chewing on someone already crawling, or on someone still blinking from a respawn, changes
+-- nothing and must therefore also sound like nothing.
 function Vitals.ApplyDamage(player, amount, kind)
 	local state = States[player]
-	if not state or amount <= 0 then return end
-	if Vitals.IsInvulnerable(player) then return end
+	if not state or amount <= 0 then return false end
+	if Vitals.IsInvulnerable(player) then return false end
+
+	-- Already down: there is no blood left to take. A body on the floor is still within a monster's reach, so
+	-- this fires constantly -- it used to spend every one of those hits on nothing and make a noise each time.
+	--
+	-- Drowning and the void are let through, because those do not HURT a downed player, they END them: the
+	-- rule is that you cannot crawl underwater.
+	if state.downed and kind ~= "drown" and kind ~= "void" then return false end
 
 	if kind == "combat" and state.armor > 0 then
 		-- The worn armor decides how much of the hit it eats; bare skin falls back to the old flat rate.
 		local armorItem, entry = Inventory and Inventory.EquippedArmor(player)
 		local fraction = armorItem and armorItem.absorbFraction or VitalsConfig.ArmorAbsorbFraction
 		local absorbed = math.min(state.armor, amount * fraction)
-		state.armor -= absorbed
 		amount -= absorbed
-		-- Wear the piece itself down, so it can be repaired or replaced rather than silently regenerating.
-		if entry then entry.durability = state.armor end
+		-- The guard's armour absorbs the blow without being spent by it. Everything else is unchanged: the
+		-- hit is still halved, so a guard is not invulnerable -- their plate simply never wears out.
+		if not ClassPerks.Has(player, "armorNeverBreaks") then
+			state.armor -= absorbed
+			-- Wear the piece itself down, so it can be repaired or replaced rather than silently regenerating.
+			if entry then entry.durability = state.armor end
+		end
 	end
 
 	state.hp = math.max(0, state.hp - amount)
-	if state.hp > 0 then return end
+	-- Written down so other systems can ask "was this player just hurt, and by what?" without having to watch
+	-- every damage call themselves. The trip back to the lobby reads it: a blow calls the trip off, a slow
+	-- starve does not, and nothing but the kind can tell those two apart from the outside.
+	state.lastHurtAt, state.lastHurtKind = os.clock(), kind
+	if state.hp > 0 then return true end
 
 	if kind == "drown" or kind == "void" then
 		Vitals.Kill(player)
 	else
 		Vitals.EnterDowned(player)
 	end
+	return true
 end
 
 --------------------------------------------------------------------------------
@@ -549,9 +580,22 @@ function Vitals.Tick(player, state, dt)
 		state.hp = maxHP(player)
 		return
 	end
-	state.hunger = math.max(0, state.hunger - VitalsConfig.HungerDrainPerSec * hungerScale * dt)
+	-- The chef never goes hungry, which also means never starving: the HP drain below only begins once the
+	-- bar empties, so holding it full stops both.
+	if not ClassPerks.Has(player, "noHunger") then
+		state.hunger = math.max(0, state.hunger - VitalsConfig.HungerDrainPerSec * hungerScale * dt)
+	end
 	if state.hunger <= 0 then
-		Vitals.ApplyDamage(player, VitalsConfig.StarvationDamagePerSec * (maxHP(player) / VitalsConfig.MaxHP) * dt, "starve")
+		-- An empty stomach does not kill on the spot: it takes the whole bar down over two minutes, which is
+		-- long enough to notice, find something to eat, and still make it.
+		local hurt = Vitals.ApplyDamage(player,
+			VitalsConfig.StarvationDamagePerSec * (maxHP(player) / VitalsConfig.MaxHP) * dt, "starve")
+		-- And it says so, in the same voice a monster's bite uses -- to the player they are one fact, something
+		-- is taking my blood. On a timer, because this runs every frame and the damage is a sliver each time.
+		if hurt and os.clock() >= (state.nextStarveSoundAt or 0) then
+			state.nextStarveSoundAt = os.clock() + VitalsConfig.StarveSoundSeconds
+			Remotes.HurtSound:FireClient(player)
+		end
 		if state.downed then return end
 	end
 

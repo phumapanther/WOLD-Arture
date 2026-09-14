@@ -7,6 +7,7 @@ local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local ClassPerks = require(game.ServerScriptService.ClassPerks)
 
 local Progression = {}
 
@@ -97,6 +98,11 @@ function Progression.AwardExp(player, amount)
 	local state = States[player]
 	if not state or amount <= 0 then return end
 	if state.level >= ProgressionConfig.MaxLevel then return end -- capped
+
+	-- The adventurer's doubling is applied HERE rather than at each of the dozen places experience is
+	-- awarded -- a kill, a dummy, a fish, a harvest, a craft -- so it cannot be forgotten by whatever awards
+	-- experience next.
+	amount = ClassPerks.ExpFor(player, amount)
 
 	state.exp += amount
 
