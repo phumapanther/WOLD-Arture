@@ -276,8 +276,23 @@ function connectTikTok() {
     }
   }
 
-  on([EV.STREAM_END, "streamEnd"], () => { connected = false; log("⏹ ไลฟ์จบแล้ว"); });
-  on([EV.DISCONNECTED, "disconnected"], () => { connected = false; log("⚠ หลุดการเชื่อมต่อ กำลังต่อใหม่"); retry(conn); });
+  // A live that has ENDED is not a live that dropped. Retrying it every few seconds reconnects, is told the
+  // stream is over, drops, and goes round again -- eight seconds a lap, each lap spending Euler requests
+  // out of a 2,500-a-day allowance. So an ended stream waits a minute between attempts, which is still
+  // often enough that the streamer can leave this window open, go live, and have it pick them up by itself.
+  on([EV.STREAM_END, "streamEnd"], () => {
+    connected = false;
+    if (!endedAnnounced) {
+      endedAnnounced = true;
+      log(`⏹ ไลฟ์จบแล้ว — จะลองต่อใหม่ทุก ${ENDED_RETRY}s (กดไปไลฟ์เมื่อไหร่ก็ต่อให้เอง ไม่ต้องปิดหน้าต่างนี้)`);
+    }
+    scheduleReconnect(conn, ENDED_RETRY);
+  });
+  on([EV.DISCONNECTED, "disconnected"], () => {
+    connected = false;
+    if (!endedAnnounced) log("⚠ หลุดการเชื่อมต่อ กำลังต่อใหม่");
+    scheduleReconnect(conn, endedAnnounced ? ENDED_RETRY : DROP_RETRY);
+  });
 
   conn.connect()
     .then(() => {
@@ -291,8 +306,8 @@ function connectTikTok() {
       connected = false;
       log("❌ ต่อไลฟ์ไม่ได้:", err?.message || err);
       for (const line of hintFor(err?.message || String(err))) log("   " + line);
-      log("   จะลองใหม่เองทุก 15 วิ ไม่ต้องปิดหน้าต่างนี้");
-      setTimeout(() => retry(conn), 15_000);
+      log(`   จะลองใหม่เองทุก ${DROP_RETRY} วิ ไม่ต้องปิดหน้าต่างนี้`);
+      scheduleReconnect(conn, DROP_RETRY);
     });
 
   return conn;
@@ -342,10 +357,28 @@ function hintFor(message) {
   return ["ถ้าเน็ตปกติและช่องไลฟ์อยู่จริง ลองรันด้วย --dump เพื่อดูรายละเอียด"];
 }
 
-function retry(conn) {
-  if (connected) return;
-  conn.connect().then(() => { connected = true; log("✅ ต่อใหม่สำเร็จ"); })
-    .catch(() => setTimeout(() => retry(conn), 15_000));
+const ENDED_RETRY = 60;   // seconds, after TikTok says the stream is over
+const DROP_RETRY = 15;    // seconds, after a connection simply fell over
+let endedAnnounced = false;
+let reconnectTimer = null;
+
+// One timer, ever. Both the streamEnd and the disconnected handler fire for the same event, and two timers
+// racing is how an eight-second retry loop is built by accident.
+function scheduleReconnect(conn, seconds) {
+  if (reconnectTimer || connected) return;
+  reconnectTimer = setTimeout(() => {
+    reconnectTimer = null;
+    if (connected) return;
+    conn.connect()
+      .then(() => {
+        connected = true;
+        connectedAt = Date.now();
+        if (endedAnnounced) log("✅ ไลฟ์กลับมาแล้ว — ต่อติดอีกครั้ง");
+        else log("✅ ต่อใหม่สำเร็จ");
+        endedAnnounced = false;
+      })
+      .catch(() => scheduleReconnect(conn, seconds));
+  }, seconds * 1000);
 }
 
 // ---------------------------------------------------------------------------- optional Open Cloud push
