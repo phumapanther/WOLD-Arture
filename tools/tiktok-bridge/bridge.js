@@ -25,7 +25,8 @@
 //   node bridge.js --idle                      queue only: events arrive from POST /mock, nothing invented
 //   node bridge.js --user X --dump             print the first raw payload of each kind, to check fields
 //   node bridge.js --user X --follow-boss      a follow buys a boss too, not just a subscription
-//   node bridge.js --user X --sign-key <key>   an Euler Stream key, if the free signing tier refuses
+//   node bridge.js --user X --sign-key <key>   an Euler Stream key (free Community tier is enough)
+//   node bridge.js --user X --room-info        ask for room metadata too -- needs a PAID Euler plan
 //
 // Only dependency is tiktok-live-connector, and only when actually connecting: --mock runs on stdlib alone.
 "use strict";
@@ -203,9 +204,23 @@ function connectTikTok() {
   //                              the same avalanche the game's own cursor logic refuses on its side.
   //  enableExtendedGiftInfo      makes the connector fetch the gift table, so a gift's diamond value is
   //                              present on the event rather than having to be guessed from its name.
+  //  fetchRoomInfoOnConnect: false  is what makes the FREE Euler Stream plan enough.
+  //
+  //  Connecting with it on asks for the room's metadata -- title, viewer count, the fields nothing here
+  //  reads -- and that route is the one behind the Business plan. The refusal it produces names
+  //  fetchWebcastSignatureFromEulerRoute, which reads as "signing needs $50/month" and sent this whole
+  //  thing looking at scrapers and paid tiers. Skip the metadata and the signing itself goes through on a
+  //  free Community key.
+  //
+  //  What it costs: the connector no longer checks whether the account is live before connecting, so a
+  //  dead room can look like a healthy connection. The watchdog below is what covers that.
   const conn = new Ctor(CFG.user, {
     processInitialData: false,
-    enableExtendedGiftInfo: true,
+    // Also a paid route: it downloads the gift table so an event can carry a gift's diamond value by name.
+    // The value is normally on the event itself, so this is a nicety -- and a nicety is not worth $50 a
+    // month. Turn it on with --gift-info if a paid plan is ever in play.
+    enableExtendedGiftInfo: has("gift-info"),
+    fetchRoomInfoOnConnect: has("room-info"),
     signApiKey: CFG.signKey || undefined,
   });
 
@@ -265,7 +280,13 @@ function connectTikTok() {
   on([EV.DISCONNECTED, "disconnected"], () => { connected = false; log("⚠ หลุดการเชื่อมต่อ กำลังต่อใหม่"); retry(conn); });
 
   conn.connect()
-    .then(() => { connected = true; log(`✅ ต่อไลฟ์ของ @${CFG.user} แล้ว`); })
+    .then(() => {
+      connected = true;
+      connectedAt = Date.now();
+      log(`✅ ต่อไลฟ์ของ @${CFG.user} แล้ว`);
+      if (!has("room-info")) log("   (ข้ามการดึงข้อมูลห้องเพื่อให้ใช้คีย์ฟรีได้ — จะไม่มีการเช็คว่าไลฟ์อยู่จริง)");
+      startWatchdog();
+    })
     .catch((err) => {
       connected = false;
       log("❌ ต่อไลฟ์ไม่ได้:", err?.message || err);
@@ -275,6 +296,26 @@ function connectTikTok() {
     });
 
   return conn;
+}
+
+// Connected but silent. With the room-info check skipped, a connection to a room that is not live looks
+// exactly like a connection to a quiet one -- so after a few minutes of nothing at all, say so, because the
+// alternative is a streamer watching a window that claims success while nothing works.
+let connectedAt = 0;
+let watchdogStarted = false;
+
+function startWatchdog() {
+  if (watchdogStarted) return;
+  watchdogStarted = true;
+  setInterval(() => {
+    if (!connected || nextId > 1) return; // nextId > 1 means at least one real event has arrived
+    const minutes = Math.round((Date.now() - connectedAt) / 60000);
+    if (minutes >= 3 && minutes % 3 === 0) {
+      log(`⚠ ต่ออยู่ ${minutes} นาทีแล้วแต่ยังไม่มีอีเวนต์เข้ามาเลย`);
+      log(`   ถ้ามีคนดูอยู่จริง แปลว่าอาจต่อผิดห้อง — เช็คว่า @${CFG.user} กดไปไลฟ์อยู่จริงไหม`);
+      log("   (ปุ่มบนแผงทดสอบยังใช้ได้ตามปกติ อันนั้นไม่ผ่าน TikTok)");
+    }
+  }, 60_000).unref();
 }
 
 // The two failures that account for nearly every one of these, said in words instead of in library-speak.
