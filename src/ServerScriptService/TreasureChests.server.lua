@@ -193,6 +193,25 @@ end
 -- The window
 --------------------------------------------------------------------------------
 
+-- Ends a chest: forgets it, and destroys it with whatever is still inside.
+--
+-- Every exit goes through here -- emptied by "take all", closed by hand, or the player leaving -- because
+-- the first version cleared different halves of the state on different paths. Emptying a chest told the
+-- client to close but left Viewing[player] pointing at the dead chest, and the guard in the prompt then
+-- refused to open the NEXT one: one chest per session, forever.
+local function finish(player, model, tellClient)
+	Viewing[player] = nil
+	if model then
+		local state = Live[model]
+		if state then state.viewer = nil end
+		Live[model] = nil
+		if model.Parent then model:Destroy() end
+	end
+	if tellClient and player.Parent then
+		Remotes.ChestClose:FireClient(player)
+	end
+end
+
 -- Hands over one row of the chest's contents. `index` is a position in the loot list the client was sent,
 -- and nothing else -- the client never names an item id or a count.
 Remotes.RequestChestTake.OnServerEvent:Connect(function(player, index)
@@ -213,7 +232,8 @@ Remotes.RequestChestTake.OnServerEvent:Connect(function(player, index)
 			Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม เก็บได้ไม่หมด")
 			Remotes.ChestOpen:FireClient(player, state.tier, state.loot)
 		else
-			Remotes.ChestClose:FireClient(player)
+			-- Emptied: the chest is over, exactly as if it had been closed.
+			finish(player, model, true)
 		end
 		return
 	end
@@ -233,23 +253,12 @@ end)
 -- Closing the window is the end of the chest. Everything still inside is lost, which the user asked for
 -- explicitly: the chest is gone permanently and its contents with it.
 Remotes.RequestChestClose.OnServerEvent:Connect(function(player)
-	local model = Viewing[player]
-	if not model then return end
-	Viewing[player] = nil
-	local state = Live[model]
-	if state then state.viewer = nil end
-	Live[model] = nil
-	model:Destroy()
+	finish(player, Viewing[player], false)
 end)
 
 -- Leaving mid-window is the same as closing it.
 Players.PlayerRemoving:Connect(function(player)
-	local model = Viewing[player]
-	Viewing[player] = nil
-	if model then
-		Live[model] = nil
-		model:Destroy()
-	end
+	finish(player, Viewing[player], false)
 end)
 
 --------------------------------------------------------------------------------
