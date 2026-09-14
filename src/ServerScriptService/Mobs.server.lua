@@ -174,6 +174,34 @@ local function buildFromModel(config)
     rootPart.CanCollide = true
     rootPart.Anchored = false
 
+    -- ...and a 1x1 cube is still wrong even once it collides, in two ways that look like different bugs.
+    --
+    -- A Humanoid holds its HumanoidRootPart HipHeight studs off the floor and balances the whole assembly on
+    -- that one colliding part. The kit's handle sits half a stud from the BOTTOM of the model, so with a
+    -- default HipHeight the body hangs in the air (measured: root 0.50 above the model's underside, on a
+    -- body 4.7-6.2 tall), and a 5-stud slime balanced on a 1-stud peg tips and re-corrects every frame --
+    -- which reads as constant shaking.
+    --
+    -- So the root is grown to the body's own footprint and told exactly how high to stand. The spider's
+    -- model already ships a real 3.5x2.2x4.0 root and its own HipHeight, and is left alone.
+    -- Only a MARKER gets replaced. A model that ships a real root -- the spider's is 3.5x2.2x4.0 with its
+    -- own HipHeight -- is left exactly as its author built it. Measured against a fixed size rather than a
+    -- fraction of the body, because the spider's own root is small next to its 19-stud leg span and a
+    -- proportional test throws it away too.
+    local modelCF, modelSize = model:GetBoundingBox()
+    local isMarker = rootPart.Size.X <= 1.5 and rootPart.Size.Y <= 1.5 and rootPart.Size.Z <= 1.5
+    if isMarker then
+        -- Footprint of the body, and short: a tall root would make the monster stand on its own chin.
+        rootPart.Size = Vector3.new(modelSize.X * 0.8, math.max(1, modelSize.Y * 0.5), modelSize.Z * 0.8)
+        -- Re-centre it in the body. Welds are made below, after this, so nothing is dragged out of place.
+        rootPart.CFrame = CFrame.new(modelCF.Position)
+        -- The Humanoid holds the root's CENTRE this far off the floor. The body is centred on the root, so
+        -- to rest the body's underside on the ground the centre has to sit half the BODY's height up --
+        -- half the ROOT's height leaves it buried (measured: the body's underside ended up 1.2-1.6 studs
+        -- below the floor). A little extra keeps it from scraping on uneven terrain.
+        rootPart:SetAttribute("WOLD_HipHeight", modelSize.Y * 0.5 + 0.2)
+    end
+
     -- Everything else rides along rather than fighting the physics: an anchored limb would pin the monster
     -- in place, and a colliding one would trip it over its own body.
     for _, d in ipairs(model:GetDescendants()) do
@@ -203,6 +231,16 @@ local function buildFromModel(config)
     humanoid.Health = config.hp
     humanoid.WalkSpeed = config.walkSpeed
     humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+    -- Stand it at the height the root above was sized for. A model that shipped its own root keeps whatever
+    -- HipHeight it came with.
+    local wanted = rootPart:GetAttribute("WOLD_HipHeight")
+    if wanted then
+        humanoid.HipHeight = wanted
+        -- Legless bodies do not walk on legs. Without this the Humanoid tries to step the assembly up and
+        -- down and the slime bobs as it moves.
+        humanoid.UseJumpPower = true
+        humanoid.JumpPower = 0
+    end
 
     -- The same health bar the placeholder carries, so every monster reads the same way in a fight.
     local health = Instance.new("BillboardGui")
