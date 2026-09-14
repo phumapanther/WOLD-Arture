@@ -173,6 +173,9 @@ local function special(name, colour, extra)
 		hopSound = "rbxassetid://75878881956542", -- assets/sounds/boings
 		hopInterval = 0.9,
 		hopVolume = 0.35,
+		-- How hard it leaves the ground on each of those beats. A slime moves BY hopping, so this is its
+		-- gait, not a trick -- turn it down for a heavier lollop, up for something frantic.
+		hopPower = 28,
 		drops = {
 			{ item = "Slime", min = 2, max = 4, chance = GatherConfig.SpecialSlimeChance },
 			{ item = "IronOre", min = 1, max = 3, chance = GatherConfig.SpecialOreChance },

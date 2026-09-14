@@ -236,10 +236,6 @@ local function buildFromModel(config)
     local wanted = rootPart:GetAttribute("WOLD_HipHeight")
     if wanted then
         humanoid.HipHeight = wanted
-        -- Legless bodies do not walk on legs. Without this the Humanoid tries to step the assembly up and
-        -- down and the slime bobs as it moves.
-        humanoid.UseJumpPower = true
-        humanoid.JumpPower = 0
     end
 
     -- The same health bar the placeholder carries, so every monster reads the same way in a fight.
@@ -743,6 +739,14 @@ RunService.Heartbeat:Connect(function(dt)
 							if hopNow >= (state.nextHopAt or 0) then
 								state.nextHopAt = hopNow + (config.hopInterval or 1)
 								playAt(model, config.hopSound, config.hopVolume or 0.3)
+								-- A slime does not walk, it hops -- so it leaves the ground on the same beat
+								-- the sound plays on, rather than sliding along while something boings.
+								-- Only from the floor: asking mid-air does nothing and would desync the two.
+								if humanoid.FloorMaterial ~= Enum.Material.Air then
+									humanoid.JumpPower = config.hopPower or 28
+									humanoid.UseJumpPower = true
+									humanoid.Jump = true
+								end
 							end
 						end
 					end
