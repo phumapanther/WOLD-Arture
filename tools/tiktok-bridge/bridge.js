@@ -477,6 +477,21 @@ const server = http.createServer((req, res) => {
   send(404, { ok: false });
 });
 
+// A second copy cannot have the port, and the raw EADDRINUSE stack does not say which of the two programs
+// is the problem -- so the window closes on a wall of node internals and the panel keeps answering, from the
+// OLD process, which looks like everything is fine right up until nothing behaves as expected.
+server.on("error", (err) => {
+  if (err && err.code === "EADDRINUSE") {
+    console.error(`
+พอร์ต ${CFG.port} มีโปรแกรมอื่นใช้อยู่แล้ว — สะพานอีกตัวยังเปิดค้างอยู่`);
+    console.error("ปิดหน้าต่างสะพานเดิมให้หมดก่อน แล้วเปิดใหม่");
+    console.error(`(เช็คว่าใครถืออยู่: netstat -ano | findstr :${CFG.port} )`);
+    process.exit(1);
+  }
+  console.error("HTTP error:", err);
+  process.exit(1);
+});
+
 server.listen(CFG.port, CFG.host, () => {
   // The checklist lives HERE and not in run.bat: cmd.exe mangles Thai in a batch file, and one broken echo
   // line with a bracket in it swallowed the command that starts this program -- silently.
