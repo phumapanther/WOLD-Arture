@@ -300,6 +300,7 @@ const APIKEY = process.env.ROBLOX_API_KEY || "";
 const TOPIC = flag("topic", "TikTokLive");
 
 let pushFailures = 0;
+let pushConfirmed = false;
 
 async function push(event) {
   if (!UNIVERSE || !APIKEY) return;
@@ -327,6 +328,11 @@ async function push(event) {
     } else if (pushFailures > 0) {
       pushFailures = 0;
       log("push กลับมาปกติแล้ว");
+    } else if (!pushConfirmed) {
+      // Say it ONCE, out loud. Silence-as-success is the same ambiguity that makes "nothing happened in the
+      // game" indistinguishable from "the message never left this machine", and that one costs an hour.
+      pushConfirmed = true;
+      log(`push สำเร็จ (${res.status}) — Open Cloud รับข้อความแล้ว ถ้าในเกมยังเงียบ = ยังไม่ได้ publish โค้ดขึ้นเกมจริง`);
     }
   } catch (err) {
     log("push error", err?.message || err);
