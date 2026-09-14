@@ -21,4 +21,9 @@ MobAccess.Stun = nil
 -- chase that one player and no other. Left nil in the lobby, so every caller must check.
 MobAccess.SpawnHunters = nil
 
+-- Set by Mobs.server at startup. Takes (victim, distance, { scale, power, title, kind }) and conjures ONE
+-- hunter built to those numbers -- a named boss, which is what a TikTok subscriber buys. Returns the model
+-- and the kind's display name, or nil. Left nil in the lobby, so every caller must check.
+MobAccess.SpawnBoss = nil
+
 return MobAccess

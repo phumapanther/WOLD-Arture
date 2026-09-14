@@ -1,0 +1,14 @@
+{
+  "name": "wold-tiktok-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "TikTok LIVE events -> a queue WOLD Arture polls",
+  "main": "bridge.js",
+  "scripts": {
+    "start": "node bridge.js",
+    "mock": "node bridge.js --mock"
+  },
+  "dependencies": {
+    "tiktok-live-connector": "^2.0.0"
+  }
+}

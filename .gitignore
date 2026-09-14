@@ -10,4 +10,6 @@ temp_refs/
 node_modules/
 package-lock.json
 package.json
+# ...except the bridge's, which is the only thing that tells npm install what to fetch
+!tools/tiktok-bridge/package.json
 backups/

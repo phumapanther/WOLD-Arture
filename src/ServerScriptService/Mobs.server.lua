@@ -441,7 +441,7 @@ end
 -- Deliberately NOT spawnOne: that function belongs to a spawner -- it counts against its Alive attribute and
 -- sets its respawn clock -- and a monster called up by an admin has neither. When this one dies it is simply
 -- gone, which is what despawn already does for a state with no spawner.
-local function spawnHunter(kind, config, victim, origin, distance)
+local function spawnHunter(kind, config, victim, origin, distance, boss)
 	-- Ringed around them rather than dropped on top: a monster spawned inside someone's body shoves them.
 	for attempt = 1, 12 do
 		local angle = math.random() * math.pi * 2
@@ -452,15 +452,24 @@ local function spawnHunter(kind, config, victim, origin, distance)
 		local y = groundAt(x, z)
 		if y then
 			local model = buildMonster(config)
-			model:PivotTo(CFrame.new(x, y + 2, z))
+			-- A boss is the same monster, made bigger and meaner. ScaleTo BEFORE the pivot, and lift it by
+			-- the scale as well: a model scaled about its own pivot grows downward too, so a tripled
+			-- monster placed at the usual two studs starts with its knees in the ground.
+			local size = boss and boss.scale or 1
+			if size ~= 1 then model:ScaleTo(size) end
+			model:PivotTo(CFrame.new(x, y + 2 * size, z))
 			model.Parent = folder
 
-			local scale = nightScale()
+			local scale = nightScale() * (boss and boss.power or 1)
 			local maxHp = config.hp * scale
 			local humanoid = model:FindFirstChildOfClass("Humanoid")
 			if humanoid and scale ~= 1 then
 				humanoid.MaxHealth = maxHp
 				humanoid.Health = maxHp
+			end
+			if boss and boss.title and humanoid then
+				humanoid.DisplayName = boss.title
+				model.Name = boss.modelName or model.Name
 			end
 
 			Live[model] = {
@@ -506,6 +515,39 @@ MobAccess.SpawnHunters = function(victim, distance, count)
 		end
 	end
 	return spawned, names
+end
+
+-- One hunter, but a named boss: bigger, tougher, and carrying somebody's name over its head.
+--
+-- Published for the TikTok link, where a subscriber buys one. Kept here rather than done to the model from
+-- outside because everything that makes a monster dangerous lives in Live[model] -- hp, maxHp and the
+-- damage multiplier -- and that table is private to this file. Reaching in from another script to triple a
+-- health bar would leave the damage alone and make the boss a punching bag.
+--
+-- opts: { scale, power, title, kind }. Returns the model and the kind's display name, or nil.
+MobAccess.SpawnBoss = function(victim, distance, opts)
+	opts = opts or {}
+	local character = victim and victim.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then return nil end
+
+	local kinds = {}
+	for kind in pairs(GatherConfig.Mobs) do kinds[#kinds + 1] = kind end
+	table.sort(kinds)
+	if #kinds == 0 then return nil end
+
+	local kind = opts.kind or kinds[math.random(#kinds)]
+	local config = GatherConfig.Mobs[kind]
+	if not config then return nil end
+
+	local model = spawnHunter(kind, config, victim, root.Position, distance or 20, {
+		scale = math.clamp(tonumber(opts.scale) or 1, 1, 6),
+		power = math.clamp(tonumber(opts.power) or 1, 1, 20),
+		title = opts.title,
+		modelName = opts.modelName,
+	})
+	if not model then return nil end
+	return model, config.name or kind
 end
 
 local function serviceSpawner(spawner)
