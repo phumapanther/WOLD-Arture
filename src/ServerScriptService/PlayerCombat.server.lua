@@ -55,6 +55,8 @@ local function applyEffect(attack, victim)
 		StatusEffects.Knockdown(victim, attack.effectSeconds)
 	elseif attack.effect == "slow" then
 		StatusEffects.Slow(victim, attack.effectSeconds, attack.effectFactor)
+	elseif attack.effect == "dizzy" then
+		StatusEffects.Dizzy(victim, attack.effectSeconds)
 	end
 end
 
@@ -299,6 +301,9 @@ local function fireProjectile(player, attack, aim)
 			if distanceToBody(position, mob) <= CombatConfig.ProjectileHitRadius then
 				if MobAccess.Damage and MobAccess.Damage(mob, dealt, player) then
 					playHitSound(mob, player)
+					if attack.effect == "dizzy" and MobAccess.Stun then
+						MobAccess.Stun(mob, attack.effectSeconds)
+					end
 				end
 			end
 		end
@@ -376,6 +381,11 @@ local function resolveHit(player, state, attack)
 			state.hitThisSwing[mob] = true
 			if MobAccess.Damage and MobAccess.Damage(mob, dealt, player) then
 				playHitSound(mob, player)
+				-- The greatsword's rider. A monster has no Humanoid state to knock down, so a stun is the
+				-- monster-shaped version of the stars a player sees.
+				if attack.effect == "dizzy" and MobAccess.Stun then
+					MobAccess.Stun(mob, attack.effectSeconds)
+				end
 			end
 		end
 	end
@@ -485,6 +495,18 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	-- The attacker's own sound fires on the windup, not on the hit: a swing that misses should still be
 	-- heard, and a bowstring should sound as the arrow leaves rather than when it lands.
 	playCastSound(player)
+	-- The greatsword buries itself in the ground at the end of its arc. That sound belongs to the swing, not
+	-- to a victim, so it fires on a timer whether or not anything was standing there -- the earth is hit
+	-- every time. Only weapons that declare a `slam` time have one.
+	if attack.slam then
+		task.delay(attack.slam, function()
+			if not player.Parent then return end
+			local _, hit, volume, seconds = soundsFor(player)
+			playAt(player.Character, hit, CombatConfig.HitSoundDistance,
+				volume or VitalsConfig.HitSoundVolume,
+				seconds or CombatConfig.HitSoundMaxSeconds)
+		end)
+	end
 	-- A ranged attack fires a single shot after its windup; only melee keeps a live hitbox.
 	if attack.projectile then
 		state.pendingAttack = nil

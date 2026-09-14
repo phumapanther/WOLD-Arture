@@ -11,4 +11,9 @@ local MobAccess = {}
 -- monsters run -- every caller must check before calling.
 MobAccess.Damage = nil
 
+-- Set by Mobs.server at startup. Takes (model, seconds) and holds that monster still -- the greatsword's
+-- rider. Separate from Damage because a stun is not a hit: the same swing does both, and either can land
+-- without the other. Left nil in the lobby, so every caller must check.
+MobAccess.Stun = nil
+
 return MobAccess

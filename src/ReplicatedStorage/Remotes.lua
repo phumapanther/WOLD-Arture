@@ -4,6 +4,11 @@ local RunService = game:GetService("RunService")
 
 local EVENTS = {
 	"JoinChannel", "ChannelList", "JoinFailed", "RequestReturnToLobby", "RequestChannelRefresh",
+	-- The trip back to the lobby, which is not instant: the server saves, then Roblox has to build or find a
+	-- lobby server and move the player to it. That wait used to happen behind a screen where nothing changed,
+	-- so the button read as broken and got pressed again. Now it is a bar -- and a bar implies a window in
+	-- which something can go wrong, which is the other half: a blow, a fall or going down calls the trip off.
+	"LobbyTravelChanged",
 	"SetSprintIntent", "ToggleWalk", -- movement (client intent in; stamina goes out via VitalsUpdate)
 	"RequestAttack", "CombatStateChanged", -- combat (click intent in, guard/attack playback out)
 	"VitalsUpdate", "DownedStateChanged", "RequestRespawn", -- vitals (hp/hunger/stamina/armor out, downed UI, respawn in)
@@ -40,6 +45,19 @@ local EVENTS = {
 	"ConsumeStateChanged", -- client asks for a resend: the join broadcast can land before it connects
 	"RequestSkill", "SkillUsed", -- the weapon's Q skill: intent in, playback out
 	"StatusChanged", -- knockdown / slow, so every client can render them
+	-- Emotes. The ANIMATION needs no remote: a client playing on its own character's Animator replicates to
+	-- everyone by itself. What does need the server is the part a client must not be trusted with -- holding
+	-- the player still while they sit or lie down. PlayerMovement rewrites WalkSpeed every tick from the
+	-- server's own idea of it, so a client setting WalkSpeed = 0 would be overwritten within the frame.
+	"RequestEmotePose",
+	-- The admin command's leg back down to a client. An emote plays on the poser's OWN Animator -- that is how
+	-- it reaches everybody else for free -- so a server that wants someone to strike a pose has to ask them,
+	-- rather than playing it itself and having the client's own animations overwrite it a frame later.
+	"PlayEmote",
+	-- The admin chest. The chest MODEL is drawn on each admin's own client -- that is the only way "only
+	-- admins can see it" is true of a thing standing in the world -- so these are where the actual granting
+	-- happens, and the server checks the roster on every one of them.
+	"RequestAdminItem", "RequestAdminGold",
 	-- Footsteps: each client times its OWN steps (it knows its material and gait without asking) and reports
 	-- them; the server relays to everyone else so you hear people around you. Relaying rather than having
 	-- each client time every other character keeps one authority on who stepped when, and costs one small
@@ -48,6 +66,12 @@ local EVENTS = {
 	-- A real blow landing, sent to the two people in it so their music can react. Not fired for a swing at
 	-- air: music that swells every time someone practises on nothing would be constant.
 	"CombatHit",
+	-- Something hurt YOU -- a monster's bite, or hunger eating into your blood. Sent to that one player
+	-- because the sound is theirs alone to hear: played into the world it meant everyone within earshot heard
+	-- every bite taken out of everyone else. Fired only when the damage actually landed, so a blow that armor
+	-- ate, a respawn blinked away, or that hit a player already crawling makes no noise.
+	-- Player-on-player blows are deliberately not routed this way -- a fight is worth overhearing.
+	"HurtSound",
 	-- Admin console: the command text in, the reply out. AdminCommand is guarded by a UserId allow-list on
 	-- the SERVER, so a non-admin firing it is refused exactly as if they had never found it.
 	"AdminCommand", "AdminMessage",
@@ -89,6 +113,15 @@ local EVENTS = {
 	-- World events. One event in, one out: the banner at the top of the screen is driven entirely by these,
 	-- and a player joining mid-event is sent the live ones as they load in.
 	"EventStateChanged", "RequestEventState",
+	-- Treasure chests. The server holds the rolled loot and sends a picture of it; the client names a row to
+	-- take, or asks for everything. Shaped like the vault rather than the shop because the contents are a
+	-- one-off pile that exists only while the window is open -- closing it destroys the chest and the loot
+	-- with it, so there is nothing to reconcile afterwards.
+	"RequestChestOpen", "ChestOpen", "RequestChestTake", "RequestChestClose", "ChestClose",
+	-- Weather. One way only: the server decides what the sky is doing and the client draws it. Carries the
+	-- kind now, the kind arriving, and how far along the change is -- everything else the client reads out
+	-- of the shared WeatherConfig rather than being told.
+	"WeatherChanged",
 }
 local FUNCTIONS = { "GetSpawnPosition" } -- DataStore-backed lookups can only run server-side; the client must ask
 

@@ -15,6 +15,9 @@ CraftConfig.Tabs = {
 	-- The unlucky man's page: every weapon in the game, bought outright with the coins a failed craft leaves
 	-- behind. It is the floor under the gamble -- twenty-five failed pistols is still a pistol.
 	{ id = "unlucky", name = "คนดวงซวย" },
+	-- The garage bench. A key is one attempt in twenty, and every failure hands back a car part -- so the
+	-- page is really two ways to the same door: gamble, or collect six parts and walk in.
+	{ id = "vehicle", name = "พาหนะ" },
 }
 
 -- What one failed attempt is worth. A single coin, so the exchange rates below read directly as "how many
@@ -45,6 +48,10 @@ CraftConfig.Recipes = {
 		cost = { IronOre = 7, Slime = 15, GearSpare = 10, WoodScrap = 15, Blueprint = 5, Silver = 100 } },
 	{ id = "Sword", tab = "weapon", chance = 0.50, gold = 12000,
 		cost = { IronOre = 10, Slime = 15, WoodScrap = 15, Blueprint = 2 } },
+	-- The greatsword sits between the two: a quarter of the pistol's odds-to-own, but it costs coal and
+	-- gears on top of the sword's ore, which is what makes it the thing you build after the farms are running.
+	{ id = "Greatsword", tab = "weapon", chance = 0.25, gold = 25000,
+		cost = { GearSpare = 8, IronOre = 15, WoodScrap = 15, Coal = 15, Slime = 15, Blueprint = 5, Silver = 250 } },
 
 	-- Bullets moved off the weapon bench and in here with the everyday goods, where a near-certain 95% is
 	-- what makes ammunition something you top up rather than gamble on.
@@ -75,6 +82,35 @@ CraftConfig.Recipes = {
 	{ id = "Spellbook", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 10 } },
 	{ id = "Bow", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 15 } },
 	{ id = "Pistol", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 25 } },
+
+	----------------------------------------------------------------------------
+	-- The garage.
+	--
+	-- One in twenty, and a failure hands back one of the six car parts instead of a coin -- `failGives`.
+	-- Repeats are allowed and expected: the parts are a collection, and the second gearbox is the price of
+	-- the one you still need.
+	--
+	-- The second row is the floor under that gamble, the way the unlucky page is the floor under the others:
+	-- a full set of parts IS a key, at chance 1 and no fee, because the failures already paid for it.
+	----------------------------------------------------------------------------
+	{ id = "CarKey", tab = "vehicle", chance = 0.05, gold = 0,
+		cost = { GearSpare = 16, IronOre = 8, WoodScrap = 15, Slime = 15, Blueprint = 5, Silver = 500 },
+		failGives = { "Fueltank", "GearCar", "Mattress", "Pipe", "Steering", "Wheel" } },
+	{ id = "CarKey", tab = "vehicle", chance = 1, gold = 0,
+		cost = { Fueltank = 2, GearCar = 1, Mattress = 1, Pipe = 2, Steering = 1, Wheel = 4 } },
+
+	----------------------------------------------------------------------------
+	-- Treasure chests, made at the everyday bench. The rate falls as the loot inside gets better: a wooden
+	-- chest is a certainty, a gold one is one in ten.
+	----------------------------------------------------------------------------
+	{ id = "Chest_Wood", tab = "misc", chance = 1.00, gold = 0,
+		cost = { WoodScrap = 20, Stone = 20, Silver = 50 } },
+	{ id = "Chest_Ironbound", tab = "misc", chance = 0.70, gold = 0,
+		cost = { IronOre = 50, WoodScrap = 50, Silver = 200 } },
+	{ id = "Chest_Silver", tab = "misc", chance = 0.40, gold = 0,
+		cost = { IronOre = 50, WoodScrap = 50, Silver = 1000 } },
+	{ id = "Chest_Gold", tab = "misc", chance = 0.10, gold = 0,
+		cost = { IronOre = 100, WoodScrap = 100, Silver = 1000, Insignia = 5 } },
 }
 
 return CraftConfig

@@ -22,7 +22,6 @@ local Progression = require(game.ServerScriptService.Progression)
 local Vitals = require(game.ServerScriptService.Vitals)
 local MobAccess = require(game.ServerScriptService.MobAccess)
 local EventState = require(game.ServerScriptService.EventState)
-local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local SPAWNER_TAG = "WOLD_Spawner"
@@ -114,7 +113,9 @@ end
 
 -- Where the hand-placed monster models live. The user arranged one of each in this folder; they are the
 -- PROTOTYPES, not monsters -- each is cloned to make the real thing, and the original never moves or fights.
-local PROTOTYPE_FOLDER = "Model_moster"
+-- Every folder a monster prototype might live in, searched in order. V2 arrived as a second folder rather
+-- than more models in the first, so the lookup takes a list: a third batch is one more string here.
+local PROTOTYPE_FOLDERS = { "Model_moster", "Model_mosterV2" }
 
 local function prototypeFor(config)
     if not config.model then return nil end
@@ -124,13 +125,20 @@ local function prototypeFor(config)
     -- a second, fake slime standing there offering a button that did nothing. They are still needed -- every
     -- monster is a clone of one -- so they moved rather than being deleted, and this looks in the new home
     -- first and the old one after, which means a place that has not run the phase yet still works.
-    local stored = game:GetService("ServerStorage"):FindFirstChild(PROTOTYPE_FOLDER)
-    local found = stored and stored:FindFirstChild(config.model)
-    if found then return found end
-
+    local serverStorage = game:GetService("ServerStorage")
     local root = workspace:FindFirstChild("WOLD")
-    local folderInstance = root and root:FindFirstChild(PROTOTYPE_FOLDER, true)
-    found = folderInstance and folderInstance:FindFirstChild(config.model)
+    local found
+    for _, folderName in ipairs(PROTOTYPE_FOLDERS) do
+        local stored = serverStorage:FindFirstChild(folderName)
+        found = stored and stored:FindFirstChild(config.model)
+        if found then return found end
+    end
+
+    for _, folderName in ipairs(PROTOTYPE_FOLDERS) do
+        local folderInstance = root and root:FindFirstChild(folderName, true)
+        found = folderInstance and folderInstance:FindFirstChild(config.model)
+        if found then break end
+    end
     -- Searched by name across the whole world as a fallback, because the user is free to move the folder.
     if not found and root then found = root:FindFirstChild(config.model, true) end
     return found
@@ -307,7 +315,7 @@ local function damage(model, amount, attacker)
 
 	state.hp -= amount
 	playAt(model, state.config.hitSound, GatherConfig.MobHitVolume)
-	setHealthBar(model, state.hp / state.config.hp)
+	setHealthBar(model, state.hp / (state.maxHp or state.config.hp))
 	-- Being hit makes it care about whoever hit it, even from outside its notice range: a monster that
 	-- ignored an archer shooting it from a hill would look broken.
 	if attacker and attacker.Character then
@@ -343,6 +351,25 @@ end
 
 MobAccess.Damage = damage
 
+-- Held still by the greatsword. Stored as a deadline rather than a timer so overlapping hits simply extend
+-- it, and so the AI loop -- which already runs four times a second -- is the only thing that has to know
+-- about it. A stunned monster stops where it is: it does not walk, chase or swing.
+local function stun(model, seconds)
+	local state = Live[model]
+	if not state or not seconds or seconds <= 0 then return false end
+	local until_ = os.clock() + seconds
+	if not state.stunnedUntil or until_ > state.stunnedUntil then
+		state.stunnedUntil = until_
+	end
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	local root = model.PrimaryPart
+	-- Stop the walk it is already in the middle of; MoveTo keeps steering on its own otherwise.
+	if humanoid and root then humanoid:MoveTo(root.Position) end
+	return true
+end
+
+MobAccess.Stun = stun
+
 --------------------------------------------------------------------------------
 -- Spawning
 --------------------------------------------------------------------------------
@@ -353,6 +380,18 @@ local function groundAt(x, z)
 	params.FilterDescendantsInstances = { folder }
 	local hit = workspace:Raycast(Vector3.new(x, 500, z), Vector3.new(0, -1200, 0), params)
 	return hit and hit.Position.Y or nil
+end
+
+-- After dark everything in the world hits twice as hard and takes twice as much killing.
+--
+-- Stamped onto each monster when it SPAWNS rather than read live, for two reasons: a monster must not
+-- double its health bar halfway through a fight because the sun went down, and `config` is the shared table
+-- every monster of that kind points at -- scaling it in place would buff the species, permanently, every
+-- time night fell.
+local NIGHT_MULTIPLIER = 2
+
+local function nightScale()
+	return workspace:GetAttribute("WOLD_IsNight") and NIGHT_MULTIPLIER or 1
 end
 
 local function spawnOne(spawner, kind, config)
@@ -371,9 +410,20 @@ local function spawnOne(spawner, kind, config)
 			local model = buildMonster(config)
 			model:PivotTo(CFrame.new(x, y + 2, z))
 			model.Parent = folder
+			local scale = nightScale()
+			local maxHp = config.hp * scale
+			-- buildMonster already sized the Humanoid from the unscaled config; correct it here so the bar
+			-- and the real pool agree.
+			local humanoid = model:FindFirstChildOfClass("Humanoid")
+			if humanoid and scale ~= 1 then
+				humanoid.MaxHealth = maxHp
+				humanoid.Health = maxHp
+			end
 			Live[model] = {
 				config = config,
-				hp = config.hp,
+				hp = maxHp,
+				maxHp = maxHp,
+				damageScale = scale,
 				spawner = spawner,
 				home = Vector3.new(x, y, z),
 				nextAttackAt = 0,
@@ -457,6 +507,13 @@ RunService.Heartbeat:Connect(function(dt)
 			local position = root.Position
 			local config = state.config
 
+			-- Stunned: nothing else this tick. Checked before the leash and the chase so a monster caught
+			-- mid-walk stands still rather than finishing its step.
+			if state.stunnedUntil and os.clock() < state.stunnedUntil then
+				humanoid:MoveTo(position)
+				continue
+			end
+
 			-- Too far from home: stop chasing and walk back, so a chase cannot drag monsters into town.
 			if (position - state.home).Magnitude > config.leashRange then
 				state.target = nil
@@ -481,16 +538,21 @@ RunService.Heartbeat:Connect(function(dt)
 							state.nextAttackAt = now + config.attackCooldown
 							-- Through Vitals, the one door every kind of damage goes through: armor,
 							-- invulnerability and the downed state are all decided there.
-							Vitals.ApplyDamage(state.target, config.damage, "combat")
-							-- And it should be HEARD. A monster landing a blow used to be silent, which made
-							-- being chewed on across a field something you noticed only by watching the health
-							-- bar. The sound is the game's existing generic impact -- the same thud a punch
-							-- makes -- played at the person being hit rather than at the monster, because it
-							-- is their body making the noise.
-							local victim = state.target.Character
-							if victim then
-								playAt(victim, VitalsConfig.HitSoundId, VitalsConfig.HitSoundVolume)
-							end
+							local hurt = Vitals.ApplyDamage(state.target, config.damage * (state.damageScale or 1), "combat")
+							-- And it should be HEARD -- but only by the person it happened to, and only when it
+							-- cost them something. Built here on the server, the Sound went into the world and
+							-- replicated, so everyone within sixty studs heard every bite taken out of everyone
+							-- else and a field with a few slimes in it sounded like a battlefield. Now the one
+							-- player it happened to is told, and their own client makes the noise
+							-- (HurtSoundController), where it goes no further.
+							--
+							-- ApplyDamage answering false is what silences a monster standing over somebody who
+							-- is already crawling: it keeps biting a body with no blood left, and that should be
+							-- as quiet as it is harmless.
+							--
+							-- Player-on-player blows are deliberately NOT routed this way: PlayerCombat still
+							-- plays those into the world, because a fight is worth overhearing.
+							if hurt then Remotes.HurtSound:FireClient(state.target) end
 						end
 					else
 						humanoid:MoveTo(targetRoot.Position)

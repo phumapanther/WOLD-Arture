@@ -20,6 +20,8 @@ local ClassConfig = require(game.ReplicatedStorage.ClassConfig)
 local ClassActionConfig = require(game.ReplicatedStorage.ClassActionConfig)
 local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local CommandCatalog = require(game.ReplicatedStorage.CommandCatalog)
+local DayNightAccess = require(game.ServerScriptService.DayNightAccess)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
 local Progression = require(game.ServerScriptService.Progression)
@@ -30,14 +32,13 @@ local VehicleConfig = require(game.ReplicatedStorage.Vehicle.Config)
 local VehicleService = require(game.ServerScriptService.Vehicle.Service)
 local VehicleStations = require(game.ServerScriptService.Vehicle.Stations)
 
--- The allow-list. UserIds only. There is deliberately no command that grants admin: an admin command that
--- hands out admin is how one leaked account becomes everyone's problem.
-local ADMINS = {
-	[4871683651] = true, -- phumapanther (owner)
-}
+-- Who is an admin now lives in AdminRoster: it is written in source for the owners, granted in-game for
+-- everyone else, and kept in a DataStore so a grant survives a restart. This file only asks.
+local AdminRoster = require(game.ServerScriptService.AdminRoster)
+local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 
 local function isAdmin(player)
-	return ADMINS[player.UserId] == true
+	return AdminRoster.IsAdmin(player)
 end
 
 --------------------------------------------------------------------------------
@@ -261,7 +262,79 @@ Commands.slime = function(admin, args)
 	forceEvent(admin, "slime", args, "อีเวนต์สไลม์กลายพันธุ์")
 end
 
--- /veh <key|here|stow|status> [ชนิด|ทะเบียน] -- เครื่องมือทดสอบพาหนะ
+-- /chest [ไม้|เหล็ก|เงิน|ทอง] -- ทำให้หีบสมบัติเกิดข้างตัว
+--
+-- The chests have no timer of their own: this and the chest items in a player's bag are the only two ways
+-- one gets into the world, which is what the user asked for.
+Commands.chest = function(admin, args)
+	local ChestAccess = require(game.ServerScriptService.ChestAccess)
+	local ChestConfig = require(game.ReplicatedStorage.ChestConfig)
+	if not ChestAccess.SpawnNear then
+		return reply(admin, "ระบบหีบยังไม่พร้อม (อยู่ในล็อบบี้?)")
+	end
+
+	local WORDS = {
+		["ไม้"] = "Chest_Wood", wood = "Chest_Wood",
+		["เหล็ก"] = "Chest_Ironbound", iron = "Chest_Ironbound",
+		["เงิน"] = "Chest_Silver", silver = "Chest_Silver",
+		["ทอง"] = "Chest_Gold", gold = "Chest_Gold",
+	}
+	local word = (args[1] or ""):lower()
+	local tier = WORDS[word]
+	-- No argument means a random grade, which is what makes the command useful for testing the odds rather
+	-- than one chest at a time.
+	if word == "" then
+		tier = ChestConfig.Order[math.random(#ChestConfig.Order)]
+	end
+	if not tier then
+		return reply(admin, "ใช้: /chest [ไม้|เหล็ก|เงิน|ทอง]")
+	end
+
+	local spec = ChestConfig.Chests[tier]
+	if ChestAccess.SpawnNear(admin, tier) then
+		reply(admin, ("วาง%sไว้ข้างตัวแล้ว"):format(spec and spec.name or tier))
+	else
+		reply(admin, "หาที่วางหีบไม่ได้ ลองขยับที่")
+	end
+end
+
+-- /weather <รายการ|auto> -- ตั้งสภาพอากาศ หรือปล่อยให้สุ่มเอง
+Commands.weather = function(admin, args)
+	local WeatherAccess = require(game.ServerScriptService.WeatherAccess)
+	local WeatherConfig = require(game.ReplicatedStorage.WeatherConfig)
+	if not WeatherAccess.Set then
+		return reply(admin, "ระบบอากาศยังไม่พร้อม (อยู่ในล็อบบี้?)")
+	end
+
+	local word = (args[1] or ""):lower()
+	if word == "" then
+		local names = {}
+		for _, id in ipairs(WeatherConfig.Order) do
+			names[#names + 1] = ("%s (%s)"):format(id, WeatherConfig.Kinds[id].name)
+		end
+		return reply(admin, "ใช้: /weather <" .. table.concat(names, " | ") .. " | auto>")
+	end
+
+	if word == "auto" then
+		WeatherAccess.Set(nil)
+		return reply(admin, "อากาศกลับไปสุ่มเองตามเวลา")
+	end
+
+	-- Accept the English id or the Thai name, so the admin can type whichever they are looking at.
+	local picked
+	for _, id in ipairs(WeatherConfig.Order) do
+		local kind = WeatherConfig.Kinds[id]
+		if id:lower() == word or kind.name == args[1] then picked = id break end
+	end
+	if not picked then
+		return reply(admin, "ไม่รู้จักสภาพอากาศนี้ พิมพ์ /weather เปล่าๆ เพื่อดูรายการ")
+	end
+
+	WeatherAccess.Set(picked)
+	reply(admin, ("ตั้งอากาศเป็น %s แล้ว (ค้างไว้จนกว่าจะสั่ง /weather auto)"):format(WeatherConfig.Kinds[picked].name))
+end
+
+-- /veh <key|reg|here|stow|status> [ชนิด|ทะเบียน] -- เครื่องมือทดสอบพาหนะ
 --
 -- แทนคำสั่งแชท /veh ของโปรเจ็ค WOLD-Vehicle ที่ไม่ได้ยกมา (ไฟล์นั้นตั้งใจให้ลบก่อนปล่อยเกม) เอาเฉพาะสี่
 -- คำสั่งที่จำเป็นต่อการทดสอบจริง และอยู่หลังรั้ว UserId เดียวกับคำสั่งแอดมินอื่นทั้งหมด
@@ -269,11 +342,20 @@ Commands.veh = function(admin, args)
 	local sub = (args[1] or ""):lower()
 
 	if sub == "key" then
+		-- กุญแจอย่างเดียว ยังไม่จดทะเบียน: นี่คือหนึ่งในสองทางที่กุญแจเกิดขึ้นได้ในเกมตอนนี้ (อีกทางคือหีบ
+		-- ทดสอบ) การจดเป็นอีกขั้นหนึ่ง ทำที่บารอนเวนหรือด้วย /veh reg
 		local vtype = matchKey(args[2] or "Car", VehicleConfig.Types)
 		if not vtype then return reply(admin, "ใช้: /veh key <Car|Boat|Airship>") end
-		local plate, err = VehicleService.register(admin, vtype)
+		local plate, err = VehicleService.issueKey(admin, vtype)
 		if not plate then return reply(admin, tostring(err)) end
-		return reply(admin, ("จดทะเบียน %s แล้ว กุญแจอยู่ในกระเป๋า"):format(plate))
+		return reply(admin, ("ได้กุญแจ %s แล้ว ยังไม่จดทะเบียน — /veh reg %s หรือไปหาบารอนเวน"):format(plate, plate))
+
+	elseif sub == "reg" then
+		-- ขั้นที่สอง จากแชท เพื่อให้ทดสอบวงจรได้ครบโดยไม่ต้องเดินไปหา NPC
+		local plate = args[2]
+		if not plate then return reply(admin, "ใช้: /veh reg <ทะเบียน>") end
+		local done, err = VehicleService.register(admin, plate:upper())
+		return reply(admin, done and ("จดทะเบียน %s แล้ว"):format(done) or tostring(err))
 
 	elseif sub == "here" then
 		local plate = args[2]
@@ -425,20 +507,141 @@ Commands.items = function(admin)
 	reply(admin, "ไอเทม: " .. table.concat(ids, ", "))
 end
 
--- /admin -- the list, so nothing has to be remembered
+-- /admin -- the list, so nothing has to be remembered.
+--
+-- Rendered from CommandCatalog rather than typed out here. The hand-written version had already fallen
+-- behind the real command table -- /event, /blackout, /slime, /veh and /announce all existed and none of
+-- them were listed -- and the console's autocomplete needs the same list, which a block of Thai inside a
+-- reply string could not give it.
 Commands.admin = function(admin)
-	reply(admin, table.concat({
-		"คำสั่งแอดมิน (ไม่ใส่ชื่อ = ใช้กับตัวเอง)",
-		"/give <ไอเทม> [จำนวน] [คน] - เสกของ",
-		"/gold <จำนวน> [คน] - เสกตัง (ติดลบ = ลด)",
-		"/tpto <คน> - วาปไปหา    /bring <คน> - ดึงมาหา",
-		"/goto <x> <y> <z> - วาปไปพิกัด",
-		"/role <อาชีพ> [คน]    /unrole [คน]",
-		"/kill [คน]    /heal [คน]    /level <n> [คน]",
-		"/fly [ความเร็ว]  /land - บิน / ลงพื้น",
-		"/god [คน] - อมตะ เปิด/ปิด",
-		"/items - รายชื่อไอเทม",
-	}, "\n"))
+	local lines = { "คำสั่งแอดมิน (ไม่ใส่ชื่อ = ใช้กับตัวเอง)" }
+	for _, line in ipairs(CommandCatalog.HelpLines("admin")) do
+		table.insert(lines, line)
+	end
+	reply(admin, table.concat(lines, "\n"))
+end
+
+-- /anim <ท่า> [คน] -- สั่งเล่นท่าทาง
+--
+-- Sent to the target's own client to play, not played from here. An emote on your own Animator replicates to
+-- everyone by itself, which is the whole reason the system is built that way -- and a server-side track on a
+-- player character is fighting the client for the same rig, which the crawl and the carry both lost.
+--
+-- "/anim" with no argument lists what there is, including the poses still waiting on an upload: an admin
+-- testing the set needs to see the gaps, not have them hidden.
+Commands.anim = function(admin, args)
+	local EmoteConfig = require(game.ReplicatedStorage.EmoteConfig)
+
+	if not args[1] then
+		local ready, waiting = {}, {}
+		for _, e in ipairs(EmoteConfig.Emotes) do
+			table.insert(e.anim ~= "" and ready or waiting, e.id)
+		end
+		return reply(admin, ("ท่าที่ใช้ได้: %s%s"):format(table.concat(ready, ", "),
+			#waiting > 0 and ("\nยังไม่ได้อัป: " .. table.concat(waiting, ", ")) or ""))
+	end
+
+	local name = matchKey(args[1], (function()
+		local set = {}
+		for _, id in ipairs(EmoteConfig.Names()) do set[id] = true end
+		return set
+	end)())
+	if not name then return reply(admin, ("ไม่มีท่า %s -- /anim ดูรายชื่อ"):format(tostring(args[1]))) end
+
+	local entry = EmoteConfig.Get(name)
+	if entry.anim == "" then
+		return reply(admin, ("ท่า %s ยังไม่ได้อัปโหลด"):format(entry.label))
+	end
+
+	local target = resolveTarget(admin, args[2])
+	if not target then return end
+	Remotes.PlayEmote:FireClient(target, name)
+	reply(admin, ("สั่ง %s ทำท่า %s"):format(target.Name, entry.label))
+end
+
+-- /setadmin <คน> -- ตั้งเป็นแอดมิน (เฉพาะเจ้าของเกม)
+--
+-- Only a ROOT may run this -- the owners written into AdminRoster, not admins it granted. The file this
+-- command was added to refused to have one at all, and the reason was sound: an admin command that hands out
+-- admin turns one leaked account into everyone's problem. Keeping the grant in the owners' hands is what
+-- stops that cascading, while still giving the command that was asked for.
+Commands.setadmin = function(admin, args)
+	if not AdminRoster.IsRoot(admin) then
+		return reply(admin, "เฉพาะเจ้าของเกมเท่านั้นที่ตั้งแอดมินได้")
+	end
+	local target = resolveTarget(admin, args[1])
+	if not target then return end
+	if target == admin then return reply(admin, "ตั้งตัวเองไม่ได้") end
+
+	local ok, err = AdminRoster.Grant(target.UserId)
+	if not ok then return reply(admin, tostring(err)) end
+	reply(admin, ("ตั้ง %s (%d) เป็นแอดมินแล้ว"):format(target.Name, target.UserId))
+	Remotes.AdminMessage:FireClient(target, "คุณได้สิทธิ์แอดมินแล้ว -- กด F2 เพื่อเปิดคอนโซล")
+end
+
+-- /unadmin <คน> -- ถอนแอดมิน
+Commands.unadmin = function(admin, args)
+	if not AdminRoster.IsRoot(admin) then
+		return reply(admin, "เฉพาะเจ้าของเกมเท่านั้นที่ถอนแอดมินได้")
+	end
+	local target = resolveTarget(admin, args[1])
+	if not target then return end
+	local ok, err = AdminRoster.Revoke(target.UserId)
+	if not ok then return reply(admin, tostring(err)) end
+	reply(admin, ("ถอนแอดมินของ %s แล้ว"):format(target.Name))
+end
+
+-- /admins -- ดูรายชื่อแอดมินทั้งหมด
+Commands.admins = function(admin)
+	local lines = {}
+	for _, entry in ipairs(AdminRoster.List()) do
+		local name = entry.userId
+		local ok, resolved = pcall(function() return Players:GetNameFromUserIdAsync(entry.userId) end)
+		if ok then name = resolved end
+		table.insert(lines, ("%s (%d)%s"):format(name, entry.userId, entry.root and "  [ถาวร]" or ""))
+	end
+	reply(admin, "แอดมิน: " .. table.concat(lines, ", "))
+end
+
+--------------------------------------------------------------------------------
+-- The world clock
+--------------------------------------------------------------------------------
+
+-- The words an admin is likely to reach for, and the hour each one means. Morning is the hour players
+-- already start at; night is deep night rather than dusk, because "night" asked for as a setting means dark.
+local TIME_WORDS = {
+	["เช้า"] = 7, morning = 7, day = 12, ["กลางวัน"] = 12, noon = 12,
+	["เย็น"] = 18, evening = 18, dusk = 18.5,
+	["กลางคืน"] = 0, night = 0, midnight = 0,
+}
+
+-- /time <เช้า|กลางคืน|ชั่วโมง|auto> -- ตั้งเวลาของโลก หรือปล่อยให้เดินเอง
+Commands.time = function(admin, args)
+	if not DayNightAccess.Hold then
+		return reply(admin, "ระบบเวลายังไม่พร้อม")
+	end
+
+	local word = (args[1] or ""):lower()
+	if word == "" then
+		local held = DayNightAccess.HeldAt()
+		return reply(admin, held
+			and ("เวลาถูกล็อกไว้ที่ %.1f น. — /time auto เพื่อปล่อยให้เดินต่อ"):format(held)
+			or ("เวลาเดินปกติ ตอนนี้ %.1f น."):format(game:GetService("Lighting").ClockTime))
+	end
+
+	if word == "auto" or word == "ปกติ" then
+		DayNightAccess.Hold(nil)
+		return reply(admin, "เวลากลับมาเดินเองแล้ว")
+	end
+
+	-- A word, or an hour typed straight in. Both end up as the same thing: a number to pin the sky to.
+	local hour = TIME_WORDS[word] or TIME_WORDS[args[1] or ""] or tonumber(args[1])
+	if not hour then
+		return reply(admin, "ใช้: /time เช้า | กลางวัน | เย็น | กลางคืน | <ชั่วโมง 0-24> | auto")
+	end
+
+	local now = DayNightAccess.Hold(hour)
+	reply(admin, ("ล็อกเวลาไว้ที่ %.1f น. แล้ว — /time auto เพื่อปล่อยให้เดินต่อ"):format(now))
 end
 
 --------------------------------------------------------------------------------
@@ -457,6 +660,18 @@ end
 -- Commands is admin-only, anything here is open to the class that owns it.
 local ClassCommands = {}
 
+-- What a noble may run out of the ADMIN table, at the user's request: exactly these seven, no more.
+--
+-- Naming admin commands rather than reimplementing them is the point. The noble table below used to hold its
+-- own /goto and its own /fly, which meant two versions of each to keep in step -- and they had already
+-- drifted, since the noble /goto went to a PLAYER while the admin one went to coordinates. One
+-- implementation, one behaviour, and the only thing that differs is who is allowed to reach it.
+local NOBLE_MAY_RUN = {
+	tpto = true, bring = true, ["goto"] = true,
+	role = true, unrole = true,
+	fly = true, land = true,
+}
+
 -- /announce <text> -- ประกาศจากแอดมิน (ทับคำสั่งอาชีพชื่อเดียวกัน: แอดมินประกาศในนามแอดมิน)
 Commands.announce = function(admin, args)
 	local text = table.concat(args, " ")
@@ -469,61 +684,19 @@ Commands.announce = function(admin, args)
 end
 
 --------------------------------------------------------------------------------
--- The noble's commands of state
+-- Nobles
 --------------------------------------------------------------------------------
 
--- A noble at the level cap governs, which is not the same as administering. They may move people about,
--- heal, and speak to the server -- the things a ruler does.
+-- A noble's own command table used to live here -- /summon, /bless, and its own /goto, /fly and /land. It is
+-- gone: the user cut the noble's powers to the seven named in NOBLE_MAY_RUN above, and every one of those is
+-- an admin command a noble is simply allowed to reach.
 --
--- They may NOT conjure items, gold or levels, hand out classes, or become invulnerable. Those are not
--- powers of office, they are powers over the economy: one noble with /give would end item scarcity for the
--- whole server, and there is no way to undo that once it has happened.
---
--- Written as their own functions rather than by pointing at the admin ones, so nobody later adds a
--- dangerous command to a shared list and quietly hands it to every noble.
-local NobleCommands = {}
+-- /summon and /bless were the two that were not on that list, so they no longer exist for anyone. Say so if
+-- they should come back; nothing else depended on them.
 
--- /summon <player> -- เรียกตัวมาหา
-NobleCommands.summon = function(noble, args)
-	local target = findPlayer(args[1])
-	if not target then return reply(noble, "ไม่เจอคนชื่อนี้") end
-	if target == noble then return reply(noble, "เรียกตัวเองไม่ได้") end
-	local mine, theirs = rootOf(noble), rootOf(target)
-	if not mine or not theirs then return reply(noble, "ตัวละครยังไม่พร้อม") end
-	theirs.CFrame = mine.CFrame * CFrame.new(0, 0, -4)
-	reply(noble, ("เรียก %s มาแล้ว"):format(target.Name))
-end
-
--- /goto <player> -- ไปหา
-NobleCommands["goto"] = function(noble, args)
-	local target = findPlayer(args[1])
-	if not target then return reply(noble, "ไม่เจอคนชื่อนี้") end
-	if target == noble then return reply(noble, "ไปหาตัวเองไม่ได้") end
-	local mine, theirs = rootOf(noble), rootOf(target)
-	if not mine or not theirs then return reply(noble, "ตัวละครยังไม่พร้อม") end
-	mine.CFrame = theirs.CFrame * CFrame.new(0, 0, 4)
-	reply(noble, ("ไปหา %s แล้ว"):format(target.Name))
-end
-
--- /bless <player> -- ฮีลเต็ม
-NobleCommands.bless = function(noble, args)
-	local target = args[1] and findPlayer(args[1]) or noble
-	if not target then return reply(noble, "ไม่เจอคนชื่อนี้") end
-	Vitals.Heal(target, Progression.MaxHP(target))
-	Vitals.Feed(target, 1000)
-	reply(noble, ("ให้พร %s แล้ว"):format(target.Name))
-end
-
--- /fly, /land -- ตรวจการณ์จากที่สูง
-NobleCommands.fly = function(noble)
-	Remotes.AdminFly:FireClient(noble, true)
-	reply(noble, "สลับโหมดบิน (กด Space ขึ้น, Shift ลง, WASD เคลื่อนที่)")
-end
-
-NobleCommands.land = function(noble)
-	Remotes.AdminFly:FireClient(noble, false)
-	reply(noble, "ลงพื้นแล้ว")
-end
+--------------------------------------------------------------------------------
+-- Class commands
+--------------------------------------------------------------------------------
 
 -- /help -- คำสั่งที่อาชีพของคุณใช้ได้
 ClassCommands.help = function(player, args, classId)
@@ -531,12 +704,16 @@ ClassCommands.help = function(player, args, classId)
 		("คำสั่งของ%s"):format(ClassConfig.DisplayName(classId)),
 		"/announce <ข้อความ> - ประกาศให้ทุกคนเห็น",
 	}
-	-- A noble sees the commands of state on top of the shared ones.
+	-- A noble sees the seven commands of state on top of the shared ones. Built from the same table the
+	-- dispatcher checks, so what a noble is shown and what a noble can run cannot drift apart -- which the
+	-- hand-written version this replaced already had.
 	if Classes.Has(player, "Noble") then
-		table.insert(lines, "/summon <คน> - เรียกตัวมาหา")
-		table.insert(lines, "/goto <คน> - ไปหา")
-		table.insert(lines, "/bless [คน] - ฮีลเต็ม")
-		table.insert(lines, "/fly    /land - บิน/ลงพื้น")
+		for _, entry in ipairs(CommandCatalog.Commands) do
+			if NOBLE_MAY_RUN[entry.name] then
+				table.insert(lines, ("/%s %s- %s"):format(entry.name,
+					entry.args == "" and "" or entry.args .. " ", entry.desc))
+			end
+		end
 	end
 	reply(player, table.concat(lines, "\n"))
 end
@@ -576,6 +753,16 @@ end)
 
 --------------------------------------------------------------------------------
 
+-- The client is TOLD whether it is an admin, rather than keeping its own copy of the list. The console used
+-- to hold a second hand-maintained table, which is exactly the kind of thing that drifts -- and the admin
+-- chest needs the same answer. Published as an Attribute, which replicates by itself.
+--
+-- It grants nothing: every command is checked against the roster on the server, so a client that forges the
+-- attribute has drawn itself a box that will be ignored.
+PlayerJoin.Each(function(player)
+	AdminRoster.Publish(player)
+end)
+
 local function dispatch(player, message)
 	if message:sub(1, 1) ~= "/" then return end
 
@@ -592,10 +779,10 @@ local function dispatch(player, message)
 	local command = isAdmin(player) and Commands[name] or nil
 
 	if not command then
-		-- A noble's commands of state, which only a noble may run. Checked before the shared class commands
-		-- so the two tables can hold the same name without one shadowing the other.
-		if Classes.Has(player, "Noble") then
-			local nobleCommand = NobleCommands[name]
+		-- A noble runs the ADMIN implementation of the seven commands of state, rather than a copy of its
+		-- own. Checked before the shared class commands so a name in both does not shadow the other.
+		if NOBLE_MAY_RUN[name] and Classes.Has(player, "Noble") then
+			local nobleCommand = Commands[name]
 			if nobleCommand then
 				local okNoble, errNoble = pcall(nobleCommand, player, parts)
 				if not okNoble then

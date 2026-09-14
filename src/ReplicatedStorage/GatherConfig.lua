@@ -62,6 +62,14 @@ GatherConfig.Nodes = {
 		sound = "rbxassetid://120916604676149",
 		prompt = "ขุดคริสตัล", object = "คริสตัล",
 	},
+	-- Coal, mined the same way iron is. The vehicles burn it and the forge takes it, so it is the one ore a
+	-- player comes back for after they have all the gear they want.
+	Coal = {
+		item = "Coal", min = 1, max = 3,
+		seconds = 3.5, xp = 8, tool = "pickaxe",
+		sound = "rbxassetid://120916604676149",
+		prompt = "ขุดถ่านหิน", object = "ถ่านหิน",
+	},
 	Herb = {
 		item = "Herb", min = 1, max = 2,
 		-- A shovel, per the user. Digging a root out is a shovel's job even though picking a leaf is not.
@@ -240,6 +248,108 @@ GatherConfig.Mobs.Skeleton = {
 	drops = {
 		{ item = "Bone", min = 2, max = 4 },
 		{ item = "IronOre", min = 1, max = 2, chance = 0.25 },
+	},
+}
+
+--------------------------------------------------------------------------------
+-- The second batch of monsters (Model_mosterV2). Defined so they are fightable the moment a spawner names
+-- them; nothing scatters these yet, as the user asked -- they go into the map by hand later.
+--
+-- Tuned as a tier above the first batch: this is what a player meets after skeletons stop being frightening.
+--------------------------------------------------------------------------------
+
+-- A bandit is a person, so it is the fastest and the most aggressive, but no tougher than a skeleton.
+-- The only one here that drops coins-in-all-but-name: it had pockets.
+GatherConfig.Mobs.Bandit = {
+	name = "โจรป่า",
+	model = "Monster_Bandit",
+	hp = 85,
+	damage = 14,
+	attackCooldown = 1.3,
+	attackRange = 7,
+	aggroRange = 45,
+	leashRange = 100,
+	walkSpeed = 13, -- faster than a walking player, slower than a sprint
+	xp = 35,
+	respawnSeconds = 120,
+	colour = Color3.fromRGB(120, 92, 66),
+	hitSound = "rbxassetid://127637727363472",
+	dieSound = "rbxassetid://96214777896458",
+	drops = {
+		{ item = "Silver", min = 10, max = 40 },
+		{ item = "Bullet", min = 2, max = 6, chance = 0.35 },
+		{ item = "Blueprint", min = 1, max = 1, chance = 0.1 },
+	},
+}
+
+-- Slow, enormous, and hits like a rockfall. The counter is simply walking away from it.
+GatherConfig.Mobs.StoneGolem = {
+	name = "โกเลมหิน",
+	model = "Monster_StoneGolem",
+	hp = 260,
+	damage = 26,
+	attackCooldown = 2.4,
+	attackRange = 9,
+	aggroRange = 30,
+	leashRange = 70,
+	walkSpeed = 5, -- slower than a walking player: you can always leave
+	xp = 80,
+	respawnSeconds = 240,
+	colour = Color3.fromRGB(120, 120, 126),
+	hitSound = "rbxassetid://120916604676149", -- stone, not flesh
+	dieSound = "rbxassetid://96214777896458",
+	drops = {
+		{ item = "Stone", min = 4, max = 9 },
+		{ item = "IronOre", min = 2, max = 5 },
+		{ item = "Crystal", min = 1, max = 2, chance = 0.4 },
+	},
+}
+
+-- The clockwork sentry is the steam age's own guard dog: metal, precise, and full of the parts it is made
+-- of. The only reliable monster source of gears.
+GatherConfig.Mobs.ClockworkSentry = {
+	name = "ทหารจักรกล",
+	model = "Monster_ClockworkSentry",
+	hp = 140,
+	damage = 18,
+	attackCooldown = 1.1, -- it does not tire
+	attackRange = 7,
+	aggroRange = 38,
+	leashRange = 85,
+	walkSpeed = 10,
+	xp = 55,
+	respawnSeconds = 180,
+	colour = Color3.fromRGB(150, 130, 90),
+	hitSound = "rbxassetid://120916604676149",
+	dieSound = "rbxassetid://96214777896458",
+	drops = {
+		{ item = "GearSpare", min = 1, max = 3 },
+		{ item = "Coal", min = 1, max = 3, chance = 0.5 },
+		{ item = "IronOre", min = 1, max = 3, chance = 0.5 },
+	},
+}
+
+-- A ghoul is the cheap one of the four -- weaker than a bandit -- but it notices you from further away than
+-- anything else here and does not give up easily.
+GatherConfig.Mobs.Ghoul = {
+	name = "ผีดิบ",
+	model = "Monster_Ghoul",
+	hp = 95,
+	damage = 15,
+	attackCooldown = 1.5,
+	attackRange = 6,
+	aggroRange = 55,
+	leashRange = 120,
+	walkSpeed = 9,
+	xp = 40,
+	respawnSeconds = 120,
+	colour = Color3.fromRGB(110, 130, 100),
+	hitSound = "rbxassetid://127637727363472",
+	dieSound = "rbxassetid://96214777896458",
+	drops = {
+		{ item = "Bone", min = 2, max = 5 },
+		{ item = "Herb", min = 1, max = 3, chance = 0.4 },
+		{ item = "Chemical", min = 1, max = 2, chance = 0.2 },
 	},
 }
 

@@ -253,8 +253,18 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 			-- the player has just lost a craft, and a second red line telling them off for it would be the
 			-- wrong moment. Awarded only for a recipe that could actually fail, which is what keeps the
 			-- unlucky page itself from minting the coins it spends.
-			local awarded = 0
-			if chance < 1 then
+			--
+			-- A recipe may name its OWN consolation prize with `failGives`, a list to pick one at random
+			-- from. The vehicle bench uses it: a failed key leaves you holding a car part, and six of those
+			-- trade for the key outright. Such a recipe mints no coins -- it already pays out in parts, and
+			-- paying both would make failing there better than failing anywhere else.
+			local awarded, awardedItem = 0, CraftConfig.InsigniaItem
+			if recipe.failGives and #recipe.failGives > 0 then
+				local pick = recipe.failGives[math.random(#recipe.failGives)]
+				if Inventory.AddItem(player, pick, 1) then
+					awarded, awardedItem = 1, pick
+				end
+			elseif chance < 1 then
 				local coins = CraftConfig.InsigniaPerFailure or 1
 				if Inventory.AddItem(player, CraftConfig.InsigniaItem, coins) then awarded = coins end
 			end
@@ -262,8 +272,8 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 			local reason = fee > 0 and ("สร้าง %s ล้มเหลว เสียวัสดุและเงิน %d"):format(item.name, fee)
 				or ("สร้าง %s ล้มเหลว วัสดุเสียไป"):format(item.name)
 			if awarded > 0 then
-				local coin = ItemCatalog.Get(CraftConfig.InsigniaItem)
-				reason ..= ("  ·  ได้ %s x%d"):format(coin and coin.name or CraftConfig.InsigniaItem, awarded)
+				local coin = ItemCatalog.Get(awardedItem)
+				reason ..= ("  ·  ได้ %s x%d"):format(coin and coin.name or awardedItem, awarded)
 			end
 			Remotes.SocialNotify:FireClient(player, "error", reason)
 			Remotes.CraftOpen:FireClient(player, snapshot(player))

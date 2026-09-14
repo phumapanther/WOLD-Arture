@@ -14,9 +14,10 @@
 -- ICON IDS: an ImageLabel needs the IMAGE asset id, not the DECAL id. Uploading a picture through the
 -- Creator Dashboard gives you a Decal id, and pasting that here shows a blank square with no error at all.
 -- To find the real one: InsertService:LoadAsset(decalId) in Studio, then read the Decal's Texture property.
--- Pure data, and the only thing this file requires. See ItemCatalog.IsSellable for what it is read for and
--- why the direction of the dependency matters.
+-- Both pure data, and the only things this file requires. See ItemCatalog.IsSellable for what they are read
+-- for and why the direction of the dependency matters.
 local CraftConfig = require(script.Parent.CraftConfig)
+local ShopConfig = require(script.Parent.ShopConfig)
 
 local ItemCatalog = {}
 
@@ -67,6 +68,15 @@ ItemCatalog.Items = {
 	-- Damage sits below the sword's 18: a pickaxe swung at a person should be
 	-- worse than a weapon made for it, or nobody would ever carry a sword.
 	--------------------------------------------------------------------------
+	-- Two-handed, slow, and it leaves whatever it lands on seeing stars. The stun is the reason to carry
+	-- something this slow: one swing every two seconds is a bad trade for damage alone.
+	Greatsword = {
+		icon = "rbxassetid://131042286719658",
+		name = "ดาบใหญ่", kind = "weapon", weight = 14, stackSize = 1,
+		value = 0, sellable = false,
+		skill = { name = "ฟันสังหาร", cooldown = 14 },
+	},
+
 	Axe = {
 		icon = "rbxassetid://94868056279785",
 		name = "ขวาน", kind = "weapon", weight = 5, stackSize = 1,
@@ -214,21 +224,56 @@ ItemCatalog.Items = {
 	-- "Unlimited" as the user asked, expressed as a number rather than math.huge: an infinite stack cannot be
 	-- written to a DataStore (JSON has no inf) and would come back from a save as nil, emptying the slot. Ten
 	-- thousand of anything is past the point where a real player notices a ceiling.
-	Silver = { icon = "rbxassetid://135974684914132", -- assets/item-icons/Silver.png
+	Silver = { icon = "rbxassetid://109436274068062", -- assets/item-icons/Silver.png
 		name = "ซิลเวอร์", kind = "junk", weight = 0.02, stackSize = 9999, value = 1, sellable = false },
 	-- The consolation prize for a craft that failed: a gold coin stamped with a broken hammer. Spent at the
 	-- smith's "unlucky" page, which is the only thing in the game that takes them.
-	Insignia = { icon = "rbxassetid://76808778183807", -- assets/item-icons/coin.png
+	Insignia = { icon = "rbxassetid://130387196273181", -- assets/item-icons/coin.png
 		name = "เหรียญตราค้อนพัง", kind = "junk", weight = 0.05, stackSize = 9999, value = 0, sellable = false },
-	Blueprint = { icon = "rbxassetid://100494667680016", -- assets/item-icons/print.png
+	Blueprint = { icon = "rbxassetid://74314329321327", -- assets/item-icons/print.png
 		name = "แบบแปลน", kind = "junk", weight = 0.3, stackSize = 16, value = 0, sellable = false },
 	-- Also the fuel every vehicle burns: one lump is Config.FuelPerCoal units in the tank.
-	Coal = { icon = "rbxassetid://138735405435297", -- assets/item-icons/coal.png
+	Coal = { icon = "rbxassetid://102046178380928", -- assets/item-icons/coal.png
 		name = "ถ่านหิน", kind = "junk", weight = 2, stackSize = 16, value = 0, sellable = false },
-	Chemical = { icon = "rbxassetid://133356301567666", -- assets/item-icons/chemical.png
+	Chemical = { icon = "rbxassetid://126730826846983", -- assets/item-icons/chemical.png
 		name = "สารเคมี", kind = "junk", weight = 1, stackSize = 8, value = 0, sellable = false },
-	GearSpare = { icon = "rbxassetid://115193645709696", -- assets/item-icons/gear.png
+	GearSpare = { icon = "rbxassetid://97077095423077", -- assets/item-icons/gear.png
 		name = "เฟืองอะไหล่", kind = "junk", weight = 1.5, stackSize = 8, value = 0, sellable = false },
+
+	--------------------------------------------------------------------------
+	-- Car parts. What a failed key-craft leaves you holding. Six of them, and a full set trades for a key
+	-- outright -- so a run of bad luck at the bench still walks towards the same door, just the long way.
+	--------------------------------------------------------------------------
+	Fueltank = { icon = "rbxassetid://112029627599215", name = "ถังน้ำมัน",
+		kind = "junk", weight = 4, stackSize = 8, value = 0, sellable = false },
+	GearCar = { icon = "rbxassetid://120419184642622", name = "เกียร์รถ",
+		kind = "junk", weight = 3, stackSize = 8, value = 0, sellable = false },
+	Mattress = { icon = "rbxassetid://123768545191804", name = "เบาะรถ",
+		kind = "junk", weight = 3, stackSize = 8, value = 0, sellable = false },
+	Pipe = { icon = "rbxassetid://127934134379642", name = "ท่อไอเสีย",
+		kind = "junk", weight = 2, stackSize = 8, value = 0, sellable = false },
+	Steering = { icon = "rbxassetid://138083283670733", name = "พวงมาลัย",
+		kind = "junk", weight = 2.5, stackSize = 8, value = 0, sellable = false },
+	Wheel = { icon = "rbxassetid://96711288685556", name = "ล้อรถ",
+		kind = "junk", weight = 5, stackSize = 8, value = 0, sellable = false },
+
+	--------------------------------------------------------------------------
+	-- Treasure chests, as things you carry. Using one drops a chest near you; opening that chest is where
+	-- the loot is. They are consumables whose effect is "a chest appears", which is why `use.stat` names the
+	-- chest tier rather than a vital.
+	--------------------------------------------------------------------------
+	Chest_Wood = { icon = "rbxassetid://101268926197446", name = "หีบไม้",
+		kind = "consumable", weight = 6, stackSize = 8, value = 0, sellable = false,
+		use = { stat = "chest", amount = 1, tier = "Chest_Wood" } },
+	Chest_Ironbound = { icon = "rbxassetid://135086673189833", name = "หีบตีเหล็ก",
+		kind = "consumable", weight = 8, stackSize = 8, value = 0, sellable = false,
+		use = { stat = "chest", amount = 1, tier = "Chest_Ironbound" } },
+	Chest_Silver = { icon = "rbxassetid://70684618691110", name = "หีบเงิน",
+		kind = "consumable", weight = 8, stackSize = 8, value = 0, sellable = false,
+		use = { stat = "chest", amount = 1, tier = "Chest_Silver" } },
+	Chest_Gold = { icon = "rbxassetid://134759403444063", name = "หีบทอง",
+		kind = "consumable", weight = 10, stackSize = 8, value = 0, sellable = false,
+		use = { stat = "chest", amount = 1, tier = "Chest_Gold" } },
 
 	--------------------------------------------------------------------------
 	-- Vehicle keys. One key is one vehicle: each carries its own plate in the
@@ -248,6 +293,25 @@ function ItemCatalog.Get(id)
 	return ItemCatalog.Items[id]
 end
 
+-- What to call a particular COPY of an item, rather than the kind of item it is.
+--
+-- Almost everything answers with its catalogue name and nothing more. A vehicle key does not: three car keys
+-- in a bag are three different cars, and "กุญแจรถ" three times over is unreadable -- the user could not tell
+-- which key opened which vehicle. The plate lives in the slot's `meta`, so it is the slot that has to be
+-- asked, not the catalogue.
+--
+-- One helper rather than the same concatenation at every call site, so a second kind of identity later (a
+-- named weapon, a signed letter) is added here and appears everywhere at once. Callers that have no meta to
+-- hand pass nothing and get exactly what they got before.
+function ItemCatalog.DisplayName(id, meta)
+	local item = ItemCatalog.Items[id]
+	local base = item and item.name or id
+	if type(meta) == "table" and type(meta.plate) == "string" then
+		return base .. " " .. meta.plate
+	end
+	return base
+end
+
 function ItemCatalog.Exists(id)
 	return ItemCatalog.Items[id] ~= nil
 end
@@ -262,11 +326,18 @@ for _, recipe in ipairs(CraftConfig.Recipes) do
 	CraftableOutput[recipe.id] = true
 end
 
+-- Everything the shopkeeper hands over the counter, derived from their own stock list the same way and for
+-- the same reason. ShopConfig is data-only too, so this cannot loop back either -- and it must stay that way.
+local ShopStock = {}
+for _, entry in ipairs(ShopConfig.Sells) do
+	ShopStock[entry.id] = true
+end
+
 -- May the shop put a price on this? Absent means yes, which is what every item written before V0.5 wants.
 -- Read by the counter, the "sell everything" button and the price board alike, so an item cannot be refused
 -- in one place and bought in another.
 --
--- Two ways to be unsellable:
+-- Three ways to be unsellable:
 --
 --   `sellable = false` in the entry -- the steam-age materials, which are the price of the new recipes.
 --
@@ -276,13 +347,44 @@ end
 --   stone, silver and a 300-coin fee -- a counter that then bought it back is a route from materials to coin
 --   that the fixed prices were never balanced against.
 --
+--   BEING ON THE SHOP'S OWN SHELF. The shopkeeper does not buy back what they sell, at the user's request.
+--   Derived from ShopConfig.Sells rather than flagged per item, so adding a line to the stock list is the
+--   whole change: the day worms or bread are for sale is the day they stop being worth carrying back.
+--
 -- Weapons, armour and potions were never at risk (the shop only buys `junk`), but they are covered by the
 -- same rule now, so the answer does not depend on which kind a future recipe happens to make.
 function ItemCatalog.IsSellable(id)
 	local item = ItemCatalog.Items[id]
 	if not item then return false end
 	if item.sellable == false then return false end
+	if ShopStock[id] then return false end
 	return not CraftableOutput[id]
+end
+
+-- May this item be thrown away? Everything may, except a vehicle key.
+--
+-- A key is not really an item: it is the only handle on a registration that lives in the player's profile,
+-- and throwing it away silently destroys a vehicle they paid for. The rule pairs with the other half the
+-- user asked for -- a key that is lost by some OTHER route takes its vehicle with it -- so the two together
+-- mean a garage can never hold a car whose key does not exist, and a player can never delete a car by
+-- pressing a red button in their bag.
+function ItemCatalog.IsDroppable(id)
+	local item = ItemCatalog.Items[id]
+	if not item then return false end
+	return item.kind ~= "key"
+end
+
+-- May this item be PUT AWAY -- in the warehouse, or in a vehicle's boot? Everything may, except a vehicle
+-- key. A key may only ever be in a bag or in somebody else's bag.
+--
+-- Two reasons, and the second one is the one that forced it. A key is the only handle on a registration, so
+-- a key locked in a warehouse is a car nobody can reach. And the boot does not store items, it stores
+-- COUNTS: `record.trunk[itemId] = n`, with no room for the slot's meta -- so a key put in a boot would come
+-- out as a key to nothing, its plate gone, exactly the "คข 8660" problem that broke Baron Vane's garage.
+function ItemCatalog.IsStorable(id)
+	local item = ItemCatalog.Items[id]
+	if not item then return false end
+	return item.kind ~= "key"
 end
 
 -- Weapons and armor carry durability, so they can never stack; everything else stacks by its own limit.

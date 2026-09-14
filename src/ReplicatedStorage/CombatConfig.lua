@@ -49,6 +49,24 @@ CombatConfig.Weapons = {
 		chainResetDelay = 0.35, -- the user asked for a beat between swings
 		chainWindow = 1.4,
 	},
+	-- Two-handed and slow on purpose. One swing is two full seconds: 1.2s raising it overhead, the strike at
+	-- 1.2-1.45, then a long recovery while it is pulled back out of the ground. Nothing else in the game
+	-- takes this long, and the stun is what pays for it -- a hit buys you the next two seconds.
+	--
+	-- `slam` is the moment the blade reaches the ground. It fires whether or not the swing connected, which
+	-- is why it is a separate time rather than part of the hit sound: the sword hits the earth either way.
+	Greatsword = {
+		idleAnimation = "rbxassetid://103704114129246", -- Greatsword_Idle, replaced when animgen publishes
+		guardAnimation = "",
+		guardWalkSpeed = 5, -- heavier than the sword's 6: you carry this thing, it does not carry you
+		idleTimeout = 4,
+		attacks = {
+			{ animation = "", damage = 42, windup = 1.2, active = 0.25, recovery = 0.55, range = 9,
+			  effect = "dizzy", effectSeconds = 3, slam = 1.45 },
+		},
+		chainResetDelay = 0.5,
+		chainWindow = 2.6,
+	},
 	-- The three tools fight exactly as the sword does -- same idle, same slash, same timing -- because that
 	-- is what the user asked for, and because a tool is a heavy thing on a stick, which is what the sword
 	-- animation already shows. Only the damage differs, and it is lower than the sword's 18: a tool swung at
@@ -202,6 +220,15 @@ CombatConfig.Sounds = {
 		-- per weapon rather than globally, so the other three keep their own balance.
 		hitVolume = 0.09,
 		hitSeconds = 0.55,
+	},
+	-- The user's own two clips. `hit` here is the blade meeting the GROUND at the end of the arc, not a
+	-- body, so it plays on every swing -- halved in volume as asked, because a sound that fires whether or
+	-- not you connected is one you hear constantly.
+	Greatsword = {
+		cast = "rbxassetid://85793400851408",  -- Greatsword_swing
+		hit = "rbxassetid://106963599234961",  -- Greatsword_hit
+		hitVolume = 0.045, -- 50% of the sword's 0.09, per the user
+		hitSeconds = 0.9,
 	},
 	-- The tools borrow the sword's steel entirely. Without an entry here they would fall back to Fists, and
 	-- an axe landing with a bare-knuckle thud is worse than it sharing a sound it plausibly makes.

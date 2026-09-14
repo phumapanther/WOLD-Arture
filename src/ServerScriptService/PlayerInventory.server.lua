@@ -6,10 +6,12 @@ local Players = game:GetService("Players")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
+local ChestAccess = require(game.ServerScriptService.ChestAccess)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 
 if ServerConfig.IsLobby then return end
 
@@ -57,15 +59,11 @@ local TEST_GRANT = {
 	{ id = "RepairHammer", full = true },
 }
 
-Players.PlayerAdded:Connect(function(player)
+PlayerJoin.Each(function(player)
 	-- Wait for the profile the same way PlayerProgression does, so a returning player gets their own bag back
-	-- rather than a fresh starter kit.
-	local data
-	for _ = 1, 40 do
-		data = ProfileAccess.Get(player)
-		if data then break end
-		task.wait(0.1)
-	end
+	-- rather than a fresh starter kit. No deadline -- this is the worst place of all to give up early: the
+	-- starter kit handed out when the read was merely slow is what the next autosave writes over the real bag.
+	local data = ProfileAccess.Wait(player)
 	local saved = data and data.Inventory
 
 	-- Eligibility for the one-off grant is "has PLAYED before", which is whether a profile exists at all —
@@ -146,6 +144,12 @@ local function applyUse(player, item)
 		Vitals.Feed(player, use.amount)
 	elseif use.stat == "mana" then
 		Vitals.AddMana(player, use.amount)
+	elseif use.stat == "chest" then
+		-- Using a chest item drops the real chest on the ground beside you. It is not "consumed into an
+		-- effect" like food -- it becomes a thing in the world, which is why this returns false when there
+		-- is nowhere to put it: the item must stay in the bag rather than vanishing for nothing.
+		if not ChestAccess.SpawnNear then return false end
+		return ChestAccess.SpawnNear(player, use.tier)
 	elseif use.stat == "repair" then
 		-- The repair hammer restores EVERYTHING the player owns to full: what they are wearing and wielding,
 		-- plus every worn piece sitting in the bag.
@@ -193,6 +197,15 @@ end)
 
 Remotes.RequestDropItem.OnServerEvent:Connect(function(player, index)
 	if type(index) ~= "number" or not canAct(player) then return end
+
+	-- A vehicle key may not be thrown away. The button is hidden for keys in the bag menu, but the refusal
+	-- has to live here too: the menu is the client's, and this remote can be fired without it.
+	local state = Inventory.Get(player)
+	local slot = state and state.slots[index]
+	if slot and not ItemCatalog.IsDroppable(slot.id) then
+		return Remotes.SocialNotify:FireClient(player, "error", "กุญแจทิ้งไม่ได้ — ทิ้งแล้วรถจะหายจากโรงรถด้วย")
+	end
+
 	-- Dropping destroys the item for now; world pickups arrive with the gathering sub-project.
 	Inventory.RemoveFromSlot(player, index)
 	flush(player)
@@ -301,7 +314,7 @@ Players.PlayerRemoving:Connect(function(player)
 	Consuming.Remove(player)
 end)
 
-Players.PlayerAdded:Connect(function(player)
+PlayerJoin.Each(function(player)
 	player.CharacterRemoving:Connect(function()
 		interrupt(player)
 	end)

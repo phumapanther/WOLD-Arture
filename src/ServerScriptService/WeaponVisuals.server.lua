@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local Inventory = require(game.ServerScriptService.Inventory)
 local WeaponVisualsAccess = require(game.ServerScriptService.WeaponVisualsAccess)
+local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 
 if ServerConfig.IsLobby then return end
 
@@ -32,6 +33,9 @@ local GRIP = {
 	-- Leaned forward from -20 to -90: the blade was standing bolt upright. The lean is applied BEFORE the
 	-- handle offset below, so the grip stays put in the palm and only the blade swings down and forward.
 	Sword = SWORD_GRIP,
+	-- The greatsword is built to the sword's layout (blade at the origin, grip along +Y), so it takes the
+	-- sword's offset -- pushed a little further out because the hilt sits further up a longer weapon.
+	Greatsword = SWORD_GRIP * CFrame.new(0, -1.0, 0),
 	-- The three tools are built on the sword's layout on purpose -- working end at the origin, grip 2.0 studs
 	-- out along +Y -- so they take the sword's offset unchanged. Sharing the value rather than copying the
 	-- number three times means a future correction to the sword's grip fixes all four together.
@@ -175,7 +179,7 @@ end
 -- than on a poll.
 Inventory.OnWeaponChanged = refresh
 
-Players.PlayerAdded:Connect(function(player)
+PlayerJoin.Each(function(player)
 	player.CharacterAdded:Connect(function(character)
 		-- The rig is rebuilt on respawn, so the weapon has to be re-attached.
 		character:WaitForChild("RightHand", 10)

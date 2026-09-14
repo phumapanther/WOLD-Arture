@@ -75,6 +75,61 @@ function Builders.Sword()
 	return assemble("Sword", blade, others)
 end
 
+-- Greatsword: the user's own model, not a built one. Loaded from the Creator Store by asset id and then
+-- made to match the sword's layout -- blade at the origin, hilt at +Y -- because WeaponVisuals' grip maths
+-- is written against exactly that shape.
+--
+-- Falls back to an oversized version of the built sword if the asset cannot be fetched: a server with no
+-- internet, or an id that stops resolving, should cost the player the artwork and not the weapon.
+local GREATSWORD_ASSET = 131042286719658
+
+function Builders.Greatsword()
+	local InsertService = game:GetService("InsertService")
+	local ok, loaded = pcall(function() return InsertService:LoadAsset(GREATSWORD_ASSET) end)
+	local source = ok and loaded and loaded:FindFirstChildWhichIsA("Model")
+	if source then
+		local model = source:Clone()
+		loaded:Destroy()
+		model.Name = "Greatsword"
+
+		-- Everything welded to one part so it moves as a unit, and nothing collides: it is a prop hanging off
+		-- a hand, and a physics body there would drag the character around.
+		local primary = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart")
+		if primary then
+			model.PrimaryPart = primary
+			for _, d in ipairs(model:GetDescendants()) do
+				if d:IsA("BasePart") then
+					d.Anchored = false
+					d.CanCollide = false
+					d.CanQuery = false
+					d.Massless = true
+					if d ~= primary then
+						local weld = Instance.new("WeldConstraint")
+						weld.Part0 = primary
+						weld.Part1 = d
+						weld.Parent = primary
+					end
+				end
+			end
+			-- Re-origin so the model sits on the sword's convention: the grip 2.0 studs along +Y from the
+			-- PrimaryPart, which is what SWORD_GRIP subtracts back out.
+			model:PivotTo(CFrame.new())
+			return model
+		end
+		model:Destroy()
+	end
+
+	-- The fallback: the built sword at half again the size, so it still reads as a greatsword.
+	local blade = part("Blade", Vector3.new(0.34, 4.4, 0.8), CFrame.new(0, 0, 0), STEEL, Enum.Material.Metal)
+	local others = {
+		part("Tip", Vector3.new(0.34, 0.7, 0.8), CFrame.new(0, -2.4, 0), STEEL, Enum.Material.Metal),
+		part("Guard", Vector3.new(0.36, 0.26, 2.0), CFrame.new(0, 2.3, 0), GOLD, Enum.Material.Metal),
+		part("Handle", Vector3.new(0.34, 1.4, 0.34), CFrame.new(0, 3.0, 0), LEATHER),
+		part("Pommel", Vector3.new(0.5, 0.44, 0.5), CFrame.new(0, 3.8, 0), GOLD, Enum.Material.Metal),
+	}
+	return assemble("Greatsword", blade, others)
+end
+
 -- Bow: the riser is the body, the limbs curve away from it, and the string runs between the tips.
 function Builders.Bow()
 	local riser = part("Riser", Vector3.new(0.3, 1.2, 0.34), CFrame.new(0, 0, 0), DARK_WOOD)
