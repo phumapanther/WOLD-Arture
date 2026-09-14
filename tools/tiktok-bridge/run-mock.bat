@@ -1,5 +1,7 @@
 @echo off
-rem โหมดทดสอบ: ยิงอีเวนต์ปลอมให้เกมโดยไม่ต้องเปิดไลฟ์จริง
+setlocal
+chcp 65001 >nul
 cd /d "%~dp0"
 node bridge.js --mock
+echo.
 pause

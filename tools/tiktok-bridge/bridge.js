@@ -355,7 +355,17 @@ const server = http.createServer((req, res) => {
 });
 
 server.listen(CFG.port, CFG.host, () => {
-  log(`สะพาน TikTok ฟังอยู่ที่ http://${CFG.host}:${CFG.port}`);
+  // The checklist lives HERE and not in run.bat: cmd.exe mangles Thai in a batch file, and one broken echo
+  // line with a bracket in it swallowed the command that starts this program -- silently.
+  console.log("=".repeat(64));
+  console.log(`  สะพาน TikTok LIVE -> WOLD Arture   ช่อง: @${CFG.user}`);
+  console.log("=".repeat(64));
+  console.log("  1. บัญชีต้องกด 'ไปไลฟ์' ใน TikTok ให้ขึ้น LIVE จริงแล้ว");
+  console.log("  2. ปล่อยหน้าต่างนี้เปิดไว้ทั้งไลฟ์");
+  console.log("  3. เปิดเกม - Studio กด F5 หรือเข้าเกมที่ publish");
+  console.log("  4. ต้องมีตัวแอดมินยืนอยู่ในเซิร์ฟ ไม่งั้นเกมจะไม่ถามอะไรมาเลย");
+  console.log("=".repeat(64));
+  log(`ฟังอยู่ที่ http://${CFG.host}:${CFG.port}`);
   log(`  /events?after=<id>   เกมดึงจากตรงนี้`);
   log(`  /health              สถานะ`);
   if (CFG.key) log("  ต้องส่ง ?key=... มาด้วย");
