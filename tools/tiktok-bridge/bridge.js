@@ -22,6 +22,7 @@
 //   node bridge.js --idle                      queue only: events arrive from POST /mock, nothing invented
 //   node bridge.js --user X --dump             print the first raw payload of each kind, to check fields
 //   node bridge.js --user X --follow-boss      a follow buys a boss too, not just a subscription
+//   node bridge.js --user X --sign-key <key>   an Euler Stream key, if the free signing tier refuses
 //
 // Only dependency is tiktok-live-connector, and only when actually connecting: --mock runs on stdlib alone.
 "use strict";
@@ -60,6 +61,10 @@ const CFG = {
   keep: 500, // events kept for replay
   followBoss: has("follow-boss"),
   dump: has("dump"),
+  // Optional Euler Stream key. The connector signs its requests through api.eulerstream.com, and the free
+  // tier is rate-limited per IP: a long stream, or a second start soon after a first, can be refused. A key
+  // from eulerstream.com lifts that. Only needed if connecting starts failing.
+  signKey: flag("sign-key", process.env.TIKTOK_SIGN_KEY || ""),
 };
 
 const log = (...a) => console.log(new Date().toTimeString().slice(0, 8), ...a);
@@ -167,7 +172,21 @@ function connectTikTok() {
     process.exit(1);
   }
   const EV = lib.WebcastEvent || {};
-  const conn = new Ctor(CFG.user);
+
+  // The options object is NOT optional in v2, whatever the signature suggests: the constructor reads
+  // `options.processInitialData` straight off it, so `new Ctor(user)` throws before it ever tries to
+  // connect. Passing {} would be enough -- the two settings below are deliberate.
+  //
+  //  processInitialData: false   on connecting, TikTok hands over the room's recent history. Replaying it
+  //                              would empty ten minutes of likes and gifts into the game at once, which is
+  //                              the same avalanche the game's own cursor logic refuses on its side.
+  //  enableExtendedGiftInfo      makes the connector fetch the gift table, so a gift's diamond value is
+  //                              present on the event rather than having to be guessed from its name.
+  const conn = new Ctor(CFG.user, {
+    processInitialData: false,
+    enableExtendedGiftInfo: true,
+    signApiKey: CFG.signKey || undefined,
+  });
 
   // v1 emits plain strings, v2 emits the same strings through an enum. Registering both, deduped, means one
   // file works on either without a version check that would go stale.
@@ -228,11 +247,25 @@ function connectTikTok() {
     .then(() => { connected = true; log(`✅ ต่อไลฟ์ของ @${CFG.user} แล้ว`); })
     .catch((err) => {
       connected = false;
-      log("❌ ต่อไลฟ์ไม่ได้:", err?.message || err, "— ลองใหม่ใน 15 วิ");
+      log("❌ ต่อไลฟ์ไม่ได้:", err?.message || err);
+      log("   " + hintFor(err?.message || String(err)));
+      log("   จะลองใหม่เองทุก 15 วิ ไม่ต้องปิดหน้าต่างนี้");
       setTimeout(() => retry(conn), 15_000);
     });
 
   return conn;
+}
+
+// The two failures that account for nearly every one of these, said in words instead of in library-speak.
+function hintFor(message) {
+  const m = String(message).toLowerCase();
+  if (m.includes("room id") || m.includes("not found") || m.includes("offline")) {
+    return `@${CFG.user} ยังไม่ได้ไลฟ์อยู่ หรือชื่อช่องผิด — กด "ไปไลฟ์" ใน TikTok ให้ขึ้นสถานะ LIVE จริงก่อน`;
+  }
+  if (m.includes("sign") || m.includes("rate") || m.includes("429") || m.includes("euler")) {
+    return "ตัวเซ็นคำขอ (eulerstream) ปฏิเสธ/ติดลิมิต — รอสักครู่แล้วลองใหม่ หรือขอคีย์ฟรีที่ eulerstream.com แล้วรันด้วย --sign-key <คีย์>";
+  }
+  return "ถ้าเน็ตปกติและช่องไลฟ์อยู่จริง ลองรันด้วย --dump เพื่อดูรายละเอียด";
 }
 
 function retry(conn) {
