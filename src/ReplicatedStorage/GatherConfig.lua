@@ -171,7 +171,7 @@ local function special(name, colour, extra)
 		-- The wet slap of a huge slime landing, played at the monster while it is chasing someone. It is how
 		-- you hear one coming before you see it, which matters for a thing this size.
 		hopSound = "rbxassetid://75878881956542", -- assets/sounds/boings
-		hopInterval = 0.9,
+		hopInterval = 1.5,
 		hopVolume = 0.35,
 		-- How hard it leaves the ground on each of those beats. A slime moves BY hopping, so this is its
 		-- gait, not a trick -- turn it down for a heavier lollop, up for something frantic.
