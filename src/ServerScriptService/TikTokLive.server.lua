@@ -22,7 +22,9 @@
 -- them, WeatherAccess and DayNightAccess own the sky. This is an adapter. The one thing it truly owns is
 -- the JUDGEMENT -- who is allowed to do what, how often, and how much of it the server can survive.
 local HttpService = game:GetService("HttpService")
+local MessagingService = game:GetService("MessagingService")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
 local ServerConfig = require(script.Parent.ServerConfig)
 if ServerConfig.IsLobby then return end -- no monsters, no chests and no weather run in the lobby
@@ -326,10 +328,33 @@ local function doCommand(event)
 end
 
 --------------------------------------------------------------------------------
--- The poll
+-- Getting the events in: two ways, because Studio and a published game cannot use the same one
 --------------------------------------------------------------------------------
+--
+-- POLL, over HTTP, for Studio and any server that can reach the bridge's address. This is the only one
+-- that works while developing: Open Cloud cannot deliver to Studio at all.
+--
+-- PUSH, over MessagingService, for the published game. A live Roblox server cannot reach 127.0.0.1 on the
+-- streamer's PC, and the usual answer -- a cloudflared tunnel -- hands you a NEW random hostname every time
+-- it starts, which would mean editing TikTokConfig and REPUBLISHING the game before every stream. Open
+-- Cloud turns the direction around: the bridge publishes with an API key and the game only subscribes, so
+-- there is no address in the game to go stale.
+--
+-- A message reaches EVERY server in the universe, not just the streamer's. The guard against that is the
+-- one that was already there: every handler needs `streamer()` to return somebody, so a server with no
+-- admin in it drops the event on the floor.
 
 local HANDLERS = { mob = doMob, chest = doChest, boss = doBoss, cmd = doCommand }
+
+local function dispatch(event)
+	if type(event) ~= "table" then return end
+	local handler = HANDLERS[event.kind]
+	if not handler then return end
+	-- One bad event must not stop the stream. A monster that could not find ground, an emote id that was
+	-- deleted -- the next event still deserves to run.
+	local fine, err = pcall(handler, event)
+	if not fine then warn("[TikTok] " .. tostring(event.kind) .. " ล้มเหลว: " .. tostring(err)) end
+end
 
 local cursor = 0
 local session = nil
@@ -383,31 +408,80 @@ local function pollOnce()
 	end
 
 	for _, event in ipairs(decoded.events or {}) do
-		local handler = HANDLERS[event.kind]
-		if handler then
-			-- One bad event must not stop the stream. A monster that could not find ground, an emote id that
-			-- was deleted -- the next event still deserves to run.
-			local fine, err = pcall(handler, event)
-			if not fine then warn("[TikTok] " .. tostring(event.kind) .. " ล้มเหลว: " .. tostring(err)) end
-		end
+		dispatch(event)
 	end
 	if decoded.cursor and decoded.cursor > cursor then cursor = decoded.cursor end
 	return true
 end
 
-task.spawn(function()
-	-- Nothing is asked of the bridge until somebody is here to see it. A server with no admin in it is a
-	-- server where every event would be dropped anyway, and polling an address that is not there for the
-	-- length of an empty round is just noise in the log.
-	while true do
-		if streamer() then
-			pollOnce()
-			task.wait(failures >= Config.FailuresBeforeBackoff and Config.BackoffSeconds or Config.PollSeconds)
-		else
-			task.wait(2)
-		end
+--------------------------------------------------------------------------------
+-- Push: MessagingService, for the published game
+--------------------------------------------------------------------------------
+
+-- Open Cloud delivers the string that was published, and it can deliver the same one to a server twice.
+-- The ids are already on every event, so remembering the last few hundred is all the dedupe needed.
+local seen, seenOrder = {}, {}
+
+local function alreadySeen(id)
+	if id == nil then return false end
+	if seen[id] then return true end
+	seen[id] = true
+	seenOrder[#seenOrder + 1] = id
+	if #seenOrder > 400 then
+		seen[table.remove(seenOrder, 1)] = nil
 	end
-end)
+	return false
+end
+
+local function startPush()
+	local ok, err = pcall(function()
+		MessagingService:SubscribeAsync(Config.Topic, function(message)
+			local payload = message and message.Data
+			if type(payload) == "string" then
+				local fine, decoded = pcall(HttpService.JSONDecode, HttpService, payload)
+				payload = fine and decoded or nil
+			end
+			if type(payload) ~= "table" then return end
+			if alreadySeen(payload.id) then return end
+			dispatch(payload)
+		end)
+	end)
+	if ok then
+		print(("[TikTok] รับอีเวนต์ทาง MessagingService หัวข้อ %q"):format(Config.Topic))
+	else
+		warn("[TikTok] สมัคร MessagingService ไม่ได้: " .. tostring(err) ..
+			" — ต้องเปิด Enable Studio Access to API Services / ต้องเป็นเซิร์ฟเวอร์จริง")
+	end
+end
+
+--------------------------------------------------------------------------------
+-- Which one runs
+--------------------------------------------------------------------------------
+
+local mode = Config.Mode
+if mode == "auto" then
+	-- Studio can only poll: Open Cloud does not deliver to it, so a published-game setting would leave
+	-- development with no way to test at all.
+	mode = RunService:IsStudio() and "poll" or "push"
+end
+
+if mode == "push" then
+	startPush()
+else
+	task.spawn(function()
+		-- Nothing is asked of the bridge until somebody is here to see it. A server with no admin in it is a
+		-- server where every event would be dropped anyway, and polling an address that is not there for the
+		-- length of an empty round is just noise in the log.
+		while true do
+			if streamer() then
+				pollOnce()
+				task.wait(failures >= Config.FailuresBeforeBackoff and Config.BackoffSeconds or Config.PollSeconds)
+			else
+				task.wait(2)
+			end
+		end
+	end)
+end
 
 -- The sweeper. Conjured monsters expire on their own clock whether or not more events arrive, so a stream
 -- that goes quiet still clears its own field.
@@ -418,4 +492,4 @@ task.spawn(function()
 	end
 end)
 
-print("[TikTok] พร้อมรับอีเวนต์จาก " .. Config.Url)
+print(("[TikTok] พร้อม โหมด %s%s"):format(mode, mode == "poll" and (" จาก " .. Config.Url) or ""))

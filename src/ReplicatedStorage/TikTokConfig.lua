@@ -15,6 +15,15 @@ local TikTokConfig = {}
 
 -- Where the bridge is. In Studio this is the bridge running on the same machine; a published game cannot
 -- reach 127.0.0.1 and needs a tunnel address here instead (see tools/tiktok-bridge/README.md).
+-- How the events get in.
+--   "auto"  Studio polls, a published server subscribes -- which is what each of them can actually do
+--   "poll"  always HTTP, for a server that can reach the bridge (a tunnel, or a LAN address)
+--   "push"  always MessagingService, and never works in Studio because Open Cloud cannot deliver to it
+TikTokConfig.Mode = "auto"
+
+-- The Open Cloud topic the bridge publishes to, for "push". Must match --topic on the bridge.
+TikTokConfig.Topic = "TikTokLive"
+
 TikTokConfig.Url = "http://127.0.0.1:8787"
 TikTokConfig.Key = "" -- must match --key on the bridge; empty means no key
 

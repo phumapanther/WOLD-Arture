@@ -28,6 +28,22 @@
 "use strict";
 
 const http = require("http");
+const fs = require("fs");
+const path = require("path");
+
+// ---------------------------------------------------------------------------- live.env
+// The Open Cloud key must not be typed into a command line every stream, and must not be committed. If a
+// live.env sits next to this file its KEY=VALUE lines become environment variables -- the file is
+// gitignored, and live.env.example shows what goes in it.
+(() => {
+  const file = path.join(__dirname, "live.env");
+  if (!fs.existsSync(file)) return;
+  for (const line of fs.readFileSync(file, "utf8").split(String.fromCharCode(10))) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].trim().replace(/^["']|["']$/g, "");
+  }
+  console.log("อ่านค่าจาก live.env แล้ว");
+})();
 
 // ---------------------------------------------------------------------------- options
 const argv = process.argv.slice(2);
@@ -259,7 +275,8 @@ function connectTikTok() {
 // The two failures that account for nearly every one of these, said in words instead of in library-speak.
 function hintFor(message) {
   const m = String(message).toLowerCase();
-  if (m.includes("room id") || m.includes("not found") || m.includes("offline")) {
+  if (m.includes("room id") || m.includes("not found") || m.includes("offline") || m.includes("isn't online")
+      || m.includes("not online")) {
     return `@${CFG.user} ยังไม่ได้ไลฟ์อยู่ หรือชื่อช่องผิด — กด "ไปไลฟ์" ใน TikTok ให้ขึ้นสถานะ LIVE จริงก่อน`;
   }
   if (m.includes("sign") || m.includes("rate") || m.includes("429") || m.includes("euler")) {
@@ -282,6 +299,8 @@ const UNIVERSE = flag("universe", process.env.ROBLOX_UNIVERSE_ID || "");
 const APIKEY = process.env.ROBLOX_API_KEY || "";
 const TOPIC = flag("topic", "TikTokLive");
 
+let pushFailures = 0;
+
 async function push(event) {
   if (!UNIVERSE || !APIKEY) return;
   try {
@@ -293,7 +312,22 @@ async function push(event) {
         body: JSON.stringify({ message: JSON.stringify(event) }),
       },
     );
-    if (!res.ok) log("push failed", res.status, await res.text());
+    if (!res.ok) {
+      pushFailures += 1;
+      const body = (await res.text()).slice(0, 300);
+      log(`push ล้มเหลว ${res.status}: ${body}`);
+      if (pushFailures === 1) {
+        if (res.status === 401 || res.status === 403) {
+          log("   คีย์ผิด/หมดสิทธิ์ — ต้องเป็น API key ที่มีสิทธิ์ universe-messaging-service:publish");
+          log("   และ IP allowlist ต้องครอบ IP ของเครื่องนี้ (ใส่ 0.0.0.0/0 ได้ถ้าไม่แน่ใจ)");
+        } else if (res.status === 404) {
+          log("   ไม่เจอ universe — ROBLOX_UNIVERSE_ID ต้องเป็น universe id ไม่ใช่ place id");
+        }
+      }
+    } else if (pushFailures > 0) {
+      pushFailures = 0;
+      log("push กลับมาปกติแล้ว");
+    }
   } catch (err) {
     log("push error", err?.message || err);
   }
@@ -369,7 +403,10 @@ server.listen(CFG.port, CFG.host, () => {
   log(`  /events?after=<id>   เกมดึงจากตรงนี้`);
   log(`  /health              สถานะ`);
   if (CFG.key) log("  ต้องส่ง ?key=... มาด้วย");
-  if (PUSH) log(`  push: universe ${UNIVERSE || "(ไม่ได้ตั้ง)"} topic ${TOPIC}`);
+  if (PUSH) {
+    log(`  push -> universe ${UNIVERSE || "(ไม่ได้ตั้ง!)"} topic ${TOPIC}` + (APIKEY ? "" : "  (ไม่มี API key!)"));
+    if (!UNIVERSE || !APIKEY) log("  ** push จะไม่ทำงาน: ต้องมีทั้ง ROBLOX_UNIVERSE_ID และ ROBLOX_API_KEY **");
+  }
 });
 
 // ---------------------------------------------------------------------------- go

@@ -157,14 +157,34 @@ node -e "fetch('http://127.0.0.1:8787/mock',{method:'POST',body:JSON.stringify({
 
 ## เอาขึ้นเกมที่ publish จริง
 
-เซิร์ฟเวอร์จริงบน roblox.com **วิ่งมาที่ 127.0.0.1 ของเครื่องคุณไม่ได้** เลือกทางใดทางหนึ่ง
+เซิร์ฟเวอร์จริงบน roblox.com **วิ่งมาที่ 127.0.0.1 ของเครื่องคุณไม่ได้** และท่อแบบ quick tunnel ก็ยังไม่พอ
+เพราะมันแจก URL ใหม่ทุกครั้งที่เปิด ซึ่งหมายถึงต้องแก้ `TikTokConfig.Url` แล้ว **publish เกมใหม่ก่อนไลฟ์ทุกครั้ง**
 
-1. **ต่อท่อ (ง่ายกว่า)** เปิด `cloudflared tunnel --url http://localhost:8787` หรือ ngrok แล้วเอา URL สาธารณะ
-   ไปใส่ `TikTokConfig.Url` · **ตั้ง `--key` ด้วย** ไม่งั้นใครก็ยิงอีเวนต์เข้าเกมคุณได้
-2. **Open Cloud MessagingService** ตั้ง env `ROBLOX_API_KEY` (สิทธิ์ `universe-messaging-service:publish`)
-   กับ `ROBLOX_UNIVERSE_ID` แล้วรันด้วย `--push` ตัวนี้จะ publish ไปที่ topic `TikTokLive`
-   ฝั่งเกมต้องเพิ่ม `MessagingService:SubscribeAsync("TikTokLive", ...)` เข้า `TikTokLive.server.lua`
-   (**ทางนี้ทดสอบใน Studio ไม่ได้** Open Cloud ส่งไม่ถึง Studio จึงไม่ใช้เป็นทางหลักในการพัฒนา)
+ทางที่ใช้จริงคือ **Open Cloud MessagingService** — กลับทิศทางกัน สะพานเป็นฝ่ายส่งเข้าไป เกมแค่สมัครฟัง
+จึงไม่มี URL อยู่ในเกมให้เก่า ไม่ต้องต่อท่อ ไม่ต้อง publish ซ้ำเวลาอะไรเปลี่ยน
+
+### ทำครั้งเดียว
+
+1. **publish เกม** (Studio → File → Publish to Roblox) ให้โค้ดชุดนี้ขึ้นไปอยู่ในเกมจริง
+   — ไม่ทำข้อนี้ ในเกมจริงจะไม่มีไฟล์ `TikTokLive.server.lua` อยู่เลย
+2. **เอา universe id** ของเกม (ไม่ใช่ place id) จาก create.roblox.com
+3. **สร้าง API key** ที่ create.roblox.com → Credentials → API Keys → Create
+   - Permissions: เพิ่ม `universe-messaging-service` ติ๊ก **publish** แล้วเลือกเกมนี้
+   - Security: IP allowlist ใส่ `0.0.0.0/0` ถ้าไม่รู้ IP ตัวเอง
+4. ก๊อป `live.env.example` เป็น **`live.env`** แล้วใส่สองค่านั้น (ไฟล์นี้ไม่ถูก commit)
+
+### ทุกครั้งที่จะไลฟ์
+
+ดับเบิลคลิก **`run-live.bat`** (ไม่ใช่ `run.bat`) → กดไปไลฟ์ใน TikTok → เข้าเกมจริง
+
+`TikTokConfig.Mode` ปล่อยเป็น `"auto"` ไว้ได้: **Studio จะ poll เอง** (Open Cloud ส่งไม่ถึง Studio จึงพัฒนา/เทส
+ด้วยทางนี้ไม่ได้) และ **เซิร์ฟเวอร์จริงจะ subscribe เอง** ตั้งเป็น `"poll"` หรือ `"push"` ได้ถ้าจะบังคับ
+
+ถ้า push ล้มเหลว หน้าต่างสะพานจะบอกเหตุตรงๆ: `401/403` = คีย์ผิดหรือ IP ไม่อยู่ใน allowlist ·
+`404` = ใส่ place id มาแทน universe id
+
+**อีกทางถ้าไม่อยากใช้ Open Cloud:** ต่อท่อจริงที่มีชื่อโดเมนคงที่ (cloudflared named tunnel + โดเมนของตัวเอง)
+แล้วตั้ง `Mode = "poll"` กับ `Url` เป็นโดเมนนั้น · **ต้องตั้ง `--key` ด้วย** ไม่งั้นใครรู้ URL ก็ยิงมอนเข้าเกมคุณได้
 
 ## ข้อที่รู้แล้วว่าจะสะดุด
 
