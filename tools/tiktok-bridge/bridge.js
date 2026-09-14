@@ -12,9 +12,12 @@
 // whole thing replay-safe by construction -- a dropped poll, a lagging server or a Studio restart costs
 // nothing, because the next poll asks for the same cursor again.
 //
-// A live server on roblox.com cannot reach 127.0.0.1 either. For a published game put a tunnel in front of
-// this (cloudflared / ngrok) and point TikTokConfig.Url at the public address, or switch the game over to
-// Open Cloud MessagingService and run this with --push (see README).
+// A live server on roblox.com cannot reach 127.0.0.1 either, so a published game is fed the other way
+// round: --push publishes each event through Open Cloud MessagingService and the game only subscribes.
+// No tunnel, and no address inside the game to go stale. See README.
+//
+// Connecting to TikTok also needs an Euler Stream key (free tier, see `signKey` below) -- without one the
+// signing service refuses and nothing arrives, however healthy everything else looks.
 //
 //   node bridge.js --user PHUMAPANTHER
 //   node bridge.js --user PHUMAPANTHER --port 8787 --key hunter2
@@ -77,9 +80,11 @@ const CFG = {
   keep: 500, // events kept for replay
   followBoss: has("follow-boss"),
   dump: has("dump"),
-  // Optional Euler Stream key. The connector signs its requests through api.eulerstream.com, and the free
-  // tier is rate-limited per IP: a long stream, or a second start soon after a first, can be refused. A key
-  // from eulerstream.com lifts that. Only needed if connecting starts failing.
+  // NOT optional. tiktok-live-connector cannot reach TikTok's webcast without a signed request, and it signs
+  // through api.eulerstream.com -- a third party. With no key the signing route answers "This endpoint
+  // requires a Business plan", which reads like a paywall on the whole feature and is not: the free
+  // Community plan is $0 forever with 2,500 requests a day, and connecting costs a handful of them per
+  // connect, not per event. It is the key that is missing, not the money.
   signKey: flag("sign-key", process.env.TIKTOK_SIGN_KEY || ""),
 };
 
@@ -264,7 +269,7 @@ function connectTikTok() {
     .catch((err) => {
       connected = false;
       log("❌ ต่อไลฟ์ไม่ได้:", err?.message || err);
-      log("   " + hintFor(err?.message || String(err)));
+      for (const line of hintFor(err?.message || String(err))) log("   " + line);
       log("   จะลองใหม่เองทุก 15 วิ ไม่ต้องปิดหน้าต่างนี้");
       setTimeout(() => retry(conn), 15_000);
     });
@@ -273,16 +278,27 @@ function connectTikTok() {
 }
 
 // The two failures that account for nearly every one of these, said in words instead of in library-speak.
+// Returns LINES: the sign-key answer is three sentences long, and a hint that does not fit on one line is
+// still the difference between fixing this in a minute and giving up on it.
 function hintFor(message) {
   const m = String(message).toLowerCase();
   if (m.includes("room id") || m.includes("not found") || m.includes("offline") || m.includes("isn't online")
       || m.includes("not online")) {
-    return `@${CFG.user} ยังไม่ได้ไลฟ์อยู่ หรือชื่อช่องผิด — กด "ไปไลฟ์" ใน TikTok ให้ขึ้นสถานะ LIVE จริงก่อน`;
+    return [`@${CFG.user} ยังไม่ได้ไลฟ์อยู่ หรือชื่อช่องผิด — กด "ไปไลฟ์" ใน TikTok ให้ขึ้นสถานะ LIVE จริงก่อน`];
   }
-  if (m.includes("sign") || m.includes("rate") || m.includes("429") || m.includes("euler")) {
-    return "ตัวเซ็นคำขอ (eulerstream) ปฏิเสธ/ติดลิมิต — รอสักครู่แล้วลองใหม่ หรือขอคีย์ฟรีที่ eulerstream.com แล้วรันด้วย --sign-key <คีย์>";
+  if (m.includes("business plan") || m.includes("sign") || m.includes("euler")) {
+    return CFG.signKey
+      ? ["ตัวเซ็นคำขอ (eulerstream) ปฏิเสธคีย์ที่ใส่มา หรือโควตาวันนี้หมด — เช็คที่ eulerstream.com/dashboard"]
+      : [
+          "ต้องมีคีย์ของ eulerstream ถึงจะต่อไลฟ์ได้ (ไม่มีคีย์ = ถูกปฏิเสธว่าต้อง Business plan)",
+          "สมัครฟรีที่ https://www.eulerstream.com — แพลน Community $0 ตลอด 2,500 requests/วัน",
+          "แล้วเอาคีย์ไปใส่บรรทัด TIKTOK_SIGN_KEY= ในไฟล์ live.env จากนั้นเปิดสะพานใหม่",
+        ];
   }
-  return "ถ้าเน็ตปกติและช่องไลฟ์อยู่จริง ลองรันด้วย --dump เพื่อดูรายละเอียด";
+  if (m.includes("rate") || m.includes("429") || m.includes("quota")) {
+    return ["โควตาของ eulerstream หมดชั่วคราว — รอแล้วลองใหม่ หรืออัปเกรดแพลน"];
+  }
+  return ["ถ้าเน็ตปกติและช่องไลฟ์อยู่จริง ลองรันด้วย --dump เพื่อดูรายละเอียด"];
 }
 
 function retry(conn) {
@@ -511,6 +527,9 @@ server.listen(CFG.port, CFG.host, () => {
   if (PUSH) {
     log(`  push -> universe ${UNIVERSE || "(ไม่ได้ตั้ง!)"} topic ${TOPIC}` + (APIKEY ? "" : "  (ไม่มี API key!)"));
     if (!UNIVERSE || !APIKEY) log("  ** push จะไม่ทำงาน: ต้องมีทั้ง ROBLOX_UNIVERSE_ID และ ROBLOX_API_KEY **");
+  }
+  if (!CFG.mock && !has("idle")) {
+    log("  คีย์ eulerstream: " + (CFG.signKey ? "มี" : "ไม่มี — ต่อไลฟ์ไม่ได้ ดูวิธีในไฟล์ live.env.example"));
   }
 });
 
