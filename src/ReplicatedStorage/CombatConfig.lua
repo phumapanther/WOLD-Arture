@@ -229,7 +229,11 @@ CombatConfig.Sounds = {
 		cast = "rbxassetid://85793400851408",  -- Greatsword_swing
 		hit = "rbxassetid://106963599234961",  -- Greatsword_hit
 		hitVolume = 0.045, -- 50% of the sword's 0.09, per the user
-		hitSeconds = 0.9,
+		-- The clip is 5.85s long (measured) and it is allowed to finish. Every other weapon is cut short so
+		-- that consecutive blows do not stack into a drone -- but the greatsword swings once every two
+		-- seconds, so there is nothing here to stack, and cutting it at 0.9 chopped off the whole tail of
+		-- the impact.
+		hitSeconds = 6,
 	},
 	-- The tools borrow the sword's steel entirely. Without an entry here they would fall back to Fists, and
 	-- an axe landing with a bare-knuckle thud is worse than it sharing a sound it plausibly makes.
