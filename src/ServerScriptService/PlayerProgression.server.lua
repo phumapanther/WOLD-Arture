@@ -8,6 +8,7 @@ local Progression = require(game.ServerScriptService.Progression)
 local Classes = require(game.ServerScriptService.Classes)
 local Vitals = require(game.ServerScriptService.Vitals)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
+local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 
 if ServerConfig.IsLobby then return end
 
@@ -17,18 +18,34 @@ Vitals.BindProgression(Progression)
 -- on progression.
 ProfileAccess.SerializeProgression = Progression.Serialize
 
-Players.PlayerAdded:Connect(function(player)
-	-- Wait briefly for the profile session, so a returning player is restored at their saved level rather than
-	-- flashing level 1. If it never arrives (a failed load) they start fresh, which is the safe direction.
-	local saved
-	for _ = 1, 40 do
-		local data = ProfileAccess.Get(player)
-		if data then
-			saved = data.Progression
-			break
-		end
-		task.wait(0.1)
-	end
+local Inventory = require(game.ServerScriptService.Inventory)
+local Remotes = require(game.ReplicatedStorage.Remotes)
+
+-- The item that buys one death. Named here rather than read from a config table because there is exactly one
+-- of them and this is the only code that cares.
+local CHARM_ITEM = "GuardianCharm"
+
+-- Spends one charm if the player is carrying one. Returns true when the death was paid for, which the caller
+-- reads as "skip both resets".
+--
+-- Removing it FIRST and only then reporting success means a failed removal cannot hand out a free life: if
+-- the slot has gone between finding it and taking it, nothing is spent and nothing is saved.
+local function spendCharm(player)
+	local index = Inventory.FindSlotById(player, CHARM_ITEM)
+	if not index then return false end
+	if not Inventory.RemoveFromSlot(player, index, 1) then return false end
+
+	Remotes.SocialNotify:FireClient(player, "info",
+		"เครื่องรางคุ้มครองแตก — เลเวลและอาชีพของคุณปลอดภัย")
+	return true
+end
+
+PlayerJoin.Each(function(player)
+	-- Wait for the profile session, so a returning player is restored at their saved level rather than flashing
+	-- level 1. No deadline: giving up early started them at level 1, and the autosave then wrote THAT down as
+	-- their level. See ProfileAccess.Wait.
+	local data = ProfileAccess.Wait(player)
+	local saved = data and data.Progression
 	Progression.Add(player, saved)
 
 	-- Shared by CharacterAdded and by a character that already exists when this runs. Missing the second case
@@ -40,6 +57,11 @@ Players.PlayerAdded:Connect(function(player)
 		-- Vitals.Kill because a player can die by paths that never call it — drowning, the void, falling, or
 		-- being killed by another player — and each of those must cost the level too.
 		humanoid.Died:Connect(function()
+			-- The charm is spent BEFORE either reset runs, and spending it cancels both. Checked here rather
+			-- than inside ResetOnDeath so the two systems stay ignorant of inventory -- and so there is one
+			-- place that decides what a death costs, which is the whole reason both resets live on this hook.
+			if spendCharm(player) then return end
+
 			Progression.ResetOnDeath(player)
 			-- The class goes with the level, and for the same reason: the card is offered at "level 5 with no
 			-- basic class", so a player who kept theirs through a death would never be asked again. Hooked

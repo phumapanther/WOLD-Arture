@@ -26,6 +26,8 @@ ChestConfig.MinEach, ChestConfig.MaxEach = 5, 20
 ChestConfig.SingleItems = {
 	Sword = true, Greatsword = true, Bow = true, Staff = true, Spellbook = true, Pistol = true,
 	CarKey = true, BoatKey = true, AirshipKey = true,
+	-- One per chest. It does not stack in the bag either, so a roll of fourteen would be thirteen wasted.
+	GuardianCharm = true,
 }
 
 --------------------------------------------------------------------------------
@@ -63,6 +65,12 @@ ChestConfig.Pools = {
 	key = {
 		"CarKey",
 	},
+	-- The charm that survives a death. Its own category rather than an entry in `weapon`, so it can be given
+	-- the same weight as a weapon without diluting the weapon pool -- and so it can be left out of the other
+	-- three grades entirely, which is what "gold chests only" means.
+	charm = {
+		"GuardianCharm",
+	},
 }
 
 --------------------------------------------------------------------------------
@@ -90,7 +98,8 @@ ChestConfig.Chests = {
 		colour = Color3.fromRGB(226, 184, 78),
 		-- The user's five-way split. Weapons and keys are the 3 and the 2: rare enough that a gold chest is
 		-- usually still a pile of materials, which is what keeps the rare outcome worth opening one for.
-		weights = { legal = 50, illegal = 30, usable = 15, ammo = 3, weapon = 2, key = 2 },
+		-- charm sits at the weapon's weight, per the user: as likely as pulling a weapon, and only here.
+		weights = { legal = 50, illegal = 30, usable = 15, ammo = 3, weapon = 2, key = 2, charm = 2 },
 	},
 }
 
@@ -102,6 +111,7 @@ ChestConfig.RareCategories = {
 	weapon = true,
 	key = true,
 	ammo = true,
+	charm = true,
 }
 
 -- Every grade, in the order they should be offered. Used by the admin command's argument list.

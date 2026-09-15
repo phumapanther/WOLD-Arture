@@ -412,15 +412,37 @@ end
 --
 -- Doubling the ODDS rather than rolling twice is deliberate: two rolls at 5% is not 10%, and the user asked
 -- for the rate to double. A doubled chance is also clamped below, because a 60% drop doubled is not 120%.
+-- What a boss may leave behind on top of its own kind's drops. Held here rather than in each monster's
+-- config because a boss IS one of those monsters -- it shares their table -- so the extra has to hang off
+-- the boss flag, not off the kind.
+--
+-- `noScale` keeps the boss's own x2 multipliers off this one entry: the doubling exists to make a boss's
+-- ORDINARY loot worth the fight, and applying it here would mean 50% odds and two charms per kill. One charm
+-- is one death survived, and handing out two at once is a different item.
+local BOSS_EXTRA = { item = "GuardianCharm", min = 1, max = 1, chance = 0.25, noScale = true }
+
 local function drop(model, config, killer, loot)
 	if not killer or not killer.Parent then return end
 	local amountScale = (loot and loot.amount) or 1
 	local chanceScale = (loot and loot.chance) or 1
-	for _, entry in ipairs(config.drops or {}) do
+
+	-- A boss rolls for the charm as well. Built as a copy of the kind's list rather than by writing into it:
+	-- `config.drops` is the shared table every monster of that kind reads, and appending to it would give the
+	-- charm to the ordinary ones too, permanently.
+	local drops = config.drops or {}
+	if loot and loot.boss then
+		local extended = table.clone(drops)
+		table.insert(extended, BOSS_EXTRA)
+		drops = extended
+	end
+
+	for _, entry in ipairs(drops) do
 		-- `chance` is optional: without one a drop is certain, which is what every material drop is. With
 		-- one it is rolled per kill, which is what makes a weapon worth hunting for rather than a reward
 		-- for showing up.
-		local odds = entry.chance and math.min(1, entry.chance * chanceScale) or nil
+		local entryChance = entry.noScale and 1 or chanceScale
+		local entryAmount = entry.noScale and 1 or amountScale
+		local odds = entry.chance and math.min(1, entry.chance * entryChance) or nil
 		if not odds or math.random() < odds then
 			-- `oneOf` picks a single item from a list, so a rare roll gives ONE weapon rather than all of
 			-- them at once. `item` names a specific thing; the two are alternatives.
@@ -428,7 +450,7 @@ local function drop(model, config, killer, loot)
 			if entry.oneOf and #entry.oneOf > 0 then
 				id = entry.oneOf[math.random(1, #entry.oneOf)]
 			end
-			local count = math.random(entry.min or 1, entry.max or 1) * amountScale
+			local count = math.random(entry.min or 1, entry.max or 1) * entryAmount
 			if Inventory.AddItem(killer, id, count) then
 				local item = ItemCatalog.Get(id)
 				local name = item and item.name or id
@@ -652,7 +674,7 @@ local function spawnHunter(kind, config, victim, origin, distance, boss)
 				-- A boss drops twice as much and rolls its rare drops at twice the odds, per the user. Stamped
 				-- at spawn like damageScale, so what a monster is worth is decided when it appears rather than
 				-- read off a table that may have changed by the time it dies.
-				loot = boss and { amount = 2, chance = 2 } or nil,
+				loot = boss and { amount = 2, chance = 2, boss = true } or nil,
 				-- Walk and swing. nil for a slime or anything else with no rig to drive.
 				tracks = loadMobTracks(model, config),
 				-- No spawner: nothing counts it, and nothing brings it back.

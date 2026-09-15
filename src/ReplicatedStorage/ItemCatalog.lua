@@ -263,6 +263,20 @@ ItemCatalog.Items = {
 		kind = "junk", weight = 5, stackSize = 8, value = 0, sellable = false },
 
 	--------------------------------------------------------------------------
+	-- The one thing that survives a death.
+	--
+	-- Dying resets the level to 1 and the class to Villager. Carrying this spends ONE of them to keep both,
+	-- once. It does not stack: two of them are two separate deaths survived, and a stack would let a single
+	-- slot hold a dozen lives, which is the opposite of what makes it worth finding.
+	--------------------------------------------------------------------------
+	GuardianCharm = {
+		-- ผูกไว้ชั่วคราวกับไอคอน Insignia จนกว่าจะแปลง decal 135772507432405 เป็น image id ได้
+		icon = "rbxassetid://130387196273181",
+		name = "เครื่องรางคุ้มครอง", kind = "junk",
+		weight = 0.5, stackSize = 1, value = 0, sellable = false,
+	},
+
+	--------------------------------------------------------------------------
 	-- Treasure chests, as things you carry. Using one drops a chest near you; opening that chest is where
 	-- the loot is. They are consumables whose effect is "a chest appears", which is why `use.stat` names the
 	-- chest tier rather than a vital.
