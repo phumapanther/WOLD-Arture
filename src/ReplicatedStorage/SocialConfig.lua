@@ -93,8 +93,10 @@ SocialConfig.Screens = {
 	-- Reads the shop's live prices without walking to the counter. Read-only: selling is still done at the
 	-- shopkeeper, and the screen exists so the walk can be decided on before it is made.
 	{ id = "market", name = "ราคากลาง", glyph = "\226\154\150", ready = true },
-	{ id = "callGuard", name = "เรียกทหารยาม", glyph = "\240\159\155\161", ready = false,
-		notice = "ปุ่มฉุกเฉินจะใช้ได้เมื่อระบบอาชีพเปิด" },
+	-- Poses. This replaced the "call a guard" button at the user's request. That one was a placeholder
+	-- waiting on a system that already exists in another form -- a guard is summoned by being one -- while
+	-- this is the thing a roleplay game is actually short of. Handed off like the map: see SocialGui.
+	{ id = "emotes", name = "ท่าทาง", glyph = "\240\159\153\140", ready = true },
 	{ id = "callPriest", name = "เรียกนักบวช", glyph = "\226\156\154", ready = false,
 		notice = "ปุ่มฉุกเฉินจะใช้ได้เมื่อระบบอาชีพเปิด" },
 	{ id = "callArchitect", name = "เรียกช่างสร้าง", glyph = "\240\159\148\168", ready = false,
@@ -129,5 +131,18 @@ SocialConfig.BatteryMin = 0.35
 
 -- Voice is deliberately not a screen of its own: it lives inside the friends screen, on a conversation.
 SocialConfig.VoiceNotice = "โทรจิตยังไม่เปิดใช้งาน — ต้องเปิดระบบเสียงของ Roblox และยืนยันอายุก่อน"
+
+--------------------------------------------------------------------------------
+-- The community, outside the game.
+--
+-- Shared rather than server-only because there is nothing to protect: it is a public invite, and the client
+-- has to be able to draw it on screen anyway. Changing it here changes the sign, the panel and anything
+-- added later all at once.
+--------------------------------------------------------------------------------
+SocialConfig.DiscordInvite = "https://discord.gg/dDj9UQ4aNE"
+
+-- What the [E] on the town sign says.
+SocialConfig.DiscordPrompt = "ดิสคอร์ด"
+SocialConfig.DiscordObject = "ป้ายเมืองบราสเฮเวน"
 
 return SocialConfig

@@ -122,6 +122,9 @@ local EVENTS = {
 	-- vault, and for the same reason: the client names a row and an action, never a value the server would
 	-- have to believe. Every handler re-checks the roster, because a RemoteEvent is reachable by anyone.
 	"RequestAdminPanel", "AdminPanelData", "RequestAdminAction",
+	-- The town sign's Discord invite. One direction: the server says "show them the panel", and the address
+	-- itself lives in SocialConfig where the client can read it -- nothing about it is secret.
+	"ShowDiscord",
 	-- Weather. One way only: the server decides what the sky is doing and the client draws it. Carries the
 	-- kind now, the kind arriving, and how far along the change is -- everything else the client reads out
 	-- of the shared WeatherConfig rather than being told.
