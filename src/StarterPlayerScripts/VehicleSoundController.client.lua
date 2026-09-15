@@ -19,7 +19,6 @@ if workspace:GetAttribute("IsLobby") then return end
 
 local Config = require(game.ReplicatedStorage.Vehicle.Config)
 local Net = require(game.ReplicatedStorage.Vehicle.Net)
-local net = Net.get()
 
 local SOUND = Config.Sound
 if not (SOUND and SOUND.enabled) then return end
@@ -185,14 +184,33 @@ RunService.Heartbeat:Connect(function(dt)
 end)
 
 -- ---------------------------------------------------------------- หวูด
-net.Signal.OnClientEvent:Connect(function(msg)
-  if type(msg) ~= "table" or msg.action ~= "Horn" then return end
-  for model, rig in pairs(rigs) do
-    if model:GetAttribute("Plate") == msg.plate and rig.horn then
-      rig.horn.PlaybackSpeed = rig.conf.horn.pitch or 0.4
-      rig.horn.Volume = (rig.conf.horn.volume or 0.8) * (SOUND.master or 0.6)
-      rig.horn.TimePosition = 0
-      rig.horn:Play()
-    end
+--
+-- **Net.get() ต้องอยู่ตรงนี้ ห้ามย้ายขึ้นไปบนหัวไฟล์เด็ดขาด**
+--
+-- มันรอโฟลเดอร์ VehicleNet นาน 30 วินาทีแล้ว `assert` ทิ้งถ้าไม่มา ซึ่งจะ **ฆ่าทั้งสคริปต์** — เดิมเรียกไว้
+-- บรรทัดที่ 22 ก่อนโค้ดเสียงทั้งหมด ผลคือเสียงเครื่อง เสียงบูสต์ เสียงแตร ไม่ดังสักอย่างเดียว ทั้งที่ไฟล์
+-- เสียงกับ id ถูกต้องหมด
+--
+-- โฟลเดอร์นั้นเซิร์ฟเวอร์สร้างตอนระบบพาหนะบูต ถ้าเซิร์ฟเวอร์บูตช้ากว่าไคลเอนต์ 30 วินาที (หรือระบบพาหนะ
+-- error ตอนบูต) ระบบเสียงก็ตายทั้งรอบ
+--
+-- ย้ายมาไว้ใน task.spawn ท้ายไฟล์แทน: เสียงเครื่องยนต์ทำงานทันทีโดยไม่ต้องรออะไร ส่วนแตรเป็นของแถมที่
+-- ต่อเมื่อเน็ตพร้อม ถ้าไม่พร้อมก็เสียแค่แตร ไม่ใช่เสียทั้งระบบ
+task.spawn(function()
+  local ok, net = pcall(Net.get)
+  if not ok or not net then
+    warn("[VehicleSound] ต่อ VehicleNet ไม่ได้ — เสียงแตรจะไม่ดัง (เสียงเครื่องยนต์ยังทำงานปกติ)")
+    return
   end
+  net.Signal.OnClientEvent:Connect(function(msg)
+    if type(msg) ~= "table" or msg.action ~= "Horn" then return end
+    for model, rig in pairs(rigs) do
+      if model:GetAttribute("Plate") == msg.plate and rig.horn then
+        rig.horn.PlaybackSpeed = rig.conf.horn.pitch or 0.4
+        rig.horn.Volume = (rig.conf.horn.volume or 0.8) * (SOUND.master or 0.6)
+        rig.horn.TimePosition = 0
+        rig.horn:Play()
+      end
+    end
+  end)
 end)
