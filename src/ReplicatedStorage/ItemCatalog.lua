@@ -249,17 +249,23 @@ ItemCatalog.Items = {
 	-- Car parts. What a failed key-craft leaves you holding. Six of them, and a full set trades for a key
 	-- outright -- so a run of bad luck at the bench still walks towards the same door, just the long way.
 	--------------------------------------------------------------------------
-	Fueltank = { icon = "rbxassetid://124722881490009", -- Fueltank (ภาพจริงใน decal 112029627599215) name = "ถังน้ำมัน",
+	Fueltank = { icon = "rbxassetid://124722881490009", name = "ถังน้ำมัน",
+		-- Fueltank (ภาพจริงใน decal 112029627599215)
 		kind = "junk", weight = 4, stackSize = 8, value = 0, sellable = false },
-	GearCar = { icon = "rbxassetid://130688996186435", -- GearCar (ภาพจริงใน decal 120419184642622) name = "เกียร์รถ",
+	GearCar = { icon = "rbxassetid://130688996186435", name = "เกียร์รถ",
+		-- GearCar (ภาพจริงใน decal 120419184642622)
 		kind = "junk", weight = 3, stackSize = 8, value = 0, sellable = false },
-	Mattress = { icon = "rbxassetid://132598216306109", -- Mattress (ภาพจริงใน decal 123768545191804) name = "เบาะรถ",
+	Mattress = { icon = "rbxassetid://132598216306109", name = "เบาะรถ",
+		-- Mattress (ภาพจริงใน decal 123768545191804)
 		kind = "junk", weight = 3, stackSize = 8, value = 0, sellable = false },
-	Pipe = { icon = "rbxassetid://74455919915558", -- Pipe (ภาพจริงใน decal 127934134379642) name = "ท่อไอเสีย",
+	Pipe = { icon = "rbxassetid://74455919915558", name = "ท่อไอเสีย",
+		-- Pipe (ภาพจริงใน decal 127934134379642)
 		kind = "junk", weight = 2, stackSize = 8, value = 0, sellable = false },
-	Steering = { icon = "rbxassetid://106026943102551", -- Steering (ภาพจริงใน decal 138083283670733) name = "พวงมาลัย",
+	Steering = { icon = "rbxassetid://106026943102551", name = "พวงมาลัย",
+		-- Steering (ภาพจริงใน decal 138083283670733)
 		kind = "junk", weight = 2.5, stackSize = 8, value = 0, sellable = false },
-	Wheel = { icon = "rbxassetid://80535428552755", -- Wheel (ภาพจริงใน decal 96711288685556) name = "ล้อรถ",
+	Wheel = { icon = "rbxassetid://80535428552755", name = "ล้อรถ",
+		-- Wheel (ภาพจริงใน decal 96711288685556)
 		kind = "junk", weight = 5, stackSize = 8, value = 0, sellable = false },
 
 	--------------------------------------------------------------------------
@@ -281,16 +287,20 @@ ItemCatalog.Items = {
 	-- the loot is. They are consumables whose effect is "a chest appears", which is why `use.stat` names the
 	-- chest tier rather than a vital.
 	--------------------------------------------------------------------------
-	Chest_Wood = { icon = "rbxassetid://109904396721698", -- Chest_Wood (ภาพจริงใน decal 101268926197446) name = "หีบไม้",
+	Chest_Wood = { icon = "rbxassetid://109904396721698", name = "หีบไม้",
+		-- Chest_Wood (ภาพจริงใน decal 101268926197446)
 		kind = "consumable", weight = 6, stackSize = 8, value = 0, sellable = false,
 		use = { stat = "chest", amount = 1, tier = "Chest_Wood" } },
-	Chest_Ironbound = { icon = "rbxassetid://78626070188001", -- Chest_Ironbound (ภาพจริงใน decal 135086673189833) name = "หีบตีเหล็ก",
+	Chest_Ironbound = { icon = "rbxassetid://78626070188001", name = "หีบตีเหล็ก",
+		-- Chest_Ironbound (ภาพจริงใน decal 135086673189833)
 		kind = "consumable", weight = 8, stackSize = 8, value = 0, sellable = false,
 		use = { stat = "chest", amount = 1, tier = "Chest_Ironbound" } },
-	Chest_Silver = { icon = "rbxassetid://81887415402473", -- Chest_Silver (ภาพจริงใน decal 70684618691110) name = "หีบเงิน",
+	Chest_Silver = { icon = "rbxassetid://81887415402473", name = "หีบเงิน",
+		-- Chest_Silver (ภาพจริงใน decal 70684618691110)
 		kind = "consumable", weight = 8, stackSize = 8, value = 0, sellable = false,
 		use = { stat = "chest", amount = 1, tier = "Chest_Silver" } },
-	Chest_Gold = { icon = "rbxassetid://110326842858537", -- Chest_Gold (ภาพจริงใน decal 134759403444063) name = "หีบทอง",
+	Chest_Gold = { icon = "rbxassetid://110326842858537", name = "หีบทอง",
+		-- Chest_Gold (ภาพจริงใน decal 134759403444063)
 		kind = "consumable", weight = 10, stackSize = 8, value = 0, sellable = false,
 		use = { stat = "chest", amount = 1, tier = "Chest_Gold" } },
 
