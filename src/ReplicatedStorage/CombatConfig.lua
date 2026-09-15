@@ -176,6 +176,12 @@ CombatConfig.Weapons = {
 		idleTimeout = 4,
 		attacks = {
 			{ animation = "rbxassetid://103928195222614", damage = 14, windup = 0.2, active = 0.05, recovery = 0.4, range = 0, -- Staff_Swing
+				-- The staff's beam all but roots whoever it catches: 90% slower, per the user, which is the
+				-- factor 0.1 -- `effectFactor` is what they KEEP, not what they lose.
+				--
+				-- Three seconds at a tenth speed is close to a stun, so this is the staff's whole identity:
+				-- it does the least damage of the four casters and decides where the fight happens.
+				effect = "slow", effectSeconds = 3, effectFactor = 0.1,
 				-- A beam, not a travelling shot: it reaches its full length at once and fades.
 				projectile = { kind = "beam", length = 22, life = 0.25, size = Vector3.new(0.5, 0.5, 1),
 					color = Color3.fromRGB(120, 236, 180), material = Enum.Material.Neon } },

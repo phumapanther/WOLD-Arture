@@ -49,14 +49,36 @@ end
 -- Some attacks carry a rider beyond damage: an arrow floors whoever it hits, dark magic slows them. The
 -- rider lives on the attack in CombatConfig so every hit path resolves it the same way. A hit that puts
 -- someone down skips it -- they are already on the floor, and a knockdown would fight the crawl for the body.
+-- One rider, applied by name. Split out from applyEffect so an attack can carry TWO of them -- the spellbook
+-- both stuns and slows, and an if/elseif chain can only ever deliver the first.
+local function applyOneEffect(name, victim, seconds, factor)
+	if name == "knockdown" then
+		StatusEffects.Knockdown(victim, seconds)
+	elseif name == "slow" then
+		StatusEffects.Slow(victim, seconds, factor)
+	elseif name == "dizzy" then
+		StatusEffects.Dizzy(victim, seconds)
+	end
+end
+
+-- How long this attack stuns, whichever rider carries it. Monsters have no Humanoid state to knock down or
+-- slow, so a stun is the only rider they can take -- and it has to be found in either slot, or the spellbook
+-- would stun players and leave monsters untouched.
+local function stunSeconds(attack)
+	if attack.effect == "dizzy" then return attack.effectSeconds end
+	if attack.effect2 == "dizzy" then return attack.effect2Seconds end
+	return nil
+end
+
 local function applyEffect(attack, victim)
-	if not attack.effect or Vitals.IsDowned(victim) then return end
-	if attack.effect == "knockdown" then
-		StatusEffects.Knockdown(victim, attack.effectSeconds)
-	elseif attack.effect == "slow" then
-		StatusEffects.Slow(victim, attack.effectSeconds, attack.effectFactor)
-	elseif attack.effect == "dizzy" then
-		StatusEffects.Dizzy(victim, attack.effectSeconds)
+	if Vitals.IsDowned(victim) then return end
+	if attack.effect then
+		applyOneEffect(attack.effect, victim, attack.effectSeconds, attack.effectFactor)
+	end
+	-- A second, optional rider with its own timing. `effect2` rather than a list because exactly one attack
+	-- needs two and a list would make every other weapon's config a table of one.
+	if attack.effect2 then
+		applyOneEffect(attack.effect2, victim, attack.effect2Seconds, attack.effect2Factor)
 	end
 end
 
@@ -301,8 +323,9 @@ local function fireProjectile(player, attack, aim)
 			if distanceToBody(position, mob) <= CombatConfig.ProjectileHitRadius then
 				if MobAccess.Damage and MobAccess.Damage(mob, dealt, player) then
 					playHitSound(mob, player)
-					if attack.effect == "dizzy" and MobAccess.Stun then
-						MobAccess.Stun(mob, attack.effectSeconds)
+					local stun = stunSeconds(attack)
+					if stun and MobAccess.Stun then
+						MobAccess.Stun(mob, stun)
 					end
 				end
 			end
@@ -383,8 +406,9 @@ local function resolveHit(player, state, attack)
 				playHitSound(mob, player)
 				-- The greatsword's rider. A monster has no Humanoid state to knock down, so a stun is the
 				-- monster-shaped version of the stars a player sees.
-				if attack.effect == "dizzy" and MobAccess.Stun then
-					MobAccess.Stun(mob, attack.effectSeconds)
+				local stun = stunSeconds(attack)
+				if stun and MobAccess.Stun then
+					MobAccess.Stun(mob, stun)
 				end
 			end
 		end

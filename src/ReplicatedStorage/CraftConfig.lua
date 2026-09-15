@@ -78,8 +78,8 @@ CraftConfig.Recipes = {
 	-- a pistol for twenty-five.
 	----------------------------------------------------------------------------
 	{ id = "Sword", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 2 } },
-	{ id = "Staff", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 10 } },
-	{ id = "Spellbook", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 10 } },
+	{ id = "Staff", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 15 } },
+	{ id = "Spellbook", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 15 } },
 	{ id = "Bow", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 15 } },
 	{ id = "Pistol", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 25 } },
 
