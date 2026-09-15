@@ -203,14 +203,14 @@ end
 -- ใส่แค่ตัวเลข ไม่ต้องใส่ rbxassetid:// -- ช่องไหนยังว่าง ตัวนั้นใช้เสียงสำรองของ Studio ต่อไป
 -- เกมจะไม่พังถ้าใส่ไม่ครบ เสียงที่ใส่แล้วจะดังทันที
 local SOUND_IDS = {
-  engine_drone   = "", -- assets/sounds/engine_drone.mp3   หม้อไอน้ำ ต่อเนื่อง วนลูป (ทั้งสามชนิด)
-  engine_wash    = "", -- assets/sounds/engine_wash.mp3    น้ำ/ลมปะทะ วนลูป (เรือ + เรือเหาะ)
-  engine_chug_a  = "", -- assets/sounds/engine_chug_a.mp3  จังหวะลูกสูบ
-  engine_chug_b  = "", -- assets/sounds/engine_chug_b.mp3  จังหวะสลับ เสียงต่ำกว่านิดหนึ่ง
-  engine_vent    = "", -- assets/sounds/engine_vent.mp3    ไอน้ำที่ปล่อยตอนผ่อนคันเร่ง
-  horn_car       = "", -- assets/sounds/horn_car.mp3
-  horn_boat      = "", -- assets/sounds/horn_boat.mp3
-  horn_airship   = "", -- assets/sounds/horn_airship.mp3
+  engine_drone   = "140045171848696", -- assets/sounds/engine_drone.mp3   หม้อไอน้ำ ต่อเนื่อง วนลูป (ทั้งสามชนิด)
+  engine_wash    = "110922098029773", -- assets/sounds/engine_wash.mp3    น้ำ/ลมปะทะ วนลูป (เรือ + เรือเหาะ)
+  engine_chug_a  = "87245115520068", -- assets/sounds/engine_chug_a.mp3  จังหวะลูกสูบ
+  engine_chug_b  = "133061346172196", -- assets/sounds/engine_chug_b.mp3  จังหวะสลับ เสียงต่ำกว่านิดหนึ่ง
+  engine_vent    = "124345918675002", -- assets/sounds/engine_vent.mp3    ไอน้ำที่ปล่อยตอนผ่อนคันเร่ง
+  horn_car       = "129823389217678", -- assets/sounds/horn_car.mp3
+  horn_boat      = "90586467914948", -- assets/sounds/horn_boat.mp3
+  horn_airship   = "71203583454962", -- assets/sounds/horn_airship.mp3
 }
 
 -- คืน id ที่อัปแล้วถ้ามี ถ้ายังว่างก็คืนเสียงสำรองของ Studio ตัวเดิม
