@@ -31,6 +31,7 @@ end
 -- ต้องไปกด "ให้สิทธิ์เสียงกับเกมนี้" ที่ Creator Dashboard เป็นรายไฟล์ (ดู assets/sounds/README.md)
 
 local rigs = {}                                  -- model -> rig
+local warned = {}                                -- model -> เตือนไปแล้ว (กันลูปพ่นซ้ำทุกครึ่งวินาที)
 
 local function lerp(a, b, t) return a + (b - a) * t end
 local function pick(pair, t)
@@ -56,12 +57,16 @@ local function build(model)
   local conf = vtype and SOUND.types[vtype]
   local hull = model.PrimaryPart or model:FindFirstChild("Hull")
   if not (conf and hull) then
-    -- เงียบแบบเดิมคือเหตุผลที่ "รถไม่มีเสียง" หาสาเหตุไม่เจอ: ไม่มีอะไรบอกเลยว่าระบบเสียงไม่ได้ทำงาน
-    -- หรือทำงานแล้วแต่เบา ถ้าบรรทัดนี้ขึ้นใน Output ตอนขับ แปลว่าปัญหาอยู่ที่โมเดล ไม่ใช่ที่ไฟล์เสียง
-    warn(("[VehicleSound] ไม่ได้สร้างเสียงให้ %s — VehicleType=%s (รู้จัก=%s) hull=%s")
-      :format(model.Name, tostring(vtype), tostring(conf ~= nil), tostring(hull ~= nil)))
+    -- ยังไม่พร้อม ไม่ใช่พัง: ลูปข้างล่างถามใหม่ทุกครึ่งวินาที และ Attribute กับชิ้นส่วนอาจ stream มาไม่พร้อมกัน
+    -- เตือนครั้งเดียวต่อโมเดล ไม่งั้นจะท่วม Output ทุกครึ่งวินาที
+    if not warned[model] then
+      warned[model] = true
+      warn(("[VehicleSound] ยังสร้างเสียงให้ %s ไม่ได้ — VehicleType=%s (รู้จัก=%s) hull=%s")
+        :format(model.Name, tostring(vtype), tostring(conf ~= nil), tostring(hull ~= nil)))
+    end
     return
   end
+  warned[model] = nil
 
   local rig = { model = model, hull = hull, conf = conf, nextPulse = 0, turn = 1, lastThrottle = 0, pulses = {} }
   if conf.drone then rig.drone = newSound(hull, conf.drone.id, true) end
@@ -117,22 +122,36 @@ end
 -- ภายในไม่กี่วินาทีหลังกด Play เสมอ
 --
 -- ไม่มีเส้นตายอีกแล้ว: ถ้ายังไม่มีโฟลเดอร์ก็นั่งฟัง ChildAdded ไว้ เกิดเมื่อไหร่ก็เริ่มเมื่อนั้น
-local function beginWatching()
-  local folder = workspace:FindFirstChild(Config.Folder)
-  if folder then
-    watchFolder(folder)
-    return
-  end
-  local conn
-  conn = workspace.ChildAdded:Connect(function(child)
-    if child.Name == Config.Folder then
-      conn:Disconnect()
-      watchFolder(child)
-    end
-  end)
-end
+-- **ถามซ้ำทุกครึ่งวินาที ไม่ใช่ผูก event ครั้งเดียว**
+--
+-- เพลสนี้เปิด StreamingEnabled ซึ่งแปลว่าโฟลเดอร์ ตัวโมเดล และ Attribute ของมันมาถึงไคลเอนต์คนละรอบ ห่างกัน
+-- ได้เป็นวินาที และเป็นคนละลำดับทุกครั้ง ของเดิมผูก `workspace.ChildAdded` ครั้งเดียว ถ้าโฟลเดอร์มาถึงก่อน
+-- สคริปต์จะรัน (หรือ event ไม่ยิงเพราะ streaming) ก็จะไม่มีอะไรมาปลุกมันอีกเลยทั้งรอบ — เสียงเงียบสนิท
+--
+-- **ใน Studio ไม่เจอ** เพราะทุกอย่างอยู่ในเครื่องเดียวกันและมาถึงพร้อมกันเสมอ นี่คือเหตุผลที่ Studio มีเสียง
+-- แต่เกมจริงไม่มี
+--
+-- บทเรียนเดียวกับนาฬิกาฟาร์มบนมือถือ (ดู CLAUDE.md): ทุกเวอร์ชันของ "ผูกครั้งเดียวตอนต้น" จะแพ้จังหวะกับ
+-- บางโหนดเสมอ และเป็นคนละโหนดทุกรอบ ลูปที่ถามใหม่เรื่อยๆ ไม่มีจังหวะให้แพ้
+local watched = nil
 
-task.spawn(beginWatching)
+task.spawn(function()
+  while true do
+    local folder = workspace:FindFirstChild(Config.Folder)
+    if folder and folder ~= watched then
+      watched = folder
+      watchFolder(folder)
+    end
+    -- โมเดลที่ stream เข้ามาทีหลัง (หรือมาถึงตอนที่ยังไม่มี VehicleType) ก็ถูกเก็บในรอบถัดไป
+    -- build() กันการสร้างซ้ำอยู่แล้วด้วย `if rigs[model] then return end`
+    if watched then
+      for _, m in ipairs(watched:GetChildren()) do
+        if not rigs[m] then build(m) end
+      end
+    end
+    task.wait(0.5)
+  end
+end)
 
 -- ---------------------------------------------------------------- ลูปหลัก
 RunService.Heartbeat:Connect(function(dt)
