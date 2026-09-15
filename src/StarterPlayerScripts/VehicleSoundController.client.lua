@@ -49,7 +49,13 @@ local function build(model)
   local vtype = model:GetAttribute("VehicleType")
   local conf = vtype and SOUND.types[vtype]
   local hull = model.PrimaryPart or model:FindFirstChild("Hull")
-  if not (conf and hull) then return end
+  if not (conf and hull) then
+    -- เงียบแบบเดิมคือเหตุผลที่ "รถไม่มีเสียง" หาสาเหตุไม่เจอ: ไม่มีอะไรบอกเลยว่าระบบเสียงไม่ได้ทำงาน
+    -- หรือทำงานแล้วแต่เบา ถ้าบรรทัดนี้ขึ้นใน Output ตอนขับ แปลว่าปัญหาอยู่ที่โมเดล ไม่ใช่ที่ไฟล์เสียง
+    warn(("[VehicleSound] ไม่ได้สร้างเสียงให้ %s — VehicleType=%s (รู้จัก=%s) hull=%s")
+      :format(model.Name, tostring(vtype), tostring(conf ~= nil), tostring(hull ~= nil)))
+    return
+  end
 
   local rig = { model = model, hull = hull, conf = conf, nextPulse = 0, turn = 1, lastThrottle = 0, pulses = {} }
   if conf.drone then rig.drone = newSound(hull, conf.drone.id, true) end
@@ -59,8 +65,25 @@ local function build(model)
   end
   if conf.horn then rig.horn = newSound(hull, conf.horn.id, false) end
   if conf.vent then rig.vent = newSound(hull, conf.vent.id, false) end
-  if rig.drone then rig.drone:Play() end
-  if rig.wash then rig.wash:Play() end
+  -- เสียงวนลูปสองตัวนี้ต้องเริ่มเล่นทันทีและเล่นค้างไว้ตลอด (ลูปหลักปรับแค่ Volume/PlaybackSpeed)
+  --
+  -- **Play() บนเสียงที่ Roblox ยังโหลดไม่เสร็จจะไม่เกิดอะไรขึ้น และไม่มีการลองใหม่** ไฟล์ engine_drone ยาว
+  -- 2 วินาที กว่าจะโหลดเสร็จก็ผ่านเฟรมนี้ไปแล้ว — และเพราะเสียงเริ่มที่ Volume = 0 เสมอ ความล้มเหลวนี้จึง
+  -- เงียบสนิท ไม่มีอะไรบอก นี่คือสาเหตุที่เสียงเครื่องยนต์ไม่ดังเลยทั้งที่ id ถูกและไฟล์โหลดได้
+  --
+  -- บทเรียนเดียวกับเสียงคราฟ (UiSound.Loop) แก้ด้วยการเล่นซ้ำตอนโหลดเสร็จ ถ้าโหลดเสร็จอยู่แล้วจะไม่ทำงาน
+  local function startLoop(sound)
+    if not sound then return end
+    sound:Play()
+    if not sound.IsLoaded then
+      sound.Loaded:Once(function()
+        -- เช็ค Parent เผื่อพาหนะถูกเก็บไปก่อนเสียงจะโหลดเสร็จ
+        if sound.Parent and not sound.IsPlaying then sound:Play() end
+      end)
+    end
+  end
+  startLoop(rig.drone)
+  startLoop(rig.wash)
   rigs[model] = rig
 end
 
@@ -80,10 +103,30 @@ local function watchFolder(folder)
   folder.ChildRemoved:Connect(drop)
 end
 
-task.spawn(function()
-  local folder = workspace:FindFirstChild(Config.Folder) or workspace:WaitForChild(Config.Folder, 60)
-  if folder then watchFolder(folder) end
-end)
+-- โฟลเดอร์พาหนะถูกสร้างตอน "มีคนเรียกพาหนะคันแรกของเซิร์ฟเวอร์" ไม่ใช่ตอนเซิร์ฟเวอร์สตาร์ต — ซึ่งอาจเป็น
+-- ชั่วโมงหลังผู้เล่นเข้าเกม
+--
+-- **นี่คือสาเหตุที่รถไม่มีเสียงในเกมจริง** ของเดิมใช้ `WaitForChild(Config.Folder, 60)` ซึ่งรอแค่ 60 วินาที
+-- แล้วคืน nil เงียบๆ ระบบเสียงก็ตายไปทั้งรอบ ในเพลสทดสอบของโปรเจ็คต้นทางไม่เคยเจอ เพราะที่นั่นเรียกรถ
+-- ภายในไม่กี่วินาทีหลังกด Play เสมอ
+--
+-- ไม่มีเส้นตายอีกแล้ว: ถ้ายังไม่มีโฟลเดอร์ก็นั่งฟัง ChildAdded ไว้ เกิดเมื่อไหร่ก็เริ่มเมื่อนั้น
+local function beginWatching()
+  local folder = workspace:FindFirstChild(Config.Folder)
+  if folder then
+    watchFolder(folder)
+    return
+  end
+  local conn
+  conn = workspace.ChildAdded:Connect(function(child)
+    if child.Name == Config.Folder then
+      conn:Disconnect()
+      watchFolder(child)
+    end
+  end)
+end
+
+task.spawn(beginWatching)
 
 -- ---------------------------------------------------------------- ลูปหลัก
 RunService.Heartbeat:Connect(function(dt)
