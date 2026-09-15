@@ -41,6 +41,9 @@ local function garagePayload(player, station)
     display = station and Config.Types[station.vtype].display or nil,
     vehicles = VehicleService.list(player, station and station.vtype or nil),
     canRegister = Config.FreeRegister,
+    -- ราคาบริการของ NPC ส่งไปให้แผงเขียนบอกบนปุ่ม ไม่ใช่ให้รู้ตอนโดนหักเงินไปแล้ว — กติกาเดียวกับค่าเบิก
+    serviceRefuel = Config.Service.Refuel,
+    serviceRepair = Config.Service.Repair,
     -- ค่าบริการของจุดนี้ ส่งลงไปให้แผงเขียนบอกก่อนกด ไม่ใช่ให้รู้ตอนโดนหักเงินไปแล้ว
     retrieveFee = retrieveFee,
     retrieveStuds = math.floor(retrieveStuds),
@@ -59,13 +62,14 @@ function handlers.Garage(player, msg)
   return garagePayload(player, station)
 end
 
+-- จดทะเบียนกุญแจที่ถืออยู่ รับทะเบียนมาจากแถวที่กด ไม่ใช่ชนิดพาหนะ — ชนิดอ่านออกจากทะเบียนเองได้ และ
+-- VehicleService ตรวจซ้ำว่ากุญแจดอกนั้นอยู่ในกระเป๋าจริงก่อนจะจดให้
 function handlers.Register(player, msg)
   local station = msg.stationId and Stations.get(msg.stationId) or nil
-  local vtype = msg.vtype or (station and station.vtype)
-  local plate, err = VehicleService.register(player, vtype, msg.name)
+  local plate, err = VehicleService.register(player, msg.plate, msg.name)
   if not plate then return { ok = false, err = err } end
   local payload = garagePayload(player, station)
-  payload.toast = "📜 จดทะเบียน " .. plate .. " เรียบร้อย กุญแจอยู่ในกระเป๋าแล้ว"
+  payload.toast = "📜 จดทะเบียน " .. plate .. " เรียบร้อย เป็นพาหนะของคุณแล้ว"
   return payload
 end
 
@@ -74,7 +78,11 @@ function handlers.Summon(player, msg)
   if not station then
     -- เบิกจากบารอนเวน: ส่งไปลงลานจอดที่ตรงชนิด เรียกเรือขึ้นมาข้างตัว NPC กลางเมืองคือเรือที่แล่นไม่ได้
     -- และไม่บังคับว่าต้องยืนใกล้ลานจอด เพราะคนยืนอยู่ตรงหน้า NPC ไม่ใช่ตรงท่าเรือ
-    local found = Stations.forType(VehicleService.typeOfPlate(msg.plate))
+    -- **ลานจอดที่ใกล้ผู้เรียกที่สุด** ตามที่ผู้ใช้สั่ง วัดจากตัวผู้เล่น ไม่ใช่จากตัว NPC: วันที่มีโรงรถ
+    -- หลายแห่งต่อชนิด คนยืนอยู่หน้าโรงรถไหนก็ควรได้รถออกมาที่โรงรถนั้น และเป็นจุดที่ค่าเบิกถูกที่สุดด้วย
+    local char = player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local found = Stations.nearestForType(VehicleService.typeOfPlate(msg.plate), root and root.Position)
     if found then
       station = table.clone(found)
       station.requireNear = false
@@ -120,6 +128,23 @@ function handlers.Refuel(player, msg)
   return payload
 end
 
+-- บริการของบารอนเวน ทั้งคู่ต้องฝากรถไว้ก่อน และคิดเป็นเงิน ดูเหตุผลที่ Config.Service
+function handlers.ServiceRefuel(player, msg)
+  local ok, result = VehicleService.serviceRefuel(player, msg.plate)
+  if not ok then return { ok = false, err = result } end
+  local payload = garagePayload(player, msg.stationId and Stations.get(msg.stationId) or nil)
+  payload.toast = ("🔥 เติมถ่านเต็มถังให้ %s แล้ว ค่าบริการ %d เหรียญ"):format(msg.plate, result)
+  return payload
+end
+
+function handlers.ServiceRepair(player, msg)
+  local ok, result = VehicleService.serviceRepair(player, msg.plate)
+  if not ok then return { ok = false, err = result } end
+  local payload = garagePayload(player, msg.stationId and Stations.get(msg.stationId) or nil)
+  payload.toast = ("🔧 ซ่อม %s กลับมาเต็มแล้ว ค่าบริการ %d เหรียญ"):format(msg.plate, result)
+  return payload
+end
+
 function handlers.Trunk(player, msg)
   local payload, err = VehicleService.trunkState(player, msg.plate)
   if not payload then return { ok = false, err = err } end
@@ -153,6 +178,8 @@ net.Signal.OnServerEvent:Connect(function(player, msg)
     VehicleService.setLift(player, tonumber(msg.value) or 0)
   elseif msg.action == "Aim" then
     VehicleService.setAim(player, tonumber(msg.value) or 0)
+  elseif msg.action == "Boost" then
+    VehicleService.setBoost(player, msg.value and true or false)
   elseif msg.action == "Horn" then
     VehicleService.horn(player)
   end

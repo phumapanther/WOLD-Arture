@@ -2,6 +2,7 @@
 -- under workspace.WOLD, matched case-insensitively by prefix. "/tp list" prints the names. Example: /tp stonemark, /tp crystal, /tp sea, /tp brass
 local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
+local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 
 local function targets()
 	local out = {}
@@ -24,7 +25,7 @@ local function groundY(x, z, fallback)
 	return ray and ray.Position.Y or fallback
 end
 
-Players.PlayerAdded:Connect(function(player)
+PlayerJoin.Each(function(player)
 	player.Chatted:Connect(function(msg)
 		local arg = msg:match("^/tp%s+(.+)$")
 		if not arg then return end

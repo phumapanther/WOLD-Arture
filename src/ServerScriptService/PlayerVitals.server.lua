@@ -8,6 +8,7 @@ local RunService = game:GetService("RunService")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local Vitals = require(game.ServerScriptService.Vitals)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 
 if ServerConfig.IsLobby then return end
 
@@ -39,7 +40,7 @@ local function blinkWhileInvulnerable(player, character)
 	end)
 end
 
-Players.PlayerAdded:Connect(function(player)
+PlayerJoin.Each(function(player)
 	Vitals.Add(player)
 	player.CharacterAdded:Connect(function(character)
 		Vitals.ResetForRespawn(player)

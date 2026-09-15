@@ -49,10 +49,32 @@ end)
 -- map closed. Entirely client-side -- it is a hint for this player, not a fact the server needs.
 local nav = Navigation.new()
 
+-- The pose panel the stone opens. Built here rather than in a controller of its own because the stone is the
+-- only thing that opens it, and the stone lives here.
+local EmoteGui = require(game.ReplicatedStorage.UI.EmoteGui)
+local EmoteAccess = require(game.ReplicatedStorage.UI.EmoteAccess)
+local emotes = EmoteGui.new()
+
+emotes:On("play", function(id)
+	local ok, message = EmoteAccess.Play(id)
+	emotes:SetStatus(ok and message or ('ทำไม่ได้: ' .. tostring(message)))
+end)
+emotes:On("stop", function() EmoteAccess.Stop() end)
+gui:On("openEmotes", function() emotes:Show() end)
+
 map:On("pin", function(position)
 	local ok, message = nav:SetDestination(position, ("%.0f, %.0f"):format(position.X, position.Z))
 	map:SetStatus(ok and ("ปักหมุดแล้ว (%s) — แตะหมุดเดิมเพื่อยกเลิก"):format(message) or message)
 	map:SetWaypoint(ok and position or nil)
+end)
+
+-- Tapping the pin itself takes it back, which the line above has been promising since the day it was
+-- written. The map decides what counts as a tap on the pin, because only it knows where the pin is drawn;
+-- clearing the trail is this side's job, because the trail is ours.
+map:On("unpin", function()
+	nav:Clear()
+	map:SetWaypoint(nil)
+	map:SetStatus("ยกเลิกหมุดแล้ว")
 end)
 
 --------------------------------------------------------------------------------

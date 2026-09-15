@@ -53,22 +53,16 @@ end
 function Store.load(player)
   if CACHE[player.UserId] then return CACHE[player.UserId] end
 
-  local saved
-  for _ = 1, 40 do
-    local data = ProfileAccess.Get(player)
-    if data then
-      saved = data.Vehicles
-      break
-    end
-    task.wait(0.1)
-  end
+  -- รอโปรไฟล์แบบไม่มีเส้นตาย (ProfileAccess.Wait) — เดิมรอ 4 วินาทีแล้วไปต่อ ซึ่งวันที่ DataStore ช้า
+  -- จะได้โรงรถว่างแล้วถูกเซฟทับของจริง
+  local data = ProfileAccess.Wait(player)
+  local saved = data and data.Vehicles
 
   local profile = { Data = scrub(saved), UserId = player.UserId }
   CACHE[player.UserId] = profile
 
   -- ผูกเข้ากับโปรไฟล์จริงเลย: ตารางเดียวกัน ไม่ใช่สำเนา เขียนที่นี่ = โปรไฟล์เปลี่ยนตาม
   -- (ProfileStore เขียนลง DataStore ตามรอบของมันเอง ส่วน ProfileAccess.Flush ใช้เร่งตอนของสำคัญเปลี่ยน)
-  local data = ProfileAccess.Get(player)
   if data then data.Vehicles = profile.Data end
   return profile
 end
@@ -127,6 +121,42 @@ function Store.hasKey(player, plate)
   return Store.keyPlates(player)[plate] == true
 end
 
+-- ช่องกระเป๋าที่กุญแจของทะเบียนนี้อยู่ คืน index กับตัวช่องเอง — ใช้ทั้งตอนอ่าน meta และตอนทิ้งกุญแจ
+local function findKeySlot(player, plate)
+  local state = Inventory.Get(player)
+  if not state then return nil, nil end
+  for index, slot in pairs(state.slots) do
+    local item = slot and ItemCatalog.Get(slot.id)
+    if item and item.kind == "key" and slot.meta and slot.meta.plate == plate then
+      return index, slot
+    end
+  end
+  return nil, nil
+end
+
+-- ---------------------------------------------------------------- กุญแจ "จดทะเบียนแล้ว" หรือยัง
+--
+-- ธงอยู่บน **ตัวกุญแจ** ไม่ใช่ในตารางกลาง เพราะเกมไม่มีทะเบียนกลางของทั้งเซิร์ฟเวอร์ — `Store.ownerOf` หา
+-- ได้เฉพาะคนที่ออนไลน์อยู่ ถ้าใช้ตัวนั้นตัดสิน คนที่ยืมกุญแจของเพื่อนที่ออฟไลน์ไปจะจดทะเบียนทับได้ทันที
+-- และกลายเป็นเจ้าของรถของเพื่อน
+--
+-- ธงบนไอเทมเดินทางไปกับไอเทม: ยกกุญแจที่จดแล้วให้ใคร คนนั้นก็ยังจดไม่ได้ ซึ่งเป็นกติกาที่ถูกต้องอยู่แล้ว
+-- (กุญแจที่ยืมมาไว้ขับ ไม่ใช่ไว้ยึด)
+function Store.isRegisteredKey(player, plate)
+  local _, slot = findKeySlot(player, plate)
+  return slot ~= nil and slot.meta.registered == true
+end
+
+function Store.markRegistered(player, plate)
+  local _, slot = findKeySlot(player, plate)
+  if not slot then return false end
+  slot.meta.registered = true
+  -- ช่องถูกแก้ตรงๆ ไม่ได้ผ่าน AddItem/RemoveFromSlot จึงต้องบอกไคลเอนต์เอง (Serialize ส่ง state.slots
+  -- ตัวเดียวกันนี้ลงโปรไฟล์อยู่แล้ว ธงจึงเซฟตามไปเองโดยไม่ต้องทำอะไรเพิ่ม)
+  Inventory.Send(player)
+  return true
+end
+
 -- คืน false เมื่อกระเป๋าเต็ม ซึ่งผู้เรียกต้องเช็ก: การจดทะเบียนที่แจกกุญแจไม่สำเร็จ = ทะเบียนที่ไม่มีใครเปิดได้
 function Store.giveKey(player, plate)
   local prefix = tostring(plate):sub(1, 3)
@@ -142,16 +172,10 @@ end
 
 -- ทิ้งกุญแจของทะเบียนนี้จากกระเป๋า (ใช้ตอนทดสอบ และตอนคืนทะเบียนในอนาคต)
 function Store.takeKey(player, plate)
-  local state = Inventory.Get(player)
-  if not state then return false end
-  for index, slot in pairs(state.slots) do
-    local item = slot and ItemCatalog.Get(slot.id)
-    if item and item.kind == "key" and slot.meta and slot.meta.plate == plate then
-      Inventory.RemoveFromSlot(player, index, slot.count or 1)
-      return true
-    end
-  end
-  return false
+  local index, slot = findKeySlot(player, plate)
+  if not index then return false end
+  Inventory.RemoveFromSlot(player, index, slot.count or 1)
+  return true
 end
 
 function Store.vehicle(player, plate)

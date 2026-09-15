@@ -4,6 +4,8 @@
 -- It exists to keep those systems from requiring each other in a cycle: PlayerProfile must be able to save
 -- Progression's level without depending on a channel-only module, and Progression must be able to read the
 -- saved level without depending on the profile lifecycle.
+local Players = game:GetService("Players")
+
 local ProfileAccess = {}
 
 local Data = {} -- [player] = profile.Data, only while the session is live
@@ -13,6 +15,31 @@ function ProfileAccess.Set(player, data)
 end
 
 function ProfileAccess.Get(player)
+	return Data[player]
+end
+
+-- Blocks until this player's profile has arrived, and answers with it. nil means it never will, because the
+-- player has left.
+--
+-- Every system that restores something -- bag, level, classes, bank, warehouse, garage -- used to poll Get on
+-- its own for a fixed four seconds and then carry on with nil. Two things are wrong with a deadline here.
+-- The player is not gone when it expires, so they get a STARTER kit and level 1; and the profile usually
+-- arrives a moment later, at which point the autosave writes that starter kit over the bag they actually
+-- had. A slow DataStore day does not just fail to restore -- it destroys.
+--
+-- There is no deadline that is safe, so there is no deadline. The wait is bounded by the only thing that can
+-- truly end it: PlayerProfile kicks a player whose session will not start, and leaving ends this loop. A wait
+-- long enough to notice says so once, so a hang is visible in the log rather than silent.
+function ProfileAccess.Wait(player)
+	local started = os.clock()
+	local grumbled = false
+	while Data[player] == nil and player:IsDescendantOf(Players) do
+		if not grumbled and os.clock() - started > 10 then
+			grumbled = true
+			warn(("[ProfileAccess] still waiting for %s's profile after 10s"):format(player.Name))
+		end
+		task.wait(0.1)
+	end
 	return Data[player]
 end
 

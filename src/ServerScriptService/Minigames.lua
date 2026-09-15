@@ -15,6 +15,7 @@
 -- it against every future attempt.
 local Players = game:GetService("Players")
 local MinigameConfig = require(game.ReplicatedStorage.MinigameConfig)
+local StatusEffects = require(game.ServerScriptService.StatusEffects)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local Minigames = {}
@@ -38,6 +39,11 @@ local function settle(player, success)
 	if not entry or entry.finished then return end
 	entry.finished = true
 	Pending[player] = nil
+
+	-- The legs come back here and nowhere else, so every way out of an attempt releases them: the answer, the
+	-- timeout, leaving the server, or a second attempt replacing this one. A release that lived in only one of
+	-- those paths would leave somebody frozen for good.
+	StatusEffects.SetRooted(player, false)
 	if entry.onResult then
 		-- Wrapped: a caller that errors must not take the minigame system down with it, and must not leave
 		-- the next attempt blocked behind a half-cleared entry.
@@ -129,6 +135,11 @@ function Minigames.Run(player, spec, onResult)
 		onResult = onResult,
 	}
 	Pending[player] = entry
+
+	-- Held still for as long as the game is up. A quick-time event asks for the player's whole attention, and
+	-- before this a jump during a transformer repair moved the character far enough to count as walking away
+	-- and cancelled it. Not the dizzy state: no stars, no punishment, just the character standing still.
+	StatusEffects.SetRooted(player, true)
 
 	Remotes.MinigameStart:FireClient(player, payload)
 

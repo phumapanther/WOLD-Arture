@@ -10,12 +10,12 @@
 -- Everything here except the RemoteFunction answer is gated to not ServerConfig.IsLobby: the lobby has its own
 -- dedicated LobbySpawn room and must never start a profile session or read/write map position data.
 local Players = game:GetService("Players")
-local TeleportService = game:GetService("TeleportService")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local ProfileStore = require(game.ServerScriptService.ProfileStore)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local SpawnSelector = require(game.ReplicatedStorage.SpawnSelector)
+local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 
 local ProfileTemplate = {
 	Position = nil, -- {x, y, z} | nil (nil = never saved yet)
@@ -38,13 +38,67 @@ local ProfileTemplate = {
 	-- real item in the bag (ItemCatalog CarKey/BoatKey/AirshipKey, with the plate in the slot's meta), so it
 	-- saves with the inventory and can be handed to somebody else.
 	Vehicles = nil,
-	-- When the test chest was last opened, so its daily cooldown survives a rejoin. Testing only; it goes
-	-- when the chest does.
+	-- When the old daily chest was last opened. The chest it belonged to is gone -- it became the admin chest,
+	-- which has no cooldown to remember -- but the field stays: every saved profile already has it, and
+	-- removing a key from the template is how a Reconcile starts rewriting profiles for no reason.
 	TestChestAt = 0,
 	-- One-off test grant. Recorded in the profile so it happens once per player, ever, rather than on every
 	-- rejoin. Bumping the number re-runs it for everyone; leave it alone to stop granting.
 	TestGrant = 0,
+	-- Which garage wipe this profile has already had. See GARAGE_RESET below.
+	GarageReset = 0,
 }
+
+--------------------------------------------------------------------------------
+-- One-off garage wipe
+--------------------------------------------------------------------------------
+
+-- Emptying every player's garage, at the user's instruction.
+--
+-- "Every player" cannot be done in one pass: a DataStore has no way to list its keys, so there is no such
+-- thing as reaching profiles that are not loaded. What there is instead is a version number in each profile,
+-- checked on the way in -- so the wipe happens once per player, the next time each of them joins, and never
+-- again. Same shape as TestGrant above. **Raise this number to wipe everyone's garage again.**
+local GARAGE_RESET = 1
+
+local VehicleConfig = require(game.ReplicatedStorage.Vehicle.Config)
+local KNOWN_PREFIX = {}
+for _, spec in pairs(VehicleConfig.Types) do KNOWN_PREFIX[spec.prefix] = true end
+
+local function wipeGarage(data)
+	if (tonumber(data.GarageReset) or 0) >= GARAGE_RESET then return false end
+	data.GarageReset = GARAGE_RESET
+
+	-- The registrations themselves. Every vehicle, its trunk and its lock state.
+	data.Vehicles = nil
+
+	-- The keys are items in the bag, so they survive the line above and have to be dealt with here.
+	--
+	-- A key whose plate this game can still read is KEPT: its vehicle is gone, so under the two-step rule it
+	-- reads as unregistered again and the player simply registers it once more. Its `registered` flag has to
+	-- come off for that to be true -- a flag left set would say "this plate has an owner" about a plate that
+	-- now has none, which is worse than either state on its own: the garage would offer to summon a vehicle
+	-- that no longer exists in anybody's records.
+	--
+	-- A key whose plate is NOT readable is thrown away. Those are the ones the old test chest invented for
+	-- itself before the vehicle system minted plates ("คข 8660") -- nothing in the game can summon, register
+	-- or even name them, and they do nothing but take up slots.
+	local slots = data.Inventory and data.Inventory.Slots
+	if type(slots) == "table" then
+		for index, slot in pairs(slots) do
+			local meta = type(slot) == "table" and slot.meta or nil
+			local plate = type(meta) == "table" and meta.plate or nil
+			if type(plate) == "string" then
+				if KNOWN_PREFIX[plate:sub(1, 3)] then
+					meta.registered = nil
+				else
+					slots[index] = nil
+				end
+			end
+		end
+	end
+	return true
+end
 
 local Store = ProfileStore.New("WOLD_PlayerProfile_v1", ProfileTemplate)
 local Profiles = {} -- [player] = Profile, only ever populated in channel servers
@@ -148,7 +202,11 @@ Remotes.GetSpawnPosition.OnServerInvoke = function(player)
 end
 
 if not ServerConfig.IsLobby then
-	Players.PlayerAdded:Connect(function(player)
+	-- Through PlayerJoin rather than PlayerAdded directly: a reserved server is created because somebody is
+	-- being teleported into it, and ServerConfig blocks on a DataStore call above -- so the player this server
+	-- exists for can land before this line runs. PlayerAdded would never mention them, and they would play a
+	-- whole session with no profile: default spawn, starter bag, level 1, nothing saved.
+	PlayerJoin.Each(function(player)
 		local profile = Store:StartSessionAsync(profileKey(player.UserId))
 		if not profile then
 			player:Kick("ไม่สามารถโหลดข้อมูลผู้เล่นได้ กรุณาเข้าเกมใหม่อีกครั้ง")
@@ -168,6 +226,14 @@ if not ServerConfig.IsLobby then
 			return
 		end
 		Profiles[player] = profile
+
+		-- Before the data is handed out. Vehicle/Store binds itself to profile.Data.Vehicles the moment it
+		-- can see it, and PlayerInventory reads Inventory.Slots from the same place -- so the wipe has to be
+		-- finished before either of them looks.
+		if wipeGarage(profile.Data) then
+			print(("[Garage] wiped %s's garage (reset %d)"):format(player.Name, GARAGE_RESET))
+		end
+
 		ProfileAccess.Set(player, profile.Data)
 
 		-- Respawns after death go to the SPAWN POINT, not the saved position: dying at the bottom of a ravine
@@ -191,14 +257,9 @@ if not ServerConfig.IsLobby then
 		end
 	end)
 
-	-- Primary explicit save path: the client asks to return to the lobby, server saves THEN teleports.
-	Remotes.RequestReturnToLobby.OnServerEvent:Connect(function(player)
-		saveAll(player)
-		local ok, err = pcall(function()
-			TeleportService:Teleport(game.PlaceId, player)
-		end)
-		if not ok then warn("[PlayerProfile] return-to-lobby teleport failed for", player.UserId, err) end
-	end)
+	-- The explicit "I am leaving" save used to live here, next to the teleport it has to come before. Both
+	-- moved to LobbyTravel.server.lua when the trip grew a bar and a way to be cancelled; it calls
+	-- ProfileAccess.Flush, which is saveAll under its published name, so the ordering guarantee is unchanged.
 
 	Players.PlayerRemoving:Connect(function(player)
 		saveAll(player)

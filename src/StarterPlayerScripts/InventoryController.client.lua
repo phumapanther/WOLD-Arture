@@ -120,7 +120,7 @@ gui:OnSlotClicked(function(index)
 
 	-- Shown at the top of the menu. The catalog name rather than the id, because that is what the player
 	-- sees on the icon, and the count so "ทิ้ง" on a stack says how much is about to go.
-	local title = item.name or "?"
+	local title = ItemCatalog.DisplayName(slot.id, slot.meta)
 	if (slot.count or 1) > 1 then
 		title = ("%s x%d"):format(title, slot.count)
 	end
@@ -159,13 +159,18 @@ gui:OnSlotClicked(function(index)
 		gui:ShowItemMenu(button, people, ("ให้ใคร: %s"):format(title))
 	end })
 
-	table.insert(entries, {
-		label = "ทิ้ง",
-		color = Color3.fromRGB(214, 84, 74), -- red: it is the one choice that destroys the item
-		onClick = function()
-			Remotes.RequestDropItem:FireServer(index)
-		end,
-	})
+	-- No "throw away" for a vehicle key. The server refuses it anyway, but offering a red button that says no
+	-- is worse than not offering it: the player has to press it to find out, and the thing they were trying
+	-- to do is one they should never have been invited to attempt.
+	if ItemCatalog.IsDroppable(slot.id) then
+		table.insert(entries, {
+			label = "ทิ้ง",
+			color = Color3.fromRGB(214, 84, 74), -- red: it is the one choice that destroys the item
+			onClick = function()
+				Remotes.RequestDropItem:FireServer(index)
+			end,
+		})
+	end
 
 	gui:ShowItemMenu(button, entries, title)
 end)

@@ -11,6 +11,7 @@ local Vitals = require(game.ServerScriptService.Vitals)
 local ActionConfig = require(game.ReplicatedStorage.ActionConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local RescueAccess = require(game.ServerScriptService.RescueAccess)
+local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 
 if ServerConfig.IsLobby then return end
 
@@ -204,7 +205,7 @@ end
 
 Players.PlayerRemoving:Connect(cleanupPlayer)
 
-Players.PlayerAdded:Connect(function(player)
+PlayerJoin.Each(function(player)
 	player.CharacterRemoving:Connect(function()
 		cleanupPlayer(player)
 	end)

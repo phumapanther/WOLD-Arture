@@ -19,6 +19,14 @@ VitalsConfig.MaxArmor = 20
 VitalsConfig.HungerDrainPerSec = VitalsConfig.MaxHunger / (30 * 60)
 VitalsConfig.StarvationDamagePerSec = VitalsConfig.MaxHP / (2 * 60)
 
+-- How often an empty stomach is allowed to make a noise, in seconds.
+--
+-- Starving is the one damage source with no event behind it: no blow lands, nothing hits the ground, the bar
+-- simply drains. So it borrows the hurt sound to say what is happening -- but it is applied every FRAME, and
+-- a sound sixty times a second is not a warning, it is a wall. Roughly a monster's attack pace, which is the
+-- rhythm the sound already means.
+VitalsConfig.StarveSoundSeconds = 2
+
 -- Swimming: stamina drains only while actually moving through water. When it hits 0 the player drowns,
 -- losing all HP in 10 seconds — and drowning kills outright rather than downing (you can't crawl underwater).
 VitalsConfig.SwimStaminaDrainPerSec = 5
@@ -65,6 +73,12 @@ VitalsConfig.HitSoundVolume = 0.3
 -- The clip runs 1.35s but punches land about once a second, so trim playback to keep consecutive hits
 -- from stacking into a drone.
 VitalsConfig.HitSoundMaxSeconds = 0.7
+
+-- Seeing stars: hands clamped to the head, body rolling from side to side. Authored by animgen/status.lua
+-- (Dizzy_Loop) rather than borrowed, because Roblox ships no stock animation that reads as dizzy -- the
+-- crawl could borrow the swim stroke, but there is nothing here to borrow.
+--
+VitalsConfig.DizzyAnimation = "rbxassetid://83117086266774"
 
 -- The HUD can't show finer than this, and it caps remote traffic per player.
 VitalsConfig.SendInterval = 0.15

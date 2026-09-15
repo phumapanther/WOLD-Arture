@@ -9,6 +9,7 @@ local Vitals = require(game.ServerScriptService.Vitals)
 local Inventory = require(game.ServerScriptService.Inventory)
 local StatusEffects = require(game.ServerScriptService.StatusEffects)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 
 -- Stamina VALUES now live in Vitals.lua (swimming spends it too, and drowning depends on it), and the HUD gets
 -- them through VitalsUpdate. This file still owns the walk/normal/run state machine that spends it, and reads
@@ -49,7 +50,7 @@ local function setState(state, player, newState)
 	applySpeed(state, player)
 end
 
-Players.PlayerAdded:Connect(function(player)
+PlayerJoin.Each(function(player)
 	local state = { state = "Normal", sprintIntent = false, forcedWalkUntil = 0 }
 	States[player] = state
 

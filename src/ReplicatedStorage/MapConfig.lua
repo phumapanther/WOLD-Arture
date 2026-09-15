@@ -9,10 +9,24 @@ local MapConfig = {}
 
 MapConfig.HalfSize = 8000 -- half the world's width in studs; [-1,1] maps onto [-8000, 8000]
 
--- Zoom limits for the map screen. 1 shows the whole world.
-MapConfig.MinZoom = 1
-MapConfig.MaxZoom = 6
+-- Zoom limits for the map screen. 1 shows the whole world edge to edge.
+--
+-- Out to 0.77 rather than stopping at 1, so the island can be seen whole with sea around it instead of
+-- jammed against the frame -- the "another 30% further out" the user asked for (1 / 1.3).
+--
+-- In to 12 rather than 6: twice as close as before. That is only worth having because the terrain is now
+-- sampled finely enough to have something to show at that range -- see MapTerrain and MapGui:buildTerrain,
+-- which swaps in the fine grid once the zoom is past DETAIL_ZOOM. Raising this without that would magnify
+-- the same squares, which is not detail, it is just bigger squares.
+MapConfig.MinZoom = 1 / 1.3
+MapConfig.MaxZoom = 12
 MapConfig.ZoomStep = 0.5
+
+-- Past this zoom the map redraws its ground from every sampled cell instead of every third one. Chosen so
+-- the swap happens while the player is already deliberately zoomed in, not on the first notch.
+MapConfig.DetailZoom = 2.5
+-- How many sampled cells one drawn square covers at each of the two levels.
+MapConfig.CoarseStep = 3
 
 -- Water sits under everything; the coast is drawn as an island on top of it.
 MapConfig.SeaColor = Color3.fromRGB(38, 62, 92)
@@ -20,8 +34,6 @@ MapConfig.LandColor = Color3.fromRGB(74, 92, 62)
 MapConfig.SandColor = Color3.fromRGB(122, 116, 84)
 MapConfig.MountainColor = Color3.fromRGB(96, 96, 104)
 MapConfig.ForestColor = Color3.fromRGB(52, 76, 50)
-MapConfig.RiverColor = Color3.fromRGB(64, 108, 150)
-MapConfig.RoadColor = Color3.fromRGB(146, 124, 92)
 MapConfig.GridColor = Color3.fromRGB(210, 200, 170)
 
 -- Ground colours, keyed by the material the terrain generator chose. Colouring by height instead had the
@@ -69,23 +81,11 @@ MapConfig.Kinds = {
 	cave = { color = Color3.fromRGB(140, 132, 124), glyph = "\226\151\134", size = 7 },
 }
 
--- The river, as the layout file records it: a polyline in the same normalized space.
-MapConfig.River = {
-	{ 0.12, -0.62 }, { 0.14, -0.48 }, { 0.18, -0.32 }, { 0.2, -0.16 }, { 0.22, 0 },
-	{ 0.24, 0.16 }, { 0.26, 0.3 }, { 0.28, 0.42 }, { 0.3, 0.54 }, { 0.32, 0.66 },
-}
-
--- Roads between the places, by name, so they follow whatever the places do.
-MapConfig.Roads = {
-	{ "Brasshaven", "Ironcrest Keep" },
-	{ "Brasshaven", "Goldmeadow" },
-	{ "Goldmeadow", "Elderwood" },
-	{ "Goldmeadow", "Cogsworth" },
-	{ "Cogsworth", "Stonemark" },
-	{ "Cogsworth", "Astravale" },
-	{ "Astravale", "Spire of Eld" },
-	{ "Brasshaven", "Saltmere" },
-}
+-- The river and the roads used to be drawn here: two polylines copied out of the design document. Both are
+-- gone at the user's request, and the reason they had to go is the same reason they looked wrong -- neither
+-- exists in the world. The roads phase has never been run, and the river was a straight blue line between
+-- design points, so the map was promising paths and water that a player walking there would not find. What
+-- is left is the ground as it was actually sampled, and the places worth naming.
 
 -- Studs per grid square, so the grid means something rather than being decoration.
 MapConfig.GridStuds = 2000

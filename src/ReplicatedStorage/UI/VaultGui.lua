@@ -15,6 +15,10 @@ local TEXT_MUTED = Color3.fromRGB(150, 152, 162)
 local RUNE = Color3.fromRGB(244, 197, 66)
 local GOOD = Color3.fromRGB(150, 200, 140)
 
+-- One storage square. The same 74 the vehicle trunk uses, so the two windows that hold your things look like
+-- the same window.
+local TILE = 74
+
 local VaultGui = {}
 VaultGui.__index = VaultGui
 
@@ -226,27 +230,34 @@ function VaultGui.new()
 		list.AutomaticCanvasSize = Enum.AutomaticSize.Y
 		list.Parent = holder
 
-		local layout = Instance.new("UIListLayout")
-		layout.Padding = UDim.new(0, 4)
+		-- A grid of squares rather than a list of rows, at the user's request, and the same TILE the vehicle
+		-- trunk uses so the two storage windows read as the same idea. How many fit per row is left to the
+		-- column's width: the panel narrows on a phone and the grid rewraps itself with nothing to recompute.
+		local layout = Instance.new("UIGridLayout")
+		layout.CellSize = UDim2.fromOffset(TILE, TILE)
+		layout.CellPadding = UDim2.fromOffset(6, 6)
 		layout.SortOrder = Enum.SortOrder.LayoutOrder
+		layout.HorizontalAlignment = Enum.HorizontalAlignment.Left
 		layout.Parent = list
 
 		return head, list
 	end
 
+	-- The warehouse on the LEFT and the bag on the RIGHT, at the user's request. It reads as the direction the
+	-- goods travel for the thing this counter is mostly used for: taking what you came for off the shelf.
 	if stacked then
-		self.bagHead, self.bagList = column("กระเป๋า",
-			UDim2.fromScale(0, 0), UDim2.new(1, 0, 0.5, -4))
 		self.vaultHead, self.vaultList = column("คลังสินค้า",
+			UDim2.fromScale(0, 0), UDim2.new(1, 0, 0.5, -4))
+		self.bagHead, self.bagList = column("กระเป๋า",
 			UDim2.new(0, 0, 0.5, 4), UDim2.new(1, 0, 0.5, -4))
 	else
-		self.bagHead, self.bagList = column("กระเป๋า",
-			UDim2.fromScale(0, 0), UDim2.new(0.5, -6, 1, 0))
 		self.vaultHead, self.vaultList = column("คลังสินค้า",
+			UDim2.fromScale(0, 0), UDim2.new(0.5, -6, 1, 0))
+		self.bagHead, self.bagList = column("กระเป๋า",
 			UDim2.new(0.5, 6, 0, 0), UDim2.new(0.5, -6, 1, 0))
 	end
 
-	self.status = label(panel, "ฝากของเข้าคลังแล้วของจะไม่หายตอนตาย", 11, TEXT_MUTED)
+	self.status = label(panel, "ฝากของเข้าคลังแล้วของจะไม่หายตอนตาย · แตะช่อง = ย้าย 1 ชิ้น · ปุ่มมุมช่อง = ย้ายทั้งกอง", 11, TEXT_MUTED)
 	self.status.AnchorPoint = Vector2.new(0, 1)
 	self.status.Position = UDim2.new(0, 14, 1, -10)
 	self.status.Size = UDim2.new(1, -28, 0, 20)
@@ -264,7 +275,7 @@ function VaultGui:SetStatus(text)
 	local token = self.statusToken
 	task.delay(3, function()
 		if self.statusToken == token and self.status.Parent then
-			self.status.Text = "ฝากของเข้าคลังแล้วของจะไม่หายตอนตาย"
+			self.status.Text = "ฝากของเข้าคลังแล้วของจะไม่หายตอนตาย · แตะช่อง = ย้าย 1 ชิ้น · ปุ่มมุมช่อง = ย้ายทั้งกอง"
 		end
 	end)
 end
@@ -273,60 +284,90 @@ end
 -- Rows
 --------------------------------------------------------------------------------
 
--- One item, with two ways to move it: the whole stack, or a single one. Two buttons rather than a number box
--- because a row is 30 pixels tall in a half-width column -- there is no room to type in, and "all or one" is
--- what a warehouse is actually used for.
-local function itemRow(parent, order, entry, mainText, onAll, onOne)
-	local frame = Instance.new("Frame")
-	frame.LayoutOrder = order
-	frame.Size = UDim2.new(1, -4, 0, 30)
-	frame.BackgroundColor3 = ROW
-	frame.BorderSizePixel = 0
-	frame.Parent = parent
-	corner(frame, UDim.new(0, 6))
+-- One item, as a square tile: icon in the middle, name underneath, count over the icon's corner. Two ways to
+-- move it, the same two a row used to offer -- tapping the tile moves ONE, and the small button in its
+-- corner moves the whole stack. The arrow on that button points the way the goods are about to travel, which
+-- is what stops the two columns needing to explain themselves.
+local function itemTile(parent, order, entry, stackGlyph, onAll, onOne)
+	local tile = Instance.new("TextButton")
+	tile.LayoutOrder = order
+	tile.Size = UDim2.fromOffset(TILE, TILE)
+	tile.BackgroundColor3 = ROW
+	tile.AutoButtonColor = true
+	tile.BorderSizePixel = 0
+	tile.Text = ""
+	tile.Parent = parent
+	corner(tile, UDim.new(0, 8))
+	stroke(tile, RUNE, 0.8, 1)
 
 	local icon = Instance.new("ImageLabel")
-	icon.Position = UDim2.fromOffset(5, 4)
-	icon.Size = UDim2.fromOffset(22, 22)
 	icon.BackgroundTransparency = 1
 	icon.Image = entry.icon or ""
-	icon.Parent = frame
+	icon.ScaleType = Enum.ScaleType.Fit
+	icon.AnchorPoint = Vector2.new(0.5, 0)
+	icon.Position = UDim2.new(0.5, 0, 0, 6)
+	icon.Size = UDim2.fromOffset(34, 34)
+	icon.Parent = tile
 
-	local name = label(frame, entry.count > 1 and ("%s x%d"):format(entry.name, entry.count) or entry.name,
-		12, TEXT_LIGHT)
-	name.Position = UDim2.fromOffset(32, 0)
-	name.Size = UDim2.new(1, -110, 1, 0)
+	-- An item with no icon uploaded yet would be a blank square with a name under it, which reads as a bug.
+	-- Its first letters stand in until the art arrives.
+	if (entry.icon or "") == "" then
+		local glyph = label(icon, entry.name:sub(1, 6), 12, TEXT_MUTED, true)
+		glyph.Size = UDim2.fromScale(1, 1)
+		glyph.TextXAlignment = Enum.TextXAlignment.Center
+		glyph.TextTruncate = Enum.TextTruncate.AtEnd
+	end
+
+	local name = label(tile, entry.name, 11, TEXT_LIGHT)
+	name.AnchorPoint = Vector2.new(0.5, 1)
+	name.Position = UDim2.new(0.5, 0, 1, -4)
+	name.Size = UDim2.new(1, -6, 0, 14)
+	name.TextXAlignment = Enum.TextXAlignment.Center
 	name.TextTruncate = Enum.TextTruncate.AtEnd
 
-	local all = button(frame, mainText, Color3.fromRGB(70, 74, 84), TEXT_LIGHT, onAll)
-	all.AnchorPoint = Vector2.new(1, 0.5)
-	all.Position = UDim2.new(1, -5, 0.5, 0)
-	all.Size = UDim2.fromOffset(44, 22)
+	local count = label(tile, entry.count > 1 and ("x%d"):format(entry.count) or "", 12, RUNE, true)
+	count.AnchorPoint = Vector2.new(1, 0)
+	count.Position = UDim2.new(1, -6, 0, 30)
+	count.Size = UDim2.fromOffset(30, 14)
+	count.TextXAlignment = Enum.TextXAlignment.Right
 
-	-- A keyed item is one indivisible thing -- a vehicle key carries its own plate -- so there is no "one of
-	-- them" to move separately, and offering the button would be offering to split what cannot split.
-	if not entry.unique and entry.count > 1 then
-		local one = button(frame, "1", Color3.fromRGB(58, 62, 72), TEXT_LIGHT, onOne)
-		one.AnchorPoint = Vector2.new(1, 0.5)
-		one.Position = UDim2.new(1, -53, 0.5, 0)
-		one.Size = UDim2.fromOffset(24, 22)
+	-- A keyed item is one indivisible thing -- a vehicle key carries its own plate -- so tapping it moves the
+	-- whole of it and there is no stack button to offer.
+	if entry.unique or entry.count <= 1 then
+		tile.Activated:Connect(function()
+			UiSound.Play("Click")
+			onAll()
+		end)
+	else
+		tile.Activated:Connect(function()
+			UiSound.Play("Click")
+			onOne()
+		end)
+		local all = button(tile, stackGlyph, STONE_DEEP, RUNE, onAll)
+		all.AnchorPoint = Vector2.new(1, 0)
+		all.Position = UDim2.new(1, -4, 0, 4)
+		all.Size = UDim2.fromOffset(20, 16)
+		all.TextSize = 11
 	end
 
-	return frame
+	return tile
 end
 
-local function fill(list, entries, mainText, onAll, onOne, emptyText)
+local function fill(list, entries, stackGlyph, onAll, onOne, emptyText)
 	for _, child in ipairs(list:GetChildren()) do
-		if not child:IsA("UIListLayout") then child:Destroy() end
+		if not child:IsA("UIGridLayout") then child:Destroy() end
 	end
 	if #entries == 0 then
+		-- The grid gives this one cell like everything else and there is no arguing with it, so the line wraps
+		-- inside the square rather than pretending it can be wider.
 		local empty = label(list, emptyText, 11, TEXT_MUTED)
-		empty.Size = UDim2.new(1, -4, 0, 26)
+		empty.TextWrapped = true
 		empty.TextXAlignment = Enum.TextXAlignment.Center
+		empty.TextYAlignment = Enum.TextYAlignment.Center
 		return
 	end
 	for order, entry in ipairs(entries) do
-		itemRow(list, order, entry, mainText,
+		itemTile(list, order, entry, stackGlyph,
 			function() onAll(entry) end,
 			function() onOne(entry) end)
 	end
@@ -337,12 +378,12 @@ function VaultGui:Show(snapshot)
 	self.banked.Text = ("เงินในธนาคาร %d"):format(snapshot.banked or 0)
 	self.vaultHead.Text = ("คลังสินค้า  %d/%d ช่อง"):format(snapshot.vaultUsed or 0, snapshot.vaultSlots or 0)
 
-	fill(self.bagList, snapshot.bag or {}, "ฝาก",
+	fill(self.bagList, snapshot.bag or {}, "≪",
 		function(entry) if self.callbacks.store then self.callbacks.store(entry.slot, nil) end end,
 		function(entry) if self.callbacks.store then self.callbacks.store(entry.slot, 1) end end,
 		"กระเป๋าว่าง")
 
-	fill(self.vaultList, snapshot.vault or {}, "เบิก",
+	fill(self.vaultList, snapshot.vault or {}, "≫",
 		function(entry) if self.callbacks.take then self.callbacks.take(entry.slot, nil) end end,
 		function(entry) if self.callbacks.take then self.callbacks.take(entry.slot, 1) end end,
 		"คลังว่าง")

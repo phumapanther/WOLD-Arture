@@ -1,27 +1,20 @@
 -- EventBannerGui: the announcement that hangs at the top of the screen for as long as an event is running.
 --
--- One strip per live event, stacked: icon on the left, the wording in the middle with the letters riding a
--- wave, and either a countdown or a progress count on the right. It is deliberately not a toast -- a toast
--- says something happened, and this says something IS happening, so it stays until it is over.
+-- One strip per live event, stacked: the event's icon on the left, the wording in the middle, and either a
+-- countdown or a progress count on the right. It is deliberately not a toast -- a toast says something
+-- happened, and this says something IS happening, so it stays until it is over.
 --
--- The wave is per-LETTER, which is the whole reason the message is not one TextLabel: each character is its
--- own label offset by a sine of its own index, so the sentence ripples along instead of the whole line
--- bobbing up and down as a block.
+-- The message was originally drawn one letter at a time, each riding a sine wave, which is what the first
+-- spec asked for. The user asked for it to stop moving after seeing it, so it is one plain TextLabel now --
+-- and a banner that has to be read while a town is going dark is better still than clever anyway. That also
+-- took a RenderStepped connection and a per-grapheme text measurement out of the client for free.
 local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local TextService = game:GetService("TextService")
 
 local EventBannerGui = {}
 EventBannerGui.__index = EventBannerGui
 
 local BACK = Color3.fromRGB(20, 22, 28)
 local TEXT_MUTED = Color3.fromRGB(180, 184, 196)
-
--- How far the letters ride, and how fast the wave travels along the sentence. Small enough to read through:
--- four pixels of sway is a shimmer, and twelve would be a headache on a line you have to read.
-local WAVE_HEIGHT = 4
-local WAVE_SPEED = 5.5
-local WAVE_SPREAD = 0.55 -- radians of phase between neighbouring letters
 
 local function corner(inst, radius)
 	local c = Instance.new("UICorner")
@@ -60,20 +53,7 @@ function EventBannerGui.new()
 	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = holder
 
-	self.banners = {} -- [eventId] = { frame, letters, timer, spec }
-
-	-- One connection for every banner on screen, rather than one each: the wave is the same clock for all of
-	-- them, and a dozen RenderStepped connections doing trigonometry would be a dozen times the cost for the
-	-- same picture.
-	self.wave = RunService.RenderStepped:Connect(function()
-		local now = os.clock()
-		for _, banner in pairs(self.banners) do
-			for index, letter in ipairs(banner.letters) do
-				letter.Position = UDim2.new(0, letter:GetAttribute("BaseX") or 0,
-					0.5, math.sin(now * WAVE_SPEED - index * WAVE_SPREAD) * WAVE_HEIGHT)
-			end
-		end
-	end)
+	self.banners = {} -- [eventId] = { frame, timer, spec }
 
 	return self
 end
@@ -81,67 +61,6 @@ end
 --------------------------------------------------------------------------------
 -- Building one
 --------------------------------------------------------------------------------
-
--- Laid out by hand rather than with a UIListLayout, because the wave moves each letter every frame and a
--- layout would fight it for the same Position property. Each letter remembers the x it belongs at and only
--- its y is ever touched.
-local function writeLetters(parent, text, colour)
-	for _, child in ipairs(parent:GetChildren()) do
-		if child:IsA("TextLabel") then child:Destroy() end
-	end
-
-	local letters = {}
-	-- utf8.graphemes, not a byte loop: Thai is three bytes a character, and splitting it by byte would draw
-	-- a line of broken squares. Combining marks ride with the letter they belong to, which is what a
-	-- grapheme is.
-	local x = 0
-	local pieces = {}
-	for first, last in utf8.graphemes(text) do
-		table.insert(pieces, text:sub(first, last))
-	end
-
-	-- Measured first so the whole sentence can be centred: the labels are positioned absolutely, so nothing
-	-- else is going to centre them.
-	--
-	-- Measured for real rather than guessed at a flat width per character. Thai mixes wide consonants with
-	-- combining vowels that take almost no room of their own, so a fixed 13 pixels per grapheme spread the
-	-- word out into something that read as a ransom note.
-	local widths = {}
-	local total = 0
-	for index, piece in ipairs(pieces) do
-		local width
-		local ok, bounds = pcall(function()
-			return TextService:GetTextSize(piece, 16, Enum.Font.GothamBold, Vector2.new(1000, 100))
-		end)
-		if ok and bounds and bounds.X > 0 then
-			width = bounds.X
-		else
-			-- A space carries no glyph but still has to take room, or the words run together.
-			width = piece == " " and 5 or 11
-		end
-		widths[index] = width
-		total += width
-	end
-
-	x = -total / 2
-	for index, piece in ipairs(pieces) do
-		local letter = Instance.new("TextLabel")
-		letter.BackgroundTransparency = 1
-		letter.AnchorPoint = Vector2.new(0, 0.5)
-		letter.Size = UDim2.fromOffset(widths[index] + 6, 22)
-		letter.Font = Enum.Font.GothamBold
-		letter.TextSize = 16
-		letter.TextColor3 = colour
-		letter.TextXAlignment = Enum.TextXAlignment.Center
-		letter.Text = piece
-		letter:SetAttribute("BaseX", x)
-		letter.Position = UDim2.new(0, x, 0.5, 0)
-		letter.Parent = parent
-		table.insert(letters, letter)
-		x += widths[index]
-	end
-	return letters
-end
 
 function EventBannerGui:build(spec)
 	local frame = Instance.new("Frame")
@@ -173,19 +92,22 @@ function EventBannerGui:build(spec)
 	icon.Image = spec.icon or ""
 	icon.Parent = frame
 
-	-- The middle, where the wave lives. Its own frame so the letters' x positions are measured from its
-	-- centre rather than from the banner's left edge.
-	local middle = Instance.new("Frame")
-	middle.Name = "Message"
-	middle.AnchorPoint = Vector2.new(0.5, 0.5)
-	middle.Position = UDim2.fromScale(0.5, 0.5)
-	-- Whatever is left after the icon (48) and the timer (100). Kept in offsets so the wave's own maths --
-	-- which measures letters in pixels -- lines up with the space it actually has.
-	middle.Size = UDim2.new(1, -148, 1, 0)
-	middle.BackgroundTransparency = 1
-	middle.Parent = frame
-
-	local letters = writeLetters(middle, spec.message or "", spec.colour or Color3.fromRGB(244, 197, 66))
+	-- The message, sitting between the icon and the timer. Left-aligned against the icon rather than centred
+	-- in the strip: the eye goes icon -> words, and a centred line drifts away from its own icon as the
+	-- wording changes length.
+	local message = Instance.new("TextLabel")
+	message.Name = "Message"
+	message.AnchorPoint = Vector2.new(0, 0.5)
+	message.Position = UDim2.new(0, 48, 0.5, 0)
+	message.Size = UDim2.new(1, -148, 1, 0)
+	message.BackgroundTransparency = 1
+	message.Font = Enum.Font.GothamBold
+	message.TextSize = 16
+	message.TextColor3 = spec.colour or Color3.fromRGB(244, 197, 66)
+	message.TextXAlignment = Enum.TextXAlignment.Left
+	message.TextTruncate = Enum.TextTruncate.AtEnd
+	message.Text = spec.message or ""
+	message.Parent = frame
 
 	local timer = Instance.new("TextLabel")
 	timer.AnchorPoint = Vector2.new(1, 0.5)
@@ -199,7 +121,7 @@ function EventBannerGui:build(spec)
 	timer.Text = ""
 	timer.Parent = frame
 
-	return { frame = frame, letters = letters, timer = timer, spec = spec }
+	return { frame = frame, message = message, timer = timer, spec = spec }
 end
 
 --------------------------------------------------------------------------------
@@ -251,7 +173,6 @@ function EventBannerGui:refresh()
 end
 
 function EventBannerGui:Destroy()
-	if self.wave then self.wave:Disconnect() end
 	self.gui:Destroy()
 end
 

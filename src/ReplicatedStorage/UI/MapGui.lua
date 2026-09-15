@@ -20,6 +20,11 @@ local FRAME = Color3.fromRGB(28, 22, 16)
 local ACCENT = Color3.fromRGB(216, 172, 84)
 local YOU = Color3.fromRGB(226, 96, 84)
 
+-- How far from the waypoint diamond a tap still counts as a tap ON it, in screen pixels on top of the pin's
+-- own 14. Generous on purpose: the pin is small and a finger is not, and the cost of being wrong is one
+-- cancelled waypoint rather than a misplaced one.
+local UNPIN_REACH = 16
+
 local function corner(instance, radius)
 	local c = Instance.new("UICorner")
 	c.CornerRadius = radius or UDim.new(0, 10)
@@ -183,7 +188,7 @@ function MapGui.new()
 	repairButton.BackgroundColor3 = Color3.fromRGB(74, 56, 30)
 	repairButton.BackgroundTransparency = 0.1
 	repairButton.BorderSizePixel = 0
-	repairButton.Image = "rbxassetid://115675604536116" -- assets/item-icons/event_electric
+	repairButton.Image = "rbxassetid://135773985386159" -- assets/item-icons/event_electric
 	repairButton.ScaleType = Enum.ScaleType.Fit
 	repairButton.Visible = false
 	repairButton.Parent = panel
@@ -219,6 +224,61 @@ local function place(size, nx, nz)
 	return (nx + 1) / 2 * size, (nz + 1) / 2 * size
 end
 
+-- The ground, drawn cell by cell from the sampled terrain. A circle was a lie: the real coast has bays,
+-- headlands and an estuary, and the whole point of a map is to show them.
+--
+-- `step` is how many sampled cells one drawn square covers, and it is the whole of the level-of-detail
+-- scheme. The terrain is now sampled far more finely than the old 120 grid, which is more squares than the
+-- zoomed-out map has pixels to put them in -- so far out it draws every third cell, and close in every one.
+-- Redrawn only when that number changes, not on every notch of the wheel.
+--
+-- Runs of the same material merge into one frame. Without that a fine grid is over a hundred thousand
+-- Frames, which no amount of detail is worth.
+function MapGui:buildTerrain(step)
+	local canvas = self.canvas
+	for _, c in ipairs(canvas:GetChildren()) do
+		if c.Name == "Land" then c:Destroy() end
+	end
+	self.terrainStep = step
+
+	local size = self.baseSize
+	local cells = MapTerrain.Size
+	local cell = size / cells
+
+	for gz = 1, cells, step do
+		local row = MapTerrain.Heights[gz]
+		local gx = 1
+		while gx <= cells do
+			if row[gx] ~= MapTerrain.Water then
+				local code = MapTerrain.MaterialAt(gx, gz)
+				local run = gx
+				while run + step <= cells and row[run + step] ~= MapTerrain.Water
+					and MapTerrain.MaterialAt(run + step, gz) == code do
+					run += step
+				end
+				local piece = Instance.new("Frame")
+				piece.Name = "Land"
+				piece.Position = UDim2.fromOffset((gx - 1) * cell, (gz - 1) * cell)
+				-- The +1 closes the hairline seams that rounding leaves between neighbouring squares.
+				piece.Size = UDim2.fromOffset((run - gx + step) * cell + 1, cell * step + 1)
+				piece.BackgroundColor3 = MapConfig.ColorFor(code)
+				piece.BorderSizePixel = 0
+				piece.ZIndex = 1
+				piece.Parent = canvas
+				gx = run + step
+			else
+				gx += step
+			end
+		end
+	end
+end
+
+-- Which step the current zoom wants. Two levels only: another one between them would be a third redraw for
+-- a difference nobody would be able to point at.
+function MapGui:detailStep()
+	return self.zoom >= MapConfig.DetailZoom and 1 or MapConfig.CoarseStep
+end
+
 function MapGui:buildCanvas()
 	local canvas = self.canvas
 	-- Keep the UIScale: it is created once with the canvas and is what zooming drives, so clearing it here
@@ -233,38 +293,7 @@ function MapGui:buildCanvas()
 	self.baseSize = size
 	canvas.Size = UDim2.fromOffset(size, size)
 
-	-- The land, drawn cell by cell from the sampled terrain. A circle was a lie: the real coast has bays,
-	-- headlands and an estuary, and the whole point of a map is to show them.
-	local cells = MapTerrain.Size
-	local cell = size / cells
-	for gz = 1, cells do
-		local row = MapTerrain.Heights[gz]
-		local gx = 1
-		while gx <= cells do
-			local h = row[gx]
-			if h ~= MapTerrain.Water then
-				-- Merge neighbouring cells of the same GROUND TYPE into one frame: 14400 separate frames
-				-- would cost far more than the map is worth, and a run of grass is one shape anyway.
-				local code = MapTerrain.MaterialAt(gx, gz)
-				local band = { color = MapConfig.ColorFor(code) }
-				local run = gx
-				while run < cells and row[run + 1] ~= MapTerrain.Water
-					and MapTerrain.MaterialAt(run + 1, gz) == code do
-					run += 1
-				end
-				local piece = Instance.new("Frame")
-				piece.Position = UDim2.fromOffset((gx - 1) * cell, (gz - 1) * cell)
-				piece.Size = UDim2.fromOffset((run - gx + 1) * cell + 1, cell + 1)
-				piece.BackgroundColor3 = band.color
-				piece.BorderSizePixel = 0
-				piece.ZIndex = 1
-				piece.Parent = canvas
-				gx = run + 1
-			else
-				gx += 1
-			end
-		end
-	end
+	self:buildTerrain(self:detailStep())
 
 	-- The grid, drawn in world units so a square means a known distance.
 	local step = size * (MapConfig.GridStuds / MapConfig.HalfSize) / 2
@@ -273,23 +302,7 @@ function MapGui:buildCanvas()
 		line(canvas, 0, i, size, i, 1, MapConfig.GridColor, 0.88)
 	end
 
-	-- The river.
-	local prev
-	for _, point in ipairs(MapConfig.River) do
-		local x, y = place(size, point[1], point[2])
-		if prev then line(canvas, prev[1], prev[2], x, y, 4, MapConfig.RiverColor) end
-		prev = { x, y }
-	end
-
-	-- Roads, by looking each end up so they follow the places.
-	for _, road in ipairs(MapConfig.Roads) do
-		local a, b = MapConfig.Find(road[1]), MapConfig.Find(road[2])
-		if a and b then
-			local ax, ay = place(size, a.pos[1], a.pos[2])
-			local bx, by = place(size, b.pos[1], b.pos[2])
-			line(canvas, ax, ay, bx, by, 2, MapConfig.RoadColor, 0.25)
-		end
-	end
+	-- The river and the roads used to be drawn here. Removed with their data: see the note in MapConfig.
 
 	-- Places.
 	for _, p in ipairs(MapConfig.Places) do
@@ -367,6 +380,13 @@ function MapGui:Zoom(delta, focus)
 	self.offset = self.offset * ratio
 	self:clampOffset()
 	self:apply()
+
+	-- Crossing the detail threshold redraws the ground at the other resolution. Compared rather than
+	-- rebuilt every time, because the rebuild is thousands of frames and the wheel sends many small steps.
+	local want = self:detailStep()
+	if want ~= self.terrainStep then
+		self:buildTerrain(want)
+	end
 end
 
 -- Keeps the map from being dragged entirely out of its own window.
@@ -437,6 +457,23 @@ function MapGui:pinAt(screenPosition)
 	local drawn = canvas.AbsoluteSize
 	if drawn.X <= 0 or drawn.Y <= 0 then return end
 	local local2d = Vector2.new(screenPosition.X, screenPosition.Y) - canvas.AbsolutePosition
+
+	-- Tapping the diamond that is already there takes it back -- what the footer has been promising all
+	-- along. Tested against the pin's drawn rectangle rather than against a distance in studs: the map
+	-- zooms, so a fixed number of studs would be an unmissable target zoomed in and an unhittable one
+	-- zoomed out, while "you hit the pin" means the same thing at every zoom and on every screen size.
+	-- Checked before the tap becomes a world position, so a pin sitting somewhere a tap could not have placed
+	-- one -- the blackout router picks the transformer, not the player -- can still be taken back.
+	if self.waypointPin and self.waypointPin.Parent then
+		local pin = self.waypointPin
+		local centre = pin.AbsolutePosition + pin.AbsoluteSize / 2
+		local reach = math.max(pin.AbsoluteSize.X, pin.AbsoluteSize.Y) / 2 + UNPIN_REACH
+		if (Vector2.new(screenPosition.X, screenPosition.Y) - centre).Magnitude <= reach then
+			if self.callbacks.unpin then self.callbacks.unpin() end
+			return
+		end
+	end
+
 	local nx = (local2d.X / drawn.X) * 2 - 1
 	local nz = (local2d.Y / drawn.Y) * 2 - 1
 	if nx < -1 or nx > 1 or nz < -1 or nz > 1 then return end

@@ -57,7 +57,7 @@ local function describeOffer(session, player)
 			table.insert(items, {
 				slot = index,
 				id = slot.id,
-				name = item and item.name or slot.id,
+				name = ItemCatalog.DisplayName(slot.id, slot.meta),
 				icon = item and item.icon or "",
 				count = slot.count or 1,
 			})

@@ -7,6 +7,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Vitals = require(game.ServerScriptService.Vitals)
+local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local StatusEffects = {}
@@ -99,15 +100,88 @@ local function applyDizzyMark(player, dizzy)
 	stars.Parent = gui
 end
 
-local function setJumping(player, allowed)
+-- The pose that goes with the stars: hands to the head, body swaying. Played on the SERVER through the
+-- humanoid's own Animator, the same reason the downed posture is -- being stunned in front of other people
+-- is part of the cost, and a client-side track would only be seen by the person it happened to.
+--
+-- The track is kept per player so the same one can be stopped again; loading a second copy on top of the
+-- first leaves one playing forever, which is a player stuck clutching their head for the rest of the round.
+local DizzyTracks = {}
+
+local function applyDizzyPose(player, dizzy)
+	local existing = DizzyTracks[player]
+	if not dizzy then
+		if existing then
+			existing:Stop(0.25)
+			DizzyTracks[player] = nil
+		end
+		return
+	end
+	if existing or VitalsConfig.DizzyAnimation == "" then return end
+
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
+	if not animator then return end
+
+	local anim = Instance.new("Animation")
+	anim.AnimationId = VitalsConfig.DizzyAnimation
+	local ok, track = pcall(function() return animator:LoadAnimation(anim) end)
+	if not ok or not track then return end
+	track.Priority = Enum.AnimationPriority.Action
+	track.Looped = true
+	track:Play(0.2)
+	DizzyTracks[player] = track
+end
+
+-- Jumping is switched off by TWO different states -- being dizzy, and being held still for a minigame -- so
+-- neither may set the property directly. Both set their flag and call this, which works out the answer from
+-- everything currently true.
+--
+-- Written the other way round first, with each state calling setJumping(false) on the way in and (true) on
+-- the way out, and it had a hole: a farm minigame that fails hands the legs back as the attempt ends and
+-- then takes them away again for the dizzy spell, and if those two ever landed out of order the player
+-- finished the sequence able to jump while still rooted.
+local function refreshJumping(player)
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return end
+
+	local state = Active[player]
+	local held = state ~= nil and (state.rooted == true
+		or (state.dizzyUntil ~= nil and os.clock() < state.dizzyUntil)
+		-- A pose counts too: jumping out of a cross-legged sit is the obvious way to break one, and it looks
+		-- absurd. Walking still ends a pose -- that is the deliberate way out -- but not by leaving the ground.
+		or state.posing == true)
+
 	-- Both properties, because which one the engine reads depends on UseJumpPower and a rig may be set either
 	-- way. Restoring to Roblox's own defaults rather than to what was there before is safe here: nothing else
 	-- in the game changes them.
-	humanoid.JumpPower = allowed and 50 or 0
-	humanoid.JumpHeight = allowed and 7.2 or 0
+	humanoid.JumpPower = held and 0 or 50
+	humanoid.JumpHeight = held and 0 or 7.2
+end
+
+--------------------------------------------------------------------------------
+-- Rooted: held where you stand for as long as something is asking you to concentrate.
+--------------------------------------------------------------------------------
+
+-- Not a timer, unlike everything else here: it is held while a quick-time minigame is on screen and released
+-- when it ends, however it ends. Minigames.lua owns both edges.
+--
+-- The reason it exists: a repair is cancelled by walking away from the transformer, and the check measured
+-- straight-line distance -- so JUMPING moved the player seven studs up, past the six-stud limit, and dropped
+-- a repair that was going fine. Measuring flat distance fixes that particular symptom (and is fixed too),
+-- but the real answer to "a minigame is asking for your whole attention" is to stop the character moving at
+-- all while it is up. No stars over the head: this is not a punishment, and it lasts a second or two.
+function StatusEffects.SetRooted(player, rooted)
+	local state = stateFor(player)
+	if rooted then state.rooted = true else state.rooted = nil end
+	refreshJumping(player)
+end
+
+function StatusEffects.IsRooted(player)
+	local state = Active[player]
+	return state ~= nil and state.rooted == true
 end
 
 function StatusEffects.Dizzy(player, seconds)
@@ -118,7 +192,8 @@ function StatusEffects.Dizzy(player, seconds)
 	state.dizzyUntil = os.clock() + seconds
 	if not wasDizzy then
 		applyDizzyMark(player, true)
-		setJumping(player, false)
+		applyDizzyPose(player, true)
+		refreshJumping(player)
 		Remotes.StatusChanged:FireAllClients(player, "dizzy", true)
 	end
 end
@@ -126,6 +201,28 @@ end
 function StatusEffects.IsDizzy(player)
 	local state = Active[player]
 	return state ~= nil and state.dizzyUntil ~= nil and os.clock() < state.dizzyUntil
+end
+
+--------------------------------------------------------------------------------
+-- Posing: held still by an emote, until the player says otherwise.
+--------------------------------------------------------------------------------
+
+-- Sitting cross-legged or lying down means staying put, and staying put has to be decided here: the client
+-- owns the animation but PlayerMovement owns WalkSpeed, and it writes it every tick from SpeedMultiplier.
+--
+-- No timer. Unlike every other state in this file a pose ends when the player ends it -- they stand up, they
+-- walk, they take a hit -- so it is cleared by the same events that clear everything else rather than by the
+-- clock, and Tick never looks at it.
+function StatusEffects.SetPosing(player, posing)
+	local state = stateFor(player)
+	if state.posing == posing then return end
+	state.posing = posing or nil
+	refreshJumping(player)
+end
+
+function StatusEffects.IsPosing(player)
+	local state = Active[player]
+	return state ~= nil and state.posing == true
 end
 
 --------------------------------------------------------------------------------
@@ -145,9 +242,13 @@ function StatusEffects.SpeedMultiplier(player)
 	local state = Active[player]
 	if not state then return 1 end
 	local now = os.clock()
-	-- Dizzy wins over slow, and is checked first: it is the stronger of the two, and a slow that happened to
-	-- expire in the same second must not hand the legs back to someone who is still seeing stars.
+	-- Rooted first, then dizzy, then slow: strongest wins, and one expiring must never hand the legs back to
+	-- someone another state is still holding.
+	if state.rooted then return 0 end
 	if state.dizzyUntil and now < state.dizzyUntil then return 0 end
+	-- Below the two that are done TO a player, above the slow: a pose is chosen, so anything forced on them
+	-- outranks it, but it still stops them walking.
+	if state.posing then return 0 end
 	if state.slowUntil and now < state.slowUntil then return state.slowFactor or 0.5 end
 	return 1
 end
@@ -162,7 +263,12 @@ end
 --------------------------------------------------------------------------------
 
 -- Drops every effect a player has. Used on respawn and on leaving; safe when they have none.
+--
+-- The dizzy pose is stopped by hand here. Everything else in the table is a number that simply stops being
+-- read, but a playing AnimationTrack is a real thing holding a real rig: emptying the table around it would
+-- leave the player clutching their head with nothing left that knows to stop it.
 function StatusEffects.ClearFor(player)
+	applyDizzyPose(player, false)
 	Active[player] = nil
 end
 
@@ -183,7 +289,8 @@ function StatusEffects.Tick()
 			if state.dizzyUntil and now >= state.dizzyUntil then
 				state.dizzyUntil = nil
 				applyDizzyMark(player, false)
-				setJumping(player, true)
+				applyDizzyPose(player, false)
+				refreshJumping(player)
 				Remotes.StatusChanged:FireAllClients(player, "dizzy", false)
 			end
 			-- Going down overrides being dizzy for the same reason it overrides a knockdown: from then on the
@@ -191,7 +298,8 @@ function StatusEffects.Tick()
 			if state.dizzyUntil and Vitals.IsDowned(player) then
 				state.dizzyUntil = nil
 				applyDizzyMark(player, false)
-				setJumping(player, true)
+				applyDizzyPose(player, false)
+				refreshJumping(player)
 				Remotes.StatusChanged:FireAllClients(player, "dizzy", false)
 			end
 			-- Going down overrides a knockdown: the crawl owns the body from then on.

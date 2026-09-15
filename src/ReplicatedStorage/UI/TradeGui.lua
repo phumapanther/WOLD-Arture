@@ -325,7 +325,7 @@ function TradeGui:RenderBag(inventory)
 		local item = ItemCatalog.Get(slot.id)
 		local b = tile(self.bagGrid, {
 			id = slot.id,
-			name = item and item.name or slot.id,
+			name = ItemCatalog.DisplayName(slot.id, slot.meta),
 			icon = item and item.icon or "",
 			count = slot.count,
 		}, function()

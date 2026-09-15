@@ -340,7 +340,7 @@ function InventoryGui:Render(data)
 			entry.icon.Image = art
 			entry.icon.Visible = art ~= ""
 			-- The name only shows when there is no artwork, so an icon is never covered by its own label.
-			entry.name.Text = (art == "") and (item and item.name or slot.id) or ""
+			entry.name.Text = (art == "") and ItemCatalog.DisplayName(slot.id, slot.meta) or ""
 			-- A fish carries its own kilograms in `meta`, and it is never stacked, so the corner that would
 			-- have read "x12" shows the size instead. Without this the weight would only ever be visible for
 			-- the three seconds the card is up, and a prize catch would be indistinguishable in the bag.

@@ -9,15 +9,22 @@
 -- forces it open just types into the void.
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
+local ContextActionService = game:GetService("ContextActionService")
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local CommandCatalog = require(game.ReplicatedStorage.CommandCatalog)
 
--- Same allow-list as the server's, for deciding whether to draw the box at all. Kept in sync by hand; being
--- wrong here grants nothing, because the server checks again on every command.
-local ADMINS = {
-	[4871683651] = true, -- phumapanther (owner)
-}
 
 local player = Players.LocalPlayer
+
+-- Whether to draw the box at all. The server publishes this as an Attribute (AdminRoster), rather than this
+-- file keeping a second copy of the allow-list -- which is what it used to do, and which stopped being
+-- possible the day admin could be granted in-game.
+--
+-- Being wrong here grants nothing: the server re-checks the roster on every command, so a client that sets
+-- the attribute on itself has drawn a box whose commands will be ignored.
+local function isAdmin()
+	return player:GetAttribute("WOLD_Admin") == true
+end
 
 while workspace:GetAttribute("IsLobby") == nil do
 	task.wait()
@@ -30,7 +37,7 @@ if workspace:GetAttribute("IsLobby") then return end -- commands only exist in c
 -- This is a convenience, not a permission. The server re-checks who may run what on every command, so being
 -- wrong here grants nothing -- it only decides whether a box appears.
 local function hasCommands()
-	if ADMINS[player.UserId] then return true end
+	if isAdmin() then return true end
 	return player:GetAttribute("WOLD_ClassAdvanced") ~= nil
 		or player:GetAttribute("WOLD_ClassElite") ~= nil
 end
@@ -78,7 +85,7 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 13
 title.TextColor3 = ACCENT
 title.TextXAlignment = Enum.TextXAlignment.Left
-title.Text = "แอดมิน — F2 ปิด/เปิด, /admin ดูคำสั่งทั้งหมด"
+title.Text = "แอดมิน — F2 หรือ Esc ปิด · ลูกศรขึ้นลง = คำสั่งก่อนหน้า · พิมพ์ / เพื่อเลือกคำสั่ง"
 title.Parent = panel
 
 -- The log. Newest at the bottom, like a terminal.
@@ -142,6 +149,134 @@ local function append(text, color)
 end
 
 --------------------------------------------------------------------------------
+-- Remembering what was typed
+--------------------------------------------------------------------------------
+
+-- Every command sent this session, oldest first. Up walks back through it, Down walks forward -- the shell
+-- behaviour, because anyone who has typed a command twice already expects it.
+--
+-- `cursor` is where in that list the box currently sits. #history + 1 means "the empty line past the end",
+-- which is where Down returns you and where typing anything puts you back.
+local history = {}
+local cursor = 1
+local draft = "" -- what was half-typed before Up stole the box, given back on the way down
+
+--------------------------------------------------------------------------------
+-- The suggestion list
+--------------------------------------------------------------------------------
+
+-- Drawn above the box and filtered as the command is typed. A convenience only: the names come from
+-- CommandCatalog, which is a list of words, and the server still decides on every line whether this player
+-- may run the one they picked.
+local SUGGEST_MAX = 6
+
+local suggest = Instance.new("Frame")
+suggest.AnchorPoint = Vector2.new(0, 1)
+suggest.Position = UDim2.new(0, 12, 1, -48)
+suggest.Size = UDim2.new(1, -24, 0, 0)
+suggest.AutomaticSize = Enum.AutomaticSize.Y
+suggest.BackgroundColor3 = Color3.fromRGB(22, 21, 28)
+suggest.BorderSizePixel = 0
+suggest.Visible = false
+suggest.ZIndex = 5
+suggest.Parent = panel
+
+local suggestCorner = Instance.new("UICorner")
+suggestCorner.CornerRadius = UDim.new(0, 6)
+suggestCorner.Parent = suggest
+
+local suggestStroke = Instance.new("UIStroke")
+suggestStroke.Color = ACCENT
+suggestStroke.Transparency = 0.65
+suggestStroke.Parent = suggest
+
+local suggestLayout = Instance.new("UIListLayout")
+suggestLayout.SortOrder = Enum.SortOrder.LayoutOrder
+suggestLayout.Parent = suggest
+
+local matches = {} -- the catalogue entries currently shown
+local picked = 1   -- which of them is highlighted
+local rows = {}    -- the labels, reused rather than rebuilt on every keystroke
+
+-- Which commands this player is even shown. Being wrong here grants nothing -- see the note on ADMINS --
+-- but offering a guard the whole admin list would be offering things that will silently do nothing.
+local function scopes()
+	if isAdmin() then return { admin = true, noble = true, class = true } end
+	return {
+		noble = (player:GetAttribute("WOLD_ClassBasic") == "Noble"
+			or player:GetAttribute("WOLD_ClassAdvanced") == "Noble") or nil,
+		class = true,
+	}
+end
+
+local function paint()
+	for index, row in ipairs(rows) do
+		row.BackgroundTransparency = index == picked and 0.4 or 1
+		row.TextColor3 = index == picked and ACCENT or TEXT
+	end
+end
+
+local function hideSuggestions()
+	suggest.Visible = false
+	matches = {}
+	picked = 1
+end
+
+-- Rebuilds the list for whatever is in the box. Called on every keystroke, so the labels are reused and only
+-- their text changes: destroying and recreating six TextLabels per character typed is visible flicker.
+local function refreshSuggestions()
+	-- Only while the line is still just a command name. Once there is a space the player has moved on to the
+	-- arguments, and a list of commands sitting over the box is then only in the way.
+	local word = box.Text:match("^/([%w_]*)$")
+	if not word then return hideSuggestions() end
+
+	matches = CommandCatalog.Matching(word, scopes())
+	if #matches == 0 then return hideSuggestions() end
+	if #matches > SUGGEST_MAX then
+		local trimmed = {}
+		for i = 1, SUGGEST_MAX do trimmed[i] = matches[i] end
+		matches = trimmed
+	end
+	picked = math.clamp(picked, 1, #matches)
+
+	for index, entry in ipairs(matches) do
+		local row = rows[index]
+		if not row then
+			row = Instance.new("TextLabel")
+			row.Size = UDim2.new(1, 0, 0, 18)
+			row.BackgroundColor3 = ACCENT
+			row.BackgroundTransparency = 1
+			row.BorderSizePixel = 0
+			row.Font = Enum.Font.Code
+			row.TextSize = 13
+			row.TextXAlignment = Enum.TextXAlignment.Left
+			row.ZIndex = 6
+			row.Parent = suggest
+			rows[index] = row
+		end
+		row.LayoutOrder = index
+		row.Text = ("  /%s %s  %s"):format(entry.name, entry.args, entry.desc)
+		row.Visible = true
+	end
+	for index = #matches + 1, #rows do rows[index].Visible = false end
+
+	suggest.Visible = true
+	paint()
+end
+
+-- Puts the highlighted command in the box, ready for its arguments. The trailing space is the point: the
+-- next thing typed is an argument, and having to press space first is the sort of small friction that makes
+-- an autocomplete feel worse than typing the word out.
+local function acceptSuggestion()
+	local entry = matches[picked]
+	if not entry then return false end
+	box.Text = "/" .. entry.name .. (entry.args ~= "" and " " or "")
+	box.CursorPosition = #box.Text + 1
+	hideSuggestions()
+	return true
+end
+
+--------------------------------------------------------------------------------
 -- Sending
 --------------------------------------------------------------------------------
 
@@ -151,13 +286,64 @@ end
 local function send(text)
 	if text == "" then return end
 	append("> " .. text, ACCENT)
+	-- Remembered for the arrow keys. The same command twice running is stored once: a history that repeats
+	-- itself makes Up useless for getting past it.
+	if history[#history] ~= text then
+		table.insert(history, text)
+	end
+	cursor = #history + 1
+	draft = ""
 	Remotes.AdminCommand:FireServer(text)
 end
 
-box.FocusLost:Connect(function(enterPressed)
-	if not enterPressed then return end
+box:GetPropertyChangedSignal("Text"):Connect(function()
+	-- Typing puts the box back at the end of the history: the line is the player's own again rather than one
+	-- that was recalled, so Down should return to it and not to whatever was there before Up was pressed.
+	cursor = #history + 1
+	refreshSuggestions()
+end)
+
+-- Up and Down do two jobs on the same keys, and which one runs depends on whether the suggestion list is up:
+-- with commands on screen the arrows move through THEM, otherwise they move through history. That is the
+-- arrangement every terminal with completion uses, and it never needs explaining.
+local function step(delta)
+	if suggest.Visible and #matches > 0 then
+		picked = (picked - 1 + delta) % #matches + 1
+		paint()
+		return
+	end
+	if #history == 0 then return end
+	if cursor == #history + 1 then draft = box.Text end
+	cursor = math.clamp(cursor + delta, 1, #history + 1)
+	box.Text = cursor > #history and draft or history[cursor]
+	box.CursorPosition = #box.Text + 1
+	hideSuggestions()
+end
+
+box.FocusLost:Connect(function(enterPressed, cause)
+	-- Escape reaches the console THROUGH the box, because a focused TextBox swallows the key before anything
+	-- else sees it -- the Roblox menu included, which is why pressing it here closes the console instead of
+	-- opening that. The InputBegan handler below covers the other case: console open, box not focused.
+	if cause and cause.KeyCode == Enum.KeyCode.Escape then
+		hideSuggestions()
+		gui.Enabled = false
+		return
+	end
+	if not enterPressed then
+		hideSuggestions()
+		return
+	end
+	-- Enter on a highlighted suggestion FILLS IT IN rather than sending: the command is only half typed, and
+	-- sending it would be sending "/gi".
+	if acceptSuggestion() then
+		task.defer(function()
+			if gui.Enabled then box:CaptureFocus() end
+		end)
+		return
+	end
 	local text = box.Text
 	box.Text = ""
+	hideSuggestions()
 	send(text)
 	-- Straight back into the box, so several commands can be typed in a row.
 	task.defer(function()
@@ -173,19 +359,40 @@ Remotes.AdminMessage.OnClientEvent:Connect(function(text)
 	end
 end)
 
+local function setOpen(open)
+	gui.Enabled = open
+	if open then
+		box:CaptureFocus()
+	else
+		hideSuggestions()
+		box:ReleaseFocus()
+	end
+end
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if input.KeyCode == Enum.KeyCode.Escape then
+		-- Only when the console is open and the box is NOT focused. The focused case is handled in FocusLost
+		-- above, and acting on both would close it and then try to close it again.
+		if gui.Enabled then setOpen(false) end
+		return
+	end
 	if gameProcessed then return end
 	if input.KeyCode ~= Enum.KeyCode.F2 then return end
 	-- Checked on every press rather than once at start-up: a class is chosen mid-session, and a player who
 	-- becomes a guard at level 50 should get the console without rejoining.
 	if not gui.Enabled and not hasCommands() then return end
-	gui.Enabled = not gui.Enabled
-	if gui.Enabled then
-		box:CaptureFocus()
-	else
-		box:ReleaseFocus()
-	end
+	setOpen(not gui.Enabled)
 end)
+
+-- The arrows go through ContextActionService rather than InputBegan, because a focused TextBox consumes
+-- arrow keys for its own cursor and InputBegan never sees them. Sinking them is deliberate: while the
+-- console is open the arrows belong to it, and letting them through would walk the character as well.
+ContextActionService:BindActionAtPriority("WOLD_ConsoleHistory", function(_, state, input)
+	if state ~= Enum.UserInputState.Begin then return Enum.ContextActionResult.Pass end
+	if not gui.Enabled then return Enum.ContextActionResult.Pass end
+	step(input.KeyCode == Enum.KeyCode.Up and -1 or 1)
+	return Enum.ContextActionResult.Sink
+end, false, Enum.ContextActionPriority.High.Value + 1, Enum.KeyCode.Up, Enum.KeyCode.Down)
 
 append("พิมพ์ /admin เพื่อดูคำสั่งทั้งหมด", ACCENT)
 
@@ -200,7 +407,6 @@ append("พิมพ์ /admin เพื่อดูคำสั่งทั้�
 -- colliding with the world instead of passing through it while being scrubbed into place.
 
 local RunService = game:GetService("RunService")
-local ContextActionService = game:GetService("ContextActionService")
 
 local flying = false
 local flySpeed = 90

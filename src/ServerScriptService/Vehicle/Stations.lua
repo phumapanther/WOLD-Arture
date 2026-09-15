@@ -303,12 +303,27 @@ function Stations.get(id)
 	return Stations.List[id]
 end
 
--- จุดของพาหนะชนิดนี้ ใช้ตอนเบิกจากบารอนเวน: เรือต้องไปโผล่ในน้ำ ไม่ใช่ข้างตัว NPC
-function Stations.forType(vtype)
+-- จุดของพาหนะชนิดนี้ที่ **ใกล้ที่สุด** จากตำแหน่งที่ให้มา ใช้ตอนเบิกจากบารอนเวน: เรือต้องไปโผล่ในน้ำ
+-- ไม่ใช่ข้างตัว NPC
+--
+-- ตอนนี้ preset มีจุดละหนึ่งจุดต่อชนิด การเรียงจึงยังไม่เปลี่ยนอะไร แต่ผู้ใช้บอกว่าอนาคตจะมีหลายจุดต่อชนิด
+-- และตอนนั้น "จุดแรกที่เจอ" จะกลายเป็นการสุ่ม — `pairs` ไม่มีลำดับ ผลจึงต่างกันได้ทุกครั้งที่เซิร์ฟรีสตาร์ต
+-- เขียนไว้ตั้งแต่ตอนนี้จะได้ไม่ต้องมาไล่หาทีหลังว่าทำไมเรือไปโผล่คนละท่า
+--
+-- ระยะวัดถึง **ลานจอด** ไม่ใช่แท่นเรียก: ลานจอดคือที่ที่พาหนะโผล่จริง และเป็นตัวเดียวกับที่ค่าเบิกคิดระยะ
+-- จากมัน จุดที่ใกล้ที่สุดจึงเป็นจุดที่ถูกที่สุดไปด้วยเอง ไม่ต้องมีกฎที่สอง
+function Stations.nearestForType(vtype, from)
+	local best, bestDistance = nil, math.huge
 	for _, station in pairs(Stations.List) do
-		if station.vtype == vtype then return station end
+		if station.vtype == vtype then
+			local at = station.resolvedSpawn or station.spawn
+			local distance = (from and at) and (at - from).Magnitude or 0
+			if distance < bestDistance then
+				best, bestDistance = station, distance
+			end
+		end
 	end
-	return nil
+	return best
 end
 
 return Stations

@@ -107,8 +107,7 @@ function Vault.Store(player, inventory, slotIndex, count)
 
 	inventory.RemoveFromSlot(player, slotIndex, placed)
 
-	local item = ItemCatalog.Get(slot.id)
-	local name = item and item.name or slot.id
+	local name = ItemCatalog.DisplayName(slot.id, slot.meta)
 	if placed < want then
 		return true, ("ฝาก %s x%d (คลังเต็ม เหลือไว้ %d)"):format(name, placed, want - placed)
 	end
@@ -151,8 +150,7 @@ function Vault.Take(player, inventory, slotIndex, count)
 	slot.count = held - moved
 	if slot.count <= 0 then state.slots[slotIndex] = nil end
 
-	local item = ItemCatalog.Get(slot.id)
-	local name = item and item.name or slot.id
+	local name = ItemCatalog.DisplayName(slot.id, slot.meta)
 	if moved < want then
 		return true, ("เบิก %s x%d (กระเป๋าเต็ม)"):format(name, moved)
 	end

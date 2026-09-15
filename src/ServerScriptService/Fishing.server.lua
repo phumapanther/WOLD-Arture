@@ -18,6 +18,7 @@ local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
 local FishingAccess = require(game.ServerScriptService.FishingAccess)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 
 -- [player] = { anchor = Vector3 where they cast from, thread }
 local Sessions = {}
@@ -416,7 +417,7 @@ Players.PlayerRemoving:Connect(function(player)
 	Sessions[player] = nil
 end)
 
-Players.PlayerAdded:Connect(function(player)
+PlayerJoin.Each(function(player)
 	player.CharacterRemoving:Connect(function()
 		stop(player)
 	end)

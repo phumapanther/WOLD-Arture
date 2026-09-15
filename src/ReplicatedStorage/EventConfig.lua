@@ -47,7 +47,7 @@ EventConfig.Events = {
 	-- countdown -- there is nothing to count down to.
 	--------------------------------------------------------------------------
 	blackout = {
-		icon = "rbxassetid://115675604536116", -- assets/item-icons/event_electric.png
+		icon = "rbxassetid://135773985386159", -- assets/item-icons/event_electric.png
 		message = "เครื่องยนต์ไอน้ำ ขัดข้อง",
 		sound = "EventBlackout",
 		colour = Color3.fromRGB(255, 196, 92),

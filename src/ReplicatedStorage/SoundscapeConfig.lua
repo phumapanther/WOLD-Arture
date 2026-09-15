@@ -213,6 +213,23 @@ SoundscapeConfig.Water = {
 SoundscapeConfig.Interface = {
 	Volume = 0.3,
 
+	-- Per-sound overrides. Anything not named here plays at Volume above, which is what almost everything
+	-- should do: a click and a coin belong at the same level, and the interface having one voice is the point.
+	--
+	-- A table rather than a second flat field, so the exception stays next to the rule and adding another one
+	-- later is a line rather than a change to UiSound.
+	Volumes = {
+		-- The two event announcements, 50% over the common level at the user's request (0.3 -> 0.45). These
+		-- are the only interface sounds that have to carry over whatever the player is already standing in --
+		-- a fight, a forge, a town at night -- and they fire twice an hour rather than on every button.
+		EventSlime = 0.45,
+		EventBlackout = 0.45,
+		-- The forge, doubled on request (0.3 -> 0.6). It is the only interface sound that LOOPS for the
+		-- length of an action rather than firing once, and at the common level it went missing under the
+		-- world while the player stood there waiting for it.
+		Craft = 0.6,
+	},
+
 	-- Placing a call, and being called. The ringtone repeats while the caller waits for an answer; the
 	-- others are single events.
 	Call = "rbxassetid://136630953748080",
@@ -231,6 +248,15 @@ SoundscapeConfig.Interface = {
 
 	-- Choosing to respawn.
 	Respawn = "rbxassetid://93187755315297",
+
+	-- Being hurt: Roblox's own death grunt, the one every default character makes when it dies, at the user's
+	-- request. Not an upload -- it ships with the engine, so there is no asset to publish and nothing to go
+	-- missing. Read off a live character's HumanoidRootPart.Died rather than copied from memory, which is the
+	-- only way to be sure of an rbxasset path.
+	--
+	-- Heard ONLY by the person it happened to, like LastHit above: see HurtSoundController. A monster's bite
+	-- and starving both use it, because to the player they are the same fact -- something is taking my blood.
+	Hurt = "rbxasset://sounds/uuhhh.mp3",
 
 	-- Using a consumable. Which one an item plays is the item's own business, declared as `useSound` in
 	-- ItemCatalog, so adding a consumable later means naming its sound rather than editing a list here.

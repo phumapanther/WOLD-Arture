@@ -6,10 +6,11 @@ local RunService = game:GetService("RunService")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local StatusEffects = require(game.ServerScriptService.StatusEffects)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 
 if ServerConfig.IsLobby then return end
 
-Players.PlayerAdded:Connect(function(player)
+PlayerJoin.Each(function(player)
 	player.CharacterAdded:Connect(function(character)
 		-- A fresh rig never inherits an old effect.
 		StatusEffects.ClearFor(player)

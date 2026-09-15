@@ -13,6 +13,15 @@ local UiSound = {}
 
 local Config = SoundscapeConfig.Interface
 
+-- The level this one plays at: its own, if it has been given one, and the interface's common level otherwise.
+-- Config.Volumes is itself a member of Config, so it would answer a Play("Volumes") -- harmlessly, since a
+-- table is not a string id and Play bails on that.
+local function volumeFor(name)
+	local overrides = Config.Volumes
+	local own = overrides and overrides[name]
+	return type(own) == "number" and own or Config.Volume
+end
+
 -- Plays `name` from SoundscapeConfig.Interface once. An unknown or unset name is silently ignored, so a
 -- caller naming a sound that does not exist yet is harmless rather than an error.
 function UiSound.Play(name)
@@ -21,7 +30,7 @@ function UiSound.Play(name)
 
 	local sound = Instance.new("Sound")
 	sound.SoundId = id
-	sound.Volume = Config.Volume
+	sound.Volume = volumeFor(name)
 	sound.Parent = SoundService
 	sound:Play()
 	-- Cleaned up after a generous margin rather than on Ended: a sound that never loads never fires Ended,
@@ -38,7 +47,7 @@ function UiSound.Loop(name)
 
 	local sound = Instance.new("Sound")
 	sound.SoundId = id
-	sound.Volume = Config.Volume
+	sound.Volume = volumeFor(name)
 	sound.Looped = true
 	sound.Parent = SoundService
 	sound:Play()

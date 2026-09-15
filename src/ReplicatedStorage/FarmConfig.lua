@@ -21,6 +21,38 @@ FarmConfig.CooldownSeconds = 30 * 60
 -- the game has the same reach.
 FarmConfig.Range = 10
 
+--------------------------------------------------------------------------------
+-- Who is allowed to work one at all
+--------------------------------------------------------------------------------
+
+-- Crime needs somebody around to see it.
+--
+-- On an empty server the three trades are just a button that prints materials, with nobody to notice and
+-- nobody to run from. So a spot only opens when EITHER condition holds -- the user's rule:
+--
+--   * five players are in the server, or
+--   * one guard is on duty, whatever the headcount
+--
+-- The guard clause is the interesting half: it is what makes a quiet server worth farming on anyway, because
+-- the one person who can arrest you is standing somewhere in it.
+--
+-- Checked on the server at the moment E is pressed, not when the node was built -- the headcount moves.
+FarmConfig.MinPlayers = 5
+FarmConfig.OrClass = "Guard" -- ClassConfig id; "ทหารยาม", the advanced class that can arrest and fine
+
+-- Said to the player when neither holds. Names both ways out, because "not allowed" with no reason reads as
+-- a broken prompt.
+FarmConfig.ClosedMessage = "ยังทำไม่ได้ ต้องมีคนในเซิร์ฟเวอร์ครบ %d คน หรือมีทหารยามอยู่ในเซิร์ฟเวอร์ 1 คน"
+
+-- ...and the guard themselves may not work one. The same class id, deliberately: the class whose presence
+-- makes the trade possible is the class that is paid to stop it, and a guard quietly distilling chemicals
+-- between arrests is the one way this rule could be turned inside out. Kept as one id rather than two
+-- settings, so the two halves can never drift apart.
+--
+-- Checked before the headcount, so a guard on a full server is told the real reason rather than being let
+-- through by the crowd.
+FarmConfig.BannedMessage = "ทหารยามทำงานผิดกฎหมายไม่ได้"
+
 -- The character rummages for this long before the minigame appears, with the rummaging sound playing at the
 -- node. Long enough to read as an action rather than a menu; short enough not to be a wait.
 FarmConfig.SearchSeconds = 1.4

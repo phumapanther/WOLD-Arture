@@ -117,28 +117,14 @@ local function load(player)
 	-- they have already been offered -- starting them with neither is not "the safe direction", it hands a
 	-- level-100 player the class card again on every slow join.
 	--
-	-- The wait is generous because the cost of being wrong is asymmetric: a few more seconds without a class
-	-- costs nothing, while giving up early silently erases what they chose.
-	local arrived = false
-	for _ = 1, 300 do
-		local data = ProfileAccess.Get(player)
-		if data then
-			Classes.Add(player, data.Role)
-			arrived = true
-			break
-		end
-		if not player.Parent then return end
-		task.wait(0.1)
-	end
+	-- There is no deadline, for the same reason there is none anywhere else that restores saved data: a few
+	-- more seconds without a class costs nothing, while giving up early silently erases what they chose. The
+	-- wait ends when the profile lands or when the player does -- see ProfileAccess.Wait, which is why nil here
+	-- can only mean they left: nothing to give a class to, and nothing to mark loaded.
+	local data = ProfileAccess.Wait(player)
+	if not data then return end
 
-	if not arrived then
-		-- The profile genuinely never came (a failed load; PlayerProfile kicks in that case). Give them the
-		-- starting class so the game is playable, but do NOT mark them loaded: an offer decided from blank
-		-- data would overwrite a real saved class with whatever they picked.
-		Classes.Add(player, nil)
-		warn("[Classes] profile never arrived for", player.Name, "-- not offering any class card")
-		return
-	end
+	Classes.Add(player, data.Role)
 	Loaded[player] = true
 end
 

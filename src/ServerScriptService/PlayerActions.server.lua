@@ -12,6 +12,7 @@ local Inventory = require(game.ServerScriptService.Inventory)
 local InventoryConfig = require(game.ReplicatedStorage.InventoryConfig)
 local ActionConfig = require(game.ReplicatedStorage.ActionConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 
 if ServerConfig.IsLobby then return end
 
@@ -192,7 +193,7 @@ Remotes.RequestSlide.OnServerEvent:Connect(function(player)
 	Remotes.MoveStateChanged:FireAllClients(player, "slide")
 end)
 
-Players.PlayerAdded:Connect(function(player)
+PlayerJoin.Each(function(player)
 	States[player] = { action = nil, endsAt = 0, nextAllowedAt = 0, speed = 0 }
 	player.CharacterAdded:Connect(function()
 		local state = States[player]

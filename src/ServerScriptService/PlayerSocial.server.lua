@@ -37,17 +37,10 @@ end
 --------------------------------------------------------------------------------
 
 local function load(player)
-	-- Wait for the profile the same way progression and inventory do; a failed load starts them empty,
-	-- which is the safe direction for a bank balance.
-	local saved
-	for _ = 1, 40 do
-		local data = ProfileAccess.Get(player)
-		if data then
-			saved = data.Social
-			break
-		end
-		task.wait(0.1)
-	end
+	-- Wait for the profile the same way progression and inventory do. Only a player who has LEFT starts empty:
+	-- a bank balance invented because a read was slow is one an autosave would then write down as real.
+	local data = ProfileAccess.Wait(player)
+	local saved = data and data.Social
 	Friends.Add(player, saved)
 	Bank.Add(player, saved and saved.Bank)
 	-- A friendship the other side has dropped is cleared now, which is the only moment both halves are here.

@@ -46,7 +46,9 @@ ActionConfig.SoundStartOffset = 0.06
 -- Per action: a roll happens constantly while a slide is occasional, so the roll was the sound that wore
 -- thin first. They shared one value until the roll alone needed to come down.
 ActionConfig.RollVolume = 0.054
-ActionConfig.SlideVolume = 0.18
+-- Half again as loud on request (0.18 -> 0.27). A slide is a deliberate, occasional thing -- it spends the
+-- whole stamina bar -- so it can afford to be heard over whatever else is going on.
+ActionConfig.SlideVolume = 0.27
 ActionConfig.SoundDistance = 60
 
 --------------------------------------------------------------------------------

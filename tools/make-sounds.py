@@ -198,3 +198,155 @@ for name, fn in [
 ]:
     np.random.seed(abs(hash(name)) % (2**31))   # reproducible renders
     save(name, fn())
+
+# ================================================================ VEHICLES
+#
+# Steam machinery, and the three shapes it takes in this game. All four parts of a vehicle's voice are
+# built here: the drone it holds at any throttle, the chug that fires faster the harder it works, the horn,
+# and the vent of steam when the throttle is dropped.
+#
+# The DRONE and the WASH are looped by VehicleSoundController, so both have to join to themselves without a
+# seam. They are rendered as a whole number of cycles of their lowest partial and given no fade -- save()'s
+# fade would put a hole at the loop point, so these bypass it through save_loop below.
+
+def save_loop(name, x):
+    """Like save(), but with no fades: a looping sound must meet its own start exactly."""
+    x = norm(x, 0.72)   # quieter than a one-shot: this plays continuously, under everything else
+    data = (x * 32767).astype("<i2")
+    out = Path("assets/sounds") / f"{name}.wav"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    with wave.open(str(out), "w") as w:
+        w.setnchannels(1); w.setsampwidth(2); w.setframerate(SR)
+        w.writeframes(data.tobytes())
+    print(f"  {out.name:28s} {len(x)/SR:.2f}s  (loop)")
+
+def cycles(seconds, f0):
+    """Length in samples rounded DOWN to a whole number of cycles of f0, so the loop meets itself."""
+    per = SR / f0
+    return int(per * max(1, int(SR * seconds / per)))
+
+def loopfade(x, keep, overlap):
+    """Makes a NOISE loop meet itself, which whole cycles cannot do.
+
+    A tone can be cut at a zero crossing; noise has no cycle to cut on, so rendering two seconds of it and
+    looping leaves a step at the join -- measured 0.40 of full scale on the first render of the wash, which
+    is a click twice a second for as long as the boat is moving.
+
+    So it is rendered LONGER than it needs to be, and the extra tail is cross-faded back over the head. The
+    first `overlap` samples then contain the end of the sound fading into its own beginning, and the two
+    ends of the returned loop are the same material.
+    """
+    head = x[:keep].copy()
+    tail = x[keep:keep + overlap]
+    ramp = np.linspace(0, 1, overlap)
+    head[:overlap] = head[:overlap] * ramp + tail * (1 - ramp)
+    return head
+
+# ---------------------------------------------------------------- engine drone (looped)
+def engine_drone():
+    """A boiler holding pressure: low harmonics with a slow wobble, and the hiss of the firebox under it."""
+    f0 = 55.0
+    keep = cycles(2.0, f0)
+    # The overlap is a whole number of cycles too, so the cross-fade below lines the TONE up with itself
+    # while it smooths the hiss. An arbitrary overlap would phase-cancel the fundamental instead.
+    overlap = cycles(0.25, f0)
+    total = keep + overlap
+    t = np.arange(total) / SR
+    out = np.zeros(total)
+    # Harmonics of the fundamental, so it reads as a machine rather than a sine.
+    for h, a in [(1, 1.0), (2, 0.52), (3, 0.28), (4, 0.16), (6, 0.08)]:
+        out += np.sin(2 * np.pi * f0 * h * t) * a
+    # A slow beat, measured across the LOOP so it comes round with everything else.
+    out *= 1 + 0.16 * np.sin(2 * np.pi * (2 / (keep / SR)) * t)
+    # Firebox hiss, low-passed so it sits under the tone rather than on top of it. This is the part that
+    # does not loop on its own -- noise never does -- which is why the whole thing gets the cross-fade.
+    out += lowpass(noise(total), 900) * 0.22
+    return loopfade(out, keep, overlap)
+
+# ---------------------------------------------------------------- water and wind (looped)
+def engine_wash():
+    """Water dragging down a hull, or air over a balloon: broadband, no pitch to speak of."""
+    keep = cycles(2.0, 20.0)
+    overlap = n(0.25)
+    total = keep + overlap          # the extra is the tail that gets folded back over the head
+    w = lowpass(noise(total), 1500) - lowpass(noise(total), 180)
+    # Swell and fall twice across the LOOP -- measured on `keep`, not on the padded length, or the swell
+    # would not line up with itself either.
+    t = np.arange(total) / SR
+    w *= 1 + 0.35 * np.sin(2 * np.pi * (2 / (keep / SR)) * t)
+    return loopfade(w, keep, overlap) * 0.8
+
+# ---------------------------------------------------------------- the chug, two of them
+def _chug(f0, bite, length):
+    """One stroke of a piston: a thump with a metallic edge and a puff of steam behind it."""
+    total = n(length)
+    out = np.zeros(total)
+    body = n(length * 0.45)
+    out[:body] += tone(body, f0 * 1.6, f0 * 0.55) * env(body, 0.004, 0.996, 2.6)
+    out[:body] += tone(body, f0 * 3.1, f0 * 1.2, "square") * env(body, 0.002, 0.998, 3.6) * bite
+    puff = n(length * 0.7)
+    steam = highpass(noise(puff), 2600) * env(puff, 0.05, 0.95, 2.0) * 0.30
+    out[n(length * 0.12):n(length * 0.12) + puff] += steam
+    return out
+
+def engine_chug_a():
+    return _chug(120, 0.22, 0.24)
+
+def engine_chug_b():
+    """The off-beat: a touch lower and shorter, so alternating the two does not sound like a metronome."""
+    return _chug(96, 0.16, 0.21)
+
+# ---------------------------------------------------------------- steam release
+def engine_vent():
+    """Throttle dropped while still rolling: the boiler letting go, falling away over a second."""
+    total = n(1.1)
+    hiss = highpass(noise(total), 1800) * env(total, 0.02, 0.98, 1.6)
+    # A falling whistle inside the hiss keeps it from being featureless noise.
+    hiss += tone(total, 1600, 520) * env(total, 0.03, 0.97, 2.4) * 0.18
+    return hiss
+
+# ---------------------------------------------------------------- horns
+def horn_car():
+    """A short brass toot: two notes a fifth apart, which is what makes a horn sound like a horn."""
+    total = n(0.75)
+    out = np.zeros(total)
+    for f, a in [(310, 1.0), (465, 0.7), (620, 0.4), (930, 0.16)]:
+        out += tone(total, f, f * 0.985, "saw") * a
+    out *= env(total, 0.03, 0.97, 1.1)
+    return lowpass(out, 3200)
+
+def horn_boat():
+    """A ship's horn: lower, longer, and with the slow swell of a big resonator."""
+    total = n(1.8)
+    out = np.zeros(total)
+    for f, a in [(105, 1.0), (158, 0.55), (210, 0.3), (315, 0.12)]:
+        out += tone(total, f, f * 0.99, "saw") * a
+    t = np.arange(total) / SR
+    out *= np.clip(np.concatenate([np.linspace(0, 1, n(0.22)), np.ones(total - n(0.22))]), 0, 1)
+    out *= np.linspace(1.0, 0.55, total)
+    out *= 1 + 0.08 * np.sin(2 * np.pi * 5.5 * t)
+    return lowpass(out, 2200)
+
+def horn_airship():
+    """Between the two: a steam whistle, bright and a little unsteady."""
+    total = n(1.2)
+    out = np.zeros(total)
+    for f, a in [(520, 1.0), (781, 0.6), (1040, 0.3)]:
+        out += tone(total, f, f * 1.01) * a
+    out += highpass(noise(total), 3000) * 0.22   # the air escaping around the whistle
+    out *= env(total, 0.05, 0.95, 1.0)
+    return out
+
+print("writing vehicle sounds:")
+for name, fn, looped in [
+    ("engine_drone", engine_drone, True),
+    ("engine_wash", engine_wash, True),
+    ("engine_chug_a", engine_chug_a, False),
+    ("engine_chug_b", engine_chug_b, False),
+    ("engine_vent", engine_vent, False),
+    ("horn_car", horn_car, False),
+    ("horn_boat", horn_boat, False),
+    ("horn_airship", horn_airship, False),
+]:
+    np.random.seed(abs(hash(name)) % (2**31))
+    (save_loop if looped else save)(name, fn())

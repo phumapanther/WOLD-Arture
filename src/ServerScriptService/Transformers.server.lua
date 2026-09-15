@@ -314,7 +314,12 @@ local function beginRepair(machine, player)
 			-- Moving is the one thing that ends a repair without a mistake having been made. Measured against
 			-- where the repair began rather than against the machine, so being nudged off the spot by someone
 			-- running past costs the same as walking away -- which is the honest reading of "อย่าขยับ".
-			if (live.Position - work.origin).Magnitude > Repair.LeaveDistance then
+			--
+			-- FLAT distance. The straight-line version counted a jump as leaving: a jump lifts the character
+			-- about seven studs, past this six-stud limit, so pressing space dropped a repair that was going
+			-- perfectly. Walking away is a thing you do along the ground.
+			local away = live.Position - work.origin
+			if Vector3.new(away.X, 0, away.Z).Magnitude > Repair.LeaveDistance then
 				Remotes.SocialNotify:FireClient(player, "error", "เดินออกจากเครื่อง การซ่อมหลุด")
 				return stopWork(player, "moved")
 			end

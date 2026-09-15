@@ -687,6 +687,11 @@ function SocialGui:buildHome()
 			if screen.id == "map" then
 				self:Hide()
 				if self.callbacks.openMap then self.callbacks.openMap() end
+			-- Same treatment as the map, and for the same reason: the pose panel wants the room, and this
+			-- grid is built for eight fixed buttons rather than a scrolling list of them.
+			elseif screen.id == "emotes" then
+				self:Hide()
+				if self.callbacks.openEmotes then self.callbacks.openEmotes() end
 			elseif screen.ready then
 				self:ShowScreen(screen.id)
 			else

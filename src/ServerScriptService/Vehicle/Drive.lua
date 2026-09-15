@@ -7,6 +7,8 @@
 -- Wheels : ล้อจริง + HingeConstraint (Motor ที่ล้อหลัง, Servo ที่ดุมล้อหน้า)
 -- Float  : VectorForce พิกัดโลก = แรงลอย + แรงเดินหน้า + แรงต้าน, AlignOrientation คุมทิศ
 -- Hover  : เหมือน Float แต่แทนแรงลอยด้วยสปริงรักษาระดับความสูง (targetY)
+local Config = require(game.ReplicatedStorage.Vehicle.Config)
+
 local Drive = {}
 Drive.__index = Drive
 
@@ -49,7 +51,12 @@ function Drive:inputs()
   end
 
   -- พลังงานหมด = เครื่องดับ เหลือแต่หางเสือ (เลี้ยวได้ตอนไหล) และการลดระดับของเรือเหาะ
-  if (self.record.fuel or 0) <= 0 then
+  --
+  -- ความคงทนหมดก็เหมือนกันทุกอย่าง คนขับจึงไม่ต้องเรียนรู้อาการใหม่: เรือเหาะที่พังกลางอากาศยังร่อนลงหาที่
+  -- จอดได้เหมือนตอนถ่านหมด แทนที่จะร่วงทั้งลำ
+  local dur = self.spec.durability
+  local broken = dur ~= nil and (self.record.durability or dur.max) <= 0
+  if (self.record.fuel or 0) <= 0 or broken then
     throttle = 0
     lift = math.min(lift, 0)
   end
@@ -63,6 +70,7 @@ function Drive:burn(occupied, dt)
   if not spec or rec.fuel == nil then return end
   if occupied and rec.fuel > 0 then
     local load = spec.idle + spec.drive * math.abs(self._pubThrottle or 0)
+    if self._boost then load *= Config.Boost.fuel end
     rec.fuel = math.max(0, rec.fuel - load * dt)
     if rec.fuel <= 0 and rec.onEmpty then rec.onEmpty(rec) end
   end
@@ -116,6 +124,18 @@ function Drive:stoke(throttle)
   end
 end
 
+-- ---------------------------------------------------------------- บูสต์
+-- true เฉพาะตอนที่กดค้างอยู่ **และ** พาหนะยังบูสต์ไหว ตัดสินที่นี่ที่เดียว ทุกอย่างที่เหลือ (ความเร็ว
+-- แรงขับ การเผา การสึก) อ่านคำตอบเดียวกันในสเต็ปนั้น จึงไม่มีทางที่มันจะเร็วขึ้นโดยไม่กินถ่านเพิ่ม
+function Drive:boosting()
+  if self.model:GetAttribute("Boost") ~= true then return false end
+  local fuel = self.spec.fuel
+  if fuel and (self.record.fuel or 0) < fuel.max * (Config.Boost.minFuel or 0) then return false end
+  local dur = self.spec.durability
+  if dur and (self.record.durability or dur.max) <= 0 then return false end
+  return true
+end
+
 -- ---------------------------------------------------------------- ล้อ
 function Drive:stepWheels(dt)
   local spec = self.spec
@@ -126,6 +146,9 @@ function Drive:stepWheels(dt)
   self:publish(throttle, speed)
   -- มุมเลี้ยวหรี่ลงตามความเร็ว: 26° ตอนคลานในลานจอด เหลือ ~12° ตอนวิ่งเต็มที่
   -- ล้อหน้าที่บิดสุดตอนวิ่งเร็วคือต้นเหตุของทั้งอาการส่ายและอาการพลิก
+  local boost = self._boost
+  local topSpeed = spec.maxSpeed * (boost and Config.Boost.speed or 1)
+  local pull = spec.torque * (boost and Config.Boost.torque or 1)
   local fade = clamp(math.abs(speed) / (spec.steerFadeSpeed or 42), 0, 1)
   local maxAngle = spec.steerAngle * (1 - fade * (1 - (spec.steerFade or 0.45)))
   for _, w in ipairs(self.record.wheels) do
@@ -136,8 +159,8 @@ function Drive:stepWheels(dt)
       w.motor.AngularVelocity = 0
     else
       if occupied and math.abs(throttle) > 0.05 then
-        w.motor.MotorMaxTorque = spec.torque
-        w.motor.AngularVelocity = -throttle * spec.maxSpeed
+        w.motor.MotorMaxTorque = pull
+        w.motor.AngularVelocity = -throttle * topSpeed
       else
         w.motor.MotorMaxTorque = spec.brakeTorque * (occupied and 0.5 or 1)
         w.motor.AngularVelocity = 0
@@ -171,9 +194,13 @@ function Drive:planarForce(throttle, mass)
   local look = self.hull.CFrame.LookVector
   local dir = Vector3.new(look.X, 0, look.Z)
   if dir.Magnitude < 1e-3 then dir = Vector3.new(0, 0, -1) else dir = dir.Unit end
+  -- บูสต์เข้าตรงนี้ที่เดียวได้ทั้งเรือและเรือเหาะ ทั้งคู่เดินหน้าด้วยฟังก์ชันนี้
+  local boost = self._boost
+  local cap = spec.maxSpeed * (boost and Config.Boost.speed or 1)
+  local power = spec.power * (boost and Config.Boost.torque or 1)
   local push = Vector3.zero
-  if math.abs(throttle) > 0.05 and flat.Magnitude < spec.maxSpeed then
-    push = dir * (throttle > 0 and throttle * spec.power or throttle * spec.power * spec.reverse) * mass
+  if math.abs(throttle) > 0.05 and flat.Magnitude < cap then
+    push = dir * (throttle > 0 and throttle * power or throttle * power * spec.reverse) * mass
   end
   return push - flat * spec.drag * mass
 end
@@ -272,12 +299,43 @@ function Drive:stepHover(dt)
   self.model:SetAttribute("Altitude", math.floor(hull.Position.Y))
 end
 
+-- สึกหรอ: ค่าเสื่อมของการใช้งาน บวกการชน
+--
+-- การชนวัดจาก **ความเร็วที่หายไปในสเต็ปเดียว** ไม่ใช่ Touched — ซึ่งตรงกับนิยามของการชนมากกว่า และได้มาฟรี
+-- ตรงนี้ที่มีความเร็วอยู่ในมืออยู่แล้ว การเฉี่ยวกำแพงเบาๆ ไม่ทำให้ความเร็วหายเป็นสิบ ส่วนการพุ่งชนเต็มแรง
+-- ทำ เกณฑ์ใน Config จึงคัดแยกสองอย่างนี้ออกจากกันได้โดยไม่ต้องแตะระบบชนของ Roblox เลย
+--
+-- ตัวเลขจริงอยู่ที่ VehicleService ผ่าน rec.onWear ด้วยเหตุผลเดียวกับ rec.onEmpty: ไฟล์นี้ห้าม require
+-- Service กลับ ไม่งั้นวงวน
+function Drive:strain(occupied, dt)
+  local dur = self.spec.durability
+  local rec = self.record
+  if not dur or not rec.onWear then return end
+
+  local speed = self.hull.AssemblyLinearVelocity.Magnitude
+  local was = self._lastSpeed or speed
+  self._lastSpeed = speed
+
+  local amount = 0
+  if occupied then amount += (dur.drive or 0) * dt * (self._boost and Config.Boost.wear or 1) end
+  local lost = was - speed
+  if dur.impactFrom and lost > dur.impactFrom then
+    amount += (lost - dur.impactFrom) * (dur.impactPer or 0)
+  end
+  if amount > 0 then rec.onWear(rec, amount) end
+end
+
 function Drive:step(dt)
   if not self.hull.Parent then return end
+  -- ตัดสินเรื่องบูสต์ครั้งเดียวต่อสเต็ป ก่อนที่ใครจะอ่าน: ความเร็ว แรงขับ การเผาถ่าน และค่าสึก ต้องเห็น
+  -- คำตอบเดียวกัน ไม่งั้นจะมีสเต็ปที่รถวิ่งเร็วขึ้นโดยไม่เสียอะไรเลย
+  self._boost = self:boosting()
   if self.mode == "Wheels" then self:stepWheels(dt)
   elseif self.mode == "Float" then self:stepFloat(dt)
   else self:stepHover(dt) end
-  self:burn(self.seat ~= nil and self.seat.Occupant ~= nil, dt)
+  local occupied = self.seat ~= nil and self.seat.Occupant ~= nil
+  self:burn(occupied, dt)
+  self:strain(occupied, dt)
 end
 
 return Drive

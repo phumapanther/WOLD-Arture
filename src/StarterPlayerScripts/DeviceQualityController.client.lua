@@ -135,10 +135,36 @@ end
 -- not.
 local CLUTTER_MAX_VOLUME = 2
 
+-- Nobody's body, hat or held tool is scenery.
+--
+-- The test above -- small, walk-through, undecorated -- describes an accessory's Handle and an R15 hand
+-- exactly as well as it describes a mug on a table, and the clutter sweep walks the WHOLE of Workspace,
+-- characters included. Reported from a phone: pieces of the player's own character vanish at the bottom of
+-- the slider. They were being hidden as ornaments.
+--
+-- Anything under a Model that owns a Humanoid is somebody, player or NPC. An Accessory or a Tool is checked
+-- separately because either may be lying on the ground waiting to be picked up, outside any character, and a
+-- hat that disappears when you walk up to it is the same bug wearing a different coat.
+--
+-- Ancestors rather than the part itself, the same climb isHarvestable does: the Handle is what gets tested
+-- and the Accessory is its parent.
+local function belongsToSomebody(part)
+	local at = part
+	while at and at ~= Workspace do
+		if at:IsA("Accessory") or at:IsA("Tool") then return true end
+		if at:IsA("Model") and at:FindFirstChildOfClass("Humanoid") then return true end
+		at = at.Parent
+	end
+	return false
+end
+
 local function isClutter(part)
 	if part.CanCollide then return false end
 	if part.Transparency > 0.9 then return false end
 	if part.Size.X * part.Size.Y * part.Size.Z > CLUTTER_MAX_VOLUME then return false end
+	-- Asked after the three cheap tests and before the child scan: it is the only one that walks upwards, and
+	-- by this point the volume limit has already thrown out almost every part in the map.
+	if belongsToSomebody(part) then return false end
 	-- A part carrying a sign, a light, a prompt, a sound or an effect is doing a job rather than decorating.
 	for _, child in ipairs(part:GetChildren()) do
 		if child:IsA("Light") or child:IsA("GuiBase3d") or child:IsA("ProximityPrompt")

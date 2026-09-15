@@ -23,14 +23,21 @@ const code = fs.readFileSync(path.resolve(file), "utf8");
 
 (async () => {
   const c = await connect();
-  // The proxy reports "No Roblox Studio instances are connected" for a few seconds after Studio opens, and
-  // sometimes between calls, while its websocket is still coming up. It is not a real failure -- the same
-  // call succeeds on the next attempt -- so retry rather than making every caller wrap this themselves.
+  // Three different "not ready yet" answers, none of them a real failure, all of them fixed by asking again:
+  //
+  //   "No Roblox Studio instances are connected"  the proxy's websocket is still coming up
+  //   "Unable to reach Roblox Studio"             same, seen from the other side
+  //   "Target is not reachable (...loadCodeAsync)" Studio is linked but its script-running bridge is not warm
+  //                                                yet -- measured at five failures then success after a
+  //                                                fresh Studio start, and preview-anim.js hits it too
+  //
+  // Retried here rather than in every caller, because every caller was wrapping it in the same loop.
+  const NOT_READY = /No Roblox Studio instances|Unable to reach Roblox Studio|Target is not reachable/;
   let text = "";
-  for (let attempt = 1; attempt <= 6; attempt++) {
+  for (let attempt = 1; attempt <= 10; attempt++) {
     text = c.text(await c.tool("execute_luau", { datamodel_type: datamodel, code }));
-    if (!/No Roblox Studio instances|Unable to reach Roblox Studio/.test(text)) break;
-    if (attempt < 6) await new Promise((r) => setTimeout(r, 3000));
+    if (!NOT_READY.test(text)) break;
+    if (attempt < 10) await new Promise((r) => setTimeout(r, 4000));
   }
   console.log(text);
   c.close();

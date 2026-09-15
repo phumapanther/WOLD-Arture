@@ -316,6 +316,24 @@ Remotes.RequestGiveItem.OnServerEvent:Connect(function(player, index, target)
 
 	local item = ItemCatalog.Get(id)
 	local shown = (item and item.name) or id
+
+	-- Handing over a REGISTERED vehicle key hands over the vehicle: the row moves out of the giver's garage
+	-- and into the receiver's. An unregistered key needs none of this -- it is not anybody's vehicle yet.
+	--
+	-- Done after the item has actually moved, so a refused give (a full bag) cannot transfer a car that
+	-- stayed where it was.
+	if item and item.kind == "key" and type(meta) == "table" and type(meta.plate) == "string" then
+		local ok, VehicleService = pcall(function()
+			return require(game.ServerScriptService.Vehicle.Service)
+		end)
+		if ok and VehicleService and VehicleService.handOver
+			and VehicleService.handOver(player, target, meta.plate) then
+			shown = ("%s (โอนรถให้ด้วย)"):format(shown)
+			Remotes.SocialNotify:FireClient(target, "info",
+				("ได้รับรถ %s เข้าโรงรถแล้ว"):format(meta.plate))
+		end
+	end
+
 	report(player, target, "giveitem", true, ("ให้ %s x%d"):format(shown, count), count)
 end)
 

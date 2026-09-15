@@ -30,6 +30,7 @@ local Progression = require(game.ServerScriptService.Progression)
 local Vitals = require(game.ServerScriptService.Vitals)
 local StatusEffects = require(game.ServerScriptService.StatusEffects)
 local Minigames = require(game.ServerScriptService.Minigames)
+local Classes = require(game.ServerScriptService.Classes)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local TAG = "WOLD_Farm"
@@ -185,12 +186,37 @@ end
 -- One attempt
 --------------------------------------------------------------------------------
 
+-- Is anybody around to catch you? Five players, or one guard, as the user set it. See FarmConfig for why.
+-- Whether the PRESSER is allowed is a separate question, asked in work() -- this one is only about the room.
+--
+-- Counted fresh on every press rather than cached: both halves of it change while a node sits there, and a
+-- cached answer would either lock a spot that has filled up or open one that has emptied out.
+local function serverAllowsFarming()
+	if #Players:GetPlayers() >= FarmConfig.MinPlayers then return true end
+	if FarmConfig.OrClass then
+		for _, other in ipairs(Players:GetPlayers()) do
+			if Classes.Has(other, FarmConfig.OrClass) then return true end
+		end
+	end
+	return false
+end
+
 local function work(node, player)
 	local config = configFor(node)
 	if not config then return end
 
 	-- Nothing but crawling, while crawling -- the same rule the gathering nodes follow.
 	if Vitals.IsDowned(player) then return end
+	-- The guard is the one person who can never work a spot, whoever else is in the server. Asked before the
+	-- headcount on purpose: a guard on a busy server would otherwise be waved through by the crowd and never
+	-- learn that the class is the reason.
+	if FarmConfig.OrClass and Classes.Has(player, FarmConfig.OrClass) then
+		return Remotes.SocialNotify:FireClient(player, "error", FarmConfig.BannedMessage)
+	end
+	if not serverAllowsFarming() then
+		return Remotes.SocialNotify:FireClient(player, "error",
+			FarmConfig.ClosedMessage:format(FarmConfig.MinPlayers))
+	end
 	if StatusEffects.IsDizzy(player) then
 		return Remotes.SocialNotify:FireClient(player, "error", "ยังมึนอยู่ รอสักครู่")
 	end

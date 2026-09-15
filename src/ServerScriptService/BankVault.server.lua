@@ -44,15 +44,8 @@ end
 -- arrives starts an empty warehouse, which is the safe direction -- an empty one can be filled, but one
 -- invented from nothing could be SAVED over the real one.
 local function load(player)
-	local saved
-	for _ = 1, 40 do
-		local data = ProfileAccess.Get(player)
-		if data then
-			saved = data.Vault
-			break
-		end
-		task.wait(0.1)
-	end
+	local data = ProfileAccess.Wait(player)
+	local saved = data and data.Vault
 	Vault.Add(player, saved)
 end
 
@@ -99,7 +92,8 @@ local function rows(slots, count)
 			local item = ItemCatalog.Get(slot.id)
 			if item then
 				table.insert(out, {
-					slot = index, id = slot.id, name = item.name, icon = item.icon,
+					slot = index, id = slot.id, name = ItemCatalog.DisplayName(slot.id, slot.meta),
+					icon = item.icon,
 					count = slot.count or 1,
 					-- So the window can mark a keyed item as one indivisible thing rather than offering to
 					-- split a stack of one.
@@ -175,6 +169,16 @@ Remotes.RequestVaultAction.OnServerEvent:Connect(function(player, action, index,
 		ok, message = Bank.Withdraw(player, amount)
 	elseif action == "store" then
 		if type(index) ~= "number" then return end
+		-- A vehicle key may not be put away. Taking one OUT is still allowed on purpose: profiles saved
+		-- before this rule may already have a key sitting in the warehouse, and trapping it there would be
+		-- a car its owner can never reach again.
+		local state = Inventory.Get(player)
+		local slot = state and state.slots[index]
+		if slot and not ItemCatalog.IsStorable(slot.id) then
+			Remotes.SocialNotify:FireClient(player, "error", "กุญแจเก็บในคลังไม่ได้ — ต้องพกติดตัวไว้")
+			Remotes.VaultOpen:FireClient(player, snapshot(player))
+			return
+		end
 		ok, message = Vault.Store(player, Inventory, index, amount)
 	elseif action == "take" then
 		if type(index) ~= "number" then return end
