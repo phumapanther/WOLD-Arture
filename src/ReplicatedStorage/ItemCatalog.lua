@@ -276,8 +276,7 @@ ItemCatalog.Items = {
 	-- slot hold a dozen lives, which is the opposite of what makes it worth finding.
 	--------------------------------------------------------------------------
 	GuardianCharm = {
-		-- ผูกไว้ชั่วคราวกับไอคอน Insignia จนกว่าจะแปลง decal 135772507432405 เป็น image id ได้
-		icon = "rbxassetid://130387196273181",
+		icon = "rbxassetid://107664753644079", -- angle (ภาพจริงใน decal 135772507432405)
 		name = "เครื่องรางคุ้มครอง", kind = "junk",
 		weight = 0.5, stackSize = 1, value = 0, sellable = false,
 	},

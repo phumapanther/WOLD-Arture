@@ -693,6 +693,25 @@ local NOBLE_MAY_RUN = {
 }
 
 -- /announce <text> -- ประกาศจากแอดมิน (ทับคำสั่งอาชีพชื่อเดียวกัน: แอดมินประกาศในนามแอดมิน)
+-- /fw [จำนวน] [ระยะ] [ความสูง] -- ยิงพลุขึ้นฟ้าเป็นวงรอบตัว
+--
+-- ค่าตั้งต้น 8 ดอก ห่าง 100 studs สูง 120 ตามที่ผู้ใช้ขอ — **ห่างออกไป ไม่ใช่รอบตัวติดๆ** เพราะพลุที่แตก
+-- เหนือหัวพอดีคือการมองเห็นก้นดอกพลุ ต้องยืนห่างถึงจะเห็นทรง
+Commands.fw = function(admin, args)
+	local Fireworks = require(game.ServerScriptService.Fireworks)
+	local character = admin.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then return reply(admin, "ยังไม่มีตัวละคร") end
+
+	-- จำกัดไว้ทุกตัว: พลุหนึ่งดอกคือ particle 140 ตัวกับแสงหนึ่งดวง ยิงทีละร้อยดอกคือเซิร์ฟกระตุกทั้งเซิร์ฟ
+	local count = math.clamp(tonumber(args[1]) or 8, 1, 24)
+	local radius = math.clamp(tonumber(args[2]) or 100, 20, 400)
+	local height = math.clamp(tonumber(args[3]) or 120, 30, 400)
+
+	Fireworks.Ring(root.Position, radius, count, height)
+	reply(admin, ("ยิงพลุ %d ดอก ห่าง %d studs สูง %d"):format(count, radius, height))
+end
+
 Commands.announce = function(admin, args)
 	local text = table.concat(args, " ")
 	if text == "" then return reply(admin, "ใช้: /announce <ข้อความ>") end
