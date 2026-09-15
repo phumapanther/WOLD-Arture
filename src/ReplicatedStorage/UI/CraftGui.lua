@@ -67,8 +67,11 @@ function CraftGui.new()
 	panel.Name = "Panel"
 	panel.AnchorPoint = Vector2.new(0.5, 0.5)
 	panel.Position = UDim2.fromScale(0.5, 0.5)
-	panel.Size = Responsive.IsSmallScreen() and UDim2.fromScale(0.95, 0.8)
-		or UDim2.fromOffset(560, 440)
+	-- Taller than it was. The misc page now holds six recipes -- bullets, potions and the four chests --
+	-- which is 638px of rows in what used to be a 332px window: most of the page sat below the fold behind a
+	-- 4px scrollbar, and it read as "the chests have no details" rather than as something to scroll to.
+	panel.Size = Responsive.IsSmallScreen() and UDim2.fromScale(0.95, 0.9)
+		or UDim2.fromOffset(560, 600)
 	panel.BackgroundColor3 = STONE
 	panel.BorderSizePixel = 0
 	panel.Parent = gui
@@ -133,7 +136,11 @@ function CraftGui.new()
 	list.Size = UDim2.new(1, -12, 1, -12)
 	list.BackgroundTransparency = 1
 	list.BorderSizePixel = 0
-	list.ScrollBarThickness = 4
+	-- Wide enough to see. At 4px the bar was invisible against the panel, so a page that needed scrolling
+	-- looked like a page that was missing its bottom half.
+	list.ScrollBarThickness = 8
+	list.ScrollBarImageColor3 = RUNE
+	list.ScrollBarImageTransparency = 0.3
 	list.CanvasSize = UDim2.new()
 	list.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	list.Parent = body
