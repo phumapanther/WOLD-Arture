@@ -703,7 +703,18 @@ Commands.fw = function(admin, args)
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	if not root then return reply(admin, "ยังไม่มีตัวละคร") end
 
-	-- จำกัดไว้ทุกตัว: พลุหนึ่งดอกคือ particle 140 ตัวกับแสงหนึ่งดวง ยิงทีละร้อยดอกคือเซิร์ฟกระตุกทั้งเซิร์ฟ
+	-- /fw at <x> <z> [ความสูง] -- ยิงดอกเดียวที่พิกัดนั้น ไม่เกี่ยวกับตำแหน่งตัวเอง
+	--
+	-- หาพื้นเองจาก x/z เหมือนจุดเรียกพาหนะ คนสั่งจึงไม่ต้องรู้ความสูงของภูมิประเทศตรงนั้น
+	if (args[1] or ""):lower() == "at" then
+		local x, z = tonumber(args[2]), tonumber(args[3])
+		if not x or not z then return reply(admin, "ใช้: /fw at <x> <z> [ความสูง]") end
+		local height = math.clamp(tonumber(args[4]) or 120, 30, 400)
+		local from = Fireworks.At(x, z, height, root.Position.Y)
+		return reply(admin, ("ยิงพลุที่ (%d, %d) สูง %d"):format(from.X, from.Z, height))
+	end
+
+	-- จำกัดไว้ทุกตัว: พลุหนึ่งดอกคือ particle 250 ตัวกับแสงหนึ่งดวง ยิงทีละร้อยดอกคือเซิร์ฟกระตุกทั้งเซิร์ฟ
 	local count = math.clamp(tonumber(args[1]) or 8, 1, 24)
 	local radius = math.clamp(tonumber(args[2]) or 100, 20, 400)
 	local height = math.clamp(tonumber(args[3]) or 120, 30, 400)

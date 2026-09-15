@@ -15,6 +15,7 @@ local Drive = require(game.ServerScriptService.Vehicle.Drive)
 local Store = require(game.ServerScriptService.Vehicle.Store)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Inventory = require(game.ServerScriptService.Inventory)
+local Classes = require(game.ServerScriptService.Classes)
 local CollectionService = game:GetService("CollectionService")
 
 local VehicleService = {}
@@ -53,13 +54,62 @@ local function freshPlate(vtype)
   return string.format("%s-%d", spec.prefix, os.time() % 100000)
 end
 
--- จดทะเบียนคันใหม่ให้ผู้เล่น: ได้ทะเบียนของตัวเอง + กุญแจของทะเบียนนั้นทันที
-function VehicleService.register(player, vtype, name)
+-- ---------------------------------------------------------------- สองขั้นตอน: ได้กุญแจ แล้วค่อยจด
+--
+-- เดิมเป็นก้าวเดียว — กดปุ่มที่บารอนเวนแล้วได้ทั้งทะเบียนและกุญแจพร้อมกัน ผู้ใช้สั่งให้แยก: **ต้องมีไอเทม
+-- กุญแจที่มีทะเบียนติดมาอยู่ในกระเป๋าก่อน ถึงจะกดจดทะเบียนได้** กุญแจจึงกลายเป็นของที่ต้องหามาให้ได้ ไม่ใช่
+-- ผลพลอยได้ของการกดปุ่ม
+--
+-- ตอนนี้ที่ผลิตกุญแจมีสองทาง (ผู้ใช้เลือกไว้ว่ายังไม่ผูกเศรษฐกิจ): หีบทดสอบ และคำสั่งแอดมิน `/veh key`
+-- วันที่บารอนเวนขายกุญแจหรือช่างตีเหล็กคราฟได้ ก็เรียก issueKey ตัวนี้เพิ่มอีกที่ ไม่ต้องแก้ตรรกะการจด
+
+-- ทะเบียนนี้มีเจ้าของแล้วหรือยัง ในสายตาของผู้เล่นคนนี้
+--
+-- ถามสามทางเพราะเกมไม่มีทะเบียนกลางของทั้งเซิร์ฟเวอร์ และแต่ละทางครอบคลุมคนละกรณีที่อีกสองทางตอบไม่ได้:
+--   * อยู่ในตารางพาหนะของตัวเอง — เจ้าของตัวจริง และครอบคลุมกุญแจเก่าที่ออกมาก่อนจะมีธงนี้ด้วย
+--   * ธงบนกุญแจในกระเป๋า       — กุญแจที่ยืมมา ไม่ว่าเจ้าของจะออนไลน์อยู่หรือไม่
+--   * เจ้าของที่ออนไลน์อยู่      — กุญแจเก่าที่ยืมมา ซึ่งยังไม่มีธงติด
+function VehicleService.isRegistered(player, plate)
+  local profile = Store.get(player)
+  if profile and profile.Data.Vehicles[plate] then return true end
+  if Store.isRegisteredKey(player, plate) then return true end
+  return (Store.ownerOf(plate)) ~= nil
+end
+
+-- ทำกุญแจดอกใหม่: ได้ทะเบียนสดๆ ติดกุญแจมาด้วย แต่ **ยังไม่ใช่พาหนะของใคร** จนกว่าจะเอาไปจด
+function VehicleService.issueKey(player, vtype)
   local spec = Config.Types[vtype]
   if not spec then return nil, "ไม่รู้จักพาหนะชนิดนี้" end
+
+  local plate = freshPlate(vtype)
+  local ok, err = Store.giveKey(player, plate)
+  if not ok then return nil, err or "แจกกุญแจไม่สำเร็จ" end
+  return plate
+end
+
+-- จดทะเบียนพาหนะจากกุญแจที่ถืออยู่ รับ **ทะเบียน** ไม่ใช่ชนิด: ชนิดอ่านออกจากทะเบียนได้อยู่แล้ว และการรับ
+-- ชนิดมาจะเปิดช่องให้ไคลเอนต์ขอจดอะไรก็ได้ที่ไม่ตรงกับกุญแจในมือ
+function VehicleService.register(player, plate, name)
+  if not Config.FreeRegister then return nil, "ยังเปิดให้จดทะเบียนไม่ได้" end
   local profile = Store.get(player)
   if not profile then return nil, "ข้อมูลผู้เล่นยังโหลดไม่เสร็จ" end
-  if not Config.FreeRegister then return nil, "ยังเปิดให้จดทะเบียนไม่ได้" end
+
+  plate = tostring(plate or ""):upper()
+  local vtype = VehicleService.typeOfPlate(plate)
+  local spec = vtype and Config.Types[vtype]
+  if not spec then return nil, "ทะเบียนนี้อ่านไม่ออก" end
+
+  -- ต้องถือกุญแจของทะเบียนนี้จริงๆ ตรวจจากกระเป๋าฝั่งเซิร์ฟเวอร์ ไม่ใช่เชื่อทะเบียนที่ไคลเอนต์ส่งมา
+  if not Store.hasKey(player, plate) then
+    return nil, "ต้องมีกุญแจของทะเบียนนี้อยู่ในกระเป๋าก่อน"
+  end
+  -- ของตัวเองอยู่แล้วถามก่อน เพื่อให้ได้ข้อความที่ตรงกว่าคำว่า "จดไปแล้ว" ลอยๆ
+  if profile.Data.Vehicles[plate] then return nil, "ทะเบียนนี้เป็นของคุณอยู่แล้ว" end
+  -- ทะเบียนหนึ่งจดได้ครั้งเดียวตลอดกาล และธงติดอยู่กับตัวกุญแจ ไม่ใช่กับคน — ยกกุญแจที่จดแล้วให้เพื่อน
+  -- เพื่อนก็ยังจดไม่ได้ ซึ่งเป็นสิ่งที่ต้องการ: กุญแจที่ยืมมาไว้ขับ ไม่ใช่ไว้ยึดรถ
+  if VehicleService.isRegistered(player, plate) then
+    return nil, "กุญแจดอกนี้จดทะเบียนไปแล้ว"
+  end
 
   local owned = 0
   for _, rec in pairs(profile.Data.Vehicles) do
@@ -69,13 +119,6 @@ function VehicleService.register(player, vtype, name)
     return nil, string.format("มี%sครบ %d คันแล้ว", spec.display, Config.MaxVehiclesPerType)
   end
 
-  local plate = freshPlate(vtype)
-
-  -- กุญแจไปก่อน ทะเบียนตามทีหลัง: กุญแจคือของที่ "ใส่ไม่ได้" ได้ (กระเป๋าเต็ม) ส่วนแถวทะเบียนใส่ยังไงก็สำเร็จ
-  -- ถ้าสลับลำดับกันแล้วกระเป๋าเต็ม จะได้ทะเบียนที่ไม่มีกุญแจ = พาหนะที่ไม่มีใครเรียกออกมาได้ตลอดกาล
-  local ok, err = Store.giveKey(player, plate)
-  if not ok then return nil, err or "แจกกุญแจไม่สำเร็จ" end
-
   profile.Data.Vehicles[plate] = {
     Type = vtype,
     Name = name or spec.display,
@@ -83,14 +126,96 @@ function VehicleService.register(player, vtype, name)
     Locked = false,
     Born = os.time(),
   }
+  -- ธงลงบนกุญแจหลังแถวทะเบียนเกิดแล้ว: ถ้าสลับกันแล้วมีอะไรพลาดกลางทาง จะเหลือกุญแจที่ถูกปิดตายทั้งที่ไม่มี
+  -- รถผูกอยู่ = กุญแจตายสนิท ส่วนลำดับนี้อย่างมากได้รถที่จดซ้ำได้อีกครั้ง ซึ่งกันไว้ด้วยแถวข้างบนแล้ว
+  Store.markRegistered(player, plate)
   Store.dirty(player)
   return plate
 end
 
 -- รายการที่แผง "โรงรถ" ของผู้เล่นแสดง: คันที่เป็นเจ้าของ + คันที่ถือกุญแจของคนอื่น
+-- ทะเบียนที่ "ไม่มีกุญแจแล้ว" จะถูกลบทิ้ง — เสียกุญแจ = เสียรถ ตามที่ผู้ใช้สั่ง
+--
+-- ทำไมต้องนับคลังสินค้าด้วย: กุญแจเอาไปเก็บในคลังของมาดามออเรเลียได้ ถ้านับแค่กระเป๋า คนที่เก็บกุญแจไว้ใน
+-- คลังอย่างปลอดภัยจะโดนลบรถทิ้ง ซึ่งตรงข้ามกับสิ่งที่กติกานี้ต้องการ "เสีย" จึงแปลว่า **ไม่มีอยู่ทั้งใน
+-- กระเป๋าและในคลัง**
+--
+-- คันที่ถูกเรียกออกมาอยู่ในโลกจะถูกเก็บกลับก่อน ไม่งั้นจะเหลือรถวิ่งอยู่โดยไม่มีทะเบียนเป็นเจ้าของ
+--
+-- ไม่ได้ทำเป็น hook ตอนของหายจากกระเป๋า เพราะของ "ออกจากกระเป๋า" มีทั้งแบบหายจริงและแบบย้ายที่ (เข้าคลัง
+-- เข้าท้ายรถ เทรด) แยกสองอย่างนั้นจากจุดนั้นไม่ได้ การกวาดตอนเปิดโรงรถถามคำถามที่ตอบได้แน่นอนกว่า คือ
+-- "ตอนนี้กุญแจดอกนี้ยังมีอยู่ไหม"
+local function heldPlates(player)
+  local plates = Store.keyPlates(player)
+  local ok, Vault = pcall(function() return require(game.ServerScriptService.Vault) end)
+  local vault = ok and Vault and Vault.Get(player)
+  if vault and vault.slots then
+    for _, slot in pairs(vault.slots) do
+      local item = slot and ItemCatalog.Get(slot.id)
+      if item and item.kind == "key" and slot.meta and type(slot.meta.plate) == "string" then
+        plates[slot.meta.plate] = true
+      end
+    end
+  end
+  return plates
+end
+
+function VehicleService.forgetKeyless(player)
+  local profile = Store.get(player)
+  if not profile then return 0 end
+  local held = heldPlates(player)
+
+  local gone = {}
+  for plate in pairs(profile.Data.Vehicles) do
+    if not held[plate] then table.insert(gone, plate) end
+  end
+  for _, plate in ipairs(gone) do
+    if VehicleService.Active[plate] then VehicleService.stow(plate) end
+    profile.Data.Vehicles[plate] = nil
+  end
+  if #gone > 0 then
+    Store.dirty(player)
+    print(("[Vehicle] %s เสียกุญแจ %d ดอก รถถูกลบจากโรงรถ: %s"):format(
+      player.Name, #gone, table.concat(gone, ", ")))
+  end
+  return #gone
+end
+
+-- โอนกรรมสิทธิ์ตามกุญแจ: ยกกุญแจที่ **จดทะเบียนแล้ว** ให้ใคร คนนั้นได้รถคันนั้นเข้าโรงรถทันที
+--
+-- ก่อนหน้านี้กุญแจที่จดแล้วเป็นแค่ "กุญแจฝากไว้ให้ขับ" — ขับได้แต่ไม่ใช่รถของตัวเอง และแถวในโรงรถยังอยู่กับ
+-- คนให้ ซึ่งแปลก: ของถูกยกให้ไปแล้วแต่ยังเป็นของคนเดิม ผู้ใช้สั่งให้กรรมสิทธิ์เดินตามกุญแจไป
+--
+-- ทำที่นี่ที่เดียวเพราะ "ให้ของ" มีทางเดียว (RequestGiveItem) ส่วนกุญแจที่ยังไม่จดไม่ต้องทำอะไร -- มันยังไม่ใช่
+-- รถของใคร คนรับเอาไปจดเองได้อยู่แล้ว
+function VehicleService.handOver(fromPlayer, toPlayer, plate)
+  plate = tostring(plate or ""):upper()
+  if plate == "" then return false end
+
+  local giver = Store.get(fromPlayer)
+  local record = giver and giver.Data.Vehicles[plate]
+  if not record then return false end   -- ไม่ใช่รถของคนให้ ไม่มีอะไรจะโอน
+
+  local taker = Store.get(toPlayer)
+  if not taker then return false end
+
+  -- คันที่ถูกเรียกออกมาอยู่ในโลกต้องเก็บกลับก่อน: เจ้าของเปลี่ยนแล้ว แต่ตัวรถยังจำเจ้าของเดิมไว้ในกล่องชน
+  -- ของมันเอง (record.ownerId) เก็บแล้วเรียกใหม่จะได้เจ้าของถูกคน
+  if VehicleService.Active[plate] then VehicleService.stow(plate) end
+
+  taker.Data.Vehicles[plate] = record
+  giver.Data.Vehicles[plate] = nil
+  Store.dirty(fromPlayer)
+  Store.dirty(toPlayer)
+  print(("[Vehicle] %s ยกรถ %s ให้ %s"):format(fromPlayer.Name, plate, toPlayer.Name))
+  return true
+end
+
 function VehicleService.list(player, vtype)
   local profile = Store.get(player)
   if not profile then return {} end
+  -- กวาดก่อนวาด: แถวที่กุญแจหายไปแล้วต้องไม่โผล่มาให้กดตั้งแต่แรก
+  VehicleService.forgetKeyless(player)
   local out = {}
   for plate, rec in pairs(profile.Data.Vehicles) do
     if not vtype or rec.Type == vtype then
@@ -100,6 +225,12 @@ function VehicleService.list(player, vtype)
         plate = plate, vtype = rec.Type, name = rec.Name, owner = true,
         locked = rec.Locked == true, out = active ~= nil,
         key = Store.hasKey(player, plate),
+        -- จดไปแล้วโดยนิยาม: แถวนี้มาจากตารางพาหนะของเจ้าตัว
+        unregistered = false,
+        -- ความคงทน อ่านจากคันที่อยู่ในโลกถ้ามี ไม่งั้นจากที่เซฟไว้ — สูตรเดียวกับเชื้อเพลิงบรรทัดล่าง
+        durability = active and VehicleService.durabilityPercent(active)
+          or (spec and spec.durability
+            and math.floor((tonumber(rec.Durability) or spec.durability.max) / spec.durability.max * 100 + 0.5)) or 100,
         fuel = active and VehicleService.fuelPercent(active)
           or (spec and spec.fuel and math.floor((tonumber(rec.Fuel) or spec.fuel.max) / spec.fuel.max * 100 + 0.5)) or 100,
       }
@@ -108,13 +239,23 @@ function VehicleService.list(player, vtype)
   for plate in pairs(Store.keyPlates(player)) do
     if not profile.Data.Vehicles[plate] then
       local t = VehicleService.typeOfPlate(plate)
-      if not vtype or t == vtype then
+      -- A plate this system cannot read is a key to nothing -- it can never be summoned, locked or stowed.
+      -- Listing it anyway gave the garage rows that did nothing when pressed, which read as the whole NPC
+      -- being broken. Skipped rather than shown greyed out: there is no action that would ever work on it.
+      if t and (not vtype or t == vtype) then
         local active = VehicleService.Active[plate]
+        -- กุญแจที่ถืออยู่แต่ไม่ใช่รถของเรา มีสองแบบที่ต่างกันคนละเรื่อง และแผงต้องแยกให้ออก:
+        --   ยังไม่ถูกจด  -> นี่คือรถที่รอเจ้าของ กดจดทะเบียนได้
+        --   จดไปแล้ว     -> กุญแจของคนอื่นที่ฝากไว้ให้ขับ จดทับไม่ได้
+        local unregistered = not VehicleService.isRegistered(player, plate)
         out[#out + 1] = {
-          plate = plate, vtype = t, name = "กุญแจฝาก", owner = false,
+          plate = plate, vtype = t, owner = false,
+          name = unregistered and "ยังไม่จดทะเบียน" or "กุญแจฝาก",
+          unregistered = unregistered,
           locked = active and active.model:GetAttribute("IsLocked") or false,
           out = active ~= nil, key = true,
           fuel = active and VehicleService.fuelPercent(active) or nil,
+          durability = active and VehicleService.durabilityPercent(active) or nil,
         }
       end
     end
@@ -221,6 +362,7 @@ local function wireSeat(record, seat)
       if seat == record.driveSeat then
         record.model:SetAttribute("Lift", 0)
         record.model:SetAttribute("Aim", 0)
+        record.model:SetAttribute("Boost", false)
         record.aim = 0
         local was = record.driver
         record.driver = nil
@@ -267,6 +409,35 @@ local function wireTrunk(record, part)
   end)
 end
 
+-- ช่างมาซ่อมถึงที่ ปุ่มขึ้นเฉพาะกับนักประดิษฐ์ และเฉพาะตอนคันนี้สึกจริง
+--
+-- ปุ่มโผล่/หายเองตาม Attribute "Durability" ที่ Drive อัปเดตอยู่แล้ว แทนที่จะให้กดแล้วค่อยบอกว่า "ยังไม่
+-- สึก" — ปุ่มที่ตอบว่าไม่ได้เสมอคือปุ่มที่ไม่ควรมี ส่วนการเช็กคลาสต้องอยู่ตอนกด ไม่ใช่ตอนสร้าง เพราะปุ่ม
+-- หนึ่งอันใช้ร่วมกันทุกคนที่เดินผ่าน
+local function wireRepairPrompt(record)
+  local dur = record.spec.durability
+  if not dur then return end
+
+  local p = prompt(record.hull, "ซ่อมพาหนะ", record.display .. " " .. record.plate, 12)
+  -- ตั้งชื่อไว้ให้ไคลเอนต์หาเจอ: `VehicleRepairController` ซ่อนปุ่มนี้จากคนที่ไม่ใช่นักประดิษฐ์ ซึ่งทำได้
+  -- เฉพาะฝั่งไคลเอนต์เท่านั้น (Enabled ฝั่งเซิร์ฟเวอร์เห็นเหมือนกันหมดทุกคน)
+  p.Name = "VehicleRepairPrompt"
+  p.Enabled = false
+  p.Triggered:Connect(function(player)
+    if not Classes.Has(player, Config.RepairClass) then
+      return notify(player, "ต้องเป็นนักประดิษฐ์ถึงจะซ่อมพาหนะได้", "warn")
+    end
+    local ok, message = VehicleService.fieldRepair(player, record.plate)
+    notify(player, (ok and "🔧 " or "") .. tostring(message), ok and "info" or "warn")
+  end)
+
+  local function refresh()
+    p.Enabled = (record.durability or dur.max) < dur.max
+  end
+  record.model:GetAttributeChangedSignal("Durability"):Connect(refresh)
+  refresh()
+end
+
 local function wireLockPrompt(record)
   local p = prompt(record.hull, "ล็อก / ปลดล็อก", record.display .. " " .. record.plate, 12)
   p.Triggered:Connect(function(player)
@@ -302,16 +473,26 @@ function VehicleService.build(vtype, cf, plate, ownerId, data)
   model:SetAttribute("OwnerUserId", ownerId)
   model:SetAttribute("IsLocked", data and data.Locked == true or false)
   model:SetAttribute("Lift", 0)
+  model:SetAttribute("Boost", false)
 
   -- เชื้อเพลิง: ค่าจริงอยู่ใน record ส่วน Attribute "Fuel" เป็นเปอร์เซ็นต์ให้ไคลเอนต์วาดเกจ
   record.fuel = data and tonumber(data.Fuel) or (spec.fuel and spec.fuel.max) or 0
   if spec.fuel then record.fuel = math.clamp(record.fuel, 0, spec.fuel.max) end
   model:SetAttribute("Fuel", spec.fuel and math.floor(record.fuel / spec.fuel.max * 100 + 0.5) or 100)
+
+  -- ความคงทน เก็บและเผยแพร่ด้วยกติกาเดียวกับเชื้อเพลิงเป๊ะ: ค่าจริงใน record, เปอร์เซ็นต์ใน Attribute,
+  -- เซฟไปกับทะเบียน ตัวใหม่ที่ไม่เคยมีค่าเก็บไว้เกิดมาเต็มเสมอ
+  local dur = spec.durability
+  record.durability = data and tonumber(data.Durability) or (dur and dur.max) or 0
+  if dur then record.durability = math.clamp(record.durability, 0, dur.max) end
+  model:SetAttribute("Durability", dur and math.floor(record.durability / dur.max * 100 + 0.5) or 100)
   record.onEmpty = function(rec)
     if rec.driver then
-      notify(rec.driver, "🔥 ไฟในเตาดับแล้ว — " .. rec.plate .. " ไปต่อไม่ได้ ต้องเติมถ่านที่ NPC", "warn")
+      notify(rec.driver, "🔥 ไฟในเตาดับแล้ว — " .. rec.plate .. " ไปต่อไม่ได้ ต้องเติมถ่าน (เปิดท้ายรถแล้วกดเติม)", "warn")
     end
   end
+  -- ตัวเลขความสึกคำนวณใน Drive ส่วนการเก็บ/เผยแพร่/แจ้งเตือนอยู่ที่นี่ ด้วยเหตุผลเดียวกับ onEmpty
+  record.onWear = function(rec, amount) VehicleService.wear(rec, amount) end
 
   if spec.drive ~= "Wheels" then
     record.rig = Chassis.forceRig(record.hull)
@@ -325,6 +506,7 @@ function VehicleService.build(vtype, cf, plate, ownerId, data)
   for _, seat in ipairs(parts.seats) do wireSeat(record, seat) end
   wireTrunk(record, parts.trunkPart)
   wireLockPrompt(record)
+  wireRepairPrompt(record)
 
   record.drive = Drive.new(record)
   pcall(function() record.hull:SetNetworkOwner(nil) end)
@@ -388,6 +570,11 @@ function VehicleService.summon(player, plate, station)
   local vtype = VehicleService.typeOfPlate(plate)
   if not vtype then return false, "ทะเบียนไม่ถูกต้อง" end
   if not VehicleService.hasKey(player, plate) then return false, "ต้องมีกุญแจของ " .. plate end
+  -- กุญแจที่ยังไม่ได้จดทะเบียนเรียกรถออกมาไม่ได้ ถ้าไม่ด่านนี้ การจดทะเบียนก็ไม่มีความหมาย: หีบทดสอบแจก
+  -- กุญแจมา แล้วขับได้เลยโดยไม่ต้องแวะหาบารอนเวนสักครั้ง (ตัว build ยอมรับ data = nil อยู่แล้ว จึงเงียบ)
+  if not VehicleService.isRegistered(player, plate) then
+    return false, "กุญแจดอกนี้ยังไม่ได้จดทะเบียน ไปจดที่บารอนเวนก่อน"
+  end
   if VehicleService.Active[plate] then return false, plate .. " ถูกเรียกออกมาแล้ว" end
   if station and station.vtype ~= vtype then return false, "จุดนี้เรียกได้เฉพาะ" .. Config.Types[station.vtype].display end
 
@@ -475,6 +662,7 @@ function VehicleService.saveTrunk(record)
     data.Trunk = table.clone(record.trunk or {})
     data.Locked = record.model:GetAttribute("IsLocked") == true
     data.Fuel = record.fuel
+    data.Durability = record.durability
     if owner then Store.dirty(owner) end
   end
 end
@@ -491,14 +679,15 @@ function VehicleService.refuel(player, plate)
   if missing < 1 then return false, "ถังเต็มอยู่แล้ว" end
 
   -- ถ่านหินมาจากกระเป๋าจริงของเกม ไม่ใช่ตารางไอเทมทดสอบของโปรเจ็คต้นทางแล้ว
-  local need = math.ceil(missing / Config.FuelPerCoal)
+  local perCoal = Config.fuelPerCoal(record.spec)
+  local need = math.ceil(missing / perCoal)
   local used = 0
   if not Config.FreeFuel then
     used = VehicleService.takeFromBag(player, "Coal", need)
     if used <= 0 then return false, "ไม่มีถ่านหินในกระเป๋า" end
   end
 
-  record.fuel = Config.FreeFuel and spec.max or math.min(spec.max, record.fuel + used * Config.FuelPerCoal)
+  record.fuel = Config.FreeFuel and spec.max or math.min(spec.max, record.fuel + used * perCoal)
   record.lastTouch = os.clock()
   record.model:SetAttribute("Fuel", math.floor(record.fuel / spec.max * 100 + 0.5))
   VehicleService.saveTrunk(record)
@@ -509,6 +698,125 @@ function VehicleService.fuelPercent(record)
   local spec = record.spec.fuel
   if not spec then return 100 end
   return math.floor((record.fuel or 0) / spec.max * 100 + 0.5)
+end
+
+-- ---------------------------------------------------------------- ความคงทน
+function VehicleService.durabilityPercent(record)
+  local dur = record.spec.durability
+  if not dur then return 100 end
+  return math.floor((record.durability or 0) / dur.max * 100 + 0.5)
+end
+
+-- เรียกจากลูปขับทุกสเต็ป ดูคำอธิบายว่าอะไรทำให้สึกที่ Config.Durability
+function VehicleService.wear(record, amount)
+  local dur = record.spec.durability
+  if not dur or amount <= 0 then return end
+  local before = record.durability or dur.max
+  if before <= 0 then return end
+
+  record.durability = math.max(0, before - amount)
+  local pct = math.floor(record.durability / dur.max * 100 + 0.5)
+  if pct ~= record._pubDurability then
+    record._pubDurability = pct
+    record.model:SetAttribute("Durability", pct)
+  end
+  -- ถึงศูนย์แล้วเงียบไปเฉยๆ คือบั๊กที่คนขับหาไม่เจอ ต้องบอกให้รู้ว่าเกิดอะไรขึ้นและต้องทำอย่างไรต่อ
+  if record.durability <= 0 and before > 0 then
+    if record.driver then
+      notify(record.driver, "⚙️ " .. record.plate .. " พังแล้ว ขับต่อไม่ได้ — ฝากคืนกับบารอนเวนแล้วกดซ่อม หรือให้นักประดิษฐ์ซ่อมให้ตรงนี้", "warn")
+    end
+    VehicleService.saveTrunk(record)
+  end
+end
+
+function VehicleService.isBroken(record)
+  local dur = record.spec.durability
+  return dur ~= nil and (record.durability or dur.max) <= 0
+end
+
+-- ซ่อมกลับเต็ม คืน true ถ้ามีอะไรให้ซ่อมจริง
+local function restore(record)
+  local dur = record.spec.durability
+  if not dur then return false end
+  if (record.durability or 0) >= dur.max then return false end
+  record.durability = dur.max
+  record._pubDurability = 100
+  record.model:SetAttribute("Durability", 100)
+  return true
+end
+
+-- ช่างซ่อมถึงที่: นักประดิษฐ์เดินมาซ่อมพาหนะที่พังคาอยู่ตรงนั้น ทางเลือกที่สองของผู้ใช้ ("เรียกช่างมาซ่อม")
+-- คู่กับการฝากคืนแล้วกดซ่อมที่ NPC
+--
+-- จ่ายด้วยเฟืองอะไหล่ ไม่ใช่เงิน: เงินเป็นทางของบารอนเวนอยู่แล้ว และของที่ต้องหามาเองคือสิ่งที่ทำให้การมี
+-- ช่างอยู่ในเซิร์ฟเวอร์มีค่ากว่าการมีเงิน
+function VehicleService.fieldRepair(player, plate)
+  local record = VehicleService.Active[plate]
+  if not record then return false, "ไม่พบพาหนะทะเบียนนี้ในโลก" end
+  local dur = record.spec.durability
+  if not dur then return false, "พาหนะนี้ไม่มีค่าความคงทน" end
+  if (record.durability or 0) >= dur.max then return false, "คันนี้ยังไม่สึกหรอ" end
+
+  local need = Config.RepairParts or 3
+  local used = VehicleService.takeFromBag(player, "GearSpare", need)
+  if used < need then
+    -- คืนของที่หยิบไปแล้ว: ซ่อมไม่สำเร็จต้องไม่กินอะไหล่
+    if used > 0 then Inventory.AddItem(player, "GearSpare", used) end
+    return false, ("ต้องใช้เฟืองอะไหล่ %d ชิ้น"):format(need)
+  end
+
+  restore(record)
+  record.lastTouch = os.clock()
+  VehicleService.saveTrunk(record)
+  return true, ("ซ่อม %s กลับมาเต็มแล้ว (ใช้เฟืองอะไหล่ %d)"):format(plate, need)
+end
+
+-- ---------------------------------------------------------------- บริการที่บารอนเวน
+-- ทั้งสองอย่างต้อง **ฝากรถไว้ก่อน** ตามที่ผู้ใช้กำหนด ซึ่งอ่านเป็นกติกาเดียวกันทั้งคู่: บารอนเวนทำงานกับ
+-- พาหนะที่อยู่ในโรงเก็บของเขา ไม่ใช่กับคันที่จอดอยู่อีกฟากของแมพ
+--
+-- "ฝากแล้ว" = ไม่มีอยู่ใน Active ซึ่งเป็นนิยามเดียวกับที่แผงโรงรถใช้วาดปุ่ม เบิก/ฝากคืน อยู่แล้ว
+local function stowedRecord(player, plate)
+  if VehicleService.Active[plate] then
+    return nil, "ต้องฝากคืนก่อนถึงจะใช้บริการนี้ได้"
+  end
+  local profile = Store.get(player)
+  local rec = profile and profile.Data.Vehicles[plate]
+  if not rec then return nil, "ทะเบียนนี้ไม่ได้อยู่ในโรงรถของคุณ" end
+  if not Store.hasKey(player, plate) then return nil, "ต้องมีกุญแจของ " .. plate end
+  return rec, Config.Types[rec.Type]
+end
+
+function VehicleService.serviceRefuel(player, plate)
+  local rec, spec = stowedRecord(player, plate)
+  if not rec then return false, spec end
+  local fuel = spec and spec.fuel
+  if not fuel then return false, "พาหนะนี้ไม่ใช้เชื้อเพลิง" end
+  if (tonumber(rec.Fuel) or fuel.max) >= fuel.max then return false, "ถังเต็มอยู่แล้ว" end
+
+  local price = Config.Service.Refuel
+  local paid, reason = charge(player, price)
+  if not paid then return false, reason end
+
+  rec.Fuel = fuel.max
+  Store.dirty(player)
+  return true, price
+end
+
+function VehicleService.serviceRepair(player, plate)
+  local rec, spec = stowedRecord(player, plate)
+  if not rec then return false, spec end
+  local dur = spec and spec.durability
+  if not dur then return false, "พาหนะนี้ไม่มีค่าความคงทน" end
+  if (tonumber(rec.Durability) or dur.max) >= dur.max then return false, "คันนี้ยังไม่สึกหรอ" end
+
+  local price = Config.Service.Repair
+  local paid, reason = charge(player, price)
+  if not paid then return false, reason end
+
+  rec.Durability = dur.max
+  Store.dirty(player)
+  return true, price
 end
 
 -- ---------------------------------------------------------------- ท้ายพาหนะ
@@ -553,6 +861,21 @@ function VehicleService.takeFromBag(player, itemId, count)
   return taken
 end
 
+-- สิ่งที่แผงท้ายพาหนะวาดจาก ใช้ร่วมกันทั้งตอนเปิดและตอนย้ายของเสร็จ — เดิมเขียนแยกกันสองที่ และการเพิ่ม
+-- ฟิลด์ใหม่ก็คือการลืมเติมอีกที่หนึ่ง (เกจถ่านบนแผงหายไปหลังย้ายของ เพราะเหตุผลนี้พอดี)
+--
+-- เกจถ่านอยู่ในนี้เพราะปุ่มเติมถ่านย้ายมาอยู่บนแผงนี้แล้ว ปุ่มที่ไม่บอกว่าตอนนี้เหลือเท่าไหร่คือปุ่มที่ต้อง
+-- กดเพื่อจะรู้ว่าควรกดไหม
+function VehicleService.trunkPayload(player, record)
+  return {
+    action = "Trunk", plate = record.plate, display = record.display,
+    capacity = record.spec.trunk, trunk = record.trunk or {}, bag = bagOf(player),
+    fuel = VehicleService.fuelPercent(record),
+    durability = VehicleService.durabilityPercent(record),
+    coalPerFullTank = Config.CoalPerFullTank,
+  }
+end
+
 function VehicleService.trunkState(player, plate)
   local record = VehicleService.Active[plate]
   if not record then return nil, "ไม่พบพาหนะทะเบียนนี้" end
@@ -565,10 +888,7 @@ function VehicleService.trunkState(player, plate)
     return nil, "อยู่ไกลจากพาหนะเกินไป"
   end
   record.lastTouch = os.clock()
-  return {
-    action = "Trunk", plate = plate, display = record.display,
-    capacity = record.spec.trunk, trunk = record.trunk or {}, bag = bagOf(player),
-  }
+  return VehicleService.trunkPayload(player, record)
 end
 
 local function stackLimit(itemId)
@@ -587,6 +907,13 @@ function VehicleService.moveItem(player, plate, itemId, count, toTrunk)
   record.trunk = record.trunk or {}
 
   if toTrunk then
+    -- กุญแจใส่ท้ายพาหนะไม่ได้ ไม่ใช่แค่เพราะกติกา แต่เพราะท้ายพาหนะเก็บ **จำนวนของแต่ละชนิด** ไม่ได้เก็บช่อง
+    -- (`record.trunk[itemId] = n`) จึงไม่มีที่ให้ meta ของช่องอยู่เลย กุญแจที่ใส่เข้าไปจะออกมาเป็นกุญแจที่
+    -- ไม่มีทะเบียน ซึ่งคือปัญหา "คข 8660" ที่เคยทำให้โรงรถบารอนเวนพัง
+    if not ItemCatalog.IsStorable(itemId) then
+      return nil, "กุญแจเก็บในท้ายพาหนะไม่ได้ — ต้องพกติดตัวไว้"
+    end
+
     -- ช่องท้ายพาหนะนับเป็น "ชนิดของ" ไม่ใช่ช่องกระเป๋า ของชนิดใหม่จึงกินหนึ่งช่อง ส่วนของชนิดเดิมไปกองรวม
     local slots = 0
     for _ in pairs(record.trunk) do slots += 1 end
@@ -620,10 +947,7 @@ function VehicleService.moveItem(player, plate, itemId, count, toTrunk)
 
   record.lastTouch = os.clock()
   VehicleService.saveTrunk(record)
-  return {
-    action = "Trunk", plate = plate, display = record.display,
-    capacity = record.spec.trunk, trunk = record.trunk, bag = bagOf(player),
-  }
+  return VehicleService.trunkPayload(player, record)
 end
 
 -- คันบังคับขึ้น/ลงของเรือเหาะ (-1..1) ส่งมาจากไคลเอนต์ของคนที่นั่งเบาะคนขับอยู่เท่านั้น
@@ -632,6 +956,17 @@ function VehicleService.setLift(player, value)
   if not record or record.spec.drive ~= "Hover" then return end
   if not record.driveSeat.Occupant then return end
   record.model:SetAttribute("Lift", math.clamp(value, -1, 1))
+end
+
+-- บูสต์: กด Shift ค้างตอนขับ ทรงเดียวกับ Lift เป๊ะ — Attribute บนโมเดล ที่ Drive อ่านทุกสเต็ป
+--
+-- เก็บเป็น Attribute ไม่ใช่ตัวแปรใน record ด้วยเหตุผลเดียวกับ Lift: ไคลเอนต์ทุกเครื่องเห็นด้วย ไฟบูสต์บน
+-- HUD กับเสียงเครื่องจึงตามได้โดยไม่ต้องมี remote เพิ่ม
+function VehicleService.setBoost(player, on)
+  local record = VehicleService.Drivers[player.UserId]
+  if not record then return end
+  if not record.driveSeat.Occupant then return end
+  record.model:SetAttribute("Boost", on and true or false)
 end
 
 -- หวูด/แตร: เซิร์ฟเวอร์แค่บอกทุกเครื่องว่า "คันนี้เพิ่งกดหวูด" ที่เหลือไคลเอนต์เล่นเสียงเอง

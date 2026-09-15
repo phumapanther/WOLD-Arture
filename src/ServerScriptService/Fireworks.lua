@@ -89,42 +89,105 @@ local function burst(position, colour)
 	core.CanTouch = false
 	core.Parent = folder()
 
+	-- The sparks. Big, bright, and they HANG: heavy drag kills most of the outward speed within the first
+	-- half second, so the sphere snaps open and then just sits there glowing for a second or two before it
+	-- starts to fall. That pause is the whole look -- without it the burst is a flicker.
 	local sparks = Instance.new("ParticleEmitter")
 	sparks.Color = ColorSequence.new(colour)
 	sparks.Texture = "rbxasset://textures/particles/sparkles_main.dds"
 	sparks.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 2.2),
-		NumberSequenceKeypoint.new(0.6, 1.1),
+		NumberSequenceKeypoint.new(0, 3.4),
+		NumberSequenceKeypoint.new(0.15, 2.8),
+		-- Still nearly full size at 70% of its life: it fades out rather than shrinking away, which is what
+		-- keeps the shape readable while it hangs.
+		NumberSequenceKeypoint.new(0.7, 2.2),
 		NumberSequenceKeypoint.new(1, 0),
 	})
 	sparks.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0),
-		NumberSequenceKeypoint.new(0.7, 0.2),
+		NumberSequenceKeypoint.new(0.75, 0.1),
 		NumberSequenceKeypoint.new(1, 1),
 	})
-	sparks.Lifetime = NumberRange.new(1.1, 1.9)
-	sparks.Speed = NumberRange.new(38, 62)
+	-- 2.4-3.2s alive, of which the middle 1-2 is the hang. The user asked for it to hold; a lifetime shorter
+	-- than the drag takes to bite would fade before the shape ever stopped moving.
+	sparks.Lifetime = NumberRange.new(2.4, 3.2)
+	sparks.Speed = NumberRange.new(55, 95)
 	-- Every direction at once, which is what makes it a sphere rather than a fountain.
 	sparks.SpreadAngle = Vector2.new(180, 180)
 	sparks.LightEmission = 1
-	sparks.Drag = 3.2 -- the sparks slow as they spread, so the shape opens and then hangs
-	sparks.Acceleration = Vector3.new(0, -14, 0) -- and then fall
+	sparks.LightInfluence = 0
+	-- High drag is what buys the hang: the sparks fly out hard, then stop almost dead.
+	sparks.Drag = 6
+	-- Gentle gravity, so they drift down at the end instead of dropping out of the sky.
+	sparks.Acceleration = Vector3.new(0, -7, 0)
 	sparks.Rate = 0
 	sparks.Parent = core
 
+	-- A second, finer layer thrown further and faster: the long streaks that trail past the main sphere and
+	-- make the burst read as a BANG rather than a puff.
+	local streaks = Instance.new("ParticleEmitter")
+	streaks.Color = ColorSequence.new(colour)
+	streaks.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	streaks.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1.4),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	streaks.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.1),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	streaks.Lifetime = NumberRange.new(1.4, 2.2)
+	streaks.Speed = NumberRange.new(110, 170)
+	streaks.SpreadAngle = Vector2.new(180, 180)
+	streaks.LightEmission = 1
+	streaks.LightInfluence = 0
+	streaks.Drag = 3
+	streaks.Acceleration = Vector3.new(0, -12, 0)
+	-- Stretched along their own travel, which is what turns a dot into a streak.
+	streaks.SquashY = 4
+	streaks.Rate = 0
+	streaks.Parent = core
+
+	-- The flash: a hard white core for a fraction of a second, the "ตู้ม".
+	local pop = Instance.new("Part")
+	pop.Name = "Flash"
+	pop.Shape = Enum.PartType.Ball
+	pop.Size = Vector3.new(3, 3, 3)
+	pop.Position = position
+	pop.Color = Color3.new(1, 1, 1)
+	pop.Material = Enum.Material.Neon
+	pop.Anchored = true
+	pop.CanCollide = false
+	pop.CanQuery = false
+	pop.CanTouch = false
+	pop.Parent = folder()
+	TweenService:Create(pop, TweenInfo.new(0.35, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Size = Vector3.new(26, 26, 26),
+		Transparency = 1,
+	}):Play()
+	Debris:AddItem(pop, 0.6)
+
 	local flash = Instance.new("PointLight")
 	flash.Color = colour
-	flash.Brightness = 8
-	flash.Range = 60
+	flash.Brightness = 14
+	flash.Range = 90
 	flash.Shadows = false
 	flash.Parent = core
 
-	sparks:Emit(140)
-	TweenService:Create(flash, TweenInfo.new(0.8), { Brightness = 0 }):Play()
+	sparks:Emit(180)
+	streaks:Emit(70)
+	-- The light holds for a beat before it goes, so the sky stays lit while the sparks hang rather than
+	-- going dark the instant they stop moving.
+	TweenService:Create(flash, TweenInfo.new(0.25), { Brightness = 6 }):Play()
+	task.delay(0.25, function()
+		if flash.Parent then
+			TweenService:Create(flash, TweenInfo.new(1.6), { Brightness = 0 }):Play()
+		end
+	end)
 
 	-- Long enough for the slowest spark to finish falling. Destroying on the emit would cut the burst in
 	-- half -- particles die with the emitter that owns them.
-	Debris:AddItem(core, 4)
+	Debris:AddItem(core, 6)
 end
 
 -- Sends one shell up from `origin` and bursts it `height` studs above.
@@ -141,9 +204,11 @@ function Fireworks.Launch(origin, height, colour, startDelay)
 
 		-- Quad ease-out: fast off the ground and slowing as it rises, which is how a real shell moves and
 		-- what makes the pause at the top read as a pause rather than a stall.
+		-- The climb varies by a few tenths even when a volley launches together, so the bursts arrive as a
+		-- ripple of bangs rather than one flat crack.
 		local rise = TweenService:Create(
 			shell,
-			TweenInfo.new(1.4 + math.random() * 0.5, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			TweenInfo.new(1.3 + math.random() * 0.7, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
 			{ Position = peak }
 		)
 		rise:Play()
@@ -153,6 +218,26 @@ function Fireworks.Launch(origin, height, colour, startDelay)
 			burst(at, colour)
 		end)
 	end)
+end
+
+-- Ground under (x, z), for a shell that has to start from the floor rather than mid-air.
+local function groundUnder(x, z, fallbackY)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { folder() }
+	params.IgnoreWater = true
+	local hit = workspace:Raycast(Vector3.new(x, 300, z), Vector3.new(0, -1200, 0), params)
+	return hit and hit.Position.Y + 2 or fallbackY
+end
+
+-- One shell at a named spot on the map. `at` is where it LAUNCHES FROM; it bursts `height` above that.
+--
+-- Takes x/z and finds its own ground, so an admin typing a coordinate does not have to know the terrain
+-- height there -- the same rule the vehicle stations follow.
+function Fireworks.At(x, z, height, fallbackY, colour)
+	local from = Vector3.new(x, groundUnder(x, z, fallbackY or 0), z)
+	Fireworks.Launch(from, height, colour, 0)
+	return from
 end
 
 -- A ring of shells around `centre`, all of them `radius` studs out.
@@ -171,14 +256,11 @@ function Fireworks.Ring(centre, radius, count, height)
 
 		-- The ground under that spot, so a shell launched over a valley still starts at the valley floor
 		-- rather than in mid-air. Falls back to the centre's own height when there is nothing below.
-		local params = RaycastParams.new()
-		params.FilterType = Enum.RaycastFilterType.Exclude
-		params.FilterDescendantsInstances = { folder() }
-		params.IgnoreWater = true
-		local hit = workspace:Raycast(at + Vector3.new(0, 300, 0), Vector3.new(0, -1200, 0), params)
-		local from = hit and Vector3.new(at.X, hit.Position.Y + 2, at.Z) or Vector3.new(at.X, centre.Y, at.Z)
+		local from = Vector3.new(at.X, groundUnder(at.X, at.Z, centre.Y), at.Z)
 
-		Fireworks.Launch(from, height, nil, (i - 1) * 0.12)
+		-- All at once, per the user: a New Year volley is a wall of bangs, not a queue. A tiny jitter on the
+		-- height is what keeps them from bursting on one flat plane like a row of streetlights.
+		Fireworks.Launch(from, height + math.random(-14, 14), nil, 0)
 	end
 	return count
 end
