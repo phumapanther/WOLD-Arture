@@ -184,7 +184,10 @@ local function doChest(event)
 	if not chestBudget() then return end
 
 	local tier = Config.Chest.Tiers[event.tier] or Config.Chest.Fallback
-	if ChestAccess.SpawnNear(admin, tier) then
+	-- Gift chests roll their rare categories at twice the weight, per the user. Passed here rather than
+	-- baked into the chest grade, because the same grade opened off a craft or an admin command should not
+	-- be luckier -- it is the gift that earns it.
+	if ChestAccess.SpawnNear(admin, tier, true) then
 		chestsThisMinute += 1
 		announce(("%s ส่งของขวัญ %s coins — หีบ%sโผล่แล้ว!")
 			:format(who(event), tostring(event.coins or 0), tostring(event.label or "")))

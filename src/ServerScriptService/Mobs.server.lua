@@ -148,6 +148,128 @@ end
 --
 -- Returns nil if the prototype is missing or unusable, and the caller falls back to buildSlime -- a missing
 -- model should cost you the artwork, not the monster.
+-- The R15 skeleton, as parent -> child pairs with the joint name Roblox expects between them.
+--
+-- The user's monsters are modelled as real R15 rigs -- all sixteen parts, correctly named and correctly
+-- placed, RigType already R15 -- but held together with WeldConstraints. A weld is rigid: an animation can
+-- ask a limb to move and nothing happens, which is why these monsters slid along the ground with their legs
+-- locked straight. Motor6D is the joint an Animator can actually drive.
+local R15_JOINTS = {
+    { "LowerTorso", "HumanoidRootPart", "Root" },
+    { "UpperTorso", "LowerTorso", "Waist" },
+    { "Head", "UpperTorso", "Neck" },
+    { "LeftUpperArm", "UpperTorso", "LeftShoulder" },
+    { "LeftLowerArm", "LeftUpperArm", "LeftElbow" },
+    { "LeftHand", "LeftLowerArm", "LeftWrist" },
+    { "RightUpperArm", "UpperTorso", "RightShoulder" },
+    { "RightLowerArm", "RightUpperArm", "RightElbow" },
+    { "RightHand", "RightLowerArm", "RightWrist" },
+    { "LeftUpperLeg", "LowerTorso", "LeftHip" },
+    { "LeftLowerLeg", "LeftUpperLeg", "LeftKnee" },
+    { "LeftFoot", "LeftLowerLeg", "LeftAnkle" },
+    { "RightUpperLeg", "LowerTorso", "RightHip" },
+    { "RightLowerLeg", "RightUpperLeg", "RightKnee" },
+    { "RightFoot", "RightLowerLeg", "RightAnkle" },
+}
+
+-- Turns a welded R15 body into a jointed one, so Roblox's own walk, run and idle animations drive it.
+--
+-- Returns the set of parts that are now driven by a joint. The caller must NOT weld those to the root
+-- afterwards: a part with both a Motor6D and a weld to the root is pinned by the weld and the animation
+-- moves nothing, which is the same dead limb by a different route.
+--
+-- Does nothing to a model that is not an R15 rig -- the spiders already ship 29 Motor6Ds of their own, and
+-- the slimes have no skeleton to find.
+local function rigR15(model)
+    local jointed = {}
+    local humanoid = model:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return jointed end
+
+    -- By name, but it MUST be a BasePart. Some of these models wrap a limb in a Model of the same name, and
+    -- FindFirstChild would hand back the wrapper -- which Motor6D rejects outright ("Expected BasePart got
+    -- Model"), taking the whole monster down with it.
+    local function partNamed(name)
+        for _, d in ipairs(model:GetDescendants()) do
+            if d:IsA("BasePart") and d.Name == name then return d end
+        end
+        return nil
+    end
+
+    -- Resolved once, up front: every R15 part has to be there, and a partial rig animates half a body, which
+    -- looks worse than a still one.
+    local found = {}
+    for _, joint in ipairs(R15_JOINTS) do
+        found[joint[1]] = found[joint[1]] or partNamed(joint[1])
+        found[joint[2]] = found[joint[2]] or partNamed(joint[2])
+        if not found[joint[1]] or not found[joint[2]] then
+            return jointed
+        end
+    end
+
+    for _, joint in ipairs(R15_JOINTS) do
+        local part, parent, name = found[joint[1]], found[joint[2]], joint[3]
+        if part:FindFirstChildWhichIsA("Motor6D") then
+            jointed[part] = true
+        else
+            -- The welds holding this part rigid have to go, wherever they were parented.
+            for _, d in ipairs(model:GetDescendants()) do
+                if (d:IsA("WeldConstraint") or d:IsA("Weld")) and (d.Part1 == part or d.Part0 == part) then
+                    d:Destroy()
+                end
+            end
+            -- C0/C1 from where the parts already are, so the rig keeps the pose the artist built rather than
+            -- snapping to Roblox's default proportions.
+            local motor = Instance.new("Motor6D")
+            motor.Name = name
+            motor.Part0 = parent
+            motor.Part1 = part
+            motor.C0 = parent.CFrame:ToObjectSpace(part.CFrame)
+            motor.C1 = CFrame.new()
+            motor.Parent = parent
+            jointed[part] = true
+        end
+    end
+
+    humanoid.RigType = Enum.HumanoidRigType.R15
+    return jointed
+end
+
+-- Animations for a rigged monster. Reusing what already exists rather than authoring new sequences:
+-- Roblox's stock R15 walk is a walk, and the game's own sword slash is a swing, and a monster that walks and
+-- swings is the whole of what the user asked for.
+--
+-- `walk` is looped and played whenever it is moving; `attack` is one-shot and fired from the AI loop at the
+-- moment the blow lands, so the animation and the damage are the same event.
+local MOB_WALK = "rbxassetid://913402848"   -- Roblox stock R15 walk
+local MOB_ATTACK = "rbxassetid://138133285610075" -- Sword_Slash, the game's own
+
+-- Loads the two tracks onto a rigged monster. Returns nil for anything with no Animator to hang them on.
+local function loadMobTracks(model, config)
+    local humanoid = model:FindFirstChildOfClass("Humanoid")
+    if not humanoid then return nil end
+    local animator = humanoid:FindFirstChildOfClass("Animator")
+    if not animator then
+        animator = Instance.new("Animator")
+        animator.Parent = humanoid
+    end
+
+    local function load(id, looped, priority)
+        if not id or id == "" then return nil end
+        local anim = Instance.new("Animation")
+        anim.AnimationId = id
+        local ok, track = pcall(function() return animator:LoadAnimation(anim) end)
+        if not ok then return nil end
+        track.Looped = looped
+        track.Priority = priority
+        return track
+    end
+
+    return {
+        walk = load(config.walkAnimation or MOB_WALK, true, Enum.AnimationPriority.Movement),
+        attack = load(config.attackAnimation or MOB_ATTACK, false, Enum.AnimationPriority.Action),
+    }
+end
+
 local function buildFromModel(config)
     local prototype = prototypeFor(config)
     if not prototype or not prototype:IsA("Model") then return nil end
@@ -202,6 +324,9 @@ local function buildFromModel(config)
         rootPart:SetAttribute("WOLD_HipHeight", modelSize.Y * 0.5 + 0.2)
     end
 
+    -- Joint the skeleton FIRST, so the welding below knows which limbs must be left free to move.
+    local jointed = rigR15(model)
+
     -- Everything else rides along rather than fighting the physics: an anchored limb would pin the monster
     -- in place, and a colliding one would trip it over its own body.
     for _, d in ipairs(model:GetDescendants()) do
@@ -209,7 +334,10 @@ local function buildFromModel(config)
             d.Anchored = false
             d.CanCollide = false
             d.Massless = true
-            if not d:FindFirstChildWhichIsA("WeldConstraint") then
+            -- A limb the rig drives must NOT also be welded to the root: the weld wins and the animation
+            -- moves nothing. Decoration -- hair, a bandana, a sword -- still welds, because nothing animates
+            -- it and loose parts would be left behind as the monster walks.
+            if not jointed[d] and not d:FindFirstChildWhichIsA("WeldConstraint") then
                 local weld = Instance.new("WeldConstraint")
                 weld.Part0 = rootPart
                 weld.Part1 = d
@@ -279,26 +407,34 @@ local function setHealthBar(model, fraction)
 	if bar then bar.Size = UDim2.fromScale(math.clamp(fraction, 0, 1), 1) end
 end
 
-local function drop(model, config, killer)
+-- `loot` carries the two multipliers a boss gets: `amount` doubles how many come out, `chance` doubles the
+-- odds a rare roll succeeds. Both default to 1, which is every ordinary monster.
+--
+-- Doubling the ODDS rather than rolling twice is deliberate: two rolls at 5% is not 10%, and the user asked
+-- for the rate to double. A doubled chance is also clamped below, because a 60% drop doubled is not 120%.
+local function drop(model, config, killer, loot)
 	if not killer or not killer.Parent then return end
+	local amountScale = (loot and loot.amount) or 1
+	local chanceScale = (loot and loot.chance) or 1
 	for _, entry in ipairs(config.drops or {}) do
 		-- `chance` is optional: without one a drop is certain, which is what every material drop is. With
 		-- one it is rolled per kill, which is what makes a weapon worth hunting for rather than a reward
 		-- for showing up.
-		if not entry.chance or math.random() < entry.chance then
+		local odds = entry.chance and math.min(1, entry.chance * chanceScale) or nil
+		if not odds or math.random() < odds then
 			-- `oneOf` picks a single item from a list, so a rare roll gives ONE weapon rather than all of
 			-- them at once. `item` names a specific thing; the two are alternatives.
 			local id = entry.item
 			if entry.oneOf and #entry.oneOf > 0 then
 				id = entry.oneOf[math.random(1, #entry.oneOf)]
 			end
-			local count = math.random(entry.min or 1, entry.max or 1)
+			local count = math.random(entry.min or 1, entry.max or 1) * amountScale
 			if Inventory.AddItem(killer, id, count) then
 				local item = ItemCatalog.Get(id)
 				local name = item and item.name or id
 				-- A rare drop says so. ToastController only distinguishes "error" from everything else, so
 				-- the difference has to live in the words rather than in the colour.
-				Remotes.SocialNotify:FireClient(killer, "info", entry.chance
+				Remotes.SocialNotify:FireClient(killer, "info", odds
 					and ("หายาก! ได้ %s x%d"):format(name, count)
 					or ("ได้ %s x%d"):format(name, count))
 			else
@@ -377,7 +513,7 @@ local function damage(model, amount, attacker)
 			sound:Play()
 			Debris:AddItem(marker, 5)
 		end
-		drop(model, state.config, attacker)
+		drop(model, state.config, attacker, state.loot)
 		despawn(model)
 	end
 	return true
@@ -458,6 +594,8 @@ local function spawnOne(spawner, kind, config)
 				hp = maxHp,
 				maxHp = maxHp,
 				damageScale = scale,
+				-- Walk and swing. nil for a slime or anything else with no rig to drive.
+				tracks = loadMobTracks(model, config),
 				spawner = spawner,
 				home = Vector3.new(x, y, z),
 				nextAttackAt = 0,
@@ -511,6 +649,12 @@ local function spawnHunter(kind, config, victim, origin, distance, boss)
 				hp = maxHp,
 				maxHp = maxHp,
 				damageScale = scale,
+				-- A boss drops twice as much and rolls its rare drops at twice the odds, per the user. Stamped
+				-- at spawn like damageScale, so what a monster is worth is decided when it appears rather than
+				-- read off a table that may have changed by the time it dies.
+				loot = boss and { amount = 2, chance = 2 } or nil,
+				-- Walk and swing. nil for a slime or anything else with no rig to drive.
+				tracks = loadMobTracks(model, config),
 				-- No spawner: nothing counts it, and nothing brings it back.
 				spawner = nil,
 				home = Vector3.new(x, y, z),
@@ -655,6 +799,21 @@ RunService.Heartbeat:Connect(function(dt)
 			local position = root.Position
 			local config = state.config
 
+			-- Legs follow the body. Read off the real velocity rather than from each place that calls MoveTo,
+			-- so chasing, walking home and drifting around the field all animate without three copies of
+			-- this -- and so a monster stopped by a wall stops moving its legs too.
+			--
+			-- Started, never re-Played: Play on a running track restarts it from frame one every tick, which
+			-- reads as a permanent twitch.
+			if state.tracks and state.tracks.walk then
+				local moving = root.AssemblyLinearVelocity * Vector3.new(1, 0, 1)
+				if moving.Magnitude > 0.6 then
+					if not state.tracks.walk.IsPlaying then state.tracks.walk:Play(0.2) end
+				elseif state.tracks.walk.IsPlaying then
+					state.tracks.walk:Stop(0.2)
+				end
+			end
+
 			-- Stunned: nothing else this tick. Checked before the leash and the chase so a monster caught
 			-- mid-walk stands still rather than finishing its step.
 			if state.stunnedUntil and os.clock() < state.stunnedUntil then
@@ -711,6 +870,11 @@ RunService.Heartbeat:Connect(function(dt)
 						local now = os.clock()
 						if now >= state.nextAttackAt then
 							state.nextAttackAt = now + config.attackCooldown
+							-- Swing where the blow happens, so the animation and the damage are one event
+							-- rather than two things that usually coincide.
+							if state.tracks and state.tracks.attack then
+								state.tracks.attack:Play(0.1)
+							end
 							-- Through Vitals, the one door every kind of damage goes through: armor,
 							-- invulnerability and the downed state are all decided there.
 							local hurt = Vitals.ApplyDamage(state.target, config.damage * (state.damageScale or 1), "combat")

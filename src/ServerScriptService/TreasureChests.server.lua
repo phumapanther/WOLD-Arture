@@ -80,15 +80,27 @@ local function pickCategory(weights)
 end
 
 -- What one chest of this grade happens to contain.
-local function rollLoot(tier)
+--
+-- `lucky` doubles the weight of the scarce categories -- the ones a chest is actually opened hoping for --
+-- which is what a gift-bought chest gets. Doubling the WEIGHT rather than the final odds is what keeps the
+-- ratios meaningful: the categories still compete against each other, the rare ones just compete harder.
+local function rollLoot(tier, lucky)
 	local spec = ChestConfig.Chests[tier]
 	if not spec then return {} end
+
+	local weights = spec.weights
+	if lucky then
+		weights = {}
+		for name, weight in pairs(spec.weights) do
+			weights[name] = ChestConfig.RareCategories[name] and weight * 2 or weight
+		end
+	end
 
 	local kinds = math.random(ChestConfig.MinKinds, ChestConfig.MaxKinds)
 	local loot, seen = {}, {}
 
 	for _ = 1, kinds do
-		local category = pickCategory(spec.weights)
+		local category = pickCategory(weights)
 		local pool = category and ChestConfig.Pools[category]
 		if pool and #pool > 0 then
 			local id = pool[math.random(#pool)]
@@ -122,7 +134,7 @@ local function groundAt(x, z)
 end
 
 -- Drops a chest of `tier` near `position`. Returns the model, or nil if there was nowhere to put it.
-local function spawnChest(tier, position)
+local function spawnChest(tier, position, lucky)
 	local prototype = prototypeFor(tier)
 	if not prototype then
 		warn(("[Chest] ไม่เจอโมเดล %s ใน ServerStorage.Treasure"):format(tier))
@@ -163,7 +175,7 @@ local function spawnChest(tier, position)
 			prompt.RequiresLineOfSight = false
 			prompt.Parent = model.PrimaryPart or model:FindFirstChildWhichIsA("BasePart", true)
 
-			Live[model] = { tier = tier, loot = rollLoot(tier), viewer = nil }
+			Live[model] = { tier = tier, loot = rollLoot(tier, lucky), viewer = nil }
 			CollectionService:AddTag(model, TAG)
 
 			prompt.Triggered:Connect(function(player)
@@ -269,14 +281,16 @@ local ChestAccess = require(game.ServerScriptService.ChestAccess)
 
 -- Used by the admin command and by the chest items in a player's bag. Returns true if a chest actually
 -- landed, so the caller can tell the player when it did not.
-ChestAccess.Spawn = function(tier, position)
+-- `lucky` doubles the odds of the rare categories inside. The TikTok gift path passes it; the admin command
+-- and the chest items in a bag do not.
+ChestAccess.Spawn = function(tier, position, lucky)
 	if not ChestConfig.Chests[tier] then return false end
-	return spawnChest(tier, position) ~= nil
+	return spawnChest(tier, position, lucky) ~= nil
 end
 
-ChestAccess.SpawnNear = function(player, tier)
+ChestAccess.SpawnNear = function(player, tier, lucky)
 	local character = player and player.Character
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	if not root then return false end
-	return ChestAccess.Spawn(tier, root.Position)
+	return ChestAccess.Spawn(tier, root.Position, lucky)
 end

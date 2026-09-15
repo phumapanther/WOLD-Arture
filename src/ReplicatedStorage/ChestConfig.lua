@@ -94,6 +94,16 @@ ChestConfig.Chests = {
 	},
 }
 
+-- Which categories count as "rare" -- the things a chest is actually opened hoping for. A chest bought with
+-- a TikTok gift doubles the weight of exactly these, which is what makes a gift worth more than the coins.
+--
+-- Materials are deliberately not here: doubling those would only crowd out the weapons.
+ChestConfig.RareCategories = {
+	weapon = true,
+	key = true,
+	ammo = true,
+}
+
 -- Every grade, in the order they should be offered. Used by the admin command's argument list.
 ChestConfig.Order = { "Chest_Wood", "Chest_Ironbound", "Chest_Silver", "Chest_Gold" }
 
