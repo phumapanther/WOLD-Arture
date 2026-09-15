@@ -162,8 +162,53 @@ function onGift(coins, uniqueId, nickname, giftName) {
   });
 }
 
+// ---------------------------------------------------------------------------- sub cooldown
+// หนึ่งคนเรียกบอสได้วันละครั้ง
+//
+// เดิมไม่มีอะไรกันเลย: กดยกเลิกซับแล้วซับใหม่ = ได้บอสอีกตัวทันที ทำซ้ำได้ไม่จำกัด มีแค่เพดาน 3 ตัวพร้อมกัน
+// กับอายุ 5 นาทีคอยกั้น พอตัวใดตัวหนึ่งหายก็กดใหม่ได้อีก
+//
+// **เก็บลงดิสก์ ไม่ใช่แค่ในหน่วยความจำ** ไลฟ์จบแล้วเปิดใหม่ หรือสะพานรีสตาร์ทกลางไลฟ์ (ซึ่งเคยเกิดจริง)
+// ถ้าจำไว้แค่ในแรมคูลดาวน์จะรีเซ็ตหมด แล้วกฎนี้ก็ไม่มีความหมาย
+const SUB_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+const subFile = require("path").join(__dirname, "sub-cooldown.json");
+
+function loadSubs() {
+  try {
+    const raw = JSON.parse(fs.readFileSync(subFile, "utf8"));
+    const now = Date.now();
+    // ทิ้งรายการที่หมดอายุแล้วตั้งแต่ตอนโหลด ไฟล์จะได้ไม่โตขึ้นเรื่อยๆ ตลอดอายุโปรเจ็ค
+    return new Map(Object.entries(raw).filter(([, at]) => now - at < SUB_COOLDOWN_MS));
+  } catch {
+    return new Map();
+  }
+}
+
+const subbedAt = loadSubs(); // uniqueId -> เวลาที่เรียกบอสไปล่าสุด
+
+function saveSubs() {
+  try {
+    fs.writeFileSync(subFile, JSON.stringify(Object.fromEntries(subbedAt)));
+  } catch (err) {
+    log("! เขียน sub-cooldown.json ไม่ได้:", err.message);
+  }
+}
+
 function onSub(uniqueId, nickname) {
   credit(uniqueId, nickname, 0);
+
+  // ไม่รู้ว่าใครกด = ปล่อยผ่าน ดีกว่าบล็อกคนที่ระบุตัวไม่ได้ทั้งหมดเป็นก้อนเดียว
+  if (uniqueId) {
+    const last = subbedAt.get(uniqueId);
+    if (last && Date.now() - last < SUB_COOLDOWN_MS) {
+      const hoursLeft = Math.ceil((SUB_COOLDOWN_MS - (Date.now() - last)) / 3600000);
+      log(`× ข้ามบอสของ ${nickname || uniqueId} — ยังติดคูลดาวน์อีก ${hoursLeft} ชม.`);
+      return;
+    }
+    subbedAt.set(uniqueId, Date.now());
+    saveSubs();
+  }
+
   emit({ kind: "boss", by: nickname || uniqueId || "ผู้ชม" });
 }
 
