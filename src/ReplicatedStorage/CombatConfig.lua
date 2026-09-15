@@ -196,8 +196,11 @@ CombatConfig.Weapons = {
 		idleTimeout = 4,
 		attacks = {
 			{ animation = "rbxassetid://94236406810598", damage = 15, windup = 0.2, active = 0.05, recovery = 0.4, range = 0, -- Spellbook_Cast
-				-- Dark magic leaves the target wading through treacle.
-				effect = "slow", effectSeconds = 3, effectFactor = 0.45,
+				-- A stun and nothing else, per the user: the slow it used to carry is gone, so the book and
+				-- the staff no longer do the same job. One second of standing still is a real opening in a
+				-- fight where a sword swing is a third of that, and anything longer from a ranged weapon
+				-- would be a lock rather than an opening.
+				effect = "dizzy", effectSeconds = 1,
 				projectile = { kind = "orb", speed = 55, life = 0.9, size = Vector3.new(1.6, 1.6, 1.6),
 					color = Color3.fromRGB(58, 26, 86), material = Enum.Material.Neon } },
 		},
