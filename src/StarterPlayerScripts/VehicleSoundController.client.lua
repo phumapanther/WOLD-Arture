@@ -26,12 +26,9 @@ if not (SOUND and SOUND.enabled) then
   return
 end
 
--- ร่องรอยว่าสคริปต์รอดมาถึงตรงนี้จริง
---
--- ระบบนี้เงียบได้หลายทางโดยไม่มีอะไรบอกเลย (ล็อบบี้ · Config ปิด · error ก่อนหน้า) ซึ่งหน้าตาเหมือน
--- "เสียงเบา" เป๊ะ บรรทัดเดียวตอนบูตแยกสองอย่างนี้ออกจากกันได้ทันที
-print(("[VehicleSound] เริ่มทำงาน — master=%s ชนิดที่รู้จัก=%d")
-  :format(tostring(SOUND.master), (function() local n = 0 for _ in pairs(SOUND.types) do n += 1 end return n end)()))
+-- หมายเหตุสำหรับอนาคต: ถ้าเสียงดังใน Studio แต่เงียบในเกมที่ publish แล้ว **อย่าหาสาเหตุในไฟล์นี้**
+-- Studio เล่นเสียงส่วนตัวของเจ้าของบัญชีได้เพราะล็อกอินอยู่ ส่วนเซิร์ฟเวอร์จริงเป็นคนละตัวตนและถูกปฏิเสธ
+-- ต้องไปกด "ให้สิทธิ์เสียงกับเกมนี้" ที่ Creator Dashboard เป็นรายไฟล์ (ดู assets/sounds/README.md)
 
 local rigs = {}                                  -- model -> rig
 
@@ -94,8 +91,6 @@ local function build(model)
   startLoop(rig.drone)
   startLoop(rig.wash)
   rigs[model] = rig
-  print(("[VehicleSound] สร้างเสียงให้ %s (%s) drone=%s pulse=%d horn=%s")
-    :format(model.Name, tostring(vtype), tostring(rig.drone ~= nil), #rig.pulses, tostring(rig.horn ~= nil)))
 end
 
 local function drop(model)
