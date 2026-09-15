@@ -163,20 +163,103 @@ function AdminPanelGui:fire(name, ...)
 	if fn then fn(...) end
 end
 
--- Cycles to the next class in the list. A dropdown would be the obvious control, but Roblox has no native
--- one and a hand-built menu inside a scrolling list fights the scroll -- so the button shows the class and
--- advances, which needs no overlay and works the same on a phone.
-function AdminPanelGui:nextClass(current)
-	if #self.classes == 0 then return nil end
-	for i, entry in ipairs(self.classes) do
-		if entry.id == current then
-			return self.classes[(i % #self.classes) + 1].id
-		end
+-- The class picker: every class at once, on a sheet over the panel.
+--
+-- It cycled one class per press before, which meant up to nine presses to reach the one you wanted and no
+-- way to see what the options were. The sheet is parented to the GUI rather than to the row, so it floats
+-- ABOVE the scrolling list instead of being clipped inside it -- which is the thing that makes a dropdown
+-- inside a ScrollingFrame not work.
+function AdminPanelGui:pickClass(row, onPicked)
+	if self.picker then self.picker:Destroy() end
+
+	local shade = Instance.new("TextButton")
+	shade.Name = "ClassPicker"
+	shade.Size = UDim2.fromScale(1, 1)
+	shade.BackgroundColor3 = Color3.new(0, 0, 0)
+	shade.BackgroundTransparency = 0.5
+	shade.BorderSizePixel = 0
+	shade.Text = ""
+	shade.ZIndex = 50
+	shade.Parent = self.gui
+	self.picker = shade
+	shade.Activated:Connect(function()
+		shade:Destroy()
+		self.picker = nil
+	end)
+
+	local sheet = Instance.new("Frame")
+	sheet.AnchorPoint = Vector2.new(0.5, 0.5)
+	sheet.Position = UDim2.fromScale(0.5, 0.5)
+	sheet.Size = UDim2.fromOffset(300, math.min(420, 56 + #self.classes * 34))
+	sheet.BackgroundColor3 = STONE
+	sheet.BorderSizePixel = 0
+	sheet.ZIndex = 51
+	sheet.Parent = shade
+	corner(sheet, UDim.new(0, 12))
+	stroke(sheet, RUNE, 0.45, 2)
+
+	local heading = Instance.new("TextLabel")
+	heading.Size = UDim2.new(1, -20, 0, 30)
+	heading.Position = UDim2.new(0, 10, 0, 10)
+	heading.BackgroundTransparency = 1
+	heading.Font = Enum.Font.GothamBold
+	heading.TextSize = 15
+	heading.TextColor3 = RUNE
+	heading.TextXAlignment = Enum.TextXAlignment.Left
+	heading.TextTruncate = Enum.TextTruncate.AtEnd
+	heading.Text = ("เลือกอาชีพให้ %s"):format(row.name)
+	heading.ZIndex = 52
+	heading.Parent = sheet
+
+	local list = Instance.new("ScrollingFrame")
+	list.Position = UDim2.new(0, 10, 0, 44)
+	list.Size = UDim2.new(1, -20, 1, -54)
+	list.BackgroundTransparency = 1
+	list.BorderSizePixel = 0
+	list.ScrollBarThickness = 6
+	list.CanvasSize = UDim2.new()
+	list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	list.ZIndex = 52
+	list.Parent = sheet
+
+	local layout = Instance.new("UIListLayout")
+	layout.Padding = UDim.new(0, 4)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = list
+
+	for order, entry in ipairs(self.classes) do
+		local option = Instance.new("TextButton")
+		option.LayoutOrder = order
+		option.Size = UDim2.new(1, -6, 0, 30)
+		-- The one they already have is marked rather than hidden, so the sheet always shows the full set and
+		-- the current answer in the same place.
+		local current = entry.id == row.classId
+		option.BackgroundColor3 = current and Color3.fromRGB(70, 62, 96) or ROW
+		option.BorderSizePixel = 0
+		option.Font = Enum.Font.GothamBold
+		option.TextSize = 12
+		option.TextColor3 = current and RUNE or TEXT_LIGHT
+		option.Text = current and ("● " .. entry.name) or entry.name
+		option.ZIndex = 53
+		option.Parent = list
+		corner(option, UDim.new(0, 6))
+		option.Activated:Connect(function()
+			UiSound.Play("Click")
+			shade:Destroy()
+			self.picker = nil
+			onPicked(entry.id)
+		end)
 	end
-	return self.classes[1].id
 end
 
 function AdminPanelGui:Render(data)
+	-- The sheet names a specific player and reads their current class; a refresh means both may have changed
+	-- under it, so it closes rather than acting on what it was showing before.
+	if self.picker then
+		self.picker:Destroy()
+		self.picker = nil
+	end
+
 	for _, child in ipairs(self.list:GetChildren()) do
 		if child:IsA("Frame") then child:Destroy() end
 	end
@@ -249,8 +332,9 @@ function AdminPanelGui:Render(data)
 		local classBtn = button(card, row.className, Color3.fromRGB(70, 62, 96), 108, 74)
 		classBtn.Activated:Connect(function()
 			UiSound.Play("Click")
-			local nextId = self:nextClass(row.classId)
-			if nextId then self:fire("action", "class", row.userId, nextId) end
+			self:pickClass(row, function(classId)
+				self:fire("action", "class", row.userId, classId)
+			end)
 		end)
 
 		local goBtn = button(card, "ไปหา", Color3.fromRGB(58, 84, 108), 60, 188)
