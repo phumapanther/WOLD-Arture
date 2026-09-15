@@ -25,7 +25,7 @@
 
 local ServerStorage = game:GetService("ServerStorage")
 
-local NAMES = { "Greatsword_Idle", "Greatsword_Swing" }
+local NAMES = { "Greatsword_Idle", "Greatsword_Swing", "Greatsword_Leap" }
 
 local folder = ServerStorage:FindFirstChild("WOLD_Animations")
 if not folder then
@@ -162,6 +162,50 @@ build("Greatsword_Swing", Enum.AnimationPriority.Action4, false, {
 		lShoulder = CFrame.Angles(rad(44), 0, rad(16)),
 	}) },
 	{ 2.00, IDLE },
+})
+
+--------------------------------------------------------------------------------
+-- LEAP — the Q skill, for both swords. The user's order of events: wind up FIRST, then jump, and only
+-- swing once you have landed on them.
+--
+--   0.00 - 0.45  the wind-up: blade drawn back and up, weight loaded. Nothing has moved yet.
+--   0.45         the server launches the leap here (WeaponSkills LAUNCH_AT)
+--   0.45 - 0.85  airborne, holding the loaded pose -- the sword stays cocked the whole flight
+--   0.85 - 1.05  the chop, landing with it (WeaponSkills HIT_AT 0.95, inside this window)
+--   1.05 - 1.40  recovery back to the guard
+--
+-- The three constants in WeaponSkills.server.lua mirror these times. Move one and the swing lands somewhere
+-- the character is not.
+--------------------------------------------------------------------------------
+local LOADED = {
+	-- Wound back over the shoulder rather than straight overhead: this is a running chop, not the standing
+	-- one the basic swing does, and it has to read as different mid-air.
+	waist = CFrame.Angles(rad(18), rad(-26), 0),
+	rShoulder = CFrame.Angles(rad(150), 0, rad(-26)),
+	rElbow = CFrame.Angles(rad(28), 0, 0),
+	lShoulder = CFrame.Angles(rad(138), 0, rad(30)),
+	lElbow = CFrame.Angles(rad(34), 0, 0),
+}
+
+local LANDED = {
+	-- Driven down and across the body, folded forward over the landing.
+	waist = CFrame.Angles(rad(-38), rad(16), 0),
+	rShoulder = CFrame.Angles(rad(16), 0, rad(-6)),
+	rElbow = CFrame.Angles(0, 0, 0),
+	lShoulder = CFrame.Angles(rad(16), 0, rad(6)),
+	lElbow = CFrame.Angles(0, 0, 0),
+	easing = Enum.PoseEasingStyle.Linear,
+}
+
+build("Greatsword_Leap", Enum.AnimationPriority.Action4, false, {
+	{ 0.00, IDLE },
+	-- Wind up, and hold it: the pause is what makes the jump read as a consequence of the wind-up rather
+	-- than something that happened at the same time.
+	{ 0.45, LOADED },
+	{ 0.85, copy(LOADED, { easing = Enum.PoseEasingStyle.Linear }) },
+	-- Down through them as the feet hit.
+	{ 1.05, LANDED },
+	{ 1.40, IDLE },
 })
 
 print("[greatsword] built " .. table.concat(NAMES, ", ") .. " into ServerStorage.WOLD_Animations")

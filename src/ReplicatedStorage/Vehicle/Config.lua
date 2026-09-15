@@ -24,18 +24,32 @@ Config.Types = {
     hull = Vector3.new(6.6, 2.6, 14),  -- กล่องชนที่ถือมวลทั้งคัน (ชิ้นตกแต่งเป็น Massless)
     hullDensity = 0.7,
     ride = 1.9,                        -- ความสูงจากพื้นถึงกึ่งกลางล้อ
-    wheel = { radius = 2.2, width = 1.3, density = 2.6, friction = 1.5,
+    -- **ล้อใหญ่ขึ้น 2.2 -> 2.8 เพื่อให้ไต่ขอบได้สูงขึ้น** (ผู้ใช้: "พื้นที่บางที่มันติดง่ายมาก")
+    --
+    -- ล้อยึดกับตัวถังด้วยบานพับแข็ง ไม่มีสปริง ระยะใต้ท้องรถจึงเป็นเรขาคณิตล้วนๆ: ตัวถังวางที่ ride+0.3
+    -- ล้ออยู่ต่ำกว่าตัวถัง 0.3 พื้นอยู่ที่กึ่งกลางล้อลบรัศมี ระยะใต้ท้อง = รัศมี - 1.0 พอดี
+    -- รัศมี 2.2 ให้ 1.2 studs · รัศมี 2.8 ให้ 1.8 studs — สูงขึ้นครึ่งหนึ่งโดยไม่ต้องขยับชิ้นส่วนใดเลย
+    -- (ของตกแต่งทุกชิ้นเชื่อมกับตัวถัง ทั้งคันจึงยกขึ้นพร้อมกัน ต่างจากการขยับ `ride` ซึ่งเลื่อนตัวถังหนี
+    --  เพลาที่วางไว้ที่ y คงที่ใน Models.lua)
+    wheel = { radius = 2.8, width = 1.3, density = 2.6, friction = 1.5,
               frictionWeight = 8, hubDensity = 6 },   -- friction เกิน 2 ไม่ได้ Roblox จะ clamp แล้วเตือนรัวๆ
     axles = { front = -4.6, rear = 4.2, track = 4.35 },   -- ระยะตามแกน Z (หน้า = -Z) และครึ่งช่วงล้อ
-    maxSpeed = 24,                     -- rad/s ที่ล้อหมุน (วิ่งจริงราว 35 stud/s)
-    torque = 26000,
-    brakeTorque = 46000,
+    -- ความเร็วปลายเท่าเดิม: วัดไว้ 52.8 stud/s = 24 rad/s x ล้อ 2.2 ล้อโตขึ้นจึงต้องหมุนช้าลงตามส่วน
+    -- (24 x 2.2 / 2.8 = 18.9) ผู้ใช้ขอ "ไต่ได้ดีขึ้น" ไม่ได้ขอให้เร็วขึ้น
+    maxSpeed = 18.9,                   -- rad/s ที่ล้อหมุน (วิ่งจริงราว 53 stud/s เท่าเดิม)
+    -- แรงบิดต้องขึ้นตามรัศมีถึงจะได้แรงที่หน้าสัมผัสเท่าเดิม (26000 x 2.8/2.2 = 33,090) แล้วเผื่อขึ้นไปอีก
+    -- เพราะการปีนขอบต้องใช้แรงตอนความเร็วเกือบศูนย์ ซึ่งเป็นจุดที่รถเดิมจนแต้ม
+    torque = 40000,
+    brakeTorque = 58000,
     steerAngle = 26,                   -- องศา (มุมล้อหน้าสูงสุดตอนอยู่กับที่)
     steerSpeed = 4,                    -- rad/s ที่ล้อหน้าหมุนตามพวงมาลัย
     servoTorque = 200000,              -- แรงบิดที่ยึดล้อหน้าไว้กับมุมเป้าหมาย น้อยไป = ล้อสะบัด
     steerFade = 0.45,                  -- ที่ความเร็วสูงเหลือมุมเลี้ยวเท่านี้ของค่าเต็ม (กันพลิก/ส่าย)
     steerFadeSpeed = 42,               -- stud/s ที่ถือว่า "เร็วเต็ม" ในการหรี่มุมเลี้ยว
-    fuel = { max = 100, idle = 0.25, drive = 1.8 },   -- เต็มถังวิ่งได้ราว 8 นาทีถ้าเหยียบตลอด
+    -- **กินน้อยลง 10 เท่า** ตามที่ผู้ใช้สั่ง ("วิ่งได้ไกลกว่านี้ 10 เท่าต่อถ่านเต็ม") ลดอัตราการเผา ไม่ใช่
+    -- ขยายถัง — ถังยังเท่าเดิม เกจยังอ่านเหมือนเดิม และจำนวนถ่านที่ใช้เติมยังคุมจากที่เดียวข้างล่าง
+    -- เต็มถังเหยียบตลอด: 100 / (0.025 + 0.18) = ราว 8 นาที (เดิม 49 วินาที)
+    fuel = { max = 100, idle = 0.025, drive = 0.18 },
     frontBrake = 0.3,                  -- ล้อหน้าหน่วงเบาๆ ตอนไม่เร่ง กันล้อฟรีสะบัดตอนเลี้ยว
     spinRate = 14,                     -- rad/s ของเฟืองข้างตัวถังตอนเร่งเต็ม
   },
@@ -60,7 +74,7 @@ Config.Types = {
     minTurn = 0.35,                    -- คูณกับ turnRate ตอนอยู่กับที่ (พายเรือหมุนตัวได้)
     maxSpeed = 70,
     spinRate = 7,                      -- rad/s ของล้อพายตอนเร่งเต็ม
-    fuel = { max = 140, idle = 0.3, drive = 1.5 },
+    fuel = { max = 140, idle = 0.03, drive = 0.15 },   -- 10 เท่า ดูคำอธิบายที่รถไอน้ำ
   },
   Airship = {
     display = "เรือเหาะ", prefix = "AIR", icon = "🎈",
@@ -86,9 +100,32 @@ Config.Types = {
     maxSpeed = 90,
     spinRate = 8,                      -- rad/s ของใบพายข้างลำตอนเร่งเต็ม
     -- เรือเหาะกินพลังงานตอนอยู่เฉยๆ ด้วย เพราะต้องเผาไฟค้างระดับความสูงไว้
-    fuel = { max = 160, idle = 0.9, drive = 1.6 },
+    fuel = { max = 160, idle = 0.09, drive = 0.16 },  -- 10 เท่า ดูคำอธิบายที่รถไอน้ำ
   },
 }
+
+-- ---------------------------------------------------------------- ความคงทน
+-- โจทย์ของผู้ใช้: "พาหนะทุกชิ้นมีค่าคงทน ถ้าพังต้องเรียกช่างมาซ่อม หรือฝากคืนกับ NPC แล้วกดซ่อม"
+--
+-- สึกสองทาง และตั้งใจให้ทางที่สองเป็นทางหลัก:
+--   `drive`   สึกทีละนิดทุกวินาทีที่มีคนขับอยู่ — ค่าเสื่อมของการใช้งาน ไม่ใช่บทลงโทษ
+--   `impact`  ชนแล้วสึกเป็นก้อน วัดจากความเร็วที่หายไปในสเต็ปเดียว ซึ่งเป็นนิยามของการชนพอดี
+--
+-- ถึง 0 = ขับไม่ได้ เหมือนเชื้อเพลิงหมด ต่างกันตรงที่เติมถ่านเองไม่ได้ ต้องมีคนซ่อมให้
+local function durability(max, drive, impactFrom, impactPer)
+  return { max = max, drive = drive, impactFrom = impactFrom, impactPer = impactPer }
+end
+
+-- รถ: 100 / 0.03 = ราว 55 นาทีของการขับล้วนๆ ส่วนการชนที่ 53 stud/s เต็มความเร็วกินราว 8 หน่วย
+-- (ชนแรงเต็มที่ราว 13 ครั้งก็พัง) เรือกับเรือเหาะทนกว่าเพราะไม่ค่อยมีอะไรให้ชน
+Config.Durability = {
+  Car = durability(100, 0.03, 30, 0.35),
+  Boat = durability(140, 0.02, 34, 0.30),
+  Airship = durability(120, 0.025, 26, 0.40),
+}
+for vtype, spec in pairs(Config.Types) do spec.durability = Config.Durability[vtype] end
+
+Config.LowDurability = 0.25            -- ต่ำกว่านี้เตือนคนขับหนึ่งครั้ง เหมือนเชื้อเพลิงใกล้หมด
 
 -- ---------------------------------------------------------------- จุดเรียกพาหนะ
 -- เลือกชุดพิกัดด้วย Attribute "VehiclePreset" บน Workspace (ไม่ตั้ง = Arture)
@@ -134,8 +171,58 @@ end
 -- เสียงเครื่องจักรสังเคราะห์จากไฟล์ที่ติดมากับตัว Roblox (rbxasset:// ไม่ต้องอัปโหลด ไม่มีวันโดนลบ)
 -- ซ้อนกันสามชั้น: drone = ลมหึ่งต่อเนื่อง · wash = เสียงน้ำ/ลมตามความเร็ว · pulse = จังหวะฉึกฉักของเครื่องไอน้ำ
 --
--- **จะเปลี่ยนเป็นเสียงจริงทีหลัง แก้แค่ค่า id ในตารางนี้ที่เดียว** ใส่ "rbxassetid://123456789" ได้เลย
 -- ค่าคู่ { a, b } อ่านว่า "ตอนเดินเบา → ตอนเร่งเต็ม" ระบบไล่ค่าระหว่างสองอันนี้ให้เอง
+--
+-- **ผู้ใช้เลือกใช้เสียงสำเร็จรูปนี้เป็นของถาวร ไม่ต้องอัปโหลดอะไรเลย** — ตรวจแล้วทั้ง 7 ไฟล์โหลดได้จริง
+-- ทุกตัว (path ที่พิมพ์ผิดจะเงียบเฉยๆ ไม่มี error จึงต้องตรวจ ไม่ใช่เดา)
+--
+-- ถ้าวันหนึ่งอยากได้เสียงเฉพาะของเกมจริงๆ มีเสียงสังเคราะห์รออยู่แล้วที่ `assets/sounds/engine_*.mp3`
+-- กับ `horn_*.mp3` (เจนด้วย `tools/make-sounds.py`) อัปแล้วเอา id มาวางทับตามตารางนี้ พร้อม**ปรับ pitch
+-- กลับไปใกล้ 1** เพราะค่าต่ำที่ตั้งไว้มีไว้ถ่วงเสียงสำเร็จรูปโดยเฉพาะ — รายละเอียดใน `assets/sounds/README.md`
+--
+--   engine_drone.mp3    -> drone.id ของทั้งสามชนิด (เสียงหม้อไอน้ำ ต่อเนื่อง วนลูป)
+--   engine_wash.mp3     -> wash.id ของเรือกับเรือเหาะ (น้ำ/ลมปะทะ วนลูป)
+--   engine_chug_a.mp3   -> pulse.ids[1] ของทั้งสามชนิด (จังหวะลูกสูบ)
+--   engine_chug_b.mp3   -> pulse.ids[2] ของทั้งสามชนิด (จังหวะสลับ เสียงต่ำกว่านิดหนึ่ง)
+--   engine_vent.mp3     -> vent.id ของทั้งสามชนิด (ไอน้ำพ่นตอนถอนคันเร่ง)
+--   horn_car.mp3        -> Car.horn.id
+--   horn_boat.mp3       -> Boat.horn.id
+--   horn_airship.mp3    -> Airship.horn.id
+--
+-- ตอนวางเสียงจริง **ตั้ง pitch กลับไปใกล้ 1** ด้วย: ค่าที่ตั้งไว้ตอนนี้ (0.2-0.6) มีไว้ถ่วงเสียงสำเร็จรูป
+-- ของ Roblox ให้ต่ำลงพอจะฟังเป็นเครื่องจักร ส่วนไฟล์ที่เจนมาเป็นเสียงเครื่องจักรตั้งแต่ต้นอยู่แล้ว
+--------------------------------------------------------------------------------
+-- ⚠️ เสียงพาหนะไม่ดังในเกมจริง เพราะ id ข้างล่างนี้ยังว่างอยู่
+--
+-- `rbxasset://sounds/...` คือไฟล์ที่อยู่ใน Roblox Studio เท่านั้น -- ดังตอนกด Play แต่เงียบสนิทในเกมที่
+-- publish แล้ว ต้องอัปไฟล์จริงขึ้น Roblox แล้วเอา id มาใส่ตรงนี้
+--
+-- วิธีอัป: Studio → View → Asset Manager → Audio → Bulk Import → เลือกไฟล์ .mp3 จาก assets/sounds/
+-- **ต้องอัปด้วยบัญชีเจ้าของเพลส** ไม่งั้นโหลดไม่ขึ้น (กฎเดียวกับอนิเมชัน)
+--
+-- ใส่แค่ตัวเลข ไม่ต้องใส่ rbxassetid:// -- ช่องไหนยังว่าง ตัวนั้นใช้เสียงสำรองของ Studio ต่อไป
+-- เกมจะไม่พังถ้าใส่ไม่ครบ เสียงที่ใส่แล้วจะดังทันที
+local SOUND_IDS = {
+  engine_drone   = "", -- assets/sounds/engine_drone.mp3   หม้อไอน้ำ ต่อเนื่อง วนลูป (ทั้งสามชนิด)
+  engine_wash    = "", -- assets/sounds/engine_wash.mp3    น้ำ/ลมปะทะ วนลูป (เรือ + เรือเหาะ)
+  engine_chug_a  = "", -- assets/sounds/engine_chug_a.mp3  จังหวะลูกสูบ
+  engine_chug_b  = "", -- assets/sounds/engine_chug_b.mp3  จังหวะสลับ เสียงต่ำกว่านิดหนึ่ง
+  engine_vent    = "", -- assets/sounds/engine_vent.mp3    ไอน้ำที่ปล่อยตอนผ่อนคันเร่ง
+  horn_car       = "", -- assets/sounds/horn_car.mp3
+  horn_boat      = "", -- assets/sounds/horn_boat.mp3
+  horn_airship   = "", -- assets/sounds/horn_airship.mp3
+}
+
+-- คืน id ที่อัปแล้วถ้ามี ถ้ายังว่างก็คืนเสียงสำรองของ Studio ตัวเดิม
+-- แยกเป็นฟังก์ชันเพื่อให้ "ยังไม่ได้อัป" เป็นสถานะที่ระบบรับได้ ไม่ใช่เสียงเงียบที่หาสาเหตุไม่เจอ
+local function snd(key, fallback)
+  local id = SOUND_IDS[key]
+  if type(id) == "string" and id ~= "" then
+    return "rbxassetid://" .. (id:match("(%d+)") or id)
+  end
+  return fallback
+end
+
 Config.Sound = {
   enabled = true,
   master = 0.6,                        -- ดังรวมทุกเสียง
@@ -143,35 +230,78 @@ Config.Sound = {
   maxDistance = 340,
   types = {
     Car = {
-      drone = { id = "rbxasset://sounds/action_falling.mp3", pitch = { 0.26, 0.62 }, volume = { 0.10, 0.38 } },
-      pulse = { ids = { "rbxasset://sounds/bass.wav", "rbxasset://sounds/metal.ogg" },
+      drone = { id = snd("engine_drone", "rbxasset://sounds/action_falling.mp3"), pitch = { 0.26, 0.62 }, volume = { 0.10, 0.38 } },
+      pulse = { ids = { snd("engine_chug_a", "rbxasset://sounds/bass.wav"), snd("engine_chug_b", "rbxasset://sounds/metal.ogg") },
                 rate = { 2.2, 8.5 }, pitch = { 0.75, 1.3 }, volume = { 0.22, 0.46 } },
-      horn  = { id = "rbxasset://sounds/electronicpingshort.wav", pitch = 0.42, volume = 0.85 },
-      vent  = { id = "rbxasset://sounds/action_falling.mp3", pitch = 1.9, volume = 0.45, length = 0.9 },
+      horn  = { id = snd("horn_car", "rbxasset://sounds/electronicpingshort.wav"), pitch = 0.42, volume = 0.85 },
+      vent  = { id = snd("engine_vent", "rbxasset://sounds/action_falling.mp3"), pitch = 1.9, volume = 0.45, length = 0.9 },
     },
     Boat = {
-      drone = { id = "rbxasset://sounds/action_falling.mp3", pitch = { 0.20, 0.44 }, volume = { 0.12, 0.36 } },
-      wash  = { id = "rbxasset://sounds/action_swim.mp3", pitch = { 0.65, 1.1 }, volume = { 0, 0.4 } },
-      pulse = { ids = { "rbxasset://sounds/bass.wav", "rbxasset://sounds/impact_water.mp3" },
+      drone = { id = snd("engine_drone", "rbxasset://sounds/action_falling.mp3"), pitch = { 0.20, 0.44 }, volume = { 0.12, 0.36 } },
+      wash  = { id = snd("engine_wash", "rbxasset://sounds/action_swim.mp3"), pitch = { 0.65, 1.1 }, volume = { 0, 0.4 } },
+      pulse = { ids = { snd("engine_chug_a", "rbxasset://sounds/bass.wav"), snd("engine_chug_b", "rbxasset://sounds/impact_water.mp3") },
                 rate = { 1.6, 5 }, pitch = { 0.55, 0.95 }, volume = { 0.26, 0.5 } },
-      horn  = { id = "rbxasset://sounds/electronicpingshort.wav", pitch = 0.3, volume = 1 },
-      vent  = { id = "rbxasset://sounds/action_falling.mp3", pitch = 1.7, volume = 0.45, length = 1.2 },
+      horn  = { id = snd("horn_boat", "rbxasset://sounds/electronicpingshort.wav"), pitch = 0.3, volume = 1 },
+      vent  = { id = snd("engine_vent", "rbxasset://sounds/action_falling.mp3"), pitch = 1.7, volume = 0.45, length = 1.2 },
     },
     Airship = {
-      drone = { id = "rbxasset://sounds/Rocket whoosh 01.wav", pitch = { 0.3, 0.75 }, volume = { 0.14, 0.42 } },
-      wash  = { id = "rbxasset://sounds/action_falling.mp3", pitch = { 0.5, 0.95 }, volume = { 0.06, 0.26 } },
-      pulse = { ids = { "rbxasset://sounds/metal.ogg", "rbxasset://sounds/bass.wav" },
+      drone = { id = snd("engine_drone", "rbxasset://sounds/Rocket whoosh 01.wav"), pitch = { 0.3, 0.75 }, volume = { 0.14, 0.42 } },
+      wash  = { id = snd("engine_wash", "rbxasset://sounds/action_falling.mp3"), pitch = { 0.5, 0.95 }, volume = { 0.06, 0.26 } },
+      pulse = { ids = { snd("engine_chug_a", "rbxasset://sounds/metal.ogg"), snd("engine_chug_b", "rbxasset://sounds/bass.wav") },
                 rate = { 3, 9.5 }, pitch = { 0.9, 1.4 }, volume = { 0.16, 0.34 } },
-      horn  = { id = "rbxasset://sounds/electronicpingshort.wav", pitch = 0.36, volume = 0.95 },
-      vent  = { id = "rbxasset://sounds/action_falling.mp3", pitch = 2.1, volume = 0.4, length = 0.8 },
+      horn  = { id = snd("horn_airship", "rbxasset://sounds/electronicpingshort.wav"), pitch = 0.36, volume = 0.95 },
+      vent  = { id = snd("engine_vent", "rbxasset://sounds/action_falling.mp3"), pitch = 2.1, volume = 0.4, length = 0.8 },
     },
   },
 }
 
 -- ---------------------------------------------------------------- พลังงาน
-Config.FuelPerCoal = 25                -- ถ่านหิน 1 ชิ้นเติมได้เท่านี้หน่วย (ไอเทม Coal ใน ItemCatalog)
+-- **ถ่าน 100 ก้อนต่อการเติมเต็มถัง หนึ่งครั้ง** ตามที่ผู้ใช้สั่ง
+--
+-- เขียนเป็น "กี่ก้อนต่อถังเต็ม" ไม่ใช่ "หนึ่งก้อนได้กี่หน่วย" เพราะถังของสามชนิดไม่เท่ากัน (100/140/160)
+-- ค่าคงที่ตัวเดียวแบบเดิมจึงให้คำตอบต่างกันสามค่า ส่วนแบบนี้ให้ 100 ก้อนเท่ากันหมด ไม่ว่าถังจะใหญ่แค่ไหน
+-- และถ้าวันหนึ่งเพิ่มพาหนะชนิดที่สี่ ก็ไม่ต้องมาคิดเลขใหม่
+Config.CoalPerFullTank = 100
 Config.FreeFuel = false                -- ในเกมจริงต้องมีถ่านหินถึงจะเติมได้
 Config.LowFuel = 0.2                   -- ต่ำกว่านี้ถือว่าใกล้หมด เตือนคนขับ
+
+-- หนึ่งก้อนเติมได้กี่หน่วย สำหรับพาหนะคันนี้ อ่านจากถังของมันเอง
+function Config.fuelPerCoal(spec)
+  local fuel = spec and spec.fuel
+  if not fuel or not fuel.max then return 1 end
+  return fuel.max / Config.CoalPerFullTank
+end
+
+-- ---------------------------------------------------------------- ค่าบริการที่บารอนเวน
+-- ผู้ใช้: "ถ้ามาซ่อมหรือเติมถ่านกับ NPC เสียแค่เงิน แต่ค่อนข้างแพง"
+--
+-- แพงเมื่อเทียบกับทางเลือกที่มีอยู่ และนั่นคือประเด็นทั้งหมดของมัน: เติมเองที่ตัวรถใช้ถ่าน 100 ก้อน ซึ่ง
+-- หามาได้จากลังของฟาร์มผิดกฎหมายและจากเหมือง ส่วนที่บารอนเวนจ่ายเป็นเงินก้อนแล้วจบ — เป็นทางลัดของคนที่มี
+-- เงินแต่ไม่มีเวลา ไม่ใช่ทางที่ถูกกว่า
+Config.Service = {
+  Refuel = 1800,                       -- เติมเต็มถัง ต้องฝากรถไว้กับเขาก่อน
+  Repair = 2600,                       -- ซ่อมกลับเต็มความคงทน ต้องฝากรถไว้กับเขาก่อน
+}
+
+-- ---------------------------------------------------------------- บูสต์ (กด Shift ค้าง)
+-- ผู้ใช้: "ทำให้รถเร่งเครื่องได้จากปุ่ม Shift บนคอม"
+--
+-- ตัวคูณชุดเดียวใช้กับทั้งสามชนิด เพราะทั้งสามอ่านจาก `maxSpeed` เหมือนกัน ต่างแค่ว่ารถคูณแรงบิดของล้อ
+-- ส่วนเรือกับเรือเหาะคูณแรงขับ
+--
+-- **ราคาของมันคือสิ่งที่ทำให้มันเป็นบูสต์ ไม่ใช่ความเร็วปกติ**: กินถ่าน 3 เท่าและสึก 2.5 เท่าตลอดเวลาที่กด
+-- ถ้าไม่มีสองอย่างนี้ ทุกคนก็แค่กด Shift ค้างไว้ตลอดการเดินทาง แล้วนี่ก็กลายเป็นความเร็วจริงของรถเฉยๆ
+Config.Boost = {
+  speed = 1.45,                        -- ตัวคูณความเร็วปลาย (รถ 53 -> 77 stud/s)
+  torque = 1.6,                        -- ตัวคูณแรงบิด/แรงขับ ไม่งั้นเร่งไม่ขึ้นถึงความเร็วใหม่
+  fuel = 3,                            -- ตัวคูณอัตราการเผา
+  wear = 2.5,                          -- ตัวคูณค่าสึก
+  minFuel = 0.08,                      -- เหลือถ่านน้อยกว่านี้บูสต์ไม่ได้ กันการเผาถังก้นให้หมดในสิบวินาที
+}
+
+-- ค่าซ่อมของ "ช่างมาซ่อมให้ถึงที่" จ่ายเป็นเฟืองอะไหล่ ไม่ใช่เงิน ดูเหตุผลที่ VehicleService.fieldRepair
+Config.RepairParts = 3
+Config.RepairClass = "Architect"       -- ClassConfig id; "นักประดิษฐ์" คนเดียวที่ซ่อมพาหนะถึงที่ได้
 
 Config.MaxVehiclesPerType = 3          -- ทะเบียนที่คนหนึ่งถือได้ต่อชนิด
 Config.SummonRange = 28                -- ต้องอยู่ใกล้ NPC เท่านี้ถึงสั่งงานได้

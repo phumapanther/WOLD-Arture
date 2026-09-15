@@ -90,7 +90,13 @@ end
 
 local Skills = {}
 
--- Sword: leap forward, then damage everything in a cone-ish sphere ahead on landing.
+-- The three beats of the leap, in the order the user asked for: wind up, THEN jump, and swing only once you
+-- have landed on them. They mirror Greatsword_Leap's keyframes exactly -- move one of these and the blow
+-- lands somewhere the character is not.
+local LAUNCH_AT = 0.45 -- the wind-up finishes and the feet leave the ground
+local HIT_AT = 0.95    -- the chop, just as the landing finishes
+
+-- Sword: wind up, leap forward, then cleave everything ahead on landing.
 function Skills.LungeSlash(player)
 	local _, hrp = characterParts(player)
 	if not hrp then return false end
@@ -98,11 +104,24 @@ function Skills.LungeSlash(player)
 	if forward.Magnitude < 0.1 then return false end
 	forward = forward.Unit
 
-	launch(hrp, forward, 55, 22)
+	-- The animation starts NOW; the movement and the damage follow it. Firing this first is what lets the
+	-- wind-up be visible before anything happens.
 	Remotes.SkillUsed:FireAllClients(player, "LungeSlash")
 
-	-- The hit lands as the leap finishes, not on the button press.
-	task.delay(0.35, function()
+	-- The leap, after the wind-up. Re-read the character rather than closing over `hrp`: half a second is
+	-- long enough to die in, and launching a dead player's root throws.
+	task.delay(LAUNCH_AT, function()
+		local _, readyHrp = characterParts(player)
+		if not readyHrp then return end
+		-- Aimed where they are pointing WHEN THEY JUMP, not where they were when they pressed the button --
+		-- the wind-up is long enough to turn during.
+		local heading = (readyHrp.CFrame.LookVector * Vector3.new(1, 0, 1))
+		if heading.Magnitude < 0.1 then heading = forward else heading = heading.Unit end
+		launch(readyHrp, heading, 55, 22)
+	end)
+
+	-- The hit lands with the blade, at the end of the fall.
+	task.delay(HIT_AT, function()
 		local _, landedHrp = characterParts(player)
 		if not landedHrp then return end
 		local origin = landedHrp.Position + landedHrp.CFrame.LookVector * 4

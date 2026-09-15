@@ -35,6 +35,7 @@ local EmoteConfig = require(game.ReplicatedStorage.EmoteConfig)
 local WeatherConfig = require(game.ReplicatedStorage.WeatherConfig)
 
 local AdminRoster = require(script.Parent.AdminRoster)
+local StreamerTags = require(script.Parent.StreamerTags)
 local MobAccess = require(script.Parent.MobAccess)
 local ChestAccess = require(script.Parent.ChestAccess)
 local WeatherAccess = require(script.Parent.WeatherAccess)
@@ -74,7 +75,25 @@ end
 -- Returns nil when nobody qualifies, and every caller treats that as "hold the event": there is no sensible
 -- fallback. Spawning a boss around a random player because the admin stepped out is not a smaller version
 -- of the feature, it is a different and much worse one.
-local function streamer()
+-- Takes the event, because the answer depends on WHICH live it came from: an admin can bind any player in
+-- the server to a TikTok account through the F3 panel, and that player is who the monsters land around --
+-- not whoever happens to be an admin.
+--
+-- Four answers, in order of how specific they are:
+--   1. the player bound to this event's channel     -- the panel binding, the user's own rule
+--   2. any player bound to anything                 -- a bridge too old to stamp the channel
+--   3. the name pinned in the config                -- how this worked before the panel existed
+--   4. any admin standing in the server             -- the original fallback
+local function streamer(event)
+	local channel = event and event.channel
+	if channel and channel ~= "" then
+		local bound = StreamerTags.PlayerFor(channel)
+		if bound then return bound end
+	end
+
+	local anyBound = StreamerTags.AnyBound()
+	if anyBound then return anyBound end
+
 	if Config.AdminName ~= "" then
 		local named = Players:FindFirstChild(Config.AdminName)
 		if named and named.Character then return named end
@@ -131,7 +150,7 @@ end
 --------------------------------------------------------------------------------
 
 local function doMob(event)
-	local admin = streamer()
+	local admin = streamer(event)
 	if not admin or not MobAccess.SpawnHunters then return end
 
 	local mobs, bosses = census()
@@ -160,7 +179,7 @@ local function doMob(event)
 end
 
 local function doChest(event)
-	local admin = streamer()
+	local admin = streamer(event)
 	if not admin or not ChestAccess.SpawnNear then return end
 	if not chestBudget() then return end
 
@@ -173,7 +192,7 @@ local function doChest(event)
 end
 
 local function doBoss(event)
-	local admin = streamer()
+	local admin = streamer(event)
 	if not admin or not MobAccess.SpawnBoss then return end
 
 	local _, bosses = census()
@@ -263,7 +282,7 @@ local function doTopCommand(word, argument)
 end
 
 local function doCommand(event)
-	local admin = streamer()
+	local admin = streamer(event)
 	if not admin then
 		dbg("ไม่มีแอดมินในเซิร์ฟ — ข้ามคำสั่ง %q", tostring(event.text))
 		return

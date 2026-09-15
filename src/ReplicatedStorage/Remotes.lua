@@ -118,6 +118,10 @@ local EVENTS = {
 	-- one-off pile that exists only while the window is open -- closing it destroys the chest and the loot
 	-- with it, so there is nothing to reconcile afterwards.
 	"RequestChestOpen", "ChestOpen", "RequestChestTake", "RequestChestClose", "ChestClose",
+	-- The admin panel (F3). One request in, one whole picture out -- the same shape as the shop and the
+	-- vault, and for the same reason: the client names a row and an action, never a value the server would
+	-- have to believe. Every handler re-checks the roster, because a RemoteEvent is reachable by anyone.
+	"RequestAdminPanel", "AdminPanelData", "RequestAdminAction",
 	-- Weather. One way only: the server decides what the sky is doing and the client draws it. Carries the
 	-- kind now, the kind arriving, and how far along the change is -- everything else the client reads out
 	-- of the shared WeatherConfig rather than being told.

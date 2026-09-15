@@ -63,9 +63,10 @@ const CFG = {
   host: flag("host", "127.0.0.1"),
   key: flag("key", process.env.TIKTOK_KEY || ""),
   mock: has("mock"),
-  // 10 likes = one monster, the user's number. Held here as well as in the game so a like storm is thinned
-  // before it is ever queued.
-  likesPerMob: Number(flag("likes", 10)),
+  // One like, one monster -- the user's number. Held here as well as in the game so a like storm is thinned
+  // before it is ever queued. The two caps below are what keep 1:1 survivable: the ratio decides how many
+  // are EARNED, those decide how many are actually spawned.
+  likesPerMob: Number(flag("likes", 1)),
   // A like storm can be thousands a minute. Without these two the game would be asked to spawn a monster
   // for every one of them, and a Roblox server dies at a few hundred humanoids.
   maxMobsPerEvent: 5,
@@ -102,6 +103,10 @@ const queue = [];
 function emit(event) {
   event.id = nextId++;
   event.at = Date.now();
+  // Which LIVE this came from. `by` is the viewer who did the thing; this is the account being watched, and
+  // it is what the game matches against its own streamer binding to decide whose feet the monsters land at.
+  // Stamped here rather than at each caller so no event can be emitted without it.
+  event.channel = CFG.user;
   queue.push(event);
   while (queue.length > CFG.keep) queue.shift();
   log("→", JSON.stringify(event));
