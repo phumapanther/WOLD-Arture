@@ -21,7 +21,17 @@ local Config = require(game.ReplicatedStorage.Vehicle.Config)
 local Net = require(game.ReplicatedStorage.Vehicle.Net)
 
 local SOUND = Config.Sound
-if not (SOUND and SOUND.enabled) then return end
+if not (SOUND and SOUND.enabled) then
+  warn("[VehicleSound] Config.Sound.enabled = false — ระบบเสียงพาหนะปิดอยู่")
+  return
+end
+
+-- ร่องรอยว่าสคริปต์รอดมาถึงตรงนี้จริง
+--
+-- ระบบนี้เงียบได้หลายทางโดยไม่มีอะไรบอกเลย (ล็อบบี้ · Config ปิด · error ก่อนหน้า) ซึ่งหน้าตาเหมือน
+-- "เสียงเบา" เป๊ะ บรรทัดเดียวตอนบูตแยกสองอย่างนี้ออกจากกันได้ทันที
+print(("[VehicleSound] เริ่มทำงาน — master=%s ชนิดที่รู้จัก=%d")
+  :format(tostring(SOUND.master), (function() local n = 0 for _ in pairs(SOUND.types) do n += 1 end return n end)()))
 
 local rigs = {}                                  -- model -> rig
 
@@ -84,6 +94,8 @@ local function build(model)
   startLoop(rig.drone)
   startLoop(rig.wash)
   rigs[model] = rig
+  print(("[VehicleSound] สร้างเสียงให้ %s (%s) drone=%s pulse=%d horn=%s")
+    :format(model.Name, tostring(vtype), tostring(rig.drone ~= nil), #rig.pulses, tostring(rig.horn ~= nil)))
 end
 
 local function drop(model)
