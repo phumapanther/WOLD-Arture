@@ -453,12 +453,23 @@ function CraftGui:Show(snapshot)
 	end
 	if not stillThere then self.activeTab = tabs[1] and tabs[1].id end
 
+	-- The tabs SHARE the row rather than each taking a fixed width.
+	--
+	-- They used to be 118px each, chosen to fit the four pages V0.5 ended with (4 x 118 + 3 x 6 = 490 of the
+	-- panel's 536). The fifth page took that to 602: the row does not wrap, so the overflow pushed the later
+	-- tabs off the right edge and left the middle ones unreachable -- which read as "the misc tab does not
+	-- respond" rather than as a layout fault.
+	--
+	-- Scaled by count, so a sixth page costs nothing and cannot do this again.
+	local gap = 6
+	local slice = 1 / math.max(1, #tabs)
 	for order, tab in ipairs(tabs) do
 		local button = Instance.new("TextButton")
 		button.LayoutOrder = order
-		-- Narrow enough that the fourth page added in V0.5 still fits the panel's 536 usable pixels
-		-- (4 x 118 + 3 x 6 = 490) without the row wrapping or the last tab being clipped off the edge.
-		button.Size = UDim2.fromOffset(118, 28)
+		-- Each takes its share of the row minus its share of the gaps between them.
+		button.Size = UDim2.new(slice, -gap * (#tabs - 1) * slice, 0, 28)
+		button.TextScaled = false
+		button.TextTruncate = Enum.TextTruncate.AtEnd
 		button.BorderSizePixel = 0
 		button.Font = Enum.Font.GothamBold
 		button.TextSize = 12
