@@ -41,6 +41,11 @@ local ProfileTemplate = {
 	-- When the old daily chest was last opened. The chest it belonged to is gone -- it became the admin chest,
 	-- which has no cooldown to remember -- but the field stays: every saved profile already has it, and
 	-- removing a key from the template is how a Reconcile starts rewriting profiles for no reason.
+	-- เวลาที่พ้นโทษคุมขัง (os.time) | nil = ไม่ได้ติดคุก
+	--
+	-- เก็บเป็นเวลาที่พ้น ไม่ใช่ "เหลืออีกกี่วินาที" เพราะค่าที่นับถอยหลังจะหยุดเดินตอนออกจากเกม ซึ่งแปลว่า
+	-- ออกเกมคือวิธีหนีคุก โทษต้องเดินตามเวลาจริงต่อไปแม้ไม่ได้เล่น
+	JailUntil = nil,
 	TestChestAt = 0,
 	-- One-off test grant. Recorded in the profile so it happens once per player, ever, rather than on every
 	-- rejoin. Bumping the number re-runs it for everyone; leave it alone to stop granting.

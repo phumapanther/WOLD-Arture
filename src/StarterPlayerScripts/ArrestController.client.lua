@@ -99,6 +99,10 @@ gui:On("release", function()
 	Remotes.RequestArrestRelease:FireServer()
 end)
 
+gui:On("jail", function(termId)
+	Remotes.RequestArrestJail:FireServer(termId)
+end)
+
 Remotes.ArrestStateChanged.OnClientEvent:Connect(function(event, other, payload)
 	local asGuard = payload and payload.role == "guard"
 	if event == "opened" then

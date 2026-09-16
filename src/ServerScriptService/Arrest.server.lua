@@ -16,6 +16,7 @@ local Vitals = require(game.ServerScriptService.Vitals)
 local ClassActionConfig = require(game.ReplicatedStorage.ClassActionConfig)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local Jail = require(game.ServerScriptService.Jail)
 
 if ServerConfig.IsLobby then return end
 
@@ -183,15 +184,22 @@ Remotes.RequestArrestTake.OnServerEvent:Connect(function(guard, slots, fine)
 	publish(session)
 end)
 
-Remotes.RequestArrestConfirm.OnServerEvent:Connect(function(guard)
-	local session = Arrests[guard]
-	if not session or session.closed then return end
+-- Carrying out the sentence: what the guard marked is taken, the fine is paid, and both are told what
+-- happened. Shared by the plain "confirm" and by "confirm and jail" so the two can never drift apart --
+-- jailing someone must not quietly take a different amount than releasing them would have.
+--
+-- Returns the settlement, or nil if it could not be carried out (the session is closed in that case).
+local function settle(guard, session)
 	if not withinRange(guard, session.prisoner) then
-		return closeSession(session, "อยู่ไกลเกินไป")
+		closeSession(session, "อยู่ไกลเกินไป")
+		return nil
 	end
 
 	local state = Inventory.Get(session.prisoner)
-	if not state then return closeSession(session, "ทำรายการไม่ได้") end
+	if not state then
+		closeSession(session, "ทำรายการไม่ได้")
+		return nil
+	end
 
 	-- Re-read at the moment it happens, not when it was marked: the prisoner is held, but a stack can still
 	-- change under a long arrest.
@@ -216,9 +224,51 @@ Remotes.RequestArrestConfirm.OnServerEvent:Connect(function(guard)
 		Inventory.AddItem(guard, entry.id, entry.count, entry.durability, entry.meta)
 	end
 
-	Remotes.ArrestStateChanged:FireClient(guard, "completed", session.prisoner, { items = #taking, fine = fine })
-	Remotes.ArrestStateChanged:FireClient(session.prisoner, "completed", guard, { items = #taking, fine = fine })
+	return { items = #taking, fine = fine }
+end
+
+Remotes.RequestArrestConfirm.OnServerEvent:Connect(function(guard)
+	local session = Arrests[guard]
+	if not session or session.closed then return end
+
+	local result = settle(guard, session)
+	if not result then return end
+
+	Remotes.ArrestStateChanged:FireClient(guard, "completed", session.prisoner, result)
+	Remotes.ArrestStateChanged:FireClient(session.prisoner, "completed", guard, result)
 	closeSession(session, nil)
+end)
+
+-- ยึดของ ปรับเงิน แล้วส่งเข้าคุกตามระยะเวลาที่ทหารยามเลือก
+--
+-- **เวลาที่รับมาเป็น id ไม่ใช่จำนวนวินาที** ไคลเอนต์ส่งมาแค่ว่ากดปุ่มไหน แล้วเซิร์ฟเวอร์เปิดตารางเอง
+-- ถ้ารับวินาทีมาตรงๆ ใครก็ส่งมาเท่าไหร่ก็ได้ และไม่มีด่านไหนที่รู้ว่าเท่าไหร่ถึงจะมากเกินไป
+Remotes.RequestArrestJail.OnServerEvent:Connect(function(guard, termId)
+	local session = Arrests[guard]
+	if not session or session.closed then return end
+
+	local seconds
+	for _, term in ipairs(ClassActionConfig.Arrest.jailTerms) do
+		if term.id == termId then seconds = term.seconds break end
+	end
+	if not seconds then return end
+
+	local prisoner = session.prisoner
+	local result = settle(guard, session)
+	if not result then return end
+
+	-- **ปลดการจับกุมก่อนส่งเข้าคุก** การจับกุมยึดตัวไว้ด้วย Anchored และตำแหน่งที่เขียนใหม่ทุกเฟรม ถ้ายัง
+	-- ไม่ปลด การเทเลพอร์ตจะถูกเขียนทับกลับมาที่หน้าทหารยามทันทีในเฟรมถัดไป
+	closeSession(session, nil)
+
+	local ok, why = Jail.Commit(prisoner, seconds)
+	result.jailed = ok and seconds or nil
+
+	Remotes.ArrestStateChanged:FireClient(guard, "completed", prisoner,
+		ok and result or { items = result.items, fine = result.fine, failed = why })
+	if prisoner.Parent then
+		Remotes.ArrestStateChanged:FireClient(prisoner, "completed", guard, result)
+	end
 end)
 
 Remotes.RequestArrestRelease.OnServerEvent:Connect(function(player)

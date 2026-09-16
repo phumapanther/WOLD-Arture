@@ -128,6 +128,15 @@ ClassActionConfig.Arrest = {
 	-- How long an arrested player stays held. Not indefinite: a guard who wanders off must not leave someone
 	-- locked in place forever.
 	holdSeconds = 120,
+	-- ระยะเวลาคุมขังที่ทหารยามเลือกได้ เรียงจากสั้นไปยาว ตามที่ผู้ใช้กำหนด
+	--
+	-- เป็นรายการ ไม่ใช่ช่องให้พิมพ์ตัวเลข: โทษควรเป็นของที่ตกลงกันไว้ล่วงหน้า ไม่ใช่สิ่งที่ทหารยามคิดเอง
+	-- ตอนนั้น และรายการยังกันการพิมพ์ 999999 ได้โดยไม่ต้องมีด่านตรวจฝั่งเซิร์ฟเวอร์อีกชั้น
+	jailTerms = {
+		{ id = "5m", label = "5 นาที", seconds = 300 },
+		{ id = "10m", label = "10 นาที", seconds = 600 },
+		{ id = "30m", label = "30 นาที", seconds = 1800 },
+	},
 }
 
 --------------------------------------------------------------------------------

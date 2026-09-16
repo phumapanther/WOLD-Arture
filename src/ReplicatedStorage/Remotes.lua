@@ -35,9 +35,15 @@ local EVENTS = {
 	-- Arrest. One-sided: the guard takes, the prisoner gives. The prisoner is told so their own screen can
 	-- show what is being done to them, and so the hold ends on their client too.
 	"ArrestStateChanged", "RequestArrestTake", "RequestArrestConfirm", "RequestArrestRelease",
+	-- คุมขัง: ยึดของและปรับเงินตามที่เลือกไว้ แล้วส่งเข้าคุกตามระยะเวลาที่กด (5/10/30 นาที)
+	"RequestArrestJail",
 	-- The announcement a class command makes. The command itself is typed into the console, so it arrives
 	-- through AdminCommand like every other slash command rather than needing one of its own.
 	"ClassAnnouncement",
+	-- Riding the monowheel. The server owns the bike, but the CAMERA is the client's alone -- no server can
+	-- set another machine's camera -- so getting on and off is broadcast and the rider's own client locks
+	-- itself into first person for as long as it is seated.
+	"MonowheelRideChanged",
 	-- Handing one item to a player standing next to you, from the bag menu.
 	"RequestGiveItem",
 	-- Eating and drinking take time; every client needs to know so it can play the animation and hold the

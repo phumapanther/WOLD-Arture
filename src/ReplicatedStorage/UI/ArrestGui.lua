@@ -159,7 +159,9 @@ function ArrestGui.new()
 	-- Left: everything the prisoner has.
 	local left = Instance.new("Frame")
 	left.Position = UDim2.new(0, 12, 0, 46)
-	left.Size = UDim2.new(0.5, -18, 1, -104)
+	-- -150 ไม่ใช่ -104: เผื่อที่ให้แถวปุ่มคุมขังอีกแถว (38 สูง + 8 ช่องไฟ)
+	-- ถ้าไม่ขยับ ปุ่มแถวใหม่จะทับตะแกรงของ ซึ่งเป็นบั๊กแบบเดียวกับที่แท็บคราฟเคยเจอตอนเพิ่มแท็บที่ 5
+	left.Size = UDim2.new(0.5, -18, 1, -150)
 	left.BackgroundTransparency = 1
 	left.Parent = panel
 
@@ -174,7 +176,7 @@ function ArrestGui.new()
 	-- Right: what is being taken, and the fine.
 	local right = Instance.new("Frame")
 	right.Position = UDim2.new(0.5, 6, 0, 46)
-	right.Size = UDim2.new(0.5, -18, 1, -104)
+	right.Size = UDim2.new(0.5, -18, 1, -150)
 	right.BackgroundTransparency = 1
 	right.Parent = panel
 
@@ -211,7 +213,8 @@ function ArrestGui.new()
 
 	local confirm = Instance.new("TextButton")
 	confirm.AnchorPoint = Vector2.new(0, 1)
-	confirm.Position = UDim2.new(0, 12, 1, -12)
+	-- ยกขึ้นเหนือแถวคุมขัง
+	confirm.Position = UDim2.new(0, 12, 1, -58)
 	confirm.Size = UDim2.new(0.5, -18, 0, 38)
 	confirm.BackgroundColor3 = Color3.fromRGB(58, 78, 56)
 	confirm.BorderSizePixel = 0
@@ -225,7 +228,7 @@ function ArrestGui.new()
 
 	local release = Instance.new("TextButton")
 	release.AnchorPoint = Vector2.new(1, 1)
-	release.Position = UDim2.new(1, -12, 1, -12)
+	release.Position = UDim2.new(1, -12, 1, -58)
 	release.Size = UDim2.new(0.5, -18, 0, 38)
 	release.BackgroundColor3 = Color3.fromRGB(70, 74, 84)
 	release.BorderSizePixel = 0
@@ -236,6 +239,38 @@ function ArrestGui.new()
 	release.Parent = panel
 	corner(release, UDim.new(0, 8))
 	self.releaseButton = release
+
+	-- แถวคุมขัง: ปุ่มหนึ่งปุ่มต่อหนึ่งระยะเวลา
+	--
+	-- **ปุ่มแยกตามเวลา ไม่ใช่ปุ่มเดียวกับช่องเลือกเวลา** การคุมขังเป็นการกระทำที่ย้อนไม่ได้ ถ้าเวลาเป็นค่า
+	-- ที่ตั้งค้างไว้ในเมนู ทหารยามจะกด "คุมขัง" โดยไม่ทันดูว่าค่าที่ค้างอยู่คือ 30 นาที — ปุ่มที่เขียนเวลา
+	-- อยู่บนตัวมันเองทำให้ไม่มีทางกดผิดโดยไม่รู้ตัว
+	local terms = ClassActionConfig.Arrest.jailTerms
+	self.jailButtons = {}
+	local count = #terms
+	for i, term in ipairs(terms) do
+		local b = Instance.new("TextButton")
+		b.AnchorPoint = Vector2.new(0, 1)
+		-- แบ่งความกว้างเท่าๆ กัน หักขอบซ้ายขวา 12px และช่องไฟ 6px ระหว่างปุ่ม **แล้วหารด้วยจำนวนปุ่ม**
+		--
+		-- ที่ต้องหาร: ที่ที่หายไปทั้งหมด (ขอบ 2 ข้าง + ช่องไฟ n-1 ช่อง) ถูกแบ่งกันรับโดยปุ่มทุกตัว ถ้าหัก
+		-- เต็มจำนวนจากปุ่มแต่ละตัว ปุ่มจะแคบเกินไป ถ้าหักน้อยไปปุ่มสุดท้ายจะล้นออกนอกขอบขวา — วัดแล้วว่า
+		-- สูตรเดิม (หัก 18 ทุกตัว) ทำให้ปุ่มที่ 3 จบที่ 680 พอดีขอบ panel ไม่เหลือระยะขอบเลย
+		local shrink = (12 * 2 + 6 * (count - 1)) / count
+		b.Size = UDim2.new(1 / count, -shrink, 0, 38)
+		-- ตำแหน่งไล่ทีละปุ่มจากซ้าย ไม่ใช่คำนวณจากสัดส่วน: ความกว้างจริงของปุ่มมีทั้งส่วน scale และ offset
+		-- การบวกไปทีละตัวจึงเป็นวิธีเดียวที่ช่องไฟระหว่างปุ่มเท่ากันจริงทุกช่อง
+		b.Position = UDim2.new((i - 1) / count, 12 + (i - 1) * (6 - shrink), 1, -12)
+		b.BackgroundColor3 = Color3.fromRGB(96, 62, 58)
+		b.BorderSizePixel = 0
+		b.Font = Enum.Font.GothamBold
+		b.TextSize = 13
+		b.TextColor3 = TEXT_LIGHT
+		b.Text = "⛓ คุมขัง " .. term.label
+		b.Parent = panel
+		corner(b, UDim.new(0, 8))
+		self.jailButtons[i] = { button = b, term = term }
+	end
 
 	self.taking = {}
 	self.fine = 0
@@ -267,6 +302,9 @@ function ArrestGui:Open(other, asGuard)
 	self.fineBox.TextEditable = asGuard
 	self.confirmButton.Visible = asGuard
 	self.releaseButton.Visible = asGuard
+	for _, entry in ipairs(self.jailButtons) do
+		entry.button.Visible = asGuard
+	end
 	self.summary.Text = asGuard and "" or "ขยับไม่ได้จนกว่าจะถูกปล่อยตัว"
 
 	self.gui.Enabled = true
@@ -285,6 +323,13 @@ function ArrestGui:Open(other, asGuard)
 		UiSound.Play("Click")
 		fire(self, "release")
 	end))
+	for _, entry in ipairs(self.jailButtons) do
+		table.insert(self.connections, entry.button.Activated:Connect(function()
+			UiSound.Play("Click")
+			-- ส่งแค่ id ของระยะเวลา ไม่ใช่จำนวนวินาที เซิร์ฟเวอร์เปิดตารางเอง
+			fire(self, "jail", entry.term.id)
+		end))
+	end
 	table.insert(self.connections, self.fineBox.FocusLost:Connect(function()
 		self.fine = math.max(0, math.floor(tonumber(self.fineBox.Text) or 0))
 		fire(self, "take", self.taking, self.fine)

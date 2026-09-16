@@ -12,18 +12,19 @@ local ServerConfig = require(game.ServerScriptService.ServerConfig)
 if ServerConfig.IsLobby then return end
 
 local MonowheelAccess = require(game.ServerScriptService.MonowheelAccess)
+local Remotes = require(game.ReplicatedStorage.Remotes)
 
 --------------------------------------------------------------------------------
 -- ตัวเลข
 --------------------------------------------------------------------------------
 
--- เร็วเท่าวิ่งเต็มสปีดของเกม (PlayerMovement SPEED.Run = 24) ตามที่ผู้ใช้สั่ง
+-- เดิมตั้งไว้ 24 = เท่าวิ่งเต็มสปีดพอดี ผู้ใช้ขอให้เร็วขึ้น จึงเป็น 42 (1.75 เท่าของการวิ่ง)
 --
--- จับคู่กับความเร็ววิ่งเพราะจักรยานที่ช้ากว่าการวิ่งคือของที่ไม่มีใครใช้ และที่เร็วกว่ามากก็ทำให้การวิ่ง
--- ไม่มีความหมาย ค่านี้คือ "เท่ากันพอดี" โดยตั้งใจ
-local TOP_SPEED = 24
-local ACCEL_FORCE = 22000   -- แรงที่ใช้ไล่ไปถึงความเร็วนั้น
-local TURN_SPEED = 2.6      -- เรเดียน/วินาที ตอนเลี้ยวสุดพวงมาลัย
+-- เร็วกว่าการวิ่งชัดเจนพอให้รู้สึกว่าคุ้มที่จะขี่ แต่ยังไม่เร็วเท่ารถยนต์ (52.9) ซึ่งควรเป็นของที่เร็วที่สุด
+-- เพราะต้องหามาและมีค่าใช้จ่าย ส่วนจักรยานเป็นของแจกฟรี
+local TOP_SPEED = 42
+local ACCEL_FORCE = 34000   -- แรงที่ใช้ไล่ไปถึงความเร็วนั้น
+local TURN_SPEED = 3.0      -- เรเดียน/วินาที ตอนเลี้ยวสุดพวงมาลัย
 
 -- **ขนาดวัดจากตัวละครจริง ไม่ได้เดา** — Monster_Skeleton (R15 สัดส่วนเดียวกับผู้เล่น) สูง 5.69 studs
 -- คนนั่งพับตัวลงเหลือสูงราว 3.4 และขายื่นไปหน้าราว 2.6 วงในจึงต้องกว้างอย่างน้อย 8.4 ถึงจะโอบคนได้จริง
@@ -269,7 +270,26 @@ local function build()
 	align.Parent = seat
 	-- ทิศเป้าหมายถูกตั้งใหม่ทุกเฟรมในลูปหลัก ให้ตั้งตรงแต่ยังหันไปทางที่คนขับเลี้ยว
 
-	return model, seat, hub, align
+	-- แรงขับแบบต่อเนื่อง แทนการกระแทกทีละเฟรม
+	--
+	-- **นี่คือต้นเหตุหลักของอาการกระตุก** ของเดิมเรียก `ApplyImpulse` ทุกเฟรมจากเซิร์ฟเวอร์ แต่คนขับเป็น
+	-- เจ้าของฟิสิกส์ของที่นั่ง (ดู SetNetworkOwner ตอนขึ้นขี่) เครื่องของเขาจึงจำลองการเคลื่อนที่เองอยู่แล้ว
+	-- แรงกระแทกที่ส่งมาจากเซิร์ฟเวอร์กลายเป็น "การแก้ตำแหน่ง" ที่มาไม่ตรงจังหวะกับการจำลองฝั่งเขา = สะดุด
+	--
+	-- VectorForce เป็น constraint: เซิร์ฟเวอร์ตั้งค่าไว้ครั้งเดียว แล้วเครื่องของคนขับจำลองแรงนั้นเองทุกเฟรม
+	-- ไม่มีอะไรวิ่งสวนกันอีก
+	local thrustAt = Instance.new("Attachment")
+	thrustAt.Name = "Thrust"
+	thrustAt.Parent = seat
+
+	local thrust = Instance.new("VectorForce")
+	thrust.Attachment0 = thrustAt
+	-- แรงในพิกัดโลก ไม่ใช่พิกัดของที่นั่ง — ทิศคำนวณจาก heading ของเราเองอยู่แล้ว
+	thrust.RelativeTo = Enum.ActuatorRelativeTo.World
+	thrust.Force = Vector3.zero
+	thrust.Parent = seat
+
+	return model, seat, hub, align, thrust
 end
 
 --------------------------------------------------------------------------------
@@ -280,6 +300,11 @@ local function despawn(player)
 	local entry = Live[player]
 	if not entry then return false end
 	Live[player] = nil
+	-- **ต้องคืนกล้องก่อนทำลายโมเดล** ถ้าเก็บจักรยานตอนยังนั่งอยู่ (หรือคนขี่ออกจากเกม) สัญญาณ Occupant
+	-- จะมาหลังจากที่ตารางถูกล้างไปแล้ว คนขี่จึงค้างเป็นมุมมองบุคคลที่หนึ่งโดยไม่มีอะไรมาปลดให้
+	if entry.rider and entry.rider.Parent then
+		Remotes.MonowheelRideChanged:FireClient(entry.rider, false)
+	end
 	if entry.model and entry.model.Parent then entry.model:Destroy() end
 	return true
 end
@@ -318,7 +343,7 @@ local function spawnFor(player)
 	local where, heading = spotNear(root)
 	if not where then return false, "ไม่มีที่ว่างพอ" end
 
-	local model, seat, wheel, align = build()
+	local model, seat, wheel, align, thrust = build()
 	model:PivotTo(where)
 	model.Parent = folder()
 	-- เจ้าของ เพื่อให้คนอื่นเรียกของเราไม่ได้ และเพื่อให้รู้ว่าใครขับอยู่
@@ -326,8 +351,50 @@ local function spawnFor(player)
 
 	-- **heading ต้องตรงกับทิศที่วางจริง** ถ้าปล่อยเป็น 0 ลูปขับจะสั่ง AlignOrientation ให้หันกลับไป -Z
 	-- ของโลกทันทีในเฟรมแรก = จักรยานสะบัดตัวเองทิ้งทันทีที่เรียกออกมา
-	Live[player] = { model = model, seat = seat, wheel = wheel, align = align, heading = heading or 0 }
+	local entry = {
+		model = model, seat = seat, wheel = wheel, align = align, thrust = thrust,
+		heading = heading or 0,
+	}
+	Live[player] = entry
+	wireSeat(player, entry)
 	return true
+end
+
+-- ใครขึ้นขี่/ลงจากจักรยาน
+--
+-- ทำสองอย่างที่ต้องเกิดพร้อมกัน:
+--
+-- 1. **ยกเจ้าของฟิสิกส์ให้คนขับ** เครื่องของเขาจำลองการเคลื่อนที่เอง ไม่ต้องรอเซิร์ฟเวอร์ตอบกลับทุกเฟรม
+--    นี่คือวิธีเดียวกับที่ระบบพาหนะใช้ (`Vehicle/Service.lua` เรียก SetNetworkOwner ตอนเบิกรถ) และเป็น
+--    อีกครึ่งหนึ่งของการแก้อาการกระตุก คู่กับ VectorForce
+--
+-- 2. **บอกไคลเอนต์ว่าขึ้นแล้ว** เพื่อให้เขาล็อกกล้องเป็นมุมมองบุคคลที่หนึ่งด้วยตัวเอง เซิร์ฟเวอร์สั่งกล้อง
+--    ของเครื่องอื่นไม่ได้ กล้องเป็นของไคลเอนต์เสมอ
+local function wireSeat(player, entry)
+	local seat = entry.seat
+	seat:GetPropertyChangedSignal("Occupant"):Connect(function()
+		local occupant = seat.Occupant
+		local rider = occupant and Players:GetPlayerFromCharacter(occupant.Parent)
+
+		-- pcall ทุกครั้ง: ตัวละครอาจหลุดไปแล้วระหว่างนี้ ซึ่งทำให้ SetNetworkOwner โยน error
+		for _, part in ipairs({ entry.seat, entry.wheel }) do
+			pcall(function()
+				part:SetNetworkOwner(rider)
+			end)
+		end
+
+		if rider then
+			entry.rider = rider
+			Remotes.MonowheelRideChanged:FireClient(rider, true)
+		elseif entry.rider then
+			-- ลงแล้ว: คืนกล้องให้เจ้าตัว และหยุดดันจักรยานที่ไม่มีคนขี่
+			if entry.rider.Parent then
+				Remotes.MonowheelRideChanged:FireClient(entry.rider, false)
+			end
+			entry.rider = nil
+			if entry.thrust then entry.thrust.Force = Vector3.zero end
+		end
+	end)
 end
 
 -- กดไอเทม: ไม่มีอยู่ = เรียก, มีอยู่ = เก็บ
@@ -371,15 +438,24 @@ RunService.Heartbeat:Connect(function(dt)
 			-- ที่มีทั้งน้ำหนักคนขับและตุ้มถ่วง แล้วล้อจะถูกลากไปด้วยผ่านบานพับ ซึ่งเป็นทิศทางที่ถูกของแรง
 			local body = seat
 			local flat = body.AssemblyLinearVelocity * Vector3.new(1, 0, 1)
+			local speed = flat.Magnitude
 
 			if throttle ~= 0 then
 				local forward = facing.LookVector
-				-- ใกล้เพดานแล้วหยุดดัน ไม่งั้นจะไหลเลยความเร็วที่ตั้งไว้ไปเรื่อยๆ
-				local headroom = math.clamp(1 - flat.Magnitude / TOP_SPEED, 0, 1)
-				body:ApplyImpulse(forward * (throttle * ACCEL_FORCE * headroom * dt))
-			elseif flat.Magnitude > 0.5 then
+
+				-- **ไม่ตัดแรงเป็นศูนย์ที่เพดาน** ของเดิมใช้ headroom ที่ลดลงถึง 0 พอดีตอนเต็มสปีด ผลคือแรงขับ
+				-- ดับ แรงต้านฉุดให้ช้าลง แล้วแรงขับกลับมาใหม่ = แกว่งรอบเพดานตลอดเวลา ซึ่งรู้สึกเป็นการกระตุก
+				--
+				-- แทนที่ด้วยการไล่ตามความเร็วเป้าหมาย: ยิ่งห่างเป้ายิ่งดันแรง ใกล้เป้าแรงก็เบาลงเอง
+				-- จนนิ่งพอดีที่ความเร็วนั้น ไม่มีจุดไหนที่แรงหายไปทั้งหมด
+				local target = TOP_SPEED * math.abs(throttle)
+				local gap = math.clamp((target - speed) / TOP_SPEED, -1, 1)
+				thrust.Force = forward * (throttle >= 0 and 1 or -1) * (gap * ACCEL_FORCE)
+			elseif speed > 0.5 then
 				-- ปล่อยคันเร่ง = หน่วงให้หยุดเอง ไม่ใช่ไหลไปจนชนอะไรสักอย่าง
-				body:ApplyImpulse(-flat.Unit * math.min(flat.Magnitude, 6) * body.AssemblyMass * dt * 2)
+				thrust.Force = -flat.Unit * math.min(speed, 8) * body.AssemblyMass * 1.6
+			else
+				thrust.Force = Vector3.zero
 			end
 		end
 	end
