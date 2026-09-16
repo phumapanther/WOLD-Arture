@@ -1,1 +1,1 @@
-return "edit ok"
+return "ok"
