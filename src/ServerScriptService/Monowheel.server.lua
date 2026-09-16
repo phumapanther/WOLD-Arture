@@ -24,7 +24,15 @@ local MonowheelAccess = require(game.ServerScriptService.MonowheelAccess)
 local TOP_SPEED = 24
 local ACCEL_FORCE = 22000   -- แรงที่ใช้ไล่ไปถึงความเร็วนั้น
 local TURN_SPEED = 2.6      -- เรเดียน/วินาที ตอนเลี้ยวสุดพวงมาลัย
-local WHEEL_RADIUS = 3.2
+
+-- **ขนาดวัดจากตัวละครจริง ไม่ได้เดา** — Monster_Skeleton (R15 สัดส่วนเดียวกับผู้เล่น) สูง 5.69 studs
+-- คนนั่งพับตัวลงเหลือสูงราว 3.4 และขายื่นไปหน้าราว 2.6 วงในจึงต้องกว้างอย่างน้อย 8.4 ถึงจะโอบคนได้จริง
+-- ของเดิมรัศมี 3.2 (ล้อกว้าง 6.4) เล็กกว่าตัวคนนั่งเสียอีก ซึ่งเป็นอาการที่ผู้ใช้เห็นในรูป
+local INNER_RADIUS = 4.2    -- ขอบในของวง = ช่องที่คนนั่งอยู่
+local TYRE_THICK = 1.3      -- ความหนาของยาง
+local WHEEL_RADIUS = INNER_RADIUS + TYRE_THICK  -- 5.5 → ล้อกว้าง 11 studs
+local WHEEL_WIDTH = 2.2     -- หน้ายาง กว้างพอให้ตั้งอยู่ได้เองบ้าง
+local RING_SEGMENTS = 16    -- จำนวนชิ้นที่เอามาวางเป็นวง
 
 local FOLDER_NAME = "WOLD_Monowheels"
 
@@ -61,11 +69,13 @@ local function part(parent, name, size, cf, colour, material, massless)
 	return p
 end
 
--- ล้อเดียววงใหญ่ คนนั่งอยู่ข้างใน — ทรงของ The Bizarre Monowheel ตามรูปที่ผู้ใช้ส่งมา
+-- ล้อเดียววงใหญ่ คนนั่งอยู่ "ข้างใน" วง — ทรงของ The Bizarre Monowheel ตามรูปที่ผู้ใช้ส่งมา
 --
--- **ล้อเป็นทรงกระบอกตั้งขึ้น ไม่ใช่ลูกบอล** ลูกบอลกลิ้งได้ทุกทิศซึ่งง่ายกับฟิสิกส์ แต่หน้าตาผิดไปคนละอย่าง
--- ราคาที่ต้องจ่ายคือทรงกระบอกล้มได้ จึงต้องมีตัวพยุงให้ตั้งตรง (AlignOrientation ข้างล่าง) ซึ่งเป็นวิธี
--- เดียวกับที่รถมอเตอร์ไซค์ในเกมอื่นใช้
+-- **วงต้องกลวงจริง** ของเดิมใช้ทรงกระบอกซ้อนกันสามชั้น ซึ่งตันหมดทุกชั้น ตรงกลางจึงทึบและคนไปนั่งอยู่
+-- "หน้า" ล้อแทนที่จะอยู่ในวง — Roblox ไม่มีทรงวงแหวน วิธีเดียวคือ **วางชิ้นส่วนเรียงเป็นวง** 16 ชิ้น
+-- รอบแกน แต่ละชิ้นเอียงตามมุมของตัวเอง พอเรียงครบรอบก็อ่านเป็นวงกลมที่มีรูตรงกลาง
+--
+-- ล้อชนพื้นด้วยชิ้นส่วนยางพวกนี้เอง ไม่มีทรงกระบอกซ่อนอยู่ข้างใน — ถ้ามี มันจะเป็นลูกกลิ้งตันที่บังรู
 --
 -- โครงที่นั่งไม่ได้เชื่อมติดล้อ แต่ **แขวนด้วยบานพับ (HingeConstraint)** ที่แกนกลาง ล้อจึงหมุนรอบตัวเอง
 -- ได้จริงในขณะที่คนขับยังนั่งตรง เหมือนของจริงในรูป ถ้าเชื่อมติดกัน คนขับจะหมุนตีลังกาไปกับล้อ
@@ -73,53 +83,86 @@ local function build()
 	local model = Instance.new("Model")
 	model.Name = "Monowheel"
 
-	-- ยางรอบนอก: ทรงกระบอกวางตะแคงให้หน้ายางแตะพื้น
+	-- แกนกลาง: ชิ้นเล็กๆ ที่มองไม่เห็น ทำหน้าที่เป็น "ตัวล้อ" ให้ชิ้นส่วนวงแหวนทุกชิ้นเชื่อมติด
 	--
-	-- ทรงกระบอกของ Roblox ยาวตามแกน X โดยธรรมชาติ หมุน 90 องศารอบแกน Z จึงได้ล้อที่ "ตั้ง" อยู่
-	local wheel = Instance.new("Part")
-	wheel.Name = "Wheel"
-	wheel.Shape = Enum.PartType.Cylinder
-	wheel.Size = Vector3.new(1.6, WHEEL_RADIUS * 2, WHEEL_RADIUS * 2) -- หนา 1.6 เส้นผ่านศูนย์กลางเต็ม
-	wheel.CFrame = CFrame.Angles(0, 0, math.rad(90))
-	wheel.Color = Color3.fromRGB(48, 44, 42)
-	wheel.Material = Enum.Material.Pebble
-	-- ยางเกาะถนน: แรงเสียดทานสูง เด้งต่ำ
-	wheel.CustomPhysicalProperties = PhysicalProperties.new(1.1, 2.0, 0.1, 2, 1)
-	wheel.CanCollide = true
-	wheel.Massless = false
-	wheel.Parent = model
-	model.PrimaryPart = wheel
+	-- ต้องมีชิ้นกลางเพราะวงแหวนไม่มีชิ้นไหนอยู่ตรงแกนเลย แต่บานพับต้องยึดกับบางอย่างที่อยู่ตรงแกนพอดี
+	local hub = Instance.new("Part")
+	hub.Name = "Wheel"
+	hub.Shape = Enum.PartType.Ball
+	hub.Size = Vector3.new(0.6, 0.6, 0.6)
+	hub.CFrame = CFrame.new()
+	hub.Transparency = 1
+	hub.CanCollide = false
+	hub.CanQuery = false
+	hub.Massless = false
+	hub.Parent = model
+	model.PrimaryPart = hub
 
-	-- ขอบล้อทองเหลืองด้านใน ให้เห็นเป็นวงซ้อนแบบในรูป
-	local rim = part(model, "Rim", Vector3.new(1.8, WHEEL_RADIUS * 1.62, WHEEL_RADIUS * 1.62),
-		wheel.CFrame, Color3.fromRGB(176, 138, 68), Enum.Material.Metal)
-	rim.Shape = Enum.PartType.Cylinder
-	rim.CFrame = wheel.CFrame
+	-- วงยาง: ชิ้นส่วนเรียงรอบแกน แต่ละชิ้นยาวพอให้ชนชิ้นข้างเคียงจนดูต่อเนื่อง
+	--
+	-- ความยาวของคอร์ดที่รองรับมุม θ คือ 2R·sin(θ/2) คูณเผื่อไว้นิดให้ชิ้นซ้อนกันเล็กน้อย ไม่งั้นจะเห็น
+	-- ร่องระหว่างชิ้นตอนล้อหมุน
+	local step = math.pi * 2 / RING_SEGMENTS
+	local chord = 2 * WHEEL_RADIUS * math.sin(step / 2) * 1.06
+	local midR = INNER_RADIUS + TYRE_THICK / 2
 
-	local innerRim = part(model, "InnerRim", Vector3.new(1.9, WHEEL_RADIUS * 1.32, WHEEL_RADIUS * 1.32),
-		wheel.CFrame, Color3.fromRGB(96, 92, 88), Enum.Material.Metal)
-	innerRim.Shape = Enum.PartType.Cylinder
-	innerRim.CFrame = wheel.CFrame
-
-	-- เฟืองสองตัวบนขอบ พอให้อ่านออกว่าเป็นเครื่องจักรไอน้ำ ไม่ได้ทำครบทุกซี่เพราะมองไม่ทันตอนขี่อยู่แล้ว
-	for _, spec in ipairs({ { 0.9, 1.1 }, { 2.4, 0.8 } }) do
-		local angle, size = spec[1], spec[2]
-		local gear = part(model, "Gear", Vector3.new(0.4, size * 2, size * 2),
-			wheel.CFrame, Color3.fromRGB(150, 130, 90), Enum.Material.Metal)
-		gear.Shape = Enum.PartType.Cylinder
-		gear.CFrame = wheel.CFrame
-			* CFrame.Angles(math.rad(90), 0, 0)
-			* CFrame.new(math.cos(angle) * WHEEL_RADIUS * 0.74, 0, math.sin(angle) * WHEEL_RADIUS * 0.74)
-			* CFrame.Angles(0, 0, math.rad(90))
+	for i = 1, RING_SEGMENTS do
+		local angle = (i - 1) * step
+		local seg = Instance.new("Part")
+		seg.Name = "Tyre"
+		seg.Size = Vector3.new(WHEEL_WIDTH, TYRE_THICK, chord)
+		-- วางที่ระยะ midR จากแกน แล้วหมุนให้ด้านยาวของชิ้นวางไปตามเส้นรอบวง
+		seg.CFrame = CFrame.Angles(0, 0, angle) * CFrame.new(0, midR, 0)
+		seg.Color = Color3.fromRGB(48, 44, 42)
+		seg.Material = Enum.Material.Pebble
+		-- ยางเกาะถนน: แรงเสียดทานสูง เด้งต่ำ
+		seg.CustomPhysicalProperties = PhysicalProperties.new(1.1, 2.0, 0.1, 2, 1)
+		seg.CanCollide = true
+		seg.Massless = false
+		seg.TopSurface = Enum.SurfaceType.Smooth
+		seg.BottomSurface = Enum.SurfaceType.Smooth
+		seg.Parent = model
 	end
 
-	-- ทุกชิ้นของ "ล้อ" เชื่อมติดล้อ หมุนไปด้วยกัน
+	-- ขอบทองเหลืองด้านใน: วงที่สองที่บางกว่า ให้เห็นเป็นวงซ้อนแบบในรูป และเป็นขอบของ "รู"
+	local rimR = INNER_RADIUS + 0.22
+	local rimChord = 2 * rimR * math.sin(step / 2) * 1.06
+	for i = 1, RING_SEGMENTS do
+		local angle = (i - 1) * step + step / 2
+		local seg = part(model, "Rim", Vector3.new(WHEEL_WIDTH + 0.5, 0.45, rimChord),
+			CFrame.new(), Color3.fromRGB(176, 138, 68), Enum.Material.Metal)
+		seg.CFrame = CFrame.Angles(0, 0, angle) * CFrame.new(0, rimR, 0)
+	end
+
+	-- ซี่ล้อ 4 ซี่จากแกนออกไปขอบ ให้อ่านออกว่าเป็นล้อ ไม่ใช่ห่วงลอยๆ
+	--
+	-- **อยู่ชิดด้านข้าง ไม่ได้พาดกลางวง** จึงไม่ขวางทางคนนั่ง ซึ่งเป็นเหตุผลเดียวที่วงนี้ยังกลวงอยู่
+	for i = 1, 4 do
+		local angle = (i - 1) * (math.pi / 2) + math.pi / 4
+		local spoke = part(model, "Spoke", Vector3.new(0.34, INNER_RADIUS, 0.34),
+			CFrame.new(), Color3.fromRGB(120, 112, 104), Enum.Material.Metal)
+		spoke.CFrame = CFrame.Angles(0, 0, angle)
+			* CFrame.new(WHEEL_WIDTH / 2 + 0.22, INNER_RADIUS / 2, 0)
+	end
+
+	-- เฟืองสองตัวบนขอบ พอให้อ่านออกว่าเป็นเครื่องจักรไอน้ำ ไม่ได้ทำครบทุกซี่เพราะมองไม่ทันตอนขี่อยู่แล้ว
+	for _, spec in ipairs({ { 0.9, 1.0 }, { 2.4, 0.75 } }) do
+		local angle, size = spec[1], spec[2]
+		local gear = part(model, "Gear", Vector3.new(0.4, size * 2, size * 2),
+			CFrame.new(), Color3.fromRGB(150, 130, 90), Enum.Material.Metal)
+		gear.Shape = Enum.PartType.Cylinder
+		gear.CFrame = CFrame.Angles(0, 0, angle)
+			* CFrame.new(0, midR, WHEEL_WIDTH / 2 + 0.3)
+			* CFrame.Angles(0, math.rad(90), 0)
+	end
+
+	-- ทุกชิ้นของ "ล้อ" เชื่อมติดแกนกลาง หมุนไปด้วยกัน
 	for _, d in ipairs(model:GetDescendants()) do
-		if d:IsA("BasePart") and d ~= wheel then
+		if d:IsA("BasePart") and d ~= hub then
 			local weld = Instance.new("WeldConstraint")
-			weld.Part0 = wheel
+			weld.Part0 = hub
 			weld.Part1 = d
-			weld.Parent = wheel
+			weld.Parent = hub
 		end
 	end
 
@@ -130,11 +173,14 @@ local function build()
 	-- **ที่นั่งต้อง CanCollide = true** ไม่งั้นไม่มีใครนั่งได้เลย
 	--
 	-- Seat ของ Roblox จับคนนั่งจากการ "แตะ" ถ้าปิดการชน ก็ไม่มีอะไรมาแตะ ปุ่มนั่งจึงไม่ขึ้นและกด E ไม่ติด
-	-- ซึ่งเป็นอาการที่ผู้ใช้เจอเป๊ะ
+	--
+	-- **ตำแหน่ง** ของเดิมวางที่ y = -0.9 ซึ่งเกือบกลางแกน คนจึงโผล่พ้นวงไปนั่งอยู่หน้าล้อตามที่ผู้ใช้เห็น
+	-- ตอนนี้วางต่ำลงไปที่ก้นวง (60% ของรัศมีวงใน) — คนนั่งจะอยู่ในวงจริง หัวไม่ชนขอบบน เท้าไม่ทะลุขอบล่าง
+	local seatY = -INNER_RADIUS * 0.60
 	local seat = Instance.new("VehicleSeat")
 	seat.Name = "DriveSeat"
-	seat.Size = Vector3.new(2, 0.5, 2.6)
-	seat.CFrame = CFrame.new(0, -0.9, 0)
+	seat.Size = Vector3.new(2, 0.4, 2)
+	seat.CFrame = CFrame.new(0, seatY, 0)
 	seat.Color = Color3.fromRGB(122, 84, 52)
 	seat.Material = Enum.Material.Wood
 	seat.CanCollide = true
@@ -145,64 +191,77 @@ local function build()
 	seat.TurnSpeed = 0
 	seat.Parent = model
 
-	-- แฮนด์คู่หน้า ตามรูป
-	for _, side in ipairs({ -0.75, 0.75 }) do
-		local grip = part(model, "Grip", Vector3.new(0.26, 1.1, 0.26),
-			seat.CFrame * CFrame.new(side, 1.15, -1.25), Color3.fromRGB(150, 110, 70), Enum.Material.Wood)
-		grip.CFrame = seat.CFrame * CFrame.new(side, 1.15, -1.25)
+	-- พนักพิงเตี้ยๆ ด้านหลัง กันคนไหลหลุดตอนเร่ง และบอกทิศว่าหน้าอยู่ทางไหน
+	local back = part(model, "SeatBack", Vector3.new(2, 1.2, 0.3),
+		CFrame.new(), Color3.fromRGB(122, 84, 52), Enum.Material.Wood)
+	back.CFrame = seat.CFrame * CFrame.new(0, 0.7, 1.0)
+	local backWeld = Instance.new("WeldConstraint")
+	backWeld.Part0 = seat
+	backWeld.Part1 = back
+	backWeld.Parent = seat
+
+	-- แฮนด์คู่หน้า ตามรูป วางให้อยู่ระดับมือคนนั่ง
+	for _, side in ipairs({ -0.85, 0.85 }) do
+		local grip = part(model, "Grip", Vector3.new(0.26, 1.0, 0.26),
+			CFrame.new(), Color3.fromRGB(150, 110, 70), Enum.Material.Wood)
+		grip.CFrame = seat.CFrame * CFrame.new(side, 1.0, -1.5)
 		local weld = Instance.new("WeldConstraint")
 		weld.Part0 = seat
 		weld.Part1 = grip
 		weld.Parent = seat
 	end
 
-	-- ถ่วงน้ำหนักไว้ใต้แกน: จุดศูนย์ถ่วงที่อยู่ต่ำคือสิ่งที่ทำให้โครงห้อยตรงเองแทนที่จะแกว่งไปมา
-	local ballast = part(model, "Ballast", Vector3.new(1.6, 0.6, 2),
-		seat.CFrame * CFrame.new(0, -1.1, 0), Color3.fromRGB(96, 92, 88), Enum.Material.Metal, false)
-	ballast.CFrame = seat.CFrame * CFrame.new(0, -1.1, 0)
+	-- ถ่วงน้ำหนักไว้ใต้ที่นั่ง: จุดศูนย์ถ่วงที่อยู่ต่ำคือสิ่งที่ทำให้โครงห้อยตรงเองแทนที่จะแกว่งไปมา
+	local ballast = part(model, "Ballast", Vector3.new(1.6, 0.6, 1.8),
+		CFrame.new(), Color3.fromRGB(96, 92, 88), Enum.Material.Metal, false)
+	ballast.CFrame = seat.CFrame * CFrame.new(0, -0.7, 0)
 	local bweld = Instance.new("WeldConstraint")
 	bweld.Part0 = seat
 	bweld.Part1 = ballast
 	bweld.Parent = seat
 
 	-- บานพับที่แกนล้อ: ล้อหมุนได้อิสระ โครงที่นั่งไม่หมุนตาม
+	--
+	-- HingeConstraint หมุนรอบ **แกน X ของ Attachment** เสมอ ทั้งสองฝั่งจึงตั้ง CFrame เปล่าไว้ (ต่างกัน
+	-- แค่ตำแหน่ง) แกน X จึงตรงกันพอดี = แกนซ้าย-ขวาของรถ ซึ่งเป็นแกนที่ล้อต้องหมุนรอบ
 	local a0 = Instance.new("Attachment")
 	a0.Name = "AxleWheel"
-	-- แกนของทรงกระบอกคือแกน X ของตัวมันเอง บานพับจึงต้องชี้ไปทางนั้น
 	a0.CFrame = CFrame.new()
-	a0.Parent = wheel
+	a0.Parent = hub
 
 	local a1 = Instance.new("Attachment")
 	a1.Name = "AxleFrame"
-	a1.CFrame = CFrame.new(0, 0.9, 0) * CFrame.Angles(0, 0, math.rad(90))
+	-- จากที่นั่งขึ้นไปหาแกน: ระยะเท่ากับที่ที่นั่งอยู่ต่ำกว่าแกนพอดี
+	a1.CFrame = CFrame.new(0, -seatY, 0)
 	a1.Parent = seat
 
 	local hinge = Instance.new("HingeConstraint")
 	hinge.Attachment0 = a0
 	hinge.Attachment1 = a1
 	hinge.LimitsEnabled = false
-	hinge.Parent = wheel
+	hinge.Parent = hub
 
-	-- ตัวพยุงให้ล้อตั้งตรง ไม่ล้มซ้ายขวา
+	-- ตัวพยุงให้ตั้งตรง ไม่ล้มซ้ายขวา
 	--
-	-- นี่คือราคาของการใช้ทรงกระบอกแทนลูกบอล: ต้องมีอะไรบอกว่า "อย่าล้ม" ตั้ง Responsiveness ไม่สูงมาก
+	-- นี่คือราคาของการใช้วงแหวนแทนลูกบอล: ต้องมีอะไรบอกว่า "อย่าล้ม" ตั้ง Responsiveness ไม่สูงมาก
 	-- เพื่อให้ยังเอียงตอนเลี้ยวได้บ้าง ไม่ใช่แข็งทื่อเหมือนติดราง
+	--
+	-- **พยุงที่โครงที่นั่ง ไม่ใช่ที่ล้อ** ถ้าไปพยุงล้อ = สั่งไม่ให้ล้อหมุน ซึ่งขัดกับบานพับโดยตรง
+	-- (ของเดิมพยุงที่ล้อ แล้วบานพับกับตัวพยุงก็ออกแรงสู้กันอยู่ทั้งเวลา)
 	local upright = Instance.new("Attachment")
 	upright.Name = "Upright"
-	upright.Parent = wheel
+	upright.Parent = seat
 
 	local align = Instance.new("AlignOrientation")
 	align.Attachment0 = upright
 	align.Mode = Enum.OrientationAlignmentMode.OneAttachment
-	align.PrimaryAxisOnly = false
-	-- ล็อกเฉพาะการเอียงซ้ายขวา ปล่อยให้หมุนตามแกนล้อได้อิสระ
 	align.RigidityEnabled = false
 	align.Responsiveness = 18
-	align.MaxTorque = 120000
-	align.Parent = wheel
+	align.MaxTorque = 160000
+	align.Parent = seat
 	-- ทิศเป้าหมายถูกตั้งใหม่ทุกเฟรมในลูปหลัก ให้ตั้งตรงแต่ยังหันไปทางที่คนขับเลี้ยว
 
-	return model, seat, wheel, align
+	return model, seat, hub, align
 end
 
 --------------------------------------------------------------------------------
@@ -288,18 +347,22 @@ RunService.Heartbeat:Connect(function(dt)
 			-- พยุงให้ตั้งตรงและหันไปทางที่เลี้ยว ทำทุกเฟรมเพราะทิศเปลี่ยนได้ทุกเฟรม
 			align.CFrame = facing
 
+			-- **ดันที่โครงที่นั่ง ไม่ใช่ที่ล้อ**
+			--
+			-- บานพับแบ่งจักรยานออกเป็นสองก้อนที่ขยับแยกกันได้ (assembly ล้อ กับ assembly โครง+คนขับ)
+			-- ถ้าดันที่ล้ออย่างเดียว ล้อจะวิ่งออกไปแล้วลากโครงตามทีหลัง — สั่นและช้า ดันที่โครงซึ่งเป็นก้อน
+			-- ที่มีทั้งน้ำหนักคนขับและตุ้มถ่วง แล้วล้อจะถูกลากไปด้วยผ่านบานพับ ซึ่งเป็นทิศทางที่ถูกของแรง
+			local body = seat
+			local flat = body.AssemblyLinearVelocity * Vector3.new(1, 0, 1)
+
 			if throttle ~= 0 then
 				local forward = facing.LookVector
-				local flat = wheel.AssemblyLinearVelocity * Vector3.new(1, 0, 1)
 				-- ใกล้เพดานแล้วหยุดดัน ไม่งั้นจะไหลเลยความเร็วที่ตั้งไว้ไปเรื่อยๆ
 				local headroom = math.clamp(1 - flat.Magnitude / TOP_SPEED, 0, 1)
-				wheel:ApplyImpulse(forward * (throttle * ACCEL_FORCE * headroom * dt))
-			else
+				body:ApplyImpulse(forward * (throttle * ACCEL_FORCE * headroom * dt))
+			elseif flat.Magnitude > 0.5 then
 				-- ปล่อยคันเร่ง = หน่วงให้หยุดเอง ไม่ใช่ไหลไปจนชนอะไรสักอย่าง
-				local flat = wheel.AssemblyLinearVelocity * Vector3.new(1, 0, 1)
-				if flat.Magnitude > 0.5 then
-					wheel:ApplyImpulse(-flat.Unit * math.min(flat.Magnitude, 6) * wheel.AssemblyMass * dt * 2)
-				end
+				body:ApplyImpulse(-flat.Unit * math.min(flat.Magnitude, 6) * body.AssemblyMass * dt * 2)
 			end
 		end
 	end
