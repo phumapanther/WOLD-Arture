@@ -318,6 +318,57 @@ Commands.chest = function(admin, args)
 	end
 end
 
+-- /stash <ไอเทม> [จำนวน] -- โปรยของลงหีบเก็บของทั่วเมืองแบบสุ่ม
+--
+-- สุ่ม **รายชิ้น** ไม่ใช่สุ่มหีบแล้วเททั้งกอง: ของ 3 ชิ้นจึงกระจายเองเป็น 2+1 หรือ 1+1+1 ตามดวง
+-- ซึ่งเป็นสิ่งที่ผู้ใช้ขอ และเพดาน 3 ช่องต่อใบบังคับให้ล้นไปใบอื่นเองโดยไม่ต้องเขียนสูตรแบ่ง
+Commands.stash = function(admin, args)
+	local ChestStorageAccess = require(game.ServerScriptService.ChestStorageAccess)
+	local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
+	if not ChestStorageAccess.Scatter then
+		return reply(admin, "ระบบหีบเก็บของยังไม่พร้อม (อยู่ในล็อบบี้?)")
+	end
+
+	local id = args[1]
+	if not id then
+		return reply(admin, "ใช้: /stash <ไอเทม> [จำนวน] [รัศมี]  เช่น /stash Bread 5  หรือ /stash Bread 5 150")
+	end
+	if not ItemCatalog.Exists(id) then
+		return reply(admin, ("ไม่มีไอเทมชื่อ %s"):format(id))
+	end
+
+	-- เพดานกันพิมพ์พลาด: /stash Bread 99999 จะวิ่งลูปเก้าหมื่นรอบและเติมหีบทั้งเมืองจนเต็ม
+	local count = math.clamp(math.floor(tonumber(args[2]) or 1), 1, 60)
+
+	-- รัศมีเป็นตัวเลือก: ไม่ใส่ = ทั้งแมพ
+	--
+	-- **ใส่รัศมีคือวิธีเดียวที่จะได้ของกระจุกกัน** แมพมีหีบ 119 ใบ โปรยทั้งแมพแล้วของ 3 ชิ้นจะลงคนละใบ
+	-- 98% ของครั้ง ถ้าอยากได้ "ใบหนึ่ง 2 ชิ้น อีกใบ 1" ต้องจำกัดรัศมีให้เหลือหีบไม่กี่ใบ
+	local radius = tonumber(args[3])
+	local origin
+	if radius then
+		local character = admin.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if not root then
+			return reply(admin, "ยังไม่มีตัวละคร จึงไม่รู้จะวัดรัศมีจากตรงไหน")
+		end
+		origin = root.Position
+		radius = math.clamp(radius, 10, 2000)
+	end
+
+	local placed, chests = ChestStorageAccess.Scatter(id, count, nil, nil, origin, radius)
+	if placed == 0 then
+		return reply(admin, radius and "ไม่มีหีบว่างในรัศมีนั้น" or "หีบเต็มหมดทุกใบ หรือยังไม่มีหีบในแมพ")
+	end
+	local name = ItemCatalog.DisplayName(id) or id
+	if placed < count then
+		reply(admin, ("โปรย %s ลงหีบ %d ใบ ได้ %d/%d ชิ้น (ที่เหลือไม่มีที่ว่าง)")
+			:format(name, chests, placed, count))
+	else
+		reply(admin, ("โปรย %s %d ชิ้น กระจายลงหีบ %d ใบ"):format(name, placed, chests))
+	end
+end
+
 -- /weather <รายการ|auto> -- ตั้งสภาพอากาศ หรือปล่อยให้สุ่มเอง
 Commands.weather = function(admin, args)
 	local WeatherAccess = require(game.ServerScriptService.WeatherAccess)

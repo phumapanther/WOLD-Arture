@@ -124,6 +124,11 @@ local EVENTS = {
 	-- one-off pile that exists only while the window is open -- closing it destroys the chest and the loot
 	-- with it, so there is nothing to reconcile afterwards.
 	"RequestChestOpen", "ChestOpen", "RequestChestTake", "RequestChestClose", "ChestClose",
+	-- หีบเก็บของในเมือง คนละอย่างกับหีบสมบัติข้างบน: อันนั้นเปิดครั้งเดียวได้ของแล้วหาย อันนี้เป็น
+	-- ที่เก็บของสาธารณะที่ใครยัดอะไรไว้คนอื่นก็เห็น ของในหีบเป็นสถานะร่วม จึงส่งภาพทั้งใบทุกครั้งที่
+	-- มีอะไรเปลี่ยน ให้ทุกคนที่เปิดอยู่เห็นตรงกัน
+	"StorageChestOpen", "StorageChestUpdate",
+	"RequestStorageChestPut", "RequestStorageChestTake", "RequestStorageChestClose",
 	-- The admin panel (F3). One request in, one whole picture out -- the same shape as the shop and the
 	-- vault, and for the same reason: the client names a row and an action, never a value the server would
 	-- have to believe. Every handler re-checks the roster, because a RemoteEvent is reachable by anyone.
