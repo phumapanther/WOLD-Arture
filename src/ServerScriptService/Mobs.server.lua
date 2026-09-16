@@ -252,7 +252,15 @@ end
 
 -- ระยะเวลาที่มอนใช้ดันตัวขึ้นจากใต้ดิน ระหว่างนี้มันไม่เดิน ไม่ตี และ **ตีไม่เข้า**
 local EMERGE_SECONDS = 1.6
-local EMERGE_DEPTH = 7          -- เริ่มจากใต้พื้นกี่ studs
+-- ฝังลึกแค่ไหนก่อนโผล่ **คิดจากความสูงของตัวมอน ไม่ใช่ค่าตายตัว**
+--
+-- ค่าตายตัวใช้ไม่ได้: แมงมุมสูง 10.8 studs ถ้าฝังลงไปแค่ 7 ยอดตัวจะยังโผล่พ้นดินอยู่ 4.8 studs
+-- กลายเป็นแมงมุมลอยอยู่เหนือพื้นแทนที่จะฝังอยู่ — วัดแล้วก่อนเขียน
+--
+-- ความสูงเต็มตัว + 2 = จมทั้งตัวพอดีและเหลือระยะเผื่ออีกนิด
+local function emergeDepthFor(height)
+	return height + 2
+end
 
 -- การหลบ: สุ่มตอนโดนตี ถ้าติดก็กระโดดถอยแล้วอมตะชั่วครู่
 --
@@ -779,9 +787,20 @@ local function startEmerge(model, state, restY)
 	-- ลูป AI ใช้ตัวนี้หยุดมันอยู่แล้ว จึงไม่ต้องเพิ่มด่านใหม่ในลูป
 	state.stunnedUntil = now + EMERGE_SECONDS
 
-	-- ตรึงทุกชิ้นไว้ก่อน
+	-- ตรึงทุกชิ้นไว้ และ **ปิดการชนด้วย** ระหว่างที่ยังอยู่ในดิน
+	--
+	-- ตรึงไว้อย่างเดียวไม่พอ: ตัวมอนจมอยู่ในพื้นจริงๆ ถ้ายังชนได้ ผู้เล่นที่เดินผ่านจะชนก้อนอะไรไม่รู้
+	-- ที่มองไม่เห็นใต้ดิน และกระสุน/การฟันก็จะไปโดนมันทั้งที่ยังโผล่ไม่ขึ้นมา
+	--
+	-- จำค่าเดิมไว้คืนทีละชิ้น ไม่ได้เปิดคืนหมดทุกชิ้น — buildFromModel ตั้งใจให้แขนขาเป็น CanCollide=false
+	-- อยู่แล้ว (ไม่งั้นมอนสะดุดขาตัวเอง) การเปิดคืนหมดจะทำลายค่านั้น
+	local wasCollide = {}
 	for _, part in ipairs(model:GetDescendants()) do
-		if part:IsA("BasePart") then part.Anchored = true end
+		if part:IsA("BasePart") then
+			wasCollide[part] = part.CanCollide
+			part.Anchored = true
+			part.CanCollide = false
+		end
 	end
 
 	-- ฝุ่นที่ปากหลุม อยู่กับที่ ไม่ได้ขึ้นตามตัวมอน
@@ -823,24 +842,36 @@ local function startEmerge(model, state, restY)
 
 	task.spawn(function()
 		local t0 = os.clock()
+		local bailed = false
 		while os.clock() - t0 < EMERGE_SECONDS do
-			if not model.Parent or not Live[model] then return end
+			if not model.Parent or not Live[model] then bailed = true break end
 			local a = (os.clock() - t0) / EMERGE_SECONDS
 			-- ease-out แบบ cubic: เร็วตอนต้นแล้วค่อยๆ ช้าลงจนหยุดพอดีที่ผิวดิน
 			local eased = 1 - (1 - a) ^ 3
 			model:PivotTo(startCF:Lerp(goalCF, eased))
 			task.wait()
 		end
-		if not model.Parent or not Live[model] then return end
-		model:PivotTo(goalCF)
-		-- ปล่อยให้ฟิสิกส์ทำงานต่อ และล้างความเร็วที่อาจติดมา
-		for _, part in ipairs(model:GetDescendants()) do
-			if part:IsA("BasePart") then
-				part.Anchored = false
-				part.AssemblyLinearVelocity = Vector3.zero
-				part.AssemblyAngularVelocity = Vector3.zero
+		-- คืนสภาพให้ฟิสิกส์ **ไม่ว่าจะจบด้วยทางไหน**
+		--
+		-- ประกาศเป็นฟังก์ชันแล้วเรียกทุกทางออก เพราะถ้ามอนถูกฆ่าระหว่างกำลังโผล่ (แอดมินสั่ง หรือระเบิด
+		-- โดนโดยไม่ผ่าน damage()) ลูปจะออกก่อนถึงบรรทัดคืนค่า แล้วเหลือซากที่ถูกตรึงไว้ตลอดกาล
+		local function release()
+			for part, collide in pairs(wasCollide) do
+				if part.Parent then
+					part.Anchored = false
+					part.CanCollide = collide
+					part.AssemblyLinearVelocity = Vector3.zero
+					part.AssemblyAngularVelocity = Vector3.zero
+				end
 			end
 		end
+
+		if bailed or not model.Parent or not Live[model] then
+			release()
+			return
+		end
+		model:PivotTo(goalCF)
+		release()
 	end)
 end
 
@@ -871,7 +902,7 @@ local function spawnOne(spawner, kind, config)
 			-- **เป็นทางเลือก ไม่ใช่ค่าเริ่มต้น** สปอว์เนอร์เดิมทุกตัวในแมพไม่มีแอตทริบิวต์นี้ จึงทำงานเหมือนเดิมทุกประการ
 			local emerge = spawner:GetAttribute("Emerge") == true
 			if emerge then
-				model:PivotTo(CFrame.new(x, restY - EMERGE_DEPTH, z))
+				model:PivotTo(CFrame.new(x, restY - emergeDepthFor(mobSize.Y), z))
 			else
 				model:PivotTo(CFrame.new(x, restY, z))
 			end
