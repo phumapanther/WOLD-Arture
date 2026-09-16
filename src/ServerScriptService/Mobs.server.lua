@@ -360,6 +360,17 @@ local function buildFromModel(config)
     -- Joint the skeleton FIRST, so the welding below knows which limbs must be left free to move.
     local jointed = rigR15(model)
 
+    -- ชิ้นที่มีข้อต่อของตัวเองอยู่แล้ว เก็บเป็นตารางรอบเดียวก่อนลูป
+    --
+    -- ถามทั้ง Part0 และ Part1 เพราะแมงมุมเก็บข้อต่อเข่าไว้ที่ชิ้นบนของขา ไม่ใช่ที่ชิ้นล่าง
+    local ownJointed = {}
+    for _, j in ipairs(model:GetDescendants()) do
+        if j:IsA("Motor6D") then
+            if j.Part0 then ownJointed[j.Part0] = true end
+            if j.Part1 then ownJointed[j.Part1] = true end
+        end
+    end
+
     -- Everything else rides along rather than fighting the physics: an anchored limb would pin the monster
     -- in place, and a colliding one would trip it over its own body.
     for _, d in ipairs(model:GetDescendants()) do
@@ -370,7 +381,13 @@ local function buildFromModel(config)
             -- A limb the rig drives must NOT also be welded to the root: the weld wins and the animation
             -- moves nothing. Decoration -- hair, a bandana, a sword -- still welds, because nothing animates
             -- it and loose parts would be left behind as the monster walks.
-            if not jointed[d] and not d:FindFirstChildWhichIsA("WeldConstraint") then
+            -- **ชิ้นที่มีข้อต่อของตัวเองอยู่แล้วก็ห้ามเชื่อมเหมือนกัน**
+            --
+            -- `jointed` มีเฉพาะชิ้นที่ rigR15 เพิ่งสร้างข้อต่อให้ ซึ่งเป็นชื่อแบบ R15 เท่านั้น แมงมุมใช้ชื่อ
+            -- ของมันเอง (LegL1Upper ฯลฯ) rigR15 จึงคืนตารางเปล่า และขาทั้งแปดถูกเชื่อมติดลำตัว
+            -- **เชื่อมแล้วขาขยับไม่ได้เลย** ไม่ว่าจะขยับด้วยอนิเมชันหรือด้วยการเขียน C0 ตรงๆ ก็ตาม
+            -- ซึ่งคือเหตุผลจริงที่ขาแมงมุมไม่ขยับ — คอมเมนต์ข้างบนเตือนเรื่องนี้ไว้แล้วแต่เช็คไม่ครบ
+            if not jointed[d] and not ownJointed[d] and not d:FindFirstChildWhichIsA("WeldConstraint") then
                 local weld = Instance.new("WeldConstraint")
                 weld.Part0 = rootPart
                 weld.Part1 = d

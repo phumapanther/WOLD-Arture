@@ -417,7 +417,11 @@ end
 -- (ไม่ต้องมี Remote เลย เอนจิ้นส่งค่าสองตัวนี้ให้เซิร์ฟเวอร์อยู่แล้ว)
 RunService.Heartbeat:Connect(function(dt)
 	for player, entry in pairs(Live) do
-		local model, seat, wheel, align = entry.model, entry.seat, entry.wheel, entry.align
+		-- **thrust ต้องอยู่ในรายการนี้ด้วย** ถ้าลืม มันจะกลายเป็นตัวแปร global ที่เป็น nil แล้ว
+		-- `thrust.Force = ...` จะ error ทุกเฟรม — แต่ `align.CFrame` ข้างบนรันไปแล้ว **การเลี้ยวจึงทำงาน
+		-- ส่วนการเดินหน้า/ถอยหลังเงียบสนิท** ซึ่งเป็นอาการที่ผู้ใช้เจอเป๊ะ
+		local model, seat, wheel, align, thrust =
+			entry.model, entry.seat, entry.wheel, entry.align, entry.thrust
 		if not model.Parent or not wheel.Parent then
 			Live[player] = nil
 		else
