@@ -61,15 +61,19 @@ bindable.Name = "WOLD_ToggleInventory"
 bindable.Parent = player:WaitForChild("PlayerGui")
 bindable.Event:Connect(toggle)
 
--- I is bound through ContextActionService rather than watched through UserInputService, because I and O are
--- Roblox's built-in camera zoom keys: pressing I opened the bag AND zoomed the camera in. Sinking the action
--- consumes the key before the camera sees it, and leaves zooming on the mouse wheel untouched.
+-- เปิดกระเป๋าได้ทั้ง I และ B ตามที่ผู้ใช้สั่ง
+--
+-- ผูกผ่าน ContextActionService ไม่ใช่ UserInputService เพราะ **I กับ O เป็นปุ่มซูมกล้องในตัวของ Roblox**
+-- กด I เฉยๆ จะเปิดกระเป๋าพร้อมซูมกล้องเข้าไปด้วย การ Sink กินปุ่มก่อนกล้องจะเห็น และล้อเมาส์ยังซูมได้ปกติ
+--
+-- B ไม่ชนกับอะไรของ Roblox จึงเป็นทางสำรองที่ใช้ได้แน่นอนถ้า I ถูกอย่างอื่นแย่งไป (ปลั๊กอิน Studio บางตัว
+-- จับ I ไว้ตอนกด Play ซึ่งเป็นอาการที่ผู้ใช้เจอ)
 ContextActionService:BindAction("WOLD_ToggleInventory", function(_, inputState)
 	if inputState == Enum.UserInputState.Begin then
 		toggle()
 	end
 	return Enum.ContextActionResult.Sink
-end, false, Enum.KeyCode.I)
+end, false, Enum.KeyCode.I, Enum.KeyCode.B)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end

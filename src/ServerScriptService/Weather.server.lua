@@ -102,10 +102,32 @@ end)
 
 -- DayNight calls this every time it writes Lighting. Returns the kind to draw and how far along it is: while
 -- a change is easing, the INCOMING kind is the one being mixed towards, from a blend of zero.
-DayNightAccess.SetWeatherSource(function()
-	if incoming then return incoming, blend end
-	return current, 1
-end)
+--
+-- **ห้ามเรียกตรงๆ ตอนบูต** DayNight.server อาจยังไม่ได้รัน ซึ่งแปลว่า `SetWeatherSource` ยังเป็น nil และ
+-- ทั้งสคริปต์นี้จะตายทันทีด้วย "attempt to call a nil value" — เจอจริงตอนเทส ผลคือระบบอากาศทั้งระบบเงียบ
+-- ทั้งรอบ ทั้งที่ไม่มีอะไรผิดในตัวมันเอง ลำดับการรันของสคริปต์ใน ServerScriptService ไม่มีใครรับประกัน
+local function publishSource()
+	local fn = function()
+		if incoming then return incoming, blend end
+		return current, 1
+	end
+	if DayNightAccess.SetWeatherSource then
+		DayNightAccess.SetWeatherSource(fn)
+		return true
+	end
+	return false
+end
+
+if not publishSource() then
+	task.spawn(function()
+		-- ถามใหม่จนกว่า DayNight จะพร้อม กฎเดียวกับที่ใช้ทั้งโปรเจ็ค: ลูปที่ถามใหม่ไม่มีจังหวะให้แพ้
+		for _ = 1, 60 do
+			task.wait(0.5)
+			if publishSource() then return end
+		end
+		warn("[Weather] DayNight ไม่พร้อมใน 30 วินาที — แสงจะไม่เปลี่ยนตามอากาศ (ฝน/หิมะยังตกปกติ)")
+	end)
+end
 
 WeatherAccess.Set = function(kindId)
 	if kindId == nil then
