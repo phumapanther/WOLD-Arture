@@ -11,6 +11,7 @@ local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
+local TweenService = game:GetService("TweenService")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 
 if ServerConfig.IsLobby then return end
@@ -244,6 +245,23 @@ end
 --
 -- `walk` is looped and played whenever it is moving; `attack` is one-shot and fired from the AI loop at the
 -- moment the blow lands, so the animation and the damage are the same event.
+--------------------------------------------------------------------------------
+-- โผล่จากพื้น · หลบ · เลขดาเมจ
+--------------------------------------------------------------------------------
+
+-- ระยะเวลาที่มอนใช้ดันตัวขึ้นจากใต้ดิน ระหว่างนี้มันไม่เดิน ไม่ตี และ **ตีไม่เข้า**
+local EMERGE_SECONDS = 1.6
+local EMERGE_DEPTH = 7          -- เริ่มจากใต้พื้นกี่ studs
+
+-- การหลบ: สุ่มตอนโดนตี ถ้าติดก็กระโดดถอยแล้วอมตะชั่วครู่
+--
+-- **ค่าพวกนี้อยู่ที่นี่ ไม่ได้อยู่ใน GatherConfig** เพราะเป็นพฤติกรรมร่วมของมอนทุกตัว ส่วนตัวเลขที่ต่างกัน
+-- รายชนิด (โอกาสหลบ) อ่านจาก config ของมันเอง — ดู dodgeChance ข้างล่าง
+local DODGE_BACK_STUDS = 6.5    -- ถอยไกลแค่ไหน (prompt ขอ 5-8)
+local DODGE_INVULN = 0.35       -- อมตะกี่วินาทีหลังหลบ
+local DODGE_FREEZE = 0.45       -- ยืนนิ่งกี่วินาทีก่อนกลับไปสู้ (prompt ขอ 0.3-0.6)
+local DODGE_COOLDOWN = 2.5      -- กันหลบรัวจนตีไม่โดนเลย
+
 local MOB_WALK = "rbxassetid://913402848"   -- Roblox stock R15 walk
 local MOB_ATTACK = "rbxassetid://138133285610075" -- Sword_Slash, the game's own
 
@@ -478,7 +496,15 @@ local function despawn(model)
 	Live[model] = nil
 	if state and state.spawner then
 		local alive = state.spawner:GetAttribute("Alive") or 0
-		state.spawner:SetAttribute("Alive", math.max(0, alive - 1))
+		local left = math.max(0, alive - 1)
+		state.spawner:SetAttribute("Alive", left)
+
+		-- ตัวสุดท้ายของสปอว์เนอร์แบบ Trigger ตายแล้ว: ล็อกไว้จนกว่าคนจะเดินออกจากพื้นที่
+		--
+		-- ตามที่ผู้ใช้ขอ — ถ้าไม่มีด่านนี้ คนที่ยืนเฝ้าจุดเกิดจะได้มอนไม่รู้จบโดยไม่ต้องขยับเลย
+		if left == 0 and state.spawner:GetAttribute("TriggerRadius") then
+			state.spawner:SetAttribute("AwaitExit", true)
+		end
 		-- The respawn clock starts HERE, at the death, rather than at the next spawn: "back in thirty
 		-- minutes" has to mean thirty minutes after it died, which is the only moment a player can see.
 		local seconds = state.config and state.config.respawnSeconds or 0
@@ -505,11 +531,116 @@ local function playAt(model, soundId, volume)
 end
 
 -- Public through MobAccess so PlayerCombat can call it without requiring this file.
+-- เลขดาเมจลอยขึ้นเหนือหัวแล้วจางไป
+--
+-- สร้างฝั่งเซิร์ฟเวอร์เพราะมันต้องเห็นกันทุกคน ไม่ใช่เฉพาะคนตี — การรุมบอสควรเห็นเลขของคนอื่นด้วย
+-- อายุสั้นและ Debris เก็บให้ จึงไม่ต้องมีใครตามลบ
+local function showDamageNumber(model, amount, dodged)
+	local root = model.PrimaryPart or model:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+
+	local _, size = model:GetBoundingBox()
+	local holder = Instance.new("Part")
+	holder.Anchored = true
+	holder.CanCollide = false
+	holder.CanQuery = false
+	holder.CanTouch = false
+	holder.Transparency = 1
+	holder.Size = Vector3.new(0.2, 0.2, 0.2)
+	-- สุ่มออกข้างเล็กน้อย เลขหลายตัวจากการรุมจะได้ไม่ทับกันสนิท
+	holder.Position = root.Position + Vector3.new(
+		math.random(-12, 12) / 10, size.Y * 0.5 + 1, math.random(-12, 12) / 10)
+	holder.Parent = workspace
+
+	local gui = Instance.new("BillboardGui")
+	gui.Size = UDim2.fromOffset(90, 34)
+	gui.AlwaysOnTop = true
+	gui.MaxDistance = 90
+	gui.Parent = holder
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.GothamBold
+	label.TextScaled = true
+	label.TextStrokeTransparency = 0.3
+	if dodged then
+		label.Text = "หลบ!"
+		label.TextColor3 = Color3.fromRGB(150, 210, 255)
+	else
+		label.Text = tostring(math.max(1, math.floor(amount + 0.5)))
+		label.TextColor3 = Color3.fromRGB(255, 214, 92)
+	end
+	label.Parent = gui
+
+	-- ลอยขึ้นและจาง ใช้ TweenService แทนลูปต่อเฟรม: เป็นค่าสองค่าวิ่งทางเดียว เอนจิ้นทำให้ได้อยู่แล้ว
+	TweenService:Create(holder, TweenInfo.new(0.9, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {
+		Position = holder.Position + Vector3.new(0, 3.2, 0),
+	}):Play()
+	TweenService:Create(label, TweenInfo.new(0.9), {
+		TextTransparency = 1, TextStrokeTransparency = 1,
+	}):Play()
+	Debris:AddItem(holder, 1)
+end
+
+-- พยายามหลบหนึ่งครั้ง คืน true ถ้าหลบสำเร็จ (แปลว่าดาเมจครั้งนี้ไม่เข้า)
+--
+-- **อ่านโอกาสจาก config รายชนิด** มอนที่ไม่ได้ตั้ง dodgeChance ไว้ก็ไม่หลบเลย ซึ่งทำให้ของเดิมทุกตัว
+-- ทำงานเหมือนเดิมเป๊ะจนกว่าจะมีใครไปใส่ค่าให้
+local function tryDodge(state, model)
+	local chance = state.config.dodgeChance
+	if not chance or chance <= 0 then return false end
+
+	local now = os.clock()
+	if state.dodgeReadyAt and now < state.dodgeReadyAt then return false end
+	-- กำลังโผล่จากพื้นอยู่ หลบไม่ได้ (และตีไม่เข้าอยู่แล้ว)
+	if state.emergingUntil and now < state.emergingUntil then return false end
+	if math.random() > chance then return false end
+
+	local root = model.PrimaryPart
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if not root or not humanoid then return false end
+
+	state.dodgeReadyAt = now + DODGE_COOLDOWN
+	state.invulnUntil = now + DODGE_INVULN
+	-- ยืนนิ่งหลังหลบ ใช้ตัวเดียวกับที่ระบบมึนใช้ ลูป AI จึงหยุดให้เองโดยไม่ต้องเพิ่มด่านใหม่
+	state.stunnedUntil = now + DODGE_FREEZE
+
+	-- ถอยไปทางตรงข้ามกับคนตี ถ้าไม่รู้ว่าใครตีก็ถอยหลังตัวเอง
+	local away = -root.CFrame.LookVector
+	local target = state.target
+	local targetRoot = target and target.Character and target.Character:FindFirstChild("HumanoidRootPart")
+	if targetRoot then
+		local delta = (root.Position - targetRoot.Position) * Vector3.new(1, 0, 1)
+		if delta.Magnitude > 0.1 then away = delta.Unit end
+	end
+
+	-- กระโดดถอย: ดันด้วยความเร็ว ไม่ใช่ย้ายตำแหน่ง — การย้ายตำแหน่งทะลุกำแพงได้ ส่วนแรงไม่ทะลุ
+	root.AssemblyLinearVelocity = away * (DODGE_BACK_STUDS * 2.2) + Vector3.new(0, 18, 0)
+	return true
+end
+
 local function damage(model, amount, attacker)
 	local state = Live[model]
 	if not state then return false end
 
+	local now = os.clock()
+
+	-- กำลังโผล่ขึ้นจากพื้น: ตียังไม่เข้า ตามที่ prompt กำหนด ("ยังไม่รับ Damage")
+	if state.emergingUntil and now < state.emergingUntil then return false end
+
+	-- ช่วงอมตะสั้นๆ หลังหลบสำเร็จ
+	if state.invulnUntil and now < state.invulnUntil then return false end
+
+	-- ลองหลบก่อนคิดดาเมจ ถ้าหลบติด เลือดไม่ลดเลย
+	if attacker and attacker.Character then state.target = attacker end
+	if tryDodge(state, model) then
+		showDamageNumber(model, 0, true)
+		return false
+	end
+
 	state.hp -= amount
+	showDamageNumber(model, amount, false)
 	playAt(model, state.config.hitSound, GatherConfig.MobHitVolume)
 	setHealthBar(model, state.hp / (state.maxHp or state.config.hp))
 	-- Being hit makes it care about whoever hit it, even from outside its notice range: a monster that
@@ -596,6 +727,85 @@ local function nightScale()
 	return workspace:GetAttribute("WOLD_IsNight") and NIGHT_MULTIPLIER or 1
 end
 
+-- ดันมอนขึ้นมาจากใต้พื้น พร้อมฝุ่นและเศษดิน
+--
+-- ตัวมอนถูก **ตรึงไว้** (Anchored) ตลอดช่วงที่ขึ้น เพราะถ้าปล่อยให้ฟิสิกส์ทำงาน มันจะถูกพื้นดันออกด้วย
+-- แรงมหาศาลแล้วกระเด็นไปไกล ซึ่งเป็นอาการเดียวกับที่เคยเจอตอนวางมอนจมดิน (ดูคอมเมนต์เรื่อง "มอนไหล")
+local function startEmerge(model, state, restY)
+	if not state then return end
+	local root = model.PrimaryPart
+	if not root then return end
+
+	local now = os.clock()
+	state.emergingUntil = now + EMERGE_SECONDS
+	-- ลูป AI ใช้ตัวนี้หยุดมันอยู่แล้ว จึงไม่ต้องเพิ่มด่านใหม่ในลูป
+	state.stunnedUntil = now + EMERGE_SECONDS
+
+	-- ตรึงทุกชิ้นไว้ก่อน
+	for _, part in ipairs(model:GetDescendants()) do
+		if part:IsA("BasePart") then part.Anchored = true end
+	end
+
+	-- ฝุ่นที่ปากหลุม อยู่กับที่ ไม่ได้ขึ้นตามตัวมอน
+	local _, size = model:GetBoundingBox()
+	local dust = Instance.new("Part")
+	dust.Anchored = true
+	dust.CanCollide = false
+	dust.CanQuery = false
+	dust.CanTouch = false
+	dust.Transparency = 1
+	dust.Size = Vector3.new(1, 1, 1)
+	dust.Position = Vector3.new(root.Position.X, restY - size.Y * 0.5, root.Position.Z)
+	dust.Parent = workspace
+
+	local p = Instance.new("ParticleEmitter")
+	p.Texture = "rbxasset://textures/particles/smoke_main.dds"
+	p.Color = ColorSequence.new(Color3.fromRGB(122, 98, 74))
+	p.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, math.max(2, size.X * 1.2)),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	p.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.25),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	p.Lifetime = NumberRange.new(0.6, 1.1)
+	p.Speed = NumberRange.new(4, 9)
+	p.SpreadAngle = Vector2.new(60, 60)
+	p.Acceleration = Vector3.new(0, -12, 0)
+	p.Rate = 0
+	p.Parent = dust
+	p:Emit(40)
+	Debris:AddItem(dust, 3)
+
+	-- **ขยับทั้งโมเดลด้วย PivotTo ไม่ใช่ tween ที่ PrimaryPart** ตอนทุกชิ้นถูก Anchored ไว้ การเลื่อน
+	-- ชิ้นเดียวจะทิ้งชิ้นที่เหลือไว้ที่เดิม ตัวมอนจะขาดออกจากกันกลางอากาศ
+	local startCF = model:GetPivot()
+	local goalCF = CFrame.new(startCF.Position.X, restY, startCF.Position.Z) * (startCF - startCF.Position)
+
+	task.spawn(function()
+		local t0 = os.clock()
+		while os.clock() - t0 < EMERGE_SECONDS do
+			if not model.Parent or not Live[model] then return end
+			local a = (os.clock() - t0) / EMERGE_SECONDS
+			-- ease-out แบบ cubic: เร็วตอนต้นแล้วค่อยๆ ช้าลงจนหยุดพอดีที่ผิวดิน
+			local eased = 1 - (1 - a) ^ 3
+			model:PivotTo(startCF:Lerp(goalCF, eased))
+			task.wait()
+		end
+		if not model.Parent or not Live[model] then return end
+		model:PivotTo(goalCF)
+		-- ปล่อยให้ฟิสิกส์ทำงานต่อ และล้างความเร็วที่อาจติดมา
+		for _, part in ipairs(model:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.Anchored = false
+				part.AssemblyLinearVelocity = Vector3.zero
+				part.AssemblyAngularVelocity = Vector3.zero
+			end
+		end
+	end)
+end
+
 local function spawnOne(spawner, kind, config)
 	local radius = spawner:GetAttribute("Radius") or 60
 	local origin = spawner:IsA("BasePart") and spawner.Position or spawner:GetPivot().Position
@@ -616,7 +826,17 @@ local function spawnOne(spawner, kind, config)
 			--
 			-- ครึ่งความสูง + 1 คือ "ก้นตัวลอยเหนือพื้น 1 สตัด" แล้วปล่อยให้ตกลงมาเองซึ่งไม่มีการดันออก
 			local _, mobSize = model:GetBoundingBox()
-			model:PivotTo(CFrame.new(x, y + mobSize.Y * 0.5 + 1, z))
+			local restY = y + mobSize.Y * 0.5 + 1
+
+			-- สปอว์เนอร์ที่ติด Emerge ไว้ จะให้มอนดันตัวขึ้นมาจากใต้ดินแทนที่จะโผล่มาเฉยๆ
+			--
+			-- **เป็นทางเลือก ไม่ใช่ค่าเริ่มต้น** สปอว์เนอร์เดิมทุกตัวในแมพไม่มีแอตทริบิวต์นี้ จึงทำงานเหมือนเดิมทุกประการ
+			local emerge = spawner:GetAttribute("Emerge") == true
+			if emerge then
+				model:PivotTo(CFrame.new(x, restY - EMERGE_DEPTH, z))
+			else
+				model:PivotTo(CFrame.new(x, restY, z))
+			end
 			model.Parent = folder
 			-- ความเร็วที่ติดมาจากตอนประกอบร่าง/ย้ายตำแหน่ง ต้องล้างทิ้ง ไม่งั้นมันจะพุ่งต่อจากจุดเกิด
 			for _, part in ipairs(model:GetDescendants()) do
@@ -646,6 +866,10 @@ local function spawnOne(spawner, kind, config)
 				nextAttackAt = 0,
 				target = nil,
 			}
+			if emerge then
+				startEmerge(model, Live[model], restY)
+			end
+
 			spawner:SetAttribute("Alive", (spawner:GetAttribute("Alive") or 0) + 1)
 			-- How many this spawner has put into the world since the event started. "Alive" alone cannot end
 			-- an event: it is zero both before the first one walks out and after the last one dies, and those
@@ -786,6 +1010,26 @@ MobAccess.SpawnBoss = function(victim, distance, opts)
 	return model, config.name or kind
 end
 
+-- มีใครยืนอยู่ในระยะนี้ไหม
+--
+-- **เขียนเองแทนการใช้ nearestPlayer** เพราะ nearestPlayer ถูกนิยามทีหลัง serviceSpawner ในไฟล์นี้
+-- และ local ใน Lua เป็น nil จนกว่าบรรทัดที่ประกาศจะรัน การเรียกจากตรงนี้จะได้ nil เสมอ
+-- (กับดักเดียวกับที่ CombatConfig.PlayWeaponHitSound เขียนเตือนไว้ และที่จักรยานเพิ่งเจอมา)
+--
+-- ต่างจาก nearestPlayer ตรงที่ตอบแค่ว่ามีหรือไม่มี ไม่ต้องหาว่าใครใกล้สุด จึงหยุดทันทีที่เจอคนแรก
+local function anyPlayerWithin(origin, radius)
+	for _, player in ipairs(Players:GetPlayers()) do
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		-- คนที่ล้มอยู่ไม่นับ กฎเดียวกับ nearestPlayer: มอนไม่ควรถูกปลุกโดยคนที่ลุกไม่ขึ้น
+		if root and humanoid and humanoid.Health > 0 and not player:GetAttribute("WOLD_Downed") then
+			if (root.Position - origin).Magnitude <= radius then return true end
+		end
+	end
+	return false
+end
+
 local function serviceSpawner(spawner)
 	local kind = spawner:GetAttribute("MobKind")
 	local config = kind and GatherConfig.Mobs[kind]
@@ -803,6 +1047,32 @@ local function serviceSpawner(spawner)
 
 	local wanted = spawner:GetAttribute("Count") or 5
 	local alive = spawner:GetAttribute("Alive") or 0
+
+	-- สปอว์เนอร์ที่มี TriggerRadius จะรอจนมีคนเดินเข้ามาใกล้ก่อนถึงจะปล่อยมอน
+	--
+	-- **เป็นทางเลือก** ไม่มีแอตทริบิวต์นี้ = เกิดตลอดเวลาเหมือนเดิม สปอว์เนอร์เดิมทุกตัวจึงไม่เปลี่ยนพฤติกรรม
+	--
+	-- มีสองสถานะ ไม่ใช่ห้าอย่างที่ prompt เสนอ: "กำลังทำงานอยู่" กับ "รอให้คนออกไปก่อน" สถานะที่เหลือ
+	-- (Spawning / Cooldown) ระบบเดิมมีของมันอยู่แล้วในรูป Alive กับ ReadyAt การเพิ่มอีกชุดจะเป็นสองแหล่ง
+	-- ความจริงที่ต้องคอยให้ตรงกัน
+	local triggerRadius = spawner:GetAttribute("TriggerRadius")
+	if triggerRadius and triggerRadius > 0 then
+		local origin = spawner:IsA("BasePart") and spawner.Position or spawner:GetPivot().Position
+		local somebodyNear = anyPlayerWithin(origin, triggerRadius)
+
+		-- รอบที่แล้วถูกเคลียร์หมดแล้ว และยังไม่มีใครออกจากพื้นที่เลย
+		--
+		-- ตามที่ prompt ขอ: คนต้องเดินออกไปก่อนแล้วกลับเข้ามาใหม่ ไม่งั้นการยืนแช่ในพื้นที่จะเรียกมอน
+		-- ออกมาไม่รู้จบ
+		if spawner:GetAttribute("AwaitExit") then
+			if somebodyNear then return end
+			spawner:SetAttribute("AwaitExit", nil)
+			return
+		end
+
+		if not somebodyNear then return end
+	end
+
 	if alive >= wanted then return end
 
 	-- respawnSeconds was declared in the config from the start and never actually read, so every monster

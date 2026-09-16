@@ -98,6 +98,10 @@ GatherConfig.Mobs = {
 		aggroRange = 26,
 		leashRange = 70,
 		walkSpeed = 7, -- slower than a walking player (8), so running away always works
+		-- โอกาสหลบการโจมตีหนึ่งครั้ง 0 หรือไม่ใส่ = ไม่หลบเลย
+		--
+		-- สไลม์ตั้งไว้ต่ำตามที่ prompt ระบุ ("DodgeChance ต่ำ") — มันเป็นก้อนเจลลี่ ไม่ใช่นักดาบ
+		dodgeChance = 0.08,
 		drops = { { item = "Slime", min = 1, max = 2 } },
 		xp = 10,
 		respawnSeconds = 30,
