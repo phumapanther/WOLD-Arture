@@ -96,6 +96,26 @@ function TutorialGui.new()
 	button.MouseEnter:Connect(function() tip.Visible = true end)
 	button.MouseLeave:Connect(function() tip.Visible = false end)
 
+	-- **ฉากหลังต้องถูกสร้างก่อนสมุด** ไม่ใช่หลัง
+	--
+	-- ScreenGui นี้ใช้ ZIndexBehavior แบบ Sibling (ค่าเริ่มต้น) ซึ่งตัดสินทั้งการวาดและ **การรับคลิก**
+	-- จากลำดับการเป็นลูกด้วย ไม่ใช่จาก ZIndex อย่างเดียว ของเดิมสร้างฉากหลังทีหลังสมุด มันจึงอยู่บนสุด
+	-- และกินคลิกทุกครั้งที่กดอะไรในสมุด แล้วปิดตัวเองทิ้ง — ตั้ง ZIndex = 0 ก็ไม่ช่วย
+	--
+	-- ArrestGui ที่ใช้งานได้ปกติสร้างฉากหลังก่อน panel เสมอ ไฟล์นี้เรียงกลับกัน
+	local backdrop = Instance.new("TextButton")
+	backdrop.Name = "Backdrop"
+	backdrop.Size = UDim2.fromScale(1, 1)
+	backdrop.BackgroundColor3 = Color3.new(0, 0, 0)
+	backdrop.BackgroundTransparency = 0.5
+	backdrop.BorderSizePixel = 0
+	backdrop.Text = ""
+	backdrop.ZIndex = 0
+	backdrop.Visible = false
+	backdrop.Parent = gui
+	backdrop.Activated:Connect(function() self:Hide() end)
+	self.backdrop = backdrop
+
 	----------------------------------------------------------------------------
 	-- สมุด
 	----------------------------------------------------------------------------
@@ -114,18 +134,6 @@ function TutorialGui.new()
 	Responsive.Scale(book)
 	self.book = book
 
-	local backdrop = Instance.new("TextButton")
-	backdrop.Name = "Backdrop"
-	backdrop.Size = UDim2.fromScale(1, 1)
-	backdrop.BackgroundColor3 = Color3.new(0, 0, 0)
-	backdrop.BackgroundTransparency = 0.5
-	backdrop.BorderSizePixel = 0
-	backdrop.Text = ""
-	backdrop.ZIndex = 0
-	backdrop.Visible = false
-	backdrop.Parent = gui
-	backdrop.Activated:Connect(function() self:Hide() end)
-	self.backdrop = backdrop
 
 	local title = Instance.new("TextLabel")
 	title.Size = UDim2.new(1, -60, 0, 30)

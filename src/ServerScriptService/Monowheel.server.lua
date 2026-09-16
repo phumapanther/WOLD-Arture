@@ -335,31 +335,11 @@ local function spotNear(root)
 	return nil
 end
 
-local function spawnFor(player)
-	local character = player.Character
-	local root = character and character:FindFirstChild("HumanoidRootPart")
-	if not root then return false, "ยังไม่มีตัวละคร" end
-
-	local where, heading = spotNear(root)
-	if not where then return false, "ไม่มีที่ว่างพอ" end
-
-	local model, seat, wheel, align, thrust = build()
-	model:PivotTo(where)
-	model.Parent = folder()
-	-- เจ้าของ เพื่อให้คนอื่นเรียกของเราไม่ได้ และเพื่อให้รู้ว่าใครขับอยู่
-	model:SetAttribute("OwnerUserId", player.UserId)
-
-	-- **heading ต้องตรงกับทิศที่วางจริง** ถ้าปล่อยเป็น 0 ลูปขับจะสั่ง AlignOrientation ให้หันกลับไป -Z
-	-- ของโลกทันทีในเฟรมแรก = จักรยานสะบัดตัวเองทิ้งทันทีที่เรียกออกมา
-	local entry = {
-		model = model, seat = seat, wheel = wheel, align = align, thrust = thrust,
-		heading = heading or 0,
-	}
-	Live[player] = entry
-	wireSeat(player, entry)
-	return true
-end
-
+-- **ต้องนิยามก่อน spawnFor** local ใน Lua เป็น nil จนกว่าบรรทัดที่ประกาศมันจะรัน ของเดิมวางฟังก์ชันนี้
+-- ไว้ "หลัง" จุดที่เรียกใช้ 14 บรรทัด `wireSeat(player, entry)` จึงเป็นการเรียก nil = error ทุกครั้งที่
+-- เรียกจักรยานออกมา ผลคือไม่มีการยกเจ้าของฟิสิกส์ ไม่มีการล็อกกล้อง และกดเดินหน้า/ถอยหลังไม่ได้เลย
+--
+-- กับดักตัวเดียวกับที่ `CombatConfig.PlayWeaponHitSound` เขียนเตือนไว้ในไฟล์ PlayerCombat
 -- ใครขึ้นขี่/ลงจากจักรยาน
 --
 -- ทำสองอย่างที่ต้องเกิดพร้อมกัน:
@@ -395,6 +375,31 @@ local function wireSeat(player, entry)
 			if entry.thrust then entry.thrust.Force = Vector3.zero end
 		end
 	end)
+end
+
+local function spawnFor(player)
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then return false, "ยังไม่มีตัวละคร" end
+
+	local where, heading = spotNear(root)
+	if not where then return false, "ไม่มีที่ว่างพอ" end
+
+	local model, seat, wheel, align, thrust = build()
+	model:PivotTo(where)
+	model.Parent = folder()
+	-- เจ้าของ เพื่อให้คนอื่นเรียกของเราไม่ได้ และเพื่อให้รู้ว่าใครขับอยู่
+	model:SetAttribute("OwnerUserId", player.UserId)
+
+	-- **heading ต้องตรงกับทิศที่วางจริง** ถ้าปล่อยเป็น 0 ลูปขับจะสั่ง AlignOrientation ให้หันกลับไป -Z
+	-- ของโลกทันทีในเฟรมแรก = จักรยานสะบัดตัวเองทิ้งทันทีที่เรียกออกมา
+	local entry = {
+		model = model, seat = seat, wheel = wheel, align = align, thrust = thrust,
+		heading = heading or 0,
+	}
+	Live[player] = entry
+	wireSeat(player, entry)
+	return true
 end
 
 -- กดไอเทม: ไม่มีอยู่ = เรียก, มีอยู่ = เก็บ
