@@ -44,7 +44,7 @@ end
 -- action stops rather than left to run out, so a short slide is heard for exactly as long as it lasts.
 -- The clips begin with a moment of silence; skipping past it makes the sound land on the first frame
 -- instead of after the slide has already ended.
-local function startSound(character, soundId, volume)
+local function startSound(character, soundId, volume, startOffset)
 	if not character or not soundId or soundId == "" then return nil end
 	local hrp = character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return nil end
@@ -53,7 +53,7 @@ local function startSound(character, soundId, volume)
 	sound.Volume = volume
 	sound.RollOffMaxDistance = ActionConfig.SoundDistance
 	sound.Looped = true -- a slide can outlast the clip; looping is better than falling silent mid-slide
-	sound.TimePosition = ActionConfig.SoundStartOffset
+	sound.TimePosition = startOffset or ActionConfig.SoundStartOffset
 	sound.Parent = hrp
 	sound:Play()
 	return sound
@@ -188,7 +188,7 @@ Remotes.RequestSlide.OnServerEvent:Connect(function(player)
 	-- No jumping out of a slide either, for the same reason as the roll above.
 	blockJump(player, humanoid)
 	state.mover, state.attachment = startMover(character, flat, state.speed)
-	state.sound = startSound(character, cfg.sound, ActionConfig.SlideVolume)
+	state.sound = startSound(character, cfg.sound, ActionConfig.SlideVolume, ActionConfig.SlideSoundStartOffset)
 
 	Remotes.MoveStateChanged:FireAllClients(player, "slide")
 end)

@@ -25,15 +25,19 @@ ActionConfig.Roll = {
 ActionConfig.Slide = {
 	enterAnimation = "rbxassetid://124112023078211", -- Slide_Enter, 0.26s
 	holdAnimation = "rbxassetid://72891274710530", -- Slide_Hold, 0.90s (looped while sliding)
-	-- ระยะสไลด์ลดลงครึ่งหนึ่งตามที่ผู้ใช้สั่ง (60 -> 30)
+	-- เร็วขึ้น 1 เท่า (30 -> 60) และไกลขึ้น 25% ตามที่ผู้ใช้สั่ง
 	--
-	-- ระยะทางใต้เส้นโค้งแรงเสียดทานแปรผันตรงกับความเร็วเริ่มต้น การหารสองที่ตัวเลขนี้จึงหารระยะสองพอดี
-	-- (วัดไว้ตอนเพิ่มเป็น 60: 29.6 -> 59.3 studs บนบาร์เต็ม) ค่าเวลาข้างล่างจึงไม่ต้องแตะ
-	startSpeed = 30,
+	-- สองอย่างนี้ผูกกันอยู่: ระยะทางใต้เส้นโค้งแรงเสียดทานแปรผันตรงกับความเร็วเริ่มต้น ถ้าเพิ่มความเร็ว
+	-- เท่าตัวโดยไม่แตะเวลา ระยะจะกลายเป็น 2 เท่า (59.3 studs) ไม่ใช่ +25% — จึงต้องย่อ maxDuration ลงด้วย
+	--
+	-- คำนวณจากสูตรจริง distance = v0 * (f^T - 1) / ln(f) โดย f = 0.82:
+	--   เดิม  v0 30, T 1.10 -> 29.6 studs
+	--   ใหม่  v0 60, T 0.66 -> 37.1 studs  (เร็วขึ้น 100% ไกลขึ้น 25% พอดี)
+	startSpeed = 60,
 	-- A slide on a full stamina bar runs for maxDuration; on a near-empty one it barely happens. The server
 	-- scales between these by the stamina fraction at the moment the slide starts.
 	minDuration = 0.25,
-	maxDuration = 1.1,
+	maxDuration = 0.66,
 	friction = 0.82, -- per-second velocity multiplier, so the slide decelerates instead of stopping dead
 	cooldown = 0.9,
 	minStaminaToStart = 15, -- below this there is nothing to spend and the slide would look broken
@@ -43,7 +47,14 @@ ActionConfig.Slide = {
 -- Both action sounds start when the action does and are cut off when it ends, so a slide is heard for
 -- exactly as long as it lasts. The clips open on a moment of silence, which would make a short slide sound
 -- like nothing at all; TimePosition skips past it so the sound is there from the first frame.
+-- ข้ามช่วงเงียบหัวไฟล์เสียง ค่ากลางสำหรับทุกท่า
 ActionConfig.SoundStartOffset = 0.06
+
+-- ...และค่าเฉพาะของสไลด์ ตามที่ผู้ใช้สั่ง (ตัดหัวออก 0.15 วิ)
+--
+-- **แยกจากค่ากลางเพราะสองท่านี้ยาวไม่เท่ากัน** ท่ากลิ้งยาว 0.6 วิ ถ้าตัดหัว 0.15 ก็หายไปหนึ่งในสี่ของ
+-- เสียงทั้งท่า ส่วนสไลด์เงียบช่วงแรกจริงตามที่รายงาน จึงต้องข้ามเฉพาะอันนี้
+ActionConfig.SlideSoundStartOffset = 0.15
 -- Per action: a roll happens constantly while a slide is occasional, so the roll was the sound that wore
 -- thin first. They shared one value until the roll alone needed to come down.
 ActionConfig.RollVolume = 0.054
