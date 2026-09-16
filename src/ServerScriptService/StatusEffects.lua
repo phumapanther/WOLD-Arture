@@ -68,6 +68,66 @@ end
 -- Rooting is done through the speed multiplier PlayerMovement already asks for every tick, rather than with
 -- PlatformStand. PlatformStand would fight the movement state machine for the same body, and the crawl and
 -- the carry have both already been through that argument.
+-- One emoji over a player's head, on or off. The dizzy stars had their own copy of this; three more marks
+-- were asked for (tired, asleep, chilled) and four copies of the same twenty lines is how they drift apart.
+--
+-- Built on the SERVER so everyone nearby sees it, the same way a monster's health bar is: a state other
+-- people are meant to react to has to be visible to them.
+local function setMark(player, name, emoji, colour, on)
+	local character = player and player.Character
+	local head = character and character:FindFirstChild("Head")
+	if not head then return end
+
+	local existing = head:FindFirstChild(name)
+	if not on then
+		if existing then existing:Destroy() end
+		return
+	end
+	if existing then return end
+
+	local gui = Instance.new("BillboardGui")
+	gui.Name = name
+	gui.Size = UDim2.fromOffset(60, 30)
+	gui.StudsOffsetWorldSpace = Vector3.new(0, 1.8, 0)
+	gui.MaxDistance = 60
+	gui.AlwaysOnTop = true
+	gui.Parent = head
+
+	local label = Instance.new("TextLabel")
+	label.Size = UDim2.fromScale(1, 1)
+	label.BackgroundTransparency = 1
+	label.Font = Enum.Font.GothamBold
+	label.TextScaled = true
+	label.TextColor3 = colour
+	label.Text = emoji
+	label.Parent = gui
+end
+
+-- The three the user asked for, by the state that causes them rather than by what they look like.
+local MARK_TIRED = { name = "TiredMark", emoji = "💦", colour = Color3.fromRGB(150, 210, 255) }  -- หมดแรง
+local MARK_ASLEEP = { name = "AsleepMark", emoji = "💤", colour = Color3.fromRGB(190, 200, 255) } -- ล้มจากกระสุน/ธนู
+local MARK_SLOWED = { name = "SlowedMark", emoji = "💦", colour = Color3.fromRGB(150, 210, 255) } -- โดนคฑาสโลว์
+
+-- Published so the systems that own each state can raise and clear their own mark. StatusEffects owns the
+-- drawing; it does not own the reasons.
+function StatusEffects.SetTired(player, on) setMark(player, MARK_TIRED.name, MARK_TIRED.emoji, MARK_TIRED.colour, on) end
+function StatusEffects.SetAsleep(player, on)
+	setMark(player, MARK_ASLEEP.name, MARK_ASLEEP.emoji, MARK_ASLEEP.colour, on)
+	if not on then return end
+
+	-- ลบเองเมื่อคนนั้นลุกขึ้น โดยดู Attribute ที่ Vitals ตั้งไว้อยู่แล้ว
+	--
+	-- **ทำแบบนี้เพราะ require กลับไปหา Vitals ไม่ได้** — StatusEffects require Vitals อยู่แล้ว การ require
+	-- กลับจะเป็นวงกลมและทั้งสองไฟล์จะโหลดไม่ขึ้น ส่วน Attribute เป็นของที่ Vitals เผยแพร่ออกมาอยู่แล้ว
+	-- ไม่ต้องเพิ่มอะไรฝั่งนั้นเลย
+	local conn
+	conn = player:GetAttributeChangedSignal("WOLD_Downed"):Connect(function()
+		if player:GetAttribute("WOLD_Downed") then return end
+		conn:Disconnect()
+		setMark(player, MARK_ASLEEP.name, MARK_ASLEEP.emoji, MARK_ASLEEP.colour, false)
+	end)
+end
+
 local function applyDizzyMark(player, dizzy)
 	local character = player.Character
 	local head = character and character:FindFirstChild("Head")
@@ -234,6 +294,17 @@ function StatusEffects.Slow(player, seconds, factor)
 	state.slowUntil = os.clock() + seconds
 	state.slowFactor = factor or 0.5
 	Remotes.StatusChanged:FireAllClients(player, "slow", true)
+
+	-- The mark is raised here and cleared on a timer rather than by the tick loop, because Slow has no loop
+	-- of its own -- SpeedMultiplier just reads the deadline when somebody asks. The guard re-reads the
+	-- deadline so a second slow landing mid-way does not have the first one's timer pull the mark off early.
+	setMark(player, MARK_SLOWED.name, MARK_SLOWED.emoji, MARK_SLOWED.colour, true)
+	task.delay(seconds, function()
+		local now = Active[player]
+		if not now or not now.slowUntil or os.clock() >= now.slowUntil then
+			setMark(player, MARK_SLOWED.name, MARK_SLOWED.emoji, MARK_SLOWED.colour, false)
+		end
+	end)
 end
 
 -- PlayerMovement asks for this every tick, so the slow rides on top of whatever speed the movement state and

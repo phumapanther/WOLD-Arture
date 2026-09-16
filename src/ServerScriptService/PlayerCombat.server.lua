@@ -308,6 +308,9 @@ local function fireProjectile(player, attack, aim)
 					playHitSound(otherChar, player)
 					if not wasDowned and Vitals.IsDowned(other) then
 						awardKill(player, other)
+						-- 💤 เฉพาะคนที่ถูก "ยิง" ล้ม ตามที่ผู้ใช้สั่ง — บล็อกนี้เป็นทางของกระสุนกับลูกธนู
+						-- เท่านั้น (ระยะประชิดอยู่คนละบล็อก) จึงไม่ต้องถามว่าอาวุธอะไร
+						StatusEffects.SetAsleep(other, true)
 					end
 				end
 			end

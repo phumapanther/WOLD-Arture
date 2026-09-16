@@ -16,9 +16,11 @@ local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 -- the value back through Vitals.GetStamina. The lobby has no vitals at all, so the machine idles there.
 local ACTIVE = not ServerConfig.IsLobby
 
-local SPEED = { Normal = 8, Walk = 4, Run = 16 }
+-- วิ่งเร็วขึ้น 50% ตามที่ผู้ใช้สั่ง (16 -> 24) เดินกับปกติคงเดิม
+local SPEED = { Normal = 8, Walk = 4, Run = 24 }
 local STAMINA_DRAIN_PER_SEC = 20 -- empties in ~5s from full
-local STAMINA_REGEN_PER_SEC = 100 / 3 -- fills in ~3s from empty
+-- ฟื้นเร็วขึ้น 50% (33.3 -> 50 ต่อวินาที) เต็มบาร์ใน ~2 วิ จากเดิม ~3 วิ
+local STAMINA_REGEN_PER_SEC = 50
 local FORCED_WALK_SECONDS = 2
 
 local States = {} -- [player] = { state, sprintIntent, forcedWalkUntil }
@@ -47,6 +49,11 @@ end
 local function setState(state, player, newState)
 	if state.state == newState then return end
 	state.state = newState
+	-- หยดน้ำบนหัวตอนวิ่งจนหมดแรง ตามที่ผู้ใช้สั่ง
+	--
+	-- ผูกกับ ForcedWalk ซึ่งเป็นสถานะ "สตามินาหมดจนต้องเดิน" อยู่แล้ว ไม่ได้ผูกกับตัวเลขสตามินาตรงๆ เพราะ
+	-- แบบนั้นสัญลักษณ์จะกระพริบทุกครั้งที่บาร์แตะศูนย์แล้วฟื้นขึ้นมาทันที
+	StatusEffects.SetTired(player, newState == "ForcedWalk")
 	applySpeed(state, player)
 end
 

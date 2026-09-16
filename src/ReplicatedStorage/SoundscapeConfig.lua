@@ -136,7 +136,11 @@ SoundscapeConfig.FootstepPitchJitter = 0.08
 -- speed: these are the intervals that looked right against the walk and run animations.
 SoundscapeConfig.StepIntervalWalk = 0.55 -- WalkSpeed 4, the deliberate walk
 SoundscapeConfig.StepIntervalNormal = 0.42 -- WalkSpeed 8
-SoundscapeConfig.StepIntervalRun = 0.28 -- WalkSpeed 16
+-- เสียงฝีเท้าตอนวิ่งถี่ขึ้น 50% ตามความเร็ววิ่งที่เพิ่มเป็น 24 (0.28 -> 0.19)
+--
+-- **ต้องขยับตามความเร็วเสมอ** ระยะก้าวคือ ความเร็ว x ช่วงห่าง ถ้าวิ่งเร็วขึ้นแต่เสียงยังห่างเท่าเดิม
+-- ตัวละครจะก้าวยาวขึ้น 50% ซึ่งตาเห็นเป็นการไถลไปกับพื้น
+SoundscapeConfig.StepIntervalRun = 0.19 -- WalkSpeed 24
 
 -- Below this the character is shuffling in place rather than travelling, and should make no sound at all.
 SoundscapeConfig.MinStepSpeed = 1.5

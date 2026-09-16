@@ -22,6 +22,10 @@ local Progression = require(game.ServerScriptService.Progression)
 local Vitals = require(game.ServerScriptService.Vitals)
 local MobAccess = require(game.ServerScriptService.MobAccess)
 local EventState = require(game.ServerScriptService.EventState)
+
+-- Filled in further down, once eventSpawners is in scope. Declared here because damage() is defined above
+-- that point and has to be able to see the name.
+local Mobs = {}
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local SPAWNER_TAG = "WOLD_Spawner"
@@ -536,7 +540,13 @@ local function damage(model, amount, attacker)
 			Debris:AddItem(marker, 5)
 		end
 		drop(model, state.config, attacker, state.loot)
+		local spawner = state.spawner
 		despawn(model)
+		-- Told AFTER despawn, so whoever is counting sees the world as it is now rather than one monster
+		-- ahead of itself. Set further down, once eventSpawners exists.
+		if spawner and Mobs.OnEventMobKilled then
+			task.defer(Mobs.OnEventMobKilled, spawner)
+		end
 	end
 	return true
 end
@@ -624,6 +634,10 @@ local function spawnOne(spawner, kind, config)
 				target = nil,
 			}
 			spawner:SetAttribute("Alive", (spawner:GetAttribute("Alive") or 0) + 1)
+			-- How many this spawner has put into the world since the event started. "Alive" alone cannot end
+			-- an event: it is zero both before the first one walks out and after the last one dies, and those
+			-- two have to be told apart.
+			spawner:SetAttribute("Spawned", (spawner:GetAttribute("Spawned") or 0) + 1)
 			return true
 		end
 	end
@@ -984,6 +998,28 @@ local function eventSpawners(id)
 	return out
 end
 
+-- The event ends when the last one dies, not only when the half hour runs out.
+--
+-- Counted from the SPAWNERS rather than from a tally of kills: a spawner knows how many it is meant to be
+-- holding up and how many are alive, so this stays right if a slime is despawned by anything other than a
+-- player -- the leash, a server restock, an admin clearing the field.
+--
+-- Only fires for a spawner that belongs to an event; an ordinary monster dying reaches this and leaves.
+function Mobs.OnEventMobKilled(spawner)
+	local eventId = spawner:GetAttribute("EventOnly")
+	if not eventId or not EventState.IsActive(eventId) then return end
+
+	for _, other in ipairs(eventSpawners(eventId)) do
+		-- Still one standing, or one still due to walk out on the next stocking tick.
+		if (other:GetAttribute("Alive") or 0) > 0 then return end
+		-- A spawner that has not finished putting its share into the world yet. Without this the event would
+		-- end the instant the first one was killed, before the other two had spawned.
+		if (other:GetAttribute("Spawned") or 0) < (other:GetAttribute("Count") or 1) then return end
+	end
+
+	if EventState.Stop then EventState.Stop(eventId) end
+end
+
 EventState.Register("slime", {
 	start = function()
 		for _, spawner in ipairs(eventSpawners("slime")) do
@@ -992,6 +1028,7 @@ EventState.Register("slime", {
 			-- minutes would be a lie.
 			spawner:SetAttribute("ReadyAt", nil)
 			spawner:SetAttribute("Alive", 0)
+			spawner:SetAttribute("Spawned", 0)
 		end
 		-- Nothing else to do: the stocking loop runs every two seconds and its EventOnly check now passes, so
 		-- the three of them walk into the world on the next tick.
@@ -1006,6 +1043,7 @@ EventState.Register("slime", {
 			end
 			spawner:SetAttribute("ReadyAt", nil)
 			spawner:SetAttribute("Alive", 0)
+			spawner:SetAttribute("Spawned", 0)
 		end
 	end,
 })

@@ -25,10 +25,11 @@ ActionConfig.Roll = {
 ActionConfig.Slide = {
 	enterAnimation = "rbxassetid://124112023078211", -- Slide_Enter, 0.26s
 	holdAnimation = "rbxassetid://72891274710530", -- Slide_Hold, 0.90s (looped while sliding)
-	-- Doubled from 30 on request: a slide is meant to feel like a launch, not a slow scoot. Because distance
-	-- under the friction curve is linear in the starting speed, doubling this alone also doubles the distance
-	-- (measured: 29.6 -> 59.3 studs on a full bar), so the durations below are unchanged.
-	startSpeed = 60,
+	-- ระยะสไลด์ลดลงครึ่งหนึ่งตามที่ผู้ใช้สั่ง (60 -> 30)
+	--
+	-- ระยะทางใต้เส้นโค้งแรงเสียดทานแปรผันตรงกับความเร็วเริ่มต้น การหารสองที่ตัวเลขนี้จึงหารระยะสองพอดี
+	-- (วัดไว้ตอนเพิ่มเป็น 60: 29.6 -> 59.3 studs บนบาร์เต็ม) ค่าเวลาข้างล่างจึงไม่ต้องแตะ
+	startSpeed = 30,
 	-- A slide on a full stamina bar runs for maxDuration; on a near-empty one it barely happens. The server
 	-- scales between these by the stamina fraction at the moment the slide starts.
 	minDuration = 0.25,
