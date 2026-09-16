@@ -17,6 +17,12 @@ ShopConfig.Sells = {
 	-- stack is how long a session at the water lasts.
 	{ id = "FishingRod", price = 90 },
 	{ id = "Worm", price = 2 },
+	-- จักรยาน ราคาที่ผู้ใช้กำหนด
+	--
+	-- **แพงที่สุดในร้านอยู่คนละชั้น** (ถัดมาคือพลั่ว 150) โดยตั้งใจ: ทุกคนได้ฟรีหนึ่งคันตั้งแต่เริ่มเกม
+	-- อยู่แล้ว ราคานี้จึงเป็นค่าปรับของการทำหาย ไม่ใช่ราคาที่ต้องจ่ายเพื่อเริ่มมี — และต้องแพงพอที่การซื้อ
+	-- เก็บไว้หลายคันจะไม่คุ้มกว่าการเรียกคันเดิมออกมาใช้
+	{ id = "Monowheel", price = 5000 },
 }
 
 -- What the shopkeeper buys, and for how much of the catalog `value`. Well under 1 on purpose: the gap
