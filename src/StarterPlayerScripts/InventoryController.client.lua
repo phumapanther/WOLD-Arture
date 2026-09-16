@@ -152,7 +152,15 @@ gui:OnSlotClicked(function(index)
 			table.insert(people, {
 				label = other.DisplayName ~= "" and other.DisplayName or other.Name,
 				onClick = function()
-					Remotes.RequestGiveItem:FireServer(index, other)
+					-- ของกองเดียวถามจำนวนก่อน ของชิ้นเดียวส่งเลย ไม่ต้องให้กดยืนยันเลข 1
+					local have = slot.count or 1
+					if have <= 1 then
+						Remotes.RequestGiveItem:FireServer(index, other, 1)
+						return
+					end
+					gui:ShowCountPrompt(button, ("ให้ %s กี่ชิ้น"):format(title), have, function(count)
+						Remotes.RequestGiveItem:FireServer(index, other, count)
+					end)
 				end,
 			})
 		end

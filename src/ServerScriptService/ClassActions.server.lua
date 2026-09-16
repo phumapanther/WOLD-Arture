@@ -293,7 +293,7 @@ end
 
 -- From the bag's own menu rather than a class action: anyone can hand something to anyone. The class
 -- actions are about what your office lets you do TO someone; this is just passing something across.
-Remotes.RequestGiveItem.OnServerEvent:Connect(function(player, index, target)
+Remotes.RequestGiveItem.OnServerEvent:Connect(function(player, index, target, count)
 	if type(index) ~= "number" then return end
 	if typeof(target) ~= "Instance" or not target:IsA("Player") then return end
 	if player == target then return end
@@ -306,8 +306,12 @@ Remotes.RequestGiveItem.OnServerEvent:Connect(function(player, index, target)
 	local slot = state and state.slots[index]
 	if not slot then return end
 
-	-- The whole stack moves. Splitting one would need a number box, and the menu is meant to be two taps.
-	local id, count, durability, meta = slot.id, slot.count or 1, slot.durability, slot.meta
+	-- ให้ได้ทีละกี่ชิ้นก็ได้ ตามที่ผู้ใช้สั่ง ไคลเอนต์มีช่องใส่เลขแล้ว แต่ที่นี่ยังต้องหนีบเองอยู่ดี:
+	-- จำนวนที่ส่งมาคือสิ่งที่ไคลเอนต์พูด ไม่ใช่สิ่งที่พิสูจน์แล้ว
+	local have = slot.count or 1
+	count = math.floor(tonumber(count) or have)
+	count = math.clamp(count, 1, have)
+	local id, durability, meta = slot.id, slot.durability, slot.meta
 	if not Inventory.AddItem(target, id, count, durability, meta) then
 		return report(player, nil, "giveitem", false, "กระเป๋าเขาเต็ม")
 	end
@@ -322,6 +326,7 @@ Remotes.RequestGiveItem.OnServerEvent:Connect(function(player, index, target)
 	--
 	-- Done after the item has actually moved, so a refused give (a full bag) cannot transfer a car that
 	-- stayed where it was.
+	-- กุญแจไม่เคยสแตค (stackSize 1) การโอนรถจึงยังเป็น "ทั้งช่อง" เสมอ ไม่มีเคสให้แบ่ง
 	if item and item.kind == "key" and type(meta) == "table" and type(meta.plate) == "string" then
 		local ok, VehicleService = pcall(function()
 			return require(game.ServerScriptService.Vehicle.Service)

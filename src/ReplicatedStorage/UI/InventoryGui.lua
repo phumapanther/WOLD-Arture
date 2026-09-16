@@ -575,6 +575,123 @@ function InventoryGui:ShowItemMenu(slotButton, entries, title)
 	self.itemMenu = menu
 end
 
+-- ถามจำนวนก่อนทำ สำหรับของที่มีหลายชิ้นในช่องเดียว
+--
+-- วางทับที่เดิมของเมนูและหน้าตาเหมือนกัน เพราะมันคือขั้นตอนถัดไปของ flow เดิม ("ให้ → ใคร → กี่ชิ้น")
+-- ไม่ใช่หน้าต่างใหม่ที่โผล่มาจากที่อื่น
+--
+-- `onConfirm(count)` ถูกเรียกเมื่อกดตกลงเท่านั้น ปิดเมนูทิ้ง = ไม่มีอะไรเกิดขึ้น
+function InventoryGui:ShowCountPrompt(slotButton, title, maxCount, onConfirm)
+	self:CloseItemMenu()
+	if not slotButton then return end
+
+	local menu = Instance.new("Frame")
+	menu.Name = "ItemMenu"
+	menu.BackgroundColor3 = Color3.fromRGB(26, 28, 34)
+	menu.BorderSizePixel = 0
+	menu.ZIndex = 60
+	menu.Size = UDim2.fromOffset(168, 108)
+	local p = slotButton.AbsolutePosition
+	local sz = slotButton.AbsoluteSize
+	menu.Position = UDim2.fromOffset(p.X + sz.X + 6, p.Y)
+	menu.Parent = self.gui
+	local c = Instance.new("UICorner")
+	c.CornerRadius = UDim.new(0, 8)
+	c.Parent = menu
+	local st = Instance.new("UIStroke")
+	st.Color = Color3.fromRGB(244, 197, 66)
+	st.Transparency = 0.5
+	st.Parent = menu
+	self.itemMenu = menu
+
+	local heading = Instance.new("TextLabel")
+	heading.Position = UDim2.fromOffset(8, 4)
+	heading.Size = UDim2.new(1, -36, 0, 18)
+	heading.BackgroundTransparency = 1
+	heading.Font = Enum.Font.GothamBold
+	heading.TextSize = 12
+	heading.TextXAlignment = Enum.TextXAlignment.Left
+	heading.TextTruncate = Enum.TextTruncate.AtEnd
+	heading.TextColor3 = Color3.fromRGB(244, 197, 66)
+	heading.Text = title or "กี่ชิ้น"
+	heading.ZIndex = 61
+	heading.Parent = menu
+
+	local close = Instance.new("TextButton")
+	close.AnchorPoint = Vector2.new(1, 0)
+	close.Position = UDim2.new(1, -4, 0, 4)
+	close.Size = UDim2.fromOffset(20, 18)
+	close.BackgroundColor3 = Color3.fromRGB(70, 74, 84)
+	close.BorderSizePixel = 0
+	close.Font = Enum.Font.GothamBold
+	close.TextSize = 13
+	close.TextColor3 = Color3.fromRGB(232, 232, 238)
+	close.Text = "\195\151" -- multiplication sign, same escape the other menus use
+	close.ZIndex = 61
+	close.Parent = menu
+	local cc = Instance.new("UICorner")
+	cc.CornerRadius = UDim.new(0, 5)
+	cc.Parent = close
+	close.Activated:Connect(function() self:CloseItemMenu() end)
+
+	-- ขึ้นมาพร้อมจำนวนเต็มกองและเลือกข้อความไว้ให้แล้ว: ให้ทั้งกองคือสิ่งที่ทำบ่อยที่สุด กด Enter ทันทีก็จบ
+	local box = Instance.new("TextBox")
+	box.Position = UDim2.fromOffset(8, 28)
+	box.Size = UDim2.new(1, -16, 0, 30)
+	box.BackgroundColor3 = Color3.fromRGB(38, 40, 48)
+	box.BorderSizePixel = 0
+	box.Font = Enum.Font.GothamBold
+	box.TextSize = 15
+	box.TextColor3 = Color3.fromRGB(232, 232, 238)
+	box.Text = tostring(maxCount)
+	box.ClearTextOnFocus = false
+	box.ZIndex = 61
+	box.Parent = menu
+	local bc = Instance.new("UICorner")
+	bc.CornerRadius = UDim.new(0, 6)
+	bc.Parent = box
+
+	local hint = Instance.new("TextLabel")
+	hint.Position = UDim2.fromOffset(8, 58)
+	hint.Size = UDim2.new(1, -16, 0, 14)
+	hint.BackgroundTransparency = 1
+	hint.Font = Enum.Font.Gotham
+	hint.TextSize = 10
+	hint.TextXAlignment = Enum.TextXAlignment.Left
+	hint.TextColor3 = Color3.fromRGB(150, 152, 162)
+	hint.Text = ("มีทั้งหมด %d ชิ้น"):format(maxCount)
+	hint.ZIndex = 61
+	hint.Parent = menu
+
+	local confirm = Instance.new("TextButton")
+	confirm.Position = UDim2.fromOffset(8, 74)
+	confirm.Size = UDim2.new(1, -16, 0, 26)
+	confirm.BackgroundColor3 = Color3.fromRGB(62, 96, 70)
+	confirm.BorderSizePixel = 0
+	confirm.Font = Enum.Font.GothamBold
+	confirm.TextSize = 13
+	confirm.TextColor3 = Color3.fromRGB(232, 232, 238)
+	confirm.Text = "ตกลง"
+	confirm.ZIndex = 61
+	confirm.Parent = menu
+	local fc = Instance.new("UICorner")
+	fc.CornerRadius = UDim.new(0, 6)
+	fc.Parent = confirm
+
+	-- หนีบให้อยู่ในช่วง 1..maxCount ที่นี่ด้วย ถึงเซิร์ฟเวอร์จะหนีบซ้ำอยู่แล้ว เพราะคนพิมพ์ควรเห็นทันทีว่า
+	-- เลขที่ใส่ไปถูกปรับ ไม่ใช่กดตกลงแล้วได้จำนวนอื่นโดยไม่มีคำอธิบาย
+	local function submit()
+		local wanted = math.floor(tonumber(box.Text) or 0)
+		if wanted < 1 then wanted = 1 end
+		if wanted > maxCount then wanted = maxCount end
+		self:CloseItemMenu()
+		onConfirm(wanted)
+	end
+	confirm.Activated:Connect(submit)
+	box.FocusLost:Connect(function(enter) if enter then submit() end end)
+	box:CaptureFocus()
+end
+
 function InventoryGui:CloseItemMenu()
 	if self.itemMenu then
 		self.itemMenu:Destroy()
