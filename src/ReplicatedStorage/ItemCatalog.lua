@@ -275,7 +275,7 @@ ItemCatalog.Items = {
 	-- ทิ้งไม่ได้และเก็บเข้าคลังไม่ได้ เพราะทุกคนต้องมีติดตัวเสมอ -- หายแล้วจะไม่มีทางได้คืน
 	--------------------------------------------------------------------------
 	Monowheel = {
-		icon = "rbxassetid://116009846089971",
+		icon = "rbxassetid://95395940932813", -- Monowheel (ภาพจริงใน decal 116009846089971)
 		name = "จักรยาน", kind = "consumable",
 		weight = 0, stackSize = 1, value = 0, sellable = false,
 		use = { stat = "monowheel", amount = 1 },
