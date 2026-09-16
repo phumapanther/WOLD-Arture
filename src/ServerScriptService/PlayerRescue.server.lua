@@ -117,7 +117,16 @@ local function dropCarried(carrier)
 		-- Back on the ground: if they are still downed, lie them down again.
 		Vitals.SetProneSuspended(entry.target, false)
 		local root = character:FindFirstChild("HumanoidRootPart")
-		if root then pcall(function() root:SetNetworkOwner(entry.target) end) end
+		if root then
+			-- **ต้องหยุดความเร็วที่ค้างอยู่ก่อนคืนเจ้าของฟิสิกส์** ไม่งั้นตัวจะไหลไปเรื่อยๆ หลังถูกวาง
+			--
+			-- ตอนถูกอุ้ม ร่างถูกลากไปตามตัวคนอุ้ม เอนจิ้นจึงบันทึกความเร็วสะสมไว้ พอปล่อย PlatformStand
+			-- แล้วคืนสิทธิ์ให้ไคลเอนต์ของคนที่ถูกวาง ความเร็วก้อนนั้นยังอยู่ — และร่างที่ล้มอยู่ถูกปิด
+			-- การชนของแขนขาไว้ (setLimbCollision) จึงแทบไม่มีอะไรหยุดมัน กลายเป็นไถลยาว
+			root.AssemblyLinearVelocity = Vector3.zero
+			root.AssemblyAngularVelocity = Vector3.zero
+			pcall(function() root:SetNetworkOwner(entry.target) end)
+		end
 	end
 
 	local carrierHumanoid = characterOf(carrier) and characterOf(carrier):FindFirstChildOfClass("Humanoid")

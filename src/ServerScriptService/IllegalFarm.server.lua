@@ -31,6 +31,7 @@ local Vitals = require(game.ServerScriptService.Vitals)
 local StatusEffects = require(game.ServerScriptService.StatusEffects)
 local Minigames = require(game.ServerScriptService.Minigames)
 local Classes = require(game.ServerScriptService.Classes)
+local ClassConfig = require(game.ReplicatedStorage.ClassConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local TAG = "WOLD_Farm"
@@ -263,7 +264,10 @@ local function work(node, player)
 				payout(player, config)
 			else
 				StatusEffects.Dizzy(player, FarmConfig.DizzySeconds)
-				Remotes.SocialNotify:FireClient(player, "error", "พลาด! มึนหัวไปพักหนึ่ง")
+				-- หัวแดง 3 นาทีเมื่อทำควิกไทม์อีเวนต์พลาด ตามที่ผู้ใช้สั่ง — ของผิดกฎหมายที่ทำพลาดคือการ
+				-- ถูกจับได้ ไม่ใช่แค่เสียของ
+				Classes.Mark(player, ClassConfig.MarkedSecondsQte)
+				Remotes.SocialNotify:FireClient(player, "error", "พลาด! มึนหัวไปพักหนึ่ง หัวแดง 3 นาที")
 			end
 		end)
 	end)

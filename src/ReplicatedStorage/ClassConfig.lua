@@ -112,6 +112,10 @@ ClassConfig.Perks = {
 ClassConfig.MarkedColor = Color3.fromRGB(255, 0, 0)
 ClassConfig.MarkedSeconds = 10 * 60
 
+-- ราคาของหัวแดงแต่ละเหตุ ตามที่ผู้ใช้กำหนด
+ClassConfig.MarkedSecondsQte = 3 * 60   -- ทำควิกไทม์อีเวนต์พลาด
+ClassConfig.MarkedSecondsKill = 5 * 60  -- ฆ่าคนตาย
+
 ClassConfig.DefaultColor = Color3.fromRGB(255, 255, 255)
 
 -- What a player is before they have chosen anything, and what a death returns them to.

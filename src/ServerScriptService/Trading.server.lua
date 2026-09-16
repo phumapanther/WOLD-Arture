@@ -138,6 +138,27 @@ local function completeTrade(session)
 		return closeSession(session, "ของหรือเงินเปลี่ยนไป การเทรดถูกยกเลิก")
 	end
 
+	-- กุญแจของรถที่ "เรียกออกมาอยู่" ยกให้กันไม่ได้ ต้องเก็บรถเข้าโรงก่อน ตามที่ผู้ใช้สั่ง
+	--
+	-- ถ้าปล่อยให้แลกได้ รถจะยังวิ่งอยู่ในโลกโดยที่เจ้าของใหม่ไม่มีทางเก็บมัน และเจ้าของเก่าก็ไม่มีสิทธิ์
+	-- แล้ว — คันนั้นจะค้างอยู่กลางแมพจนเซิร์ฟเวอร์ปิด
+	--
+	-- เช็คก่อนย้ายของทุกชิ้น เหมือนการเช็คช่องกระเป๋า: การเทรดต้องล้มทั้งยกหรือสำเร็จทั้งยก
+	local blocked = nil
+	pcall(function()
+		local VehicleService = require(game.ServerScriptService.Vehicle.Service)
+		for _, entry in ipairs({ table.unpack(takingA), table.unpack(takingB) }) do
+			local plate = type(entry.meta) == "table" and entry.meta.plate
+			if plate and VehicleService.Active and VehicleService.Active[plate] then
+				blocked = plate
+				break
+			end
+		end
+	end)
+	if blocked then
+		return closeSession(session, ("เก็บรถ %s เข้าโรงรถก่อนถึงจะยกกุญแจให้กันได้"):format(blocked))
+	end
+
 	-- Room to receive, counted before anything moves. Each side frees the slots it gives up, so swapping
 	-- one item for one item works even with a full bag.
 	if freeSlots(a) + #takingA < #takingB or freeSlots(b) + #takingB < #takingA then
@@ -155,6 +176,20 @@ local function completeTrade(session)
 	for _, entry in ipairs(takingB) do Inventory.AddItem(a, entry.id, entry.count, entry.durability, entry.meta) end
 	Inventory.AddGold(a, offerB.gold)
 	Inventory.AddGold(b, offerA.gold)
+
+	-- กุญแจรถที่ยกให้คนอื่นไปแล้ว รถต้องหายจากโรงรถของคนให้ทันที
+	--
+	-- เดิม `forgetKeyless` ถูกเรียกตอน "เปิดรายการโรงรถ" เท่านั้น คนให้จึงยังเห็นรถค้างอยู่จนกว่าจะเปิดเมนู
+	-- ใหม่ และคนรับก็ไม่เคยถูกกวาดเลย เรียกทั้งสองฝั่งตรงนี้เพราะการแลกคือจังหวะที่กุญแจเปลี่ยนมือจริง
+	--
+	-- pcall เพราะระบบพาหนะอาจไม่ได้ติดตั้งในเซิร์ฟเวอร์นี้ การเทรดต้องไม่พังตามไปด้วย
+	pcall(function()
+		local VehicleService = require(game.ServerScriptService.Vehicle.Service)
+		if VehicleService.forgetKeyless then
+			VehicleService.forgetKeyless(a)
+			VehicleService.forgetKeyless(b)
+		end
+	end)
 
 	for _, player in ipairs({ a, b }) do
 		if player.Parent then

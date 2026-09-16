@@ -139,8 +139,15 @@ end
 
 -- A failed robbery paints the thief's name red for everyone, for ten minutes. Stored as a deadline rather
 -- than a flag plus a timer, so it needs no upkeep loop and cannot leak a task per marking.
-function Classes.Mark(player)
-	MarkedUntil[player] = os.clock() + ClassConfig.MarkedSeconds
+-- `seconds` ใส่มาเองได้ เพราะเหตุที่ทำให้หัวแดงมีหลายอย่างและราคาไม่เท่ากัน (ทำควิกไทม์อีเวนต์พลาด 3 นาที
+-- ฆ่าคน 5 นาที) ไม่ใส่ = ใช้ค่ากลางเดิม
+--
+-- เครื่องหมายที่ยาวกว่าจะไม่ถูกอันที่สั้นกว่าลบทิ้ง: คนที่เพิ่งฆ่าคนแล้วไปทำ QTE พลาดต่อ ต้องไม่ได้ลด
+-- โทษตัวเองจาก 5 นาทีเหลือ 3
+function Classes.Mark(player, seconds)
+	local until_ = os.clock() + (seconds or ClassConfig.MarkedSeconds)
+	if MarkedUntil[player] and MarkedUntil[player] > until_ then return end
+	MarkedUntil[player] = until_
 	Classes.Replicate(player)
 end
 

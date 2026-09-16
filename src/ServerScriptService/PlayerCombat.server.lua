@@ -22,6 +22,10 @@ local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
 local Progression = require(game.ServerScriptService.Progression)
 local Inventory = require(game.ServerScriptService.Inventory)
 local ClassPerks = require(game.ServerScriptService.ClassPerks)
+-- Classes requires only ClassConfig and ProfileAccess, so there is no cycle back here -- and ClassPerks
+-- above already pulls it in anyway.
+local Classes = require(game.ServerScriptService.Classes)
+local ClassConfig = require(game.ReplicatedStorage.ClassConfig)
 local WeaponVisualsAccess = require(game.ServerScriptService.WeaponVisualsAccess)
 local Vitals = require(game.ServerScriptService.Vitals)
 local Consuming = require(game.ServerScriptService.Consuming)
@@ -116,6 +120,11 @@ local function awardKill(killer, victim)
 	local multiplier = ProgressionConfig.KillMultiplier(
 		Progression.GetLevel(killer), Progression.GetLevel(victim))
 	Progression.AwardExp(killer, math.floor(ProgressionConfig.ExpPerPlayerKill * multiplier + 0.5))
+	-- หัวแดง 5 นาทีเมื่อฆ่าคน ตามที่ผู้ใช้สั่ง
+	--
+	-- อยู่ตรงนี้เพราะเป็นจุดเดียวที่ "ผู้เล่นทำให้ผู้เล่นอีกคนล้ม" ผ่าน ทั้งระยะประชิดและระยะไกลเรียกผ่าน
+	-- ฟังก์ชันนี้ทั้งคู่ ไม่ต้องไปเติมสองที่
+	Classes.Mark(killer, ClassConfig.MarkedSecondsKill)
 end
 
 -- Impact feedback: a short sound parented to the victim so everyone nearby hears it positionally. Works for

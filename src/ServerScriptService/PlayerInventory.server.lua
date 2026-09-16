@@ -30,17 +30,15 @@ end
 -- What a brand-new player starts with. Deliberately modest: the full set is a one-off test grant below, not
 -- the normal opening hand.
 local STARTER_KIT = {
-	{ id = "Sword", count = 1 },
-	{ id = "LeatherArmor", count = 1 },
-	-- An axe, because gathering now REQUIRES the right tool and a new player has no gold. Without one the
-	-- only income is slimes at 2 gold each, and the cheapest tool is 120 -- around seventy kills, against
-	-- seven slimes alive at a time, before the player could chop their first tree.
+	-- ของเปิดตัวตามที่ผู้ใช้กำหนด: เครื่องมือครบสามอย่าง คันเบ็ด และขนมปังหนึ่งสแตค
 	--
-	-- One tool rather than three on purpose: wood is the way in, and buying the pickaxe and shovel is then
-	-- a real first goal with a real cost, which is the point of gating them at all.
+	-- ให้เครื่องมือครบทั้งสามเพราะการเก็บเกี่ยวบังคับว่าต้องมีเครื่องมือให้ตรงชนิด คนเข้าใหม่ไม่มีเงิน
+	-- และไม่มีทางหาได้เลยถ้าไม่มีอันไหนสักอัน
 	{ id = "Axe", count = 1 },
-	{ id = "Bread", count = 3 },
-	{ id = "HealthPotion", count = 2 },
+	{ id = "Shovel", count = 1 },
+	{ id = "Pickaxe", count = 1 },
+	{ id = "FishingRod", count = 1 },
+	{ id = "Bread", count = 16 },
 }
 
 -- One-off grant for everyone who has already played, so existing testers all hold the same full kit. Runs
@@ -88,7 +86,12 @@ PlayerJoin.Each(function(player)
 			Inventory.AddItem(player, entry.id, count)
 		end
 		if ProfileAccess.Flush then ProfileAccess.Flush(player) end
-	elseif not saved then
+	elseif not hasPlayedBefore then
+		-- **เงื่อนไขคือ "ไม่เคยเล่นมาก่อน" ไม่ใช่ "กระเป๋าว่าง"**
+		--
+		-- ของเดิมเช็ค `not saved` ซึ่งเป็นจริงเมื่อกระเป๋าว่างด้วย คนเก่าที่บังเอิญของหมดเกลี้ยงจึงได้ของ
+		-- เปิดตัวใหม่ทุกครั้งที่เข้าเกม ซึ่งเป็นบั๊กที่ผู้ใช้รายงาน ตัวชี้ขาดคือโปรไฟล์มีอยู่แล้วหรือยัง
+		-- ซึ่งคือ `hasPlayedBefore` ตัวเดียวกับที่ของแจกรอบเดียวใช้อยู่แล้ว
 		-- Brand new: the ordinary opening hand.
 		for _, entry in ipairs(STARTER_KIT) do
 			Inventory.AddItem(player, entry.id, entry.count)

@@ -610,8 +610,21 @@ local function spawnOne(spawner, kind, config)
 		local y = groundAt(x, z)
 		if y then
 			local model = buildMonster(config)
-			model:PivotTo(CFrame.new(x, y + 2, z))
+			-- **ยกขึ้นตามขนาดตัวจริง ไม่ใช่ +2 ตายตัว** — โกเลมกับแมงมุมสูงกว่านั้นมาก การวางที่ +2 ทำให้
+			-- ครึ่งล่างของตัวจมอยู่ในพื้น เอนจิ้นก็ดันมันออกมาด้วยแรงมหาศาล ตัวเลยพุ่งไถลไปไกล ซึ่งตรงกับ
+			-- อาการที่ผู้ใช้เจอ ("มอนเกิดแล้วบางตัวก็ไหลไปไกลมาก")
+			--
+			-- ครึ่งความสูง + 1 คือ "ก้นตัวลอยเหนือพื้น 1 สตัด" แล้วปล่อยให้ตกลงมาเองซึ่งไม่มีการดันออก
+			local _, mobSize = model:GetBoundingBox()
+			model:PivotTo(CFrame.new(x, y + mobSize.Y * 0.5 + 1, z))
 			model.Parent = folder
+			-- ความเร็วที่ติดมาจากตอนประกอบร่าง/ย้ายตำแหน่ง ต้องล้างทิ้ง ไม่งั้นมันจะพุ่งต่อจากจุดเกิด
+			for _, part in ipairs(model:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.AssemblyLinearVelocity = Vector3.zero
+					part.AssemblyAngularVelocity = Vector3.zero
+				end
+			end
 			local scale = nightScale()
 			local maxHp = config.hp * scale
 			-- buildMonster already sized the Humanoid from the unscaled config; correct it here so the bar
@@ -665,8 +678,17 @@ local function spawnHunter(kind, config, victim, origin, distance, boss)
 			-- monster placed at the usual two studs starts with its knees in the ground.
 			local size = boss and boss.scale or 1
 			if size ~= 1 then model:ScaleTo(size) end
-			model:PivotTo(CFrame.new(x, y + 2 * size, z))
+			-- วัดหลัง ScaleTo จึงได้ขนาดจริงของบอส เหมือนทางเกิดปกติ: ยกครึ่งตัว + 1 แล้วปล่อยให้ตกเอง
+			-- ดีกว่าเดาว่า 2 คูณสเกลพอ ซึ่งยังจมสำหรับตัวที่สูงอยู่แล้ว
+			local _, mobSize = model:GetBoundingBox()
+			model:PivotTo(CFrame.new(x, y + mobSize.Y * 0.5 + 1, z))
 			model.Parent = folder
+			for _, part in ipairs(model:GetDescendants()) do
+				if part:IsA("BasePart") then
+					part.AssemblyLinearVelocity = Vector3.zero
+					part.AssemblyAngularVelocity = Vector3.zero
+				end
+			end
 
 			local scale = nightScale() * (boss and boss.power or 1)
 			local maxHp = config.hp * scale
