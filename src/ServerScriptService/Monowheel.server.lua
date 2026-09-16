@@ -102,6 +102,13 @@ local function build()
 	--
 	-- ความยาวของคอร์ดที่รองรับมุม θ คือ 2R·sin(θ/2) คูณเผื่อไว้นิดให้ชิ้นซ้อนกันเล็กน้อย ไม่งั้นจะเห็น
 	-- ร่องระหว่างชิ้นตอนล้อหมุน
+	--
+	-- **ต้องหมุนรอบแกน X เท่านั้น** `CFrame.Angles(angle, 0, 0)` วางวงไว้ในระนาบ Y-Z ซึ่งเป็นล้อที่กลิ้ง
+	-- ไปทางหน้า-หลัง ตรงกับทิศที่ที่นั่งหันไป (-Z) และตรงกับแกนที่บานพับหมุน (แกน X ของ Attachment)
+	--
+	-- ของเดิมใช้ `CFrame.Angles(0, 0, angle)` = หมุนรอบแกน Z ซึ่งวางวงไว้ในระนาบ X-Y — ล้อตั้งขวางทาง
+	-- กลิ้งไปทางซ้าย-ขวา ผลคือสามอาการพร้อมกัน: คนนั่งหันข้างล้อ · เรียกออกมาแล้ววางผิดทิศ · และพอออกแรง
+	-- บานพับก็บังคับให้วงตีลังกาข้างจนล้มลงไปนอน สามอาการนี้มีต้นเหตุเดียวคือแกนนี้แกนเดียว
 	local step = math.pi * 2 / RING_SEGMENTS
 	local chord = 2 * WHEEL_RADIUS * math.sin(step / 2) * 1.06
 	local midR = INNER_RADIUS + TYRE_THICK / 2
@@ -110,9 +117,10 @@ local function build()
 		local angle = (i - 1) * step
 		local seg = Instance.new("Part")
 		seg.Name = "Tyre"
+		-- หน้ายางกว้างไปตามแกน X (ซ้าย-ขวา) ความหนาอยู่แนวรัศมี ความยาวไปตามเส้นรอบวง
 		seg.Size = Vector3.new(WHEEL_WIDTH, TYRE_THICK, chord)
 		-- วางที่ระยะ midR จากแกน แล้วหมุนให้ด้านยาวของชิ้นวางไปตามเส้นรอบวง
-		seg.CFrame = CFrame.Angles(0, 0, angle) * CFrame.new(0, midR, 0)
+		seg.CFrame = CFrame.Angles(angle, 0, 0) * CFrame.new(0, midR, 0)
 		seg.Color = Color3.fromRGB(48, 44, 42)
 		seg.Material = Enum.Material.Pebble
 		-- ยางเกาะถนน: แรงเสียดทานสูง เด้งต่ำ
@@ -131,7 +139,7 @@ local function build()
 		local angle = (i - 1) * step + step / 2
 		local seg = part(model, "Rim", Vector3.new(WHEEL_WIDTH + 0.5, 0.45, rimChord),
 			CFrame.new(), Color3.fromRGB(176, 138, 68), Enum.Material.Metal)
-		seg.CFrame = CFrame.Angles(0, 0, angle) * CFrame.new(0, rimR, 0)
+		seg.CFrame = CFrame.Angles(angle, 0, 0) * CFrame.new(0, rimR, 0)
 	end
 
 	-- ซี่ล้อ 4 ซี่จากแกนออกไปขอบ ให้อ่านออกว่าเป็นล้อ ไม่ใช่ห่วงลอยๆ
@@ -141,7 +149,7 @@ local function build()
 		local angle = (i - 1) * (math.pi / 2) + math.pi / 4
 		local spoke = part(model, "Spoke", Vector3.new(0.34, INNER_RADIUS, 0.34),
 			CFrame.new(), Color3.fromRGB(120, 112, 104), Enum.Material.Metal)
-		spoke.CFrame = CFrame.Angles(0, 0, angle)
+		spoke.CFrame = CFrame.Angles(angle, 0, 0)
 			* CFrame.new(WHEEL_WIDTH / 2 + 0.22, INNER_RADIUS / 2, 0)
 	end
 
@@ -151,9 +159,9 @@ local function build()
 		local gear = part(model, "Gear", Vector3.new(0.4, size * 2, size * 2),
 			CFrame.new(), Color3.fromRGB(150, 130, 90), Enum.Material.Metal)
 		gear.Shape = Enum.PartType.Cylinder
-		gear.CFrame = CFrame.Angles(0, 0, angle)
-			* CFrame.new(0, midR, WHEEL_WIDTH / 2 + 0.3)
-			* CFrame.Angles(0, math.rad(90), 0)
+		-- ทรงกระบอกยาวตามแกน X ของตัวเองอยู่แล้ว = หน้าเฟืองหันออกด้านข้างพอดี ไม่ต้องหมุนเพิ่ม
+		gear.CFrame = CFrame.Angles(angle, 0, 0)
+			* CFrame.new(WHEEL_WIDTH / 2 + 0.3, midR, 0)
 	end
 
 	-- ทุกชิ้นของ "ล้อ" เชื่อมติดแกนกลาง หมุนไปด้วยกัน
@@ -289,7 +297,14 @@ local function spotNear(root)
 		params.IgnoreWater = true
 		local hit = workspace:Raycast(Vector3.new(x, root.Position.Y + 60, z), Vector3.new(0, -400, 0), params)
 		if hit then
-			return CFrame.new(Vector3.new(x, hit.Position.Y + WHEEL_RADIUS + 0.5, z))
+			-- **ต้องคืนทิศมาด้วย ไม่ใช่แค่ตำแหน่ง** ของเดิมคืน CFrame.new(ตำแหน่ง) เปล่าๆ ซึ่งหันไปทาง -Z
+			-- ของโลกเสมอ ไม่ว่าคนเรียกจะหันไปทางไหน จักรยานจึงวางขวางทางทุกครั้งที่เรียก
+			--
+			-- หันไปทางเดียวกับคนเรียก แต่ตัดแกน Y ทิ้ง (เงยหน้า/ก้มหน้าไม่ควรทำให้จักรยานเอียง)
+			local look = root.CFrame.LookVector * Vector3.new(1, 0, 1)
+			local heading = math.atan2(-look.X, -look.Z)
+			local at = Vector3.new(x, hit.Position.Y + WHEEL_RADIUS + 0.5, z)
+			return CFrame.new(at) * CFrame.Angles(0, heading, 0), heading
 		end
 	end
 	return nil
@@ -300,7 +315,7 @@ local function spawnFor(player)
 	local root = character and character:FindFirstChild("HumanoidRootPart")
 	if not root then return false, "ยังไม่มีตัวละคร" end
 
-	local where = spotNear(root)
+	local where, heading = spotNear(root)
 	if not where then return false, "ไม่มีที่ว่างพอ" end
 
 	local model, seat, wheel, align = build()
@@ -309,7 +324,9 @@ local function spawnFor(player)
 	-- เจ้าของ เพื่อให้คนอื่นเรียกของเราไม่ได้ และเพื่อให้รู้ว่าใครขับอยู่
 	model:SetAttribute("OwnerUserId", player.UserId)
 
-	Live[player] = { model = model, seat = seat, wheel = wheel, align = align, heading = 0 }
+	-- **heading ต้องตรงกับทิศที่วางจริง** ถ้าปล่อยเป็น 0 ลูปขับจะสั่ง AlignOrientation ให้หันกลับไป -Z
+	-- ของโลกทันทีในเฟรมแรก = จักรยานสะบัดตัวเองทิ้งทันทีที่เรียกออกมา
+	Live[player] = { model = model, seat = seat, wheel = wheel, align = align, heading = heading or 0 }
 	return true
 end
 
