@@ -7,6 +7,7 @@ local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
 local ChestAccess = require(game.ServerScriptService.ChestAccess)
+local MonowheelAccess = require(game.ServerScriptService.MonowheelAccess)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
@@ -39,6 +40,8 @@ local STARTER_KIT = {
 	{ id = "Pickaxe", count = 1 },
 	{ id = "FishingRod", count = 1 },
 	{ id = "Bread", count = 16 },
+	-- จักรยานล้อเดียว แจกทุกคนตั้งแต่เริ่ม ตามที่ผู้ใช้สั่ง
+	{ id = "Monowheel", count = 1 },
 }
 
 -- One-off grant for everyone who has already played, so existing testers all hold the same full kit. Runs
@@ -233,6 +236,17 @@ local function doUseItem(player, index)
 	-- make the whole rescue system optional: there would be no reason to wait for help, and no reason for
 	-- anyone to come. Being floored has to be something another player gets you out of.
 	if Vitals.IsDowned(player) then return end
+
+	-- จักรยานล้อเดียว: กดแล้วเรียก/เก็บทันที และ **ไม่ถูกใช้หมดไป**
+	--
+	-- แยกออกมาก่อนทางของค้อนซ่อม เพราะทางนั้นลบของทิ้งหนึ่งชิ้นหลังใช้ ซึ่งจะทำให้จักรยานหายจากกระเป๋า
+	-- ตั้งแต่กดครั้งแรก แล้วไม่มีทางได้คืนเลย
+	if item.use.stat == "monowheel" then
+		if not MonowheelAccess.Toggle then return end
+		local ok, message = MonowheelAccess.Toggle(player)
+		Remotes.SocialNotify:FireClient(player, ok and "info" or "error", tostring(message))
+		return
+	end
 
 	-- The repair hammer is a tool, not food -- there is nothing to raise to the mouth, so it stays instant.
 	if item.use.stat == "repair" then

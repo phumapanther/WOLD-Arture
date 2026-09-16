@@ -269,6 +269,19 @@ ItemCatalog.Items = {
 		kind = "junk", weight = 5, stackSize = 8, value = 0, sellable = false },
 
 	--------------------------------------------------------------------------
+	-- จักรยานล้อเดียว ของแจกที่ทุกคนมีตั้งแต่เริ่ม
+	--
+	-- ไม่ใช่กุญแจ (kind = "key" ผูกกับระบบโรงรถทั้งชุด) แต่เป็นของกดใช้ที่เรียกพาหนะออกมา กดอีกทีก็เก็บ
+	-- ทิ้งไม่ได้และเก็บเข้าคลังไม่ได้ เพราะทุกคนต้องมีติดตัวเสมอ -- หายแล้วจะไม่มีทางได้คืน
+	--------------------------------------------------------------------------
+	Monowheel = {
+		icon = "rbxassetid://116009846089971",
+		name = "จักรยาน", kind = "consumable",
+		weight = 0, stackSize = 1, value = 0, sellable = false,
+		use = { stat = "monowheel", amount = 1 },
+	},
+
+	--------------------------------------------------------------------------
 	-- The one thing that survives a death.
 	--
 	-- Dying resets the level to 1 and the class to Villager. Carrying this spends ONE of them to keep both,
@@ -399,6 +412,9 @@ end
 function ItemCatalog.IsDroppable(id)
 	local item = ItemCatalog.Items[id]
 	if not item then return false end
+	-- จักรยานทิ้งไม่ได้ด้วยเหตุผลเดียวกับกุญแจ แต่คนละเหตุ: มันเป็นของแจกที่ทุกคนต้องมี ทิ้งแล้วไม่มีทาง
+	-- ได้คืน เพราะไม่มีที่ไหนขายและไม่มีสูตรคราฟ
+	if id == "Monowheel" then return false end
 	return item.kind ~= "key"
 end
 
@@ -412,6 +428,8 @@ end
 function ItemCatalog.IsStorable(id)
 	local item = ItemCatalog.Items[id]
 	if not item then return false end
+	-- เก็บเข้าคลัง/ท้ายรถไม่ได้ ด้วยเหตุผลเดียวกับที่ทิ้งไม่ได้: ของที่ต้องมีติดตัวเสมอ
+	if id == "Monowheel" then return false end
 	return item.kind ~= "key"
 end
 
