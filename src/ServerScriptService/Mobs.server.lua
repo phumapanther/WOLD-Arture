@@ -23,6 +23,7 @@ local Progression = require(game.ServerScriptService.Progression)
 local Vitals = require(game.ServerScriptService.Vitals)
 local MobAccess = require(game.ServerScriptService.MobAccess)
 local EventState = require(game.ServerScriptService.EventState)
+local MobMotion = require(game.ServerScriptService.MobMotion)
 
 -- Filled in further down, once eventSpawners is in scope. Declared here because damage() is defined above
 -- that point and has to be able to see the name.
@@ -286,8 +287,18 @@ local function loadMobTracks(model, config)
         return track
     end
 
+    -- **ขาหลายขาขยับเอง ไม่ใช้อนิเมชันเดิน**
+    --
+    -- MOB_WALK คืออนิเมชันเดิน R15 มาตรฐานของ Roblox ซึ่งขยับข้อต่อชื่อ LeftUpperLeg/RightUpperLeg
+    -- แมงมุมไม่มีข้อต่อชื่อนั้น (มันมี HipL1-4 / HipR1-4 / KneeL1-4 / KneeR1-4) อนิเมชันจึงเล่นแล้ว
+    -- **ไม่โดนอะไรเลย** แมงมุมเลยไถลไปตามพื้นโดยขาไม่ขยับ ซึ่งเป็นอาการที่ผู้ใช้เห็น
+    --
+    -- MobMotion.Attach คืน true ถ้ามันรู้จักขาของโมเดลนี้และรับไปขยับเอง กรณีนั้นไม่ต้องโหลด walk
+    local proceduralLegs = MobMotion.Attach(model)
+
     return {
-        walk = load(config.walkAnimation or MOB_WALK, true, Enum.AnimationPriority.Movement),
+        walk = (not proceduralLegs)
+            and load(config.walkAnimation or MOB_WALK, true, Enum.AnimationPriority.Movement) or nil,
         attack = load(config.attackAnimation or MOB_ATTACK, false, Enum.AnimationPriority.Action),
     }
 end
@@ -494,6 +505,8 @@ end
 local function despawn(model)
 	local state = Live[model]
 	Live[model] = nil
+	-- หยุดลูปขยับขา ไม่งั้นมันจะค้างอยู่จนกว่าโมเดลจะถูกลบ ซึ่งช้ากว่าตรงนี้หลายวินาที
+	MobMotion.Detach(model)
 	if state and state.spawner then
 		local alive = state.spawner:GetAttribute("Alive") or 0
 		local left = math.max(0, alive - 1)
@@ -642,6 +655,14 @@ local function damage(model, amount, attacker)
 	state.hp -= amount
 	showDamageNumber(model, amount, false)
 	playAt(model, state.config.hitSound, GatherConfig.MobHitVolume)
+
+	-- สะดุ้งและเด้งถอย ไม่ให้ยืนนิ่งเป็นเป้า
+	--
+	-- น้ำหนักอ่านจากตัวคูณตอนกลางคืน/บอส บอสที่ถูกคูณตัวใหญ่จึงสะเทือนน้อยกว่าสไลม์ธรรมดา
+	local attackerRoot = attacker and attacker.Character
+		and attacker.Character:FindFirstChild("HumanoidRootPart")
+	MobMotion.Flinch(model, attackerRoot and attackerRoot.Position or nil, amount,
+		state.damageScale or 1)
 	setHealthBar(model, state.hp / (state.maxHp or state.config.hp))
 	-- Being hit makes it care about whoever hit it, even from outside its notice range: a monster that
 	-- ignored an archer shooting it from a hill would look broken.
