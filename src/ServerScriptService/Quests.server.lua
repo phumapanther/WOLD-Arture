@@ -26,19 +26,27 @@ local PROMPT_DISTANCE = 12
 -- งานบนบอร์ด
 --------------------------------------------------------------------------------
 
--- [boardId] = { quests = {...}, rerollAt = os.clock() }
+-- [boardId] = { quests = {...}, day = เลขวันที่สุ่มไว้ }
 local Posted = {}
 
-local function rollBoard(board)
+local function rollBoard(board, day)
 	-- สุ่มหยิบจากคลังโดยไม่ซ้ำ: คัดลอกคลังแล้วหยิบออกทีละอัน
 	local pool = {}
 	for _, spec in ipairs(board.pool) do pool[#pool + 1] = spec end
 
+	-- **เมล็ดสุ่มจากวันที่และชื่อบอร์ด ไม่ใช่สุ่มลอยๆ**
+	--
+	-- ทุกเซิร์ฟเวอร์ต้องเห็นบอร์ดชุดเดียวกันในวันเดียวกัน ไม่งั้นย้ายช่องแล้วงานเปลี่ยน และรีสตาร์ทเซิร์ฟ
+	-- จะกลายเป็นปุ่มสุ่มงานใหม่ — เมล็ดที่คำนวณได้จากวันที่ทำให้ทุกเซิร์ฟเวอร์ได้ผลเดียวกันโดยไม่ต้องคุยกัน
+	local seed = day
+	for i = 1, #board.id do seed += board.id:byte(i) * i end
+	local rng = Random.new(seed)
+
 	local quests = {}
 	for _ = 1, math.min(QuestConfig.SlotsPerBoard, #pool) do
-		local pick = table.remove(pool, math.random(#pool))
+		local pick = table.remove(pool, rng:NextInteger(1, #pool))
 		-- จำนวนถูกสุ่มตอนโพสต์ ไม่ใช่ตอนรับ — ทุกคนที่เห็นบอร์ดนี้จึงเห็นเลขเดียวกัน
-		local need = math.random(pick.min, pick.max)
+		local need = rng:NextInteger(pick.min, pick.max)
 		quests[#quests + 1] = {
 			kind = pick.kind,
 			item = pick.item,
@@ -49,7 +57,7 @@ local function rollBoard(board)
 			board = board.id,
 		}
 	end
-	Posted[board.id] = { quests = quests, rerollAt = os.clock() + QuestConfig.RerollSeconds }
+	Posted[board.id] = { quests = quests, day = day }
 	return quests
 end
 
@@ -61,11 +69,12 @@ local function boardById(id)
 end
 
 local function questsOf(boardId)
+	local day = QuestConfig.DayNumber()
 	local entry = Posted[boardId]
-	if not entry or os.clock() >= entry.rerollAt then
+	if not entry or entry.day ~= day then
 		local board = boardById(boardId)
 		if not board then return {} end
-		return rollBoard(board)
+		return rollBoard(board, day)
 	end
 	return entry.quests
 end
@@ -101,6 +110,14 @@ local function progressOf(player, quest)
 	return quest.got or 0
 end
 
+-- งานสองอันเป็นงานเดียวกันไหม
+--
+-- **ต้องนิยามก่อน snapshot** local ใน Lua เป็น nil จนกว่าบรรทัดที่ประกาศจะรัน และ snapshot เรียกใช้มัน
+-- เพื่อคัดงานที่รับไปแล้วออกจากรายการที่ยังรับได้
+local function sameQuest(a, b)
+	return a.kind == b.kind and a.item == b.item and a.mob == b.mob and a.need == b.need
+end
+
 local function snapshot(player, boardId)
 	local board = boardById(boardId)
 	if not board then return nil end
@@ -122,11 +139,24 @@ local function snapshot(player, boardId)
 		}
 	end
 
-	local offered = {}
-	for _, q in ipairs(questsOf(boardId)) do offered[#offered + 1] = decorate(q) end
+	local held = activeOf(player) or {}
 
 	local active = {}
-	for _, q in ipairs(activeOf(player) or {}) do active[#active + 1] = decorate(q) end
+	for _, q in ipairs(held) do active[#active + 1] = decorate(q) end
+
+	-- **ไม่โชว์งานที่รับไปแล้วซ้ำในช่องที่ยังไม่รับ**
+	--
+	-- บอร์ดเป็นของเซิร์ฟเวอร์ งานยังอยู่บนบอร์ดหลังมีคนรับ (คนอื่นก็รับได้) แต่สำหรับ *คนที่รับไปแล้ว*
+	-- มันไม่ใช่ใบประกาศที่รับได้อีก มันคืองานที่กำลังทำอยู่ — การโชว์ทั้งสองที่ทำให้เห็นงานเดียวกันสองใบ
+	-- ซึ่งเป็นอาการที่ผู้ใช้เจอ
+	local offered = {}
+	for _, q in ipairs(questsOf(boardId)) do
+		local alreadyHeld = false
+		for _, mine in ipairs(held) do
+			if sameQuest(mine, q) then alreadyHeld = true break end
+		end
+		if not alreadyHeld then offered[#offered + 1] = decorate(q) end
+	end
 
 	return {
 		boardId = boardId,
@@ -142,10 +172,6 @@ end
 --------------------------------------------------------------------------------
 -- รับ / ส่ง / ทิ้ง
 --------------------------------------------------------------------------------
-
-local function sameQuest(a, b)
-	return a.kind == b.kind and a.item == b.item and a.mob == b.mob and a.need == b.need
-end
 
 local function accept(player, boardId, index)
 	local list = activeOf(player)
