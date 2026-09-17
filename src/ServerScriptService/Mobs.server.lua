@@ -25,6 +25,7 @@ local MobAccess = require(game.ServerScriptService.MobAccess)
 local EventState = require(game.ServerScriptService.EventState)
 local MobMotion = require(game.ServerScriptService.MobMotion)
 local Collection = require(game.ServerScriptService.Collection)
+local QuestAccess = require(game.ServerScriptService.QuestAccess)
 
 -- Filled in further down, once eventSpawners is in scope. Declared here because damage() is defined above
 -- that point and has to be able to see the name.
@@ -547,6 +548,8 @@ local function drop(model, config, killer, loot)
 	end
 	-- ลงสมุดสะสม บันทึกตามชนิด ไม่ใช่ตามตัว — สมุดตอบว่า "ฆ่าอะไรไปกี่ตัว"
 	Collection.RecordMob(killer, config.name or kind)
+	-- นับให้เควสล่าด้วย ถ้ามีคนรับงานล่ามอนชนิดนี้ไว้
+	if QuestAccess.RecordKill then QuestAccess.RecordKill(killer, config.name or kind) end
 end
 
 local function despawn(model)

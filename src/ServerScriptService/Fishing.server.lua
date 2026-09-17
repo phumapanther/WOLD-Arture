@@ -14,6 +14,7 @@ if ServerConfig.IsLobby then return end
 
 local FishingConfig = require(game.ReplicatedStorage.FishingConfig)
 local Collection = require(game.ServerScriptService.Collection)
+local QuestAccess = require(game.ServerScriptService.QuestAccess)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
@@ -398,6 +399,7 @@ local function startFishing(player)
 			if Inventory.AddItem(player, caught, 1, nil, meta) then
 				showCatch(player, caught, kg)
 				Collection.RecordFish(player, caught, kg)
+				if QuestAccess.RecordCatch then QuestAccess.RecordCatch(player, caught) end
 				Remotes.SocialNotify:FireClient(player, "info",
 					("ตกได้ %s %.1f กก.%s%s"):format(item and item.name or caught, kg,
 						tier.name ~= "" and (" (%s)"):format(tier.name) or "",

@@ -45,6 +45,8 @@ local ProfileTemplate = {
 	--
 	-- { Fish = { [itemId] = { n, best } }, Mobs = { [ชนิด] = จำนวน } } | nil = ยังไม่เคยเก็บอะไร
 	-- Collection.lua เป็นคนเขียนลงตรงนี้ และ saveAll เซฟไปพร้อมทุกอย่าง ไม่ต้องมี serializer ของตัวเอง
+	-- งานเควสที่รับไว้ ยังไม่ส่ง | nil = ไม่มีงานค้าง
+	Quests = nil,
 	Collection = nil,
 	-- แต้มกิจกรรม สะสมข้ามเซสชัน ใช้จัดอันดับในหินสื่อสาร
 	EventPoints = 0,
