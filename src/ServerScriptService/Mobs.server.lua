@@ -540,6 +540,11 @@ local function despawn(model)
 	Live[model] = nil
 	-- หยุดลูปขยับขา ไม่งั้นมันจะค้างอยู่จนกว่าโมเดลจะถูกลบ ซึ่งช้ากว่าตรงนี้หลายวินาที
 	MobMotion.Detach(model)
+	-- บอสตาย = ปลดธง ตัวถัดไปที่เกิดจากจุดนี้จะขึ้นเป็นบอสแทน
+	if state and state.bossOf then
+		state.bossOf:SetAttribute("HasBoss", nil)
+	end
+
 	if state and state.spawner then
 		local alive = state.spawner:GetAttribute("Alive") or 0
 		local left = math.max(0, alive - 1)
@@ -897,6 +902,20 @@ local function spawnOne(spawner, kind, config)
 		local y = groundAt(x, z)
 		if y then
 			local model = buildMonster(config)
+
+			-- ตัวนี้เป็นบอสประจำจุดไหม
+			--
+			-- เป็นบอสเมื่อสปอว์เนอร์นี้ยังไม่มีบอสอยู่ — ตัวแรกที่เกิดหลังบอสตายจะรับตำแหน่งแทน (ธงถูกล้าง
+			-- ใน despawn) จึงมีบอสหนึ่งตัวเสมอโดยไม่ต้องนับอะไรเพิ่ม
+			--
+			-- **หนึ่งตัวต่อสปอว์เนอร์ ไม่ใช่สุ่มทุกตัวที่เกิด** ถ้าสุ่มรายตัว ฝูงละ 8 จะมีบอสหลายตัวและ
+			-- จำนวนไม่คงที่ทุกรอบ สปอว์เนอร์ที่ไม่ต้องการบอสตั้ง NoBoss ได้
+			local isBoss = not spawner:GetAttribute("HasBoss") and not spawner:GetAttribute("NoBoss")
+			if isBoss then
+				-- ใหญ่ก่อนวัด ไม่งั้นจะยกตัวด้วยขนาดเดิมแล้วเข่าจมดิน
+				model:ScaleTo(SPAWNER_BOSS_SCALE)
+			end
+
 			-- **ยกขึ้นตามขนาดตัวจริง ไม่ใช่ +2 ตายตัว** — โกเลมกับแมงมุมสูงกว่านั้นมาก การวางที่ +2 ทำให้
 			-- ครึ่งล่างของตัวจมอยู่ในพื้น เอนจิ้นก็ดันมันออกมาด้วยแรงมหาศาล ตัวเลยพุ่งไถลไปไกล ซึ่งตรงกับ
 			-- อาการที่ผู้ใช้เจอ ("มอนเกิดแล้วบางตัวก็ไหลไปไกลมาก")
@@ -922,7 +941,7 @@ local function spawnOne(spawner, kind, config)
 					part.AssemblyAngularVelocity = Vector3.zero
 				end
 			end
-			local scale = nightScale()
+			local scale = nightScale() * (isBoss and SPAWNER_BOSS_POWER or 1)
 			local maxHp = config.hp * scale
 			-- buildMonster already sized the Humanoid from the unscaled config; correct it here so the bar
 			-- and the real pool agree.
@@ -931,11 +950,21 @@ local function spawnOne(spawner, kind, config)
 				humanoid.MaxHealth = maxHp
 				humanoid.Health = maxHp
 			end
+			if isBoss then
+				if humanoid then
+					humanoid.DisplayName = ("จ่าฝูง%s"):format(config.name or kind)
+				end
+				spawner:SetAttribute("HasBoss", true)
+			end
 			Live[model] = {
 				config = config,
 				hp = maxHp,
 				maxHp = maxHp,
 				damageScale = scale,
+				-- จำว่าตัวนี้คือบอสของสปอว์เนอร์ไหน เพื่อคืนตำแหน่งให้ตัวถัดไปตอนมันตาย
+				bossOf = isBoss and spawner or nil,
+				-- ดรอปแบบบอส: ออกสองเท่าและโอกาสของหายากสองเท่า เหมือนบอสของ TikTok
+				loot = isBoss and { amount = 2, chance = 2, boss = true } or nil,
 				-- Walk and swing. nil for a slime or anything else with no rig to drive.
 				tracks = loadMobTracks(model, config),
 				spawner = spawner,

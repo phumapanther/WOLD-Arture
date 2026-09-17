@@ -26,6 +26,10 @@ GatherConfig.HitInterval = 0.55 -- seconds between strikes while holding
 GatherConfig.Nodes = {
 	Tree = {
 		item = "WoodScrap", min = 2, max = 4,
+		-- บางทีก็ได้แอปเปิลแทนไม้ — ของแถมระหว่างทำอย่างอื่น ไม่ใช่เหตุผลที่จะไปตัดไม้
+		--
+		-- 20% ต่ำพอที่การตัดไม้ยังเป็นการหาไม้อยู่ แต่สูงพอให้คนที่ตัดไปสิบต้นได้กินสองลูก
+		alt = { item = "Apple", min = 1, max = 2, chance = 0.20 },
 		seconds = 2.5,
 		xp = 5,
 		-- An axe, and nothing else. This is what makes the three tools worth buying rather than ornaments,
