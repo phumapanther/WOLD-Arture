@@ -111,6 +111,52 @@ QuestConfig.Boards = {
 }
 
 --------------------------------------------------------------------------------
+-- รางวัล
+--------------------------------------------------------------------------------
+
+-- `gold` ในตารางข้างบนคือ **ค่าความยาก** ไม่ใช่รางวัลจริง
+--
+-- รางวัลจริงคำนวณจากมัน ไม่ได้เขียนไว้ทีละงาน เพราะผู้ใช้กำหนดมาเป็นช่วง ("ซิลเวอร์ 100-500 ตามความยาก",
+-- "เงิน 1000+") ซึ่งเป็นกฎเดียวที่ใช้กับทุกงาน — เขียนกฎไว้ที่เดียวแล้วงานใหม่ได้รางวัลถูกต้องทันที
+-- โดยไม่ต้องไปคิดเลขเอง และไม่มีทางที่งานง่ายจะให้มากกว่างานยากเพราะพิมพ์ผิด
+--
+-- ช่วงความยากอ่านจากตารางจริง ไม่ได้ฝังตัวเลขไว้ — เพิ่มงานที่ยากกว่าเดิม เพดานก็ขยับตาม
+local DIFFICULTY_MIN, DIFFICULTY_MAX
+
+local function difficultyRange()
+	if DIFFICULTY_MIN then return DIFFICULTY_MIN, DIFFICULTY_MAX end
+	local lo, hi = math.huge, -math.huge
+	for _, board in ipairs(QuestConfig.Boards) do
+		for _, spec in ipairs(board.pool) do
+			local d = spec.gold or 0
+			if d < lo then lo = d end
+			if d > hi then hi = d end
+		end
+	end
+	DIFFICULTY_MIN, DIFFICULTY_MAX = lo, math.max(hi, lo + 1)
+	return DIFFICULTY_MIN, DIFFICULTY_MAX
+end
+
+-- ซิลเวอร์ที่ได้: 100 ที่งานง่ายสุด ถึง 500 ที่งานยากสุด
+QuestConfig.SilverMin = 100
+QuestConfig.SilverMax = 500
+
+-- เงินในเกม: เริ่มที่ 1000 ตามที่ผู้ใช้กำหนด แล้วไต่ขึ้นตามความยาก
+QuestConfig.GoldMin = 1000
+QuestConfig.GoldMax = 3000
+
+-- รางวัลของงานหนึ่ง คืน ซิลเวอร์, เงิน
+--
+-- ปัดเป็นเลขกลมเพื่อให้อ่านบนกระดาษแล้วจำได้ ไม่ใช่ 1147 เหรียญ
+function QuestConfig.RewardFor(quest)
+	local lo, hi = difficultyRange()
+	local t = math.clamp(((quest.gold or lo) - lo) / (hi - lo), 0, 1)
+	local silver = math.floor((QuestConfig.SilverMin + t * (QuestConfig.SilverMax - QuestConfig.SilverMin)) / 10 + 0.5) * 10
+	local gold = math.floor((QuestConfig.GoldMin + t * (QuestConfig.GoldMax - QuestConfig.GoldMin)) / 50 + 0.5) * 50
+	return silver, gold
+end
+
+--------------------------------------------------------------------------------
 -- คำอธิบายงาน
 --------------------------------------------------------------------------------
 

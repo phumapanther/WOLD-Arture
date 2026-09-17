@@ -186,9 +186,20 @@ local function turnIn(player, boardId, index)
 			("ยังไม่ครบ (%d/%d)"):format(got, quest.need))
 	end
 
-	-- งานเก็บของ: เอาของออกจากกระเป๋าจริงๆ
+	local silver, gold = QuestConfig.RewardFor(quest)
+
+	-- **เช็คที่ว่างก่อนแตะอะไรทั้งนั้น**
 	--
-	-- **ต้องเอาออกก่อนจ่ายรางวัล** ถ้าจ่ายก่อนแล้วการเอาของออกล้มเหลว จะได้ทั้งเงินและของ
+	-- ลำดับสำคัญมาก: ถ้าเอาของออกจากกระเป๋าก่อนแล้วค่อยพบว่ารับซิลเวอร์ไม่ได้ ผู้เล่นจะเสียของที่ส่งไป
+	-- โดยไม่ได้อะไรเลย — งานเก็บของมักทำให้มีช่องว่างพอดีหลังส่ง จึงเป็นเคสที่เกิดขึ้นจริงได้ง่าย
+	--
+	-- HasRoomFor ถามโดยไม่เปลี่ยนอะไร จึงถามได้ก่อนตัดสินใจ
+	if not Inventory.HasRoomFor(player, "Silver", silver) then
+		return Remotes.SocialNotify:FireClient(player, "error",
+			("กระเป๋าเต็ม รับเหรียญซิลเวอร์ %d ไม่ได้ — ว่างช่องก่อนแล้วมาส่งใหม่"):format(silver))
+	end
+
+	-- งานเก็บของ: เอาของออกจากกระเป๋าจริงๆ
 	if quest.kind == "gather" then
 		local left = quest.need
 		local state = Inventory.Get(player)
@@ -208,12 +219,13 @@ local function turnIn(player, boardId, index)
 		end
 	end
 
+	Inventory.AddItem(player, "Silver", silver)
 	table.remove(list, index)
-	if quest.gold and quest.gold > 0 then Inventory.AddGold(player, quest.gold) end
+	if gold > 0 then Inventory.AddGold(player, gold) end
 	if quest.xp and quest.xp > 0 then Progression.AwardExp(player, quest.xp) end
 
 	Remotes.SocialNotify:FireClient(player, "info",
-		("ส่งงานสำเร็จ +%d เหรียญ +%d EXP"):format(quest.gold or 0, quest.xp or 0))
+		("ส่งงานสำเร็จ +%d ซิลเวอร์ +%d เหรียญ +%d EXP"):format(silver, gold, quest.xp or 0))
 	Remotes.QuestUpdate:FireClient(player, snapshot(player, boardId))
 end
 
