@@ -130,6 +130,8 @@ local EVENTS = {
 	-- สมุดสะสมและตารางอันดับในหินสื่อสาร ทั้งสองอ่านอย่างเดียว ไคลเอนต์ขอแล้วเซิร์ฟเวอร์ส่งภาพทั้งชุด
 	-- บอร์ดเควส: เซิร์ฟเวอร์ส่งภาพทั้งบอร์ด ไคลเอนต์ส่งกลับแค่ว่ากดอะไรกับงานไหน
 	"QuestUpdate", "RequestQuestAction",
+	-- แคลน: เซิร์ฟเวอร์ส่งภาพทั้งชุด (รายการแคลน + แคลนของเรา) ไคลเอนต์ส่งกลับแค่ว่ากดอะไร
+	"ClanUpdate", "RequestClanAction",
 	"RequestCollection", "CollectionUpdate",
 	"RequestLeaderboards", "LeaderboardUpdate",
 	"StorageChestOpen", "StorageChestUpdate",

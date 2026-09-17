@@ -30,6 +30,8 @@ local WORKERS = {
 	-- V0.5: the banker who also keeps a warehouse, and the man who keeps everyone's vehicles.
 	Madam_Aurelia = { kind = "bank", name = "มาดามออเรเลีย" },
 	Baron_Vane = { kind = "vehicle", name = "บารอนเวน" },
+	-- สมาคมแคลน: รายชื่อแคลน อันดับ และแคลนของตัวเอง
+	Guild_Elina = { kind = "guild", name = "เอลิน่า" },
 }
 
 --------------------------------------------------------------------------------
