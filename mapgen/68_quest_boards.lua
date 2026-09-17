@@ -29,10 +29,35 @@ local BOARDS = {
 -- ตัวมันเองไม่ได้ติดแท็ก จึงไม่มีปุ่ม E และไม่นับเป็นบอร์ดใช้งาน
 local PROTOTYPE_NAME = "Guild_QuestBoard"
 
+-- บอร์ดรวมที่ผู้ใช้วางไว้เอง
+local MAIN_BOARD_NAME = "MainGuild_QuestBoard"
+local MAIN_BOARD_ID = "MainGuild"
+
 local function prototype()
 	local m = workspace:FindFirstChild(PROTOTYPE_NAME)
 	if m and m:IsA("Model") then return m end
+	-- ผู้ใช้เปลี่ยนชื่อต้นแบบเป็นบอร์ดรวมแล้ว ใช้ตัวนั้นเป็นต้นแบบต่อได้ รูปทรงเหมือนกัน
+	m = workspace:FindFirstChild(MAIN_BOARD_NAME)
+	if m and m:IsA("Model") then return m end
 	return nil
+end
+
+-- บอร์ดรวมของสมาคม: รวมงานจากทุกเมืองมาไว้ที่เดียว
+--
+-- **ไม่ได้สร้างใหม่ ใช้โมเดลที่ผู้ใช้วางไว้เอง** แค่ติดแท็กกับ BoardId ให้ — ตำแหน่งเป็นของผู้ใช้
+local function tagMainBoard()
+	local m = workspace:FindFirstChild(MAIN_BOARD_NAME)
+	if not m or not m:IsA("Model") then
+		warn("[Quests] ไม่เจอ " .. MAIN_BOARD_NAME .. " — ข้ามบอร์ดรวม")
+		return false
+	end
+	m:SetAttribute("BoardId", MAIN_BOARD_ID)
+	if not CollectionService:HasTag(m, BOARD_TAG) then
+		CollectionService:AddTag(m, BOARD_TAG)
+	end
+	local p = m:GetPivot().Position
+	print(("[Quests] บอร์ดรวม %s ที่ (%.0f, %.0f, %.0f)"):format(MAIN_BOARD_NAME, p.X, p.Y, p.Z))
+	return true
 end
 
 -- หาพื้นจริงตรงจุดนั้น ไม่ใช่ใช้ y ที่ให้มา
@@ -147,5 +172,7 @@ for _, spec in ipairs(BOARDS) do
 		end
 	end
 end
+
+tagMainBoard()
 
 print(("[Quests] เสร็จ — สร้าง %d · มีอยู่แล้ว %d · ล้มเหลว %d"):format(made, skipped, failed))

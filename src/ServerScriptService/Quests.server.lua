@@ -118,9 +118,23 @@ local function sameQuest(a, b)
 	return a.kind == b.kind and a.item == b.item and a.mob == b.mob and a.need == b.need
 end
 
+-- งานทั้งหมดของทุกบอร์ดในวันนี้ พร้อมชื่อเมืองติดมาด้วย
+--
+-- เรียกใช้ questsOf ของแต่ละบอร์ดตามปกติ จึงได้งานชุดเดียวกับที่คนยืนอยู่หน้าบอร์ดนั้นเห็น
+local function allQuests()
+	local everything = {}
+	for _, board in ipairs(QuestConfig.Boards) do
+		for _, q in ipairs(questsOf(board.id)) do
+			everything[#everything + 1] = q
+		end
+	end
+	return everything
+end
+
 local function snapshot(player, boardId)
-	local board = boardById(boardId)
-	if not board then return nil end
+	local isMain = boardId == QuestConfig.MainBoardId
+	local board = not isMain and boardById(boardId) or nil
+	if not board and not isMain then return nil end
 
 	local function decorate(q)
 		local item = q.item and ItemCatalog.Get(q.item)
@@ -136,6 +150,13 @@ local function snapshot(player, boardId)
 			title = (q.kind == "hunt") and q.mob or (item and item.name or q.item),
 			text = QuestConfig.Describe(q, item and item.name),
 			got = progressOf(player, q),
+			-- ชื่อเมืองที่งานนี้มาจาก บอร์ดรวมต้องบอกได้ว่าต้องไปทำที่ไหน
+			from = (function()
+				for _, b in ipairs(QuestConfig.Boards) do
+					if b.id == q.board then return b.name end
+				end
+				return nil
+			end)(),
 		}
 	end
 
@@ -150,7 +171,7 @@ local function snapshot(player, boardId)
 	-- มันไม่ใช่ใบประกาศที่รับได้อีก มันคืองานที่กำลังทำอยู่ — การโชว์ทั้งสองที่ทำให้เห็นงานเดียวกันสองใบ
 	-- ซึ่งเป็นอาการที่ผู้ใช้เจอ
 	local offered = {}
-	for _, q in ipairs(questsOf(boardId)) do
+	for _, q in ipairs(isMain and allQuests() or questsOf(boardId)) do
 		local alreadyHeld = false
 		for _, mine in ipairs(held) do
 			if sameQuest(mine, q) then alreadyHeld = true break end
@@ -160,8 +181,9 @@ local function snapshot(player, boardId)
 
 	return {
 		boardId = boardId,
-		boardName = board.name,
-		blurb = board.blurb,
+		boardName = isMain and QuestConfig.MainBoardName or board.name,
+		blurb = isMain and QuestConfig.MainBoardBlurb or board.blurb,
+		isMain = isMain,
 		notice = QuestConfig.NoticeImage,
 		offered = offered,
 		active = active,
@@ -181,15 +203,24 @@ local function accept(player, boardId, index)
 			("รับได้สูงสุด %d งาน"):format(QuestConfig.MaxActive))
 	end
 
-	local quests = questsOf(boardId)
-	local quest = quests[index]
-	if not quest then return end
-
-	for _, held in ipairs(list) do
-		if sameQuest(held, quest) then
-			return Remotes.SocialNotify:FireClient(player, "warn", "รับงานนี้ไปแล้ว")
+	-- **สร้างรายการเดียวกับที่ไคลเอนต์เห็น ไม่ใช่รายการดิบของบอร์ด**
+	--
+	-- หน้าจอโชว์เฉพาะงานที่ยังไม่ได้รับ (กรองงานที่ถืออยู่ออกไปแล้ว) เลขที่ส่งกลับมาจึงเป็นเลขของรายการ
+	-- ที่กรองแล้ว ถ้าเอาไปเปิดรายการดิบตรงๆ คนที่ถืองานอยู่หนึ่งใบจะกดใบแรกแล้วได้ใบที่สองแทน
+	--
+	-- บอร์ดรวมยิ่งชัด: เลขของมันมาจากงานทุกเมืองต่อกัน ซึ่งไม่ตรงกับบอร์ดไหนเลย
+	local source = (boardId == QuestConfig.MainBoardId) and allQuests() or questsOf(boardId)
+	local offered = {}
+	for _, q in ipairs(source) do
+		local held = false
+		for _, mine in ipairs(list) do
+			if sameQuest(mine, q) then held = true break end
 		end
+		if not held then offered[#offered + 1] = q end
 	end
+
+	local quest = offered[index]
+	if not quest then return end
 
 	-- คัดลอก ไม่ได้อ้างถึงตัวเดียวกับบอร์ด: บอร์ดสุ่มใหม่ทุกครึ่งชั่วโมง งานที่รับไปแล้วต้องไม่หายไปด้วย
 	list[#list + 1] = {

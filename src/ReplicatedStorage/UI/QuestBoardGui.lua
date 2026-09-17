@@ -162,7 +162,7 @@ end
 --------------------------------------------------------------------------------
 
 -- `accepted` = งานนี้รับไปแล้ว (ปุ่มเปลี่ยนเป็น "ส่งงาน")
-local function notice(self, parent, order, quest, noticeImage, accepted, index)
+local function notice(self, parent, order, quest, noticeImage, accepted, index, showFrom)
 	local card = Instance.new("Frame")
 	card.LayoutOrder = order
 	card.BackgroundColor3 = PAPER
@@ -195,16 +195,25 @@ local function notice(self, parent, order, quest, noticeImage, accepted, index)
 	corner(pin, UDim.new(1, 0))
 
 	local head = label(card, quest.title or "", 13, INK)
-	head.Position = UDim2.new(0, 6, 0, 18)
-	head.Size = UDim2.new(1, -12, 0, 20)
+	head.Position = UDim2.new(0, 6, 0, 16)
+	head.Size = UDim2.new(1, -12, 0, 16)
 	head.TextTruncate = Enum.TextTruncate.AtEnd
 	head.ZIndex = 2
+
+	-- บอร์ดรวมบอกด้วยว่างานนี้ของเมืองไหน ไม่งั้นรับไปแล้วไม่รู้ว่าต้องไปส่งที่ไหน
+	if showFrom and quest.from then
+		local town = label(card, quest.from, 10, TEXT_MUTED)
+		town.Position = UDim2.new(0, 6, 0, 32)
+		town.Size = UDim2.new(1, -12, 0, 12)
+		town.ZIndex = 2
+	end
 
 	-- รูปมอนหรือไอเทม
 	local art = Instance.new("ImageLabel")
 	art.AnchorPoint = Vector2.new(0.5, 0)
-	art.Position = UDim2.new(0.5, 0, 0, 40)
-	art.Size = UDim2.fromOffset(96, 96)
+	-- เลื่อนลงให้พ้นบรรทัดชื่อเมือง และย่อให้จบก่อนตัวนับ — วัดแล้วว่าไม่ทับกัน
+	art.Position = UDim2.new(0.5, 0, 0, 46)
+	art.Size = UDim2.fromOffset(90, 90)
 	art.BackgroundTransparency = 1
 	art.Image = quest.icon or ""
 	art.ScaleType = Enum.ScaleType.Fit
@@ -214,7 +223,7 @@ local function notice(self, parent, order, quest, noticeImage, accepted, index)
 	-- ไม่มีรูปก็ยังอ่านออก: ชื่อทำหน้าที่แทน เหมือนที่แคตตาล็อกเขียนไว้
 	if not quest.icon or quest.icon == "" then
 		local fallback = label(card, quest.text or "", 12, TEXT_MUTED)
-		fallback.Position = UDim2.new(0, 8, 0, 70)
+		fallback.Position = UDim2.new(0, 8, 0, 76)
 		fallback.Size = UDim2.new(1, -16, 0, 40)
 		fallback.TextWrapped = true
 		fallback.ZIndex = 2
@@ -325,13 +334,14 @@ function QuestBoardGui:Render(data)
 	-- งานที่รับไปแล้วขึ้นก่อน: มันคือสิ่งที่ผู้เล่นมาที่บอร์ดเพื่อจัดการ
 	for i, quest in ipairs(data.active or {}) do
 		order += 1
-		notice(self, self.board, order, quest, data.notice, true, i)
+		-- งานที่รับแล้วบอกเมืองเสมอ ไม่ว่าจะยืนอยู่บอร์ดไหน — ต้องรู้ว่าไปทำที่ไหน
+		notice(self, self.board, order, quest, data.notice, true, i, true)
 	end
 
 	-- งานที่ยังไม่ได้รับ
 	for i, quest in ipairs(data.offered or {}) do
 		order += 1
-		notice(self, self.board, order, quest, data.notice, false, i)
+		notice(self, self.board, order, quest, data.notice, false, i, data.isMain)
 	end
 
 	if order == 0 then
