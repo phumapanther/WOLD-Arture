@@ -119,15 +119,27 @@ local function clanDetail(clan, viewer)
 		myRole = viewer and ClanStore.RoleOf(clan, viewer.UserId) or nil,
 		vaultSlots = ClanConfig.VaultSlots,
 		-- ของในคลัง ส่งชื่อกับไอคอนมาด้วยเลย ไคลเอนต์จะได้ไม่ต้องเปิดแคตตาล็อกเอง
+		vaultCols = ClanConfig.VaultCols,
+		vaultRows = ClanConfig.VaultRows,
+		-- ของในคลัง ส่งครบทุกช่อง ช่องว่างเป็น false
+		--
+		-- ส่ง false แทน nil เพราะ nil ในตารางทำให้ช่องหายไปตอนข้ามสายไป ไคลเอนต์จะไม่รู้ว่าช่องไหนว่าง
+		-- ช่องไหนไม่มีอยู่ — ตารางจะกลายเป็นรายการที่สั้นลงเรื่อยๆ แทนที่จะเป็นตารางคงที่
 		vault = (function()
 			local rows = {}
-			for i, entry in ipairs(clan.vault or {}) do
-				local item = ItemCatalog.Get(entry.id)
-				rows[i] = {
-					index = i, id = entry.id, count = entry.count or 1,
-					name = ItemCatalog.DisplayName(entry.id, entry.meta) or entry.id,
-					icon = item and item.icon or "",
-				}
+			local stored = clan.vault or {}
+			for i = 1, ClanConfig.VaultSlots do
+				local entry = stored[i]
+				if entry then
+					local item = ItemCatalog.Get(entry.id)
+					rows[i] = {
+						index = i, id = entry.id, count = entry.count or 1,
+						name = ItemCatalog.DisplayName(entry.id, entry.meta) or entry.id,
+						icon = item and item.icon or "",
+					}
+				else
+					rows[i] = false
+				end
 			end
 			return rows
 		end)(),
@@ -372,8 +384,13 @@ local function vaultPut(player, bagIndex, count)
 	local result = ClanStore.Update(clan.id, function(c)
 		if not c then return nil end
 		c.vault = c.vault or {}
-		if #c.vault >= ClanConfig.VaultSlots then full = true return nil end
-		table.insert(c.vault, stored)
+		-- **หาช่องว่างแรก ไม่ใช่ต่อท้าย** คลังเป็นตาราง 9x9 ที่ของอยู่กับที่ ไม่ใช่รายการที่เลื่อนได้
+		local free
+		for i = 1, ClanConfig.VaultSlots do
+			if c.vault[i] == nil then free = i break end
+		end
+		if not free then full = true return nil end
+		c.vault[free] = stored
 		return c
 	end)
 	if full then
@@ -397,7 +414,9 @@ local function vaultTake(player, index)
 	local result = ClanStore.Update(clan.id, function(c)
 		if not c or not c.vault or not c.vault[index] then return nil end
 		taken = c.vault[index]
-		table.remove(c.vault, index)
+		-- **เคลียร์ช่อง ไม่ใช่ table.remove** การลบออกจะเลื่อนของทุกชิ้นที่อยู่หลังมันขึ้นมาหนึ่งช่อง
+		-- ของในตารางจะกระโดดที่ทุกครั้งที่มีคนหยิบ ซึ่งเป็นสิ่งที่คลังแบบตารางต้องไม่ทำ
+		c.vault[index] = nil
 		return c
 	end)
 	if not result or not taken then return end
@@ -405,7 +424,8 @@ local function vaultTake(player, index)
 	if not Inventory.AddItem(player, taken.id, taken.count, taken.durability, taken.meta) then
 		-- ใส่กลับคลัง ไม่งั้นของหายไปเฉยๆ
 		ClanStore.Update(clan.id, function(c)
-			if c then table.insert(c.vault, taken) end
+			-- คืนที่ช่องเดิม ไม่ใช่ต่อท้าย
+			if c then c.vault[index] = taken end
 			return c
 		end)
 		return Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม")

@@ -45,8 +45,13 @@ ClanConfig.BlurbMaxLength = 200
 -- ซึ่งทำลายจุดประสงค์ทั้งหมดของระบบ
 ClanConfig.CreateCostSilver = 500
 
--- คลังของแคลน
-ClanConfig.VaultSlots = 40
+-- คลังของแคลน: ตาราง 9x9 ตามที่ผู้ใช้กำหนด
+--
+-- เขียนเป็นแถวxคอลัมน์ ไม่ใช่ 81 ตรงๆ เพราะหน้าจอวาดเป็นตารางจริง — เปลี่ยนตรงนี้แล้วทั้งจำนวนช่อง
+-- และรูปตารางขยับตามพร้อมกัน ไม่มีทางที่สองค่าจะไม่ตรงกัน
+ClanConfig.VaultCols = 9
+ClanConfig.VaultRows = 9
+ClanConfig.VaultSlots = ClanConfig.VaultCols * ClanConfig.VaultRows
 
 -- เรทแปลงซิลเวอร์ในคลังเป็นเงินในเกมตอนแจกจ่าย ผู้ใช้กำหนด 1 ต่อ 1
 ClanConfig.SilverToGold = 1
