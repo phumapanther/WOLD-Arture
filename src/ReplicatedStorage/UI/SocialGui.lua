@@ -11,6 +11,7 @@ local AvatarThumbnails = require(script.Parent.AvatarThumbnails)
 local Responsive = require(script.Parent.Responsive)
 local ClassConfig = require(script.Parent.Parent.ClassConfig)
 local UiSound = require(script.Parent.UiSound)
+local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
 
 local SocialGui = {}
 SocialGui.__index = SocialGui
@@ -265,6 +266,8 @@ function SocialGui.new()
 	self:buildFriends()
 	self:buildBank()
 	self:buildMarket()
+	self:buildCollection()
+	self:buildRanking()
 	self:buildProfile()
 	self:buildSettings()
 	self:buildNotice()
@@ -1128,6 +1131,249 @@ end
 -- Read-only, like the bank's two balances: a list and a line saying when it changes. Nothing here is
 -- actionable on purpose -- selling still happens at the counter, and the point of the screen is knowing
 -- whether the walk is worth making before you take it.
+--------------------------------------------------------------------------------
+-- สมุดสะสม
+--------------------------------------------------------------------------------
+
+-- สองแท็บในหน้าเดียว: ปลา กับ มอนสเตอร์
+--
+-- ใช้แท็บแทนสองหน้าจอแยก เพราะทั้งคู่ตอบคำถามเดียวกัน ("เราสะสมอะไรไปแล้วบ้าง") และสลับไปมาบ่อย
+-- การต้องกดย้อนกลับไปหน้าแรกเพื่อดูอีกครึ่งจะน่ารำคาญเร็วมาก
+function SocialGui:buildCollection()
+	local page = Instance.new("Frame")
+	page.Name = "collection"
+	page.Size = UDim2.fromScale(1, 1)
+	page.BackgroundTransparency = 1
+	page.Visible = false
+	page.Parent = self.body
+	self.screens.collection = page
+
+	local summary = label(page, "", 12, TEXT_MUTED, Enum.TextXAlignment.Center)
+	summary.Size = UDim2.new(1, 0, 0, 18)
+	self.collectionSummary = summary
+
+	-- แถบแท็บ
+	local tabs = Instance.new("Frame")
+	tabs.Position = UDim2.new(0, 0, 0, 20)
+	tabs.Size = UDim2.new(1, 0, 0, 26)
+	tabs.BackgroundTransparency = 1
+	tabs.Parent = page
+
+	self.collectionTab = "fish"
+	self.collectionTabs = {}
+	for i, spec in ipairs({ { id = "fish", name = "ปลา" }, { id = "mobs", name = "มอนสเตอร์" } }) do
+		local b = Instance.new("TextButton")
+		b.Position = UDim2.new((i - 1) / 2, 3, 0, 0)
+		b.Size = UDim2.new(1 / 2, -6, 1, 0)
+		b.BackgroundColor3 = STONE_DEEP
+		b.BackgroundTransparency = 0.3
+		b.BorderSizePixel = 0
+		b.Font = Enum.Font.GothamBold
+		b.TextSize = 12
+		b.TextColor3 = TEXT_LIGHT
+		b.Text = spec.name
+		b.Parent = tabs
+		corner(b, UDim.new(0, 6))
+		self.collectionTabs[spec.id] = b
+		b.Activated:Connect(function()
+			self.collectionTab = spec.id
+			self:RenderCollection(self.collectionData)
+		end)
+	end
+
+	local list = scrollList(page, 5)
+	list.Position = UDim2.new(0, 0, 0, 50)
+	list.Size = UDim2.new(1, 0, 1, -50)
+	self.collectionList = list
+end
+
+function SocialGui:RenderCollection(data)
+	self.collectionData = data
+	local list = self.collectionList
+	if not list then return end
+	for _, child in ipairs(list:GetChildren()) do
+		if not child:IsA("UIListLayout") then child:Destroy() end
+	end
+
+	-- แท็บที่เลือกอยู่สว่างกว่า
+	for id, button in pairs(self.collectionTabs) do
+		button.BackgroundTransparency = (id == self.collectionTab) and 0 or 0.45
+		button.TextColor3 = (id == self.collectionTab) and RUNE or TEXT_MUTED
+	end
+
+	if not data then
+		local wait = label(list, "กำลังเปิดสมุด...", 13, TEXT_MUTED, Enum.TextXAlignment.Center)
+		wait.Size = UDim2.new(1, 0, 0, 60)
+		self.collectionSummary.Text = ""
+		return
+	end
+
+	local showingFish = self.collectionTab == "fish"
+	local rows = showingFish and data.fish or data.mobs
+	self.collectionSummary.Text = showingFish
+		and ("ปลา %d ชนิด · รวม %d ตัว"):format(data.fishKinds or 0, data.fishTotal or 0)
+		or ("มอน %d ชนิด · รวม %d ตัว"):format(data.mobKinds or 0, data.mobTotal or 0)
+
+	if not rows or #rows == 0 then
+		local empty = label(list, showingFish and "ยังไม่เคยตกปลาได้เลย" or "ยังไม่เคยฆ่ามอนเลย",
+			13, TEXT_MUTED, Enum.TextXAlignment.Center)
+		empty.Size = UDim2.new(1, 0, 0, 60)
+		return
+	end
+
+	for order, entry in ipairs(rows) do
+		local row = Instance.new("Frame")
+		row.LayoutOrder = order
+		row.Size = UDim2.new(1, -6, 0, 36)
+		row.BackgroundColor3 = STONE_DEEP
+		row.BackgroundTransparency = 0.35
+		row.BorderSizePixel = 0
+		row.Parent = list
+		corner(row, UDim.new(0, 8))
+
+		-- ชื่อไทยจากแคตตาล็อกถ้าเป็นปลา ส่วนมอนบันทึกชื่อไทยไว้ตั้งแต่ตอนฆ่าแล้ว
+		local title = entry.id
+		if showingFish then
+			local item = ItemCatalog.Get(entry.id)
+			title = item and item.name or entry.id
+		end
+
+		local name = label(row, title, 13, TEXT_LIGHT)
+		name.Position = UDim2.new(0, 10, 0, 0)
+		name.Size = UDim2.new(1, -120, 1, 0)
+
+		-- ปลาโชว์น้ำหนักตัวที่หนักที่สุดด้วย ซึ่งเป็นสิ่งที่ผู้ใช้ขอ
+		local right = showingFish and entry.best and entry.best > 0
+			and ("x%d · หนักสุด %.1f กก."):format(entry.n, entry.best)
+			or ("x%d"):format(entry.n)
+		local count = label(row, right, 12, RUNE, Enum.TextXAlignment.Right)
+		count.AnchorPoint = Vector2.new(1, 0)
+		count.Position = UDim2.new(1, -10, 0, 0)
+		count.Size = UDim2.new(0, 150, 1, 0)
+	end
+end
+
+--------------------------------------------------------------------------------
+-- ตารางอันดับ
+--------------------------------------------------------------------------------
+
+function SocialGui:buildRanking()
+	local page = Instance.new("Frame")
+	page.Name = "ranking"
+	page.Size = UDim2.fromScale(1, 1)
+	page.BackgroundTransparency = 1
+	page.Visible = false
+	page.Parent = self.body
+	self.screens.ranking = page
+
+	local tabs = Instance.new("Frame")
+	tabs.Size = UDim2.new(1, 0, 0, 26)
+	tabs.BackgroundTransparency = 1
+	tabs.Parent = page
+
+	self.rankingTab = "levels"
+	self.rankingTabs = {}
+	local specs = {
+		{ id = "levels", name = "เลเวล" },
+		{ id = "gold", name = "คนรวย" },
+		{ id = "points", name = "แต้ม" },
+		{ id = "channels", name = "ช่อง" },
+	}
+	for i, spec in ipairs(specs) do
+		local b = Instance.new("TextButton")
+		-- หักขอบซ้ายขวาและช่องไฟ แล้วหารด้วยจำนวนปุ่ม — ปุ่มสุดท้ายจึงไม่ล้นขอบ
+		local shrink = (0 + 4 * (#specs - 1)) / #specs
+		b.Position = UDim2.new((i - 1) / #specs, (i - 1) * (4 - shrink), 0, 0)
+		b.Size = UDim2.new(1 / #specs, -shrink, 1, 0)
+		b.BackgroundColor3 = STONE_DEEP
+		b.BackgroundTransparency = 0.3
+		b.BorderSizePixel = 0
+		b.Font = Enum.Font.GothamBold
+		b.TextSize = 11
+		b.TextColor3 = TEXT_LIGHT
+		b.Text = spec.name
+		b.Parent = tabs
+		corner(b, UDim.new(0, 6))
+		self.rankingTabs[spec.id] = b
+		b.Activated:Connect(function()
+			self.rankingTab = spec.id
+			self:RenderRanking(self.rankingData)
+		end)
+	end
+
+	local list = scrollList(page, 5)
+	list.Position = UDim2.new(0, 0, 0, 30)
+	list.Size = UDim2.new(1, 0, 1, -30)
+	self.rankingList = list
+end
+
+function SocialGui:RenderRanking(data)
+	self.rankingData = data
+	local list = self.rankingList
+	if not list then return end
+	for _, child in ipairs(list:GetChildren()) do
+		if not child:IsA("UIListLayout") then child:Destroy() end
+	end
+
+	for id, button in pairs(self.rankingTabs) do
+		button.BackgroundTransparency = (id == self.rankingTab) and 0 or 0.45
+		button.TextColor3 = (id == self.rankingTab) and RUNE or TEXT_MUTED
+	end
+
+	if not data then
+		local wait = label(list, "กำลังนับคะแนน...", 13, TEXT_MUTED, Enum.TextXAlignment.Center)
+		wait.Size = UDim2.new(1, 0, 0, 60)
+		return
+	end
+
+	local tab = self.rankingTab
+	local rows = data[tab]
+	if not rows or #rows == 0 then
+		local empty = label(list, "ยังไม่มีข้อมูล", 13, TEXT_MUTED, Enum.TextXAlignment.Center)
+		empty.Size = UDim2.new(1, 0, 0, 60)
+		return
+	end
+
+	local SUFFIX = { levels = "", gold = " เหรียญ", points = " แต้ม", channels = " คน" }
+
+	for order, entry in ipairs(rows) do
+		local row = Instance.new("Frame")
+		row.LayoutOrder = order
+		row.Size = UDim2.new(1, -6, 0, 34)
+		row.BackgroundColor3 = STONE_DEEP
+		row.BackgroundTransparency = 0.35
+		row.BorderSizePixel = 0
+		row.Parent = list
+		corner(row, UDim.new(0, 8))
+
+		-- อันดับ 1-3 เป็นสีทอง เพื่อให้เห็นหัวตารางได้จากการกวาดตา
+		local rankColour = order <= 3 and RUNE or TEXT_MUTED
+		local rank = label(row, ("%d"):format(order), 13, rankColour, Enum.TextXAlignment.Center)
+		rank.Position = UDim2.new(0, 4, 0, 0)
+		rank.Size = UDim2.new(0, 28, 1, 0)
+
+		local who, value
+		if tab == "channels" then
+			who = ("ช่อง %s"):format(tostring(entry.channel))
+			if entry.channel == data.myChannel then who = who .. " (ช่องคุณ)" end
+			value = ("%d%s"):format(entry.count, SUFFIX[tab])
+		else
+			who = entry.name
+			value = ("%s%s"):format(tostring(entry.value), SUFFIX[tab])
+		end
+
+		local name = label(row, who, 13, TEXT_LIGHT)
+		name.Position = UDim2.new(0, 36, 0, 0)
+		name.Size = UDim2.new(1, -150, 1, 0)
+		name.TextTruncate = Enum.TextTruncate.AtEnd
+
+		local amount = label(row, value, 12, RUNE, Enum.TextXAlignment.Right)
+		amount.AnchorPoint = Vector2.new(1, 0)
+		amount.Position = UDim2.new(1, -10, 0, 0)
+		amount.Size = UDim2.new(0, 110, 1, 0)
+	end
+end
+
 function SocialGui:buildMarket()
 	local page = Instance.new("Frame")
 	page.Name = "market"

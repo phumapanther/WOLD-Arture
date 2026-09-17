@@ -152,4 +152,104 @@ function FishingConfig.RollKg(itemId)
 	return math.floor(math.min(kg, FishingConfig.MaxKg) * 10 + 0.5) / 10
 end
 
+--------------------------------------------------------------------------------
+-- เขตตกปลา — ปลาหายากประจำถิ่น
+--------------------------------------------------------------------------------
+
+-- แต่ละหมู่บ้านมีปลาหายากของตัวเอง ตกที่อื่นไม่ได้
+--
+-- **ผูกกับหมู่บ้านที่มีอยู่แล้ว ไม่ได้วาดเขตขึ้นใหม่** แมพมีหมู่บ้านหกแห่งกระจายอยู่คนละมุมพร้อม `kind`
+-- ของตัวเอง (ซอลต์เมียร์เป็นหมู่บ้านประมงอยู่แล้ว) การใช้จุดเหล่านั้นทำให้เขตตกปลาตรงกับสิ่งที่ผู้เล่น
+-- เห็นบนแผนที่อยู่แล้ว แทนที่จะเป็นเส้นล่องหนที่ต้องจำเพิ่ม
+--
+-- `radius` กว้างพอให้ครอบชายฝั่งรอบหมู่บ้าน — ตกน้ำแถวนั้นก็ติดเขตแล้ว ไม่ต้องยืนกลางหมู่บ้าน
+--
+-- นอกเขตทั้งหมด = ตกได้แต่ปลาธรรมดาตาม `Loot` เหมือนเดิม ซึ่งเป็นเหตุผลที่ต้องเดินทาง
+FishingConfig.Zones = {
+	-- **พิกัดวัดจากน้ำจริงในแมพ ไม่ใช่จากตำแหน่งหมู่บ้าน**
+	--
+	-- ครั้งแรกผมผูกเขตไว้กับหมู่บ้านทั้งหกเพราะมันกระจายสวยและมีธีมอยู่แล้ว แล้ววัดพบว่าสี่ในหกแห่ง
+	-- **แทบไม่มีน้ำเลยในรัศมี 900** (เอลเดอร์วูด สโตนมาร์ก แอสตราเวล ได้ 0/30 จุด) ปลาประจำถิ่นของ
+	-- สามเขตนั้นจะไม่มีทางตกได้เลย
+	--
+	-- จึงกวาดหาชายฝั่งจริงทั่วแมพแล้ววางเขตบนน้ำแทน ชื่อยังอ้างอิงทิศ/ภูมิประเทศเพื่อให้จำได้
+	{
+		id = "NorthShore", name = "ชายฝั่งเหนือ", centre = Vector2.new(-3500, 5600), radius = 900,
+		fish = {
+			{ item = "SilverSalmon", weight = 12 },
+			{ item = "Tanker", weight = 4 },
+		},
+	},
+	{
+		id = "SouthReef", name = "แนวปะการังใต้", centre = Vector2.new(2800, -6300), radius = 900,
+		fish = {
+			{ item = "GreenSnakehead", weight = 14 },
+			{ item = "LargemouthBass", weight = 6 },
+		},
+	},
+	{
+		id = "WestBay", name = "อ่าวตะวันตก", centre = Vector2.new(-6300, -2800), radius = 900,
+		fish = {
+			{ item = "MilkFish", weight = 12 },
+			{ item = "TigerBarb", weight = 6 },
+		},
+	},
+	{
+		id = "EastWater", name = "ห้วงน้ำตะวันออก", centre = Vector2.new(5600, 2100), radius = 900,
+		fish = {
+			{ item = "Sturgeon", weight = 5 },
+			{ item = "LargemouthBass", weight = 10 },
+		},
+	},
+	{
+		id = "DeepBlue", name = "ทะเลลึก", centre = Vector2.new(2800, 3500), radius = 900,
+		fish = {
+			{ item = "RainbowFish", weight = 7 },
+			{ item = "SwordFish", weight = 4 },
+		},
+	},
+	{
+		id = "MistCove", name = "อ่าวหมอก", centre = Vector2.new(-5600, 3500), radius = 900,
+		fish = {
+			{ item = "TigerBarb", weight = 12 },
+			{ item = "SwordFish", weight = 3 },
+		},
+	},
+}
+
+
+-- น้ำหนักรวมของปลาธรรมดาทั้งตาราง ใช้เทียบว่าปลาประจำถิ่นควรออกบ่อยแค่ไหน
+--
+-- ปลาประจำถิ่นถูกต่อท้ายตาราง Loot ปกติ จึงแข่งกับปลาธรรมดาโดยตรง — น้ำหนัก 12 ในตารางที่รวมได้ 100
+-- แปลว่าราวหนึ่งในเก้าของการตกในเขตนั้นจะได้ปลาประจำถิ่น
+FishingConfig.ZoneRadiusDefault = 900
+
+-- เขตที่จุดนี้อยู่ หรือ nil ถ้าอยู่นอกทุกเขต
+function FishingConfig.ZoneAt(position)
+	local here = Vector2.new(position.X, position.Z)
+	for _, zone in ipairs(FishingConfig.Zones) do
+		if (here - zone.centre).Magnitude <= (zone.radius or FishingConfig.ZoneRadiusDefault) then
+			return zone
+		end
+	end
+	return nil
+end
+
+-- ตารางของที่ตกได้ตรงจุดนี้ = ปลาธรรมดา + ปลาประจำถิ่น (ถ้าอยู่ในเขต)
+--
+-- คืนตารางใหม่เสมอ ไม่เขียนทับ `Loot` — ไม่งั้นปลาประจำถิ่นของเขตแรกที่มีคนไปตกจะค้างอยู่ทั้งเซิร์ฟเวอร์
+function FishingConfig.LootAt(position)
+	local zone = FishingConfig.ZoneAt(position)
+	if not zone then return FishingConfig.Loot, nil end
+
+	local combined = {}
+	for _, entry in ipairs(FishingConfig.Loot) do
+		combined[#combined + 1] = entry
+	end
+	for _, entry in ipairs(zone.fish) do
+		combined[#combined + 1] = entry
+	end
+	return combined, zone
+end
+
 return FishingConfig

@@ -24,6 +24,7 @@ local Vitals = require(game.ServerScriptService.Vitals)
 local MobAccess = require(game.ServerScriptService.MobAccess)
 local EventState = require(game.ServerScriptService.EventState)
 local MobMotion = require(game.ServerScriptService.MobMotion)
+local Collection = require(game.ServerScriptService.Collection)
 
 -- Filled in further down, once eventSpawners is in scope. Declared here because damage() is defined above
 -- that point and has to be able to see the name.
@@ -544,6 +545,8 @@ local function drop(model, config, killer, loot)
 	if config.xp and config.xp > 0 then
 		Progression.AwardExp(killer, config.xp)
 	end
+	-- ลงสมุดสะสม บันทึกตามชนิด ไม่ใช่ตามตัว — สมุดตอบว่า "ฆ่าอะไรไปกี่ตัว"
+	Collection.RecordMob(killer, config.name or kind)
 end
 
 local function despawn(model)

@@ -93,6 +93,10 @@ SocialConfig.Screens = {
 	-- Reads the shop's live prices without walking to the counter. Read-only: selling is still done at the
 	-- shopkeeper, and the screen exists so the walk can be decided on before it is made.
 	{ id = "market", name = "ราคากลาง", glyph = "\226\154\150", ready = true },
+	-- สมุดสะสม: ปลาที่ตกได้และมอนที่ฆ่า นับสะสมข้ามเซสชัน
+	{ id = "collection", name = "สมุดสะสม", glyph = "📔", ready = true },
+	-- ตารางอันดับสี่ชนิด: เลเวล เงิน แต้มกิจกรรม และคนออนไลน์รายช่อง
+	{ id = "ranking", name = "ตารางอันดับ", glyph = "🏆", ready = true },
 	-- Poses. This replaced the "call a guard" button at the user's request. That one was a placeholder
 	-- waiting on a system that already exists in another form -- a guard is summoned by being one -- while
 	-- this is the thing a roleplay game is actually short of. Handed off like the map: see SocialGui.

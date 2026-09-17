@@ -127,6 +127,9 @@ local EVENTS = {
 	-- หีบเก็บของในเมือง คนละอย่างกับหีบสมบัติข้างบน: อันนั้นเปิดครั้งเดียวได้ของแล้วหาย อันนี้เป็น
 	-- ที่เก็บของสาธารณะที่ใครยัดอะไรไว้คนอื่นก็เห็น ของในหีบเป็นสถานะร่วม จึงส่งภาพทั้งใบทุกครั้งที่
 	-- มีอะไรเปลี่ยน ให้ทุกคนที่เปิดอยู่เห็นตรงกัน
+	-- สมุดสะสมและตารางอันดับในหินสื่อสาร ทั้งสองอ่านอย่างเดียว ไคลเอนต์ขอแล้วเซิร์ฟเวอร์ส่งภาพทั้งชุด
+	"RequestCollection", "CollectionUpdate",
+	"RequestLeaderboards", "LeaderboardUpdate",
 	"StorageChestOpen", "StorageChestUpdate",
 	"RequestStorageChestPut", "RequestStorageChestTake", "RequestStorageChestClose",
 	-- The admin panel (F3). One request in, one whole picture out -- the same shape as the shop and the

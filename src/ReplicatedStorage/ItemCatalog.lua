@@ -159,6 +159,54 @@ ItemCatalog.Items = {
 		use = { stat = "hunger", amount = 35 },
 		useSound = "Eat",
 	},
+	--------------------------------------------------------------------------
+	-- ปลาหายากประจำเขต 9 ชนิด (2026-09-17)
+	--
+	-- **ไอคอนเป็นภาพจริงที่แกะจาก Decal แล้ว** ทั้งเก้าตัวที่ผู้ใช้ส่งมาเป็น Decal เหมือนทุกครั้ง
+	-- ไอดี Decal เดิมอยู่ในคอมเมนต์ท้ายบรรทัด
+	--
+	-- **stackSize = 1 ทุกตัว** เพราะปลาหายากมีน้ำหนักติดมาเป็นรายตัว (meta.kg) เหมือนปลาธรรมดาที่ตัวใหญ่
+	-- ของสองตัวที่น้ำหนักต่างกันรวมกองกันไม่ได้ ไม่งั้นน้ำหนักตัวหนึ่งจะหายไป
+	--
+	-- ราคาเรียงตามความหายากในตาราง FishingConfig: ตัวที่เจอยากกว่าแพงกว่า
+	--------------------------------------------------------------------------
+	GreenSnakehead = {
+		icon = "rbxassetid://92421219089417", -- decal 81266942951705
+		name = "ปลาหมอเขียว", kind = "junk", weight = 2, stackSize = 1, value = 45,
+	},
+	TigerBarb = {
+		icon = "rbxassetid://70521491422033", -- decal 74421872477889
+		name = "ปลาเสือลาย", kind = "junk", weight = 2, stackSize = 1, value = 55,
+	},
+	MilkFish = {
+		icon = "rbxassetid://110061776157428", -- decal 84811441087104
+		name = "ปลานวลจันทร์", kind = "junk", weight = 2.5, stackSize = 1, value = 60,
+	},
+	SilverSalmon = {
+		icon = "rbxassetid://107178413349147", -- decal 109517786154577
+		name = "แซลมอนเกล็ดเงิน", kind = "junk", weight = 3, stackSize = 1, value = 90,
+	},
+	RainbowFish = {
+		icon = "rbxassetid://78477223340132", -- decal 95597970172817
+		name = "ปลารุ้ง", kind = "junk", weight = 2, stackSize = 1, value = 120,
+	},
+	LargemouthBass = {
+		icon = "rbxassetid://124860667615523", -- decal 133541589685275
+		name = "ปลาบาสปากกว้าง", kind = "junk", weight = 3.5, stackSize = 1, value = 80,
+	},
+	Sturgeon = {
+		icon = "rbxassetid://104343467448610", -- decal 85454181642353
+		name = "ปลาสเตอร์เจียน", kind = "junk", weight = 5, stackSize = 1, value = 200,
+	},
+	Tanker = {
+		icon = "rbxassetid://83993996323110", -- decal 115419101737549
+		name = "ปลาแทงค์เกอร์", kind = "junk", weight = 6, stackSize = 1, value = 260,
+	},
+	SwordFish = {
+		icon = "rbxassetid://134539526744130", -- decal 136175789012021
+		name = "ปลาดาบ", kind = "junk", weight = 4.5, stackSize = 1, value = 320,
+	},
+
 	-- แอปเปิลที่ร่วงจากต้นไม้ตอนตัดไม้
 	--
 	-- **ครึ่งหนึ่งของขนมปังพอดี** ตามที่ผู้ใช้กำหนด: ขนมปังเติมความหิว 35 แอปเปิลจึงเติม 18 (ปัดจาก 17.5)

@@ -173,8 +173,27 @@ local function redraw()
 		gui:RenderMarket(latest.market)
 	elseif screen == "profile" then
 		gui:RenderProfile(latest)
+	elseif screen == "collection" then
+		-- nil ในครั้งแรก หน้าจอจะบอกว่ากำลังเปิดสมุด แล้ววาดใหม่เมื่อคำตอบมาถึง
+		gui:RenderCollection(latestCollection)
+	elseif screen == "ranking" then
+		gui:RenderRanking(latestRanking)
 	end
 end
+
+-- สมุดสะสมกับตารางอันดับมาคนละทางกับ SocialUpdate เพราะมันไม่ได้เปลี่ยนบ่อยและไม่ต้องส่งให้ทุกคน
+-- ตลอดเวลา — ขอเมื่อเปิดหน้าจอนั้นเท่านั้น
+local latestCollection, latestRanking = nil, nil
+
+Remotes.CollectionUpdate.OnClientEvent:Connect(function(data)
+	latestCollection = data
+	if gui:IsOpen() then gui:RenderCollection(data) end
+end)
+
+Remotes.LeaderboardUpdate.OnClientEvent:Connect(function(data)
+	latestRanking = data
+	if gui:IsOpen() then gui:RenderRanking(data) end
+end)
 
 Remotes.SocialUpdate.OnClientEvent:Connect(function(data)
 	latest = data
@@ -332,9 +351,15 @@ gui:On("openChat", function(userId)
 end)
 
 -- Each screen draws from whatever arrived last, and asks for a refresh so it is not stale.
-gui:On("screenChanged", function()
+gui:On("screenChanged", function(screen)
 	redraw()
 	Remotes.RequestSocialData:FireServer()
+	-- ขอเฉพาะหน้าที่เปิด: ทั้งสองอย่างต้องนับใหม่ทุกครั้ง (อันดับเปลี่ยนตลอด สมุดอาจเพิ่งได้ปลาตัวใหม่)
+	if screen == "collection" then
+		Remotes.RequestCollection:FireServer()
+	elseif screen == "ranking" then
+		Remotes.RequestLeaderboards:FireServer()
+	end
 end)
 
 --------------------------------------------------------------------------------

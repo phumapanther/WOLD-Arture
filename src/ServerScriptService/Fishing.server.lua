@@ -13,6 +13,7 @@ local ServerConfig = require(game.ServerScriptService.ServerConfig)
 if ServerConfig.IsLobby then return end
 
 local FishingConfig = require(game.ReplicatedStorage.FishingConfig)
+local Collection = require(game.ServerScriptService.Collection)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
@@ -206,16 +207,26 @@ end
 --------------------------------------------------------------------------------
 
 -- One weighted roll. Nine lines, which is why no library is involved.
-local function rollLoot()
+--
+-- **ตารางขึ้นกับว่าตกที่ไหน** ปลาประจำถิ่นถูกต่อท้ายตารางปกติเมื่ออยู่ในเขตหมู่บ้าน จึงแข่งกับปลาธรรมดา
+-- โดยตรง — นอกเขตได้ปลาธรรมดาเหมือนเดิมทุกประการ ซึ่งเป็นเหตุผลที่ต้องเดินทางไปตกที่อื่น
+--
+-- คืนทั้งชนิดปลาและเขต เพื่อให้ผู้เรียกบอกผู้เล่นได้ว่านี่คือปลาประจำถิ่น
+local function rollLoot(position)
+	local loot, zone = FishingConfig.Loot, nil
+	if position then
+		loot, zone = FishingConfig.LootAt(position)
+	end
+
 	local total = 0
-	for _, entry in ipairs(FishingConfig.Loot) do total += entry.weight end
+	for _, entry in ipairs(loot) do total += entry.weight end
 	local roll = math.random() * total
 	local running = 0
-	for _, entry in ipairs(FishingConfig.Loot) do
+	for _, entry in ipairs(loot) do
 		running += entry.weight
-		if roll <= running then return entry.item end
+		if roll <= running then return entry.item, zone end
 	end
-	return FishingConfig.Loot[1].item
+	return loot[1].item, zone
 end
 
 local function baitCount(player)
@@ -338,8 +349,16 @@ local function startFishing(player)
 				return stop(player, "หนอนหมด หยุดตกปลา")
 			end
 
-			local caught = rollLoot()
+			local caught, zone = rollLoot(session.anchor)
 			local item = ItemCatalog.Get(caught)
+
+			-- ปลาประจำถิ่นไหม — ใช้บอกผู้เล่นและใช้ตัดสินว่าจะประกาศให้ทั้งเซิร์ฟเวอร์รู้ไหม
+			local isLocal = false
+			if zone then
+				for _, entry in ipairs(zone.fish) do
+					if entry.item == caught then isLocal = true break end
+				end
+			end
 
 			-- The bite: the rod jerks and the cast sound plays again, so a catch is something you SEE and
 			-- hear rather than only a line of text.
@@ -371,12 +390,18 @@ local function startFishing(player)
 			-- So the common fish stack as they always did and are simply fish, while anything from the blue
 			-- tier up keeps its weight, its colour and its own slot. The size still shows on the card either
 			-- way, so nothing is hidden -- it just is not hoarded.
-			local meta = FishingConfig.IsBig(kg) and { kg = kg } or nil
+			-- ปลาประจำถิ่นเก็บน้ำหนักเสมอ ไม่ต้องรอให้ตัวใหญ่
+			--
+			-- มันสแตคไม่ได้อยู่แล้ว (stackSize = 1) การไม่เก็บน้ำหนักจึงไม่ประหยัดช่องอะไรเลย มีแต่เสีย
+			-- ข้อมูลไปเปล่าๆ — และสมุดสะสมต้องใช้น้ำหนักตัวที่หนักที่สุดของแต่ละชนิด
+			local meta = (isLocal or FishingConfig.IsBig(kg)) and { kg = kg } or nil
 			if Inventory.AddItem(player, caught, 1, nil, meta) then
 				showCatch(player, caught, kg)
+				Collection.RecordFish(player, caught, kg)
 				Remotes.SocialNotify:FireClient(player, "info",
-					("ตกได้ %s %.1f กก.%s"):format(item and item.name or caught, kg,
-						tier.name ~= "" and (" (%s)"):format(tier.name) or ""))
+					("ตกได้ %s %.1f กก.%s%s"):format(item and item.name or caught, kg,
+						tier.name ~= "" and (" (%s)"):format(tier.name) or "",
+						isLocal and (" — ปลาประจำถิ่น%s"):format(zone.name) or ""))
 			else
 				Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม ปลาหลุดไป")
 			end

@@ -41,6 +41,13 @@ local ProfileTemplate = {
 	-- When the old daily chest was last opened. The chest it belonged to is gone -- it became the admin chest,
 	-- which has no cooldown to remember -- but the field stays: every saved profile already has it, and
 	-- removing a key from the template is how a Reconcile starts rewriting profiles for no reason.
+	-- สมุดสะสม: ปลาที่เคยตกได้ และมอนที่เคยฆ่า
+	--
+	-- { Fish = { [itemId] = { n, best } }, Mobs = { [ชนิด] = จำนวน } } | nil = ยังไม่เคยเก็บอะไร
+	-- Collection.lua เป็นคนเขียนลงตรงนี้ และ saveAll เซฟไปพร้อมทุกอย่าง ไม่ต้องมี serializer ของตัวเอง
+	Collection = nil,
+	-- แต้มกิจกรรม สะสมข้ามเซสชัน ใช้จัดอันดับในหินสื่อสาร
+	EventPoints = 0,
 	-- เวลาที่พ้นโทษคุมขัง (os.time) | nil = ไม่ได้ติดคุก
 	--
 	-- เก็บเป็นเวลาที่พ้น ไม่ใช่ "เหลืออีกกี่วินาที" เพราะค่าที่นับถอยหลังจะหยุดเดินตอนออกจากเกม ซึ่งแปลว่า
