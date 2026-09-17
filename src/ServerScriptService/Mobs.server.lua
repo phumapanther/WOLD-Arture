@@ -425,12 +425,23 @@ local function buildFromModel(config)
     humanoid.Health = config.hp
     humanoid.WalkSpeed = config.walkSpeed
     humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
-    -- Stand it at the height the root above was sized for. A model that shipped its own root keeps whatever
-    -- HipHeight it came with.
+    -- Stand it at the height the root above was sized for.
+    --
+    -- **โมเดลที่มาพร้อม root ของตัวเองก็ต้องวัดให้ใหม่เหมือนกัน** ของเดิมปล่อยให้ใช้ HipHeight ที่ติดมา
+    -- ซึ่งถูกเฉพาะตอนที่คนทำโมเดลตั้งมาถูก — ค้างคาวกับวิญญาณตั้งมาไม่ตรงกับรูปร่างจริง (วิญญาณเป็นผี
+    -- ลอยไม่มีขาแต่ HipHeight = 2.0 ขณะที่ root อยู่สูงจากก้นตัว 4.95) ผลคือเอนจิ้นยกมันขึ้นไม่พอ
+    -- แล้วครึ่งล่างจมดิน ซึ่งเป็นอาการที่ผู้ใช้เจอกับสองตัวนี้
+    --
+    -- ระยะที่ถูกคือ "root อยู่สูงจากก้นตัวเท่าไหร่" เพราะ HipHeight คือระยะจากพื้นถึงจุดกึ่งกลาง root
+    -- วัดจากโมเดลจริงจึงถูกเสมอ ไม่ว่าใครจะตั้งอะไรมา
     local wanted = rootPart:GetAttribute("WOLD_HipHeight")
-    if wanted then
-        humanoid.HipHeight = wanted
+    if not wanted then
+        local bodyCF, bodySize = model:GetBoundingBox()
+        local bottom = bodyCF.Position.Y - bodySize.Y * 0.5
+        -- เผื่อ 0.2 กันขูดพื้นบนภูมิประเทศขรุขระ เหมือนที่ทางสร้าง root เองใช้
+        wanted = math.max(0.5, rootPart.Position.Y - bottom + 0.2)
     end
+    humanoid.HipHeight = wanted
 
     -- The same health bar the placeholder carries, so every monster reads the same way in a fight.
     local health = Instance.new("BillboardGui")

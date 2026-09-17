@@ -148,6 +148,12 @@ for _, model in ipairs(monsterModels) do
 		end
 		local hum = model:FindFirstChildOfClass("Humanoid")
 		if hum then hum.WalkSpeed = 0 end
+		-- ป้ายชื่อของตัวต้นแบบ: ลบทิ้งด้วย ไม่งั้นโคลนที่เกิดจากมันจะติดป้ายมาทุกตัว
+		for _, g in ipairs(model:GetDescendants()) do
+			if g:IsA("BillboardGui") and g.Name == "NameTag" then
+				g:Destroy()
+			end
+		end
 		movedPrototypes += 1
 	end
 end
@@ -173,6 +179,19 @@ for _, d in ipairs(workspace:GetDescendants()) do
 			d:SetAttribute("NodeKind", kind)
 			if IS_ANIMAL[kind] then
 				d:SetAttribute("NoFade", true)
+			end
+
+			-- **ลบป้ายชื่อที่ติดมากับโมเดล**
+			--
+			-- ชุดโมเดลแถม BillboardGui ชื่อ NameTag มาให้ทุกตัว และตั้ง MaxDistance = inf
+			-- แปลว่าชื่อสัตว์/มอนลอยให้เห็นจากอีกฟากของแผนที่ ซึ่งเป็นอาการที่ผู้ใช้เจอ
+			--
+			-- ลบทิ้งไปเลย ไม่ใช่แค่ลดระยะ: ปุ่ม E บอกอยู่แล้วว่าตัวนี้คืออะไรตอนเดินเข้าไปใกล้
+			-- (Mobs.server ลบให้อยู่แล้วตอนโคลนมอน แต่สัตว์ไม่ได้ถูกโคลน มันคือตัวที่วางไว้เลย)
+			for _, g in ipairs(d:GetDescendants()) do
+				if g:IsA("BillboardGui") and g.Name == "NameTag" then
+					g:Destroy()
+				end
 			end
 			if CollectionService:HasTag(d, NODE_TAG) then
 				alreadyTagged += 1
