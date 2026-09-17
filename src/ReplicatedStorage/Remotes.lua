@@ -132,6 +132,8 @@ local EVENTS = {
 	"QuestUpdate", "RequestQuestAction",
 	-- แคลน: เซิร์ฟเวอร์ส่งภาพทั้งชุด (รายการแคลน + แคลนของเรา) ไคลเอนต์ส่งกลับแค่ว่ากดอะไร
 	"ClanUpdate", "RequestClanAction",
+	-- พ่อค้าประจำเมือง: รับซื้อเฉพาะของถิ่นนั้น คนในแคลนเจ้าของเมืองได้ราคาดีกว่า
+	"TownBuyerUpdate", "RequestTownSell",
 	"RequestCollection", "CollectionUpdate",
 	"RequestLeaderboards", "LeaderboardUpdate",
 	"StorageChestOpen", "StorageChestUpdate",

@@ -17,6 +17,8 @@ local Inventory = require(game.ServerScriptService.Inventory)
 local Progression = require(game.ServerScriptService.Progression)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local QuestAccess = require(game.ServerScriptService.QuestAccess)
+local TownAccess = require(game.ServerScriptService.TownAccess)
+local ClanConfig = require(game.ReplicatedStorage.ClanConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local BOARD_TAG = "WOLD_QuestBoard"
@@ -251,6 +253,14 @@ local function turnIn(player, boardId, index)
 	end
 
 	local silver, gold = QuestConfig.RewardFor(quest)
+
+	-- **ซิลเวอร์คูณสองถ้าแคลนตัวเองยึดเมืองที่งานนี้มาจาก** ตามที่ผู้ใช้กำหนด
+	--
+	-- คิดจาก `quest.board` ซึ่งเป็นเมืองต้นทางของงาน ไม่ใช่บอร์ดที่ยืนส่งอยู่ — งานจากบอร์ดรวมจึงยังได้
+	-- โบนัสของเมืองที่มันมาจากอย่างถูกต้อง
+	if TownAccess.IsHome and quest.board and TownAccess.IsHome(player, quest.board) then
+		silver = silver * ClanConfig.QuestSilverMultiplier
+	end
 
 	-- **เช็คที่ว่างก่อนแตะอะไรทั้งนั้น**
 	--
