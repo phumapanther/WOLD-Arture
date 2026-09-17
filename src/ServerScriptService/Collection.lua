@@ -10,6 +10,8 @@
 --   Fish  = { [itemId] = { n = จำนวนที่ตกได้, best = น้ำหนักที่หนักที่สุด } }
 --   Mobs  = { [mobKind] = จำนวนที่ฆ่า }
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
+local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
+local QuestConfig = require(game.ReplicatedStorage.QuestConfig)
 
 local Collection = {}
 
@@ -78,13 +80,26 @@ function Collection.Snapshot(player)
 	local fishKinds, fishTotal = 0, 0
 	local mobKinds, mobTotal = 0, 0
 
+	-- ชื่อกับไอคอนหาให้ที่นี่ ไม่ให้ไคลเอนต์ไปเปิดเอง
+	--
+	-- **ปลากับมอนหาคนละที่** ปลาเป็นไอเทมจึงมีไอคอนในแคตตาล็อก ส่วนมอนไม่ใช่ไอเทม — รูปของมันคือรูป
+	-- บนใบประกาศเควส ซึ่งเก็บคีย์เป็นชื่อไทย ตรงกับที่สมุดบันทึกไว้ตอนฆ่าพอดี
 	for id, entry in pairs(book.Fish) do
-		fish[#fish + 1] = { id = id, n = entry.n or 0, best = entry.best or 0 }
+		local item = ItemCatalog.Get(id)
+		fish[#fish + 1] = {
+			id = id, n = entry.n or 0, best = entry.best or 0,
+			name = item and item.name or id,
+			icon = item and item.icon or "",
+		}
 		fishKinds += 1
 		fishTotal += entry.n or 0
 	end
 	for kind, n in pairs(book.Mobs) do
-		mobs[#mobs + 1] = { id = kind, n = n }
+		mobs[#mobs + 1] = {
+			id = kind, n = n,
+			name = kind,
+			icon = QuestConfig.MobImages[kind] or "",
+		}
 		mobKinds += 1
 		mobTotal += n
 	end

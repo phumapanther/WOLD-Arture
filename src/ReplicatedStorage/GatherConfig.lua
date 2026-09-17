@@ -393,9 +393,12 @@ GatherConfig.Mobs.Bandit = {
 	hitSound = "rbxassetid://127637727363472",
 	dieSound = "rbxassetid://96214777896458",
 	drops = {
-		{ item = "Silver", min = 10, max = 40 },
+		-- ผู้ใช้ขอ "เงินเหรียญซิลเวอร์ 10-50" — ขยับเพดานจาก 40 เป็น 50
+		{ item = "Silver", min = 10, max = 50 },
 		{ item = "Bullet", min = 2, max = 6, chance = 0.35 },
 		{ item = "Blueprint", min = 1, max = 1, chance = 0.1 },
+		-- และ "อาวุธแบบสุ่ม" — หนึ่งชิ้นจากตารางเดียวกับที่สไลม์พิเศษใช้ โอกาสต่ำ ไม่งั้นโจรจะเป็นร้านขายอาวุธ
+		{ oneOf = GatherConfig.WeaponDrops, min = 1, max = 1, chance = 0.12 },
 	},
 }
 
@@ -442,7 +445,8 @@ GatherConfig.Mobs.ClockworkSentry = {
 	drops = {
 		{ item = "GearSpare", min = 1, max = 3 },
 		{ item = "Coal", min = 1, max = 3, chance = 0.5 },
-		{ item = "IronOre", min = 1, max = 3, chance = 0.5 },
+		-- ผู้ใช้ขอ "เหล็ก หรือ ศิลาเวท" — oneOf คืออย่างใดอย่างหนึ่ง ไม่ใช่ทั้งคู่
+		{ oneOf = { "IronOre", "RuneStone" }, min = 1, max = 3, chance = 0.5 },
 	},
 }
 
@@ -523,47 +527,6 @@ GatherConfig.Mobs.Wolf = {
 	hitSound = "rbxassetid://127637727363472",
 	dieSound = "rbxassetid://96214777896458",
 	drops = { { item = "Claw", min = 1, max = 2 } },
-}
-
--- โจร: ดรอปเงินกับอาวุธสุ่ม ตามที่ผู้ใช้กำหนด
---
--- **เงินเป็นไอเทม Silver 10-50 ไม่ใช่ทอง** ผู้ใช้เขียนว่า "เงินเหรียญซิลเวอร์" ซึ่งตรงกับไอเทม Silver
--- ที่มีอยู่แล้วในเกม (วัสดุคราฟ) ไม่ใช่เงินในกระเป๋า — มอนที่ดรอปเงินสดตรงๆ จะเป็นเครื่องปั๊มเงิน
--- ที่ไม่ผ่านระบบเศรษฐกิจเลย
-GatherConfig.Mobs.Bandit = {
-	name = "โจร",
-	model = "Monster_Bandit",
-	hp = 110, damage = 16,
-	attackCooldown = 1.4, attackRange = 7,
-	aggroRange = 40, leashRange = 100,
-	walkSpeed = 12,
-	xp = 35, respawnSeconds = 150,
-	colour = Color3.fromRGB(70, 64, 58),
-	hitSound = "rbxassetid://127637727363472",
-	dieSound = "rbxassetid://96214777896458",
-	drops = {
-		{ item = "Silver", min = 10, max = 50 },
-		-- อาวุธสุ่มหนึ่งชิ้นจากตารางเดียวกับที่สไลม์พิเศษใช้ โอกาสต่ำ ไม่งั้นโจรจะเป็นร้านขายอาวุธ
-		{ oneOf = GatherConfig.WeaponDrops, min = 1, max = 1, chance = 0.12 },
-	},
-}
-
--- หุ่นไขลาน: สตีมพังก์ เลือดหนา ช้า ดรอปวัสดุช่าง
-GatherConfig.Mobs.ClockworkSentry = {
-	name = "หุ่นไขลาน",
-	model = "Monster_ClockworkSentry",
-	hp = 180, damage = 20,
-	attackCooldown = 2.0, attackRange = 7,
-	aggroRange = 35, leashRange = 90,
-	walkSpeed = 8,
-	xp = 55, respawnSeconds = 210,
-	colour = Color3.fromRGB(150, 130, 90),
-	hitSound = "rbxassetid://127637727363472",
-	dieSound = "rbxassetid://96214777896458",
-	drops = {
-		-- เหล็ก หรือ ศิลาเวท ตามที่ผู้ใช้กำหนด — oneOf คือ "อย่างใดอย่างหนึ่ง" ไม่ใช่ทั้งคู่
-		{ oneOf = { "IronOre", "RuneStone" }, min = 1, max = 2 },
-	},
 }
 
 -- วิญญาณ: ลอย เจ็บมาก เลือดกลาง ดรอปแร่เวท

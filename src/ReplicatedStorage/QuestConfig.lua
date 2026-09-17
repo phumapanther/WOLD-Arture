@@ -101,7 +101,7 @@ QuestConfig.Boards = {
 			{ kind = "gather", item = "Chemical", min = 4, max = 8, gold = 480, xp = 60 },
 			{ kind = "gather", item = "Coal", min = 12, max = 25, gold = 360, xp = 45 },
 			{ kind = "gather", item = "Blueprint", min = 2, max = 4, gold = 800, xp = 100 },
-			{ kind = "hunt", mob = "หุ่นไขลาน", min = 2, max = 4, gold = 900, xp = 140 },
+			{ kind = "hunt", mob = "ทหารจักรกล", min = 2, max = 4, gold = 900, xp = 140 },
 			{ kind = "gather", item = "Silver", min = 100, max = 250, gold = 600, xp = 70 },
 		},
 	},
@@ -151,8 +151,8 @@ QuestConfig.MobImages = {
 	["โครงกระดูก"] = "rbxassetid://120795805584592", -- decal 94260847126992
 	["สไลม์เขียว"] = "rbxassetid://114880438110484", -- decal 130982830301061
 	["แมงมุมยักษ์"] = "rbxassetid://132951908475043", -- decal 122241010306288
-	["โจร"] = "rbxassetid://97071754226124", -- decal 88010389309543
-	["หุ่นไขลาน"] = "rbxassetid://80599978341770", -- decal 76597832164707
+	["โจรป่า"] = "rbxassetid://97071754226124", -- decal 88010389309543
+	["ทหารจักรกล"] = "rbxassetid://80599978341770", -- decal 76597832164707
 	["ผีดิบ"] = "rbxassetid://99107159502707", -- decal 119494710161738
 	["โกเลมหิน"] = "rbxassetid://136857380271784", -- decal 107594742104427
 	["ค้างคาว"] = "rbxassetid://128319028250465", -- decal 127977511777118

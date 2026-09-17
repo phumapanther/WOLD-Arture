@@ -11,7 +11,6 @@ local AvatarThumbnails = require(script.Parent.AvatarThumbnails)
 local Responsive = require(script.Parent.Responsive)
 local ClassConfig = require(script.Parent.Parent.ClassConfig)
 local UiSound = require(script.Parent.UiSound)
-local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
 
 local SocialGui = {}
 SocialGui.__index = SocialGui
@@ -1231,16 +1230,32 @@ function SocialGui:RenderCollection(data)
 		row.Parent = list
 		corner(row, UDim.new(0, 8))
 
-		-- ชื่อไทยจากแคตตาล็อกถ้าเป็นปลา ส่วนมอนบันทึกชื่อไทยไว้ตั้งแต่ตอนฆ่าแล้ว
-		local title = entry.id
-		if showingFish then
-			local item = ItemCatalog.Get(entry.id)
-			title = item and item.name or entry.id
+		-- ไอคอนหน้าแถว
+		--
+		-- เซิร์ฟเวอร์ส่งทั้งชื่อและไอคอนมาแล้ว (ปลาจากแคตตาล็อก มอนจากรูปใบประกาศ) — ไคลเอนต์ไม่ต้อง
+		-- เปิดตารางเอง และไม่มีทางที่สองฝั่งจะหาคนละที่แล้วได้คนละคำตอบ
+		local hasIcon = entry.icon and entry.icon ~= ""
+		if hasIcon then
+			local art = Instance.new("ImageLabel")
+			art.Position = UDim2.new(0, 6, 0.5, -13)
+			art.Size = UDim2.fromOffset(26, 26)
+			art.BackgroundTransparency = 1
+			art.Image = entry.icon
+			art.ScaleType = Enum.ScaleType.Fit
+			art.Parent = row
 		end
 
+		-- ชื่อมาจากเซิร์ฟเวอร์ ถอยไปใช้ id ถ้าไม่มี (ของเก่าในสมุดที่บันทึกก่อนมีฟิลด์นี้)
+		local title = entry.name or entry.id
+
 		local name = label(row, title, 13, TEXT_LIGHT)
-		name.Position = UDim2.new(0, 10, 0, 0)
-		name.Size = UDim2.new(1, -120, 1, 0)
+		-- เว้นที่ให้ไอคอนเฉพาะแถวที่มีรูป แถวที่ไม่มีจะได้ไม่เยื้องลอย
+		-- **กว้างต้องหักทั้งช่องไอคอนและช่องตัวเลขขวา** ตัวเลขกว้าง 150 ชิดขวา -10 จึงเริ่มที่ เต็ม-160
+		-- ชื่อที่หักแค่ 148 จะยาวเลยไปทับตัวเลข 50 px — วัดแล้วก่อนแก้
+		local leftPad = hasIcon and 38 or 10
+		name.Position = UDim2.new(0, leftPad, 0, 0)
+		name.Size = UDim2.new(1, -(leftPad + 162), 1, 0)
+		name.TextTruncate = Enum.TextTruncate.AtEnd
 
 		-- ปลาโชว์น้ำหนักตัวที่หนักที่สุดด้วย ซึ่งเป็นสิ่งที่ผู้ใช้ขอ
 		local right = showingFish and entry.best and entry.best > 0
