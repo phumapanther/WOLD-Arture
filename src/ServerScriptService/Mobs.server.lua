@@ -147,6 +147,14 @@ local function prototypeFor(config)
     end
     -- Searched by name across the whole world as a fallback, because the user is free to move the folder.
     if not found and root then found = root:FindFirstChild(config.model, true) end
+    -- ...and across the whole Workspace, not just under WOLD.
+    --
+    -- โมเดลชุดใหม่ (Monster_Bat/Boar/Wolf/Wraith และสัตว์) ถูกวางไว้ใน `workspace.New_moster` ซึ่งอยู่
+    -- นอก WOLD การค้นเฉพาะใต้ WOLD จึงหาไม่เจอและมอนไม่เกิดเลยโดยไม่มี error — เงียบสนิท
+    --
+    -- **ห้ามใช้ตัวที่ยังอยู่ใน Workspace เป็นต้นแบบโดยไม่ระวัง**: มันเป็นตัวที่ผู้เล่นเดินไปเจอได้จริง
+    -- ถ้าถูกโคลนต่อไปเรื่อยๆ ก็ไม่เป็นไร แต่ตัวต้นแบบเองต้องไม่ถูกแท็กเป็นมอนที่ตีได้
+    if not found then found = workspace:FindFirstChild(config.model, true) end
     return found
 end
 

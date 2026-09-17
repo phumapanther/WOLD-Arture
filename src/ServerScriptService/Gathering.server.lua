@@ -121,6 +121,12 @@ local function setSpent(node, spent)
 	-- own prompt hiding would fight the server over Enabled.
 	node:SetAttribute("Spent", spent or nil)
 
+	-- สัตว์เลี้ยงไม่จาง: มันยังยืนอยู่ตรงนั้นจริงๆ แค่รีดนม/เก็บไข่ซ้ำไม่ได้ชั่วคราว
+	--
+	-- การทำให้จางเหมาะกับก้อนแร่ที่ "ถูกขุดไปแล้ว" แต่วัวที่โปร่งแสงครึ่งตัวจะดูเหมือนผี
+	-- ปุ่ม E ที่ดับไปคือสัญญาณเดียวที่ต้องการแล้ว
+	if node:GetAttribute("NoFade") then return end
+
 	if spent then
 		if Faded[node] then return end
 		local originals = {}
@@ -220,11 +226,22 @@ local function gather(node, player)
 	SpentUntil[node] = os.clock() + GatherConfig.RespawnSeconds
 	setSpent(node, true)
 
-	local count = math.random(config.min, config.max)
+	-- ของที่จะได้ ปกติคือ config.item แต่บางจุดสุ่มได้ของอีกอย่างแทน
+	--
+	-- `alt` มีไว้ให้แปลงผักซึ่งผู้ใช้กำหนดว่าได้ "หนอนที่เป็นเหยื่อตกปลา หรือ ผักรวม" — เป็นของคนละชิ้น
+	-- ที่ออกจากจุดเดียวกัน ไม่ใช่ของชิ้นเดียวที่จำนวนต่างกัน จึงต้องสุ่มทั้ง id และจำนวนไปด้วยกัน
+	local itemId, minCount, maxCount = config.item, config.min, config.max
+	if config.alt and math.random() < (config.alt.chance or 0.5) then
+		itemId = config.alt.item
+		minCount = config.alt.min or minCount
+		maxCount = config.alt.max or maxCount
+	end
+
+	local count = math.random(minCount, maxCount)
 	-- The merchant's sharp eye. Doubled before the bag is asked, so a full bag refuses the whole doubled
 	-- amount rather than quietly handing over half of it.
 	count = ClassPerks.HarvestFor(player, count)
-	local given = Inventory.AddItem(player, config.item, count)
+	local given = Inventory.AddItem(player, itemId, count)
 	if not given then
 		Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม")
 		-- Still spent: the node was struck. Letting a full bag leave it fresh would make "stand at a full
@@ -236,9 +253,9 @@ local function gather(node, player)
 		Progression.AwardExp(player, config.xp)
 	end
 
-	local item = ItemCatalog.Get(config.item)
+	local item = ItemCatalog.Get(itemId)
 	Remotes.SocialNotify:FireClient(player, "info",
-		("ได้ %s x%d"):format(item and item.name or config.item, count))
+		("ได้ %s x%d"):format(item and item.name or itemId, count))
 
 	task.delay(GatherConfig.RespawnSeconds, function()
 		if node.Parent then setSpent(node, false) end

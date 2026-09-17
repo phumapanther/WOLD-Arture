@@ -76,6 +76,112 @@ GatherConfig.Nodes = {
 		seconds = 1.5, xp = 4, tool = "shovel",
 		prompt = "เก็บสมุนไพร", object = "สมุนไพร",
 	},
+
+	--------------------------------------------------------------------------
+	-- แร่หายาก 4 ชนิด (โมเดล Ore_* ที่วางไว้ในแมพแล้ว)
+	--
+	-- ใช้อีเต้อเหมือนแร่เดิมทุกตัว และยิ่งหายากยิ่งขุดนาน — เวลาขุดคือราคาที่จ่ายจริง ไม่ใช่แค่ตัวเลข
+	-- ในตาราง เพชรใช้ 8 วินาที ซึ่งนานพอที่จะโดนมอนมาตีระหว่างขุดได้
+	--------------------------------------------------------------------------
+	MagicOre = {
+		item = "MagicOre", min = 1, max = 2,
+		seconds = 6.0, xp = 30, tool = "pickaxe",
+		sound = "rbxassetid://120916604676149",
+		prompt = "ขุดแร่เวทมนตร์", object = "สายแร่เวทมนตร์",
+	},
+	SilverOre = {
+		item = "SilverOre", min = 1, max = 3,
+		seconds = 4.0, xp = 12, tool = "pickaxe",
+		sound = "rbxassetid://120916604676149",
+		prompt = "ขุดแร่เงิน", object = "สายแร่เงิน",
+	},
+	GoldOre = {
+		item = "GoldOre", min = 1, max = 2,
+		seconds = 5.5, xp = 22, tool = "pickaxe",
+		sound = "rbxassetid://120916604676149",
+		prompt = "ขุดแร่ทอง", object = "สายแร่ทอง",
+	},
+	DiamondOre = {
+		item = "Diamond", min = 1, max = 1,
+		seconds = 8.0, xp = 45, tool = "pickaxe",
+		sound = "rbxassetid://120916604676149",
+		prompt = "ขุดเพชร", object = "สายแร่เพชร",
+	},
+
+	--------------------------------------------------------------------------
+	-- ไร่นา (โมเดล Farm_* ที่วางไว้ในแมพแล้ว)
+	--
+	-- **ไม่ต้องใช้อุปกรณ์** ต่างจากการฟาร์มไม้/หิน/แร่ทั้งหมด — เก็บผักกับเกี่ยวข้าวด้วยมือเปล่าได้
+	-- ซึ่งทำให้ไร่นาเป็นทางหาของทางแรกของคนที่ยังไม่มีเงินซื้ออุปกรณ์เลย เหมือนที่ฟาร์มผิดกฎหมายเป็น
+	--------------------------------------------------------------------------
+	CropField = {
+		-- ผักรวม หรือหนอน (เหยื่อตกปลา) ตามที่ผู้ใช้กำหนด — `alt` คือของอีกอย่างที่สุ่มได้แทน
+		item = "Vegetable", min = 1, max = 3,
+		alt = { item = "Worm", min = 1, max = 3, chance = 0.35 },
+		seconds = 2.0, xp = 5,
+		prompt = "เก็บผัก", object = "แปลงผัก",
+	},
+	WheatField = {
+		item = "Wheat", min = 2, max = 4,
+		seconds = 2.0, xp = 5,
+		prompt = "เกี่ยวข้าว", object = "นาข้าว",
+	},
+	--------------------------------------------------------------------------
+	-- สัตว์เลี้ยง 8 ชนิด — กด E เอาของ ไม่ต้องฆ่า ไม่ต้องใช้อุปกรณ์
+	--
+	-- **สัตว์ไม่ตายและไม่จางหาย** ต่างจากก้อนแร่ที่ถูกขุดไปแล้ว วัวที่รีดนมแล้วก็ยังเป็นวัวที่ยืนอยู่ตรงนั้น
+	-- แค่รีดซ้ำไม่ได้ชั่วคราว — สปอว์เนอร์ตั้ง NoFade ไว้ให้ ปุ่ม E ที่ดับไปคือสัญญาณเดียวที่ต้องการ
+	--
+	-- ของที่ได้ซ้ำกันหลายตัวโดยตั้งใจ (ไก่กับเป็ดได้ไข่ · วัวกับแพะได้นม · กวางกับม้าได้หนัง) ตามที่
+	-- ผู้ใช้กำหนด — ต่างกันที่หาเจอที่ไหนและเดินไปถึงยากแค่ไหน ไม่ใช่ที่ของ
+	--------------------------------------------------------------------------
+	Chicken = {
+		item = "Egg", min = 1, max = 2,
+		seconds = 1.5, xp = 3,
+		prompt = "เก็บไข่", object = "ไก่",
+	},
+	Duck = {
+		item = "Egg", min = 1, max = 2,
+		seconds = 1.5, xp = 3,
+		prompt = "เก็บไข่", object = "เป็ด",
+	},
+	Cow = {
+		item = "Milk", min = 1, max = 2,
+		seconds = 2.5, xp = 5,
+		prompt = "รีดนม", object = "วัว",
+	},
+	Goat = {
+		item = "Milk", min = 1, max = 1,
+		seconds = 2.0, xp = 4,
+		prompt = "รีดนม", object = "แพะ",
+	},
+	Sheep = {
+		item = "Wool", min = 1, max = 2,
+		seconds = 3.0, xp = 6,
+		prompt = "ตัดขนแกะ", object = "แกะ",
+	},
+	Deer = {
+		item = "Leather", min = 1, max = 2,
+		seconds = 3.0, xp = 8,
+		prompt = "เก็บหนัง", object = "กวาง",
+	},
+	Horse = {
+		item = "Leather", min = 1, max = 1,
+		seconds = 3.0, xp = 8,
+		prompt = "เก็บหนัง", object = "ม้า",
+	},
+	Pig = {
+		item = "Meat", min = 1, max = 2,
+		seconds = 2.5, xp = 5,
+		prompt = "เก็บเนื้อ", object = "หมู",
+	},
+
+	EtherCluster = {
+		-- กิ่งเวทมนตร์ หายากกว่าอีกสองอย่างในไร่นา จึงนานกว่าและให้ XP มากกว่า
+		item = "MagicBranch", min = 1, max = 2,
+		seconds = 4.0, xp = 18,
+		prompt = "เก็บกิ่งเวท", object = "พุ่มไม้เวทมนตร์",
+	},
 }
 
 --------------------------------------------------------------------------------
@@ -357,6 +463,135 @@ GatherConfig.Mobs.Ghoul = {
 		{ item = "Bone", min = 2, max = 5 },
 		{ item = "Herb", min = 1, max = 3, chance = 0.4 },
 		{ item = "Chemical", min = 1, max = 2, chance = 0.2 },
+	},
+}
+
+--------------------------------------------------------------------------------
+-- มอนสเตอร์ชุดใหม่ 8 ชนิด (2026-09-17)
+--
+-- โมเดลทั้งแปดวางไว้ในแมพอยู่แล้ว กระจายกันคนละมุมแผนที่ ไฟล์ `mapgen/67_world_actors.lua` เป็นคนแปลง
+-- โมเดลที่วางไว้ให้กลายเป็นสปอว์เนอร์ตรงจุดนั้น — ตัวเลขทั้งหมดอยู่ที่นี่ที่เดียว
+--
+-- **เรียงความยากจากอ่อนไปแข็ง**: ค้างคาว < หมูป่า < หมาป่า < โจร < ผีดิบ < หุ่นไขลาน < วิญญาณ < โกเลม
+-- เลือดและดาเมจไล่ขึ้นตามนั้น และ respawn ยิ่งแข็งยิ่งนาน
+--------------------------------------------------------------------------------
+
+-- ค้างคาว: อ่อนที่สุด เร็ว เลือดน้อย เจอเป็นฝูงได้
+GatherConfig.Mobs.Bat = {
+	name = "ค้างคาว",
+	model = "Monster_Bat",
+	hp = 30, damage = 5,
+	attackCooldown = 1.1, attackRange = 5,
+	aggroRange = 35, leashRange = 80,
+	walkSpeed = 13,   -- เร็วกว่าคนเดิน (8) แต่ช้ากว่าคนวิ่ง (24) หนีได้ถ้าวิ่ง
+	xp = 12, respawnSeconds = 60,
+	colour = Color3.fromRGB(70, 60, 80),
+	hitSound = "rbxassetid://127637727363472",
+	dieSound = "rbxassetid://96214777896458",
+	drops = { { item = "BatGuano", min = 1, max = 3 } },
+}
+
+-- หมูป่า: ช้า เลือดหนา ไม่ไล่ไกล
+GatherConfig.Mobs.Boar = {
+	name = "หมูป่า",
+	model = "Monster_Boar",
+	hp = 70, damage = 9,
+	attackCooldown = 1.8, attackRange = 6,
+	aggroRange = 24, leashRange = 60,
+	walkSpeed = 9,
+	xp = 18, respawnSeconds = 90,
+	colour = Color3.fromRGB(96, 74, 56),
+	hitSound = "rbxassetid://127637727363472",
+	dieSound = "rbxassetid://96214777896458",
+	drops = { { item = "Meat", min = 1, max = 3 } },
+}
+
+-- หมาป่า: เร็ว เจ็บ ไล่ไกล อันตรายกว่าที่เลือดบอก
+GatherConfig.Mobs.Wolf = {
+	name = "หมาป่า",
+	model = "Monster_Wolf",
+	hp = 85, damage = 14,
+	attackCooldown = 1.2, attackRange = 6,
+	aggroRange = 45, leashRange = 110,
+	walkSpeed = 16,
+	xp = 28, respawnSeconds = 120,
+	colour = Color3.fromRGB(88, 88, 96),
+	hitSound = "rbxassetid://127637727363472",
+	dieSound = "rbxassetid://96214777896458",
+	drops = { { item = "Claw", min = 1, max = 2 } },
+}
+
+-- โจร: ดรอปเงินกับอาวุธสุ่ม ตามที่ผู้ใช้กำหนด
+--
+-- **เงินเป็นไอเทม Silver 10-50 ไม่ใช่ทอง** ผู้ใช้เขียนว่า "เงินเหรียญซิลเวอร์" ซึ่งตรงกับไอเทม Silver
+-- ที่มีอยู่แล้วในเกม (วัสดุคราฟ) ไม่ใช่เงินในกระเป๋า — มอนที่ดรอปเงินสดตรงๆ จะเป็นเครื่องปั๊มเงิน
+-- ที่ไม่ผ่านระบบเศรษฐกิจเลย
+GatherConfig.Mobs.Bandit = {
+	name = "โจร",
+	model = "Monster_Bandit",
+	hp = 110, damage = 16,
+	attackCooldown = 1.4, attackRange = 7,
+	aggroRange = 40, leashRange = 100,
+	walkSpeed = 12,
+	xp = 35, respawnSeconds = 150,
+	colour = Color3.fromRGB(70, 64, 58),
+	hitSound = "rbxassetid://127637727363472",
+	dieSound = "rbxassetid://96214777896458",
+	drops = {
+		{ item = "Silver", min = 10, max = 50 },
+		-- อาวุธสุ่มหนึ่งชิ้นจากตารางเดียวกับที่สไลม์พิเศษใช้ โอกาสต่ำ ไม่งั้นโจรจะเป็นร้านขายอาวุธ
+		{ oneOf = GatherConfig.WeaponDrops, min = 1, max = 1, chance = 0.12 },
+	},
+}
+
+-- หุ่นไขลาน: สตีมพังก์ เลือดหนา ช้า ดรอปวัสดุช่าง
+GatherConfig.Mobs.ClockworkSentry = {
+	name = "หุ่นไขลาน",
+	model = "Monster_ClockworkSentry",
+	hp = 180, damage = 20,
+	attackCooldown = 2.0, attackRange = 7,
+	aggroRange = 35, leashRange = 90,
+	walkSpeed = 8,
+	xp = 55, respawnSeconds = 210,
+	colour = Color3.fromRGB(150, 130, 90),
+	hitSound = "rbxassetid://127637727363472",
+	dieSound = "rbxassetid://96214777896458",
+	drops = {
+		-- เหล็ก หรือ ศิลาเวท ตามที่ผู้ใช้กำหนด — oneOf คือ "อย่างใดอย่างหนึ่ง" ไม่ใช่ทั้งคู่
+		{ oneOf = { "IronOre", "RuneStone" }, min = 1, max = 2 },
+	},
+}
+
+-- วิญญาณ: ลอย เจ็บมาก เลือดกลาง ดรอปแร่เวท
+GatherConfig.Mobs.Wraith = {
+	name = "วิญญาณ",
+	model = "Monster_Wraith",
+	hp = 140, damage = 24,
+	attackCooldown = 1.6, attackRange = 7,
+	aggroRange = 50, leashRange = 120,
+	walkSpeed = 11,
+	xp = 65, respawnSeconds = 240,
+	colour = Color3.fromRGB(120, 140, 190),
+	hitSound = "rbxassetid://127637727363472",
+	dieSound = "rbxassetid://96214777896458",
+	drops = { { item = "MagicOre", min = 1, max = 2 } },
+}
+
+-- โกเลมหิน: แข็งที่สุดในชุดนี้ ช้าที่สุด ตีหนักที่สุด
+GatherConfig.Mobs.StoneGolem = {
+	name = "โกเลมหิน",
+	model = "Monster_StoneGolem",
+	hp = 300, damage = 30,
+	attackCooldown = 2.4, attackRange = 8,
+	aggroRange = 32, leashRange = 85,
+	walkSpeed = 7,
+	xp = 90, respawnSeconds = 300,
+	colour = Color3.fromRGB(120, 116, 110),
+	hitSound = "rbxassetid://120916604676149", -- หินกระทบหิน ไม่ใช่เสียงเนื้อ
+	dieSound = "rbxassetid://96214777896458",
+	drops = {
+		-- หิน หรือ ศิลาเวท ตามที่ผู้ใช้กำหนด
+		{ oneOf = { "Stone", "RuneStone" }, min = 1, max = 3 },
 	},
 }
 

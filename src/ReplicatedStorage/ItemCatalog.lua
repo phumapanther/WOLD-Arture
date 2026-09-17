@@ -188,6 +188,43 @@ ItemCatalog.Items = {
 	WoodScrap = { icon = "rbxassetid://133089629701208", name = "เศษไม้", kind = "junk", weight = 1.5, stackSize = 99, value = 1 },
 	Stone = { icon = "rbxassetid://115614728197402", name = "ก้อนหิน", kind = "junk", weight = 2.5, stackSize = 99, value = 1 },
 
+	--------------------------------------------------------------------------
+	-- ของที่ได้จากสัตว์ มอนสเตอร์ แร่ และไร่นา (ชุดใหญ่ 2026-09-17)
+	--
+	-- **ไอคอนทุกตัวเป็นภาพจริงที่แกะออกมาจาก Decal แล้ว** ไอดีที่ผู้ใช้ส่งมาทั้ง 16 ตัวเป็น Decal
+	-- (AssetTypeId 13) ซึ่งใส่ใน ImageLabel แล้วไม่ขึ้นอะไรเลย ไอดีข้างล่างคือ Texture ข้างในของมัน
+	-- คอมเมนต์ท้ายบรรทัดคือไอดี Decal เดิม เผื่อต้องตามกลับ
+	--
+	-- ราคาเรียงตามความหายาก: ของจากสัตว์เลี้ยงถูกที่สุด (เดินไปกด E ได้เรื่อยๆ) ของจากมอนแพงกว่า
+	-- (ต้องสู้) และแร่หายากแพงที่สุด
+	--------------------------------------------------------------------------
+
+	-- จากสัตว์เลี้ยง กด E เอาได้ ไม่ต้องสู้
+	Egg = { icon = "rbxassetid://77756159415394", name = "ไข่", kind = "junk", weight = 0.4, stackSize = 99, value = 4 }, -- decal 72541945471408
+	Milk = { icon = "rbxassetid://93868283165879", name = "นม", kind = "junk", weight = 1, stackSize = 99, value = 6 }, -- decal 136906013299230
+	Leather = { icon = "rbxassetid://104360664825228", name = "หนังสัตว์", kind = "junk", weight = 1.5, stackSize = 99, value = 12 }, -- decal 137703605622656
+	Wool = { icon = "rbxassetid://126262913039947", name = "ขนแกะ", kind = "junk", weight = 0.8, stackSize = 99, value = 9 }, -- decal 135550468349183
+	Meat = { icon = "rbxassetid://115841522653821", name = "เนื้อ", kind = "junk", weight = 1.5, stackSize = 99, value = 8 }, -- decal 84058385063892
+
+	-- จากมอนสเตอร์ ต้องฆ่าถึงจะได้
+	Claw = { icon = "rbxassetid://135488469977700", name = "เล็บสัตว์ร้าย", kind = "junk", weight = 0.5, stackSize = 99, value = 14 }, -- decal 140136897541150
+	RottenMeat = { icon = "rbxassetid://129554418128212", name = "เนื้อเน่า", kind = "junk", weight = 1.2, stackSize = 99, value = 5 }, -- decal 116771055471302
+	BatGuano = { icon = "rbxassetid://91346287330461", name = "มูลค้างคาว", kind = "junk", weight = 0.6, stackSize = 99, value = 7 }, -- decal 84357488942571
+	-- ศิลาเวท: หล่นจากทั้งหุ่นไขลานและโกเลมหิน เป็นวัสดุสายเวทที่ไม่ต้องขุด
+	RuneStone = { icon = "rbxassetid://89939682004809", name = "ศิลาเวท", kind = "junk", weight = 2, stackSize = 99, value = 30 }, -- decal 117325820864673
+
+	-- แร่ เรียงจากถูกไปแพง
+	SilverOre = { icon = "rbxassetid://92203511042577", name = "แร่เงิน", kind = "junk", weight = 2.5, stackSize = 99, value = 35 }, -- decal 135246232974527
+	GoldOre = { icon = "rbxassetid://98685006181913", name = "แร่ทอง", kind = "junk", weight = 3, stackSize = 99, value = 70 }, -- decal 106262919143881
+	-- แร่เวทมนตร์: ได้จากทั้งสายแร่เวทและจากวิญญาณ (Wraith) สองทางเพราะมันเป็นวัสดุสายเวทตัวหลัก
+	MagicOre = { icon = "rbxassetid://83959186215687", name = "แร่เวทมนตร์", kind = "junk", weight = 2, stackSize = 99, value = 90 }, -- decal 120727145622733
+	Diamond = { icon = "rbxassetid://88276561126599", name = "เพชร", kind = "junk", weight = 1, stackSize = 99, value = 150 }, -- decal 80982434115389
+
+	-- จากไร่นา
+	Vegetable = { icon = "rbxassetid://97077438082748", name = "ผักรวม", kind = "junk", weight = 1, stackSize = 99, value = 5 }, -- decal 97957712627842
+	Wheat = { icon = "rbxassetid://138650681258991", name = "ข้าว", kind = "junk", weight = 1, stackSize = 99, value = 6 }, -- decal 77562812947089
+	MagicBranch = { icon = "rbxassetid://122305408113810", name = "กิ่งเวทมนตร์", kind = "junk", weight = 0.8, stackSize = 99, value = 25 }, -- decal 105616416463980
+
 	-- Gathered materials. Priced and weighted by where they come from: fibre is picked off a bush
 	-- anywhere, herbs need looking for, ore has to be mined, and crystal only grows in the caves. The
 	-- gathering tags in docs/design/04-gameplay-hooks.md already name these as resources, so the catalog
