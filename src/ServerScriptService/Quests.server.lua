@@ -107,10 +107,16 @@ local function snapshot(player, boardId)
 
 	local function decorate(q)
 		local item = q.item and ItemCatalog.Get(q.item)
+		local silver, gold = QuestConfig.RewardFor(q)
 		return {
 			kind = q.kind, item = q.item, mob = q.mob, need = q.need,
-			gold = q.gold, xp = q.xp, board = q.board,
-			icon = item and item.icon or "",
+			xp = q.xp, board = q.board,
+			-- รางวัลจริง ไม่ใช่ค่าความยาก — ใบประกาศต้องบอกสิ่งที่จะได้
+			silver = silver, gold = gold,
+			-- รูปบนใบประกาศ: งานล่าใช้รูปมอน งานอื่นใช้ไอคอนไอเทม
+			icon = (q.kind == "hunt") and (QuestConfig.MobImages[q.mob] or "")
+				or (item and item.icon or ""),
+			title = (q.kind == "hunt") and q.mob or (item and item.name or q.item),
 			text = QuestConfig.Describe(q, item and item.name),
 			got = progressOf(player, q),
 		}
@@ -126,6 +132,7 @@ local function snapshot(player, boardId)
 		boardId = boardId,
 		boardName = board.name,
 		blurb = board.blurb,
+		notice = QuestConfig.NoticeImage,
 		offered = offered,
 		active = active,
 		maxActive = QuestConfig.MaxActive,
@@ -268,10 +275,18 @@ local function wire(model)
 	local boardId = model:GetAttribute("BoardId")
 	if not boardId then return end
 
-	local anchor = model.PrimaryPart
-	if not anchor then
-		for _, d in ipairs(model:GetDescendants()) do
-			if d:IsA("BasePart") then anchor = d break end
+	-- **แขวนปุ่มที่ชิ้นที่ใหญ่ที่สุด ไม่ใช่ PrimaryPart**
+	--
+	-- PrimaryPart ของบอร์ดคือ `Root` ซึ่งเป็นลูกบาศก์ล่องหน 1x1 ที่ก้นโมเดล ปุ่มที่แขวนตรงนั้นจะอยู่
+	-- ระดับพื้นและอยู่ห่างจากหน้ากระดานที่ผู้เล่นเดินเข้าไปหา — ซึ่งเป็นเหตุผลที่กดไม่ติด
+	--
+	-- ชิ้นใหญ่สุดของโมเดลนี้คือเสาสูง 10 studs ที่ระดับอก ปุ่มจึงไปอยู่ตรงที่คนมองหาพอดี
+	local anchor
+	local bestVolume = 0
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") then
+			local v = d.Size.X * d.Size.Y * d.Size.Z
+			if v > bestVolume then anchor, bestVolume = d, v end
 		end
 	end
 	if not anchor then return end
@@ -301,6 +316,9 @@ Remotes.RequestQuestAction.OnServerEvent:Connect(function(player, action, index)
 	if action == "accept" then accept(player, boardId, index)
 	elseif action == "turnin" then turnIn(player, boardId, index)
 	elseif action == "abandon" then abandon(player, boardId, index)
+	elseif action == "close" then
+		-- เลิกดูแล้ว ปล่อยให้ลืมไปว่ายืนอยู่บอร์ดไหน — ไม่งั้นเดินไปไกลแล้วยังส่งงานที่บอร์ดเดิมได้อยู่
+		Viewing[player] = nil
 	elseif action == "refresh" then
 		Remotes.QuestUpdate:FireClient(player, snapshot(player, boardId))
 	end
