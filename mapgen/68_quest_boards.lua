@@ -20,23 +20,19 @@ local BOARDS = {
 	{ id = "Astravale", at = Vector3.new(3840, 1270, -3360) },
 }
 
-local WOOD = Color3.fromRGB(104, 72, 44)
-local DARK = Color3.fromRGB(72, 50, 32)
-local PAPER = Color3.fromRGB(226, 214, 186)
+-- โมเดลต้นแบบที่ผู้ใช้วางไว้ในแมพ
+--
+-- **โคลนจากของจริง ไม่ปั้นเอง** รอบแรกผมสร้างกระดานไม้กับเสาสองต้นด้วยโค้ดเพราะยังไม่มีโมเดล ตอนนี้มี
+-- `Guild_QuestBoard` ซึ่งเป็นบอร์ดจริง 243 ชิ้น มีโคมไฟ ใบประกาศ 56 ใบ และตราสมาคม — สวยกว่าที่เขียนได้
+--
+-- ต้นแบบยังคงอยู่ที่เดิมในแมพ ไม่ได้ถูกย้ายหรือลบ (sandbox ย้ายเข้า ServerStorage ไม่ได้อยู่แล้ว)
+-- ตัวมันเองไม่ได้ติดแท็ก จึงไม่มีปุ่ม E และไม่นับเป็นบอร์ดใช้งาน
+local PROTOTYPE_NAME = "Guild_QuestBoard"
 
-local function part(parent, name, size, cf, colour, material)
-	local p = Instance.new("Part")
-	p.Name = name
-	p.Size = size
-	p.CFrame = cf
-	p.Color = colour
-	p.Material = material or Enum.Material.Wood
-	p.Anchored = true
-	p.CanCollide = true
-	p.TopSurface = Enum.SurfaceType.Smooth
-	p.BottomSurface = Enum.SurfaceType.Smooth
-	p.Parent = parent
-	return p
+local function prototype()
+	local m = workspace:FindFirstChild(PROTOTYPE_NAME)
+	if m and m:IsA("Model") then return m end
+	return nil
 end
 
 -- หาพื้นจริงตรงจุดนั้น ไม่ใช่ใช้ y ที่ให้มา
@@ -100,6 +96,12 @@ local function existing(id)
 	return nil
 end
 
+local source = prototype()
+if not source then
+	warn("[Quests] ไม่เจอโมเดลต้นแบบ " .. PROTOTYPE_NAME .. " ใน workspace — ไม่ทำอะไรเลย")
+	return
+end
+
 local made, skipped, failed = 0, 0, 0
 
 for _, spec in ipairs(BOARDS) do
@@ -113,30 +115,26 @@ for _, spec in ipairs(BOARDS) do
 			failed += 1
 		else
 
-			local model = Instance.new("Model")
+			local model = source:Clone()
 			model.Name = "QuestBoard_" .. spec.id
 
-			-- เสาสองต้น
-			for _, side in ipairs({ -1.6, 1.6 }) do
-				part(model, "Post", Vector3.new(0.4, 5, 0.4),
-					CFrame.new(base + Vector3.new(side, 2.5, 0)), DARK)
+			-- วางให้ Root อยู่ที่ผิวดินพอดี
+			--
+			-- Root ของต้นแบบอยู่สูงจากก้นโมเดล 0.5 studs จึงยก 0.5 เพื่อให้ก้นบอร์ดแตะพื้นพอดี ไม่จม
+			-- และไม่ลอย — วัดจากโมเดลจริง ไม่ได้เดา
+			local srcRoot = model:FindFirstChild("Root")
+			local lift = 0.5
+			if srcRoot then
+				local cf, sz = model:GetBoundingBox()
+				lift = srcRoot.Position.Y - (cf.Position.Y - sz.Y * 0.5)
 			end
+			model:PivotTo(CFrame.new(base + Vector3.new(0, lift, 0)))
+			model.PrimaryPart = srcRoot or model.PrimaryPart
 
-			-- กระดาน
-			local board = part(model, "Board", Vector3.new(4.2, 3, 0.3),
-				CFrame.new(base + Vector3.new(0, 4.2, 0)), WOOD)
-			model.PrimaryPart = board
-
-			-- หลังคากันฝน เอียงนิดหน่อย
-			part(model, "Roof", Vector3.new(4.8, 0.25, 1.2),
-				CFrame.new(base + Vector3.new(0, 5.9, -0.3)) * CFrame.Angles(math.rad(-14), 0, 0), DARK)
-
-			-- กระดาษสามใบติดอยู่ ตรงกับสามช่องงานบนบอร์ด
-			for i = -1, 1 do
-				part(model, "Notice", Vector3.new(1.1, 1.5, 0.06),
-					CFrame.new(base + Vector3.new(i * 1.3, 4.3, 0.19))
-						* CFrame.Angles(0, 0, math.rad(math.random(-4, 4))),
-					PAPER, Enum.Material.SmoothPlastic)
+			-- หันหน้าเข้าหาใจกลางหมู่บ้าน ไม่ใช่หันไปทางเดียวกันหมดทั้งหกอัน
+			local toCentre = Vector3.new(spec.at.X - base.X, 0, spec.at.Z - base.Z)
+			if toCentre.Magnitude > 1 then
+				model:PivotTo(CFrame.new(base + Vector3.new(0, lift, 0), base + Vector3.new(0, lift, 0) + toCentre.Unit))
 			end
 
 			model.Parent = workspace
