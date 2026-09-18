@@ -111,11 +111,12 @@ function HudGui.new()
 	armorIcon.Position = UDim2.fromScale(0.5, 0.5)
 	armorIcon.Size = UDim2.fromScale(0.46, 0.46)
 	armorIcon.BackgroundTransparency = 1
-	armorIcon.TextTransparency = 0.45
+	armorIcon.TextTransparency = 0.1
 	armorIcon.Font = Enum.Font.SourceSansBold
 	armorIcon.TextScaled = true
 	armorIcon.TextColor3 = Color3.new(1, 1, 1)
-	armorIcon.Text = "\226\154\160" -- placeholder glyph (no real icon art yet) — swap for an ImageLabel + rbxassetid shield icon later
+	-- อีโมจิโล่ (ผู้ใช้กำหนด) ของเดิมเป็น ⚠ ซึ่งอ่านเป็น "ไอคอนพัง" ไม่ใช่เกราะ
+	armorIcon.Text = "🛡️"
 	armorIcon.Parent = armorBadge
 
 	-- Middle: stamina, a thin vertical bar filling the middle 35% band of the column height (40/35/25
