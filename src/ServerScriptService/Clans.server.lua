@@ -15,6 +15,7 @@ local ClanAccess = require(game.ServerScriptService.ClanAccess)
 local Inventory = require(game.ServerScriptService.Inventory)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
+local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local SILVER = "Silver"
@@ -117,7 +118,22 @@ local function clanDetail(clan, viewer)
 		memberCount = ClanStore.MemberCount(clan),
 		maxMembers = ClanConfig.MaxMembers,
 		myRole = viewer and ClanStore.RoleOf(clan, viewer.UserId) or nil,
+		-- คนที่ขอเข้า รอหัวแคลน/รองหัวอนุมัติ
+		applicants = (function()
+			local rows = {}
+			for userId, name in pairs(clan.applicants or {}) do
+				rows[#rows + 1] = { userId = tonumber(userId), name = name }
+			end
+			table.sort(rows, function(a, b) return a.name < b.name end)
+			return rows
+		end)(),
 		vaultSlots = ClanConfig.VaultSlots,
+		-- นับเฉพาะช่องที่มีของ — ตาราง vault ที่ส่งไปมี false เต็มทุกช่อง นับ # จะได้ 81/81 เสมอ
+		vaultUsed = (function()
+			local n = 0
+			for _, entry in pairs(clan.vault or {}) do if entry then n += 1 end end
+			return n
+		end)(),
 		-- ของในคลัง ส่งชื่อกับไอคอนมาด้วยเลย ไคลเอนต์จะได้ไม่ต้องเปิดแคตตาล็อกเอง
 		vaultCols = ClanConfig.VaultCols,
 		vaultRows = ClanConfig.VaultRows,
@@ -173,11 +189,25 @@ local function clanList()
 	return rows
 end
 
+local function applyIdOf(player)
+	local data = ProfileAccess.Get(player)
+	return data and data.ClanApply or nil
+end
+
+local function setApplyId(player, clanId)
+	local data = ProfileAccess.Get(player)
+	if data then data.ClanApply = clanId end
+end
+
 local function push(player)
-	local clan = clanOf(player)
+	-- อ่านสดทุกครั้งที่วาดหน้า: คำขอเข้าแคลนมาจากคนละเซิร์ฟเวอร์ได้ ถ้าใช้แคชหัวแคลนจะไม่เห็นคำขอเลย
+	-- จนกว่าตัวเองจะไปแก้อะไรในแคลน — หนึ่ง GetAsync ต่อการเปิดหน้า รับได้
+	local clan = clanOf(player, true)
 	Remotes.ClanUpdate:FireClient(player, {
 		list = clanList(),
 		mine = clanDetail(clan, player),
+		-- แคลนที่ยื่นขอไว้ (ถ้ามี) ปุ่มสมัครจะได้เปลี่ยนเป็น "รออนุมัติ"
+		applying = (not clan) and applyIdOf(player) or nil,
 		silverHeld = silverHeld(player),
 		createCost = ClanConfig.CreateCostSilver,
 	})
@@ -210,10 +240,30 @@ local function create(player, name, blurb)
 	push(player)
 end
 
+-- **สมัครแล้วต้องรออนุมัติ** ผู้ใช้กำหนด — การกดสมัครแค่ใส่ชื่อลงรายชื่อผู้ขอของแคลนนั้น หัวแคลนหรือรองหัว
+-- ต้องกดรับถึงจะเป็นสมาชิก คนหนึ่งยื่นได้ทีละแคลน (ยื่นใหม่ = ถอนอันเก่า)
+--
+-- ผู้ขอกับคนอนุมัติมักไม่ได้ออนไลน์พร้อมกัน จึงจำ id แคลนที่ยื่นไว้ในโปรไฟล์ของผู้ขอ (ClanApply) แล้วตอนเข้าเกม
+-- ครั้งถัดไปมาดูว่าชื่อตัวเองไปอยู่ในสมาชิกหรือยัง (อนุมัติแล้ว) หรือหายจากรายชื่อผู้ขอ (ถูกปฏิเสธ)
+local function withdraw(player, clanId)
+	if not clanId then return end
+	ClanStore.Update(clanId, function(c)
+		if not c or not c.applicants then return nil end
+		c.applicants[tostring(player.UserId)] = nil
+		return c
+	end)
+	setApplyId(player, nil)
+end
+
 local function join(player, clanId)
 	if clanIdOf(player) then
 		return Remotes.SocialNotify:FireClient(player, "warn", "คุณอยู่ในแคลนอยู่แล้ว")
 	end
+	local previous = applyIdOf(player)
+	if previous == clanId then
+		return Remotes.SocialNotify:FireClient(player, "info", "ยื่นขอเข้าแคลนนี้ไว้แล้ว รอหัวแคลนอนุมัติ")
+	end
+	if previous then withdraw(player, previous) end
 
 	local full = false
 	local result = ClanStore.Update(clanId, function(clan)
@@ -222,10 +272,8 @@ local function join(player, clanId)
 			full = true
 			return nil
 		end
-		clan.members = clan.members or {}
-		clan.names = clan.names or {}
-		clan.members[tostring(player.UserId)] = "member"
-		clan.names[tostring(player.UserId)] = player.DisplayName
+		clan.applicants = clan.applicants or {}
+		clan.applicants[tostring(player.UserId)] = player.DisplayName
 		return clan
 	end)
 
@@ -233,12 +281,109 @@ local function join(player, clanId)
 		return Remotes.SocialNotify:FireClient(player, "warn", "แคลนนี้เต็มแล้ว")
 	end
 	if not result then
-		return Remotes.SocialNotify:FireClient(player, "error", "เข้าแคลนไม่สำเร็จ")
+		return Remotes.SocialNotify:FireClient(player, "error", "ส่งคำขอไม่สำเร็จ")
 	end
 
-	setClanId(player, clanId)
-	ClanAccess.GiveRing(player)
-	Remotes.SocialNotify:FireClient(player, "info", ("เข้าแคลน %s แล้ว"):format(result.name))
+	setApplyId(player, clanId)
+	Remotes.SocialNotify:FireClient(player, "info",
+		("ส่งคำขอเข้าแคลน %s แล้ว รอหัวแคลนอนุมัติ"):format(result.name))
+	-- บอกหัวแคลน/รองหัวที่ออนไลน์อยู่
+	for _, p in ipairs(Players:GetPlayers()) do
+		local role = ClanStore.RoleOf(result, p.UserId)
+		if role == "leader" or role == "officer" then
+			Remotes.SocialNotify:FireClient(p, "info", ("%s ขอเข้าแคลน — เปิดหน้าแคลนเพื่ออนุมัติ"):format(player.DisplayName))
+			push(p)
+		end
+	end
+	push(player)
+end
+
+local function cancelApply(player)
+	local clanId = applyIdOf(player)
+	if not clanId then return end
+	withdraw(player, clanId)
+	Remotes.SocialNotify:FireClient(player, "info", "ถอนคำขอแล้ว")
+	push(player)
+end
+
+local function canApprove(clan, player)
+	local role = ClanStore.RoleOf(clan, player.UserId)
+	return role == "leader" or role == "officer"
+end
+
+local function approve(player, targetUserId)
+	local clan = clanOf(player)
+	if not clan then return end
+	if not canApprove(clan, player) then
+		return Remotes.SocialNotify:FireClient(player, "warn", "เฉพาะหัวแคลนหรือรองหัวเท่านั้น")
+	end
+	local key = tostring(targetUserId)
+	local full, name = false, nil
+	local result = ClanStore.Update(clan.id, function(c)
+		if not c or not c.applicants or not c.applicants[key] then return nil end
+		if ClanStore.MemberCount(c) >= ClanConfig.MaxMembers then
+			full = true
+			return nil
+		end
+		name = c.applicants[key]
+		c.applicants[key] = nil
+		c.members = c.members or {}
+		c.names = c.names or {}
+		c.members[key] = "member"
+		c.names[key] = name
+		return c
+	end)
+	if full then
+		return Remotes.SocialNotify:FireClient(player, "warn", ("แคลนเต็มแล้ว (%d คน)"):format(ClanConfig.MaxMembers))
+	end
+	if not result then
+		return Remotes.SocialNotify:FireClient(player, "error", "อนุมัติไม่สำเร็จ")
+	end
+
+	-- ผู้ขอออนไลน์อยู่ก็เข้าแคลนทันที ไม่อยู่ก็เจอตอนเข้าเกม (reconcile ข้างล่าง)
+	local target = Players:GetPlayerByUserId(tonumber(targetUserId) or 0)
+	if target then
+		if clanIdOf(target) then
+			-- ไปอยู่แคลนอื่นแล้วระหว่างรอ ถอดชื่อออกจากเราอีกที
+			ClanStore.Update(clan.id, function(c)
+				if not c then return nil end
+				c.members[key] = nil
+				c.names[key] = nil
+				return c
+			end)
+			return Remotes.SocialNotify:FireClient(player, "warn", "คนนั้นอยู่แคลนอื่นแล้ว")
+		end
+		setClanId(target, clan.id)
+		setApplyId(target, nil)
+		ClanAccess.GiveRing(target)
+		Remotes.SocialNotify:FireClient(target, "info", ("ได้รับอนุมัติเข้าแคลน %s แล้ว"):format(result.name))
+		push(target)
+	end
+	Remotes.SocialNotify:FireClient(player, "info", ("รับ %s เข้าแคลนแล้ว"):format(name or key))
+	push(player)
+end
+
+local function reject(player, targetUserId)
+	local clan = clanOf(player)
+	if not clan then return end
+	if not canApprove(clan, player) then
+		return Remotes.SocialNotify:FireClient(player, "warn", "เฉพาะหัวแคลนหรือรองหัวเท่านั้น")
+	end
+	local key = tostring(targetUserId)
+	local name
+	ClanStore.Update(clan.id, function(c)
+		if not c or not c.applicants or not c.applicants[key] then return nil end
+		name = c.applicants[key]
+		c.applicants[key] = nil
+		return c
+	end)
+	local target = Players:GetPlayerByUserId(tonumber(targetUserId) or 0)
+	if target and applyIdOf(target) == clan.id then
+		setApplyId(target, nil)
+		Remotes.SocialNotify:FireClient(target, "warn", ("แคลน %s ปฏิเสธคำขอ"):format(clan.name))
+		push(target)
+	end
+	Remotes.SocialNotify:FireClient(player, "info", ("ปฏิเสธ %s แล้ว"):format(name or key))
 	push(player)
 end
 
@@ -515,11 +660,39 @@ Remotes.RequestClanAction.OnServerEvent:Connect(function(player, action, a, b)
 	if action == "refresh" then push(player)
 	elseif action == "create" then create(player, a, b)
 	elseif action == "join" then join(player, a)
+	elseif action == "cancelapply" then cancelApply(player)
+	elseif action == "approve" then approve(player, a)
+	elseif action == "reject" then reject(player, a)
 	elseif action == "leave" then leave(player)
 	elseif action == "donate" then donate(player, a)
 	elseif action == "distribute" then distribute(player, a, b)
 	elseif action == "setrole" then setRole(player, a, b)
 	elseif action == "vaultput" then vaultPut(player, a, b)
 	elseif action == "vaulttake" then vaultTake(player, a)
+	end
+end)
+
+-- **อยู่ท้ายไฟล์** เพราะเรียก ClanAccess.GiveRing ซึ่งถูกนิยามข้างบนนี้ — ผู้เล่นที่อยู่แล้วตอนสคริปต์เริ่ม
+-- จะถูกส่งเข้าฟังก์ชันนี้ทันที ถ้าวางไว้กลางไฟล์ GiveRing ยังเป็น nil
+-- ตอนเข้าเกม: คำขอที่ยื่นไว้ถูกตัดสินไปแล้วระหว่างออฟไลน์ไหม
+PlayerJoin.Each(function(player)
+	local data = ProfileAccess.Wait(player)
+	if not data or not data.ClanApply or data.ClanId then
+		if data and data.ClanId then data.ClanApply = nil end
+		return
+	end
+	local clan = ClanStore.Get(data.ClanApply, true)
+	if not clan then
+		data.ClanApply = nil
+		return
+	end
+	if ClanStore.RoleOf(clan, player.UserId) then
+		data.ClanId = clan.id
+		data.ClanApply = nil
+		ClanAccess.GiveRing(player)
+		Remotes.SocialNotify:FireClient(player, "info", ("ได้รับอนุมัติเข้าแคลน %s แล้ว"):format(clan.name))
+	elseif not (clan.applicants and clan.applicants[tostring(player.UserId)]) then
+		data.ClanApply = nil
+		Remotes.SocialNotify:FireClient(player, "warn", ("แคลน %s ปฏิเสธคำขอ"):format(clan.name))
 	end
 end)

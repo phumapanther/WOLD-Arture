@@ -288,15 +288,21 @@ function ClanGui:renderList(data)
 		sub.Position = UDim2.new(0, 40, 0, 26)
 		sub.Size = UDim2.new(1, -170, 0, 18)
 
-		-- สมัครเข้าได้เฉพาะคนที่ยังไม่มีแคลน
+		-- สมัครเข้าได้เฉพาะคนที่ยังไม่มีแคลน สมัครแล้วต้องรอหัวแคลนอนุมัติ
 		if not data.mine then
-			local join = button(row, "สมัครเข้า", RUNE, function()
-				self:fire("join", clan.id)
-			end)
+			local waiting = data.applying == clan.id
+			local join = button(row, waiting and "รออนุมัติ ✕" or "ขอเข้า",
+				waiting and Color3.fromRGB(70, 74, 84) or RUNE, function()
+					if waiting then
+						self:fire("cancelapply")
+					else
+						self:fire("join", clan.id)
+					end
+				end)
 			join.AnchorPoint = Vector2.new(1, 0.5)
 			join.Position = UDim2.new(1, -8, 0.5, 0)
-			join.Size = UDim2.fromOffset(76, 30)
-			join.TextColor3 = Color3.fromRGB(38, 28, 16)
+			join.Size = UDim2.fromOffset(84, 30)
+			join.TextColor3 = waiting and TEXT_LIGHT or Color3.fromRGB(38, 28, 16)
 		end
 	end
 end
@@ -415,6 +421,38 @@ function ClanGui:renderMine(data)
 	list.Position = UDim2.new(0, 0, 0, 122)
 	list.Size = UDim2.new(1, 0, 1, -160)
 
+	-- คนที่ขอเข้า อยู่บนสุด หัวแคลน/รองหัวกดรับหรือปฏิเสธได้
+	local canApprove = clan.myRole == "leader" or clan.myRole == "officer"
+	for order, who in ipairs(clan.applicants or {}) do
+		local row = Instance.new("Frame")
+		row.LayoutOrder = order - 1000
+		row.Size = UDim2.new(1, -6, 0, 34)
+		row.BackgroundColor3 = Color3.fromRGB(58, 52, 40)
+		row.BorderSizePixel = 0
+		row.Parent = list
+		corner(row, UDim.new(0, 6))
+
+		local name = label(row, ("%s — ขอเข้าแคลน"):format(who.name), 13, RUNE)
+		name.Position = UDim2.new(0, 10, 0, 0)
+		name.Size = UDim2.new(1, -130, 1, 0)
+
+		if canApprove then
+			local ok = button(row, "รับ", Color3.fromRGB(78, 122, 64), function()
+				self:fire("approve", who.userId)
+			end)
+			ok.AnchorPoint = Vector2.new(1, 0.5)
+			ok.Position = UDim2.new(1, -62, 0.5, 0)
+			ok.Size = UDim2.fromOffset(48, 24)
+
+			local no = button(row, "ไม่รับ", Color3.fromRGB(96, 62, 62), function()
+				self:fire("reject", who.userId)
+			end)
+			no.AnchorPoint = Vector2.new(1, 0.5)
+			no.Position = UDim2.new(1, -8, 0.5, 0)
+			no.Size = UDim2.fromOffset(48, 24)
+		end
+	end
+
 	for order, member in ipairs(clan.members or {}) do
 		local row = Instance.new("Frame")
 		row.LayoutOrder = order
@@ -450,7 +488,7 @@ function ClanGui:renderMine(data)
 
 	-- แถวล่าง: คลังแคลน + ออกจากแคลน
 	local vault = button(self.body, ("เปิดคลังแคลน (%d/%d)")
-		:format(#(clan.vault or {}), clan.vaultSlots or ClanConfig.VaultSlots),
+		:format(clan.vaultUsed or 0, clan.vaultSlots or ClanConfig.VaultSlots),
 		Color3.fromRGB(84, 70, 48), function()
 			self:fire("openvault")
 		end)

@@ -23,6 +23,9 @@ end
 
 gui:On("create", function(name, blurb) act("create", name, blurb) end)
 gui:On("join", function(clanId) act("join", clanId) end)
+gui:On("cancelapply", function() act("cancelapply") end)
+gui:On("approve", function(userId) act("approve", userId) end)
+gui:On("reject", function(userId) act("reject", userId) end)
 gui:On("leave", function() act("leave") end)
 gui:On("donate", function(amount) act("donate", amount) end)
 gui:On("distribute", function(amount, target) act("distribute", amount, target) end)

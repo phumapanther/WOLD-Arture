@@ -34,7 +34,8 @@ end
 -- ข้อจำกัด
 --------------------------------------------------------------------------------
 
-ClanConfig.MaxMembers = 30
+-- ผู้ใช้กำหนด 12 คนต่อแคลน
+ClanConfig.MaxMembers = 12
 ClanConfig.NameMinLength = 3
 ClanConfig.NameMaxLength = 18
 ClanConfig.BlurbMaxLength = 200
