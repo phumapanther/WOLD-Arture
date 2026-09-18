@@ -17,6 +17,7 @@ if ServerConfig.IsLobby then return end
 local Inventory = require(game.ServerScriptService.Inventory)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Classes = require(game.ServerScriptService.Classes)
+local ClassConfig = require(game.ReplicatedStorage.ClassConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local ChestStorageAccess = require(game.ServerScriptService.ChestStorageAccess)
 
@@ -226,7 +227,8 @@ local function wire(model)
 
 	prompt.Triggered:Connect(function(player)
 		if not mayOpen(player, model) then
-			return Remotes.SocialNotify:FireClient(player, "warn", "เฉพาะนักบวชเท่านั้น")
+			local class = ClassConfig.Get(model:GetAttribute("StorageClass"))
+			return Remotes.SocialNotify:FireClient(player, "warn", ("เฉพาะ%sเท่านั้น"):format(class and class.name or "อาชีพที่กำหนด"))
 		end
 		Viewers[player] = model
 		Remotes.StorageChestOpen:FireClient(player, slotsOf(model))

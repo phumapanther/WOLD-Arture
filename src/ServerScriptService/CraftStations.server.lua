@@ -3,7 +3,7 @@
 --   Stove              ทำอาหาร (ต้องมีตะหลิวเชฟในกระเป๋า)  → หน้าคราฟ station "stove"   มีไฟลุกตอนทำ
 --   SteamBlender       ปั่นเครื่องดื่ม (ต้องมีตะหลิวเชฟ)    → station "blender"
 --   AlchemyStill       ต้มยา                                  → station "still"
---   IceBox             ตู้เย็น 25 ช่อง เก็บได้เฉพาะอาหาร      → หีบเก็บของ (StorageChests) ติดแอตทริบิวต์
+--   IceBox             ตู้เย็น 25 ช่อง เก็บได้เฉพาะอาหาร เชฟเท่านั้น → หีบเก็บของ (StorageChests) ติดแอตทริบิวต์
 --   ApothecaryCabinet  ตู้ยา 25 ช่อง เก็บได้เฉพาะยา นักบวชเท่านั้น
 --
 -- หาโมเดลจาก **ชื่อ** ในลูปถามใหม่ (กฎเหล็ก StreamingEnabled) ผู้ใช้วางเพิ่มที่ไหนก็เจอ — ยกเว้นชิ้นที่อยู่ใน
@@ -29,7 +29,7 @@ local STATIONS = {
 
 -- ตู้เก็บของ: ส่งต่อให้ StorageChests.server ผ่านแท็ก + แอตทริบิวต์
 local STORAGE = {
-	IceBox = { slots = 25, accepts = "food", action = "เปิดตู้เย็น", object = "ตู้เย็น" },
+	IceBox = { slots = 25, accepts = "food", class = "Chef", action = "เปิดตู้เย็น", object = "ตู้เย็น" },
 	ApothecaryCabinet = { slots = 25, accepts = "medicine", class = "Priest", action = "เปิดตู้ยา", object = "ตู้ยา" },
 }
 
