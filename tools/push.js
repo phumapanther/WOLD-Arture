@@ -36,7 +36,24 @@ function instancePath(file) {
 local inst = ${target}
 inst.Source = [${eq}[${src}]${eq}]
 return inst:GetFullName() .. " len=" .. #inst.Source`;
-    const text = c.text(await c.tool("execute_luau", { datamodel_type: "Edit", code }));
+    let text = "";
+    for (let i = 0; i < 6; i++) {
+      text = c.text(await c.tool("execute_luau", { datamodel_type: "Edit", code }));
+      if (!/Target is not reachable|No Roblox Studio|Unable to reach/.test(text)) break;
+      await new Promise((r) => setTimeout(r, 3000));
+    }
+    // A script that does not exist yet: execute_luau cannot create it (the assistant thread may not parent
+    // into ServerScriptService), but the multi_edit tool can -- with the class taken from the filename.
+    if (/attempt to index nil|is not a valid member/.test(text)) {
+      const className = /\.server\.lua$/.test(file) ? "Script" : /\.client\.lua$/.test(file) ? "LocalScript" : "ModuleScript";
+      const dotted = target.replace(/\["([^"]+)"\]/g, ".$1");
+      const studios = JSON.parse(c.text(await c.tool("list_roblox_studios", {}))).studios;
+      const made = c.text(await c.tool("multi_edit", {
+        file_path: dotted, className, datamodel_type: "Edit", studio_id: studios[0].id,
+        edits: [{ old_string: "", new_string: src }],
+      }));
+      text = "created " + className + ": " + made;
+    }
     console.log(file, "->", text, "(local", Buffer.byteLength(src), ")");
   }
   c.close();

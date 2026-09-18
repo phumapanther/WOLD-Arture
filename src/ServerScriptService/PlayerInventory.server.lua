@@ -8,6 +8,7 @@ local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
 local ChestAccess = require(game.ServerScriptService.ChestAccess)
 local MonowheelAccess = require(game.ServerScriptService.MonowheelAccess)
+local AuraAccess = require(game.ServerScriptService.AuraAccess)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
@@ -161,6 +162,11 @@ local function applyUse(player, item)
 		-- plus every worn piece sitting in the bag.
 		if not Inventory.RepairAll(player) then return false end
 		Vitals.SyncArmorFromEquipment(player)
+	elseif use.stat == "buff" then
+		-- อาหารพรีเมียม: ไม่หิว/ไม่เหนื่อยชั่วคราว
+		Vitals.AddBuff(player, use.buff, use.seconds or 600)
+		local what = use.buff == "noHunger" and "ไม่หิว" or use.buff == "noStamina" and "วิ่งไม่เหนื่อย" or "ไม่หิว ไม่เหนื่อย"
+		Remotes.SocialNotify:FireClient(player, "info", ("%s %d นาที"):format(what, math.floor((use.seconds or 600) / 60)))
 	end
 	return true
 end
@@ -228,7 +234,14 @@ local function doUseItem(player, index)
 	if not slot then return end
 
 	local item = ItemCatalog.Get(slot.id)
-	if not item or item.kind ~= "consumable" or not item.use then return end
+	if not item then return end
+
+	-- ออร่า: กดใช้ = เปิด/ปิด ไม่ถูกใช้หมด Auras.server เป็นเจ้าของเอฟเฟกต์
+	if item.kind == "aura" then
+		if AuraAccess.Toggle then AuraAccess.Toggle(player, slot.id) end
+		return
+	end
+	if item.kind ~= "consumable" or not item.use then return end
 
 	-- Nothing but crawling, while crawling -- and that includes drinking.
 	--

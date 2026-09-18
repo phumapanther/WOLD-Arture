@@ -25,6 +25,7 @@ local gui = InventoryGui.new()
 gui.gui.Parent = player:WaitForChild("PlayerGui")
 
 local latest = { slots = {}, equipped = {}, gold = 0, weight = 0, maxWeight = 1 }
+local addSkinEntries -- นิยามข้างล่าง ใกล้เมนูไอเทม
 
 Remotes.InventoryUpdate.OnClientEvent:Connect(function(data)
 	latest = data
@@ -110,6 +111,43 @@ local function nearbyPlayers()
 	return found
 end
 
+-- สกินที่มีในกระเป๋าซึ่งใส่กับชิ้นนี้ได้ (ผู้ใช้กำหนด: สกินแยกตามอาวุธ ชุดแฟชั่นใส่เกราะไหนก็ได้)
+local function skinsFor(entry)
+	local item = ItemCatalog.Get(entry.id)
+	if not item then return {} end
+	local out = {}
+	for index, slot in pairs(latest.slots or {}) do
+		local skin = ItemCatalog.Get(slot.id)
+		if skin and ((item.kind == "weapon" and skin.kind == "skin" and skin.skinFor == entry.id)
+			or (item.kind == "armor" and skin.kind == "fashion")) then
+			out[#out + 1] = { index = tonumber(index), name = skin.name }
+		end
+	end
+	table.sort(out, function(a, b) return a.index < b.index end)
+	return out
+end
+
+-- ปุ่ม "ติดตั้งสกิน" (เปิดรายการสกินที่ใส่ได้) และ "ถอดสกิน" บนอาวุธ/เกราะ target = "bag:<i>" | "equipped:<kind>"
+addSkinEntries = function(entries, anchorButton, title, target, entry)
+	local options = skinsFor(entry)
+	if #options > 0 then
+		table.insert(entries, { label = ("ติดตั้งสกิน (%d)"):format(#options), onClick = function()
+			local picks = {}
+			for _, o in ipairs(options) do
+				table.insert(picks, { label = o.name, onClick = function()
+					Remotes.RequestSkin:FireServer("install", target, o.index)
+				end })
+			end
+			gui:ShowItemMenu(anchorButton, picks, "เลือกสกิน")
+		end })
+	end
+	if entry.meta and entry.meta.skin then
+		table.insert(entries, { label = "ถอดสกิน", onClick = function()
+			Remotes.RequestSkin:FireServer("remove", target)
+		end })
+	end
+end
+
 -- Tapping an item opens a small menu beside it rather than acting at once. Using, giving and dropping are
 -- three very different outcomes -- one of them destroys the item -- and a single tap that picked one of them
 -- for you was the wrong shape.
@@ -137,10 +175,30 @@ gui:OnSlotClicked(function(index)
 		table.insert(entries, { label = "สวมใส่", onClick = function()
 			Remotes.RequestEquip:FireServer(index)
 		end })
+		addSkinEntries(entries, button, title, "bag:" .. index, slot)
 	elseif item.kind == "consumable" then
 		table.insert(entries, { label = "ใช้", onClick = function()
 			Remotes.RequestUseItem:FireServer(index)
 		end })
+	elseif item.kind == "aura" then
+		-- ออร่า: ใช้ = เปิด/ปิด ไม่ถูกใช้หมด
+		table.insert(entries, { label = "เปิด/ปิดออร่า", onClick = function()
+			Remotes.RequestUseItem:FireServer(index)
+		end })
+	elseif item.kind == "skin" or item.kind == "fashion" then
+		-- ทางลัด: ติดกับชิ้นที่สวมอยู่ ถ้าตรงชนิด
+		local key = item.kind == "skin" and "weapon" or "armor"
+		local worn = latest.equipped and latest.equipped[key]
+		if worn and (item.kind == "fashion" or item.skinFor == worn.id) then
+			table.insert(entries, { label = "ติดตั้งกับที่สวมอยู่", onClick = function()
+				Remotes.RequestSkin:FireServer("install", "equipped:" .. key, index)
+			end })
+		else
+			local base = item.kind == "skin" and ItemCatalog.Get(item.skinFor or "") or nil
+			local hint = item.kind == "skin" and ("ใช้กับ: " .. (base and base.name or tostring(item.skinFor)))
+				or "ใช้กับเกราะที่สวมอยู่"
+			table.insert(entries, { label = hint, onClick = function() end })
+		end
 	end
 
 	table.insert(entries, { label = "ให้", onClick = function()
@@ -259,8 +317,19 @@ gui:OnDragStarted(function(index, input)
 	drag.connections = { moveConn, endConn }
 end)
 
+-- ช่องสวม: เมนู ถอด / ติดตั้งสกิน / ถอดสกิน (เดิมกดแล้วถอดทันที — ตอนนี้มีสกินให้เลือกจึงต้องเป็นเมนู)
 gui:OnEquipSlotClicked(function(kind)
-	if latest.equipped and latest.equipped[kind] then
+	local worn = latest.equipped and latest.equipped[kind]
+	if not worn then return end
+	local anchor = gui:EquipSlotButton(kind)
+	if not anchor then
 		Remotes.RequestUnequip:FireServer(kind)
+		return
 	end
+	local title = ItemCatalog.DisplayName(worn.id, worn.meta)
+	local entries = {
+		{ label = "ถอด", onClick = function() Remotes.RequestUnequip:FireServer(kind) end },
+	}
+	addSkinEntries(entries, anchor, title, "equipped:" .. kind, worn)
+	gui:ShowItemMenu(anchor, entries, title)
 end)

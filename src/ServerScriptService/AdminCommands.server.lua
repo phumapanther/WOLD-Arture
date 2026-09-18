@@ -21,6 +21,7 @@ local ClassActionConfig = require(game.ReplicatedStorage.ClassActionConfig)
 local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local CommandCatalog = require(game.ReplicatedStorage.CommandCatalog)
+local PremiumAccess = require(game.ServerScriptService.PremiumAccess)
 local DayNightAccess = require(game.ServerScriptService.DayNightAccess)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
@@ -126,6 +127,30 @@ Commands.give = function(admin, args)
 	local ok = Inventory.AddItem(target, id, count)
 	reply(admin, ("%s %s x%d -> %s%s"):format(ok and "ให้" or "ให้ได้บางส่วน",
 		ItemCatalog.Get(id).name, count, target.Name, ok and "" or " (กระเป๋าเต็ม)"))
+end
+
+-- /gems <amount> [player] -- เสกเพชร (สกุลเงินพรีเมียม ยังไม่เปิดขายด้วยโรบัค) ติดลบ = ลด
+Commands.gems = function(admin, args)
+	local amount = tonumber(args[1])
+	if not amount then return reply(admin, "ใช้: /gems <จำนวน> [ผู้เล่น]  (ติดลบ = ลด)") end
+	local target = resolveTarget(admin, args[2])
+	if not target then return end
+	if not PremiumAccess.AddGems then return reply(admin, "ระบบพรีเมียมยังไม่พร้อม") end
+	PremiumAccess.AddGems(target, math.floor(amount))
+	Remotes.PremiumUpdate:FireClient(target, { gems = PremiumAccess.GetGems(target) })
+	reply(admin, ("เพชร %s%d -> %s (ตอนนี้ %d)"):format(amount >= 0 and "+" or "", math.floor(amount),
+		target.Name, PremiumAccess.GetGems(target)))
+end
+
+-- /passxp <amount> [player] -- เติม XP แบทเทิลพาสตรงๆ ไว้เทสรับของ
+Commands.passxp = function(admin, args)
+	local amount = tonumber(args[1])
+	if not amount then return reply(admin, "ใช้: /passxp <จำนวน> [ผู้เล่น]") end
+	local target = resolveTarget(admin, args[2])
+	if not target then return end
+	if not PremiumAccess.AddPassXp then return reply(admin, "ระบบพรีเมียมยังไม่พร้อม") end
+	PremiumAccess.AddPassXp(target, math.floor(amount))
+	reply(admin, ("XP พาส +%d -> %s"):format(math.floor(amount), target.Name))
 end
 
 -- /gold <amount> [player] -- เสกตัง; a negative amount takes it away

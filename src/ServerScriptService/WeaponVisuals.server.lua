@@ -9,6 +9,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local Inventory = require(game.ServerScriptService.Inventory)
+local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local WeaponVisualsAccess = require(game.ServerScriptService.WeaponVisualsAccess)
 local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 
@@ -140,16 +141,35 @@ local function clearHeldWeapon(character)
 	end
 end
 
-local function holdWeapon(player, weaponId)
+-- ย้อมทุกชิ้นของโมเดลถือ (เครื่องมือทอง / สกินที่ไม่มีโมเดลของตัวเอง)
+local function tintModel(model, colour, material)
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") then
+			if colour then d.Color = colour end
+			if material then d.Material = material end
+		end
+	end
+end
+
+local function holdWeapon(player, weaponId, meta)
 	local character = player.Character
 	if not character then return end
 	clearHeldWeapon(character)
 	if not weaponId or not PREFABS then return end
 
+	local item = ItemCatalog.Get(weaponId)
+	-- เครื่องมือทองใช้โมเดลถือ (และท่าจับ) ของตัวธรรมดา แล้วย้อมเป็นทอง
+	local shapeId = item and item.prefab or weaponId
 	local fighting = Fighting[player] == true
-	local prefab = PREFABS:FindFirstChild(weaponId)
-	local anchor = anchorPartFor(character, weaponId, fighting)
-	if not prefab or not anchor then return end
+	local anchor = anchorPartFor(character, shapeId, fighting)
+	if not anchor then return end
+
+	-- สกินที่ติดตั้งไว้: มีโมเดลของตัวเองใน WOLD_Skins ก็ใช้ ไม่มีก็ย้อมโมเดลเดิม
+	local skin = meta and meta.skin and ItemCatalog.Get(meta.skin) or nil
+	local skinFolder = ReplicatedStorage:FindFirstChild("WOLD_Skins")
+	local prefab = (skin and skinFolder and skinFolder:FindFirstChild(skin.model or meta.skin))
+		or PREFABS:FindFirstChild(shapeId)
+	if not prefab then return end
 
 	local model = prefab:Clone()
 	model.Name = "EquippedWeapon"
@@ -158,6 +178,12 @@ local function holdWeapon(player, weaponId)
 		model:Destroy()
 		return
 	end
+	if skin then
+		if prefab.Parent == PREFABS then tintModel(model, skin.tint, skin.material) end
+	elseif item and item.tint then
+		tintModel(model, item.tint, item.material or Enum.Material.Metal)
+	end
+	weaponId = shapeId
 
 	-- Parent first, then joint: a Motor6D whose parts are not both in the workspace does nothing.
 	model.Parent = character
@@ -172,7 +198,7 @@ end
 
 local function refresh(player)
 	local item, entry = Inventory.EquippedWeapon(player)
-	holdWeapon(player, (item and entry) and entry.id or nil)
+	holdWeapon(player, (item and entry) and entry.id or nil, entry and entry.meta or nil)
 end
 
 -- Inventory calls this whenever the weapon slot changes, so the hand updates the instant it happens rather

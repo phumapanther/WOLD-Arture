@@ -358,4 +358,10 @@ CombatConfig.HitboxHeightOffset = 0
 -- studs clear, so this leaves margin above that rather than landing on the edge of it.
 CombatConfig.ProjectileHitRadius = 8
 
+-- เครื่องมือทอง (ร้านพรีเมียม) ตีและส่งเสียงเหมือนตัวธรรมดาทุกประการ — ชี้ไปที่ตารางเดียวกัน ไม่ก๊อป
+for gold, base in pairs({ GoldAxe = "Axe", GoldPickaxe = "Pickaxe", GoldShovel = "Shovel", GoldFishingRod = "FishingRod" }) do
+	CombatConfig.Weapons[gold] = CombatConfig.Weapons[base]
+	if CombatConfig.Sounds then CombatConfig.Sounds[gold] = CombatConfig.Sounds[base] end
+end
+
 return CombatConfig

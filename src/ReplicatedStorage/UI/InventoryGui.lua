@@ -705,6 +705,12 @@ function InventoryGui:SlotButton(index)
 	return entry and entry.button or nil
 end
 
+-- ปุ่มช่องสวม ("weapon" | "armor") ให้เมนูสกินแขวนได้เหมือนช่องกระเป๋า
+function InventoryGui:EquipSlotButton(key)
+	local entry = self.equipSlots and self.equipSlots[key]
+	return entry and entry.button or nil
+end
+
 function InventoryGui:IsOpen() return self.gui.Enabled end
 function InventoryGui:Show() self.gui.Enabled = true end
 function InventoryGui:Hide()

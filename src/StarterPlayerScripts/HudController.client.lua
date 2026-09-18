@@ -100,6 +100,15 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if index then useHotbar(index) end
 end)
 
+-- ปุ่มร้านพรีเมียม/กาชา/แบทเทิลพาส ในเมนูสามจุด (ผู้ใช้กำหนดตำแหน่ง) เปิดหน้ารวมที่แท็บนั้น
+-- คุยกับ PremiumController ผ่าน BindableEvent ใน PlayerGui แบบเดียวกับปุ่มกลิ้ง (WOLD_RequestAction)
+local openPremium = Instance.new("BindableEvent")
+openPremium.Name = "WOLD_OpenPremium"
+openPremium.Parent = player:WaitForChild("PlayerGui")
+gui:AddMenuItem("💎 ร้านค้าพรีเมียม", Color3.fromRGB(70, 100, 150), function() openPremium:Fire("shop") end)
+gui:AddMenuItem("🎰 กาชา", Color3.fromRGB(120, 70, 150), function() openPremium:Fire("gacha") end)
+gui:AddMenuItem("🎫 แบทเทิลพาส", Color3.fromRGB(150, 110, 40), function() openPremium:Fire("pass") end)
+
 gui:OnLobbyRequested(function()
 	-- Server-authoritative: it saves the player's position THEN teleports, because PlayerRemoving does not
 	-- reliably fire before a client-initiated Teleport actually removes the character (documented Roblox

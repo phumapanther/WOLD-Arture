@@ -52,6 +52,12 @@ local ProfileTemplate = {
 	ClanId = nil,
 	-- แคลนที่ยื่นขอเข้าไว้ รอหัวแคลนอนุมัติ (id) ตอนเข้าเกม Clans.server จะไปดูว่าอนุมัติหรือยัง
 	ClanApply = nil,
+	-- เพชร (สกุลเงินพรีเมียม) ตอนนี้ได้จาก /gems เท่านั้น วันหน้าซื้อด้วยโรบัค
+	Gems = 0,
+	-- ออร่าที่เปิดอยู่ (item id) | nil = ปิด
+	Aura = nil,
+	-- แบทเทิลพาส { season, xp, premium, claimedFree = {[tier]=true}, claimedPremium = {[tier]=true} } | nil
+	BattlePass = nil,
 	Quests = nil,
 	Collection = nil,
 	-- แต้มกิจกรรม สะสมข้ามเซสชัน ใช้จัดอันดับในหินสื่อสาร

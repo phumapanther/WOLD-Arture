@@ -134,6 +134,8 @@ local EVENTS = {
 	"ClanUpdate", "RequestClanAction",
 	-- พ่อค้าประจำเมือง: รับซื้อเฉพาะของถิ่นนั้น คนในแคลนเจ้าของเมืองได้ราคาดีกว่า
 	"TownBuyerUpdate", "RequestTownSell",
+	-- ร้านพรีเมียม/กาชา/แบทเทิลพาส: ภาพเดียวส่งกลับทุกครั้งที่กดอะไร และการติดตั้ง/ถอดสกิน
+	"PremiumUpdate", "RequestPremium", "RequestSkin",
 	"RequestCollection", "CollectionUpdate",
 	"RequestLeaderboards", "LeaderboardUpdate",
 	"StorageChestOpen", "StorageChestUpdate",

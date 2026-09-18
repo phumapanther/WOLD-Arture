@@ -14,6 +14,7 @@ local ServerConfig = require(game.ServerScriptService.ServerConfig)
 if ServerConfig.IsLobby then return end
 
 local Inventory = require(game.ServerScriptService.Inventory)
+local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 
 --------------------------------------------------------------------------------
 -- ชุดเกราะ
@@ -55,12 +56,14 @@ local function stripArmor(character)
 	if worn then worn:Destroy() end
 end
 
-local function wearArmor(player, itemId)
+local function wearArmor(player, itemId, skinId)
 	local character = player.Character
 	if not character then return end
 	stripArmor(character)
 
-	local kitName = KITS[itemId]
+	-- ชุดแฟชั่น (สกินเกราะจากกาชา) เปลี่ยนโมเดลที่สวมและ/หรือย้อมสี ค่าเกราะมาจากไอเทมจริงเหมือนเดิม
+	local fashion = skinId and ItemCatalog.Get(skinId) or nil
+	local kitName = (fashion and fashion.kit) or KITS[itemId]
 	if not kitName then return end
 	local kit = kitModel(kitName)
 	if not kit then
@@ -122,6 +125,11 @@ local function wearArmor(player, itemId)
 				end
 
 				clone:PivotTo(host.CFrame * offset)
+				if fashion and fashion.tint then
+					for _, d in ipairs(clone:GetDescendants()) do
+						if d:IsA("BasePart") then d.Color = fashion.tint end
+					end
+				end
 				for _, d in ipairs(clone:GetDescendants()) do
 					if d:IsA("BasePart") then
 						d.Anchored = false
@@ -169,12 +177,14 @@ task.spawn(function()
 			local character = player.Character
 			if character and character:FindFirstChild("HumanoidRootPart") then
 				local _, entry = Inventory.EquippedArmor(player)
-				local wanted = entry and entry.id or nil
+				local skinId = entry and entry.meta and entry.meta.skin or nil
+				-- คีย์เทียบรวมสกินด้วย ติด/ถอดสกินโดยไม่เปลี่ยนเกราะก็ต้องวาดใหม่
+				local wanted = entry and (entry.id .. "|" .. (skinId or "")) or nil
 				local shown = Drawn[player]
 				-- ตัวละครใหม่ = โฟลเดอร์หายไปด้วย ต้องวาดใหม่แม้ไอเทมไม่เปลี่ยน
 				local present = character:FindFirstChild(FOLDER_NAME) ~= nil
 				if wanted ~= shown or (wanted and not present) then
-					if wanted then wearArmor(player, wanted) else stripArmor(character) end
+					if wanted then wearArmor(player, entry.id, skinId) else stripArmor(character) end
 					Drawn[player] = wanted
 				end
 			end

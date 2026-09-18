@@ -86,6 +86,7 @@ function Vitals.Add(player)
 end
 
 function Vitals.Remove(player)
+	Buffs[player] = nil
 	Godmode[player] = nil
 	States[player] = nil
 	ProneSuspended[player] = nil
@@ -117,8 +118,43 @@ function Vitals.SetStamina(player, value)
 	--
 	-- Both ways stamina is spent -- sprinting in PlayerMovement and swimming below -- come through this one
 	-- function, so this is the only place the perk has to exist.
-	if value < state.stamina and ClassPerks.Has(player, "noStaminaDrain") then return end
+	if value < state.stamina and (ClassPerks.Has(player, "noStaminaDrain") or Vitals.HasBuff(player, "noStamina")) then return end
 	state.stamina = math.clamp(value, 0, VitalsConfig.MaxStamina)
+end
+
+--------------------------------------------------------------------------------
+-- บัพจากอาหารพรีเมียม: ไม่หิว / ไม่เหนื่อย ชั่วคราว
+--------------------------------------------------------------------------------
+
+-- [player] = { [buff] = os.clock() ที่หมดอายุ } อยู่ในหน่วยความจำ ไม่เซฟ — ออกเกมแล้วหาย ซึ่งตรงกับ
+-- "เป็นระยะเวลา" ที่ผู้ใช้กำหนด และเลี่ยงการเซฟนาฬิกาที่ต้องปรับข้ามเซิร์ฟเวอร์
+local Buffs = {}
+
+-- buff = "noHunger" | "noStamina" | "both" (= ทั้งสอง) ซ้อนกัน = ต่อเวลาจากที่เหลือ
+function Vitals.AddBuff(player, buff, seconds)
+	local mine = Buffs[player] or {}
+	Buffs[player] = mine
+	local names = buff == "both" and { "noHunger", "noStamina" } or { buff }
+	for _, name in ipairs(names) do
+		local base = math.max(os.clock(), mine[name] or 0)
+		mine[name] = base + seconds
+	end
+end
+
+function Vitals.HasBuff(player, buff)
+	local mine = Buffs[player]
+	local until_ = mine and mine[buff]
+	return until_ ~= nil and os.clock() < until_
+end
+
+-- เวลาที่เหลือ (วินาที) ของแต่ละบัพ ให้ HUD/หน้าร้านโชว์
+function Vitals.BuffsLeft(player)
+	local out = {}
+	for name, until_ in pairs(Buffs[player] or {}) do
+		local left = until_ - os.clock()
+		if left > 0 then out[name] = math.floor(left) end
+	end
+	return out
 end
 
 -- Weapon skills call this: it either spends the pips and returns true, or refuses and returns false, so the
@@ -582,7 +618,7 @@ function Vitals.Tick(player, state, dt)
 	end
 	-- The chef never goes hungry, which also means never starving: the HP drain below only begins once the
 	-- bar empties, so holding it full stops both.
-	if not ClassPerks.Has(player, "noHunger") then
+	if not ClassPerks.Has(player, "noHunger") and not Vitals.HasBuff(player, "noHunger") then
 		state.hunger = math.max(0, state.hunger - VitalsConfig.HungerDrainPerSec * hungerScale * dt)
 	end
 	if state.hunger <= 0 then

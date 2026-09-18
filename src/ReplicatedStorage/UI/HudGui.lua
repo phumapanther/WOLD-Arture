@@ -276,6 +276,9 @@ function HudGui.new()
 	menuButton.MouseButton1Click:Connect(function()
 		menuPanel.Visible = not menuPanel.Visible
 	end)
+	self.menuGroup = menuGroup
+	self.menuPanel = menuPanel
+	self.menuItems = 1 -- ปุ่ม Lobby อยู่แล้วหนึ่ง
 
 	-- hotbar, bottom-center
 	local hotbar = Instance.new("Frame")
@@ -505,6 +508,35 @@ end
 
 function HudGui:OnLobbyRequested(callback)
 	self.lobbyButton.MouseButton1Click:Connect(callback)
+end
+
+-- เพิ่มปุ่มในเมนูสามจุด (ร้านพรีเมียม กาชา แบทเทิลพาส …) ปุ่มเรียงลงมาใต้ปุ่มเดิม แผงยืดตาม
+local MENU_ROW = 40
+function HudGui:AddMenuItem(text, colour, callback)
+	self.menuItems += 1
+	local panel = self.menuPanel
+	local index = self.menuItems
+	panel.Size = UDim2.new(0, 200, 0, 16 + index * MENU_ROW)
+	self.menuGroup.Size = UDim2.new(0, 220, 0, 60 + 16 + index * MENU_ROW)
+	-- ปุ่ม Lobby ถูกวางแบบยืดเต็มแผง ต้องตรึงเป็นแถวแรกก่อนเพิ่มแถวอื่น
+	self.lobbyButton.Size = UDim2.new(1, -16, 0, MENU_ROW - 8)
+	self.lobbyButton.Position = UDim2.new(0, 8, 0, 8)
+
+	local button = Instance.new("TextButton")
+	button.Size = UDim2.new(1, -16, 0, MENU_ROW - 8)
+	button.Position = UDim2.new(0, 8, 0, 8 + (index - 1) * MENU_ROW)
+	button.BackgroundColor3 = colour or Color3.fromRGB(60, 64, 80)
+	button.Text = text
+	button.TextColor3 = Color3.new(1, 1, 1)
+	button.Font = Enum.Font.SourceSansBold
+	button.TextSize = 16
+	button.Parent = panel
+	corner(button, UDim.new(0, 8))
+	button.MouseButton1Click:Connect(function()
+		panel.Visible = false
+		callback()
+	end)
+	return button
 end
 
 function HudGui:Show()

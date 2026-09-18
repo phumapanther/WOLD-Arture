@@ -353,6 +353,22 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
   `user_keyboard_input` ของ MCP กับ `ProximityPrompt:InputHoldBegin()` **ไม่ทำให้ Triggered ยิง** ทดสอบกด E จากเครื่องมือไม่ได้
   · `require` โมดูลที่มี Capabilities (Inventory, ClanStore …) จาก execute_luau ไม่ได้แล้ว ต้องทดสอบผ่านผลข้างเคียงในโลก
 
+## ระบบพรีเมียม (2026-09-18) — ร้านเพชร / กาชา / แบทเทิลพาส **ยังไม่เปิดขายด้วยโรบัค** (ผู้ใช้กำหนด)
+- **เพชร** = สกุลเงินพรีเมียมใน `profile.Gems` ตอนนี้ได้จาก `/gems <n> [คน]` เท่านั้น วันเปิดขาย: สร้าง Developer Product แล้วใส่
+  `PremiumConfig.Products[productId] = จำนวนเพชร` + `GemPacks[i].productId` — `PremiumStore.server` มี `ProcessReceipt` รอไว้แล้ว
+- ไฟล์: `PremiumConfig.lua` (ร้าน/ตู้กาชา/ตารางพาส) · `PremiumStore.server.lua` (ตัดสินทุกอย่าง) · `PremiumAccess.lua` (Progression เติม XP พาส
+  ผ่าน `AddPassXp` ทุกครั้งที่ให้ EXP) · `Skins.server.lua` (ติด/ถอดสกิน → `meta.skin` บนอาวุธ/เกราะ) · `Auras.server.lua` + `AuraAccess.lua`
+  (ออร่าเปิดอยู่ = `profile.Aura`) · UI: `UI/PremiumGui.lua` + `PremiumController.client.lua` เปิดจากปุ่มในเมนูสามจุด (`HudGui:AddMenuItem`
+  → BindableEvent `WOLD_OpenPremium`)
+- ไอเทมใหม่ใน ItemCatalog: `GoldAxe/GoldPickaxe/GoldShovel/GoldFishingRod` (`unbreakable`, `prefab` = โมเดลถือของตัวธรรมดา + `tint` ทอง,
+  CombatConfig alias ท้ายไฟล์) · อาหารบัพ `Feast_Hearty/Tonic_Vigor/Feast_Royal` (`use.stat="buff"` → `Vitals.AddBuff` ในหน่วยความจำ ไม่เซฟ)
+  · สกิน `Skin_<อาวุธ>_*` (`kind="skin"`, `skinFor`) · ชุดแฟชั่น `Fashion_*` (`kind="fashion"`, `kit`) · ออร่า `Aura_*` (`kind="aura"`)
+  **ทุกชิ้นยังใช้ไอคอน/โมเดล placeholder** (ย้อมสี/วัสดุโมเดลเดิม, วงอนุภาค) — วางโมเดลจริงไว้ที่ `ReplicatedStorage.WOLD_Skins`
+  (ชื่อ = item id, โครงเดียวกับ prefab อาวุธ) / `ReplicatedStorage.WOLD_Effects` (ออร่า) / `workspace.Model_Item` (kit เกราะ) ระบบหยิบเอง
+- `Inventory.Equip` พก `meta` ไปช่องสวมแล้ว (เดิมทิ้ง) ArmorVisuals เทียบ `id|skin` · WeaponVisuals อ่าน `entry.meta.skin` และ `item.prefab/tint`
+- กาชา: ของซ้ำได้ซ้ำ (ผู้ใช้เลือก) ต้องมีช่องว่าง ≥ จำนวนครั้งก่อนหักเพชร · พาส 30 ขั้น ×1,000 XP สายฟรี+พรีเมียม (ปลด 950 เพชร) ซีซันใน config
+- เทสไม่ได้จากเครื่องมือ (remote/bindable ถูก Capabilities บล็อก) — ต้องเล่นจริง: `/gems 5000` → เมนู ⋯ → ซื้อ/สุ่ม/รับพาส
+
 ## ⚠️ กฎเหล็ก: "Studio ดัง/ทำงาน แต่เกมจริงไม่" = แพ้จังหวะ StreamingEnabled แทบทุกครั้ง
 
 **เจอมาแล้วสองรอบ เสียเวลาไปมากทั้งสองรอบ ครั้งหน้าให้สงสัยข้อนี้เป็นอันดับแรก**

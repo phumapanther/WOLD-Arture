@@ -250,7 +250,8 @@ function Inventory.Equip(player, index)
 
 	local key = item.kind -- "weapon" | "armor"
 	local previous = state.equipped[key]
-	state.equipped[key] = { id = slot.id, durability = slot.durability }
+	-- meta ติดไปด้วย: สกินที่ติดตั้งไว้ (meta.skin) ต้องอยู่กับชิ้นนั้นตอนสวม ไม่งั้นถอดสวมทีสกินหาย
+	state.equipped[key] = { id = slot.id, durability = slot.durability, meta = slot.meta }
 	state.slots[index] = nil
 	-- The piece coming off goes back into the bag rather than vanishing.
 	if previous then
@@ -312,6 +313,8 @@ end
 function Inventory.WearEquipped(player, amount)
 	local item, entry = Inventory.EquippedWeapon(player)
 	if not item or not entry or not entry.durability then return false end
+	-- เครื่องมือทองจากร้านพรีเมียม: ไม่มีวันพัง
+	if item.unbreakable then return true end
 	entry.durability -= amount or 1
 	if entry.durability <= 0 then
 		-- Through BreakEquipped rather than clearing the slot: doing it by hand skips OnWeaponChanged, and

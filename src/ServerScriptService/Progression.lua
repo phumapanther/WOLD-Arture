@@ -8,6 +8,7 @@ local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local ClassPerks = require(game.ServerScriptService.ClassPerks)
+local PremiumAccess = require(script.Parent.PremiumAccess)
 
 local Progression = {}
 
@@ -105,6 +106,9 @@ function Progression.AwardExp(player, amount)
 	amount = ClassPerks.ExpFor(player, amount)
 
 	state.exp += amount
+	-- XP แบทเทิลพาสวิ่งคู่กับ EXP ทุกทาง (เควส มอน เก็บของ ตกปลา) ที่เดียวตรงนี้ PremiumAccess ว่างจนกว่า
+	-- PremiumStore.server จะเติม
+	if PremiumAccess.AddPassXp then PremiumAccess.AddPassXp(player, amount) end
 
 	local levelledUp = false
 	while state.level < ProgressionConfig.MaxLevel do
