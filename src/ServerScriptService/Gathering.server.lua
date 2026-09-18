@@ -82,6 +82,21 @@ local function anchorOf(node)
 	anchor.CanQuery = false
 	anchor.CanTouch = false
 	anchor.Parent = node
+
+	-- ของที่เดินได้ (สัตว์ฟาร์ม) ต้องพาปุ่มไปด้วย — จุดแขวนที่ปักไว้กับที่จะถูกทิ้งไว้ตรงที่มันเกิด
+	-- ขณะที่ตัวมันเดินเล่นไปยี่สิบสตัด แล้วผู้เล่นที่เดินไปหาวัวก็ไม่เจอปุ่ม (วัดได้: ครึ่งฝูงอยู่ห่าง
+	-- จากปุ่มตัวเองเกิน 6 สตัดภายในหกวินาทีแรก) เชื่อมกับตัวมันแทน ระดับพื้นเหมือนเดิม
+	local humanoid = node:FindFirstChildOfClass("Humanoid")
+	local root = humanoid and (humanoid.RootPart or node:FindFirstChild("HumanoidRootPart"))
+	if root then
+		anchor.Position = Vector3.new(root.Position.X, anchor.Position.Y, root.Position.Z)
+		anchor.Anchored = false
+		anchor.Massless = true
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0 = root
+		weld.Part1 = anchor
+		weld.Parent = anchor
+	end
 	return anchor
 end
 

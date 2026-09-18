@@ -35,6 +35,10 @@ local Remotes = require(game.ReplicatedStorage.Remotes)
 local SPAWNER_TAG = "WOLD_Spawner"
 local MOB_TAG = "WOLD_Mob"
 
+-- บอสประจำสปอว์เนอร์ ตัวใหญ่ 3 เท่า พลัง (เลือด/ดาเมจ) 5 เท่า ตามที่ผู้ใช้กำหนด
+local SPAWNER_BOSS_SCALE = 3
+local SPAWNER_BOSS_POWER = 5
+
 -- [model] = { config, hp, spawner, home, nextAttackAt, target }
 local Live = {}
 
