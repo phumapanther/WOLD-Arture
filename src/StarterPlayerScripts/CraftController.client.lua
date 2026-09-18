@@ -31,6 +31,9 @@ local stationPosition = nil
 Remotes.CraftOpen.OnClientEvent:Connect(function(snapshot)
 	stationPosition = snapshot.stationPosition
 	gui:Show(snapshot)
+	-- ตัวดักชั่วคราว (2026-09-18) ลบเมื่อจบเรื่อง: ฝั่งไคลเอนต์ได้ของหรือเปล่า และหน้าต่างเปิดจริงไหม
+	print(("[Kitchen/ไคลเอนต์] ได้หน้าคราฟ station=%s สูตร=%d เปิดอยู่=%s"):format(
+		tostring(snapshot.station), #(snapshot.recipes or {}), tostring(gui:IsOpen())))
 end)
 
 -- ปิดหน้า (กากบาท/เดินออก) บอกเซิร์ฟเวอร์ให้ลืมว่ายืนอยู่สถานีไหน

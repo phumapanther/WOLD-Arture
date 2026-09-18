@@ -212,9 +212,16 @@ end)
 
 -- เปิดจากสถานี (CraftStations.server เรียกหลังตรวจสิทธิ์แล้ว)
 CraftAccess.OpenAt = function(player, station, model)
-	if Vitals.IsDowned(player) then return end
+	if Vitals.IsDowned(player) then
+		-- ตัวดักชั่วคราว (2026-09-18) ลบเมื่อจบเรื่อง
+		print("[Kitchen] ไม่เปิด: " .. player.Name .. " ล้มอยู่")
+		return
+	end
 	Source[player] = { station = station, model = model }
-	Remotes.CraftOpen:FireClient(player, snapshot(player))
+	local snap = snapshot(player)
+	print(("[Kitchen] ส่งหน้าคราฟให้ %s — station=%s สูตร=%d แท็บ=%d"):format(
+		player.Name, tostring(station), #snap.recipes, #snap.tabs))
+	Remotes.CraftOpen:FireClient(player, snap)
 end
 
 Remotes.RequestCraftClose.OnServerEvent:Connect(function(player)

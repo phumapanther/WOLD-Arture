@@ -567,7 +567,7 @@ ItemCatalog.Items = {
 		use = { stat = "meal", mana = true, buff = "noStamina", seconds = 5 * 60 } },
 
 	-- กล่องเวทมนตร์: เปิดแล้วสุ่มของทุกอย่างที่มีในเซิร์ฟ (เรทใน PremiumConfig.MagicBox)
-	MagicBox = { icon = "rbxassetid://135550912982213", name = "กล่องเวทมนตร์", kind = "consumable",
+	MagicBox = { icon = "rbxassetid://109077759074113", name = "กล่องเวทมนตร์", kind = "consumable", -- decal 135550912982213
 		weight = 1, stackSize = 10, value = 0, sellable = false,
 		use = { stat = "magicbox" } },
 

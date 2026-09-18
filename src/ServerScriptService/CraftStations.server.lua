@@ -18,7 +18,17 @@ local Inventory = require(game.ServerScriptService.Inventory)
 local CraftAccess = require(game.ServerScriptService.CraftAccess)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
-local RANGE = 10
+-- ระยะกดปุ่ม **วัดจากชิ้นที่ปุ่มแขวนอยู่ ไม่ใช่จากตัวโมเดล** — และเครื่องครัวไม่ได้ตั้งอยู่บนพื้นเสมอไป
+--
+-- เครื่องปั่นไอน้ำในโรงเตี๊ยมตั้งบนเคาน์เตอร์: ปุ่มแขวนที่ชิ้น "Jar" ที่ Y=54.0 ส่วนพื้นดินรอบเคาน์เตอร์อยู่ที่
+-- Y=42.0 ผู้เล่นที่ยืนข้างเคาน์เตอร์จึงมี HRP อยู่ที่ราว 45 = **ห่างจากปุ่ม 9.9 สตัดตั้งแต่ยืนติดเคาน์เตอร์แล้ว**
+-- และ 10.9 เมื่อถอยออกมาหนึ่งก้าว ระยะเดิม 10 จึงอยู่พอดีเส้นแบ่ง: เตา (ปุ่มห่าง 3.8) ใช้ได้ ส่วนเครื่องปั่น
+-- ติดๆ ดับๆ จนเหมือนใช้ไม่ได้เลย — อาการที่ผู้ใช้เจอ (ทำอาหารได้ แต่ปั่นไม่ได้) 2026-09-18
+--
+-- 16 เผื่อไว้พอให้ถอยได้ราว 13 สตัดแนวราบ และยัง **แคบกว่า** สองด่านที่วัดจาก pivot ของเครื่อง (16 สตัดเท่ากัน
+-- แต่ pivot อยู่ระดับเคาน์เตอร์ จึงเผื่อแนวราบได้ 15.6) แปลว่ากดปุ่มติดเมื่อไหร่ อีกสองด่านผ่านแน่นอน
+-- ไม่มีทางเกิดเคส "เปิดหน้าต่างแล้วเด้งปิดทันที"
+local RANGE = 16
 
 -- ชื่อโมเดล → การตั้งค่า
 local STATIONS = {
@@ -133,10 +143,21 @@ local function wireStation(model, spec)
 	prompt.HoldDuration = 0
 	prompt.Parent = anchor
 	prompt.Triggered:Connect(function(player)
+		-- ตัวดักชั่วคราว (2026-09-18): ผู้ใช้กด E ที่เตาแล้วไม่มีอะไรเกิดขึ้นเลย ไม่มี error ไม่มีข้อความ
+		-- สามบรรทัดนี้แยกให้ได้ว่าเงียบตรงไหน: ปุ่มไม่ยิง / ตะหลิวไม่ผ่าน / OpenAt ยังว่าง — ลบเมื่อจบเรื่อง
+		print(("[Kitchen] %s กด %s — ตะหลิว=%s OpenAt=%s"):format(
+			player.Name, spec.station,
+			tostring(not spec.needs or hasItem(player, spec.needs)),
+			tostring(CraftAccess.OpenAt ~= nil)))
 		if spec.needs and not hasItem(player, spec.needs) then
 			return Remotes.SocialNotify:FireClient(player, "warn", "ต้องมีตะหลิวเชฟ (เฉพาะอาชีพเชฟ)")
 		end
-		if CraftAccess.OpenAt then CraftAccess.OpenAt(player, spec.station, model) end
+		if not CraftAccess.OpenAt then
+			-- เดิมเงียบสนิทถ้า Crafting.server ยังไม่ได้เติมฟังก์ชันนี้ ซึ่งอ่านไม่ออกเลยว่าเกิดอะไรขึ้น
+			warn("[Kitchen] CraftAccess.OpenAt ยังว่าง — Crafting.server ไม่ได้โหลดหรือโหลดไม่จบ")
+			return Remotes.SocialNotify:FireClient(player, "error", "ระบบคราฟยังไม่พร้อม (OpenAt ว่าง)")
+		end
+		CraftAccess.OpenAt(player, spec.station, model)
 	end)
 end
 

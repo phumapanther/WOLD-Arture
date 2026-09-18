@@ -25,6 +25,14 @@ local ProneSuspended = {} -- [player] = true
 -- the void -- none of which go through ApplyDamage -- and because a respawn must not clear it.
 local Godmode = {} -- [player] = true
 
+-- บัพจากอาหารพรีเมียม [player] = { [buff] = os.clock() ที่หมดอายุ } อยู่ในหน่วยความจำ ไม่เซฟ — ออกเกมแล้วหาย
+-- ซึ่งตรงกับ "เป็นระยะเวลา" ที่ผู้ใช้กำหนด และเลี่ยงการเซฟนาฬิกาที่ต้องปรับข้ามเซิร์ฟเวอร์
+--
+-- **ประกาศบนสุดพร้อมตารางอื่น ไม่ใช่ตรงหัวข้อบัพข้างล่าง** `Vitals.Remove` เขียนถึงมันตั้งแต่บรรทัด 89 ซึ่ง
+-- อยู่ก่อน local เดิม (บรรทัด 131) ตัวที่ฟังก์ชันจับได้จึงเป็น global ที่เป็น nil → ทุกครั้งที่มีคนออกจากเกม
+-- จะได้ "attempt to index nil with Instance" แล้วเลิกทำงานกลางคัน = สถานะเลือด/หิว/สแตมินาของคนนั้นค้าง
+local Buffs = {}
+
 -- [character] = the joint's upright C0, so the prone pose can always be set ABSOLUTELY rather than rotated
 -- off whatever it currently is.
 local UPRIGHT_C0 = {}
@@ -125,10 +133,6 @@ end
 --------------------------------------------------------------------------------
 -- บัพจากอาหารพรีเมียม: ไม่หิว / ไม่เหนื่อย ชั่วคราว
 --------------------------------------------------------------------------------
-
--- [player] = { [buff] = os.clock() ที่หมดอายุ } อยู่ในหน่วยความจำ ไม่เซฟ — ออกเกมแล้วหาย ซึ่งตรงกับ
--- "เป็นระยะเวลา" ที่ผู้ใช้กำหนด และเลี่ยงการเซฟนาฬิกาที่ต้องปรับข้ามเซิร์ฟเวอร์
-local Buffs = {}
 
 -- buff = "noHunger" | "noStamina" | "both" (= ทั้งสอง) ซ้อนกัน = ต่อเวลาจากที่เหลือ
 function Vitals.AddBuff(player, buff, seconds)
