@@ -1,4 +1,4 @@
-// usage: node tools/preview-anim.js animgen/movement.lua Roll_Forward [--speed 0.4]
+// usage: node tools/preview-anim.js animgen/movement.lua Roll_Forward [--speed 0.4]   |   node tools/preview-anim.js --stop
 // Plays one animgen sequence on the character in the RUNNING Play session, without publishing anything.
 //
 // Why this exists: animgen files build KeyframeSequences into ServerStorage in Edit mode, but a KeyframeSequence
@@ -17,7 +17,28 @@ const positional = args.filter((a) => !a.startsWith("--") && !/^[\d.]+$/.test(a)
 const [file, name] = positional;
 const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
 const speed = Number(opt("--speed", "1"));
-if (!file || !name) { console.error("usage: node tools/preview-anim.js <animgen file> <sequence name> [--speed n]"); process.exit(1); }
+
+// `--stop`: end whatever preview is looping on the character, nothing else.
+if (args.includes("--stop")) {
+  (async () => {
+    const c = await connect();
+    const code = `
+local plr = game:GetService("Players"):GetPlayers()[1]
+local humanoid = plr and plr.Character and plr.Character:FindFirstChildOfClass("Humanoid")
+local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
+if not animator then return "no character" end
+local n = 0
+for _, t in ipairs(animator:GetPlayingAnimationTracks()) do
+	if t.Priority ~= Enum.AnimationPriority.Core and t.Priority ~= Enum.AnimationPriority.Idle then t:Stop(0.2) n += 1 end
+end
+return ("stopped %d track(s)"):format(n)`;
+    console.log(c.text(await c.tool("execute_luau", { datamodel_type: "Server", code })));
+    c.close(); process.exit();
+  })().catch((e) => { console.error(e.message); process.exit(1); });
+  return;
+}
+
+if (!file || !name) { console.error("usage: node tools/preview-anim.js <animgen file> <sequence name> [--speed n] | --stop"); process.exit(1); }
 
 const source = fs.readFileSync(path.join(__dirname, "..", file), "utf8");
 
