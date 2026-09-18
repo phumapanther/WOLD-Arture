@@ -1,4 +1,4 @@
--- AnimalHerds.server.lua: ทำให้สัตว์ฟาร์มอยู่กันเป็นฝูง 5-12 ตัว
+-- AnimalHerds.server.lua: ทำให้สัตว์ฟาร์มอยู่กันเป็นฝูง 5-12 ตัว ฟาร์มแล้วหายไป เกิดใหม่ใน 60 วิ
 --
 -- **ทำตอนเซิร์ฟเวอร์รัน ไม่ใช่เฟส mapgen** เพราะ sandbox ของ Studio MCP ย้ายสคริปต์ (BeastGait และ
 -- Animate ที่อยู่ในตัวสัตว์) เข้าที่ไหนไม่ได้เลย การโคลนสัตว์จากเครื่องมือจึง error ทุกครั้ง
@@ -31,6 +31,9 @@ local SPREAD = 25
 local SCALE = 0.5
 
 local FOLDER_NAME = "WOLD_Herds"
+local TEMPLATE_FOLDER = "WOLD_HerdTemplates"
+
+local GatherConfig = require(game.ReplicatedStorage.GatherConfig)
 
 local function folder()
 	local f = workspace:FindFirstChild(FOLDER_NAME)
@@ -153,66 +156,102 @@ game:GetService("RunService").Heartbeat:Connect(function(dt)
 	end
 end)
 
-local function herdOf(kind)
+-- สัตว์ที่ยืนอยู่ในโลกตอนนี้ของชนิดนั้น (เฉพาะในโฟลเดอร์ฝูง ต้นแบบย้ายออกไปแล้ว)
+local function liveHerd(kind)
 	local found = {}
-	for _, n in ipairs(CollectionService:GetTagged(NODE_TAG)) do
-		if n:GetAttribute("NodeKind") == kind then found[#found + 1] = n end
+	for _, a in ipairs(folder():GetChildren()) do
+		if a:GetAttribute("NodeKind") == kind then found[#found + 1] = a end
 	end
 	return found
 end
 
-local function grow(kind, spec)
-	local existing = herdOf(kind)
-	if #existing == 0 then return 0 end
-
-	-- ต้นแบบ = ตัวที่ผู้ใช้วางไว้เอง ซึ่งเป็นตัวเดียวที่ไม่ได้อยู่ในโฟลเดอร์ฝูง
-	local source
-	for _, a in ipairs(existing) do
-		if not a:IsDescendantOf(folder()) then source = a break end
-	end
-	source = source or existing[1]
-	-- ต้นแบบเองก็เป็นสมาชิกฝูง ย่อและให้ท่าเดินก่อนโคลน ตัวโคลนจะได้ติดไปด้วย
-	shrink(source)
-	animate(source)
-
-	local want = math.random(spec.min, spec.max)
-	if #existing >= want then return 0 end
-
-	local origin = source:GetPivot().Position
-	local made = 0
-
-	for _ = #existing + 1, want do
-		local placed = false
-		for _ = 1, 12 do
-			local angle = math.random() * math.pi * 2
-			-- sqrt กระจายทั่วพื้นที่ ไม่กระจุกตรงกลาง
-			local dist = math.sqrt(math.random()) * SPREAD
-			local x = origin.X + math.cos(angle) * dist
-			local z = origin.Z + math.sin(angle) * dist
-			local y = groundAt(x, z, origin.Y)
-
-			-- ระดับใกล้เคียงต้นแบบเท่านั้น กันไม่ให้ไปโผล่ก้นหุบเขาหรือบนหลังคา
-			if y and math.abs(y - origin.Y) < 25 then
-				local clone = source:Clone()
-				-- **ทิ้งจุดแขวนปุ่มที่ติดมากับต้นแบบ** ต้นแบบถูก Gathering ต่อสายไว้แล้วก่อนโคลน ปุ่มที่โคลนมา
-				-- จึงมีหน้าตาครบแต่ไม่มีใครฟัง Triggered และ Gathering เห็นว่ามีปุ่มอยู่แล้วก็ข้ามไป — กด E ค้าง
-				-- จนครบแล้วเงียบ ซึ่งคืออาการที่ผู้ใช้เจอ ลบทิ้งให้มันสร้างใหม่แล้วต่อสายเอง
-				local stale = clone:FindFirstChild("GatherAnchor")
-				if stale then stale:Destroy() end
-				-- หันคนละทาง ฝูงจะได้ไม่ดูเหมือนแถวทหาร
-				clone:PivotTo(CFrame.new(Vector3.new(x, y, z))
-					* CFrame.Angles(0, math.random() * math.pi * 2, 0))
-				clone:SetAttribute("Spent", nil)
-				clone.Parent = folder()
-				animate(clone)
-				made += 1
-				placed = true
-				break
-			end
+-- ต้นแบบที่ผู้ใช้วางไว้ ยังอยู่ใน workspace (ยังไม่ได้ย้ายเป็นแม่พิมพ์)
+local function prototypeOf(kind)
+	for _, n in ipairs(CollectionService:GetTagged(NODE_TAG)) do
+		if n:GetAttribute("NodeKind") == kind and n:IsDescendantOf(workspace) and not n:IsDescendantOf(folder()) then
+			return n
 		end
-		if not placed then break end
+	end
+	return nil
+end
+
+local Templates = {} -- [kind] = โมเดลแม่พิมพ์ใน ServerStorage
+local Wanted = {}    -- [kind] = จำนวนที่ฝูงนี้ควรมี
+
+-- วางสัตว์หนึ่งตัวจากแม่พิมพ์ลงรอบบ้านของฝูง
+local function spawnOne(kind)
+	local template = Templates[kind]
+	if not template then return false end
+	local origin = template:GetAttribute("HerdHome")
+	if not origin then return false end
+
+	for _ = 1, 12 do
+		local angle = math.random() * math.pi * 2
+		-- sqrt กระจายทั่วพื้นที่ ไม่กระจุกตรงกลาง
+		local dist = math.sqrt(math.random()) * SPREAD
+		local x = origin.X + math.cos(angle) * dist
+		local z = origin.Z + math.sin(angle) * dist
+		local y = groundAt(x, z, origin.Y)
+
+		-- ระดับใกล้เคียงต้นแบบเท่านั้น กันไม่ให้ไปโผล่ก้นหุบเขาหรือบนหลังคา
+		if y and math.abs(y - origin.Y) < 25 then
+			local clone = template:Clone()
+			-- หันคนละทาง ฝูงจะได้ไม่ดูเหมือนแถวทหาร
+			clone:PivotTo(CFrame.new(Vector3.new(x, y, z))
+				* CFrame.Angles(0, math.random() * math.pi * 2, 0))
+			clone:SetAttribute("Spent", nil)
+			-- ป้ายบอก Gathering ว่าตัวนี้เก็บแล้วหายไป (แล้วฝูงเติมตัวใหม่ให้เอง) และบอกไคลเอนต์ว่า
+			-- ฟาร์มออโต้มือเปล่าเล็งตัวนี้ได้
+			clone:SetAttribute("HerdAnimal", true)
+			clone.Parent = folder()
+			animate(clone)
+			return true
+		end
+	end
+	return false
+end
+
+-- ตั้งฝูงของชนิดนี้ครั้งแรก: เอาต้นแบบไปเป็นแม่พิมพ์ แล้ววางฝูงเต็มจำนวน
+--
+-- **ต้นแบบย้ายออกจากโลกไปเป็นแม่พิมพ์ใน ServerStorage** สัตว์ที่เห็นทุกตัวจึงเป็นตัวโคลนที่ลบทิ้งได้
+-- ตอนถูกฟาร์ม — ถ้าต้นแบบยังยืนอยู่ในฝูง มันจะเป็นตัวเดียวที่ฟาร์มแล้วไม่หาย และเป็นตัวที่ลบไม่ได้
+-- เพราะฝูงต้องใช้มันโคลน
+local function setup(kind, spec)
+	local proto = prototypeOf(kind)
+	if not proto then return 0 end
+
+	shrink(proto)
+	local stale = proto:FindFirstChild("GatherAnchor")
+	if stale then stale:Destroy() end
+	proto:SetAttribute("HerdHome", proto:GetPivot().Position)
+	proto:SetAttribute("Spent", nil)
+
+	local store = game.ServerStorage:FindFirstChild(TEMPLATE_FOLDER)
+	if not store then
+		store = Instance.new("Folder")
+		store.Name = TEMPLATE_FOLDER
+		store.Parent = game.ServerStorage
+	end
+	proto.Parent = store
+	Templates[kind] = proto
+
+	Wanted[kind] = math.random(spec.min, spec.max)
+	local made = 0
+	for _ = 1, Wanted[kind] do
+		if spawnOne(kind) then made += 1 else break end
 	end
 	return made
+end
+
+-- ตัวที่หายไป (ถูกฟาร์ม) เกิดใหม่หลังครบเวลาเดียวกับจุดเก็บของอื่น
+local function watchRespawns()
+	folder().ChildRemoved:Connect(function(child)
+		local kind = child:GetAttribute("NodeKind")
+		if not kind or not Templates[kind] then return end
+		task.delay(GatherConfig.RespawnSeconds, function()
+			if #liveHerd(kind) < (Wanted[kind] or 0) then spawnOne(kind) end
+		end)
+	end)
 end
 
 --------------------------------------------------------------------------------
@@ -222,17 +261,18 @@ end
 -- **ลูปถามใหม่ ไม่ใช่ทำครั้งเดียวตอนบูต** กฎเหล็กของโปรเจ็ค: เพลสเปิด StreamingEnabled โมเดลกับแท็ก
 -- มาถึงคนละรอบ ทำครั้งเดียวตอนเริ่มจะเจอสัตว์ไม่ครบ และเป็นคนละชนิดทุกครั้งที่เปิดเซิร์ฟ
 task.spawn(function()
+	watchRespawns()
 	local done = {}
 	for _ = 1, 60 do
 		task.wait(0.5)
 		local remaining = 0
 		for kind, spec in pairs(HERDS) do
 			if not done[kind] then
-				if #herdOf(kind) > 0 then
-					local made = grow(kind, spec)
+				if prototypeOf(kind) then
+					local made = setup(kind, spec)
 					done[kind] = true
 					if made > 0 then
-						print(("[Herds] %s +%d ตัว"):format(kind, made))
+						print(("[Herds] %s %d ตัว"):format(kind, made))
 					end
 				else
 					remaining += 1

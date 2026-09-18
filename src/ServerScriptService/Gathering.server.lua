@@ -241,6 +241,12 @@ local function gather(node, player)
 	SpentUntil[node] = os.clock() + GatherConfig.RespawnSeconds
 	setSpent(node, true)
 
+	-- สัตว์ในฝูงถูกฟาร์มแล้วหายไปเลย (ผู้ใช้กำหนด) AnimalHerds เห็นตัวหายแล้วเติมตัวใหม่ให้เองหลัง
+	-- RespawnSeconds — ไม่ใช่ตัวเดิมยืนโปร่งแสงรอ ลบหลังจากแจกของเสร็จในเฟรมถัดไป
+	if node:GetAttribute("HerdAnimal") then
+		task.delay(0.15, function() if node.Parent then node:Destroy() end end)
+	end
+
 	-- ของที่จะได้ ปกติคือ config.item แต่บางจุดสุ่มได้ของอีกอย่างแทน
 	--
 	-- `alt` มีไว้ให้แปลงผักซึ่งผู้ใช้กำหนดว่าได้ "หนอนที่เป็นเหยื่อตกปลา หรือ ผักรวม" — เป็นของคนละชิ้น

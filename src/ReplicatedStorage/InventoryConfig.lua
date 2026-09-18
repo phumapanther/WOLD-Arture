@@ -5,7 +5,7 @@ local InventoryConfig = {}
 InventoryConfig.HotbarSlots = 6
 
 InventoryConfig.SlotCount = 36 -- the personal bag grid, 6 columns x 6 rows
-InventoryConfig.MaxWeight = 2000 -- carry this much before the penalties below start
+InventoryConfig.MaxWeight = 500 -- carry this much before the penalties below start (ผู้ใช้ปรับจาก 2000)
 
 -- Overencumbrance. Past MaxWeight you slow down in proportion to the excess, down to a floor so a hoarder can
 -- still crawl home rather than being frozen in place.

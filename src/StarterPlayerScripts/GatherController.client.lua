@@ -43,10 +43,21 @@ local WALK_TIMEOUT = 12
 -- Weapons here are Motor6D models rather than Tool instances, so this comes from the server's own
 -- EquipmentChanged rather than from watching the character for a Tool child.
 local heldTool = nil
+-- อะไรก็ตามที่ถืออยู่ (ดาบก็นับ) — ฟาร์มออโต้กับสัตว์ต้อง **มือเปล่าจริงๆ** ไม่ใช่แค่ไม่ถือเครื่องมือ
+local heldWeapon = nil
 
 local function setEquipped(weaponId)
 	local item = weaponId and ItemCatalog.Get(weaponId)
 	heldTool = item and item.gathers or nil
+	heldWeapon = weaponId
+end
+
+-- ฟาร์มออโต้เล็งจุดนี้ไหม (ผู้ใช้กำหนด): ถือเครื่องมือ = เฉพาะจุดของเครื่องมือนั้น · มือเปล่า = เฉพาะสัตว์ฟาร์ม
+-- ถือดาบ = ไม่เล็งอะไรเลย — ต่างจากปุ่ม E ที่จุดไม่ต้องใช้เครื่องมือกดได้เสมอ
+local function autoTarget(node)
+	if heldTool then return node:GetAttribute("RequiredTool") == heldTool end
+	if heldWeapon then return false end
+	return node:GetAttribute("HerdAnimal") == true
 end
 
 Remotes.EquipmentChanged.OnClientEvent:Connect(function(who, weaponId)
@@ -87,7 +98,10 @@ local function refreshPrompts()
 		if node:GetAttribute("Spent") ~= true then
 			local usable = canUse(node)
 			for _, d in ipairs(node:GetDescendants()) do
-				if d:IsA("ProximityPrompt") then d.Enabled = usable end
+				if d:IsA("ProximityPrompt") then
+					-- ปุ่ม F ขึ้นเฉพาะจุดที่ออโต้จะเล็งจริง ไม่งั้นกดแล้วมันเดินไปที่อื่น
+					d.Enabled = usable and (d.Name ~= "AutoFarmPrompt" or autoTarget(node))
+				end
 			end
 		end
 	end
@@ -216,7 +230,7 @@ end
 local function isAvailable(node)
 	if not node or not node.Parent then return false end
 	if node:GetAttribute("Spent") == true then return false end
-	if not canUse(node) then return false end
+	if not canUse(node) or not autoTarget(node) then return false end
 	local prompt = node:FindFirstChild("GatherPrompt", true)
 	return prompt ~= nil
 end
@@ -377,13 +391,13 @@ end
 
 local function startAuto()
 	if autoFarming then return end
-	if not heldTool then
-		setBanner("ต้องถือเครื่องมือก่อน")
+	if heldWeapon and not heldTool then
+		setBanner("ออโต้ต้องมือเปล่า (สัตว์) หรือถือเครื่องมือฟาร์ม")
 		task.delay(2, function() if not autoFarming then setBanner(nil) end end)
 		return
 	end
 	autoFarming = true
-	setBanner("ฟาร์มออโต้: เปิด — กด F เพื่อหยุด")
+	setBanner(heldTool and "ฟาร์มออโต้: เปิด — กด F เพื่อหยุด" or "ฟาร์มออโต้ (สัตว์): เปิด — กด F เพื่อหยุด")
 
 	autoThread = task.spawn(function()
 		local lastFailed = nil
@@ -445,11 +459,9 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if not nearPrompt then toggleAuto() end
 end)
 
--- Putting the tool away stops the run: the prompts it was using are about to vanish anyway.
+-- Changing what is held changes what the run is allowed to target, so any change stops it.
 Remotes.EquipmentChanged.OnClientEvent:Connect(function(who)
-	if who == player and not heldTool then
-		stopAuto()
-	end
+	if who == player then stopAuto() end
 end)
 
 player.CharacterAdded:Connect(function()

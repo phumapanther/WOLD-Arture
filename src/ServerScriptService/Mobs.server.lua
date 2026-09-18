@@ -787,13 +787,39 @@ MobAccess.Stun = stun
 -- Spawning
 --------------------------------------------------------------------------------
 
+-- พื้นแห้งตรงจุดนั้น หรือ nil ถ้าเป็นน้ำ/ไม่มีพื้น
+--
+-- **ไม่เกิดในน้ำ** (ผู้ใช้กำหนด) ราย์ชนผิวน้ำก็ตอบมาเหมือนพื้น จึงต้องดูวัสดุ · **กัน Zone_* ออก**
+-- กล่องโซนหมู่บ้านลอยอยู่เหนือพื้นราวร้อยสตัดและตอบราย์ด้วย มอนที่เกิดบนนั้นจะร่วงลงมา
+-- หรือค้างกลางอากาศ — บทเรียนเดียวกับฝูงสัตว์และบอร์ดเควส
 local function groundAt(x, z)
+	local ignore = { folder }
+	for _ = 1, 8 do
+		local params = RaycastParams.new()
+		params.FilterType = Enum.RaycastFilterType.Exclude
+		params.FilterDescendantsInstances = ignore
+		params.IgnoreWater = false
+		local hit = workspace:Raycast(Vector3.new(x, 500, z), Vector3.new(0, -1200, 0), params)
+		if not hit then return nil end
+		if hit.Material == Enum.Material.Water then return nil end
+		if not hit.Instance.Name:match("^Zone_") then return hit.Position.Y end
+		ignore[#ignore + 1] = hit.Instance
+	end
+	return nil
+end
+
+-- มีน้ำอยู่ตรงจุดนี้ไหม (มองลงจากเหนือหัว) ใช้เช็คก้าวถัดไปก่อนเดิน
+local function waterAt(position)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = { folder }
-	local hit = workspace:Raycast(Vector3.new(x, 500, z), Vector3.new(0, -1200, 0), params)
-	return hit and hit.Position.Y or nil
+	params.IgnoreWater = false
+	local hit = workspace:Raycast(position + Vector3.new(0, 6, 0), Vector3.new(0, -30, 0), params)
+	return hit ~= nil and hit.Material == Enum.Material.Water
 end
+
+-- ต่ำกว่านี้คือหลุดโลก (ก้นทะเลลึกอยู่ที่ -80) ส่งกลับบ้าน
+local WORLD_FLOOR_Y = -150
 
 -- After dark everything in the world hits twice as hard and takes twice as much killing.
 --
@@ -1253,6 +1279,34 @@ RunService.Heartbeat:Connect(function(dt)
 		else
 			local position = root.Position
 			local config = state.config
+
+			-- หลุดโลก หรือลงไปอยู่ในน้ำแล้ว: ส่งกลับบ้านทันที (ผู้ใช้กำหนด ไม่ให้มอนอยู่ในน้ำ/ตกโลก)
+			-- ตัวที่ถูกเสกล่าไม่มีบ้าน ให้กลับไปที่เดิมของมันเอง
+			if position.Y < WORLD_FLOOR_Y or humanoid:GetState() == Enum.HumanoidStateType.Swimming then
+				local back = state.home or state.lastDry or position
+				model:PivotTo(CFrame.new(back + Vector3.new(0, 3, 0)))
+				for _, part in ipairs(model:GetDescendants()) do
+					if part:IsA("BasePart") then
+						part.AssemblyLinearVelocity = Vector3.zero
+						part.AssemblyAngularVelocity = Vector3.zero
+					end
+				end
+				state.target = nil
+				continue
+			end
+			state.lastDry = position
+
+			-- ก้าวถัดไปเป็นน้ำ: หยุดและเลิกไล่ ไม่เดินลงไป
+			local moveDir = humanoid.MoveDirection
+			if moveDir.Magnitude > 0.1 and waterAt(position + moveDir.Unit * 5) then
+				humanoid:MoveTo(position)
+				state.target = nil
+				state.blockedUntil = os.clock() + 2
+				continue
+			end
+			if state.blockedUntil and os.clock() < state.blockedUntil then
+				continue
+			end
 
 			-- Legs follow the body. Read off the real velocity rather than from each place that calls MoveTo,
 			-- so chasing, walking home and drifting around the field all animate without three copies of
