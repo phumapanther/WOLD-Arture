@@ -17,6 +17,7 @@ local Collection = require(game.ServerScriptService.Collection)
 local QuestAccess = require(game.ServerScriptService.QuestAccess)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Inventory = require(game.ServerScriptService.Inventory)
+local ClassPerks = require(game.ServerScriptService.ClassPerks)
 local Vitals = require(game.ServerScriptService.Vitals)
 local FishingAccess = require(game.ServerScriptService.FishingAccess)
 local Remotes = require(game.ReplicatedStorage.Remotes)
@@ -397,6 +398,11 @@ local function startFishing(player)
 			-- ข้อมูลไปเปล่าๆ — และสมุดสะสมต้องใช้น้ำหนักตัวที่หนักที่สุดของแต่ละชนิด
 			local meta = (isLocal or FishingConfig.IsBig(kg)) and { kg = kg } or nil
 			if Inventory.AddItem(player, caught, 1, nil, meta) then
+				-- คันเบ็ดสึก 1 ต่อปลาหนึ่งตัว (ผู้ใช้กำหนด) ของนักประดิษฐ์ไม่สึกเหมือนอาวุธ
+				local held = Inventory.EquippedWeapon(player)
+				if held and held.fishing and not ClassPerks.Has(player, "weaponNeverBreaks") then
+					Inventory.WearEquipped(player, 1)
+				end
 				showCatch(player, caught, kg)
 				Collection.RecordFish(player, caught, kg)
 				if QuestAccess.RecordCatch then QuestAccess.RecordCatch(player, caught) end

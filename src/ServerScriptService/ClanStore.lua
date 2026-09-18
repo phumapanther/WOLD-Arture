@@ -120,6 +120,46 @@ local function addToIndex(clanId, name)
 end
 
 --------------------------------------------------------------------------------
+-- เมืองที่ถูกยึด
+--------------------------------------------------------------------------------
+
+-- towns = { [townId] = { clanId, clanName, since = os.time() } }
+--
+-- **คีย์เดียวทั้งเกม แยกจากตัวแคลน** เพราะคำถาม "เมืองนี้ใครถือ ยึดได้หรือยัง" ถูกถามจากทุกเซิร์ฟเวอร์
+-- ทุกครึ่งนาที — อ่านคีย์เดียวถูกกว่าไล่อ่านทุกแคลน และที่สำคัญกว่า: การตัดสินคูลดาวน์ทำใน
+-- UpdateAsync ของคีย์นี้ สองเซิร์ฟเวอร์ที่ยึดเมืองเดียวกันพร้อมกันจึงมีผู้ชนะคนเดียว ส่วน clan.towns
+-- ยังเขียนไว้ให้หน้าแคลนโชว์ แต่ไม่ใช่ตัวตัดสินอีกต่อไป
+local TOWNS_KEY = "towns"
+local TownsCache = {}
+
+function ClanStore.GetTowns(fresh)
+	if not fresh or not store then return TownsCache end
+	local success, data = pcall(function() return store:GetAsync(TOWNS_KEY) end)
+	if success and type(data) == "table" then TownsCache = data end
+	return TownsCache
+end
+
+-- transform(towns) -> towns ที่แก้แล้ว หรือ nil = ไม่เปลี่ยน คืน towns ล่าสุด
+function ClanStore.UpdateTowns(transform)
+	if not store then
+		local changed = transform(TownsCache)
+		if changed then TownsCache = changed end
+		return TownsCache
+	end
+	local success, result = pcall(function()
+		return store:UpdateAsync(TOWNS_KEY, function(old)
+			return transform((type(old) == "table") and old or {})
+		end)
+	end)
+	if not success then
+		warn("[ClanStore] แก้เมืองไม่ได้:", result)
+		return nil
+	end
+	if type(result) == "table" then TownsCache = result end
+	return TownsCache
+end
+
+--------------------------------------------------------------------------------
 -- สร้างแคลน
 --------------------------------------------------------------------------------
 

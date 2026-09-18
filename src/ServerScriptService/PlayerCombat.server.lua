@@ -88,18 +88,10 @@ end
 
 -- Every swing wears the weapon down; at zero it breaks and is gone.
 local function wearWeapon(player)
-	local item, entry = Inventory.EquippedWeapon(player)
-	if not item or not entry or not entry.durability then return end
 	-- The inventor's weapons do not wear. Returning before the subtraction rather than healing it afterwards
 	-- means the durability the player sees never moves, instead of flickering down and back on every swing.
 	if ClassPerks.Has(player, "weaponNeverBreaks") then return end
-	entry.durability -= CombatConfig.DurabilityPerSwing
-	if entry.durability <= 0 then
-		-- Through Inventory rather than clearing the slot here: doing it by hand skipped OnWeaponChanged, so
-		-- the broken weapon's model stayed in the player's hand while the animations fell back to fists.
-		Inventory.BreakEquipped(player, "weapon")
-	end
-	Inventory.Send(player)
+	Inventory.WearEquipped(player, CombatConfig.DurabilityPerSwing)
 end
 
 local function setGuard(player, state, guarding)

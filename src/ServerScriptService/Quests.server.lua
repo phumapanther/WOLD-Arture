@@ -98,9 +98,15 @@ end
 -- **งานเก็บของนับจากกระเป๋าสดๆ ไม่ได้นับสะสม** ของที่มีอยู่แล้วก่อนรับงานจึงใช้ส่งได้ทันที ซึ่งตรงกับ
 -- สัญชาตญาณ: ใบประกาศบอกว่า "ต้องการข้าว 10 ถุง" ไม่ได้บอกว่า "ต้องเกี่ยวใหม่ 10 ถุง"
 --
--- ส่วนงานล่าและงานตกปลานับสะสมจากตอนรับงาน เพราะย้อนดูของเก่าไม่ได้ — มอนที่ฆ่าไปเมื่อวานไม่เหลือหลักฐาน
+-- **งานตกปลานับแบบเดียวกับงานเก็บของ** — ปลาเป็นของในกระเป๋าเหมือนข้าว ผู้ใช้ที่มีหมึก 3 ตัวอยู่แล้วเห็น
+-- ใบงานบอก 0/4 แล้วถือว่าเป็นบั๊ก ซึ่งถูกของเขา ต่างจากงานล่าที่นับสะสมจากตอนรับงาน เพราะย้อนดูของเก่า
+-- ไม่ได้ — มอนที่ฆ่าไปเมื่อวานไม่เหลือหลักฐาน
+local function countsFromBag(quest)
+	return quest.kind == "gather" or quest.kind == "fish"
+end
+
 local function progressOf(player, quest)
-	if quest.kind == "gather" then
+	if countsFromBag(quest) then
 		local state = Inventory.Get(player)
 		if not state then return 0 end
 		local n = 0
@@ -273,8 +279,8 @@ local function turnIn(player, boardId, index)
 			("กระเป๋าเต็ม รับเหรียญซิลเวอร์ %d ไม่ได้ — ว่างช่องก่อนแล้วมาส่งใหม่"):format(silver))
 	end
 
-	-- งานเก็บของ: เอาของออกจากกระเป๋าจริงๆ
-	if quest.kind == "gather" then
+	-- งานเก็บของ/ตกปลา: เอาของออกจากกระเป๋าจริงๆ
+	if countsFromBag(quest) then
 		local left = quest.need
 		local state = Inventory.Get(player)
 		if not state then return end
@@ -327,7 +333,8 @@ local function bump(player, kind, key)
 end
 
 QuestAccess.RecordKill = function(player, mobName) bump(player, "hunt", mobName) end
-QuestAccess.RecordCatch = function(player, itemId) bump(player, "fish", itemId) end
+-- ปลานับจากกระเป๋าแล้ว (progressOf) จึงไม่ต้องนับสะสมอีก คงชื่อไว้ให้ Fishing เรียกได้เหมือนเดิม
+QuestAccess.RecordCatch = function() end
 
 --------------------------------------------------------------------------------
 -- ปุ่มที่บอร์ด

@@ -1,10 +1,10 @@
 -- TownCapture.server.lua: ยึดเมืองด้วยการกดค้างที่อนุสาวรีย์
 --
--- **คูลดาวน์ 12 ชั่วโมงนับจากเวลาจริง และเริ่มนับใหม่เมื่อเซิร์ฟเวอร์เปิดใหม่** ตามที่ผู้ใช้กำหนด
+-- **คูลดาวน์ 12 ชั่วโมงนับจากเวลาจริง และเริ่มนับใหม่เมื่อเซิร์ฟเวอร์เปิดใหม่ · ต้องมีคนในเซิร์ฟ 15**
+-- ตามที่ผู้ใช้กำหนด
 --
--- สองข้อนี้ขัดกันโดยธรรมชาติ: "เวลาจริง" อยากให้ผูกกับ os.time() ซึ่งข้ามเซิร์ฟเวอร์ ส่วน "รีเซ็ตเมื่อ
+-- สองข้อแรกขัดกันโดยธรรมชาติ: "เวลาจริง" อยากให้ผูกกับ os.time() ซึ่งข้ามเซิร์ฟเวอร์ ส่วน "รีเซ็ตเมื่อ
 -- เปิดใหม่" อยากให้ผูกกับอายุเซิร์ฟเวอร์ — เก็บทั้งสองอย่าง แล้วถือว่าปลดล็อกเมื่อผ่าน **ทั้งคู่**
--- ซึ่งเป็นการอ่านที่ปลอดภัยที่สุด: ไม่มีทางที่เมืองจะถูกแย่งเร็วกว่าที่ตั้งใจ
 local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
 
@@ -30,68 +30,57 @@ local TOWNS = {
 local LANDMARK_PREFIX = "Landmark_"
 local PROMPT_DISTANCE = 14
 
--- คูลดาวน์หลังยึดสำเร็จ ผู้ใช้กำหนด 12 ชั่วโมง
-local COOLDOWN_SECONDS = 12 * 60 * 60
+local COOLDOWN_SECONDS = ClanConfig.CaptureCooldownSeconds
 
 --------------------------------------------------------------------------------
 -- ใครถือเมืองไหน
 --------------------------------------------------------------------------------
 
--- เจ้าของเมืองเก็บอยู่ใน **ตัวแคลน** (clan.towns) ไม่ใช่ตารางกลางแยก
---
--- เหตุผลเดียวกับที่กุญแจรถเก็บธงไว้บนตัวกุญแจ: ถ้ามีตารางกลาง มันจะไม่ตรงกับความจริงได้ — แคลนถูกลบ
--- แต่ตารางยังบอกว่ามันถือเมืองอยู่ การอ่านจากตัวแคลนทำให้ไม่มีทางไม่ตรงกัน
---
--- ราคาที่จ่ายคือต้องไล่อ่านทุกแคลนเพื่อหาว่าใครถือเมืองนี้ จึงแคชไว้และรีเฟรชเป็นระยะ
+-- อ่านจากคีย์ towns คีย์เดียวใน ClanStore ทุก 30 วิ **อ่านสดจาก DataStore เสมอ** — เวอร์ชันแรกอ่าน
+-- ผ่านแคชของแต่ละแคลนซึ่งไม่เคยหมดอายุ เซิร์ฟเวอร์นี้จึงไม่มีทางรู้ว่าอีกเซิร์ฟเวอร์เพิ่งยึดไป และ
+-- ปล่อยให้ยึดซ้ำได้ทันที ("ยึดได้แล้วไม่คูลดาวน์")
 local Owner = {}      -- [townId] = { clanId, clanName, since }
-local ownerLoadedAt = 0
+local ownerLoadedAt = -math.huge
+
+-- [townId] = os.clock() ที่ปลดล็อกในเซิร์ฟเวอร์นี้
+--
+-- กติกาครึ่งหลังของผู้ใช้: "เซิร์ฟเวอร์เปิดใหม่ก็นับใหม่จาก 12 ชั่วโมง" — เมืองที่ถูกถืออยู่ตอนเซิร์ฟเวอร์
+-- นี้เห็นครั้งแรก ก็ล็อกจากตอนนี้ไปอีก 12 ชั่วโมงเช่นกัน ปลดเมื่อผ่าน **ทั้ง** นาฬิกาจริงและนาฬิกา
+-- เซิร์ฟเวอร์ ซึ่งเป็นการอ่านที่ปลอดภัยที่สุด: ไม่มีทางที่เมืองจะถูกแย่งเร็วกว่าที่ตั้งใจ
+local LocalReadyAt = {}
 
 local function refreshOwners(force)
 	if not force and os.clock() - ownerLoadedAt < 30 then return end
 	ownerLoadedAt = os.clock()
-	local found = {}
-	for clanId in pairs(ClanStore.Index(force)) do
-		local clan = ClanStore.Get(clanId, force)
-		if clan then
-			for townId in pairs(clan.towns or {}) do
-				found[townId] = { clanId = clan.id, clanName = clan.name, since = clan.townsAt and clan.townsAt[townId] }
-			end
-		end
+	Owner = ClanStore.GetTowns(true) or {}
+	for townId in pairs(Owner) do
+		if not LocalReadyAt[townId] then LocalReadyAt[townId] = os.clock() + COOLDOWN_SECONDS end
 	end
-	Owner = found
 end
 
---------------------------------------------------------------------------------
--- คูลดาวน์
---------------------------------------------------------------------------------
+local function leftText(seconds)
+	return ("รออีก %d ชม. %d นาที"):format(math.floor(seconds / 3600), math.floor((seconds % 3600) / 60))
+end
 
--- [townId] = os.clock() ที่ปลดล็อกในเซิร์ฟเวอร์นี้
---
--- นับจากตอนเซิร์ฟเวอร์นี้เห็นการยึด ไม่ใช่จากเวลาจริง — เป็นครึ่งหนึ่งของกติกา "เปิดใหม่ก็นับใหม่"
-local LocalReadyAt = {}
-
--- เมืองนี้ยึดได้ไหม คืน ได้/ไม่ได้, เหตุผล
+-- เมืองนี้ยึดได้ไหม คืน ได้/ไม่ได้, เหตุผล (สั้น เพราะไปโชว์บนปุ่ม)
 local function canCapture(townId)
+	local here = #Players:GetPlayers()
+	if here < ClanConfig.CaptureMinPlayers then
+		return false, ("ต้องมีคนในเซิร์ฟ %d (ตอนนี้ %d)"):format(ClanConfig.CaptureMinPlayers, here)
+	end
+
 	refreshOwners()
 	local owner = Owner[townId]
 	if not owner then return true end
 
-	-- เวลาจริงตั้งแต่ยึด
 	local since = owner.since
 	if since and os.time() - since < COOLDOWN_SECONDS then
-		local left = COOLDOWN_SECONDS - (os.time() - since)
-		return false, ("เมืองนี้เพิ่งถูกยึด รออีก %d ชั่วโมง %d นาที")
-			:format(math.floor(left / 3600), math.floor((left % 3600) / 60))
+		return false, leftText(COOLDOWN_SECONDS - (os.time() - since))
 	end
-
-	-- และเวลาในเซิร์ฟเวอร์นี้
 	local ready = LocalReadyAt[townId]
 	if ready and os.clock() < ready then
-		local left = ready - os.clock()
-		return false, ("เมืองนี้เพิ่งถูกยึด รออีก %d ชั่วโมง %d นาที")
-			:format(math.floor(left / 3600), math.floor((left % 3600) / 60))
+		return false, leftText(ready - os.clock())
 	end
-
 	return true
 end
 
@@ -106,6 +95,9 @@ local function townName(townId)
 	return townId
 end
 
+local Prompts = {} -- [townId] = prompt
+local refreshPrompt -- ข้างล่าง ใช้หลังยึดเพื่อให้ปุ่มเปลี่ยนทันทีโดยไม่ต้องเดินออกแล้วเข้าใหม่
+
 local function capture(player, townId)
 	local clan = ClanAccess.ClanOf and ClanAccess.ClanOf(player) or nil
 	if not clan then
@@ -114,45 +106,63 @@ local function capture(player, townId)
 
 	local ok, why = canCapture(townId)
 	if not ok then
-		return Remotes.SocialNotify:FireClient(player, "warn", why)
+		return Remotes.SocialNotify:FireClient(player, "warn", "ยึดไม่ได้: " .. why)
 	end
 
+	-- ตัดสินจริงใน UpdateAsync ของคีย์ towns — สองเซิร์ฟเวอร์ที่กดจบพร้อมกันจะเห็นกันและกันตรงนี้
 	-- **หนึ่งแคลนยึดได้เมืองเดียว** ตามที่ผู้ใช้กำหนด — ยึดเมืองใหม่แปลว่าปล่อยเมืองเดิม
-	local previous = nil
-	for id in pairs(clan.towns or {}) do previous = id break end
-
-	local result = ClanStore.Update(clan.id, function(c)
-		if not c then return nil end
-		c.towns = {}
-		c.townsAt = {}
-		c.towns[townId] = true
-		c.townsAt[townId] = os.time()
-		return c
+	local refused, previous = nil, nil
+	local towns = ClanStore.UpdateTowns(function(t)
+		local cur = t[townId]
+		if cur and cur.since and os.time() - cur.since < COOLDOWN_SECONDS then
+			refused = leftText(COOLDOWN_SECONDS - (os.time() - cur.since))
+			return nil
+		end
+		for id, o in pairs(t) do
+			if o.clanId == clan.id and id ~= townId then previous = id t[id] = nil end
+		end
+		t[townId] = { clanId = clan.id, clanName = clan.name, since = os.time() }
+		return t
 	end)
-	if not result then
+	if refused then
+		return Remotes.SocialNotify:FireClient(player, "warn", "ยึดไม่ได้: " .. refused)
+	end
+	if not towns or not towns[townId] or towns[townId].clanId ~= clan.id then
 		return Remotes.SocialNotify:FireClient(player, "error", "ยึดเมืองไม่สำเร็จ")
 	end
 
-	-- ปลดเมืองออกจากแคลนอื่นที่เคยถืออยู่
-	refreshOwners(true)
-	local old = Owner[townId]
-	if old and old.clanId ~= clan.id then
-		ClanStore.Update(old.clanId, function(c)
-			if not c then return nil end
-			if c.towns then c.towns[townId] = nil end
-			if c.townsAt then c.townsAt[townId] = nil end
-			return c
-		end)
-	end
-
+	Owner = towns
+	ownerLoadedAt = os.clock()
 	LocalReadyAt[townId] = os.clock() + COOLDOWN_SECONDS
-	refreshOwners(true)
+
+	-- สำเนาไว้ที่ตัวแคลนให้หน้าแคลนโชว์ ไม่ใช่ตัวตัดสิน
+	ClanStore.Update(clan.id, function(c)
+		if not c then return nil end
+		c.towns = { [townId] = true }
+		c.townsAt = { [townId] = os.time() }
+		return c
+	end)
+	-- แคลนที่เคยถือเมืองนี้ (ถ้ามีและไม่ใช่เรา) เอาออกจากสำเนาของมันด้วย ไล่จากแคลนที่มี towns[townId]
+	for clanId in pairs(ClanStore.Index()) do
+		if clanId ~= clan.id then
+			local c = ClanStore.Get(clanId)
+			if c and c.towns and c.towns[townId] then
+				ClanStore.Update(clanId, function(cc)
+					if not cc then return nil end
+					if cc.towns then cc.towns[townId] = nil end
+					if cc.townsAt then cc.townsAt[townId] = nil end
+					return cc
+				end)
+			end
+		end
+	end
 
 	local message = ("แคลน %s ยึด%sได้แล้ว"):format(clan.name, townName(townId))
 	if previous and previous ~= townId then
 		message = message .. (" (ปล่อย%s)"):format(townName(previous))
 	end
 	Remotes.SocialNotify:FireAllClients("info", message)
+	for id in pairs(Prompts) do refreshPrompt(id) end
 end
 
 --------------------------------------------------------------------------------
@@ -197,29 +207,42 @@ local function wire(model, townId)
 	prompt.HoldDuration = ClanConfig.CaptureSeconds
 	prompt.Parent = anchor
 
+	Prompts[townId] = prompt
 	prompt.Triggered:Connect(function(player)
 		capture(player, townId)
 	end)
+	refreshPrompt(townId)
+end
 
-	-- บอกเหตุผลตอนกดไม่ได้ แทนที่จะให้กดค้างจนครบแล้วค่อยปฏิเสธ
-	prompt.PromptShown:Connect(function()
-		local ok, why = canCapture(townId)
-		local owner = Owner[townId]
-		prompt.ActionText = ok and "ยึดเมือง" or "ยึดไม่ได้"
-		prompt.ObjectText = owner
-			and ("%s — แคลน %s"):format(townName(townId), owner.clanName)
-			or townName(townId)
-		prompt.HoldDuration = ok and ClanConfig.CaptureSeconds or 0
-		if not ok then prompt.ActionText = why or "ยึดไม่ได้" end
-	end)
+-- บอกเหตุผลบนปุ่มเลย แทนที่จะให้กดค้างจนครบแล้วค่อยปฏิเสธ
+--
+-- เรียกซ้ำจากลูปข้างล่าง ไม่ใช่แค่ตอน PromptShown — ปุ่มที่โชว์ค้างอยู่ตอนยึดสำเร็จจะได้เปลี่ยนเป็น
+-- "รออีก 11 ชม." ทันที และตัวเลขเดินได้ **ตั้งค่าเฉพาะตอนต่างจากเดิม** เพราะการเขียน HoldDuration
+-- ระหว่างที่ใครกดค้างอยู่จะยกเลิกการกดนั้น
+function refreshPrompt(townId)
+	local prompt = Prompts[townId]
+	if not prompt or not prompt.Parent then return end
+	local ok, why = canCapture(townId)
+	local owner = Owner[townId]
+	local action = ok and "ยึดเมือง" or (why or "ยึดไม่ได้")
+	local object = owner and ("%s — แคลน %s"):format(townName(townId), owner.clanName) or townName(townId)
+	local hold = ok and ClanConfig.CaptureSeconds or 0
+	if prompt.ActionText ~= action then prompt.ActionText = action end
+	if prompt.ObjectText ~= object then prompt.ObjectText = object end
+	if prompt.HoldDuration ~= hold then prompt.HoldDuration = hold end
 end
 
 -- ลูปถามใหม่ กฎเหล็กของโปรเจ็ค: โมเดลมาถึงคนละรอบกับสคริปต์ภายใต้ StreamingEnabled
 task.spawn(function()
+	local tick = 0
 	while true do
 		for _, t in ipairs(TOWNS) do
 			local model = workspace:FindFirstChild(LANDMARK_PREFIX .. t.id, true)
 			if model and model:IsA("Model") then wire(model, t.id) end
+		end
+		tick += 1
+		if tick % 10 == 0 then
+			for id in pairs(Prompts) do refreshPrompt(id) end
 		end
 		task.wait(0.5)
 	end

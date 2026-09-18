@@ -81,22 +81,32 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 -- Playback for everyone, driven by the server so all clients see the same thing.
+--
+-- `sliding` guards the delayed hold: under lag "slide" and "slide_end" can arrive in the same burst, and the
+-- old version stopped a hold that had not started yet, then started it 0.2 s later -- looped, with nothing
+-- left to stop it. That is the frozen slide pose the user photographed.
+local sliding = false
 Remotes.MoveStateChanged.OnClientEvent:Connect(function(who, event)
 	if who ~= player then return end -- other players animate through their own replicated tracks
 	if event == "roll" then
 		if tracks.roll then tracks.roll:Play(0.05) end
 	elseif event == "slide" then
+		sliding = true
 		if tracks.slideEnter then tracks.slideEnter:Play(0.05) end
 		if tracks.slideHold then
 			-- Hold takes over as the entry finishes, so the pose is continuous rather than snapping back.
 			task.delay(0.2, function()
-				if tracks.slideHold then tracks.slideHold:Play(0.1) end
+				if sliding and tracks.slideHold then tracks.slideHold:Play(0.1) end
 			end)
 		end
 	elseif event == "roll_end" then
 		if tracks.roll then tracks.roll:Stop(0.15) end
 	elseif event == "slide_end" then
+		sliding = false
 		if tracks.slideEnter then tracks.slideEnter:Stop(0.15) end
 		if tracks.slideHold then tracks.slideHold:Stop(0.2) end
 	end
 end)
+
+-- A new character is never mid-slide; the flag must not carry a stale "true" into its fresh tracks.
+player.CharacterAdded:Connect(function() sliding = false end)

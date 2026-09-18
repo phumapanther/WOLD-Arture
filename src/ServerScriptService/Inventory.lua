@@ -304,6 +304,24 @@ function Inventory.Unequip(player, kind)
 	return true
 end
 
+-- Takes `amount` off the equipped weapon's durability; at zero it breaks and is gone. Returns false when
+-- nothing wearable is held.
+--
+-- One place for every kind of wear -- a sword swing, a tree felled, a fish landed -- so "what happens at
+-- zero" is answered once. The inventor's perk is the caller's business (PlayerCombat checks it).
+function Inventory.WearEquipped(player, amount)
+	local item, entry = Inventory.EquippedWeapon(player)
+	if not item or not entry or not entry.durability then return false end
+	entry.durability -= amount or 1
+	if entry.durability <= 0 then
+		-- Through BreakEquipped rather than clearing the slot: doing it by hand skips OnWeaponChanged, and
+		-- the broken tool's model stays in the player's hand while the animations fall back to fists.
+		Inventory.BreakEquipped(player, "weapon")
+	end
+	Inventory.Send(player)
+	return true
+end
+
 -- Returns the catalog entry and the live slot (which carries the durability), or nil when nothing is worn.
 function Inventory.EquippedWeapon(player)
 	local state = States[player]

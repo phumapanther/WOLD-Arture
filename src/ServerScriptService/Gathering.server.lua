@@ -268,6 +268,12 @@ local function gather(node, player)
 		Progression.AwardExp(player, config.xp)
 	end
 
+	-- เครื่องมือสึกครั้งละ 1 ทุกครั้งที่เก็บสำเร็จ (ผู้ใช้กำหนด) เฉพาะจุดที่ต้องใช้เครื่องมือ — เก็บไข่ด้วยมือ
+	-- เปล่าไม่มีอะไรให้สึก ของนักประดิษฐ์ไม่สึกเหมือนอาวุธ
+	if config.tool and not ClassPerks.Has(player, "weaponNeverBreaks") then
+		Inventory.WearEquipped(player, 1)
+	end
+
 	local item = ItemCatalog.Get(itemId)
 	Remotes.SocialNotify:FireClient(player, "info",
 		("ได้ %s x%d"):format(item and item.name or itemId, count))

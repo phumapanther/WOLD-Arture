@@ -196,23 +196,25 @@ function TownBuyerGui:Render(data)
 			art.Parent = row
 		end
 
-		-- ปุ่มสองปุ่มกินที่ 8 + 78 + 6 + 46 = 138 จากขอบขวา เผื่อไว้ 146
+		-- ปุ่มสองปุ่มกินที่ 8 + 66 + 6 + 46 = 126 จากขอบขวา เผื่อไว้ 134
 		local leftPad = hasIcon and 44 or 10
-		local textWidth = -(leftPad + 146)
+		local textWidth = -(leftPad + 134)
 
 		local name = label(row, ("%s x%d"):format(entry.name, entry.count), 13, TEXT_LIGHT)
 		name.Position = UDim2.new(0, leftPad, 0, 4)
 		name.Size = UDim2.new(1, textWidth, 0, 18)
 		name.TextTruncate = Enum.TextTruncate.AtEnd
 
-		local price = label(row, ("%d เหรียญ/ชิ้น"):format(entry.price), 11, TEXT_MUTED)
+		-- ราคาอยู่ใต้ชื่อแบบเดียวกับร้านเมืองหลัก ปุ่มเหลือแต่คำสั่ง
+		local price = label(row, ("ชิ้นละ %d — รวม %d"):format(entry.price, entry.price * entry.count),
+			11, TEXT_MUTED)
 		price.Position = UDim2.new(0, leftPad, 0, 22)
 		price.Size = UDim2.new(1, textWidth, 0, 16)
 
-		pill(row, "ขาย 1", Color3.fromRGB(70, 74, 84), 46, -92, function()
+		pill(row, "ขาย 1", Color3.fromRGB(70, 74, 84), 46, -80, function()
 			self:fire("sell", entry.index, 1)
 		end)
-		pill(row, ("ทั้งหมด %d"):format(entry.price * entry.count), GREEN, 78, -8, function()
+		pill(row, "ขายหมด", GREEN, 66, -8, function()
 			self:fire("sell", entry.index, entry.count)
 		end)
 	end

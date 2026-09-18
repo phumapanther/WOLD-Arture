@@ -63,6 +63,12 @@ ClanConfig.SilverToGold = 1
 -- กดค้างกี่วินาทีถึงจะยึดได้ ผู้ใช้กำหนดราว 59
 ClanConfig.CaptureSeconds = 59
 
+-- ต้องมีคนในเซิร์ฟเวอร์กี่คนถึงจะกดยึดได้ ผู้ใช้กำหนด 15
+ClanConfig.CaptureMinPlayers = 15
+
+-- ยึดแล้วเมืองนั้นแตะไม่ได้กี่วินาที ผู้ใช้กำหนด 12 ชั่วโมง
+ClanConfig.CaptureCooldownSeconds = 12 * 60 * 60
+
 -- ยึดแล้วต้องไม่มีใครมาแย่งภายในกี่วินาที ถึงจะเป็นของจริง
 ClanConfig.ContestSeconds = 30 * 60
 
