@@ -56,6 +56,8 @@ local ProfileTemplate = {
 	Gems = 0,
 	-- ออร่าที่เปิดอยู่ (item id) | nil = ปิด
 	Aura = nil,
+	-- ใส่ชุดแคลนอยู่ไหม (กดจากแหวนแคลน) | nil = ไม่ได้ใส่ — ออกจากแคลนแล้วถอดเองโดย ClanOutfit.server
+	ClanOutfit = nil,
 	-- แบทเทิลพาส { season, xp, premium, claimedFree = {[tier]=true}, claimedPremium = {[tier]=true} } | nil
 	BattlePass = nil,
 	Quests = nil,

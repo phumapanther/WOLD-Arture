@@ -58,15 +58,6 @@ end
 -- The slot list is collected before anything is removed rather than iterated while removing, for the reason
 -- the shop's "sell all" gives: RemoveFromSlot empties slots, and walking a table while emptying it is reading
 -- the thing you are changing.
--- Who is mid-swing. The hammer takes a couple of seconds and the button stays clickable, so without this a
--- player could spend one set of materials several times over.
-local Busy = {}
-
-Players.PlayerRemoving:Connect(function(player)
-	Busy[player] = nil
-	Source[player] = nil
-end)
-
 local function takeMaterial(player, state, id, count)
 	local found = {}
 	for index, slot in pairs(state.slots) do
@@ -79,6 +70,34 @@ local function takeMaterial(player, state, id, count)
 		count -= take
 	end
 end
+
+-- หน้าคราฟที่เปิดอยู่ตอนนี้มาจากไหน: ช่างตีเหล็ก (nil) หรือสถานี { station, model }
+--
+-- เตา/เครื่องปั่น/เครื่องต้มยา (CraftStations.server) เปิดหน้าเดียวกันแต่โชว์เฉพาะสูตรของมัน และตรวจระยะกับ
+-- ตัวเครื่องแทน NPC
+--
+-- **ประกาศไว้ตรงนี้ ไม่ใช่ใต้ nearSmith** เพราะ PlayerRemoving ข้างล่างเขียนถึงมัน ถ้า local มาทีหลัง
+-- ตัวที่ closure จับไว้จะเป็นตัวแปร global ที่เป็น nil แล้วคนออกจากเกมทีก็ error ที
+local Source = {} -- [player] = { station = "stove", model = Model } | nil
+
+-- ใครกำลังทำอะไรค้างอยู่ **แยกตามเครื่อง** ไม่ใช่คนละหนึ่งอย่าง
+--
+-- สเต็กใช้เวลา 15 นาทีและผู้ใช้สั่งว่าระหว่างนั้นต้องเดินไปทำอย่างอื่นได้ ถ้าล็อกไว้คนละหนึ่งงาน เตาที่ตุ๋น
+-- อยู่จะล็อกทั้งเครื่องปั่นและเครื่องต้มยาไปด้วยตลอดสิบห้านาที — ล็อกรายเครื่องจึงเป็นความหมายที่ถูก:
+-- เตาหนึ่งใบทำทีละอย่าง แต่คนหนึ่งคนมีหลายเครื่องได้
+--
+-- [player] = { [stationKey] = { index = ลำดับสูตร, finishAt = os.clock() ตอนเสร็จ } }
+local Busy = {}
+
+-- ชื่อช่องของล็อก: สถานี หรือ "smith" สำหรับช่างตีเหล็ก
+local function stationKeyOf(station)
+	return station or "smith"
+end
+
+Players.PlayerRemoving:Connect(function(player)
+	Busy[player] = nil
+	Source[player] = nil
+end)
 
 --------------------------------------------------------------------------------
 -- Who is close enough
@@ -95,12 +114,6 @@ local function nearSmith(player)
 	end
 	return false
 end
-
--- หน้าคราฟที่เปิดอยู่ตอนนี้มาจากไหน: ช่างตีเหล็ก (nil) หรือสถานี { station, model }
---
--- เตา/เครื่องปั่น/เครื่องต้มยา (CraftStations.server) เปิดหน้าเดียวกันแต่โชว์เฉพาะสูตรของมัน และตรวจระยะกับ
--- ตัวเครื่องแทน NPC
-local Source = {} -- [player] = { station = "stove", model = Model } | nil
 
 local function nearSource(player)
 	local src = Source[player]
@@ -171,8 +184,14 @@ local function snapshot(player)
 	for _, tab in ipairs(CraftConfig.Tabs) do
 		if (tab.station or nil) == station then tabs[#tabs + 1] = tab end
 	end
+	-- งานที่ยังทำค้างอยู่ที่เครื่องนี้ (ถ้ามี) กลับมายืนที่เตาแล้วต้องเห็นแถบเดินต่อจากเดิม ไม่ใช่หน้าว่าง
+	-- ที่ชวนให้กดซ้ำ — สูตร 15 นาทีทำให้เรื่องนี้จำเป็น ไม่ใช่ของแถม
+	local busy = Busy[player] and Busy[player][stationKeyOf(station)] or nil
+	local remaining = busy and math.max(0, busy.finishAt - os.clock()) or nil
+
 	local src = Source[player]
 	return { tabs = tabs, recipes = recipes, station = station,
+		busy = busy and { index = busy.index, remaining = remaining, seconds = busy.seconds } or nil,
 		stationPosition = src and src.model.Parent and src.model:GetPivot().Position or nil }
 end
 
@@ -257,12 +276,20 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 		return Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม")
 	end
 
-	-- One craft at a time. The hammer takes a couple of seconds and the player is free to press the button
-	-- again during it, which without this would spend the materials twice over from one set.
-	if Busy[player] then
-		return Remotes.SocialNotify:FireClient(player, "error", "กำลังตีอยู่ รอสักครู่")
+	-- One craft at a time PER BENCH. The hammer takes a couple of seconds and the player is free to press the
+	-- button again during it, which without this would spend the materials twice over from one set. แยกตาม
+	-- เครื่องเพราะเตาที่ตุ๋นสเต็กอยู่ 15 นาทีต้องไม่ล็อกเครื่องต้มยาไปด้วย
+	local station = stationOf(player)
+	local key = stationKeyOf(station)
+	Busy[player] = Busy[player] or {}
+	if Busy[player][key] then
+		return Remotes.SocialNotify:FireClient(player, "error",
+			station and "เครื่องนี้ยังทำงานอยู่ รอสักครู่" or "กำลังตีอยู่ รอสักครู่")
 	end
-	Busy[player] = true
+
+	-- สูตรกำหนดเวลาเองได้ (สเต็ก 15 นาที น้ำแอปเปิล 5 นาที) ที่เหลือใช้ค่ากลางของช่างตีเหล็ก
+	local seconds = recipe.seconds or CraftConfig.CraftSeconds
+	Busy[player][key] = { index = index, finishAt = os.clock() + seconds, seconds = seconds }
 
 	-- Taken NOW rather than after the wait, so walking away or logging out mid-swing cannot dodge the cost.
 	-- The fee goes with them: the smith is paid for the attempt, not for the result.
@@ -275,11 +302,23 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 
 	-- Tell the client to run its progress bar, and redraw the window so the materials visibly leave the bag
 	-- as the hammer starts.
-	Remotes.CraftStarted:FireClient(player, index, CraftConfig.CraftSeconds)
+	Remotes.CraftStarted:FireClient(player, index, seconds)
 	Remotes.CraftOpen:FireClient(player, snapshot(player))
 
-	task.delay(CraftConfig.CraftSeconds, function()
-		Busy[player] = nil
+	-- ท่าทำงาน: บอก **ทุกไคลเอนต์** ไม่ใช่เฉพาะคนทำ คนที่เดินผ่านครัวต้องเห็นเชฟคนหม้ออยู่ ท่าจะหยุดเอง
+	-- เมื่อคนทำเดินออกจากเครื่อง (ไคลเอนต์เทียบระยะกับพิกัดที่ส่งไปนี้) แล้วเล่นต่อเมื่อเดินกลับมา
+	local src = Source[player]
+	local stationPosition = src and src.model.Parent and src.model:GetPivot().Position or nil
+	if station then
+		Remotes.CraftPoseChanged:FireAllClients(player, station, seconds, stationPosition)
+		if src and CraftAccess.OnCraftStarted then
+			CraftAccess.OnCraftStarted(player, station, src.model, seconds)
+		end
+	end
+
+	task.delay(seconds, function()
+		if Busy[player] then Busy[player][key] = nil end
+		if station then Remotes.CraftPoseChanged:FireAllClients(player, nil) end
 		-- The player may have left while the hammer was swinging.
 		if not player.Parent then return end
 

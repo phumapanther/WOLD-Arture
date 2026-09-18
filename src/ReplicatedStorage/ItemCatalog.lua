@@ -25,6 +25,16 @@ local ItemCatalog = {}
 -- Long enough to be a real commitment in a fight, short enough not to feel like a punishment.
 ItemCatalog.ConsumeSeconds = 3
 
+-- ของบางชิ้นใช้เวลานานกว่านั้น: กล่องปฐมพยาบาลมีท่าพันแผลห้าจังหวะตามคู่มือภาพ (ล้าง สำลี ผ้าก๊อซ กด พัน)
+-- ซึ่งเบียดกันจนดูไม่ออกถ้ามีแค่สามวินาที ใส่ `use.holdSeconds` ที่ไอเทมเพื่อยืดเฉพาะชิ้นนั้น
+--
+-- **ไม่ใช้ชื่อ `use.seconds`** ชื่อนั้นมีเจ้าของแล้ว: มันคือความยาวของบัพที่อาหารให้ (สเต็ก 15 นาที)
+function ItemCatalog.HoldSeconds(id)
+	local item = ItemCatalog.Items[id]
+	local hold = item and item.use and item.use.holdSeconds
+	return hold or ItemCatalog.ConsumeSeconds
+end
+
 ItemCatalog.Items = {
 	--------------------------------------------------------------------------
 	-- Weapons. Each defines the Q skill it grants and the animations its basic
@@ -230,6 +240,15 @@ ItemCatalog.Items = {
 		icon = "rbxassetid://70766990190847", -- assets/item-icons/HealthPotion.png
 		name = "ยาฮีล", kind = "consumable", weight = 0.8, stackSize = 5,
 		use = { stat = "hp", amount = 40 },
+		useSound = "Drink",
+	},
+	-- ยาใหญ่: ต้มที่เครื่องต้มยาเท่านั้น (สมุนไพร 30 เส้นใย 15 กระดูก 3 เศษไม้ 5) ใช้แล้ว **เลือดเต็มหลอด**
+	-- ไม่ใช่ตัวเลขตายตัวอย่างยาฮีล จึงคุ้มเท่ากันทุกเลเวลแม้เลือดสูงสุดจะโตตามเลเวล
+	-- ไอคอนยังใช้ขวดยาฮีลไปก่อน (placeholder) เปลี่ยนเมื่อผู้ใช้อัปโหลดรูปขวดใหญ่
+	GreatPotion = { medicine = true,
+		icon = "rbxassetid://70766990190847", -- placeholder: ขวดเดียวกับยาฮีล
+		name = "ยาใหญ่", kind = "consumable", weight = 1.5, stackSize = 5, value = 0, sellable = false,
+		use = { stat = "healfull" },
 		useSound = "Drink",
 	},
 	RepairHammer = {
@@ -509,8 +528,13 @@ ItemCatalog.Items = {
 	Spatula = { icon = "rbxassetid://122256905985474", name = "ตะหลิวเชฟ", kind = "token",
 		weight = 0.5, stackSize = 1, value = 0, sellable = false, bound = true, boundClass = "Chef" },
 	-- แหวนแคลน: meta.clan = ชื่อแคลน (ไม่ซ้ำกันอยู่แล้ว) ชื่อจึงขึ้นเป็น "แหวนแคลน · ชื่อ"
+	--
+	-- **กดได้อย่างเดียวคือใส่/ถอดชุดแคลน** ให้คนอื่นไม่ได้ (bound → IsBound กันทั้งที่เซิร์ฟเวอร์และปุ่ม "ให้"
+	-- ไม่ขึ้นในเมนูกระเป๋าแล้ว) `use` อยู่บนของที่ไม่ใช่ consumable จึงไม่ถูกใช้หมด — PlayerInventory แยกทาง
+	-- ของ stat = "clanoutfit" ออกก่อนถึงทางที่ลบไอเทม เหมือนจักรยานล้อเดียวกับออร่า
 	ClanRing = { icon = "rbxassetid://72443695767496", name = "แหวนแคลน", kind = "token",
-		weight = 0.1, stackSize = 1, value = 0, sellable = false, bound = true, boundClan = true },
+		weight = 0.1, stackSize = 1, value = 0, sellable = false, bound = true, boundClan = true,
+		use = { stat = "clanoutfit" } },
 
 	--------------------------------------------------------------------------
 	-- เมนูจากครัว (คราฟที่เตา/เครื่องปั่น) `food` = เก็บในตู้เย็นได้ `use.stat = "meal"` = อิ่มทันที (+บัพ)
@@ -526,14 +550,15 @@ ItemCatalog.Items = {
 		use = { stat = "meal", mana = true, buff = "noStamina", seconds = 5 * 60 } },
 
 	-- กล่องเวทมนตร์: เปิดแล้วสุ่มของทุกอย่างที่มีในเซิร์ฟ (เรทใน PremiumConfig.MagicBox)
-	MagicBox = { icon = "rbxassetid://109904396721698", name = "กล่องเวทมนตร์", kind = "consumable",
+	MagicBox = { icon = "rbxassetid://135550912982213", name = "กล่องเวทมนตร์", kind = "consumable",
 		weight = 1, stackSize = 10, value = 0, sellable = false,
 		use = { stat = "magicbox" } },
 
-	-- กล่องปฐมพยาบาล: นักบวชเท่านั้น ใช้แล้วพันแผล (ท่าพันแผล) แล้วเลือดเต็ม
+	-- กล่องปฐมพยาบาล: **ใครก็ใช้ได้** (ผู้ใช้สั่ง 2026-09-18 — เดิมเป็นของนักบวชเท่านั้น) ใช้แล้วพันแผลตาม
+	-- ลำดับในคู่มือภาพ (ล้างแผล → สำลี → ผ้าก๊อซ → กดห้ามเลือด → พันยึด) แล้วเลือดเต็ม
 	FirstAidKit = { icon = "rbxassetid://71486682078701", name = "กล่องปฐมพยาบาล", kind = "consumable",
 		medicine = true, weight = 1.2, stackSize = 5, value = 0, sellable = false,
-		use = { stat = "firstaid", classOnly = "Priest", pose = "bandage" } },
+		use = { stat = "firstaid", pose = "bandage", holdSeconds = 6 } },
 
 	-- ออร่า (จากกาชา) ใช้ = เปิด/ปิด เอฟเฟกต์ลอยรอบตัว ไม่ถูกใช้หมด `model` = โมเดลใน ReplicatedStorage.WOLD_Effects
 	-- ถ้ามี ไม่มีก็สร้างวงอนุภาคสี `colour` ให้

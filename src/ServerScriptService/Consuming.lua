@@ -40,7 +40,7 @@ function Consuming.Begin(player, itemId)
 	NextToken += 1
 	Active[player] = {
 		id = itemId,
-		deadline = os.clock() + ItemCatalog.ConsumeSeconds,
+		deadline = os.clock() + ItemCatalog.HoldSeconds(itemId),
 		token = token,
 	}
 	return token

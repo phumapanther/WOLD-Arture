@@ -102,6 +102,10 @@ local EVENTS = {
 	-- attempt worked. Both are needed because the swing takes a couple of seconds and the roll happens at
 	-- the END of it, so the window cannot know the outcome when the button is pressed.
 	"RequestCraftOpen", "CraftOpen", "RequestCraft", "CraftStarted", "CraftFinished",
+	-- ท่าทำงานที่เตา/เครื่องปั่น/เครื่องต้มยา ยิงหาทุกคนเหมือน ConsumeStateChanged ไม่ใช่เฉพาะคนคราฟ:
+	-- คนที่เดินผ่านครัวต้องเห็นว่ามีคนกำลังคนหม้ออยู่ ไม่ใช่เห็นคนยืนเฉยๆ หน้าเตาที่มีไฟลุก
+	-- (player, station | nil = หยุด, seconds, stationPosition)
+	"CraftPoseChanged",
 	-- Gathering: the server draws the [F] prompt on a node and fires this to tell the client to toggle its
 	-- own auto-farm loop. The loop lives on the client because it drives the local character's movement.
 	"ToggleAutoFarm",

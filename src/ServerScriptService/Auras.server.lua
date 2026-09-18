@@ -50,26 +50,81 @@ local function buildProcedural(colour)
 	core.Parent = model
 	model.PrimaryPart = core
 
-	-- วงอนุภาคลอยขึ้นรอบตัว + จุดประกายรอบเท้า สองตัวให้อ่านออกว่าเป็น "รัศมี" ไม่ใช่ควัน
-	local ring = Instance.new("ParticleEmitter")
-	ring.Name = "Ring"
-	ring.Color = ColorSequence.new(colour)
-	ring.LightEmission = 0.8
-	ring.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0) })
-	ring.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
-	ring.Lifetime = NumberRange.new(1.2, 1.8)
-	ring.Rate = 28
-	ring.Speed = NumberRange.new(1.5, 2.5)
-	ring.SpreadAngle = Vector2.new(360, 360)
-	ring.Shape = Enum.ParticleEmitterShape.Cylinder
-	ring.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
-	ring.EmissionDirection = Enum.NormalId.Top
-	ring.Parent = core
+	-- **ฟุ้ง สว่าง และอ่านออกว่าเป็นรัศมี** (ผู้ใช้สั่งแก้ 2026-09-18) ทำด้วยอนุภาคสามชั้นทับกัน ไม่ใช่ชั้นเดียว
+	-- ที่เร่ง Rate ขึ้นเฉยๆ — ชั้นเดียวยิ่งถี่ยิ่งกลายเป็นเสาควันทึบ สามชั้นคนละหน้าที่จึงยังโปร่งอยู่:
+	--
+	--   Haze  หมอกนุ่มเม็ดใหญ่ ลอยช้า โปร่งมาก = ตัว "ฟุ้ง"
+	--   Ring  ลำแสงเม็ดเล็กพุ่งขึ้นจากวงที่เอว   = ตัว "ชัด" ที่บอกว่ามันเป็นวง
+	--   Motes ประกายกะพริบลอยขึ้นช้าๆ            = ตัว "สว่าง" ที่ตาจับได้ก่อนเพื่อน
+	--
+	-- ทุกชั้นใช้ `LightEmission = 1` และสีเดียวกัน กลางคืนจึงเรืองแสงจริง ไม่ใช่แค่สีจางบนพื้นมืด
+	local function emitter(name, parent)
+		local p = Instance.new("ParticleEmitter")
+		p.Name = name
+		p.Color = ColorSequence.new(colour)
+		p.LightEmission = 1
+		p.LightInfluence = 0 -- ไม่ให้แสงในฉากมากดสีให้หม่นตอนกลางคืน
+		p.Shape = Enum.ParticleEmitterShape.Cylinder
+		p.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
+		p.EmissionDirection = Enum.NormalId.Top
+		p.SpreadAngle = Vector2.new(18, 18)
+		p.Parent = parent
+		return p
+	end
 
+	local haze = emitter("Haze", core)
+	haze.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1.1),
+		NumberSequenceKeypoint.new(0.4, 2.2),
+		NumberSequenceKeypoint.new(1, 2.8),
+	})
+	haze.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1),
+		NumberSequenceKeypoint.new(0.25, 0.72), -- โปร่งมาก ความฟุ้งมาจากจำนวนเม็ดที่ซ้อนกัน ไม่ใช่ความทึบของเม็ดเดียว
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	haze.Lifetime = NumberRange.new(2.2, 3.2)
+	haze.Rate = 26
+	haze.Speed = NumberRange.new(0.8, 1.6)
+	haze.RotSpeed = NumberRange.new(-24, 24)
+	haze.SpreadAngle = Vector2.new(40, 40)
+
+	local ring = emitter("Ring", core)
+	ring.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.55),
+		NumberSequenceKeypoint.new(0.7, 0.32),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	ring.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.08),
+		NumberSequenceKeypoint.new(0.8, 0.4),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	ring.Lifetime = NumberRange.new(1.3, 2.0)
+	ring.Rate = 70
+	ring.Speed = NumberRange.new(2.6, 4.2)
+
+	local motes = emitter("Motes", core)
+	motes.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0.22),
+		NumberSequenceKeypoint.new(1, 0.05),
+	})
+	motes.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(1, 1),
+	})
+	motes.Lifetime = NumberRange.new(2.0, 3.4)
+	motes.Rate = 22
+	motes.Speed = NumberRange.new(0.6, 1.8)
+	motes.SpreadAngle = Vector2.new(60, 60)
+	motes.RotSpeed = NumberRange.new(-90, 90)
+
+	-- ไฟจริงด้วย ไม่ใช่แค่อนุภาคเรืองแสง ยืนในที่ร่มแล้วต้องเห็นพื้นรอบตัวติดสีออร่า
 	local glow = Instance.new("PointLight")
 	glow.Color = colour
-	glow.Brightness = 0.8
-	glow.Range = 9
+	glow.Brightness = 3.2 -- เดิม 0.8 มองแทบไม่ออกกลางวัน
+	glow.Range = 16
+	glow.Shadows = false
 	glow.Parent = core
 	return model
 end
@@ -98,8 +153,8 @@ local function draw(player, auraId)
 			d.Massless = true
 		end
 	end
-	-- วงอนุภาคทรงกระบอกกว้าง 4 สตัดที่ระดับเอว ปรับขนาด core ให้เป็นวงที่ Cylinder ปล่อยจากผิว
-	if model.Name == "AuraRing" then core.Size = Vector3.new(4, 0.2, 4) end
+	-- วงอนุภาคทรงกระบอกที่ระดับเอว ปรับขนาด core ให้เป็นวงที่ Cylinder ปล่อยจากผิว (กว้างขึ้นเป็น 4.6 ให้หมอกไม่ทับหน้า)
+	if model.Name == "AuraRing" then core.Size = Vector3.new(4.6, 0.2, 4.6) end
 	model:PivotTo(root.CFrame * CFrame.new(0, -1.5, 0))
 	model.Parent = folder
 	local weld = Instance.new("WeldConstraint")

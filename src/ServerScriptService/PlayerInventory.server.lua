@@ -9,6 +9,7 @@ local Vitals = require(game.ServerScriptService.Vitals)
 local ChestAccess = require(game.ServerScriptService.ChestAccess)
 local MonowheelAccess = require(game.ServerScriptService.MonowheelAccess)
 local AuraAccess = require(game.ServerScriptService.AuraAccess)
+local ClanOutfitAccess = require(game.ServerScriptService.ClanOutfitAccess)
 local Classes = require(game.ServerScriptService.Classes)
 local ClassConfig = require(game.ReplicatedStorage.ClassConfig)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
@@ -176,6 +177,9 @@ local function applyUse(player, item)
 	elseif use.stat == "firstaid" then
 		-- กล่องปฐมพยาบาล: พันแผลแล้วเลือดเต็ม (ท่าพันแผลอยู่ฝั่งไคลเอนต์ระหว่างรอ)
 		Vitals.HealFraction(player, 1)
+	elseif use.stat == "healfull" then
+		-- ยาใหญ่: เลือดเต็มหลอด เป็นสัดส่วนไม่ใช่ตัวเลข เลือดสูงสุดโตตามเลเวลแต่ขวดนี้เต็มเสมอ
+		Vitals.HealFraction(player, 1)
 	elseif use.stat == "magicbox" then
 		local MagicBox = require(game.ServerScriptService.MagicBox)
 		local got = MagicBox.Roll()
@@ -266,10 +270,11 @@ local function doUseItem(player, index)
 		if AuraAccess.Toggle then AuraAccess.Toggle(player, slot.id) end
 		return
 	end
-	if item.kind ~= "consumable" or not item.use then return end
-
-	-- ของเฉพาะอาชีพ (กล่องปฐมพยาบาล = นักบวช)
-	if item.use.classOnly and not Classes.Has(player, item.use.classOnly) then
+	-- ของเฉพาะอาชีพ (ยังไม่มีไอเทมไหนใช้อยู่ตอนนี้ — กล่องปฐมพยาบาลเปิดให้ทุกคนแล้ว)
+	--
+	-- `item.use and` ต้องมี: ด่าน "ไม่ใช่ consumable ก็จบ" ย้ายลงไปอยู่หลังแหวนแคลนแล้ว ของอย่างก้อนหิน
+	-- จึงเดินมาถึงบรรทัดนี้ได้โดยไม่มี use เลย
+	if item.use and item.use.classOnly and not Classes.Has(player, item.use.classOnly) then
 		local class = ClassConfig.Get(item.use.classOnly)
 		return Remotes.SocialNotify:FireClient(player, "warn", ("เฉพาะ%sเท่านั้น"):format(class and class.name or item.use.classOnly))
 	end
@@ -280,6 +285,19 @@ local function doUseItem(player, index)
 	-- make the whole rescue system optional: there would be no reason to wait for help, and no reason for
 	-- anyone to come. Being floored has to be something another player gets you out of.
 	if Vitals.IsDowned(player) then return end
+
+	-- แหวนแคลน: กดแล้วใส่/ถอดชุดแคลน และ **ไม่ถูกใช้หมดไป**
+	--
+	-- อยู่ก่อนด่าน `kind ~= "consumable"` เพราะแหวนเป็น token และอยู่ก่อนทางที่ลบไอเทมด้วยเหตุผลเดียวกับ
+	-- จักรยานล้อเดียว: แหวนเป็นของประจำตำแหน่ง ลบแล้วต้องรอ BoundItems เติมคืน
+	if item.use and item.use.stat == "clanoutfit" then
+		if not ClanOutfitAccess.Toggle then return end
+		local ok, message = ClanOutfitAccess.Toggle(player)
+		Remotes.SocialNotify:FireClient(player, ok and "info" or "warn", tostring(message))
+		return
+	end
+
+	if item.kind ~= "consumable" or not item.use then return end
 
 	-- จักรยานล้อเดียว: กดแล้วเรียก/เก็บทันที และ **ไม่ถูกใช้หมดไป**
 	--
@@ -312,7 +330,7 @@ local function doUseItem(player, index)
 	local token = Consuming.Begin(player, itemId)
 	Remotes.ConsumeStateChanged:FireAllClients(player, "start", itemId)
 
-	task.delay(ItemCatalog.ConsumeSeconds, function()
+	task.delay(ItemCatalog.HoldSeconds(itemId), function()
 		-- Stale finish: they were interrupted, left, or started something else.
 		if not player.Parent or not Consuming.StillCurrent(player, token) then return end
 		Consuming.Cancel(player)

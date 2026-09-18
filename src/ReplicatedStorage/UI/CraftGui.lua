@@ -177,7 +177,8 @@ function CraftGui:ApplyBusy()
 			TweenService:Create(row.fill, TweenInfo.new(remaining, Enum.EasingStyle.Linear), {
 				Size = UDim2.fromScale(1, 1),
 			}):Play()
-			row.button.Text = "กำลังตี..."
+			-- เตาไม่ได้ตีเหล็ก: คำว่า "กำลังตี" ที่หน้าครัวอ่านแล้วสะดุด
+			row.button.Text = (self.snapshot and self.snapshot.station) and "กำลังทำ..." or "กำลังตี..."
 		else
 			row.button.Text = "รอ..."
 		end
@@ -446,6 +447,20 @@ end
 
 function CraftGui:Show(snapshot)
 	self.snapshot = snapshot
+
+	-- งานที่ค้างอยู่มาจาก **สแนปช็อต** ไม่ใช่ความจำของหน้าต่าง
+	--
+	-- สองเหตุผล: เดินกลับมาที่เตาที่ตุ๋นสเต็กค้างไว้ต้องเห็นแถบเดินต่อจากเดิม (ไม่งั้นหน้าว่างชวนให้กดซ้ำ
+	-- แล้วเสียวัตถุดิบอีกชุด) และเดินจากเตาที่กำลังทำงานไปเครื่องต้มยาต้องไม่เห็นทุกปุ่มขึ้น "รอ..." ทั้งที่
+	-- เครื่องต้มยาว่างอยู่ — ล็อกเป็นของเครื่อง ไม่ใช่ของคน
+	local busy = snapshot.busy
+	if busy and (busy.remaining or 0) > 0 then
+		self.busyIndex = busy.index
+		self.busySeconds = busy.seconds or busy.remaining
+		self.busyUntil = os.clock() + busy.remaining
+	else
+		self.busyIndex = nil
+	end
 
 	for _, child in ipairs(self.tabBar:GetChildren()) do
 		if child:IsA("TextButton") then child:Destroy() end

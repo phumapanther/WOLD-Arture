@@ -5,7 +5,12 @@ local CraftAccess = {}
 -- OpenAt(player, station, model) -> เปิดหน้าคราฟที่โชว์เฉพาะสูตรของ station ("stove"|"blender"|"still")
 CraftAccess.OpenAt = nil
 
--- OnCrafted(player, station, model, recipe) -> ให้สถานีแสดงผล (ไฟที่เตา) เติมโดย CraftStations.server
+-- OnCrafted(player, station, model, recipe) -> ให้สถานีแสดงผลตอนเสร็จ (ไฟทิ้งท้ายที่เตา) เติมโดย CraftStations.server
 CraftAccess.OnCrafted = nil
+
+-- OnCraftStarted(player, station, model, seconds) -> เริ่มทำ
+--
+-- มีเพราะสูตรที่ใช้เวลาจริง (สเต็ก 15 นาที) ต้องเห็นไฟลุกอยู่ **ระหว่าง** ทำ ไม่ใช่ลุกตอนทำเสร็จแล้ว
+CraftAccess.OnCraftStarted = nil
 
 return CraftAccess

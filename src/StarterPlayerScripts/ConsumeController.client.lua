@@ -16,6 +16,7 @@ local RunService = game:GetService("RunService")
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local SoundscapeConfig = require(game.ReplicatedStorage.SoundscapeConfig)
+local WorkPoses = require(game.ReplicatedStorage.WorkPoses)
 
 -- One entry per player currently eating, so several people can eat at once.
 local active = {} -- [player] = { connection, model, startedAt }
@@ -62,37 +63,9 @@ end
 
 -- Raises both hands to the mouth and bobs. Written to the joints each frame after the animator has run,
 -- which is the same approach the crawl uses -- an animation playing underneath would otherwise win.
--- ท่าพันแผล (กล่องปฐมพยาบาล ตามคู่มือภาพของผู้ใช้): แขนซ้ายยื่นออกหน้าเป็นแขนที่บาดเจ็บ มือขวาวนรอบ
--- ปลายแขนซ้าย = ทำความสะอาด → สำลี → ผ้าก๊อซ → กด → พัน จังหวะช้ากว่ากิน (2 รอบต่อวิ) และวนเป็นวงกลม
-local function startBandagePose(character)
-	local leftJoint = character:FindFirstChild("LeftUpperArm")
-	local rightJoint = character:FindFirstChild("RightUpperArm")
-	if not leftJoint or not rightJoint then return nil end
-	local leftShoulder = leftJoint:FindFirstChild("LeftShoulder")
-	local rightShoulder = rightJoint:FindFirstChild("RightShoulder")
-	local leftElbow = character:FindFirstChild("LeftLowerArm")
-	local rightElbow = character:FindFirstChild("RightLowerArm")
-	leftElbow = leftElbow and leftElbow:FindFirstChild("LeftElbow")
-	rightElbow = rightElbow and rightElbow:FindFirstChild("RightElbow")
-	local head = character:FindFirstChild("Head")
-	local neck = head and head:FindFirstChild("Neck")
-	if not leftShoulder or not rightShoulder then return nil end
-
-	local started = os.clock()
-	return RunService.Stepped:Connect(function()
-		local t = os.clock() - started
-		-- แขนซ้ายชูออกหน้าระดับอก ค่อนข้างนิ่ง (บาดเจ็บ) งอศอกเล็กน้อยให้ปลายแขนขวางหน้าตัว
-		leftShoulder.Transform = CFrame.Angles(math.rad(80), math.rad(-25), math.rad(20))
-		if leftElbow then leftElbow.Transform = CFrame.Angles(math.rad(35), 0, 0) end
-		-- มือขวาวนรอบปลายแขนซ้าย: ไหล่ขวาแกว่งเป็นวงเล็กๆ ศอกงอตาม
-		local a = t * math.pi * 2 * 2
-		rightShoulder.Transform = CFrame.Angles(math.rad(70 + 14 * math.sin(a)), math.rad(10 * math.cos(a)), math.rad(-30 + 12 * math.cos(a)))
-		if rightElbow then rightElbow.Transform = CFrame.Angles(math.rad(60 + 18 * math.sin(a)), 0, 0) end
-		-- ก้มมองแผล
-		if neck then neck.Transform = CFrame.Angles(math.rad(-22), 0, 0) end
-	end)
-end
-
+--
+-- ท่าพันแผลย้ายไปอยู่ `WorkPoses` แล้ว (ห้าจังหวะตามคู่มือภาพ: ล้างแผล สำลี ผ้าก๊อซ กดห้ามเลือด พันยึด)
+-- เพราะเตา/เครื่องปั่น/เครื่องต้มยาใช้เครื่องเดียวกันนี้เล่นท่าของมัน
 local function startPose(character)
 	local torso = character:FindFirstChild("UpperTorso")
 	local leftJoint = character:FindFirstChild("LeftUpperArm")
@@ -136,6 +109,7 @@ local function stop(player)
 	if not entry then return end
 	active[player] = nil
 	if entry.connection then entry.connection:Disconnect() end
+	if entry.pose then entry.pose:Stop() end
 	if entry.model and entry.model.Parent then entry.model:Destroy() end
 end
 
@@ -146,10 +120,13 @@ local function start(player, itemId)
 
 	local item = itemId and ItemCatalog.Get(itemId)
 	local pose = item and item.use and item.use.pose
-	local connection = pose == "bandage" and startBandagePose(character) or startPose(character)
+	-- ของที่มีท่าของตัวเอง (กล่องปฐมพยาบาล = "bandage") เล่นชุดท่าจาก WorkPoses ยาวเท่าเวลาที่เซิร์ฟเวอร์
+	-- รออยู่จริง ที่เหลือคือท่ายกมือเข้าปากแบบเดิม
+	local handle = pose and WorkPoses.Play(character, pose, ItemCatalog.HoldSeconds(itemId)) or nil
+	local connection = (not handle) and startPose(character) or nil
 	-- ท่าพันแผลถือของไว้ที่มือ ไม่ใช่ที่ปาก
-	local model = pose ~= "bandage" and makeHeldItem(character, itemId) or nil
-	active[player] = { connection = connection, model = model, startedAt = os.clock() }
+	local model = (not handle) and makeHeldItem(character, itemId) or nil
+	active[player] = { connection = connection, pose = handle, model = model, startedAt = os.clock() }
 end
 
 --------------------------------------------------------------------------------

@@ -171,7 +171,12 @@ gui:OnSlotClicked(function(index)
 
 	-- "Use" only for things that can be used. Junk has no use, so it gets no button rather than a button
 	-- that does nothing.
-	if item.kind == "weapon" or item.kind == "armor" then
+	if item.use and item.use.stat == "clanoutfit" then
+		-- แหวนแคลน: กดได้อย่างเดียวคือใส่/ถอดชุด อยู่ก่อนด่านอื่นเพราะแหวนเป็น token ไม่ใช่ consumable
+		table.insert(entries, { label = "ใส่/ถอดชุดแคลน", onClick = function()
+			Remotes.RequestUseItem:FireServer(index)
+		end })
+	elseif item.kind == "weapon" or item.kind == "armor" then
 		table.insert(entries, { label = "สวมใส่", onClick = function()
 			Remotes.RequestEquip:FireServer(index)
 		end })
@@ -201,33 +206,37 @@ gui:OnSlotClicked(function(index)
 		end
 	end
 
-	table.insert(entries, { label = "ให้", onClick = function()
-		local nearby = nearbyPlayers()
-		if #nearby == 0 then
-			gui:ShowItemMenu(button, { { label = "ไม่มีใครอยู่ใกล้", onClick = function() end } }, title)
-			return
-		end
-		-- A second menu of names, in the same place, so it reads as one flow rather than a new window.
-		local people = {}
-		for _, entry in ipairs(nearby) do
-			local other = entry.player
-			table.insert(people, {
-				label = other.DisplayName ~= "" and other.DisplayName or other.Name,
-				onClick = function()
-					-- ของกองเดียวถามจำนวนก่อน ของชิ้นเดียวส่งเลย ไม่ต้องให้กดยืนยันเลข 1
-					local have = slot.count or 1
-					if have <= 1 then
-						Remotes.RequestGiveItem:FireServer(index, other, 1)
-						return
-					end
-					gui:ShowCountPrompt(button, ("ให้ %s กี่ชิ้น"):format(title), have, function(count)
-						Remotes.RequestGiveItem:FireServer(index, other, count)
-					end)
-				end,
-			})
-		end
-		gui:ShowItemMenu(button, people, ("ให้ใคร: %s"):format(title))
-	end })
+	-- ไม่มีปุ่ม "ให้" สำหรับของประจำตำแหน่ง (ตะหลิวเชฟ แหวนแคลน) ด้วยเหตุผลเดียวกับปุ่มทิ้งของกุญแจรถ
+	-- ข้างล่าง: เซิร์ฟเวอร์ปฏิเสธอยู่แล้ว แต่ปุ่มที่กดแล้วได้คำว่า "ไม่ได้" แย่กว่าปุ่มที่ไม่มี
+	if not ItemCatalog.IsBound(slot.id) then
+		table.insert(entries, { label = "ให้", onClick = function()
+			local nearby = nearbyPlayers()
+			if #nearby == 0 then
+				gui:ShowItemMenu(button, { { label = "ไม่มีใครอยู่ใกล้", onClick = function() end } }, title)
+				return
+			end
+			-- A second menu of names, in the same place, so it reads as one flow rather than a new window.
+			local people = {}
+			for _, entry in ipairs(nearby) do
+				local other = entry.player
+				table.insert(people, {
+					label = other.DisplayName ~= "" and other.DisplayName or other.Name,
+					onClick = function()
+						-- ของกองเดียวถามจำนวนก่อน ของชิ้นเดียวส่งเลย ไม่ต้องให้กดยืนยันเลข 1
+						local have = slot.count or 1
+						if have <= 1 then
+							Remotes.RequestGiveItem:FireServer(index, other, 1)
+							return
+						end
+						gui:ShowCountPrompt(button, ("ให้ %s กี่ชิ้น"):format(title), have, function(count)
+							Remotes.RequestGiveItem:FireServer(index, other, count)
+						end)
+					end,
+				})
+			end
+			gui:ShowItemMenu(button, people, ("ให้ใคร: %s"):format(title))
+		end })
+	end
 
 	-- No "throw away" for a vehicle key. The server refuses it anyway, but offering a red button that says no
 	-- is worse than not offering it: the player has to press it to find out, and the thing they were trying

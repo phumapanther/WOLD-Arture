@@ -31,6 +31,8 @@ CraftConfig.InsigniaItem = "Insignia"
 
 -- How long the hammer swings before you learn the answer. Long enough to feel like work was done, short
 -- enough that a failed attempt is not a punishment on its own.
+--
+-- ค่าเริ่มต้นของทุกสูตร สูตรที่ใส่ `seconds` เองใช้ค่าของตัวเองแทน (ครัวบางเมนูผู้ใช้กำหนดเป็นนาที)
 CraftConfig.CraftSeconds = 2.5
 
 -- Amounts and success rates are the user's, exactly as given. Every id here is checked against ItemCatalog
@@ -48,13 +50,17 @@ CraftConfig.Recipes = {
 	-- ครัว (ผู้ใช้กำหนดสูตร) ไม่มีค่าธรรมเนียม ไม่มีโอกาสล้มเหลว — เตา/เครื่องปั่นไม่ใช่ช่างรับจ้าง
 	{ id = "FriedRice", tab = "food", station = "stove", chance = 1, gold = 0,
 		cost = { Wheat = 7, Shrimp = 3, Vegetable = 3 } },
-	{ id = "Steak", tab = "food", station = "stove", chance = 1, gold = 0,
+	-- สเต็กกับน้ำแอปเปิลใช้เวลาจริงตามที่ผู้ใช้กำหนด (15 นาที / 5 นาที) กดแล้ว **เดินไปทำอย่างอื่นได้**
+	-- เตาทำต่อจนครบเวลาแล้วของเด้งเข้ากระเป๋าพร้อมข้อความ กลับมายืนที่เตาเมื่อไหร่ก็เห็นแถบเดินต่อจากเดิม
+	{ id = "Steak", tab = "food", station = "stove", chance = 1, gold = 0, seconds = 15 * 60,
 		cost = { Meat = 3, Vegetable = 2, Apple = 2, Bread = 5 } },
-	{ id = "AppleJuice", tab = "drink", station = "blender", chance = 1, gold = 0,
+	{ id = "AppleJuice", tab = "drink", station = "blender", chance = 1, gold = 0, seconds = 5 * 60,
 		cost = { Apple = 5, Crystal = 5, Water = 10 } },
-	-- เครื่องต้มยา: ยาขวดกับกล่องปฐมพยาบาล
-	{ id = "HealthPotion", tab = "medicine", station = "still", chance = 1, gold = 0, yields = 2,
-		cost = { Herb = 6, Water = 2, Slime = 2 } },
+	-- เครื่องต้มยา: ยาน้ำขวด · ยาใหญ่ (เลือดเต็มหลอด) · กล่องปฐมพยาบาล — สูตรตามที่ผู้ใช้กำหนด
+	{ id = "HealthPotion", tab = "medicine", station = "still", chance = 1, gold = 0,
+		cost = { Herb = 15, Crystal = 5 } },
+	{ id = "GreatPotion", tab = "medicine", station = "still", chance = 1, gold = 0,
+		cost = { Herb = 30, Fiber = 15, Bone = 3, WoodScrap = 5 } },
 	{ id = "FirstAidKit", tab = "medicine", station = "still", chance = 1, gold = 0,
 		cost = { Herb = 10, Fiber = 6, Water = 3, WoodScrap = 2 } },
 	-- The pistol is the prize of the weapon bench: the strongest thing a player can hold, and one attempt

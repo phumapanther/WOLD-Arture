@@ -95,6 +95,13 @@ local function lightFire(model, seconds)
 	end)
 end
 
+-- ไฟลุกตลอดเวลาที่ทำอยู่ (+3 วิทิ้งท้ายให้เห็นว่าเพิ่งเสร็จ) สเต็กที่ตุ๋น 15 นาทีจึงเป็นเตาที่ติดไฟอยู่จริง
+CraftAccess.OnCraftStarted = function(player, station, model, seconds)
+	local spec = model and STATIONS[model.Name]
+	if spec and spec.fire then lightFire(model, (seconds or 0) + 3) end
+end
+
+-- ตอนเสร็จยังจุดซ้ำสั้นๆ เผื่อกรณีที่ไฟถูกงานอื่นดับไปก่อน (คนสองคนใช้เตาใบเดียวกัน)
 CraftAccess.OnCrafted = function(player, station, model)
 	local spec = model and STATIONS[model.Name]
 	if spec and spec.fire then lightFire(model, 6) end
