@@ -136,6 +136,8 @@ local EVENTS = {
 	"TownBuyerUpdate", "RequestTownSell",
 	-- ร้านพรีเมียม/กาชา/แบทเทิลพาส: ภาพเดียวส่งกลับทุกครั้งที่กดอะไร และการติดตั้ง/ถอดสกิน
 	"PremiumUpdate", "RequestPremium", "RequestSkin",
+	-- ปิดหน้าคราฟ: เซิร์ฟเวอร์จะได้ลืมว่ายืนอยู่สถานีไหน
+	"RequestCraftClose",
 	"RequestCollection", "CollectionUpdate",
 	"RequestLeaderboards", "LeaderboardUpdate",
 	"StorageChestOpen", "StorageChestUpdate",

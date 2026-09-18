@@ -27,6 +27,7 @@ gui:On("cancelapply", function() act("cancelapply") end)
 gui:On("approve", function(userId) act("approve", userId) end)
 gui:On("reject", function(userId) act("reject", userId) end)
 gui:On("leave", function() act("leave") end)
+gui:On("disband", function() act("disband") end)
 gui:On("donate", function(amount) act("donate", amount) end)
 gui:On("distribute", function(amount, target) act("distribute", amount, target) end)
 -- คลังแคลน: หน้าต่างของมันเองยังไม่ได้ทำ (รอบถัดไป) แต่ฝั่งเซิร์ฟเวอร์เก็บของได้แล้ว

@@ -16,6 +16,7 @@ local CraftConfig = require(game.ReplicatedStorage.CraftConfig)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
+local CraftAccess = require(game.ServerScriptService.CraftAccess)
 local EventState = require(game.ServerScriptService.EventState)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
@@ -63,6 +64,7 @@ local Busy = {}
 
 Players.PlayerRemoving:Connect(function(player)
 	Busy[player] = nil
+	Source[player] = nil
 end)
 
 local function takeMaterial(player, state, id, count)
@@ -94,6 +96,25 @@ local function nearSmith(player)
 	return false
 end
 
+-- หน้าคราฟที่เปิดอยู่ตอนนี้มาจากไหน: ช่างตีเหล็ก (nil) หรือสถานี { station, model }
+--
+-- เตา/เครื่องปั่น/เครื่องต้มยา (CraftStations.server) เปิดหน้าเดียวกันแต่โชว์เฉพาะสูตรของมัน และตรวจระยะกับ
+-- ตัวเครื่องแทน NPC
+local Source = {} -- [player] = { station = "stove", model = Model } | nil
+
+local function nearSource(player)
+	local src = Source[player]
+	if not src then return nearSmith(player) end
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if not root or not src.model.Parent then return false end
+	return (src.model:GetPivot().Position - root.Position).Magnitude <= RANGE + 4
+end
+
+local function stationOf(player)
+	local src = Source[player]
+	return src and src.station or nil
+end
+
 --------------------------------------------------------------------------------
 -- Opening the forge
 --------------------------------------------------------------------------------
@@ -105,11 +126,13 @@ end
 local function snapshot(player)
 	local state = Inventory.Get(player)
 	local purse = state and state.gold or 0
+	local station = stationOf(player)
 
 	local recipes = {}
 	for index, recipe in ipairs(CraftConfig.Recipes) do
 		local item = ItemCatalog.Get(recipe.id)
-		if item then
+		-- สูตรของสถานีโชว์เฉพาะที่สถานีนั้น ช่างตีเหล็กโชว์เฉพาะสูตรที่ไม่มี station
+		if item and (recipe.station or nil) == station then
 			local materials, affordable = {}, true
 			for material, need in pairs(recipe.cost) do
 				local entry = ItemCatalog.Get(material)
@@ -144,20 +167,39 @@ local function snapshot(player)
 		end
 	end
 
-	return { tabs = CraftConfig.Tabs, recipes = recipes }
+	local tabs = {}
+	for _, tab in ipairs(CraftConfig.Tabs) do
+		if (tab.station or nil) == station then tabs[#tabs + 1] = tab end
+	end
+	local src = Source[player]
+	return { tabs = tabs, recipes = recipes, station = station,
+		stationPosition = src and src.model.Parent and src.model:GetPivot().Position or nil }
 end
 
 -- Same rule as the shop: no smithing from the floor.
 local function canCraft(player)
 	if Vitals.IsDowned(player) then return false end
-	-- The forge is cold during a blackout, like every other counter in town.
+	-- The forge is cold during a blackout, like every other counter in town. เตาในครัวไม่ใช่ NPC ไม่ดับ
+	if Source[player] then return true end
 	return EventState.NpcAvailable()
 end
 
 Remotes.RequestCraftOpen.OnServerEvent:Connect(function(player)
+	Source[player] = nil
 	if not canCraft(player) then return end
 	if not nearSmith(player) then return end
 	Remotes.CraftOpen:FireClient(player, snapshot(player))
+end)
+
+-- เปิดจากสถานี (CraftStations.server เรียกหลังตรวจสิทธิ์แล้ว)
+CraftAccess.OpenAt = function(player, station, model)
+	if Vitals.IsDowned(player) then return end
+	Source[player] = { station = station, model = model }
+	Remotes.CraftOpen:FireClient(player, snapshot(player))
+end
+
+Remotes.RequestCraftClose.OnServerEvent:Connect(function(player)
+	Source[player] = nil
 end)
 
 --------------------------------------------------------------------------------
@@ -168,12 +210,14 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 	if type(index) ~= "number" then return end
 	if not canCraft(player) then return end
 	-- Re-checked on every craft, not just on opening: a player could walk away with the window still up.
-	if not nearSmith(player) then
-		return Remotes.SocialNotify:FireClient(player, "error", "อยู่ไกลจากช่างตีเหล็กเกินไป")
+	if not nearSource(player) then
+		return Remotes.SocialNotify:FireClient(player, "error", "อยู่ไกลเกินไป")
 	end
 
 	local recipe = CraftConfig.Recipes[index]
 	if not recipe then return end
+	-- สูตรต้องเป็นของที่ที่ยืนอยู่: ไคลเอนต์ส่ง index ได้ทุกค่า
+	if (recipe.station or nil) ~= stationOf(player) then return end
 	local item = ItemCatalog.Get(recipe.id)
 	if not item then return end
 
@@ -289,6 +333,8 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 		end
 
 		Remotes.CraftFinished:FireClient(player, index, true)
+		local src = Source[player]
+		if src and CraftAccess.OnCrafted then CraftAccess.OnCrafted(player, src.station, src.model, recipe) end
 		Remotes.SocialNotify:FireClient(player, "info", yields > 1
 			and ("สร้าง %s x%d สำเร็จ"):format(item.name, yields)
 			or ("สร้าง %s สำเร็จ"):format(item.name))
@@ -328,6 +374,7 @@ local function register(npc)
 		-- Gated here as well as on the remote. Pressing E is the only way most players ever open the forge, so
 		-- a check that lived only on RequestCraftOpen would let the window open during a blackout and refuse
 		-- every button inside it -- which reads as a broken forge rather than a dark town.
+		Source[player] = nil -- ช่างตีเหล็ก ไม่ใช่สถานี
 		local ok, reason = canCraft(player)
 		if not ok then
 			if reason then Remotes.SocialNotify:FireClient(player, "error", reason) end

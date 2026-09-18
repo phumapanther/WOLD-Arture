@@ -50,6 +50,7 @@ Remotes.VitalsUpdate.OnClientEvent:Connect(function(vitals)
 	gui:SetStaminaFraction(vitals.stamina)
 	gui:SetArmorFraction(vitals.armor)
 	gui:SetManaPips(vitals.mana or 0)
+	gui:SetBuffs(vitals.buffs)
 end)
 
 -- Hotbar: the first six consumables in the bag, so a potion is one key away without opening it. Keys 1-6 and

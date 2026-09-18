@@ -184,6 +184,25 @@ function Vitals.Heal(player, amount)
 	Vitals.Send(player, true)
 end
 
+-- ฟื้นเลือดเป็นสัดส่วนของเลือดเต็ม (เตียง 1%/วิ)
+function Vitals.HealFraction(player, fraction)
+	Vitals.Heal(player, maxHP(player) * fraction)
+end
+
+-- สถานะบัพทั้งหมดสำหรับ HUD: [ชื่อ] = วินาทีที่เหลือ หรือ -1 = ไม่มีวันหมด (จากอาชีพ/อมตะ)
+--   noHunger 💚 · noStamina 💛 · noMana 💙 · noArmor 🖤 · noHp ❤️‍🩹
+function Vitals.BuffSnapshot(player)
+	local out = {}
+	for name, left in pairs(Vitals.BuffsLeft(player)) do out[name] = left end
+	if ClassPerks.Has(player, "noHunger") then out.noHunger = -1 end
+	if ClassPerks.Has(player, "noStaminaDrain") then out.noStamina = -1 end
+	if ClassPerks.Has(player, "armorNeverBreaks") then out.noArmor = -1 end
+	if Godmode[player] then
+		out.noHunger, out.noStamina, out.noMana, out.noArmor, out.noHp = -1, -1, -1, -1, -1
+	end
+	return out
+end
+
 function Vitals.Feed(player, amount)
 	local state = States[player]
 	if not state then return end
@@ -265,6 +284,7 @@ function Vitals.Send(player, force)
 		stamina = state.stamina / VitalsConfig.MaxStamina,
 		armor = state.armor / (state.maxArmor or VitalsConfig.MaxArmor),
 		mana = state.mana, -- whole pips, not a fraction: the HUD lights that many gems
+		buffs = Vitals.BuffSnapshot(player),
 	})
 end
 

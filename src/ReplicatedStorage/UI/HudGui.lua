@@ -465,6 +465,101 @@ function HudGui:HighlightSlot(index)
 end
 
 -- SetExp: level plus progress 0..1 toward the next one.
+-- แถวอีโมจิบัพเหนือหลอด EXP: [ชื่อ] = วินาทีที่เหลือ | -1 = ไม่มีวันหมด (อาชีพ/อมตะ) จิ้มอีโมจิ = ป้ายบอกเวลา
+local BUFF_ORDER = { "noHunger", "noStamina", "noMana", "noArmor", "noHp" }
+local BUFF_LOOK = {
+	noHunger = { emoji = "💚", text = "ความหิวไม่ลด" },
+	noStamina = { emoji = "💛", text = "สตามินาไม่ลด" },
+	noMana = { emoji = "💙", text = "มานาไม่ลด" },
+	noArmor = { emoji = "🖤", text = "เกราะไม่ลด" },
+	noHp = { emoji = "❤️‍🩹", text = "เลือดไม่ลด" },
+}
+
+local function buffLeftText(seconds)
+	if seconds == -1 then return "ไม่มีวันหมด" end
+	if seconds >= 3600 then return ("เหลือ %d ชม. %d นาที"):format(math.floor(seconds / 3600), math.floor((seconds % 3600) / 60)) end
+	if seconds >= 60 then return ("เหลือ %d นาที"):format(math.ceil(seconds / 60)) end
+	return ("เหลือ %d วินาที"):format(math.floor(seconds))
+end
+
+function HudGui:ensureBuffRow()
+	if self.buffRow then return end
+	local row = Instance.new("Frame")
+	row.Name = "BuffRow"
+	row.AnchorPoint = Vector2.new(0.5, 1)
+	row.Size = UDim2.new(0, 420, 0, 30)
+	row.Position = UDim2.new(0.5, 0, 1, -114) -- เหนือหลอด EXP (ที่ 1,-92 สูง 18)
+	row.BackgroundTransparency = 1
+	row.Parent = self.gui
+	responsiveScale(row)
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Horizontal
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.Padding = UDim.new(0, 6)
+	layout.Parent = row
+
+	local tip = Instance.new("TextLabel")
+	tip.Name = "BuffTip"
+	tip.AnchorPoint = Vector2.new(0.5, 1)
+	tip.Position = UDim2.new(0.5, 0, 1, -148)
+	tip.Size = UDim2.new(0, 260, 0, 24)
+	tip.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
+	tip.BackgroundTransparency = 0.2
+	tip.BorderSizePixel = 0
+	tip.Font = Enum.Font.GothamBold
+	tip.TextSize = 12
+	tip.TextColor3 = Color3.fromRGB(240, 238, 232)
+	tip.Text = ""
+	tip.Visible = false
+	tip.Parent = self.gui
+	corner(tip, UDim.new(0, 8))
+	responsiveScale(tip)
+
+	self.buffRow = row
+	self.buffTip = tip
+	self.buffButtons = {}
+	self.buffState = {}
+end
+
+function HudGui:SetBuffs(buffs)
+	self:ensureBuffRow()
+	buffs = buffs or {}
+	self.buffState = buffs
+	for _, name in ipairs(BUFF_ORDER) do
+		local left = buffs[name]
+		local button = self.buffButtons[name]
+		if left and not button then
+			button = Instance.new("TextButton")
+			button.Name = name
+			button.Size = UDim2.new(0, 30, 0, 30)
+			button.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
+			button.BackgroundTransparency = 0.25
+			button.BorderSizePixel = 0
+			button.Font = Enum.Font.GothamBold
+			button.TextSize = 16
+			button.Text = BUFF_LOOK[name].emoji
+			button.LayoutOrder = table.find(BUFF_ORDER, name)
+			button.Parent = self.buffRow
+			corner(button, UDim.new(1, 0))
+			button.Activated:Connect(function()
+				local now = self.buffState[name]
+				if now == nil then return end
+				self.buffTip.Text = ("%s %s — %s"):format(BUFF_LOOK[name].emoji, BUFF_LOOK[name].text, buffLeftText(now))
+				self.buffTip.Visible = true
+				local token = os.clock()
+				self.buffTipToken = token
+				task.delay(2.5, function()
+					if self.buffTipToken == token then self.buffTip.Visible = false end
+				end)
+			end)
+			self.buffButtons[name] = button
+		elseif not left and button then
+			button:Destroy()
+			self.buffButtons[name] = nil
+		end
+	end
+end
+
 function HudGui:SetExp(level, fraction)
 	self.expFill.Size = UDim2.new(math.clamp(fraction, 0, 1), 0, 1, 0)
 	self.expLabel.Text = ("Lv. %d"):format(level)

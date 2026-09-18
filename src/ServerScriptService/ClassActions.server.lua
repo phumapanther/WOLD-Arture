@@ -305,6 +305,9 @@ Remotes.RequestGiveItem.OnServerEvent:Connect(function(player, index, target, co
 	local state = Inventory.Get(player)
 	local slot = state and state.slots[index]
 	if not slot then return end
+	if ItemCatalog.IsBound(slot.id) then
+		return report(player, nil, "giveitem", false, "ของประจำตำแหน่ง ให้ใครไม่ได้")
+	end
 
 	-- ให้ได้ทีละกี่ชิ้นก็ได้ ตามที่ผู้ใช้สั่ง ไคลเอนต์มีช่องใส่เลขแล้ว แต่ที่นี่ยังต้องหนีบเองอยู่ดี:
 	-- จำนวนที่ส่งมาคือสิ่งที่ไคลเอนต์พูด ไม่ใช่สิ่งที่พิสูจน์แล้ว

@@ -119,6 +119,26 @@ local function addToIndex(clanId, name)
 	IndexCache = nil -- บังคับอ่านใหม่รอบหน้า
 end
 
+-- ลบแคลนทิ้ง (ยุบ) ทั้งตัวแคลนและชื่อในดัชนี
+function ClanStore.Delete(clanId)
+	Cache[clanId] = nil
+	if not store then
+		if IndexCache then IndexCache[clanId] = nil end
+		return true
+	end
+	local ok = pcall(function() store:RemoveAsync(clanKey(clanId)) end)
+	if not ok then return false end
+	pcall(function()
+		store:UpdateAsync(INDEX_KEY, function(old)
+			old = (type(old) == "table") and old or {}
+			old[clanId] = nil
+			return old
+		end)
+	end)
+	IndexCache = nil
+	return true
+end
+
 --------------------------------------------------------------------------------
 -- เมืองที่ถูกยึด
 --------------------------------------------------------------------------------

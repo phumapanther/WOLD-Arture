@@ -120,6 +120,22 @@ PremiumConfig.Pass.Premium = {
 	[26] = item("Blueprint", 5), [27] = gold(8000), [28] = item("Insignia", 10), [29] = silver(1000), [30] = item("Chest_Gold", 2),
 }
 
+--------------------------------------------------------------------------------
+-- กล่องเวทมนตร์: สุ่ม "ทุกอย่างที่มีในเซิร์ฟ" ตามเรทที่ผู้ใช้กำหนด สระแต่ละหมวดสร้างจาก ItemCatalog ตอนใช้
+--------------------------------------------------------------------------------
+
+PremiumConfig.MagicBox = {
+	-- หมวด → น้ำหนัก (รวม 100)
+	{ id = "farm", weight = 80, count = { 3, 8 } },      -- ของฟาร์ม: ของขายได้ทั่วไป (junk ที่ขายได้)
+	{ id = "illegal", weight = 10, count = { 1, 3 } },   -- ของผิดกฎหมาย
+	{ id = "consumable", weight = 5, count = { 1, 2 } }, -- ของใช้
+	{ id = "weapon", weight = 3, count = { 1, 1 } },     -- อาวุธ
+	{ id = "vehicle", weight = 1, count = { 1, 1 } },    -- พาหนะ
+	{ id = "skin", weight = 1, count = { 1, 1 } },       -- สกิน/ออร่า/ชุดแฟชั่น
+}
+PremiumConfig.MagicBoxIllegal = { "Chemical", "GearSpare", "Blueprint", "Coal", "Silver" }
+PremiumConfig.MagicBoxVehicles = { "Monowheel" }
+
 function PremiumConfig.GachaById(id)
 	for _, g in ipairs(PremiumConfig.Gacha) do
 		if g.id == id then return g end

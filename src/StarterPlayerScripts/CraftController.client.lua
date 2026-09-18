@@ -25,9 +25,19 @@ end)
 
 -- Sent both when the prompt is used and after every craft, so the window redraws itself from the server's own
 -- counts rather than guessing what the craft consumed.
+-- ที่มาของหน้าที่เปิดอยู่: ตำแหน่งสถานี (เตา/เครื่องปั่น/เครื่องต้มยา) ถ้าไม่มี = ช่างตีเหล็ก
+local stationPosition = nil
+
 Remotes.CraftOpen.OnClientEvent:Connect(function(snapshot)
+	stationPosition = snapshot.stationPosition
 	gui:Show(snapshot)
 end)
+
+-- ปิดหน้า (กากบาท/เดินออก) บอกเซิร์ฟเวอร์ให้ลืมว่ายืนอยู่สถานีไหน
+gui.onHide = function()
+	stationPosition = nil
+	Remotes.RequestCraftClose:FireServer()
+end
 
 -- The forge, running for as long as the craft does.
 --
@@ -76,10 +86,14 @@ task.spawn(function()
 				gui:Hide()
 			else
 				local near = false
-				for _, npc in ipairs(game:GetService("CollectionService"):GetTagged("WOLD_Npc")) do
-					if npc:GetAttribute("NpcKind") == "smith" then
-						local position = npc:IsA("BasePart") and npc.Position or npc:GetPivot().Position
-						if (position - root.Position).Magnitude <= 16 then near = true break end
+				if stationPosition then
+					near = (stationPosition - root.Position).Magnitude <= 16
+				else
+					for _, npc in ipairs(game:GetService("CollectionService"):GetTagged("WOLD_Npc")) do
+						if npc:GetAttribute("NpcKind") == "smith" then
+							local position = npc:IsA("BasePart") and npc.Position or npc:GetPivot().Position
+							if (position - root.Position).Magnitude <= 16 then near = true break end
+						end
 					end
 				end
 				if not near then

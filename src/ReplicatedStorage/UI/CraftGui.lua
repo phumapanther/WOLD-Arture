@@ -496,7 +496,9 @@ function CraftGui:Show(snapshot)
 end
 
 function CraftGui:Hide()
+	local wasOpen = self.gui.Enabled
 	self.gui.Enabled = false
+	if wasOpen and self.onHide then self.onHide() end
 	-- Forgotten on close. The craft itself carries on at the smith's end -- the server took the materials
 	-- before the first swing -- but a bar and an outcome are things being SHOWN, and there is nobody left to
 	-- show them to. Reopening draws whatever the server says by then.

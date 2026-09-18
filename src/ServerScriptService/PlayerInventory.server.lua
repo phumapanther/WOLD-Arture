@@ -9,6 +9,8 @@ local Vitals = require(game.ServerScriptService.Vitals)
 local ChestAccess = require(game.ServerScriptService.ChestAccess)
 local MonowheelAccess = require(game.ServerScriptService.MonowheelAccess)
 local AuraAccess = require(game.ServerScriptService.AuraAccess)
+local Classes = require(game.ServerScriptService.Classes)
+local ClassConfig = require(game.ReplicatedStorage.ClassConfig)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
@@ -162,6 +164,29 @@ local function applyUse(player, item)
 		-- plus every worn piece sitting in the bag.
 		if not Inventory.RepairAll(player) then return false end
 		Vitals.SyncArmorFromEquipment(player)
+	elseif use.stat == "meal" then
+		-- เมนูจากครัว: อิ่มทันที / มานาเต็ม / บัพตามเมนู
+		if use.hunger then Vitals.Feed(player, 99999) end
+		if use.mana then Vitals.AddMana(player, 99) end
+		if use.buff then
+			Vitals.AddBuff(player, use.buff, use.seconds or 300)
+			local what = use.buff == "noHunger" and "ไม่หิว" or use.buff == "noStamina" and "วิ่งไม่เหนื่อย" or "ไม่หิว ไม่เหนื่อย"
+			Remotes.SocialNotify:FireClient(player, "info", ("%s %d นาที"):format(what, math.floor((use.seconds or 300) / 60)))
+		end
+	elseif use.stat == "firstaid" then
+		-- กล่องปฐมพยาบาล: พันแผลแล้วเลือดเต็ม (ท่าพันแผลอยู่ฝั่งไคลเอนต์ระหว่างรอ)
+		Vitals.HealFraction(player, 1)
+	elseif use.stat == "magicbox" then
+		local MagicBox = require(game.ServerScriptService.MagicBox)
+		local got = MagicBox.Roll()
+		if not got then return false end
+		if not Inventory.HasRoomFor(player, got.id, got.count) then
+			Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม เปิดกล่องไม่ได้")
+			return false
+		end
+		Inventory.AddItem(player, got.id, got.count)
+		local prize = ItemCatalog.Get(got.id)
+		Remotes.SocialNotify:FireClient(player, "info", ("กล่องเวทมนตร์: ได้ %s x%d"):format(prize and prize.name or got.id, got.count))
 	elseif use.stat == "buff" then
 		-- อาหารพรีเมียม: ไม่หิว/ไม่เหนื่อยชั่วคราว
 		Vitals.AddBuff(player, use.buff, use.seconds or 600)
@@ -242,6 +267,12 @@ local function doUseItem(player, index)
 		return
 	end
 	if item.kind ~= "consumable" or not item.use then return end
+
+	-- ของเฉพาะอาชีพ (กล่องปฐมพยาบาล = นักบวช)
+	if item.use.classOnly and not Classes.Has(player, item.use.classOnly) then
+		local class = ClassConfig.Get(item.use.classOnly)
+		return Remotes.SocialNotify:FireClient(player, "warn", ("เฉพาะ%sเท่านั้น"):format(class and class.name or item.use.classOnly))
+	end
 
 	-- Nothing but crawling, while crawling -- and that includes drinking.
 	--

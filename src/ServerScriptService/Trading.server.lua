@@ -126,6 +126,7 @@ local function completeTrade(session)
 			seen[index] = true
 			local slot = state.slots[index]
 			if not slot then return nil end -- it is gone; the trade is off rather than partly done
+			if ItemCatalog.IsBound(slot.id) then return nil end -- ของประจำตำแหน่งเทรดไม่ได้
 			table.insert(taking, { index = index, id = slot.id, count = slot.count or 1,
 				durability = slot.durability, meta = slot.meta })
 		end

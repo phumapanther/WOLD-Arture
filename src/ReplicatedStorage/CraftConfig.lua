@@ -18,6 +18,10 @@ CraftConfig.Tabs = {
 	-- The garage bench. A key is one attempt in twenty, and every failure hands back a car part -- so the
 	-- page is really two ways to the same door: gamble, or collect six parts and walk in.
 	{ id = "vehicle", name = "พาหนะ" },
+	-- หน้าของสถานี (ไม่ใช่ช่างตีเหล็ก) เปิดได้เฉพาะเมื่อยืนที่เครื่องนั้น `station` ตรงกับ CraftStations.server
+	{ id = "food", name = "อาหาร", station = "stove" },
+	{ id = "drink", name = "เครื่องดื่ม", station = "blender" },
+	{ id = "medicine", name = "ยา", station = "still" },
 }
 
 -- What one failed attempt is worth. A single coin, so the exchange rates below read directly as "how many
@@ -41,6 +45,18 @@ CraftConfig.CraftSeconds = 2.5
 -- armour, hundreds for everyday goods. Paired with the success rate it is what actually prices a thing --
 -- a pistol is 25,000 a go at one-in-four, so it costs 100,000 on average to walk away with one.
 CraftConfig.Recipes = {
+	-- ครัว (ผู้ใช้กำหนดสูตร) ไม่มีค่าธรรมเนียม ไม่มีโอกาสล้มเหลว — เตา/เครื่องปั่นไม่ใช่ช่างรับจ้าง
+	{ id = "FriedRice", tab = "food", station = "stove", chance = 1, gold = 0,
+		cost = { Wheat = 7, Shrimp = 3, Vegetable = 3 } },
+	{ id = "Steak", tab = "food", station = "stove", chance = 1, gold = 0,
+		cost = { Meat = 3, Vegetable = 2, Apple = 2, Bread = 5 } },
+	{ id = "AppleJuice", tab = "drink", station = "blender", chance = 1, gold = 0,
+		cost = { Apple = 5, Crystal = 5, Water = 10 } },
+	-- เครื่องต้มยา: ยาขวดกับกล่องปฐมพยาบาล
+	{ id = "HealthPotion", tab = "medicine", station = "still", chance = 1, gold = 0, yields = 2,
+		cost = { Herb = 6, Water = 2, Slime = 2 } },
+	{ id = "FirstAidKit", tab = "medicine", station = "still", chance = 1, gold = 0,
+		cost = { Herb = 10, Fiber = 6, Water = 3, WoodScrap = 2 } },
 	-- The pistol is the prize of the weapon bench: the strongest thing a player can hold, and one attempt
 	-- in four. The materials are the user's V1 list -- the new ones (gears, blueprints, silver) are what tie
 	-- the weapon bench to the illegal farms, since none of the three can be bought.

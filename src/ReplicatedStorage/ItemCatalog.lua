@@ -153,7 +153,7 @@ ItemCatalog.Items = {
 	-- Consumables. `use` names what Vitals should restore; the amount is in the
 	-- same units as the stat itself.
 	--------------------------------------------------------------------------
-	Bread = {
+	Bread = { food = true,
 		icon = "rbxassetid://70954901802854", -- assets/item-icons/Bread.png
 		name = "ขนมปัง", kind = "consumable", weight = 0.5, stackSize = 16,
 		use = { stat = "hunger", amount = 35 },
@@ -213,20 +213,20 @@ ItemCatalog.Items = {
 	-- ถ้าวันไหนขนมปังเปลี่ยนค่า ต้องมาแก้ที่นี่ด้วย — ตัวเลขสองตัวนี้ผูกกันด้วยการตัดสินใจ ไม่ใช่ด้วยโค้ด
 	--
 	-- เบากว่าขนมปังและสแตคได้มากกว่า เพราะมันคือของที่ได้มาฟรีระหว่างทำอย่างอื่น ไม่ใช่ของที่ตั้งใจซื้อ
-	Apple = {
+	Apple = { food = true,
 		icon = "rbxassetid://74006451323045", -- แอปเปิล (ภาพจริงใน decal 71786438182204)
 		name = "แอปเปิล", kind = "consumable", weight = 0.3, stackSize = 32,
 		value = 5,
 		use = { stat = "hunger", amount = 18 },
 		useSound = "Eat",
 	},
-	Water = {
+	Water = { food = true,
 		icon = "rbxassetid://128474051932298", -- assets/item-icons/Water.png
 		name = "น้ำเปล่า", kind = "consumable", weight = 1, stackSize = 16,
 		use = { stat = "mana", amount = 1 },
 		useSound = "Drink",
 	},
-	HealthPotion = {
+	HealthPotion = { medicine = true,
 		icon = "rbxassetid://70766990190847", -- assets/item-icons/HealthPotion.png
 		name = "ยาฮีล", kind = "consumable", weight = 0.8, stackSize = 5,
 		use = { stat = "hp", amount = 40 },
@@ -451,13 +451,13 @@ ItemCatalog.Items = {
 		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 } },
 
 	-- อาหารเสริมบัพ: กินแล้วไม่หิว / ไม่เหนื่อย ตามเวลา (Vitals.AddBuff) ซื้อจากร้านพรีเมียมหรือได้จากพาส
-	Feast_Hearty = { icon = "rbxassetid://71786438182204", name = "มื้อใหญ่นักเดินทาง", kind = "consumable",
+	Feast_Hearty = { food = true, icon = "rbxassetid://71786438182204", name = "มื้อใหญ่นักเดินทาง", kind = "consumable",
 		weight = 0.5, stackSize = 20, value = 0, sellable = false,
 		use = { stat = "buff", buff = "noHunger", seconds = 30 * 60 } },
-	Tonic_Vigor = { icon = "rbxassetid://71786438182204", name = "ยาชูกำลัง", kind = "consumable",
+	Tonic_Vigor = { food = true, icon = "rbxassetid://71786438182204", name = "ยาชูกำลัง", kind = "consumable",
 		weight = 0.5, stackSize = 20, value = 0, sellable = false,
 		use = { stat = "buff", buff = "noStamina", seconds = 30 * 60 } },
-	Feast_Royal = { icon = "rbxassetid://71786438182204", name = "งานเลี้ยงราชสำนัก", kind = "consumable",
+	Feast_Royal = { food = true, icon = "rbxassetid://71786438182204", name = "งานเลี้ยงราชสำนัก", kind = "consumable",
 		weight = 0.8, stackSize = 20, value = 0, sellable = false,
 		use = { stat = "buff", buff = "both", seconds = 60 * 60 } },
 
@@ -502,6 +502,39 @@ ItemCatalog.Items = {
 		rarity = "legendary", weight = 0.1, stackSize = 99, value = 0, sellable = false,
 		kit = "Armor_PlateKit", tint = Color3.fromRGB(230, 190, 70) },
 
+	--------------------------------------------------------------------------
+	-- ของประจำตำแหน่ง (`bound`): โผล่ในกระเป๋าเองเมื่อมีสิทธิ์ หายเองเมื่อสิทธิ์หมด ทิ้ง/ให้/เทรด/ฝากไม่ได้
+	-- (BoundItems.server เป็นคนเติม-ลบ) ตะหลิวคือกุญแจของครัว: ถือไว้ถึงใช้เตา/เครื่องปั่นได้
+	--------------------------------------------------------------------------
+	Spatula = { icon = "rbxassetid://122256905985474", name = "ตะหลิวเชฟ", kind = "token",
+		weight = 0.5, stackSize = 1, value = 0, sellable = false, bound = true, boundClass = "Chef" },
+	-- แหวนแคลน: meta.clan = ชื่อแคลน (ไม่ซ้ำกันอยู่แล้ว) ชื่อจึงขึ้นเป็น "แหวนแคลน · ชื่อ"
+	ClanRing = { icon = "rbxassetid://72443695767496", name = "แหวนแคลน", kind = "token",
+		weight = 0.1, stackSize = 1, value = 0, sellable = false, bound = true, boundClan = true },
+
+	--------------------------------------------------------------------------
+	-- เมนูจากครัว (คราฟที่เตา/เครื่องปั่น) `food` = เก็บในตู้เย็นได้ `use.stat = "meal"` = อิ่มทันที (+บัพ)
+	--------------------------------------------------------------------------
+	FriedRice = { icon = "rbxassetid://128491566497246", name = "ข้าวผัด", kind = "consumable", food = true,
+		weight = 0.6, stackSize = 10, value = 0, sellable = false,
+		use = { stat = "meal", hunger = true } },
+	Steak = { icon = "rbxassetid://117145640008136", name = "สเต็ก", kind = "consumable", food = true,
+		weight = 0.8, stackSize = 10, value = 0, sellable = false,
+		use = { stat = "meal", hunger = true, buff = "noHunger", seconds = 15 * 60 } },
+	AppleJuice = { icon = "rbxassetid://97122445855806", name = "น้ำแอปเปิล", kind = "consumable", food = true,
+		weight = 0.5, stackSize = 10, value = 0, sellable = false,
+		use = { stat = "meal", mana = true, buff = "noStamina", seconds = 5 * 60 } },
+
+	-- กล่องเวทมนตร์: เปิดแล้วสุ่มของทุกอย่างที่มีในเซิร์ฟ (เรทใน PremiumConfig.MagicBox)
+	MagicBox = { icon = "rbxassetid://109904396721698", name = "กล่องเวทมนตร์", kind = "consumable",
+		weight = 1, stackSize = 10, value = 0, sellable = false,
+		use = { stat = "magicbox" } },
+
+	-- กล่องปฐมพยาบาล: นักบวชเท่านั้น ใช้แล้วพันแผล (ท่าพันแผล) แล้วเลือดเต็ม
+	FirstAidKit = { icon = "rbxassetid://71486682078701", name = "กล่องปฐมพยาบาล", kind = "consumable",
+		medicine = true, weight = 1.2, stackSize = 5, value = 0, sellable = false,
+		use = { stat = "firstaid", classOnly = "Priest", pose = "bandage" } },
+
 	-- ออร่า (จากกาชา) ใช้ = เปิด/ปิด เอฟเฟกต์ลอยรอบตัว ไม่ถูกใช้หมด `model` = โมเดลใน ReplicatedStorage.WOLD_Effects
 	-- ถ้ามี ไม่มีก็สร้างวงอนุภาคสี `colour` ให้
 	Aura_Ember = { icon = "rbxassetid://138133285610075", name = "ออร่าเพลิง", kind = "aura",
@@ -537,6 +570,9 @@ function ItemCatalog.DisplayName(id, meta)
 	local base = item and item.name or id
 	if type(meta) == "table" and type(meta.plate) == "string" then
 		return base .. " " .. meta.plate
+	end
+	if type(meta) == "table" and type(meta.clan) == "string" then
+		return base .. " · " .. meta.clan
 	end
 	-- อาวุธ/เกราะที่ติดสกินอยู่ บอกชื่อสกินต่อท้าย
 	if type(meta) == "table" and type(meta.skin) == "string" then
@@ -605,9 +641,16 @@ end
 -- user asked for -- a key that is lost by some OTHER route takes its vehicle with it -- so the two together
 -- mean a garage can never hold a car whose key does not exist, and a player can never delete a car by
 -- pressing a red button in their bag.
+-- ของประจำตำแหน่ง (ตะหลิวเชฟ แหวนแคลน) ทิ้ง ให้ เทรด ฝาก ไม่ได้ทั้งหมด — มันคือหลักฐานของสิทธิ์ ไม่ใช่ของ
+function ItemCatalog.IsBound(id)
+	local item = ItemCatalog.Items[id]
+	return item ~= nil and item.bound == true
+end
+
 function ItemCatalog.IsDroppable(id)
 	local item = ItemCatalog.Items[id]
 	if not item then return false end
+	if item.bound then return false end
 	-- จักรยานทิ้งได้แล้ว **เพราะตอนนี้ซื้อคืนได้**
 	--
 	-- เหตุผลเดิมที่ห้ามทิ้งคือ "ทิ้งแล้วไม่มีทางได้คืน เพราะไม่มีที่ไหนขายและไม่มีสูตรคราฟ" พอบาร์นาบี
@@ -628,6 +671,7 @@ end
 function ItemCatalog.IsStorable(id)
 	local item = ItemCatalog.Items[id]
 	if not item then return false end
+	if item.bound then return false end
 	-- จักรยานเก็บเข้าคลังได้แล้ว ตามเหตุผลเดียวกับที่ทิ้งได้ (ดู IsDroppable ข้างบน): ซื้อคืนได้แล้ว
 	-- จึงไม่ต้องกันไม่ให้วางลง และการมีคันสำรองเก็บไว้ในคลังเป็นเรื่องสมเหตุสมผล
 	--

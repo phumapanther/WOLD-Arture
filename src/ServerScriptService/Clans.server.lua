@@ -44,6 +44,11 @@ local function clanOf(player, fresh)
 		setClanId(player, nil)
 		return nil
 	end
+	-- แคลนถูกยุบไปแล้ว (หายจากดัชนี ไม่ใช่แค่อ่านไม่ได้ชั่วคราว) ก็ล้าง id ทิ้ง
+	if not clan and ClanStore.Index(true)[id] == nil then
+		setClanId(player, nil)
+		return nil
+	end
 	return clan
 end
 
@@ -387,6 +392,32 @@ local function reject(player, targetUserId)
 	push(player)
 end
 
+-- ยุบแคลน: หัวแคลนเท่านั้น ลบออกจาก DataStore/ดัชนี ปล่อยเมืองที่ยึด สมาชิกออนไลน์หลุดทันที ออฟไลน์หลุดตอนเข้าเกม
+-- (clanOf เห็นว่าแคลนหายจากดัชนีแล้วล้าง ClanId ให้)
+local function disband(player)
+	local clan = clanOf(player, true)
+	if not clan then return end
+	if ClanStore.RoleOf(clan, player.UserId) ~= "leader" then
+		return Remotes.SocialNotify:FireClient(player, "warn", "เฉพาะหัวแคลนเท่านั้น")
+	end
+	local name = clan.name
+	if not ClanStore.Delete(clan.id) then
+		return Remotes.SocialNotify:FireClient(player, "error", "ยุบแคลนไม่สำเร็จ")
+	end
+	ClanStore.UpdateTowns(function(t)
+		for id, o in pairs(t) do if o.clanId == clan.id then t[id] = nil end end
+		return t
+	end)
+	for _, p in ipairs(Players:GetPlayers()) do
+		if clanIdOf(p) == clan.id then
+			setClanId(p, nil)
+			setApplyId(p, nil)
+			Remotes.SocialNotify:FireClient(p, "warn", ("แคลน %s ถูกยุบแล้ว"):format(name))
+			push(p)
+		end
+	end
+end
+
 local function leave(player)
 	local clan = clanOf(player)
 	if not clan then return end
@@ -522,6 +553,9 @@ local function vaultPut(player, bagIndex, count)
 	local state = Inventory.Get(player)
 	local slot = state and state.slots[bagIndex]
 	if not slot then return end
+	if not ItemCatalog.IsStorable(slot.id) then
+		return Remotes.SocialNotify:FireClient(player, "warn", "ของชิ้นนี้ฝากคลังไม่ได้")
+	end
 	count = math.clamp(math.floor(tonumber(count) or 1), 1, slot.count or 1)
 
 	local stored = { id = slot.id, count = count, durability = slot.durability, meta = slot.meta }
@@ -596,9 +630,15 @@ ClanAccess.AddSilver = function(clanId, amount)
 end
 
 -- แหวนแคลน: วางโครงไว้ก่อนตามที่ผู้ใช้สั่ง ยังไม่มีไอเทมจริง
+-- แหวนแคลน: BoundItems.server เป็นคนเติม/ลบจริง (ทุก 3 วิ ตามสถานะแคลน) ที่นี่แค่ให้ทันทีเพื่อไม่ต้องรอ
 ClanAccess.GiveRing = function(player)
-	if ItemCatalog.Exists("ClanRing") then
-		Inventory.AddItem(player, "ClanRing", 1)
+	local clan = clanOf(player)
+	if clan and ItemCatalog.Exists("ClanRing") then
+		local state = Inventory.Get(player)
+		for _, slot in pairs(state and state.slots or {}) do
+			if slot.id == "ClanRing" then return end
+		end
+		Inventory.AddItem(player, "ClanRing", 1, nil, { clan = clan.name })
 	end
 end
 
@@ -664,6 +704,7 @@ Remotes.RequestClanAction.OnServerEvent:Connect(function(player, action, a, b)
 	elseif action == "approve" then approve(player, a)
 	elseif action == "reject" then reject(player, a)
 	elseif action == "leave" then leave(player)
+	elseif action == "disband" then disband(player)
 	elseif action == "donate" then donate(player, a)
 	elseif action == "distribute" then distribute(player, a, b)
 	elseif action == "setrole" then setRole(player, a, b)

@@ -497,13 +497,34 @@ function ClanGui:renderMine(data)
 	vault.Size = UDim2.new(0.6, -4, 0, 32)
 	vault.TextSize = 13
 
-	local out = button(self.body, "ออกจากแคลน", Color3.fromRGB(96, 62, 62), function()
-		self:fire("leave")
-	end)
-	out.AnchorPoint = Vector2.new(1, 1)
-	out.Position = UDim2.new(1, 0, 1, 0)
-	out.Size = UDim2.new(0.4, -4, 0, 32)
-	out.TextSize = 13
+	-- หัวแคลน: ยุบแคลน (กดสองครั้งยืนยัน) สมาชิก: ออกจากแคลน
+	if isLeader then
+		local armed = false
+		local out = button(self.body, "ยุบแคลน", Color3.fromRGB(120, 40, 40), function() end)
+		out.AnchorPoint = Vector2.new(1, 1)
+		out.Position = UDim2.new(1, 0, 1, 0)
+		out.Size = UDim2.new(0.4, -4, 0, 32)
+		out.TextSize = 13
+		out.Activated:Connect(function()
+			if armed then
+				self:fire("disband")
+				return
+			end
+			armed = true
+			out.Text = "กดอีกครั้งเพื่อยุบแคลน"
+			task.delay(3, function()
+				if out.Parent then armed = false out.Text = "ยุบแคลน" end
+			end)
+		end)
+	else
+		local out = button(self.body, "ออกจากแคลน", Color3.fromRGB(96, 62, 62), function()
+			self:fire("leave")
+		end)
+		out.AnchorPoint = Vector2.new(1, 1)
+		out.Position = UDim2.new(1, 0, 1, 0)
+		out.Size = UDim2.new(0.4, -4, 0, 32)
+		out.TextSize = 13
+	end
 end
 
 function ClanGui:Show(data)

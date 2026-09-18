@@ -369,6 +369,22 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 - กาชา: ของซ้ำได้ซ้ำ (ผู้ใช้เลือก) ต้องมีช่องว่าง ≥ จำนวนครั้งก่อนหักเพชร · พาส 30 ขั้น ×1,000 XP สายฟรี+พรีเมียม (ปลด 950 เพชร) ซีซันใน config
 - เทสไม่ได้จากเครื่องมือ (remote/bindable ถูก Capabilities บล็อก) — ต้องเล่นจริง: `/gems 5000` → เมนู ⋯ → ซื้อ/สุ่ม/รับพาส
 
+## ครัว/ยา/เตียง/ของประจำตำแหน่ง (2026-09-18 ค่ำ)
+- **ของประจำตำแหน่ง** (`bound = true` ใน ItemCatalog): `Spatula` ↔ อาชีพเชฟ · `ClanRing` ↔ อยู่ในแคลน (meta.clan = ชื่อ) `BoundItems.server`
+  เติม/ลบทุก 3 วิจากความจริงตอนนี้ · `IsDroppable/IsStorable` false + กัน give/trade/vault ด้วย `ItemCatalog.IsBound`
+- **สถานีคราฟ** `CraftStations.server` หาโมเดลจากชื่อ (Stove/SteamBlender ต้องมีตะหลิว, AlchemyStill ใครก็ได้) → `CraftAccess.OpenAt` →
+  `Crafting.server` เก็บ `Source[player]` แล้ว snapshot กรอง `recipe.station`/`tab.station` ตรวจระยะกับตัวเครื่องแทน NPC ไคลเอนต์ได้
+  `stationPosition` ไว้เช็คเดินออก และส่ง `RequestCraftClose` ตอนปิด · เตามีไฟ (Fire บน FireboxHearth) 6 วิหลังคราฟสำเร็จ
+- **ตู้เย็น/ตู้ยา** = หีบเก็บของ (StorageChests) ที่ติดแอตทริบิวต์ `StorageSlots=25 StorageAccepts=food|medicine StorageClass=Priest`
+  ไอเทมมี `food = true` / `medicine = true` เป็นตัวกรอง · **ของในตู้อยู่ในหน่วยความจำ หายตอนเซิร์ฟปิด** เหมือนหีบ
+- **เตียง** `Beds.server` โมเดลชื่อ Bed (219 หลัง) กด E ที่ Mattress → ตรึง HRP นอนหงาย เลือด +1%/วิ (`Vitals.HealFraction`) กด E อีกที = ลุก
+- **บัพบน HUD** `Vitals.BuffSnapshot` ส่งใน VitalsUpdate.buffs (`-1` = ถาวรจากอาชีพ/อมตะ) `HudGui:SetBuffs` วาดอีโมจิเหนือหลอด EXP จิ้มดูเวลา
+- เมนูครัว `use.stat = "meal"` (อิ่ม/มานาเต็ม/บัพ) · `firstaid` (นักบวช ท่าพันแผลใน ConsumeController `use.pose="bandage"`) · `magicbox`
+  (`MagicBox.lua` สร้างสระจากแคตตาล็อกตามหมวด เรทใน `PremiumConfig.MagicBox`) · `use.classOnly` กันอาชีพตอนกดใช้
+- แคลน: `disband` (หัวแคลน กดสองครั้ง) → `ClanStore.Delete` + ปล่อยเมือง · `clanOf` ล้าง ClanId ถ้าแคลนหายจากดัชนี
+- ไอคอน decal → image ที่ resolve แล้ว: ตะหลิว 122256905985474 ข้าวผัด 128491566497246 สเต็ก 117145640008136 น้ำแอปเปิล 97122445855806
+  แหวน 72443695767496 กล่องปฐมพยาบาล 71486682078701 (กล่องเวทมนตร์ยังใช้ไอคอนหีบไม้)
+
 ## ⚠️ กฎเหล็ก: "Studio ดัง/ทำงาน แต่เกมจริงไม่" = แพ้จังหวะ StreamingEnabled แทบทุกครั้ง
 
 **เจอมาแล้วสองรอบ เสียเวลาไปมากทั้งสองรอบ ครั้งหน้าให้สงสัยข้อนี้เป็นอันดับแรก**

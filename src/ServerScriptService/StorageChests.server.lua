@@ -15,6 +15,8 @@ local ServerConfig = require(game.ServerScriptService.ServerConfig)
 if ServerConfig.IsLobby then return end
 
 local Inventory = require(game.ServerScriptService.Inventory)
+local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
+local Classes = require(game.ServerScriptService.Classes)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local ChestStorageAccess = require(game.ServerScriptService.ChestStorageAccess)
 
@@ -27,6 +29,27 @@ local ChestStorageAccess = require(game.ServerScriptService.ChestStorageAccess)
 -- จำนวนน้อยโดยตั้งใจ: หีบสาธารณะที่ใส่ได้เยอะจะกลายเป็นคลังฟรีที่ดีกว่าคลังของมาดามออเรเลียซึ่งต้องเดินไปหา
 -- และเสียค่าฝาก สามช่องพอสำหรับ "ฝากของให้เพื่อน" แต่ไม่พอสำหรับ "ใช้แทนคลัง"
 local SLOTS = 3
+
+-- หีบธรรมดา 3 ช่อง ตู้เย็น/ตู้ยา (CraftStations.server ติดแอตทริบิวต์ให้) 25 ช่องและรับเฉพาะของบางชนิด
+local function slotsOf(model)
+	return model:GetAttribute("StorageSlots") or SLOTS
+end
+
+-- ของชิ้นนี้ใส่ตู้นี้ได้ไหม (ตู้เย็นรับ food ตู้ยารับ medicine หีบธรรมดารับทุกอย่างที่ฝากได้)
+local function accepts(model, id)
+	local item = ItemCatalog.Get(id)
+	if not item or not ItemCatalog.IsStorable(id) then return false end
+	local want = model:GetAttribute("StorageAccepts")
+	if not want then return true end
+	return item[want] == true
+end
+
+-- ตู้ที่จำกัดอาชีพ (ตู้ยา = นักบวช)
+local function mayOpen(player, model)
+	local class = model:GetAttribute("StorageClass")
+	if not class then return true end
+	return Classes.Has(player, class)
+end
 
 local PROMPT_DISTANCE = 10
 local CHEST_TAG = "WOLD_StorageChest"
@@ -59,7 +82,7 @@ end
 local function snapshot(model)
 	local c = contentsOf(model)
 	local view = {}
-	for i = 1, SLOTS do
+	for i = 1, slotsOf(model) do
 		local slot = c[i]
 		view[i] = slot and {
 			id = slot.id,
@@ -73,7 +96,7 @@ end
 
 local function pushTo(player, model)
 	if not player.Parent then return end
-	Remotes.StorageChestUpdate:FireClient(player, snapshot(model), SLOTS)
+	Remotes.StorageChestUpdate:FireClient(player, snapshot(model), slotsOf(model))
 end
 
 -- บอกทุกคนที่กำลังเปิดหีบใบนี้อยู่ ไม่ใช่แค่คนที่เพิ่งทำอะไรไป
@@ -109,6 +132,12 @@ local function put(player, model, bagIndex, count)
 
 	count = math.clamp(math.floor(tonumber(count) or 1), 1, slot.count or 1)
 
+	if not accepts(model, slot.id) then
+		local want = model:GetAttribute("StorageAccepts")
+		return Remotes.SocialNotify:FireClient(player, "warn",
+			want == "food" and "ตู้เย็นเก็บได้เฉพาะอาหาร" or want == "medicine" and "ตู้ยาเก็บได้เฉพาะยา" or "ของชิ้นนี้ฝากไม่ได้")
+	end
+
 	local c = contentsOf(model)
 
 	-- **ของในหีบไม่รวมกอง** ตามที่ผู้ใช้กำหนด
@@ -118,7 +147,7 @@ local function put(player, model, bagIndex, count)
 	-- (Inventory ฝั่งกระเป๋ายังรวมกองตามปกติ กฎนี้ใช้เฉพาะในหีบ)
 
 	-- ช่องว่าง
-	for i = 1, SLOTS do
+	for i = 1, slotsOf(model) do
 		if c[i] == nil then
 			c[i] = {
 				id = slot.id,
@@ -138,7 +167,7 @@ end
 -- หยิบของจากช่อง `index` ของหีบกลับเข้ากระเป๋า
 local function take(player, model, index, count)
 	index = math.floor(tonumber(index) or 0)
-	if index < 1 or index > SLOTS then return end
+	if index < 1 or index > slotsOf(model) then return end
 	local c = contentsOf(model)
 	local slot = c[index]
 	if not slot then return end
@@ -188,16 +217,19 @@ local function wire(model)
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "StorageChestPrompt"
-	prompt.ActionText = "เปิดหีบ"
-	prompt.ObjectText = "หีบเก็บของ"
+	prompt.ActionText = model:GetAttribute("StorageAction") or "เปิดหีบ"
+	prompt.ObjectText = model:GetAttribute("StorageName") or "หีบเก็บของ"
 	prompt.HoldDuration = 0
 	prompt.MaxActivationDistance = PROMPT_DISTANCE
 	prompt.RequiresLineOfSight = false
 	prompt.Parent = anchor
 
 	prompt.Triggered:Connect(function(player)
+		if not mayOpen(player, model) then
+			return Remotes.SocialNotify:FireClient(player, "warn", "เฉพาะนักบวชเท่านั้น")
+		end
 		Viewers[player] = model
-		Remotes.StorageChestOpen:FireClient(player, SLOTS)
+		Remotes.StorageChestOpen:FireClient(player, slotsOf(model))
 		pushTo(player, model)
 	end)
 end
@@ -235,7 +267,7 @@ end)
 -- หนึ่งชิ้นต่อหนึ่งช่องเสมอ ไม่รวมกอง ตามกฎเดียวกับที่คนยัดเอง — หีบหนึ่งใบจึงรับได้สูงสุด 3 ชิ้นพอดี
 local function dropOne(model, id, durability, meta)
 	local c = contentsOf(model)
-	for i = 1, SLOTS do
+	for i = 1, slotsOf(model) do
 		if c[i] == nil then
 			c[i] = { id = id, count = 1, durability = durability, meta = meta }
 			return true
@@ -256,7 +288,7 @@ local function chestsWithRoom(origin, radius)
 			if ok then
 				local c = contentsOf(model)
 				local free = 0
-				for i = 1, SLOTS do
+				for i = 1, slotsOf(model) do
 					if c[i] == nil then free += 1 end
 				end
 				if free > 0 then list[#list + 1] = model end
