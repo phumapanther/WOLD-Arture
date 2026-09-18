@@ -31,6 +31,7 @@ local QuestAccess = require(game.ServerScriptService.QuestAccess)
 -- that point and has to be able to see the name.
 local Mobs = {}
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local BeastGait = require(game.ServerScriptService.BeastGait)
 
 local SPAWNER_TAG = "WOLD_Spawner"
 local MOB_TAG = "WOLD_Mob"
@@ -127,7 +128,9 @@ end
 -- PROTOTYPES, not monsters -- each is cloned to make the real thing, and the original never moves or fights.
 -- Every folder a monster prototype might live in, searched in order. V2 arrived as a second folder rather
 -- than more models in the first, so the lookup takes a list: a third batch is one more string here.
-local PROTOTYPE_FOLDERS = { "Model_moster", "Model_mosterV2" }
+-- New_moster: ชุดค้างคาว/หมูป่า/หมาป่า/วิญญาณ ผู้ใช้ย้ายโฟลเดอร์ทั้งก้อนเข้า ServerStorage แล้ว (2026-09-18)
+-- ก่อนหน้านั้นมันอยู่ใน workspace และถูกหาเจอด้วย fallback — พอย้ายแล้วหาไม่เจอ มอนสี่ชนิดกลายเป็นสไลม์
+local PROTOTYPE_FOLDERS = { "Model_moster", "Model_mosterV2", "New_moster" }
 
 local function prototypeFor(config)
     if not config.model then return nil end
@@ -161,6 +164,8 @@ local function prototypeFor(config)
     -- **ห้ามใช้ตัวที่ยังอยู่ใน Workspace เป็นต้นแบบโดยไม่ระวัง**: มันเป็นตัวที่ผู้เล่นเดินไปเจอได้จริง
     -- ถ้าถูกโคลนต่อไปเรื่อยๆ ก็ไม่เป็นไร แต่ตัวต้นแบบเองต้องไม่ถูกแท็กเป็นมอนที่ตีได้
     if not found then found = workspace:FindFirstChild(config.model, true) end
+    -- และทั่ว ServerStorage ไม่ว่าจะโฟลเดอร์ชื่ออะไร — ผู้ใช้ย้ายโฟลเดอร์ต้นแบบได้ตามใจ
+    if not found then found = serverStorage:FindFirstChild(config.model, true) end
     return found
 end
 
@@ -440,14 +445,41 @@ local function buildFromModel(config)
     --
     -- ระยะที่ถูกคือ "root อยู่สูงจากก้นตัวเท่าไหร่" เพราะ HipHeight คือระยะจากพื้นถึงจุดกึ่งกลาง root
     -- วัดจากโมเดลจริงจึงถูกเสมอ ไม่ว่าใครจะตั้งอะไรมา
+    --
+    -- **ปิด AutomaticScalingEnabled ก่อน** ไม่งั้นตอนโมเดลถูกวางลงโลก เอนจิ้นจะคำนวณ HipHeight ใหม่จาก
+    -- โครงกระดูกเอง — กับโครง R15 ที่เราเชื่อมข้อต่อให้ใหม่ มันคำนวณได้ 0 (วัดแล้ว: โจร/โกเลม/หุ่นไขลาน
+    -- ทุกตัว hip=0 สถานะ Freefall ค้าง ตัวจมดินครึ่งตัว) ค่าที่ตั้งไว้ตรงนี้จึงไม่เคยถูกใช้เลย
+    humanoid.AutomaticScalingEnabled = false
     local wanted = rootPart:GetAttribute("WOLD_HipHeight")
     if not wanted then
-        local bodyCF, bodySize = model:GetBoundingBox()
-        local bottom = bodyCF.Position.Y - bodySize.Y * 0.5
+        -- HipHeight ของ R15 คือระยะจาก **ก้น** root ถึงพื้น (ไม่ใช่จุดกึ่งกลาง) และวัดถึงก้นของชิ้นที่มอง
+        -- เห็น — ก้อน Root ล่องหน 1x1 ของชุดคิทอยู่ต่ำกว่าเท้าอีกครึ่งสตัด นับมันแล้วตัวจะลอย
+        local bottom = math.huge
+        for _, d in ipairs(model:GetDescendants()) do
+            if d:IsA("BasePart") and d.Transparency < 0.9 then
+                bottom = math.min(bottom, d.Position.Y - d.Size.Y * 0.5)
+            end
+        end
+        if bottom == math.huge then
+            local bodyCF, bodySize = model:GetBoundingBox()
+            bottom = bodyCF.Position.Y - bodySize.Y * 0.5
+        end
         -- เผื่อ 0.2 กันขูดพื้นบนภูมิประเทศขรุขระ เหมือนที่ทางสร้าง root เองใช้
-        wanted = math.max(0.5, rootPart.Position.Y - bottom + 0.2)
+        wanted = math.max(0.5, (rootPart.Position.Y - rootPart.Size.Y * 0.5) - bottom + 0.2)
     end
     humanoid.HipHeight = wanted
+
+    -- โครง R15 ที่มีเกราะ/แผ่นครอบ (Plate_<ชิ้น>) ซ่อนชิ้นข้างในไว้ — โกเลมหินใส่แผ่นหินครอบทุกชิ้นแต่หัว
+    -- คนข้างในยังโผล่หน้าออกมา ("กระดูกข้างในสำหรับทำให้มอนขยับ" ตามที่ผู้ใช้เรียก) มอนที่ไม่มีแผ่นครอบ
+    -- เช่นโจร ตัวโครงคือตัวมันเอง ไม่แตะ
+    for _, d in ipairs(model:GetDescendants()) do
+        if d:IsA("BasePart") and model:FindFirstChild("Plate_" .. d.Name) then
+            d.Transparency = 1
+            for _, face in ipairs(d:GetChildren()) do
+                if face:IsA("Decal") then face.Transparency = 1 end
+            end
+        end
+    end
 
     -- The same health bar the placeholder carries, so every monster reads the same way in a fight.
     local health = Instance.new("BillboardGui")
@@ -792,14 +824,18 @@ MobAccess.Stun = stun
 -- **ไม่เกิดในน้ำ** (ผู้ใช้กำหนด) ราย์ชนผิวน้ำก็ตอบมาเหมือนพื้น จึงต้องดูวัสดุ · **กัน Zone_* ออก**
 -- กล่องโซนหมู่บ้านลอยอยู่เหนือพื้นราวร้อยสตัดและตอบราย์ด้วย มอนที่เกิดบนนั้นจะร่วงลงมา
 -- หรือค้างกลางอากาศ — บทเรียนเดียวกับฝูงสัตว์และบอร์ดเควส
-local function groundAt(x, z)
+--
+-- **ยิงจากเหนือสปอว์เนอร์ ไม่ใช่จาก y=500 ตายตัว** ยอดเขาแอสตราเวลอยู่ที่ y≈1200 ราย์ที่เริ่มจาก 500 จึง
+-- เริ่มอยู่ในเนื้อหินและไม่ชนอะไรเลย — วิญญาณบนนั้นไม่เคยเกิดสักตัวโดยไม่มี error
+local function groundAt(x, z, fromY)
 	local ignore = { folder }
+	local top = (fromY or 300) + 200
 	for _ = 1, 8 do
 		local params = RaycastParams.new()
 		params.FilterType = Enum.RaycastFilterType.Exclude
 		params.FilterDescendantsInstances = ignore
 		params.IgnoreWater = false
-		local hit = workspace:Raycast(Vector3.new(x, 500, z), Vector3.new(0, -1200, 0), params)
+		local hit = workspace:Raycast(Vector3.new(x, top, z), Vector3.new(0, -(top + 700), 0), params)
 		if not hit then return nil end
 		if hit.Material == Enum.Material.Water then return nil end
 		if not hit.Instance.Name:match("^Zone_") then return hit.Position.Y end
@@ -946,7 +982,7 @@ local function spawnOne(spawner, kind, config)
 		local distance = math.sqrt(math.random()) * radius -- sqrt keeps them evenly spread, not clumped at the middle
 		local x = origin.X + math.cos(angle) * distance
 		local z = origin.Z + math.sin(angle) * distance
-		local y = groundAt(x, z)
+		local y = groundAt(x, z, origin.Y)
 		if y then
 			local model = buildMonster(config)
 
@@ -988,6 +1024,9 @@ local function spawnOne(spawner, kind, config)
 					part.AssemblyAngularVelocity = Vector3.zero
 				end
 			end
+			-- มอนชุดคิทสัตว์ (หมูป่า หมาป่า ค้างคาว) ขาขยับผ่าน C0 ที่ส่งถึงไคลเอนต์ **หลัง ScaleTo** เพราะ
+			-- ท่าเดินจำ C0 ตอนพักไว้ ถ้าจำก่อนขยายบอส ขาจะถูกดึงกลับไปขนาดเดิม
+			BeastGait.Attach(model)
 			local scale = nightScale() * (isBoss and SPAWNER_BOSS_POWER or 1)
 			local maxHp = config.hp * scale
 			-- buildMonster already sized the Humanoid from the unscaled config; correct it here so the bar
@@ -1047,7 +1086,7 @@ local function spawnHunter(kind, config, victim, origin, distance, boss)
 		local reach = distance + (attempt - 1) * 4
 			local x = origin.X + math.cos(angle) * reach
 			local z = origin.Z + math.sin(angle) * reach
-		local y = groundAt(x, z)
+		local y = groundAt(x, z, origin.Y)
 		if y then
 			local model = buildMonster(config)
 			-- A boss is the same monster, made bigger and meaner. ScaleTo BEFORE the pivot, and lift it by
@@ -1060,6 +1099,7 @@ local function spawnHunter(kind, config, victim, origin, distance, boss)
 			local _, mobSize = model:GetBoundingBox()
 			model:PivotTo(CFrame.new(x, y + mobSize.Y * 0.5 + 1, z))
 			model.Parent = folder
+			BeastGait.Attach(model)
 			for _, part in ipairs(model:GetDescendants()) do
 				if part:IsA("BasePart") then
 					part.AssemblyLinearVelocity = Vector3.zero

@@ -422,6 +422,8 @@ GatherConfig.Mobs.StoneGolem = {
 		{ item = "Stone", min = 4, max = 9 },
 		{ item = "IronOre", min = 2, max = 5 },
 		{ item = "Crystal", min = 1, max = 2, chance = 0.4 },
+		-- ศิลาเวท ตามที่ผู้ใช้กำหนดตอนเพิ่มชุดมอนใหม่ (เดิมเขียนเป็นโกเลมตัวที่สองซ้อนทับตัวนี้)
+		{ item = "RuneStone", min = 1, max = 2, chance = 0.5 },
 	},
 }
 
@@ -542,24 +544,6 @@ GatherConfig.Mobs.Wraith = {
 	hitSound = "rbxassetid://127637727363472",
 	dieSound = "rbxassetid://96214777896458",
 	drops = { { item = "MagicOre", min = 1, max = 2 } },
-}
-
--- โกเลมหิน: แข็งที่สุดในชุดนี้ ช้าที่สุด ตีหนักที่สุด
-GatherConfig.Mobs.StoneGolem = {
-	name = "โกเลมหิน",
-	model = "Monster_StoneGolem",
-	hp = 300, damage = 30,
-	attackCooldown = 2.4, attackRange = 8,
-	aggroRange = 32, leashRange = 85,
-	walkSpeed = 7,
-	xp = 90, respawnSeconds = 300,
-	colour = Color3.fromRGB(120, 116, 110),
-	hitSound = "rbxassetid://120916604676149", -- หินกระทบหิน ไม่ใช่เสียงเนื้อ
-	dieSound = "rbxassetid://96214777896458",
-	drops = {
-		-- หิน หรือ ศิลาเวท ตามที่ผู้ใช้กำหนด
-		{ oneOf = { "Stone", "RuneStone" }, min = 1, max = 3 },
-	},
 }
 
 return GatherConfig

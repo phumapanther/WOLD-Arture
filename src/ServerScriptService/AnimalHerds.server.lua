@@ -34,6 +34,7 @@ local FOLDER_NAME = "WOLD_Herds"
 local TEMPLATE_FOLDER = "WOLD_HerdTemplates"
 
 local GatherConfig = require(game.ReplicatedStorage.GatherConfig)
+local BeastGait = require(game.ServerScriptService.BeastGait)
 
 local function folder()
 	local f = workspace:FindFirstChild(FOLDER_NAME)
@@ -70,91 +71,15 @@ end
 
 local function shrink(animal)
 	if animal:GetAttribute("HerdScale") == SCALE then return end
+	-- ScaleTo ย่อทั้งชิ้นส่วน ข้อต่อ และ HipHeight ส่วนท่าเดินอ่าน BaseHipHeight/Bob คูณ GetScale() เอง
 	animal:ScaleTo(SCALE)
-	-- ค่าที่ท่าเดินอ่านเป็นสตัด ต้องย่อตาม ไม่งั้นตัวเล็กแต่ลอยสูงเท่าเดิม
-	animal:SetAttribute("BaseHipHeight", (animal:GetAttribute("BaseHipHeight") or 2) * SCALE)
-	animal:SetAttribute("Bob", (animal:GetAttribute("Bob") or 0.12) * SCALE)
 	animal:SetAttribute("HerdScale", SCALE)
 end
 
--- ท่าเดินคิดจากโค้ดเหมือน BeastGait ที่ติดมากับโมเดล แต่เขียนลง **C0 ไม่ใช่ Transform**
---
--- BeastGait ในโมเดลรันบนเซิร์ฟเวอร์และเขียน Motor6D.Transform ซึ่ง**ไม่ส่งไปไคลเอนต์** — ใน Studio
--- เห็นขาขยับเพราะอยู่โปรเซสเดียวกัน แต่ในเกมจริงสัตว์ทุกตัวยืนแข็งทั้งที่เดินอยู่ ("สัตว์ไม่ขยับขา")
--- C0 ส่งไปไคลเอนต์ปกติ บทเรียนเดียวกับขาแมงมุมใน MobMotion
---
--- จึงปิด BeastGait แล้วทำเองที่นี่ทั้งท่าเดินและการเดินเล่น อ่านแอตทริบิวต์ชุดเดียวกับที่โมเดลมีอยู่แล้ว
--- (Phase/Swing/Fold/Axis/Idle บนข้อต่อ · WalkSpeed/WanderRadius/WanderMin/WanderMax/StrideRate/Bob บนตัว)
-local Gaits = {} -- [model] = { humanoid, root, joints, phase, rate, bob, hip }
-
-local function axisCF(axis, a)
-	if axis == "Y" then return CFrame.Angles(0, a, 0) end
-	if axis == "Z" then return CFrame.Angles(0, 0, a) end
-	return CFrame.Angles(a, 0, 0)
-end
-
+-- ท่าเดิน + เดินเล่นรอบบ้าน อยู่ใน BeastGait.lua (ใช้ร่วมกับมอนชุดคิทใน Mobs.server)
 local function animate(animal)
-	if Gaits[animal] then return end
-	local humanoid = animal:FindFirstChildOfClass("Humanoid")
-	local root = animal:FindFirstChild("HumanoidRootPart")
-	if not humanoid or not root then return end
-
-	local gait = animal:FindFirstChild("BeastGait", true)
-	if gait and gait:IsA("BaseScript") then gait.Enabled = false end
-
-	local joints = {}
-	for _, d in ipairs(animal:GetDescendants()) do
-		if d:IsA("Motor6D") and d:GetAttribute("Phase") then
-			joints[#joints + 1] = { j = d, rest = d.C0 }
-		end
-	end
-	humanoid.WalkSpeed = animal:GetAttribute("WalkSpeed") or humanoid.WalkSpeed
-	Gaits[animal] = {
-		humanoid = humanoid, root = root, joints = joints, phase = math.random() * math.pi * 2,
-		-- ขาสั้นลงครึ่งหนึ่งต้องก้าวถี่ขึ้นเท่าตัวถึงจะดูเดินด้วยความเร็วเดิม
-		rate = (animal:GetAttribute("StrideRate") or 0.55) / SCALE,
-		bob = animal:GetAttribute("Bob") or 0.06,
-		hip = animal:GetAttribute("BaseHipHeight") or humanoid.HipHeight,
-	}
-
-	-- เดินเล่นรอบบ้าน บ้าน = จุดที่ยืนอยู่ตอนเริ่ม
-	local radius = animal:GetAttribute("WanderRadius") or 0
-	if radius > 0 then
-		local home = root.Position
-		task.spawn(function()
-			while animal.Parent and humanoid.Health > 0 do
-				task.wait(math.random(animal:GetAttribute("WanderMin") or 4, animal:GetAttribute("WanderMax") or 9))
-				local a, r = math.random() * math.pi * 2, math.sqrt(math.random()) * radius
-				humanoid:MoveTo(home + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r))
-				humanoid.MoveToFinished:Wait()
-			end
-		end)
-	end
+	BeastGait.Attach(animal, { wander = true })
 end
-
-game:GetService("RunService").Heartbeat:Connect(function(dt)
-	for animal, g in pairs(Gaits) do
-		if not animal.Parent then
-			Gaits[animal] = nil
-		else
-			local vel = g.root.AssemblyLinearVelocity
-			local speed = Vector3.new(vel.X, 0, vel.Z).Magnitude
-			-- ยืนนิ่งก็ยังขยับช้าๆ คือการหายใจ
-			g.phase += dt * (speed > 0.4 and speed * g.rate + 1 or 1.1)
-			local drive = math.clamp(speed / 8, 0, 1)
-			for _, e in ipairs(g.joints) do
-				local j = e.j
-				local amp = (j:GetAttribute("Swing") or 0) * drive + (j:GetAttribute("Idle") or 0) * (1 - drive)
-				local s = math.sin(g.phase + (j:GetAttribute("Phase") or 0))
-				local a = s * amp
-				local fold = j:GetAttribute("Fold")
-				if fold then a += math.max(0, -s) * fold * drive end
-				j.C0 = e.rest * axisCF(j:GetAttribute("Axis") or "X", a)
-			end
-			g.humanoid.HipHeight = g.hip + math.sin(g.phase * 2) * g.bob * drive
-		end
-	end
-end)
 
 -- สัตว์ที่ยืนอยู่ในโลกตอนนี้ของชนิดนั้น (เฉพาะในโฟลเดอร์ฝูง ต้นแบบย้ายออกไปแล้ว)
 local function liveHerd(kind)
