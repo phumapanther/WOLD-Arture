@@ -2,9 +2,9 @@
 --
 -- โมเดลชื่อ "Bed" มี 245 หลังทั่วแมพ (ชุดคิทบ้าน) ทุกหลังมีชิ้น Mattress — ปุ่มแขวนที่ฟูก
 --
--- การนอน = ตรึง HumanoidRootPart ไว้เหนือฟูกในท่านอนหงาย (หมุน -90° รอบ X) ส่วน humanoid ยังมีชีวิตปกติ
--- (อนิเมชันยืนเล่นต่อในท่านอน อ่านออกว่า "นอนพัก" พอ) ลุกด้วยการกด E ที่เตียงอีกครั้ง ตาย/ออกเกม/เกิดใหม่
--- ล้างสถานะเอง เดินไม่ได้ระหว่างนอนเพราะ root ถูกตรึง
+-- การนอน = ตรึง HumanoidRootPart ไว้เหนือฟูกในท่านอนหงาย ส่วน humanoid ยังมีชีวิตปกติ (อนิเมชันยืนเล่นต่อ
+-- ในท่านอน อ่านออกว่า "นอนพัก" พอ) · ลุกได้สามทาง: กด E ที่เตียงอีกครั้ง · **กดเดินหรือกระโดด** (ดูหัวข้อ
+-- "ขยับ = ลุก" ท้ายไฟล์) · ตาย/ออกเกม/เกิดใหม่ล้างสถานะเอง
 local Players = game:GetService("Players")
 
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
@@ -30,7 +30,11 @@ local function wake(player)
 		-- ยืนขึ้นข้างเตียง ไม่ใช่ตื่นมาในท่านอนกลางอากาศ
 		root.CFrame = CFrame.new(root.Position + Vector3.new(0, 1, 0)) * CFrame.Angles(0, select(2, root.CFrame:ToEulerAnglesYXZ()), 0)
 	end
-	if humanoid then humanoid.AutoRotate = true end
+	if humanoid then
+		humanoid.AutoRotate = true
+		-- ปุ่มกระโดดที่ค้างเป็น true ตอนตรึงตัวอยู่ จะเด้งทันทีที่ปล่อย — ล้างทิ้งก่อนลุก
+		humanoid.Jump = false
+	end
 	if s.prompt and s.prompt.Parent then s.prompt.ActionText = "นอนพัก" end
 end
 
@@ -49,14 +53,20 @@ local function lieDown(player, bed, mattress, prompt)
 	wake(player)
 
 	-- นอนหงายบนฟูก หัวไปทางหัวเตียง (ด้านหลังของฟูก) ยกขึ้นครึ่งความหนาตัว
+	--
+	-- **สองท่อน ไม่ใช่ท่อนเดียว** (แก้ 2026-09-18: ของเดิมนอนคว่ำหน้า)
+	--   `Angles(-90, 0, 0)` เอียงตัวลงนอน — แต่แกนหน้าอก (-Z ของ HRP) ชี้ลงพื้น = คว่ำหน้า
+	--   `Angles(0, 180, 0)` ที่คูณ **ทีหลัง** คือการพลิกรอบแกนของตัวเองที่ชี้จากเท้าไปหัว
+	--     หน้าอกจึงหงายขึ้นฟ้าโดยที่หัวยังอยู่ทางหัวเตียงเหมือนเดิม
+	-- ถ้าเปลี่ยนเป็น `Angles(90, 0, 0)` ท่อนเดียวจะหงายก็จริง แต่หัวไปโผล่ปลายเตียงแทน
 	local top = mattress.CFrame * CFrame.new(0, mattress.Size.Y * 0.5 + 1.0, 0)
-	root.CFrame = top * CFrame.Angles(math.rad(-90), 0, 0)
+	root.CFrame = top * CFrame.Angles(math.rad(-90), 0, 0) * CFrame.Angles(0, math.rad(180), 0)
 	root.AssemblyLinearVelocity = Vector3.zero
 	root.Anchored = true
 	humanoid.AutoRotate = false
 	Sleeping[player] = { bed = bed, prompt = prompt }
 	prompt.ActionText = "ลุก"
-	Remotes.SocialNotify:FireClient(player, "info", "นอนพัก เลือดฟื้น 1% ต่อวินาที — กด E ที่เตียงเพื่อลุก")
+	Remotes.SocialNotify:FireClient(player, "info", "นอนพัก เลือดฟื้น 1% ต่อวินาที — ขยับหรือกด E เพื่อลุก")
 end
 
 --------------------------------------------------------------------------------
@@ -112,6 +122,40 @@ task.spawn(function()
 				if s.prompt and s.prompt.Parent then s.prompt.ActionText = "นอนพัก" end
 			else
 				Vitals.HealFraction(player, REGEN_PER_SECOND)
+			end
+		end
+	end
+end)
+
+--------------------------------------------------------------------------------
+-- ขยับ = ลุก
+--
+-- ผู้ใช้สั่ง (2026-09-18): กดเดินหรือกระโดดตอนนอนอยู่ ให้ลุกเองโดยไม่ต้องกด E ซ้ำ — เตียงไม่ควรเป็นกับดัก
+-- ที่ต้องหาปุ่มออก
+--
+-- อ่านจาก humanoid ฝั่งเซิร์ฟเวอร์ ไม่ใช่ธงจากไคลเอนต์ ด้วยเหตุผลเดียวกับที่การตกปลาเขียนไว้: `MoveDirection`
+-- ไม่เป็นศูนย์เฉพาะตอนที่ผู้เล่น **สั่งเดินจริงๆ** โดนชนหรือยืนบนของที่เคลื่อนที่ไม่นับ · `Jump` เป็นพร็อพเพอร์ตี้
+-- ที่ ControlModule ตั้งตอนกดสเปซ ซึ่งยังตั้งอยู่แม้ตัวจะถูกตรึงไว้จนกระโดดไม่ขึ้น
+--
+-- รอบละ 0.15 วิ ถี่พอให้รู้สึกว่า "กดแล้วลุกเลย" และถูกกว่าการต่อ event ต่อคนมาก
+--------------------------------------------------------------------------------
+
+local WATCH_SECONDS = 0.15
+
+task.spawn(function()
+	while true do
+		task.wait(WATCH_SECONDS)
+		-- `wake` ลบคีย์ที่กำลังวนอยู่พอดี ซึ่ง Lua อนุญาต (ลบคีย์ปัจจุบันระหว่าง pairs ได้ ลบคีย์อื่นไม่ได้)
+		for player in pairs(Sleeping) do
+			local character = player.Character
+			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				local moving = humanoid.MoveDirection.Magnitude > 0.1
+				local jumping = humanoid.Jump or humanoid:GetState() == Enum.HumanoidStateType.Jumping
+				if moving or jumping then
+					wake(player)
+					Remotes.SocialNotify:FireClient(player, "info", "ลุกจากเตียงแล้ว")
+				end
 			end
 		end
 	end

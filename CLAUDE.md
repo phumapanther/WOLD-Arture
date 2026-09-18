@@ -377,7 +377,12 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
   `stationPosition` ไว้เช็คเดินออก และส่ง `RequestCraftClose` ตอนปิด · เตามีไฟ (Fire บน FireboxHearth) 6 วิหลังคราฟสำเร็จ
 - **ตู้เย็น/ตู้ยา** = หีบเก็บของ (StorageChests) ที่ติดแอตทริบิวต์ `StorageSlots=25 StorageAccepts=food|medicine StorageClass=Priest`
   ไอเทมมี `food = true` / `medicine = true` เป็นตัวกรอง · **ของในตู้อยู่ในหน่วยความจำ หายตอนเซิร์ฟปิด** เหมือนหีบ
-- **เตียง** `Beds.server` โมเดลชื่อ Bed (219 หลัง) กด E ที่ Mattress → ตรึง HRP นอนหงาย เลือด +1%/วิ (`Vitals.HealFraction`) กด E อีกที = ลุก
+- **เตียง** `Beds.server` โมเดลชื่อ Bed (219 หลัง) กด E ที่ Mattress → ตรึง HRP นอนหงาย เลือด +1%/วิ (`Vitals.HealFraction`)
+  ลุกได้สามทาง: กด E อีกที · **ขยับ (เดิน/กระโดด)** · ตาย/ออกเกม — ลูป 0.15 วิอ่าน `humanoid.MoveDirection` กับ
+  `humanoid.Jump` ฝั่งเซิร์ฟเวอร์ (ทรงเดียวกับที่การตกปลาใช้เลิกตกเมื่อเดิน) และล้าง `Jump` ก่อนปล่อยตัว ไม่งั้นเด้ง
+  **ท่านอนต้องคูณสองท่อน** `Angles(-90,0,0) * Angles(0,180,0)` — ท่อนแรกล้มตัวลง (หน้าอกชี้ลงพื้น = คว่ำหน้า
+  ซึ่งเป็นบั๊กเดิม) ท่อนหลังพลิกรอบแกนเท้า-หัวให้หงายโดยหัวยังอยู่ทางหัวเตียง · `Angles(90,0,0)` ท่อนเดียวหงายก็จริง
+  แต่หัวสลับไปปลายเตียง
 - **บัพบน HUD** `Vitals.BuffSnapshot` ส่งใน VitalsUpdate.buffs (`-1` = ถาวรจากอาชีพ/อมตะ) `HudGui:SetBuffs` วาดอีโมจิเหนือหลอด EXP จิ้มดูเวลา
 - เมนูครัว `use.stat = "meal"` (อิ่ม/มานาเต็ม/บัพ) · `firstaid` (นักบวช ท่าพันแผลใน ConsumeController `use.pose="bandage"`) · `magicbox`
   (`MagicBox.lua` สร้างสระจากแคตตาล็อกตามหมวด เรทใน `PremiumConfig.MagicBox`) · `use.classOnly` กันอาชีพตอนกดใช้
