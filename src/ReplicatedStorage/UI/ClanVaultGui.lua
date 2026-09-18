@@ -7,6 +7,7 @@
 local Players = game:GetService("Players")
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
+local ItemIcon = require(script.Parent.ItemIcon)
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
 local ClanConfig = require(script.Parent.Parent.ClanConfig)
 
@@ -99,9 +100,10 @@ local function fillSlot(cell, entry)
 		cell.stroke.Transparency = 0.9
 		return
 	end
-	local hasIcon = entry.icon and entry.icon ~= ""
-	cell.icon.Image = hasIcon and entry.icon or ""
-	cell.icon.Visible = hasIcon
+	-- ไม่มีรูป = ⌛ ค้างไว้เหนือชื่อ (ช่องรูปจึงโชว์เสมอ) ชื่อยังขึ้นเหมือนเดิมเพราะ ⌛ ของทุกชิ้นหน้าตาเหมือนกัน
+	local hasIcon = ItemIcon.Has(entry.icon)
+	ItemIcon.Apply(cell.icon, entry.icon)
+	cell.icon.Visible = true
 	cell.name.Text = hasIcon and "" or (entry.name or entry.id or "")
 	cell.count.Text = (entry.count or 1) > 1 and ("x%d"):format(entry.count) or ""
 	cell.stroke.Transparency = 0.5

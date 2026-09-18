@@ -10,6 +10,7 @@ local Players = game:GetService("Players")
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
+local ItemIcon = require(script.Parent.ItemIcon)
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -201,23 +202,15 @@ function AdminChestGui:build()
 
 		local icon = Instance.new("ImageLabel")
 		icon.BackgroundTransparency = 1
-		icon.Image = item.icon or ""
+		ItemIcon.Apply(icon, item.icon)
 		icon.ScaleType = Enum.ScaleType.Fit
 		icon.AnchorPoint = Vector2.new(0.5, 0)
 		icon.Position = UDim2.new(0.5, 0, 0, 8)
 		icon.Size = UDim2.fromOffset(34, 34)
 		icon.Parent = tile
 
-		-- An item with no icon uploaded yet would be a blank square with a name under it, which reads as a
-		-- broken tile rather than a new one. Its first letters stand in until the art arrives -- and a new
-		-- item is exactly the case that hits this, since icons are uploaded by hand well after the item
-		-- itself exists.
-		if (item.icon or "") == "" then
-			local glyph = label(icon, (item.name or id):sub(1, 6), 12, TEXT_MUTED, true)
-			glyph.Size = UDim2.fromScale(1, 1)
-			glyph.TextXAlignment = Enum.TextXAlignment.Center
-			glyph.TextTruncate = Enum.TextTruncate.AtEnd
-		end
+		-- ไอเทมที่ยังไม่มีรูปเป็นของตัวเองขึ้น ⌛ (ItemIcon) ชื่อไอเทมอยู่ใต้ช่องรูปอยู่แล้ว จึงยังบอกได้ว่าชิ้นไหน
+		-- เดิมตรงนี้เอาตัวอักษรหกตัวแรกของชื่อมาแทนรูป ซึ่งซ้ำกับชื่อที่อยู่ข้างล่างพอดี
 
 		local name = label(tile, item.name or id, 11, TEXT_LIGHT)
 		name.AnchorPoint = Vector2.new(0.5, 1)

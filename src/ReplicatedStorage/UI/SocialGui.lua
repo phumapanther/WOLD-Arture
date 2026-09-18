@@ -11,6 +11,7 @@ local AvatarThumbnails = require(script.Parent.AvatarThumbnails)
 local Responsive = require(script.Parent.Responsive)
 local ClassConfig = require(script.Parent.Parent.ClassConfig)
 local UiSound = require(script.Parent.UiSound)
+local ItemIcon = require(script.Parent.ItemIcon)
 
 local SocialGui = {}
 SocialGui.__index = SocialGui
@@ -1235,12 +1236,13 @@ function SocialGui:RenderCollection(data)
 		-- เซิร์ฟเวอร์ส่งทั้งชื่อและไอคอนมาแล้ว (ปลาจากแคตตาล็อก มอนจากรูปใบประกาศ) — ไคลเอนต์ไม่ต้อง
 		-- เปิดตารางเอง และไม่มีทางที่สองฝั่งจะหาคนละที่แล้วได้คนละคำตอบ
 		local hasIcon = entry.icon and entry.icon ~= ""
-		if hasIcon then
+		do
+			-- ช่องรูปมีเสมอ ไม่มีรูปก็ ⌛ (ItemIcon) แถวจึงเรียงตรงกันไม่ว่าของชิ้นนั้นจะมีรูปหรือยัง
 			local art = Instance.new("ImageLabel")
 			art.Position = UDim2.new(0, 6, 0.5, -13)
 			art.Size = UDim2.fromOffset(26, 26)
 			art.BackgroundTransparency = 1
-			art.Image = entry.icon
+			ItemIcon.Apply(art, entry.icon)
 			art.ScaleType = Enum.ScaleType.Fit
 			art.Parent = row
 		end
@@ -1439,12 +1441,12 @@ function SocialGui:RenderMarket(market)
 
 		-- An empty icon id is a blank square, not an error, so the name carries the row either way -- the
 		-- same fallback the catalog's own comment describes.
-		if entry.icon and entry.icon ~= "" then
+		do
 			local icon = Instance.new("ImageLabel")
 			icon.Position = UDim2.new(0, 8, 0.5, -13)
 			icon.Size = UDim2.fromOffset(26, 26)
 			icon.BackgroundTransparency = 1
-			icon.Image = entry.icon
+			ItemIcon.Apply(icon, entry.icon)
 			icon.Parent = row
 		end
 

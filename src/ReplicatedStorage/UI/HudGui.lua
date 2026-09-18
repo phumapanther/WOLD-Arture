@@ -3,6 +3,8 @@
 local HudGui = {}
 HudGui.__index = HudGui
 
+local ItemIcon = require(script.Parent.ItemIcon)
+
 -- Pill bars: rounded-end bar with a round icon badge overlapping its left edge. No text on the bar — icon only.
 -- Colors and gradient stops match the approved HTML reference (docs/superpowers, Main.dc.html) exactly. Icon
 -- glyphs are Unicode placeholders (no real icon art in the project yet) — swap `glyph` for a real ImageLabel +
@@ -416,14 +418,15 @@ function HudGui:SetHotbar(entries)
 		local entry = entries and entries[i]
 		if entry then
 			local art = entry.icon or ""
-			ui.icon.Image = art
-			ui.icon.Visible = art ~= ""
+			-- ไม่มีรูป = ⌛ (ItemIcon) ชื่อยังขึ้นใต้มันเหมือนเดิม
+			ItemIcon.Apply(ui.icon, art)
+			ui.icon.Visible = true
 			ui.name.Text = (art == "") and (entry.name or entry.id) or ""
 			ui.count.Text = (entry.count or 1) > 1 and tostring(entry.count) or ""
 			-- An assigned item you have run out of stays in its slot, dimmed. Clearing it would lose the
 			-- arrangement every time the last potion was drunk, and it fills back in when you carry one again.
 			local out = entry.count == 0
-			ui.icon.ImageTransparency = out and 0.6 or 0
+			ItemIcon.SetFade(ui.icon, out and 0.6 or 0)
 			ui.name.TextTransparency = out and 0.6 or 0
 		else
 			ui.icon.Image = ""

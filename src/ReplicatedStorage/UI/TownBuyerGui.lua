@@ -6,6 +6,7 @@
 local Players = game:GetService("Players")
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
+local ItemIcon = require(script.Parent.ItemIcon)
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local ROW = Color3.fromRGB(44, 47, 58)
@@ -185,13 +186,14 @@ function TownBuyerGui:Render(data)
 		row.Parent = self.list
 		corner(row, UDim.new(0, 8))
 
-		local hasIcon = entry.icon and entry.icon ~= ""
-		if hasIcon then
+		-- ช่องรูปมีเสมอ ไม่มีรูปก็ได้ ⌛ (ItemIcon) — แถวจึงเรียงตรงกันทุกแถว
+		local hasIcon = true
+		do
 			local art = Instance.new("ImageLabel")
 			art.Position = UDim2.new(0, 6, 0.5, -16)
 			art.Size = UDim2.fromOffset(32, 32)
 			art.BackgroundTransparency = 1
-			art.Image = entry.icon
+			ItemIcon.Apply(art, entry.icon)
 			art.ScaleType = Enum.ScaleType.Fit
 			art.Parent = row
 		end

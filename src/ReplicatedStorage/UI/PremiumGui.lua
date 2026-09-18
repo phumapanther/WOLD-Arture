@@ -7,6 +7,7 @@ local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
 local PremiumConfig = require(script.Parent.Parent.PremiumConfig)
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
+local ItemIcon = require(script.Parent.ItemIcon)
 
 local STONE = Color3.fromRGB(30, 32, 40)
 local PANEL = Color3.fromRGB(38, 40, 48)
@@ -227,12 +228,13 @@ function PremiumGui:renderShop()
 		frame.Parent = list
 		corner(frame, UDim.new(0, 8))
 
-		if item and item.icon and item.icon ~= "" then
+		do
+			-- ช่องรูปมีเสมอ ของที่ยังไม่มีรูปของตัวเอง (สกิน ออร่า ชุดแฟชั่น) ได้ ⌛ แทน — ซึ่งคือเกือบทั้งร้านนี้
 			local art = Instance.new("ImageLabel")
 			art.Position = UDim2.new(0, 8, 0.5, -20)
 			art.Size = UDim2.fromOffset(40, 40)
 			art.BackgroundTransparency = 1
-			art.Image = item.icon
+			ItemIcon.Apply(art, item and item.icon)
 			art.ScaleType = Enum.ScaleType.Fit
 			art.Parent = frame
 		end
@@ -355,15 +357,15 @@ function PremiumGui:ShowResults(results)
 		stroke.Color = rarityColour(r.rarity)
 		stroke.Thickness = 2
 		stroke.Parent = card
-		if r.icon and r.icon ~= "" then
+		do
 			local art = Instance.new("ImageLabel")
 			art.AnchorPoint = Vector2.new(0.5, 0)
 			art.Position = UDim2.new(0.5, 0, 0, 6)
 			art.Size = UDim2.fromOffset(44, 44)
 			art.BackgroundTransparency = 1
-			art.Image = r.icon
-			art.ScaleType = Enum.ScaleType.Fit
 			art.ZIndex = 9
+			ItemIcon.Apply(art, r.icon)
+			art.ScaleType = Enum.ScaleType.Fit
 			art.Parent = card
 		end
 		local n = label(card, r.name, 10, rarityColour(r.rarity), Enum.TextXAlignment.Center)

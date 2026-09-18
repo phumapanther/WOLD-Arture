@@ -8,6 +8,7 @@
 local Players = game:GetService("Players")
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
+local ItemIcon = require(script.Parent.ItemIcon)
 local ClassActionConfig = require(script.Parent.Parent.ClassActionConfig)
 
 local STONE = Color3.fromRGB(38, 40, 48)
@@ -72,17 +73,21 @@ local function tile(parent, entry, onClick)
 	b.Parent = parent
 	corner(b, UDim.new(0, 6))
 
-	if entry.icon and entry.icon ~= "" then
+	-- มีรูป = รูป · ไม่มีรูป = ⌛ (ItemIcon) แล้วชื่อลงไปอยู่ครึ่งล่าง จะได้อ่านออกว่าเป็นของชิ้นไหน
+	do
 		local icon = Instance.new("ImageLabel")
 		icon.Size = UDim2.new(1, -6, 1, -6)
 		icon.Position = UDim2.new(0, 3, 0, 3)
 		icon.BackgroundTransparency = 1
 		icon.ScaleType = Enum.ScaleType.Fit
-		icon.Image = entry.icon
+		ItemIcon.Apply(icon, entry.icon)
 		icon.Parent = b
-	else
+	end
+	if not ItemIcon.Has(entry.icon) then
 		local name = Instance.new("TextLabel")
-		name.Size = UDim2.fromScale(1, 1)
+		name.AnchorPoint = Vector2.new(0.5, 1)
+		name.Position = UDim2.new(0.5, 0, 1, -2)
+		name.Size = UDim2.new(1, -4, 0.42, 0)
 		name.BackgroundTransparency = 1
 		name.Font = Enum.Font.GothamMedium
 		name.TextSize = 9

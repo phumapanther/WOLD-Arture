@@ -359,9 +359,11 @@ CombatConfig.HitboxHeightOffset = 0
 CombatConfig.ProjectileHitRadius = 8
 
 -- เครื่องมือทอง (ร้านพรีเมียม) ตีและส่งเสียงเหมือนตัวธรรมดาทุกประการ — ชี้ไปที่ตารางเดียวกัน ไม่ก๊อป
-for gold, base in pairs({ GoldAxe = "Axe", GoldPickaxe = "Pickaxe", GoldShovel = "Shovel", GoldFishingRod = "FishingRod" }) do
-	CombatConfig.Weapons[gold] = CombatConfig.Weapons[base]
-	if CombatConfig.Sounds then CombatConfig.Sounds[gold] = CombatConfig.Sounds[base] end
+-- ตะหลิวเชฟยืมของคันเบ็ดทั้งชุด: ท่าเดียวกัน ดาเมจ 3 เท่ากัน — มันคือของที่ถือไว้ทำงาน ไม่ใช่อาวุธ
+for alias, base in pairs({ GoldAxe = "Axe", GoldPickaxe = "Pickaxe", GoldShovel = "Shovel",
+	GoldFishingRod = "FishingRod", Spatula = "FishingRod" }) do
+	CombatConfig.Weapons[alias] = CombatConfig.Weapons[base]
+	if CombatConfig.Sounds then CombatConfig.Sounds[alias] = CombatConfig.Sounds[base] end
 end
 
 return CombatConfig

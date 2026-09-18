@@ -6,6 +6,7 @@
 local Players = game:GetService("Players")
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
+local ItemIcon = require(script.Parent.ItemIcon)
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -205,7 +206,7 @@ local function row(parent, order, icon, name, priceText, buttonText, buttonColor
 	image.Size = UDim2.fromOffset(28, 28)
 	image.Position = UDim2.fromOffset(6, 5)
 	image.BackgroundTransparency = 1
-	image.Image = icon or ""
+	ItemIcon.Apply(image, icon)
 	image.Parent = frame
 
 	local label = Instance.new("TextLabel")

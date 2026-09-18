@@ -44,7 +44,13 @@ local function decorative(model)
 	return false
 end
 
+-- มีของชิ้นนี้ไหม — **นับช่องมือด้วย ไม่ใช่แค่กระเป๋า**
+--
+-- ตะหลิวถือได้แล้ว (ItemCatalog: kind = "weapon") และการสวมคือการย้ายของออกจากกระเป๋าไปช่องมือ ถ้านับแค่
+-- กระเป๋า เชฟที่ถือตะหลิวอยู่ในมือจะโดนเตาไล่ว่า "ต้องมีตะหลิวเชฟ" ซึ่งเป็นคำตอบที่ไม่มีทางเดาถูก
 local function hasItem(player, id)
+	local _, equipped = Inventory.EquippedWeapon(player)
+	if equipped and equipped.id == id then return true end
 	local state = Inventory.Get(player)
 	if not state then return false end
 	for _, slot in pairs(state.slots) do

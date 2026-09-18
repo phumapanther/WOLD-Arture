@@ -46,6 +46,8 @@ local GRIP = {
 	-- The rod is built to the same layout, so it takes the same grip. Held in two hands like the sword,
 	-- which is what the user asked for -- the two-handed look comes from Sword_Idle, not from the offset.
 	FishingRod = SWORD_GRIP,
+	-- ตะหลิวสร้างตามแบบเดียวกัน (ใบพายอยู่ที่จุดกำเนิด ด้ามยื่นไป +Y 2.0) จึงใช้ค่าเดียวกันได้
+	Spatula = SWORD_GRIP,
 	-- The pistol needs its OWN grip, not the sword's.
 	--
 	-- SWORD_GRIP stands its model bolt upright, which is right for a blade and wrong for a gun: measured

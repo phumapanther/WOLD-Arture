@@ -6,6 +6,7 @@
 local Players = game:GetService("Players")
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
+local ItemIcon = require(script.Parent.ItemIcon)
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -302,21 +303,15 @@ local function itemTile(parent, order, entry, stackGlyph, onAll, onOne)
 
 	local icon = Instance.new("ImageLabel")
 	icon.BackgroundTransparency = 1
-	icon.Image = entry.icon or ""
+	ItemIcon.Apply(icon, entry.icon)
 	icon.ScaleType = Enum.ScaleType.Fit
 	icon.AnchorPoint = Vector2.new(0.5, 0)
 	icon.Position = UDim2.new(0.5, 0, 0, 6)
 	icon.Size = UDim2.fromOffset(34, 34)
 	icon.Parent = tile
 
-	-- An item with no icon uploaded yet would be a blank square with a name under it, which reads as a bug.
-	-- Its first letters stand in until the art arrives.
-	if (entry.icon or "") == "" then
-		local glyph = label(icon, entry.name:sub(1, 6), 12, TEXT_MUTED, true)
-		glyph.Size = UDim2.fromScale(1, 1)
-		glyph.TextXAlignment = Enum.TextXAlignment.Center
-		glyph.TextTruncate = Enum.TextTruncate.AtEnd
-	end
+	-- ไม่มีรูปเป็นของตัวเอง = ⌛ (ItemIcon แขวนให้ในช่องรูปแล้ว) ชื่ออยู่ใต้ช่องอยู่แล้วจึงยังบอกได้ว่าชิ้นไหน
+	-- เดิมเอาตัวอักษรหกตัวแรกของชื่อมาแทน ซึ่งซ้ำกับชื่อข้างล่างพอดี
 
 	local name = label(tile, entry.name, 11, TEXT_LIGHT)
 	name.AnchorPoint = Vector2.new(0.5, 1)

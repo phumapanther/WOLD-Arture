@@ -10,6 +10,7 @@ local Players = game:GetService("Players")
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
+local ItemIcon = require(script.Parent.ItemIcon)
 local ChestConfig = require(script.Parent.Parent.ChestConfig)
 
 local STONE = Color3.fromRGB(38, 40, 48)
@@ -215,12 +216,13 @@ function ChestGui:Show(tier, loot)
 		corner(tile, UDim.new(0, 8))
 		stroke(tile, GOLD, 0.75)
 
-		if item and item.icon then
+		do
+			-- วาดช่องรูปเสมอ ไม่มีรูปก็ได้ ⌛ (ItemIcon) แทนช่องว่างที่อ่านไม่ออกว่าตั้งใจหรือพัง
 			local icon = Instance.new("ImageLabel")
 			icon.Size = UDim2.fromOffset(40, 40)
 			icon.Position = UDim2.new(0.5, -20, 0, 8)
 			icon.BackgroundTransparency = 1
-			icon.Image = item.icon
+			ItemIcon.Apply(icon, item and item.icon)
 			icon.Parent = tile
 		end
 

@@ -25,6 +25,16 @@ local ItemCatalog = {}
 -- Long enough to be a real commitment in a fight, short enough not to feel like a punishment.
 ItemCatalog.ConsumeSeconds = 3
 
+-- ⌛ = ยังไม่มีรูปของตัวเอง
+--
+-- ผู้ใช้สั่ง (2026-09-18): ไอเทมที่ **ไม่มีรูป** หรือ **ยืมรูปของไอเทมอื่นมาใช้** ให้ขึ้นนาฬิกาทรายแทน
+-- วิธีบอกคือ `icon = ""` แล้ว `UI/ItemIcon.Apply` แขวน ⌛ ให้เองทุกหน้าต่าง — อย่าใส่อีโมจิลงช่อง `icon`
+-- ตรงๆ มันเป็น ImageLabel ไม่ใช่ข้อความ
+--
+-- ตอนนี้ที่เป็น ⌛ อยู่: เครื่องมือทอง 4 ชิ้น (ยืมรูปตัวธรรมดา) · ยาใหญ่ (ยืมขวดยาฮีล) · อาหารพรีเมียม 3 ชิ้น
+-- (ยืมรูปแอปเปิล) · สกิน/แฟชั่น/ออร่า 15 ชิ้น (ยืมรูปเดียวกันทั้งหมด) รวม 23 ชิ้น
+-- **อัปโหลดรูปจริงเมื่อไหร่ ใส่ id กลับเข้าไปที่ `icon` ชิ้นนั้น แล้วมันหายไปเอง ไม่ต้องแก้ที่อื่นเลย**
+
 -- ของบางชิ้นใช้เวลานานกว่านั้น: กล่องปฐมพยาบาลมีท่าพันแผลห้าจังหวะตามคู่มือภาพ (ล้าง สำลี ผ้าก๊อซ กด พัน)
 -- ซึ่งเบียดกันจนดูไม่ออกถ้ามีแค่สามวินาที ใส่ `use.holdSeconds` ที่ไอเทมเพื่อยืดเฉพาะชิ้นนั้น
 --
@@ -246,7 +256,7 @@ ItemCatalog.Items = {
 	-- ไม่ใช่ตัวเลขตายตัวอย่างยาฮีล จึงคุ้มเท่ากันทุกเลเวลแม้เลือดสูงสุดจะโตตามเลเวล
 	-- ไอคอนยังใช้ขวดยาฮีลไปก่อน (placeholder) เปลี่ยนเมื่อผู้ใช้อัปโหลดรูปขวดใหญ่
 	GreatPotion = { medicine = true,
-		icon = "rbxassetid://70766990190847", -- placeholder: ขวดเดียวกับยาฮีล
+		icon = "", -- placeholder: ขวดเดียวกับยาฮีล
 		name = "ยาใหญ่", kind = "consumable", weight = 1.5, stackSize = 5, value = 0, sellable = false,
 		use = { stat = "healfull" },
 		useSound = "Drink",
@@ -452,31 +462,31 @@ ItemCatalog.Items = {
 	-- **เครื่องมือทอง** ทำงานเหมือนตัวธรรมดาทุกอย่าง (gathers/fishing/สกิล) แต่ `unbreakable` ไม่สึก
 	-- `prefab` บอก WeaponVisuals ว่าใช้โมเดลถือของตัวไหน (ยังไม่มีโมเดลทองแยก) `tint` ย้อมเป็นทอง
 	--------------------------------------------------------------------------
-	GoldAxe = { icon = "rbxassetid://94868056279785", name = "ขวานทอง", kind = "weapon", weight = 5,
+	GoldAxe = { icon = "", name = "ขวานทอง", kind = "weapon", weight = 5,
 		stackSize = 1, value = 0, sellable = false, damage = 14, range = 7, maxDurability = 100,
 		unbreakable = true, gathers = "axe", prefab = "Axe", tint = Color3.fromRGB(230, 190, 80),
 		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 } },
-	GoldPickaxe = { icon = "rbxassetid://71353632810064", name = "อีเต้อทอง", kind = "weapon", weight = 6,
+	GoldPickaxe = { icon = "", name = "อีเต้อทอง", kind = "weapon", weight = 6,
 		stackSize = 1, value = 0, sellable = false, damage = 13, range = 7, maxDurability = 110,
 		unbreakable = true, gathers = "pickaxe", prefab = "Pickaxe", tint = Color3.fromRGB(230, 190, 80),
 		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 } },
-	GoldShovel = { icon = "rbxassetid://111182494345005", name = "พลั่วทอง", kind = "weapon", weight = 4,
+	GoldShovel = { icon = "", name = "พลั่วทอง", kind = "weapon", weight = 4,
 		stackSize = 1, value = 0, sellable = false, damage = 11, range = 7, maxDurability = 90,
 		unbreakable = true, gathers = "shovel", prefab = "Shovel", tint = Color3.fromRGB(230, 190, 80),
 		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 } },
-	GoldFishingRod = { icon = "rbxassetid://108988125515479", name = "คันเบ็ดทอง", kind = "weapon", weight = 3,
+	GoldFishingRod = { icon = "", name = "คันเบ็ดทอง", kind = "weapon", weight = 3,
 		stackSize = 1, value = 0, sellable = false, damage = 3, range = 6, maxDurability = 80,
 		unbreakable = true, fishing = true, prefab = "FishingRod", tint = Color3.fromRGB(230, 190, 80),
 		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 } },
 
 	-- อาหารเสริมบัพ: กินแล้วไม่หิว / ไม่เหนื่อย ตามเวลา (Vitals.AddBuff) ซื้อจากร้านพรีเมียมหรือได้จากพาส
-	Feast_Hearty = { food = true, icon = "rbxassetid://71786438182204", name = "มื้อใหญ่นักเดินทาง", kind = "consumable",
+	Feast_Hearty = { food = true, icon = "", name = "มื้อใหญ่นักเดินทาง", kind = "consumable",
 		weight = 0.5, stackSize = 20, value = 0, sellable = false,
 		use = { stat = "buff", buff = "noHunger", seconds = 30 * 60 } },
-	Tonic_Vigor = { food = true, icon = "rbxassetid://71786438182204", name = "ยาชูกำลัง", kind = "consumable",
+	Tonic_Vigor = { food = true, icon = "", name = "ยาชูกำลัง", kind = "consumable",
 		weight = 0.5, stackSize = 20, value = 0, sellable = false,
 		use = { stat = "buff", buff = "noStamina", seconds = 30 * 60 } },
-	Feast_Royal = { food = true, icon = "rbxassetid://71786438182204", name = "งานเลี้ยงราชสำนัก", kind = "consumable",
+	Feast_Royal = { food = true, icon = "", name = "งานเลี้ยงราชสำนัก", kind = "consumable",
 		weight = 0.8, stackSize = 20, value = 0, sellable = false,
 		use = { stat = "buff", buff = "both", seconds = 60 * 60 } },
 
@@ -484,40 +494,40 @@ ItemCatalog.Items = {
 	-- สกินอาวุธ (จากกาชา) `skinFor` = อาวุธที่ติดตั้งได้ ติดตั้งแล้วเก็บ id ไว้ใน meta.skin ของอาวุธชิ้นนั้น
 	-- `model` = ชื่อโมเดลใน ReplicatedStorage.WOLD_Skins ถ้ามี (ผู้ใช้วางเอง) ไม่มีก็ย้อมสี/วัสดุโมเดลเดิม
 	--------------------------------------------------------------------------
-	Skin_Sword_Ember = { icon = "rbxassetid://138133285610075", name = "สกินดาบ: เพลิงแดง", kind = "skin",
+	Skin_Sword_Ember = { icon = "", name = "สกินดาบ: เพลิงแดง", kind = "skin",
 		skinFor = "Sword", rarity = "rare", weight = 0.1, stackSize = 99, value = 0, sellable = false,
 		tint = Color3.fromRGB(240, 90, 40), material = Enum.Material.Neon },
-	Skin_Sword_Frost = { icon = "rbxassetid://138133285610075", name = "สกินดาบ: น้ำแข็ง", kind = "skin",
+	Skin_Sword_Frost = { icon = "", name = "สกินดาบ: น้ำแข็ง", kind = "skin",
 		skinFor = "Sword", rarity = "rare", weight = 0.1, stackSize = 99, value = 0, sellable = false,
 		tint = Color3.fromRGB(140, 220, 255), material = Enum.Material.Ice },
-	Skin_Greatsword_Void = { icon = "rbxassetid://138133285610075", name = "สกินดาบใหญ่: ห้วงมืด", kind = "skin",
+	Skin_Greatsword_Void = { icon = "", name = "สกินดาบใหญ่: ห้วงมืด", kind = "skin",
 		skinFor = "Greatsword", rarity = "epic", weight = 0.1, stackSize = 99, value = 0, sellable = false,
 		tint = Color3.fromRGB(120, 40, 200), material = Enum.Material.Neon },
-	Skin_Greatsword_Gold = { icon = "rbxassetid://138133285610075", name = "สกินดาบใหญ่: ทองคำ", kind = "skin",
+	Skin_Greatsword_Gold = { icon = "", name = "สกินดาบใหญ่: ทองคำ", kind = "skin",
 		skinFor = "Greatsword", rarity = "legendary", weight = 0.1, stackSize = 99, value = 0, sellable = false,
 		tint = Color3.fromRGB(240, 200, 70), material = Enum.Material.Metal },
-	Skin_Bow_Vine = { icon = "rbxassetid://138133285610075", name = "สกินธนู: เถาวัลย์", kind = "skin",
+	Skin_Bow_Vine = { icon = "", name = "สกินธนู: เถาวัลย์", kind = "skin",
 		skinFor = "Bow", rarity = "rare", weight = 0.1, stackSize = 99, value = 0, sellable = false,
 		tint = Color3.fromRGB(80, 170, 70), material = Enum.Material.Grass },
-	Skin_Pistol_Brass = { icon = "rbxassetid://138133285610075", name = "สกินปืน: ทองเหลือง", kind = "skin",
+	Skin_Pistol_Brass = { icon = "", name = "สกินปืน: ทองเหลือง", kind = "skin",
 		skinFor = "Pistol", rarity = "epic", weight = 0.1, stackSize = 99, value = 0, sellable = false,
 		tint = Color3.fromRGB(200, 150, 60), material = Enum.Material.Metal },
-	Skin_Staff_Storm = { icon = "rbxassetid://138133285610075", name = "สกินคทา: พายุ", kind = "skin",
+	Skin_Staff_Storm = { icon = "", name = "สกินคทา: พายุ", kind = "skin",
 		skinFor = "Staff", rarity = "epic", weight = 0.1, stackSize = 99, value = 0, sellable = false,
 		tint = Color3.fromRGB(90, 140, 255), material = Enum.Material.Neon },
-	Skin_Spellbook_Blood = { icon = "rbxassetid://138133285610075", name = "สกินสมุดเวท: โลหิต", kind = "skin",
+	Skin_Spellbook_Blood = { icon = "", name = "สกินสมุดเวท: โลหิต", kind = "skin",
 		skinFor = "Spellbook", rarity = "rare", weight = 0.1, stackSize = 99, value = 0, sellable = false,
 		tint = Color3.fromRGB(150, 20, 30), material = Enum.Material.Fabric },
 
 	-- ชุดเกราะแฟชั่น (จากกาชา) ติดตั้งกับเกราะชิ้นไหนก็ได้ เปลี่ยนโมเดลที่สวมโดยไม่แตะค่าเกราะ
 	-- `kit` = โมเดลใน workspace.Model_Item (ผู้ใช้วางเพิ่มได้) ไม่มีก็ใช้ชุดเดิมย้อมสี
-	Fashion_Knight_Crimson = { icon = "rbxassetid://138133285610075", name = "ชุดอัศวินแดงชาด", kind = "fashion",
+	Fashion_Knight_Crimson = { icon = "", name = "ชุดอัศวินแดงชาด", kind = "fashion",
 		rarity = "epic", weight = 0.1, stackSize = 99, value = 0, sellable = false,
 		kit = "Armor_PlateKit", tint = Color3.fromRGB(170, 30, 40) },
-	Fashion_Ranger_Shadow = { icon = "rbxassetid://138133285610075", name = "ชุดเรนเจอร์เงามืด", kind = "fashion",
+	Fashion_Ranger_Shadow = { icon = "", name = "ชุดเรนเจอร์เงามืด", kind = "fashion",
 		rarity = "rare", weight = 0.1, stackSize = 99, value = 0, sellable = false,
 		kit = "Armor_LeatherKit", tint = Color3.fromRGB(40, 40, 50) },
-	Fashion_Royal_Gold = { icon = "rbxassetid://138133285610075", name = "ชุดเกราะราชองครักษ์", kind = "fashion",
+	Fashion_Royal_Gold = { icon = "", name = "ชุดเกราะราชองครักษ์", kind = "fashion",
 		rarity = "legendary", weight = 0.1, stackSize = 99, value = 0, sellable = false,
 		kit = "Armor_PlateKit", tint = Color3.fromRGB(230, 190, 70) },
 
@@ -525,7 +535,14 @@ ItemCatalog.Items = {
 	-- ของประจำตำแหน่ง (`bound`): โผล่ในกระเป๋าเองเมื่อมีสิทธิ์ หายเองเมื่อสิทธิ์หมด ทิ้ง/ให้/เทรด/ฝากไม่ได้
 	-- (BoundItems.server เป็นคนเติม-ลบ) ตะหลิวคือกุญแจของครัว: ถือไว้ถึงใช้เตา/เครื่องปั่นได้
 	--------------------------------------------------------------------------
-	Spatula = { icon = "rbxassetid://122256905985474", name = "ตะหลิวเชฟ", kind = "token",
+	-- **ตะหลิวถือได้จริง** (ผู้ใช้แจ้ง 2026-09-18: กดแล้วถือไม่ได้) — `kind = "weapon"` ในความหมายทางกลไก
+	-- อย่างเดียว เหมือนคันเบ็ด: มันต้องลงช่องมือถึงจะโผล่มาอยู่ในมือได้ ดาเมจ 3 เท่าคันเบ็ด (ตีคนด้วยตะหลิว
+	-- ไม่ควรเป็นกลยุทธ์) และ `unbreakable` เพราะของประจำตำแหน่งที่พังได้แปลว่าเชฟทำครัวไม่ได้ถาวร
+	--
+	-- ยังเป็น `bound` เหมือนเดิม: BoundItems กับเตานับ "ช่องมือ" เป็นการมีของด้วยแล้ว ไม่งั้นพอสวมปุ๊บ
+	-- ระบบจะคิดว่าตะหลิวหายแล้วแจกใหม่ทันที
+	Spatula = { icon = "rbxassetid://122256905985474", name = "ตะหลิวเชฟ", kind = "weapon",
+		damage = 3, range = 6, unbreakable = true,
 		weight = 0.5, stackSize = 1, value = 0, sellable = false, bound = true, boundClass = "Chef" },
 	-- แหวนแคลน: meta.clan = ชื่อแคลน (ไม่ซ้ำกันอยู่แล้ว) ชื่อจึงขึ้นเป็น "แหวนแคลน · ชื่อ"
 	--
@@ -562,16 +579,16 @@ ItemCatalog.Items = {
 
 	-- ออร่า (จากกาชา) ใช้ = เปิด/ปิด เอฟเฟกต์ลอยรอบตัว ไม่ถูกใช้หมด `model` = โมเดลใน ReplicatedStorage.WOLD_Effects
 	-- ถ้ามี ไม่มีก็สร้างวงอนุภาคสี `colour` ให้
-	Aura_Ember = { icon = "rbxassetid://138133285610075", name = "ออร่าเพลิง", kind = "aura",
+	Aura_Ember = { icon = "", name = "ออร่าเพลิง", kind = "aura",
 		rarity = "rare", weight = 0.1, stackSize = 1, value = 0, sellable = false,
 		colour = Color3.fromRGB(255, 120, 40) },
-	Aura_Frost = { icon = "rbxassetid://138133285610075", name = "ออร่าน้ำแข็ง", kind = "aura",
+	Aura_Frost = { icon = "", name = "ออร่าน้ำแข็ง", kind = "aura",
 		rarity = "rare", weight = 0.1, stackSize = 1, value = 0, sellable = false,
 		colour = Color3.fromRGB(140, 220, 255) },
-	Aura_Void = { icon = "rbxassetid://138133285610075", name = "ออร่าห้วงมืด", kind = "aura",
+	Aura_Void = { icon = "", name = "ออร่าห้วงมืด", kind = "aura",
 		rarity = "epic", weight = 0.1, stackSize = 1, value = 0, sellable = false,
 		colour = Color3.fromRGB(140, 60, 220) },
-	Aura_Divine = { icon = "rbxassetid://138133285610075", name = "ออร่าเทวะ", kind = "aura",
+	Aura_Divine = { icon = "", name = "ออร่าเทวะ", kind = "aura",
 		rarity = "legendary", weight = 0.1, stackSize = 1, value = 0, sellable = false,
 		colour = Color3.fromRGB(255, 240, 160) },
 }

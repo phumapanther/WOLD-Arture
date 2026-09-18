@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
+local ItemIcon = require(script.Parent.ItemIcon)
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -262,7 +263,7 @@ local function recipeRow(parent, order, entry, onClick)
 	image.Size = UDim2.fromOffset(28, 28)
 	image.Position = UDim2.fromOffset(6, 5)
 	image.BackgroundTransparency = 1
-	image.Image = entry.icon or ""
+	ItemIcon.Apply(image, entry.icon)
 	image.Parent = frame
 
 	local label = Instance.new("TextLabel")
@@ -293,7 +294,7 @@ local function recipeRow(parent, order, entry, onClick)
 		pip.Position = UDim2.fromOffset(40, y + 1)
 		pip.Size = UDim2.fromOffset(13, 13)
 		pip.BackgroundTransparency = 1
-		pip.Image = material.icon or ""
+		ItemIcon.Apply(pip, material.icon)
 		-- Faded with the text when the player is short, so the whole line reads as one state rather than a
 		-- bright picture next to a red number.
 		pip.ImageTransparency = material.have >= material.need and 0 or 0.45

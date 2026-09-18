@@ -33,29 +33,44 @@ end
 local function reconcile(player)
 	local state = Inventory.Get(player)
 	if not state then return end
+	-- **ช่องมือนับเป็นการมีของด้วย** ตะหลิวถือได้แล้ว และการสวมคือการย้ายของออกจากกระเป๋า ถ้าดูแต่กระเป๋า
+	-- ลูปนี้จะเห็นว่าเชฟไม่มีตะหลิวแล้วแจกใหม่ทุก 3 วิ จนกระเป๋าเต็มไปด้วยตะหลิว
+	local _, wielded = Inventory.EquippedWeapon(player)
 	for id, item in pairs(ItemCatalog.Items) do
 		if item.bound then
 			local should, meta = entitled(player, id, item)
+			local inHand = wielded ~= nil and wielded.id == id
 			-- ที่มีอยู่ตอนนี้ (ชิ้นแรกที่เจอ)
 			local haveIndex, haveSlot
 			for index, slot in pairs(state.slots) do
 				if slot.id == id then haveIndex, haveSlot = index, slot break end
 			end
-			if should and not haveSlot then
+			if not should then
+				-- สิทธิ์หมด: หลุดจากมือก่อน (ของชิ้นนั้นไม่ใช่ของเขาแล้ว ไม่ได้ตกลงกระเป๋า) แล้วลบในกระเป๋า
+				-- ทุกชิ้น (เผื่อมีซ้ำจากทางไหนสักทาง)
+				local lost = false
+				if inHand then
+					Inventory.BreakEquipped(player, "weapon")
+					lost = true
+				end
+				if haveSlot then
+					for index, slot in pairs(state.slots) do
+						if slot.id == id then Inventory.RemoveFromSlot(player, index, slot.count or 1) end
+					end
+					lost = true
+				end
+				if lost then
+					Remotes.SocialNotify:FireClient(player, "warn", ("%sหายไปแล้ว"):format(item.name))
+				end
+			elseif not haveSlot and not inHand then
 				if Inventory.HasRoomFor(player, id, 1, meta) then
 					Inventory.AddItem(player, id, 1, nil, meta)
 					Remotes.SocialNotify:FireClient(player, "info", ("ได้รับ%s"):format(ItemCatalog.DisplayName(id, meta)))
 				end
-			elseif should and haveSlot and meta and (not haveSlot.meta or haveSlot.meta.clan ~= meta.clan) then
+			elseif haveSlot and meta and (not haveSlot.meta or haveSlot.meta.clan ~= meta.clan) then
 				-- ย้ายแคลน: แหวนวงเดิมชื่อผิด เปลี่ยนป้ายให้ตรง
 				haveSlot.meta = meta
 				Inventory.Send(player)
-			elseif not should and haveSlot then
-				-- สิทธิ์หมด ลบทุกชิ้น (เผื่อมีซ้ำจากทางไหนสักทาง)
-				for index, slot in pairs(state.slots) do
-					if slot.id == id then Inventory.RemoveFromSlot(player, index, slot.count or 1) end
-				end
-				Remotes.SocialNotify:FireClient(player, "warn", ("%sหายไปแล้ว"):format(item.name))
 			end
 		end
 	end

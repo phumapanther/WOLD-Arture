@@ -238,6 +238,25 @@ function Builders.FishingRod()
 end
 
 --------------------------------------------------------------------------------
+-- ตะหลิวเชฟ
+--------------------------------------------------------------------------------
+
+-- แบบเดียวกับดาบและเครื่องมือ: ปลายที่ใช้งาน (ใบพาย) อยู่ที่จุดกำเนิด ด้ามยื่นไป +Y 2.0 จึงใช้ SWORD_GRIP
+-- ได้ทั้งดุ้นโดยไม่ต้องวัดใหม่ ใบแบนและกว้างพอให้อ่านออกว่าเป็นตะหลิว ไม่ใช่พลั่วเล็ก
+function Builders.Spatula()
+	local blade = part("Blade", Vector3.new(0.9, 1.0, 0.08), CFrame.new(0, 0, 0), STEEL, Enum.Material.Metal)
+	local others = {
+		-- มุมใบมนขึ้นนิดหน่อยด้วยชิ้นแคบกว่าที่ปลาย
+		part("Lip", Vector3.new(0.7, 0.14, 0.08), CFrame.new(0, -0.55, 0), STEEL, Enum.Material.Metal),
+		-- คอที่ต่อใบเข้ากับด้าม หักมุมขึ้นเล็กน้อยเหมือนตะหลิวจริง
+		part("Neck", Vector3.new(0.18, 0.9, 0.1), CFrame.new(0, 0.95, 0.06), DARK_STEEL, Enum.Material.Metal),
+		part("Handle", Vector3.new(0.22, 0.9, 0.22), CFrame.new(0, 2.0, 0.1), DARK_WOOD),
+		part("Butt", Vector3.new(0.26, 0.18, 0.26), CFrame.new(0, 2.5, 0.1), GOLD, Enum.Material.Metal),
+	}
+	return assemble("Spatula", blade, others)
+end
+
+--------------------------------------------------------------------------------
 
 -- Rebuilt on every server start rather than trusted to survive in the place file: that is exactly how the
 -- originals were lost. Cheap enough (four models of five parts) that there is no reason to cache them.

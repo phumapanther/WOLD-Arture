@@ -4,6 +4,7 @@
 -- Pure UI builder, like HudGui: it draws what it is handed and reports clicks through callbacks. The
 -- controller owns every decision and the server owns the data.
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
+local ItemIcon = require(script.Parent.ItemIcon)
 local UiSound = require(script.Parent.UiSound)
 local InventoryConfig = require(script.Parent.Parent.InventoryConfig)
 local Responsive = require(script.Parent.Responsive)
@@ -337,8 +338,9 @@ function InventoryGui:Render(data)
 		if slot then
 			local item = ItemCatalog.Get(slot.id)
 			local art = item and item.icon or ""
-			entry.icon.Image = art
-			entry.icon.Visible = art ~= ""
+			-- ไม่มีรูปของตัวเอง = ⌛ เกาะขอบบนของช่อง แล้วชื่อยังขึ้นใต้มันเหมือนเดิม (ItemIcon)
+			ItemIcon.Apply(entry.icon, art)
+			entry.icon.Visible = true
 			-- The name only shows when there is no artwork, so an icon is never covered by its own label.
 			entry.name.Text = (art == "") and ItemCatalog.DisplayName(slot.id, slot.meta) or ""
 			-- A fish carries its own kilograms in `meta`, and it is never stacked, so the corner that would
@@ -381,8 +383,8 @@ function InventoryGui:Render(data)
 			-- Show the artwork when there is any; an item with no icon keeps just its name, the way the bag
 			-- slots do.
 			local art = item and item.icon or ""
-			entry.icon.Image = art
-			entry.icon.Visible = art ~= ""
+			ItemIcon.Apply(entry.icon, art)
+			entry.icon.Visible = true
 		else
 			entry.name.Text = "ว่าง"
 			entry.name.TextColor3 = TEXT_MUTED
@@ -407,7 +409,7 @@ function InventoryGui:BeginDragGhost(icon, name)
 	ghost.AnchorPoint = Vector2.new(0.5, 0.5)
 	ghost.BackgroundTransparency = 0.3
 	ghost.BackgroundColor3 = Color3.fromRGB(30, 30, 36)
-	ghost.Image = icon or ""
+	ItemIcon.Apply(ghost, icon)
 	ghost.ScaleType = Enum.ScaleType.Fit
 	ghost.ZIndex = 50
 	ghost.Parent = self.gui
