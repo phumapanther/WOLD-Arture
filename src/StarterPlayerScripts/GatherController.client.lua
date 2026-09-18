@@ -135,36 +135,52 @@ end)
 -- The swing
 --------------------------------------------------------------------------------
 
--- Reuses Sword_Slash rather than a gathering animation of its own, as the user asked: it is a downward
--- two-handed swing, which is what chopping and mining look like.
+-- ท่าแยกตามชนิดวัตถุดิบ (GatherConfig.Animations: สัตว์/หิน/ไม้/พุ่ม) ชนิดที่ยังไม่มี id ใช้ Sword_Slash
+-- แทน — ฟันลงสองมือ ซึ่งพอดูเป็นตัดไม้/ขุดได้ ระบบจึงทำงานเหมือนเดิมจนกว่าจะ publish ท่าจริง
 local SWING_ID = "rbxassetid://138133285610075"
-local animation = Instance.new("Animation")
-animation.AnimationId = SWING_ID
 
-local track
+local tracks = {} -- [animationId] = AnimationTrack ของตัวละครปัจจุบัน
+local track -- ท่าที่กำลังเล่นอยู่
 
-local function trackFor()
+local function trackFor(id)
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
 	if not animator then return nil end
-	if track and track.Parent == animator then return track end
+	local cached = tracks[id]
+	if cached and cached.Parent == animator then return cached end
+	local animation = Instance.new("Animation")
+	animation.AnimationId = id
 	local ok, loaded = pcall(function() return animator:LoadAnimation(animation) end)
 	if not ok then return nil end
 	loaded.Looped = true
-	loaded:AdjustSpeed(0.7)
-	track = loaded
-	return track
+	-- ท่าฟันดาบสำรองถูกชะลอให้ดูเหมือนทำงาน ท่าที่ทำมาเฉพาะเล่นตามจังหวะของมันเอง
+	if id == SWING_ID then loaded:AdjustSpeed(0.7) end
+	tracks[id] = loaded
+	return loaded
 end
 
 local function isGatherPrompt(prompt)
 	return prompt.Name == "GatherPrompt"
 end
 
+-- จุดที่ปุ่มนี้แขวนอยู่ (ปุ่มอยู่ใน GatherAnchor ซึ่งอยู่ในโมเดลจุด หรืออยู่บนชิ้นส่วนตรงๆ ถ้าจุดเป็น Part)
+local function nodeOfPrompt(prompt)
+	local holder = prompt.Parent
+	if not holder then return nil end
+	if holder.Name == "GatherAnchor" then return holder.Parent end
+	if CollectionService:HasTag(holder, TAG) then return holder end
+	return holder.Parent
+end
+
 ProximityPromptService.PromptButtonHoldBegan:Connect(function(prompt, who)
 	if who ~= player or not isGatherPrompt(prompt) then return end
-	local t = trackFor()
-	if t then t:Play(0.15) end
+	local node = nodeOfPrompt(prompt)
+	local kind = node and node:GetAttribute("NodeKind")
+	local id = (kind and GatherConfig.AnimationFor(kind)) or SWING_ID
+	if track and track.IsPlaying then track:Stop(0.1) end
+	track = trackFor(id)
+	if track then track:Play(0.15) end
 end)
 
 local function stopSwing(prompt, who)
@@ -466,6 +482,7 @@ end)
 
 player.CharacterAdded:Connect(function()
 	track = nil
+	tracks = {}
 	stopAuto()
 end)
 

@@ -14,6 +14,27 @@ GatherConfig.RespawnSeconds = 60
 -- model's branches read as "the tree" and players aim at those.
 GatherConfig.Range = 10
 
+-- ท่าเก็บของแยกตามชนิดวัตถุดิบ ตามคู่มือภาพของผู้ใช้ (animgen/gather.lua สร้าง สี่ท่านี้ไว้ที่
+-- ServerStorage.WOLD_Animations) id ว่าง = ใช้ท่าฟันดาบเดิม ระบบทำงานต่อได้ปกติ
+-- ใส่ id หลัง publish (Save to Roblox จากบัญชีเจ้าของเพลส) เป็น "rbxassetid://<เลข>"
+GatherConfig.Animations = {
+	animal = "", -- Gather_Animal นั่งยองเชือด
+	stone = "",  -- Gather_Stone  เหวี่ยงอีเต้อข้ามหัว
+	wood = "",   -- Gather_Wood   เหวี่ยงขวานด้านข้าง
+	bush = "",   -- Gather_Bush   ก้มเก็บ
+}
+
+-- จุดชนิดนี้ใช้ท่าไหน: ระบุ `anim` ในคอนฟิกจุดได้ ไม่ระบุก็อนุมานจากเครื่องมือ (ขวาน→wood อีเต้อ→stone
+-- พลั่ว→bush) จุดที่ไม่ใช้เครื่องมือถือเป็นการเก็บด้วยมือ (bush) ยกเว้นสัตว์ซึ่งระบุ anim = "animal" ไว้
+local TOOL_ANIM = { axe = "wood", pickaxe = "stone", shovel = "bush" }
+function GatherConfig.AnimationFor(kind)
+	local node = GatherConfig.Nodes[kind]
+	if not node then return nil end
+	local category = node.anim or TOOL_ANIM[node.tool] or "bush"
+	local id = GatherConfig.Animations[category]
+	return (id ~= nil and id ~= "") and id or nil, category
+end
+
 -- Gathering sounds are POSITIONAL: they belong to the tree being chopped, not to the player chopping it,
 -- so everyone nearby hears where the work is happening.
 --
@@ -140,41 +161,49 @@ GatherConfig.Nodes = {
 	-- ผู้ใช้กำหนด — ต่างกันที่หาเจอที่ไหนและเดินไปถึงยากแค่ไหน ไม่ใช่ที่ของ
 	--------------------------------------------------------------------------
 	Chicken = {
+		anim = "animal",
 		item = "Egg", min = 1, max = 2,
 		seconds = 1.5, xp = 3,
 		prompt = "เก็บไข่", object = "ไก่",
 	},
 	Duck = {
+		anim = "animal",
 		item = "Egg", min = 1, max = 2,
 		seconds = 1.5, xp = 3,
 		prompt = "เก็บไข่", object = "เป็ด",
 	},
 	Cow = {
+		anim = "animal",
 		item = "Milk", min = 1, max = 2,
 		seconds = 2.5, xp = 5,
 		prompt = "รีดนม", object = "วัว",
 	},
 	Goat = {
+		anim = "animal",
 		item = "Milk", min = 1, max = 1,
 		seconds = 2.0, xp = 4,
 		prompt = "รีดนม", object = "แพะ",
 	},
 	Sheep = {
+		anim = "animal",
 		item = "Wool", min = 1, max = 2,
 		seconds = 3.0, xp = 6,
 		prompt = "ตัดขนแกะ", object = "แกะ",
 	},
 	Deer = {
+		anim = "animal",
 		item = "Leather", min = 1, max = 2,
 		seconds = 3.0, xp = 8,
 		prompt = "เก็บหนัง", object = "กวาง",
 	},
 	Horse = {
+		anim = "animal",
 		item = "Leather", min = 1, max = 1,
 		seconds = 3.0, xp = 8,
 		prompt = "เก็บหนัง", object = "ม้า",
 	},
 	Pig = {
+		anim = "animal",
 		item = "Meat", min = 1, max = 2,
 		seconds = 2.5, xp = 5,
 		prompt = "เก็บเนื้อ", object = "หมู",
