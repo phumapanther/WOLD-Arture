@@ -281,29 +281,52 @@ local function notice(self, parent, order, quest, noticeImage, accepted, index, 
 			self:fire("turnin", index)
 		end)
 	else
-		-- รับแล้วแต่ยังไม่ครบ: บอกว่ายังขาดเท่าไหร่ และให้ทิ้งงานได้
+		-- รับแล้วแต่ยังไม่ครบ: บอกว่ายังขาดเท่าไหร่
 		button.Text = ("ยังขาด %d"):format(quest.need - (quest.got or 0))
 		button.BackgroundColor3 = GREY
 		button.AutoButtonColor = false
-		-- กดค้างเพื่อยกเลิก — ไม่ใช่กดครั้งเดียว เพราะการเผลอกดแล้วเสียงานทิ้งน่าหงุดหงิดกว่ามาก
-		local held = nil
-		button.MouseButton1Down:Connect(function()
-			held = task.delay(1, function()
-				UiSound.Play("Click")
+	end
+
+	-- งานที่รับไปแล้วยกเลิกได้ ปุ่มแยกของมันเอง กดสองครั้งยืนยัน
+	--
+	-- เวอร์ชันแรกใช้ "กดค้าง 1 วิ" บนปุ่มหลัก ซึ่งไม่มีอะไรบอกว่ากดได้ และบนมือถือ MouseLeave ไม่ยิง
+	-- ผู้ใช้จึงหาทางยกเลิกไม่เจอ — ปุ่มที่เห็นแล้วต้องกดซ้ำเพื่อยืนยัน กันเผลอได้เท่ากันและเห็นชัดกว่า
+	if accepted then
+		button.Size = UDim2.new(1, -20, 0, 26)
+		button.Position = UDim2.new(0.5, 0, 1, -6)
+
+		local cancel = Instance.new("TextButton")
+		cancel.AnchorPoint = Vector2.new(0.5, 1)
+		cancel.Position = UDim2.new(0.5, 0, 1, -36)
+		cancel.Size = UDim2.new(1, -20, 0, 18)
+		cancel.BackgroundColor3 = Color3.fromRGB(96, 62, 62)
+		cancel.BorderSizePixel = 0
+		cancel.Font = Enum.Font.GothamBold
+		cancel.TextSize = 10
+		cancel.TextColor3 = TEXT_LIGHT
+		cancel.Text = "ยกเลิกงาน"
+		cancel.ZIndex = 2
+		cancel.Parent = card
+		corner(cancel, UDim.new(0, 5))
+
+		local armed = false
+		cancel.Activated:Connect(function()
+			UiSound.Play("Click")
+			if armed then
 				self:fire("abandon", index)
+				return
+			end
+			armed = true
+			cancel.Text = "กดอีกครั้งเพื่อยืนยัน"
+			cancel.BackgroundColor3 = Color3.fromRGB(150, 60, 50)
+			task.delay(3, function()
+				if cancel.Parent then
+					armed = false
+					cancel.Text = "ยกเลิกงาน"
+					cancel.BackgroundColor3 = Color3.fromRGB(96, 62, 62)
+				end
 			end)
 		end)
-		local function release()
-			if held then task.cancel(held) held = nil end
-		end
-		button.MouseButton1Up:Connect(release)
-		button.MouseLeave:Connect(release)
-
-		local hint = label(card, "กดค้างเพื่อยกเลิก", 10, TEXT_MUTED)
-		hint.AnchorPoint = Vector2.new(0.5, 1)
-		hint.Position = UDim2.new(0.5, 0, 1, -42)
-		hint.Size = UDim2.new(1, -12, 0, 12)
-		hint.ZIndex = 2
 	end
 
 	return card
