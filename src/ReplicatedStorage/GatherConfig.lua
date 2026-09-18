@@ -18,10 +18,11 @@ GatherConfig.Range = 10
 -- ServerStorage.WOLD_Animations) id ว่าง = ใช้ท่าฟันดาบเดิม ระบบทำงานต่อได้ปกติ
 -- ใส่ id หลัง publish (Save to Roblox จากบัญชีเจ้าของเพลส) เป็น "rbxassetid://<เลข>"
 GatherConfig.Animations = {
-	animal = "", -- Gather_Animal นั่งยองเชือด
-	stone = "",  -- Gather_Stone  เหวี่ยงอีเต้อข้ามหัว
-	wood = "",   -- Gather_Wood   เหวี่ยงขวานด้านข้าง
-	bush = "",   -- Gather_Bush   ก้มเก็บ
+	animal = "rbxassetid://133758220989412", -- Gather_Animal นั่งยองเชือด
+	stone = "rbxassetid://92286440480879",   -- Gather_Stone  เหวี่ยงอีเต้อข้ามหัว
+	-- ตัดไม้: ผู้ใช้ดู Gather_Wood แล้วบอกว่าแปลก ขอใช้ท่าฟันดาบเดิม (ว่าง = fallback Sword_Slash)
+	wood = "",
+	bush = "rbxassetid://109356036263400",   -- Gather_Bush   ก้มเก็บ
 }
 
 -- จุดชนิดนี้ใช้ท่าไหน: ระบุ `anim` ในคอนฟิกจุดได้ ไม่ระบุก็อนุมานจากเครื่องมือ (ขวาน→wood อีเต้อ→stone
