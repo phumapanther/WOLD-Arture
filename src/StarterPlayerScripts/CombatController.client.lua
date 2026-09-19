@@ -133,7 +133,11 @@ local function watchForRunning(character)
 		for _, track in pairs(tracks.skills or {}) do
 			if track.IsPlaying then return end
 		end
-		if humanoid.AssemblyLinearVelocity.Magnitude > RUNNING_SPEED then
+		-- **ความเร็วอ่านจาก HumanoidRootPart ไม่ใช่จาก Humanoid** — `AssemblyLinearVelocity` เป็นสมบัติ
+		-- ของ BasePart ส่วน Humanoid ไม่มี บรรทัดนี้จึง error ทุกเฟรมที่ท่ายืนการ์ดทำงาน (Output ท่วมจน
+		-- error อื่นจมหมด) และท่าการ์ดก็ไม่เคยถูกปลดตอนวิ่งเลยเพราะโค้ดตายก่อนถึง dropStanceNow
+		local rootPart = humanoid.RootPart
+		if rootPart and rootPart.AssemblyLinearVelocity.Magnitude > RUNNING_SPEED then
 			dropStanceNow()
 		end
 	end)

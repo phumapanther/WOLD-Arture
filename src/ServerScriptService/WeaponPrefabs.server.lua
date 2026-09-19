@@ -19,7 +19,9 @@ local WOOD = Color3.fromRGB(122, 84, 52)
 local DARK_WOOD = Color3.fromRGB(84, 58, 38)
 local LEATHER = Color3.fromRGB(72, 52, 40)
 local GOLD = Color3.fromRGB(198, 158, 78)
-local GEM = Color3.fromRGB(96, 226, 158)
+local GOLD_DARK = Color3.fromRGB(146, 112, 46)
+-- เข้มกว่าเดิม (96,226,158) หนึ่งขั้น: Neon ดันความสว่างขึ้นเอง สีจางจะเบิร์นจนกลายเป็นฟ้าขาว
+local GEM = Color3.fromRGB(52, 198, 132)
 local PAGES = Color3.fromRGB(232, 224, 198)
 
 local function part(name, size, cf, color, material)
@@ -57,6 +59,98 @@ local function assemble(name, primary, others)
 end
 
 --------------------------------------------------------------------------------
+-- รูปทรงอื่นนอกจากกล่อง
+--------------------------------------------------------------------------------
+
+-- อาวุธห้าชิ้นข้างล่าง (ดาบ ธนู ปืน สมุดเวท คทา) ออกแบบในโรงงานโมเดล WOLD-Models ที่
+-- `models/weapon_base.lua` แล้วคัดลอกตัวเลขมาตรงๆ ตัวช่วยชุดนี้จึงรับพารามิเตอร์แบบเดียวกับ modelkit
+-- เป๊ะ (`K.cyl` `K.ball` `K.wedge` `K.yaw/pitch/roll/deg`) แก้ที่โรงงานแล้วย้ายกลับมาได้โดยไม่ต้องแปลงเลข
+--
+-- ทุกชิ้นเก็บลง `bag` ให้ `assembleBag` เชื่อมเข้ากับ PrimaryPart ทีเดียว — ของเดิมไล่ใส่ตารางเองทุกชิ้น
+-- ซึ่งพอชิ้นส่วนขึ้นจาก 5 เป็น 25 ชิ้นก็อ่านไม่ออกแล้ว
+local function deg(d) return math.rad(d) end
+local function yaw(a) return CFrame.Angles(0, a, 0) end
+local function pitch(a) return CFrame.Angles(a, 0, 0) end
+local function roll(a) return CFrame.Angles(0, 0, a) end
+
+local function box(bag, name, cf, size, color, material)
+	local p = part(name, size, cf, color, material)
+	bag[#bag + 1] = p
+	return p
+end
+
+-- ทรงกระบอกของ Roblox วางแกนตาม X จึงต้อง roll 90 องศาให้ตั้งตามแกน Y ของเฟรมที่ส่งเข้ามา
+local function cyl(bag, name, cf, radius, height, color, material)
+	local p = part(name, Vector3.new(height, radius * 2, radius * 2), cf * roll(math.pi / 2), color, material)
+	p.Shape = Enum.PartType.Cylinder
+	bag[#bag + 1] = p
+	return p
+end
+
+local function ball(bag, name, cf, diameter, color, material)
+	local p = part(name, Vector3.new(diameter, diameter, diameter), cf, color, material)
+	p.Shape = Enum.PartType.Ball
+	bag[#bag + 1] = p
+	return p
+end
+
+local function wedge(bag, name, cf, size, color, material)
+	local p = Instance.new("WedgePart")
+	p.Name = name
+	p.Size = size
+	p.CFrame = cf
+	p.Color = color
+	p.Material = material or Enum.Material.SmoothPlastic
+	p.Anchored = false
+	p.CanCollide = false
+	p.CanQuery = false
+	p.CanTouch = false
+	p.Massless = true
+	bag[#bag + 1] = p
+	return p
+end
+
+-- จานกลมที่หันหน้าตามแกน X ของเฟรม — ต่างจาก `cyl` ตรงที่ไม่ roll ให้ ใช้ทำเฟือง หน้าปัด ฝาถัง
+local function disc(bag, name, cf, radius, thick, color, material)
+	local p = part(name, Vector3.new(thick, radius * 2, radius * 2), cf, color, material)
+	p.Shape = Enum.PartType.Cylinder
+	bag[#bag + 1] = p
+	return p
+end
+
+-- เฟือง: จานหนึ่งใบ + ฟันรอบขอบ หมุนรอบแกน X ของเฟรมเดียวกัน
+local function gear(bag, name, cf, radius, teeth, thick, color)
+	disc(bag, name, cf, radius * 0.80, thick, color, Enum.Material.Metal)
+	for i = 1, teeth do
+		local a = (i / teeth) * math.pi * 2
+		box(bag, name .. "Tooth", cf * pitch(a) * CFrame.new(0, radius * 0.90, 0),
+			Vector3.new(thick, radius * 0.38, radius * 0.30), color, Enum.Material.Metal)
+	end
+end
+
+-- ปลายแหลมจากลิ่มสองชิ้นประกบ · `width` = ความกว้างเต็มของใบ ลิ่มแต่ละชิ้นกินครึ่งหนึ่ง
+-- **WedgePart หนาที่ local +Z แล้วลาดลงเป็นศูนย์ที่ local -Z เนื้ออยู่ฝั่ง local -Y** (วัดจากภาพในโรงงาน
+-- ไม่ใช่จากเอกสาร) เดากลับด้านเมื่อไหร่ได้ทรงโบว์ไทแทนที่จะเป็นปลายแหลม
+local function bladeTip(bag, name, topY, len, width, thick, color, material)
+	local yc, half = topY - len / 2, width / 2
+	local size = Vector3.new(thick, half, len)
+	-- **ทิศของลิ่มคิดผิดมารอบหนึ่ง** WedgePart เต็มความสูงที่ local +Z และเรียวเป็นศูนย์ที่ local -Z
+	-- ใส่ pitch(+90) เข้าไป local +Z ไปชี้ลง = ใบกว้างที่ปลายและแหลมตรงที่ต่อกับใบ คือปลายดาบกลับหัว
+	-- ที่ถูกคือ local +Z ต้องชี้ขึ้น (pitch -90) แล้วครึ่งฝั่ง +Z ต้อง roll 180 อีกทีให้เนื้อหันเข้าหาแกนกลาง
+	wedge(bag, name .. "R", CFrame.new(0, yc, width / 4) * pitch(-math.pi / 2) * roll(math.pi), size, color, material)
+	wedge(bag, name .. "L", CFrame.new(0, yc, -width / 4) * pitch(-math.pi / 2), size, color, material)
+end
+
+-- เชื่อมทุกชิ้นใน bag เข้ากับ primary (ข้าม primary เอง)
+local function assembleBag(name, primary, bag)
+	local others = {}
+	for _, p in ipairs(bag) do
+		if p ~= primary then others[#others + 1] = p end
+	end
+	return assemble(name, primary, others)
+end
+
+--------------------------------------------------------------------------------
 -- The four weapons
 --------------------------------------------------------------------------------
 
@@ -65,14 +159,37 @@ local Builders = {}
 -- Sword: blade at the origin, hilt at +Y. WeaponVisuals flips it 180 so the point stands up, and offsets by
 -- 2.0 studs to put the HANDLE in the palm -- both measured against exactly this layout, so it must not move.
 function Builders.Sword()
-	local blade = part("Blade", Vector3.new(0.22, 3.0, 0.5), CFrame.new(0, 0, 0), STEEL, Enum.Material.Metal)
-	local others = {
-		part("Tip", Vector3.new(0.22, 0.5, 0.5), CFrame.new(0, -1.65, 0), STEEL, Enum.Material.Metal),
-		part("Guard", Vector3.new(0.24, 0.18, 1.3), CFrame.new(0, 1.55, 0), GOLD, Enum.Material.Metal),
-		part("Handle", Vector3.new(0.26, 0.9, 0.26), CFrame.new(0, 2.0, 0), LEATHER),
-		part("Pommel", Vector3.new(0.36, 0.32, 0.36), CFrame.new(0, 2.5, 0), GOLD, Enum.Material.Metal),
-	}
-	return assemble("Sword", blade, others)
+	local b = {}
+	-- สันกลางหนา แล้วเอาแท่งสี่เหลี่ยมหมุน 45 องศาไปทาบเป็นคมสองข้าง — ได้หน้าตัดทรงเพชร
+	-- **นี่คือสิ่งเดียวที่ทำให้ใบมีดเลิกเป็นแผ่นกระดาน** มองมุมไหนก็มีเส้นสันวิ่งกลางใบ
+	local blade = box(b, "Blade", CFrame.new(), Vector3.new(0.15, 2.90, 0.30), STEEL, Enum.Material.Metal)
+	for _, s in ipairs({ 1, -1 }) do
+		box(b, "Edge", CFrame.new(0, 0, s * 0.16) * yaw(deg(45)), Vector3.new(0.13, 2.90, 0.13), STEEL, Enum.Material.Metal)
+		box(b, "Fuller", CFrame.new(s * 0.077, 0.12, 0), Vector3.new(0.02, 2.30, 0.11), DARK_STEEL, Enum.Material.Metal)
+	end
+	bladeTip(b, "Tip", -1.45, 0.58, 0.50, 0.15, STEEL, Enum.Material.Metal)
+
+	box(b, "Ricasso", CFrame.new(0, 1.32, 0), Vector3.new(0.19, 0.30, 0.36), DARK_STEEL, Enum.Material.Metal)
+
+	box(b, "Guard", CFrame.new(0, 1.55, 0), Vector3.new(0.26, 0.24, 0.40), GOLD, Enum.Material.Metal)
+	for _, s in ipairs({ 1, -1 }) do
+		box(b, "GuardArm", CFrame.new(0, 1.51, s * 0.42) * pitch(s * deg(14)),
+			Vector3.new(0.22, 0.18, 0.48), GOLD, Enum.Material.Metal)
+		ball(b, "GuardTip", CFrame.new(0, 1.42, s * 0.68), 0.22, GOLD, Enum.Material.Metal)
+	end
+	box(b, "Langet", CFrame.new(0, 1.37, 0), Vector3.new(0.21, 0.24, 0.18), GOLD_DARK, Enum.Material.Metal)
+
+	-- ด้ามกลมพันหนัง + ปลอกทองคาดสี่เส้น (ของเดิมเป็นกล่องสี่เหลี่ยมชิ้นเดียว)
+	cyl(b, "Collar", CFrame.new(0, 1.70, 0), 0.15, 0.11, GOLD, Enum.Material.Metal)
+	cyl(b, "Handle", CFrame.new(0, 2.02, 0), 0.115, 0.84, LEATHER, Enum.Material.Fabric)
+	for i = 0, 3 do
+		cyl(b, "Wrap" .. i, CFrame.new(0, 1.76 + i * 0.21, 0), 0.135, 0.06, GOLD_DARK, Enum.Material.Metal)
+	end
+
+	cyl(b, "PommelDisc", CFrame.new(0, 2.40, 0), 0.18, 0.09, GOLD, Enum.Material.Metal)
+	ball(b, "Pommel", CFrame.new(0, 2.54, 0), 0.32, GOLD, Enum.Material.Metal)
+	ball(b, "Rivet", CFrame.new(0, 2.70, 0), 0.13, GOLD_DARK, Enum.Material.Metal)
+	return assembleBag("Sword", blade, b)
 end
 
 -- Greatsword: built from parts like every other weapon here.
@@ -83,63 +200,184 @@ end
 --
 -- If a real model is uploaded later, this is the one function to replace.
 function Builders.Greatsword()
-	local blade = part("Blade", Vector3.new(0.34, 4.4, 0.8), CFrame.new(0, 0, 0), STEEL, Enum.Material.Metal)
-	local others = {
-		part("Tip", Vector3.new(0.34, 0.7, 0.8), CFrame.new(0, -2.4, 0), STEEL, Enum.Material.Metal),
-		part("Guard", Vector3.new(0.36, 0.26, 2.0), CFrame.new(0, 2.3, 0), GOLD, Enum.Material.Metal),
-		part("Handle", Vector3.new(0.34, 1.4, 0.34), CFrame.new(0, 3.0, 0), LEATHER),
-		part("Pommel", Vector3.new(0.5, 0.44, 0.5), CFrame.new(0, 3.8, 0), GOLD, Enum.Material.Metal),
-	}
-	return assemble("Greatsword", blade, others)
+	local b = {}
+	local COPPER = Color3.fromRGB(176, 108, 62)
+	local COPPER_DARK = Color3.fromRGB(128, 76, 44)
+	local BRIGHT = Color3.fromRGB(216, 220, 230)
+	local BRASS = Color3.fromRGB(198, 158, 78)
+	local BRASS_DARK = Color3.fromRGB(142, 108, 44)
+	local DIAL = Color3.fromRGB(238, 232, 212)
+
+	-- ใบมีดคมเดียว: หน้าใบทองแดง แผงเว้าสีเข้มกลางใบ สันหลังหนาฝั่ง -Z คมเหล็กสว่างฝั่ง +Z
+	local blade = box(b, "Blade", CFrame.new(), Vector3.new(0.26, 4.40, 0.62), COPPER, Enum.Material.Metal)
+	box(b, "Panel", CFrame.new(0, 0.30, -0.06), Vector3.new(0.29, 3.10, 0.32), COPPER_DARK, Enum.Material.Metal)
+	box(b, "Belly", CFrame.new(0, 0.55, 0.02), Vector3.new(0.25, 2.30, 0.74), COPPER, Enum.Material.Metal)
+	box(b, "Spine", CFrame.new(0, 0, -0.34), Vector3.new(0.30, 4.40, 0.18), COPPER_DARK, Enum.Material.Metal)
+	box(b, "Edge", CFrame.new(0, -0.05, 0.38), Vector3.new(0.18, 4.30, 0.22), BRIGHT, Enum.Material.Metal)
+	box(b, "EdgeBevel", CFrame.new(0, -0.05, 0.47) * yaw(deg(45)), Vector3.new(0.11, 4.30, 0.11), BRIGHT, Enum.Material.Metal)
+	for i = -2, 2 do
+		ball(b, "SpineRivet", CFrame.new(0, i * 0.78, -0.34), 0.11, BRASS, Enum.Material.Metal)
+	end
+	-- **ปลายสร้างเหมือนดาบธรรมดาทุกประการ** ลิ่มคู่สมมาตรรอบ z = 0 ห้ามเอาอะไรไปเกาะข้างเดียวของปลาย
+	-- ไม่งั้นปลายจะดูเฉียงไปคนละทางกับดาบเล่มอื่น ทั้งที่ตัวลิ่มเองวางเหมือนกันเป๊ะ
+	bladeTip(b, "Tip", -2.20, 0.62, 0.70, 0.26, COPPER, Enum.Material.Metal)
+
+	-- ชุดเครื่องกลที่โคนใบ — ของที่เกาะสันหลังต้องยื่นพ้นสัน (z ต่ำกว่า -0.43) ไม่งั้นจมหายในซิลูเอต
+	box(b, "Mount", CFrame.new(0, 1.50, -0.12), Vector3.new(0.34, 1.34, 0.62), BRASS, Enum.Material.Metal)
+	box(b, "MountBand", CFrame.new(0, 2.02, -0.12), Vector3.new(0.38, 0.26, 0.66), BRASS_DARK, Enum.Material.Metal)
+	box(b, "MountBandLow", CFrame.new(0, 0.94, -0.12), Vector3.new(0.38, 0.22, 0.66), BRASS_DARK, Enum.Material.Metal)
+	cyl(b, "Boiler", CFrame.new(0, 1.92, -0.62), 0.17, 0.56, BRASS, Enum.Material.Metal)
+	cyl(b, "BoilerCap", CFrame.new(0, 2.22, -0.62), 0.19, 0.10, BRASS_DARK, Enum.Material.Metal)
+	cyl(b, "ValveStem", CFrame.new(0, 2.38, -0.62), 0.055, 0.24, BRASS_DARK, Enum.Material.Metal)
+	disc(b, "ValveWheel", CFrame.new(0, 2.52, -0.62), 0.15, 0.05, BRASS, Enum.Material.Metal)
+	box(b, "BoilerFoot", CFrame.new(0, 1.92, -0.48), Vector3.new(0.10, 0.20, 0.20), BRASS_DARK, Enum.Material.Metal)
+	ball(b, "GemSocket", CFrame.new(0, 1.20, -0.56), 0.28, BRASS_DARK, Enum.Material.Metal)
+	ball(b, "Gem", CFrame.new(0, 1.20, -0.60), 0.22, GEM, Enum.Material.Neon)
+	box(b, "Pipe", CFrame.new(0, 1.56, -0.56) * pitch(deg(14)), Vector3.new(0.08, 0.62, 0.08), BRASS, Enum.Material.Metal)
+
+	gear(b, "GearBig", CFrame.new(0.19, 1.34, -0.02), 0.34, 9, 0.07, BRASS)
+	gear(b, "GearSmall", CFrame.new(0.21, 0.80, 0.14), 0.21, 7, 0.06, BRASS_DARK)
+	gear(b, "GearTiny", CFrame.new(0.18, 1.80, 0.16), 0.16, 6, 0.06, BRASS)
+
+	-- การ์ดแผ่นทองเหลือง + แขนม้วนสองข้าง + นาฬิกาฝังหน้าการ์ด
+	box(b, "Guard", CFrame.new(0, 2.30, 0), Vector3.new(0.34, 0.32, 1.06), BRASS, Enum.Material.Metal)
+	box(b, "GuardBlock", CFrame.new(0, 2.30, 0), Vector3.new(0.38, 0.20, 0.52), BRASS_DARK, Enum.Material.Metal)
+	for _, s in ipairs({ 1, -1 }) do
+		box(b, "Scroll1", CFrame.new(0, 2.12, s * 0.62) * pitch(s * deg(30)),
+			Vector3.new(0.26, 0.46, 0.26), BRASS, Enum.Material.Metal)
+		box(b, "Scroll2", CFrame.new(0, 1.84, s * 0.88) * pitch(s * deg(56)),
+			Vector3.new(0.20, 0.36, 0.20), BRASS, Enum.Material.Metal)
+		ball(b, "ScrollCurl", CFrame.new(0, 1.64, s * 0.94), 0.22, BRASS, Enum.Material.Metal)
+	end
+	disc(b, "ClockRim", CFrame.new(0.20, 2.30, 0), 0.34, 0.10, BRASS, Enum.Material.Metal)
+	disc(b, "ClockFace", CFrame.new(0.26, 2.30, 0), 0.27, 0.05, DIAL)
+	box(b, "HandHour", CFrame.new(0.29, 2.39, 0), Vector3.new(0.03, 0.19, 0.04), BRASS_DARK, Enum.Material.Metal)
+	box(b, "HandMinute", CFrame.new(0.29, 2.30, 0.10), Vector3.new(0.03, 0.04, 0.21), BRASS_DARK, Enum.Material.Metal)
+	ball(b, "HandPin", CFrame.new(0.29, 2.30, 0), 0.07, BRASS_DARK, Enum.Material.Metal)
+
+	cyl(b, "Collar", CFrame.new(0, 2.56, 0), 0.17, 0.12, BRASS, Enum.Material.Metal)
+	cyl(b, "Handle", CFrame.new(0, 3.02, 0), 0.125, 1.28, DARK_WOOD, Enum.Material.Wood)
+	for i = 0, 4 do
+		cyl(b, "GripBand" .. i, CFrame.new(0, 2.66 + i * 0.19, 0), 0.155, 0.07, BRASS, Enum.Material.Metal)
+	end
+	cyl(b, "PommelCollar", CFrame.new(0, 3.64, 0), 0.17, 0.10, BRASS_DARK, Enum.Material.Metal)
+	ball(b, "Pommel", CFrame.new(0, 3.82, 0), 0.34, BRASS, Enum.Material.Metal)
+	ball(b, "PommelTip", CFrame.new(0, 4.00, 0), 0.15, BRASS_DARK, Enum.Material.Metal)
+	return assembleBag("Greatsword", blade, b)
 end
 
 -- Bow: the riser is the body, the limbs curve away from it, and the string runs between the tips.
 function Builders.Bow()
-	local riser = part("Riser", Vector3.new(0.3, 1.2, 0.34), CFrame.new(0, 0, 0), DARK_WOOD)
-	local others = {
-		part("UpperLimb", Vector3.new(0.24, 1.5, 0.28),
-			CFrame.new(0, 1.25, 0.2) * CFrame.Angles(math.rad(14), 0, 0), WOOD),
-		part("LowerLimb", Vector3.new(0.24, 1.5, 0.28),
-			CFrame.new(0, -1.25, 0.2) * CFrame.Angles(math.rad(-14), 0, 0), WOOD),
-		part("UpperTip", Vector3.new(0.18, 0.5, 0.2),
-			CFrame.new(0, 2.05, 0.5) * CFrame.Angles(math.rad(28), 0, 0), DARK_WOOD),
-		part("LowerTip", Vector3.new(0.18, 0.5, 0.2),
-			CFrame.new(0, -2.05, 0.5) * CFrame.Angles(math.rad(-28), 0, 0), DARK_WOOD),
-		part("String", Vector3.new(0.05, 4.3, 0.05), CFrame.new(0, 0, 0.62), PAGES),
-		part("Grip", Vector3.new(0.34, 0.6, 0.38), CFrame.new(0, 0, 0), LEATHER),
-	}
-	return assemble("Bow", riser, others)
+	local b = {}
+	local riser = box(b, "Riser", CFrame.new(), Vector3.new(0.26, 1.30, 0.34), DARK_WOOD, Enum.Material.Wood)
+	box(b, "RiserSpine", CFrame.new(0, 0, -0.22), Vector3.new(0.20, 1.06, 0.16), WOOD, Enum.Material.Wood)
+	box(b, "ArrowShelf", CFrame.new(0, 0.30, -0.14), Vector3.new(0.30, 0.09, 0.22), WOOD, Enum.Material.Wood)
+	cyl(b, "Grip", CFrame.new(), 0.165, 0.62, LEATHER, Enum.Material.Fabric)
+	for _, y in ipairs({ -0.24, 0.24 }) do
+		cyl(b, "GripBand", CFrame.new(0, y, 0), 0.18, 0.06, DARK_WOOD, Enum.Material.Leather)
+	end
+
+	-- **ปีกสามท่อนไล่มุม 10/20/32 องศา** ของเดิมใช้กล่องเดียวเอียง 14 องศา ซึ่งอ่านเป็นไม้หักไม่ใช่ธนูโค้ง
+	for _, s in ipairs({ 1, -1 }) do
+		local side = s == 1 and "Upper" or "Lower"
+		box(b, side .. "Limb1", CFrame.new(0, s * 0.95, 0.10) * pitch(s * deg(10)),
+			Vector3.new(0.20, 0.80, 0.26), WOOD, Enum.Material.Wood)
+		box(b, side .. "Limb2", CFrame.new(0, s * 1.62, 0.29) * pitch(s * deg(20)),
+			Vector3.new(0.17, 0.76, 0.22), WOOD, Enum.Material.Wood)
+		box(b, side .. "Limb3", CFrame.new(0, s * 2.12, 0.56) * pitch(s * deg(32)),
+			Vector3.new(0.14, 0.58, 0.18), DARK_WOOD, Enum.Material.Wood)
+		-- ท้องปีกสีอ่อนกว่า = เห็นความหนาของปีก ไม่ใช่แผ่นเดียว
+		box(b, side .. "Belly", CFrame.new(0, s * 1.62, 0.17) * pitch(s * deg(20)),
+			Vector3.new(0.09, 0.76, 0.10), Color3.fromRGB(158, 116, 74), Enum.Material.Wood)
+		box(b, side .. "Nock", CFrame.new(0, s * 2.36, 0.70) * pitch(s * deg(32)),
+			Vector3.new(0.12, 0.24, 0.15), GOLD, Enum.Material.Metal)
+	end
+
+	box(b, "String", CFrame.new(0, 0, 0.70), Vector3.new(0.04, 4.60, 0.04), PAGES)
+	box(b, "Serving", CFrame.new(0, 0, 0.70), Vector3.new(0.06, 0.34, 0.06), DARK_WOOD, Enum.Material.Fabric)
+	return assembleBag("Bow", riser, b)
 end
 
 -- Staff: a long shaft with a gem cradled at the top. Held against the torso, so it reads at full length.
 function Builders.Staff()
-	local shaft = part("Shaft", Vector3.new(0.2, 4.0, 0.2), CFrame.new(0, 0, 0), WOOD)
-	local gem = part("Gem", Vector3.new(0.62, 0.62, 0.62), CFrame.new(0, 2.25, 0), GEM, Enum.Material.Neon)
-	gem.Shape = Enum.PartType.Ball
+	local b = {}
+	-- ก้านเรียวจากโคนไปปลาย: สามท่อนรัศมีต่างกัน แทนแท่งเดียวความหนาเท่ากันตลอดของเดิม
+	-- **PrimaryPart ต้องเป็นชิ้นที่ไม่ถูกหมุน** `cyl` ใส่ roll 90 องศาให้ทรงกระบอกตั้งตรง (แกนของ Cylinder
+	-- ใน Roblox คือแกน X เสมอ) ถ้าเอาทรงกระบอกนั้นเป็นตัวขับ Motor6D คทาจะนอนขวางในมือทั้งดุ้น
+	-- เพราะ `GRIP.Staff` วัดมาจากแกนของโมเดลที่ไม่ได้หมุน — แกนกลางสี่เหลี่ยมชิ้นนี้จึงเป็นตัวขับแทน
+	local shaft = box(b, "Core", CFrame.new(), Vector3.new(0.13, 4.00, 0.13), WOOD, Enum.Material.Wood)
+	cyl(b, "Shaft", CFrame.new(), 0.10, 4.00, WOOD, Enum.Material.Wood)
+	cyl(b, "ShaftLower", CFrame.new(0, -1.40, 0), 0.118, 1.20, WOOD, Enum.Material.Wood)
+	cyl(b, "ShaftUpper", CFrame.new(0, 1.45, 0), 0.086, 1.10, WOOD, Enum.Material.Wood)
+	for _, y in ipairs({ -1.60, -0.80, 0.00, 0.80, 1.60 }) do
+		cyl(b, "CarvedRing", CFrame.new(0, y, 0), 0.128, 0.07, DARK_WOOD, Enum.Material.Wood)
+	end
+	-- ปุ่มปมของไม้ — ทำให้ก้านอ่านเป็นกิ่งไม้ ไม่ใช่ท่อกลม
+	ball(b, "Knot1", CFrame.new(0.06, -0.42, 0), 0.17, WOOD, Enum.Material.Wood)
+	ball(b, "Knot2", CFrame.new(-0.05, 0.56, 0.04), 0.15, WOOD, Enum.Material.Wood)
+	ball(b, "Knot3", CFrame.new(0.04, 1.16, -0.05), 0.14, WOOD, Enum.Material.Wood)
+
+	cyl(b, "Binding", CFrame.new(0, 1.30, 0), 0.135, 0.46, LEATHER, Enum.Material.Fabric)
+	for _, y in ipairs({ 1.14, 1.46 }) do
+		cyl(b, "BindStrap", CFrame.new(0, y, 0), 0.15, 0.06, DARK_WOOD, Enum.Material.Leather)
+	end
+
+	-- อุ้งเล็บสามนิ้ว นิ้วละสองท่อน งุ้มเข้าหาอัญมณี
+	for _, a in ipairs({ 0, 120, 240 }) do
+		box(b, "Claw" .. a, CFrame.new(0, 1.96, 0) * yaw(deg(a)) * CFrame.new(0, 0, 0.20) * pitch(deg(-16)),
+			Vector3.new(0.09, 0.52, 0.10), DARK_WOOD, Enum.Material.Wood)
+		box(b, "ClawTip" .. a, CFrame.new(0, 2.32, 0) * yaw(deg(a)) * CFrame.new(0, 0, 0.27) * pitch(deg(-42)),
+			Vector3.new(0.07, 0.38, 0.08), DARK_WOOD, Enum.Material.Wood)
+	end
+
+	local gem = ball(b, "Gem", CFrame.new(0, 2.25, 0), 0.52, GEM, Enum.Material.Neon)
+	box(b, "GemFacet", CFrame.new(0, 2.25, 0) * yaw(deg(45)) * pitch(deg(45)),
+		Vector3.new(0.36, 0.36, 0.36), GEM, Enum.Material.Neon)
 	local light = Instance.new("PointLight")
 	light.Color = GEM
 	light.Range = 10
 	light.Brightness = 1.4
+	light.Shadows = false
 	light.Parent = gem
-	local others = {
-		gem,
-		part("Claw", Vector3.new(0.34, 0.5, 0.34), CFrame.new(0, 1.9, 0), DARK_WOOD),
-		part("Binding", Vector3.new(0.26, 0.4, 0.26), CFrame.new(0, 1.3, 0), LEATHER),
-		part("Ferrule", Vector3.new(0.24, 0.3, 0.24), CFrame.new(0, -2.0, 0), DARK_STEEL, Enum.Material.Metal),
-	}
-	return assemble("Staff", shaft, others)
+
+	cyl(b, "Ferrule", CFrame.new(0, -2.00, 0), 0.118, 0.34, DARK_STEEL, Enum.Material.Metal)
+	box(b, "Spike", CFrame.new(0, -2.26, 0), Vector3.new(0.10, 0.24, 0.10), DARK_STEEL, Enum.Material.Metal)
+	return assembleBag("Staff", shaft, b)
 end
 
 -- Spellbook: a closed tome. It floats at the chest rather than being gripped, so it is small and flat.
 function Builders.Spellbook()
-	local cover = part("Cover", Vector3.new(1.3, 0.22, 1.6), CFrame.new(0, 0, 0), Color3.fromRGB(96, 48, 40))
-	local others = {
-		part("Pages", Vector3.new(1.16, 0.2, 1.46), CFrame.new(0, 0.06, 0.04), PAGES),
-		part("Spine", Vector3.new(0.24, 0.26, 1.62), CFrame.new(-0.6, 0, 0), Color3.fromRGB(72, 34, 28)),
-		part("Clasp", Vector3.new(0.16, 0.3, 0.3), CFrame.new(0.6, 0, 0), GOLD, Enum.Material.Metal),
-		part("Rune", Vector3.new(0.4, 0.06, 0.4), CFrame.new(0.1, 0.14, 0), GEM, Enum.Material.Neon),
-	}
-	return assemble("Spellbook", cover, others)
+	local b = {}
+	local COVER = Color3.fromRGB(96, 48, 40)
+	local COVER_DARK = Color3.fromRGB(72, 34, 28)
+
+	-- **กองกระดาษชั้นกลางอยู่ที่จุดกำเนิดพอดี** เพราะมันคือ PrimaryPart ที่ Motor6D ขับ — ของเดิมใช้ปก
+	-- ที่จุดกำเนิดเป็นตัวขับ ถ้าไม่มีชิ้นไหนอยู่ที่ 0 เลย เล่มจะเลื่อนจากมือไปหนึ่งขั้น
+	local pages = box(b, "Pages", CFrame.new(), Vector3.new(1.18, 0.08, 1.48), PAGES)
+	box(b, "PagesUp", CFrame.new(0.015, 0.08, 0.015), Vector3.new(1.15, 0.08, 1.45), PAGES)
+	box(b, "PagesDown", CFrame.new(-0.015, -0.08, -0.015), Vector3.new(1.15, 0.08, 1.45), PAGES)
+	box(b, "CoverFront", CFrame.new(0, 0.18, 0), Vector3.new(1.32, 0.11, 1.62), COVER, Enum.Material.Leather)
+	box(b, "CoverBack", CFrame.new(0, -0.18, 0), Vector3.new(1.32, 0.11, 1.62), COVER, Enum.Material.Leather)
+
+	box(b, "Spine", CFrame.new(-0.64, 0, 0), Vector3.new(0.24, 0.48, 1.64), COVER_DARK, Enum.Material.Leather)
+	for _, z in ipairs({ -0.54, -0.18, 0.18, 0.54 }) do
+		box(b, "SpineBand", CFrame.new(-0.66, 0, z), Vector3.new(0.26, 0.52, 0.10), GOLD, Enum.Material.Metal)
+	end
+	for _, sx in ipairs({ 1, -1 }) do
+		for _, sz in ipairs({ 1, -1 }) do
+			box(b, "Corner", CFrame.new(sx * 0.52, 0.23, sz * 0.68), Vector3.new(0.26, 0.05, 0.22), GOLD, Enum.Material.Metal)
+		end
+	end
+	box(b, "Inlay1", CFrame.new(0, 0.24, 0), Vector3.new(0.52, 0.04, 0.06), GOLD_DARK, Enum.Material.Metal)
+	box(b, "Inlay2", CFrame.new(0, 0.24, 0), Vector3.new(0.06, 0.04, 0.72), GOLD_DARK, Enum.Material.Metal)
+	ball(b, "Boss", CFrame.new(0, 0.24, 0), 0.26, GOLD, Enum.Material.Metal)
+	-- อัญมณีต้องโผล่พ้นหัวหมุด ไม่งั้นจมอยู่ข้างในทั้งเม็ด
+	ball(b, "Rune", CFrame.new(0, 0.34, 0), 0.19, GEM, Enum.Material.Neon)
+
+	box(b, "Clasp", CFrame.new(0.64, 0, 0), Vector3.new(0.15, 0.32, 0.28), GOLD, Enum.Material.Metal)
+	box(b, "Strap", CFrame.new(0.52, 0.23, 0), Vector3.new(0.28, 0.05, 0.18), COVER_DARK, Enum.Material.Leather)
+	box(b, "Ribbon", CFrame.new(0.26, -0.22, 0.72), Vector3.new(0.11, 0.03, 0.42), Color3.fromRGB(168, 54, 58), Enum.Material.Fabric)
+	return assembleBag("Spellbook", pages, b)
 end
 
 --------------------------------------------------------------------------------
@@ -151,46 +389,104 @@ end
 -- WeaponVisuals reuses the sword's GRIP offset for these, and it was measured against precisely this layout.
 -- Move the handle and the tool ends up held by its blade.
 
+-- ด้ามไม้กลมของเครื่องมือทั้งสามชิ้น
+--
+-- **แกนกลางสี่เหลี่ยม `Core` มีไว้เป็น PrimaryPart** — ด้ามจริงเป็นทรงกระบอกซึ่ง `cyl` roll 90 องศาให้เสมอ
+-- เอาทรงกระบอกไปเป็นตัวขับ Motor6D แล้วเครื่องมือจะนอนขวางมือทั้งดุ้น (บทเรียนเดียวกับคทา)
+local function toolHaft(bag, gripY, gripLen)
+	local core = box(bag, "Core", CFrame.new(), Vector3.new(0.11, 3.00, 0.11), WOOD, Enum.Material.Wood)
+	cyl(bag, "Haft", CFrame.new(), 0.085, 3.00, WOOD, Enum.Material.Wood)
+	cyl(bag, "HaftSwell", CFrame.new(0, 1.25, 0), 0.10, 0.90, WOOD, Enum.Material.Wood)
+	cyl(bag, "Grip", CFrame.new(0, gripY, 0), 0.105, gripLen, LEATHER, Enum.Material.Fabric)
+	for i = -1, 1 do
+		cyl(bag, "GripWrap", CFrame.new(0, gripY + i * (gripLen / 3), 0), 0.122, 0.06, DARK_WOOD, Enum.Material.Fabric)
+	end
+	return core
+end
+
 -- Axe: a wedge head on one side of the haft, with a small back-spike to balance it visually.
 function Builders.Axe()
-	local haft = part("Haft", Vector3.new(0.16, 3.0, 0.16), CFrame.new(0, 0, 0), WOOD)
-	local others = {
-		part("Head", Vector3.new(0.2, 0.85, 0.9), CFrame.new(0, -1.1, 0.42), STEEL, Enum.Material.Metal),
-		part("Edge", Vector3.new(0.1, 1.05, 0.24), CFrame.new(0, -1.1, 0.92), STEEL, Enum.Material.Metal),
-		part("Spike", Vector3.new(0.16, 0.4, 0.34), CFrame.new(0, -1.1, -0.22), DARK_STEEL, Enum.Material.Metal),
-		part("Collar", Vector3.new(0.22, 0.26, 0.22), CFrame.new(0, -0.6, 0), DARK_STEEL, Enum.Material.Metal),
-		part("Grip", Vector3.new(0.2, 0.9, 0.2), CFrame.new(0, 2.0, 0), LEATHER),
-		part("Butt", Vector3.new(0.24, 0.2, 0.24), CFrame.new(0, 2.5, 0), DARK_STEEL, Enum.Material.Metal),
-	}
-	return assemble("Axe", haft, others)
+	local b = {}
+	local BRIGHT = Color3.fromRGB(224, 228, 238)
+	local core = toolHaft(b, 2.00, 0.90)
+
+	cyl(b, "Collar", CFrame.new(0, -0.62, 0), 0.115, 0.26, DARK_STEEL, Enum.Material.Metal)
+	box(b, "Eye", CFrame.new(0, -1.10, 0.17), Vector3.new(0.19, 0.66, 0.26), DARK_STEEL, Enum.Material.Metal)
+	-- แกนใบสี่เหลี่ยมหนึ่งชิ้น แล้วบานออกด้วยลิ่มบน-ล่าง ได้เส้นเฉียงเส้นเดียวจากโคนถึงคม
+	-- **บานด้วยกล่องซ้อนเป็นชั้นไม่ได้** ขอบจะเป็นบันไดเห็นชัด (เจอมาแล้วตอนทำขวานทอง)
+	box(b, "Bit", CFrame.new(0, -1.10, 0.56), Vector3.new(0.14, 0.74, 0.82), STEEL, Enum.Material.Metal)
+	wedge(b, "FlareTop", CFrame.new(0, -0.63, 0.56), Vector3.new(0.12, 0.30, 0.82), STEEL, Enum.Material.Metal)
+	wedge(b, "FlareBottom", CFrame.new(0, -1.57, 0.56) * roll(math.pi), Vector3.new(0.12, 0.30, 0.82), STEEL, Enum.Material.Metal)
+	box(b, "Edge", CFrame.new(0, -1.10, 1.00), Vector3.new(0.05, 1.32, 0.10), BRIGHT, Enum.Material.Metal)
+	box(b, "Cheek", CFrame.new(0.07, -1.10, 0.56), Vector3.new(0.02, 0.56, 0.60), DARK_STEEL, Enum.Material.Metal)
+	box(b, "Poll", CFrame.new(0, -1.10, -0.16), Vector3.new(0.16, 0.42, 0.26), DARK_STEEL, Enum.Material.Metal)
+	box(b, "PollFace", CFrame.new(0, -1.10, -0.30), Vector3.new(0.13, 0.30, 0.10), STEEL, Enum.Material.Metal)
+
+	cyl(b, "Butt", CFrame.new(0, 2.52, 0), 0.12, 0.17, DARK_STEEL, Enum.Material.Metal)
+	return assembleBag("Axe", core, b)
 end
 
 -- Pickaxe: a head crossing the haft, pointed one way and chisel-flat the other.
 function Builders.Pickaxe()
-	local haft = part("Haft", Vector3.new(0.16, 3.0, 0.16), CFrame.new(0, 0, 0), WOOD)
-	local others = {
-		part("Head", Vector3.new(0.18, 0.3, 2.0), CFrame.new(0, -1.15, 0), DARK_STEEL, Enum.Material.Metal),
-		part("Point", Vector3.new(0.14, 0.2, 0.5), CFrame.new(0, -1.15, 1.15), STEEL, Enum.Material.Metal),
-		part("Chisel", Vector3.new(0.16, 0.42, 0.4), CFrame.new(0, -1.15, -1.1), STEEL, Enum.Material.Metal),
-		part("Collar", Vector3.new(0.22, 0.3, 0.22), CFrame.new(0, -0.75, 0), DARK_STEEL, Enum.Material.Metal),
-		part("Grip", Vector3.new(0.2, 0.9, 0.2), CFrame.new(0, 2.0, 0), LEATHER),
-		part("Butt", Vector3.new(0.24, 0.2, 0.24), CFrame.new(0, 2.5, 0), DARK_STEEL, Enum.Material.Metal),
-	}
-	return assemble("Pickaxe", haft, others)
+	local b = {}
+	local BRIGHT = Color3.fromRGB(224, 228, 238)
+	local core = toolHaft(b, 2.00, 0.90)
+
+	cyl(b, "Collar", CFrame.new(0, -0.78, 0), 0.125, 0.32, DARK_STEEL, Enum.Material.Metal)
+	box(b, "Crown", CFrame.new(0, -1.15, 0), Vector3.new(0.22, 0.42, 0.42), DARK_STEEL, Enum.Material.Metal)
+	box(b, "CrownBand", CFrame.new(0, -1.15, 0), Vector3.new(0.26, 0.20, 0.48), STEEL, Enum.Material.Metal)
+
+	-- เขาโค้งสองข้าง: โคนต่ำ ปลายเชิดขึ้นออกนอก
+	-- **ฝั่ง +Z ต้องใช้มุมลบ** ใส่มุมบวกปลายจะตกลงกลายเป็นหัวคว่ำ (บทเรียนจากอีเต้อทอง)
+	for _, s in ipairs({ 1, -1 }) do
+		local side = s == 1 and "R" or "L"
+		box(b, "Horn1" .. side, CFrame.new(0, -1.18, s * 0.32) * pitch(-s * deg(8)),
+			Vector3.new(0.16, 0.24, 0.50), DARK_STEEL, Enum.Material.Metal)
+		box(b, "Horn2" .. side, CFrame.new(0, -1.10, s * 0.76) * pitch(-s * deg(22)),
+			Vector3.new(0.14, 0.20, 0.50), STEEL, Enum.Material.Metal)
+		box(b, "Horn3" .. side, CFrame.new(0, -0.92, s * 1.10) * pitch(-s * deg(38)),
+			Vector3.new(0.11, 0.16, 0.40), STEEL, Enum.Material.Metal)
+		box(b, "Point" .. side, CFrame.new(0, -0.75, s * 1.30) * pitch(-s * deg(46)),
+			Vector3.new(0.07, 0.10, 0.22), BRIGHT, Enum.Material.Metal)
+	end
+
+	cyl(b, "Butt", CFrame.new(0, 2.52, 0), 0.12, 0.17, DARK_STEEL, Enum.Material.Metal)
+	return assembleBag("Pickaxe", core, b)
 end
 
 -- Shovel: a dished blade at the bottom, a T-handle at the top so it reads as a shovel and not a paddle.
 function Builders.Shovel()
-	local haft = part("Haft", Vector3.new(0.16, 3.0, 0.16), CFrame.new(0, 0, 0), WOOD)
-	local others = {
-		part("Blade", Vector3.new(0.9, 1.0, 0.12), CFrame.new(0, -1.35, 0.06), STEEL, Enum.Material.Metal),
-		part("Lip", Vector3.new(0.9, 0.16, 0.24), CFrame.new(0, -1.8, 0.14), STEEL, Enum.Material.Metal),
-		part("Wing", Vector3.new(0.18, 0.5, 0.2), CFrame.new(0, -0.95, -0.04), DARK_STEEL, Enum.Material.Metal),
-		part("Socket", Vector3.new(0.22, 0.4, 0.22), CFrame.new(0, -0.7, 0), DARK_STEEL, Enum.Material.Metal),
-		part("Grip", Vector3.new(0.2, 0.7, 0.2), CFrame.new(0, 1.9, 0), LEATHER),
-		part("Crossbar", Vector3.new(0.7, 0.18, 0.18), CFrame.new(0, 2.4, 0), DARK_WOOD),
-	}
-	return assemble("Shovel", haft, others)
+	local b = {}
+	local BRIGHT = Color3.fromRGB(224, 228, 238)
+	local core = toolHaft(b, 1.86, 0.72)
+
+	box(b, "Blade", CFrame.new(0, -1.26, 0.06), Vector3.new(0.82, 0.90, 0.10), STEEL, Enum.Material.Metal)
+	-- ปลายเสียมเรียวลง — **yaw 90 องศาก่อน** เพราะใบกว้างตามแกน X ไม่ใช่แกน Z เหมือนใบดาบ
+	-- ไม่หมุนแล้วลิ่มจะไปเรียวทางด้านหนาของใบ ได้ทรงตีนช้างบานออกแทนปลายแหลม
+	local tipBag = {}
+	bladeTip(tipBag, "BladeTip", -1.71, 0.48, 0.82, 0.10, STEEL, Enum.Material.Metal)
+	for _, p in ipairs(tipBag) do
+		p.CFrame = CFrame.new(0, 0, 0.06) * yaw(math.pi / 2) * p.CFrame
+		b[#b + 1] = p
+	end
+	-- ขอบยกสองข้างของใบ = เห็นว่าใบเป็นแอ่ง ไม่ใช่แผ่นเรียบ
+	for _, s in ipairs({ 1, -1 }) do
+		box(b, "BladeWall", CFrame.new(s * 0.39, -1.22, 0.02), Vector3.new(0.08, 0.84, 0.18), DARK_STEEL, Enum.Material.Metal)
+	end
+	box(b, "Shoulder", CFrame.new(0, -0.82, 0.06), Vector3.new(0.46, 0.22, 0.12), DARK_STEEL, Enum.Material.Metal)
+	box(b, "Edge", CFrame.new(0, -1.62, 0.11), Vector3.new(0.52, 0.10, 0.04), BRIGHT, Enum.Material.Metal)
+
+	cyl(b, "Socket", CFrame.new(0, -0.64, 0), 0.115, 0.44, DARK_STEEL, Enum.Material.Metal)
+	box(b, "Wing", CFrame.new(0, -0.90, -0.04), Vector3.new(0.15, 0.50, 0.16), DARK_STEEL, Enum.Material.Metal)
+
+	-- หูจับตัว D: ขาสองข้างเอียงออกแล้วปิดด้วยคานบน (ของเดิมเป็นคานขวางชิ้นเดียว)
+	for _, s in ipairs({ 1, -1 }) do
+		box(b, "DArm", CFrame.new(s * 0.13, 2.30, 0) * roll(s * deg(16)),
+			Vector3.new(0.09, 0.46, 0.10), DARK_WOOD, Enum.Material.Wood)
+	end
+	box(b, "DTop", CFrame.new(0, 2.54, 0), Vector3.new(0.40, 0.10, 0.11), DARK_WOOD, Enum.Material.Wood)
+	box(b, "DBand", CFrame.new(0, 2.54, 0), Vector3.new(0.14, 0.12, 0.13), DARK_STEEL, Enum.Material.Metal)
+	return assembleBag("Shovel", core, b)
 end
 
 --------------------------------------------------------------------------------
@@ -200,19 +496,37 @@ end
 -- A steampunk flintlock: brass barrel, wooden stock, a little boiler drum where a hammer would be. Built to
 -- the same convention as the rest -- muzzle at the origin, grip out along +Y -- so it takes SWORD_GRIP.
 function Builders.Pistol()
-	local barrel = part("Barrel", Vector3.new(0.22, 1.9, 0.22), CFrame.new(0, 0, 0), GOLD, Enum.Material.Metal)
-	local others = {
-		part("Muzzle", Vector3.new(0.3, 0.24, 0.3), CFrame.new(0, -0.95, 0), DARK_STEEL, Enum.Material.Metal),
-		part("Boiler", Vector3.new(0.42, 0.5, 0.42), CFrame.new(0, 0.75, -0.18), DARK_STEEL, Enum.Material.Metal),
-		part("Valve", Vector3.new(0.16, 0.16, 0.3), CFrame.new(0.22, 0.75, -0.3), GOLD, Enum.Material.Metal),
-		part("Hammer", Vector3.new(0.12, 0.34, 0.2), CFrame.new(0, 1.15, -0.22), DARK_STEEL, Enum.Material.Metal),
-		part("Trigger", Vector3.new(0.08, 0.22, 0.1), CFrame.new(0, 1.5, -0.1), DARK_STEEL, Enum.Material.Metal),
-		-- The stock, angled back the way a pistol grip is rather than straight down the barrel.
-		part("Grip", Vector3.new(0.26, 0.95, 0.34),
-			CFrame.new(0, 2.0, -0.22) * CFrame.Angles(math.rad(18), 0, 0), WOOD),
-		part("Butt", Vector3.new(0.3, 0.18, 0.36), CFrame.new(0, 2.48, -0.36), DARK_WOOD),
-	}
-	return assemble("Pistol", barrel, others)
+	local b = {}
+	-- ลำกล้องแปดเหลี่ยม: กล่องสองใบซ้อนโดยใบหนึ่งหมุน 45 องศา (ของเดิมเป็นกล่องเหลี่ยมใบเดียว)
+	local barrel = box(b, "Barrel", CFrame.new(), Vector3.new(0.18, 1.80, 0.18), GOLD, Enum.Material.Metal)
+	box(b, "BarrelFacet", yaw(deg(45)), Vector3.new(0.18, 1.80, 0.18), GOLD, Enum.Material.Metal)
+	cyl(b, "Muzzle", CFrame.new(0, -0.96, 0), 0.13, 0.20, DARK_STEEL, Enum.Material.Metal)
+	cyl(b, "MuzzleRing", CFrame.new(0, -0.84, 0), 0.115, 0.08, GOLD, Enum.Material.Metal)
+	box(b, "FrontSight", CFrame.new(0, -0.74, 0.13), Vector3.new(0.05, 0.11, 0.07), DARK_STEEL, Enum.Material.Metal)
+	cyl(b, "Ramrod", CFrame.new(0, -0.20, 0.17), 0.035, 1.20, DARK_WOOD, Enum.Material.Wood)
+
+	box(b, "Breech", CFrame.new(0, 0.78, 0), Vector3.new(0.23, 0.42, 0.26), DARK_STEEL, Enum.Material.Metal)
+	box(b, "Stock", CFrame.new(0, 0.92, -0.08), Vector3.new(0.21, 0.86, 0.32), WOOD, Enum.Material.Wood)
+	box(b, "Tang", CFrame.new(0, 1.46, -0.13), Vector3.new(0.18, 0.44, 0.22), WOOD, Enum.Material.Wood)
+
+	-- กลไกฝั่งขวา: แผ่นล็อก นกสับพร้อมปากคีบ จานดินปืน เหล็กไฟ
+	box(b, "Lockplate", CFrame.new(0.12, 0.84, -0.10), Vector3.new(0.05, 0.54, 0.32), DARK_STEEL, Enum.Material.Metal)
+	box(b, "Hammer", CFrame.new(0.13, 1.06, -0.26) * pitch(deg(26)), Vector3.new(0.07, 0.32, 0.14), DARK_STEEL, Enum.Material.Metal)
+	box(b, "HammerJaw", CFrame.new(0.13, 1.20, -0.32), Vector3.new(0.09, 0.13, 0.13), GOLD, Enum.Material.Metal)
+	box(b, "Frizzen", CFrame.new(0.12, 0.86, -0.29), Vector3.new(0.07, 0.20, 0.13), GOLD, Enum.Material.Metal)
+	box(b, "Pan", CFrame.new(0.10, 0.78, -0.25), Vector3.new(0.10, 0.08, 0.14), GOLD, Enum.Material.Metal)
+	ball(b, "SidePlate", CFrame.new(-0.12, 0.86, -0.10), 0.16, GOLD, Enum.Material.Metal)
+
+	box(b, "Trigger", CFrame.new(0, 1.54, -0.26) * pitch(deg(16)), Vector3.new(0.06, 0.24, 0.09), DARK_STEEL, Enum.Material.Metal)
+	-- โกร่งไกเป็นตัว U อยู่ฝั่ง -Z เหมือนด้ามและไก ไม่งั้นห่วงไปโผล่ด้านบนปืน คนละฝั่งกับนิ้วที่ควรลอด
+	box(b, "GuardFront", CFrame.new(0, 1.42, -0.30), Vector3.new(0.07, 0.07, 0.28), GOLD, Enum.Material.Metal)
+	box(b, "GuardBow", CFrame.new(0, 1.62, -0.42), Vector3.new(0.07, 0.40, 0.07), GOLD, Enum.Material.Metal)
+	box(b, "GuardRear", CFrame.new(0, 1.82, -0.36), Vector3.new(0.07, 0.08, 0.20), GOLD, Enum.Material.Metal)
+
+	box(b, "Grip", CFrame.new(0, 2.00, -0.22) * pitch(deg(18)), Vector3.new(0.24, 0.92, 0.32), WOOD, Enum.Material.Wood)
+	box(b, "GripPanel", CFrame.new(0, 2.04, -0.28) * pitch(deg(18)), Vector3.new(0.26, 0.52, 0.22), DARK_WOOD, Enum.Material.Wood)
+	box(b, "ButtCap", CFrame.new(0, 2.46, -0.36), Vector3.new(0.28, 0.17, 0.36), GOLD, Enum.Material.Metal)
+	return assembleBag("Pistol", barrel, b)
 end
 
 --------------------------------------------------------------------------------

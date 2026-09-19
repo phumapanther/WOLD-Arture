@@ -15,7 +15,18 @@ local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 
 if ServerConfig.IsLobby then return end
 
-local PREFABS = ReplicatedStorage:WaitForChild("WOLD_Weapons", 20)
+-- **ห้ามเก็บ reference ของโฟลเดอร์ไว้ตอนบูต — ต้องถามใหม่ทุกครั้ง**
+--
+-- `WeaponPrefabs.server.lua` **ลบโฟลเดอร์เดิมทิ้งแล้วสร้างใหม่** ทุกครั้งที่เซิร์ฟเวอร์เริ่ม ถ้าเพลสมีโฟลเดอร์
+-- ค้างอยู่ (เช่นมีคนรันตัวสร้างใน Edit mode ไว้) `WaitForChild` จะคืนของเก่าให้ทันที แล้วพอตัวสร้างจริง
+-- ทำงาน ของเก่าก็ถูก Destroy ทิ้ง — ตัวแปรที่เก็บไว้ชี้ไปที่ instance ที่ตายแล้วตลอดทั้งรอบ
+-- ผลคือ `FindFirstChild` คืน nil ทุกครั้ง อาวุธไม่โผล่ในมือเลยสักชิ้น **และไม่มี error ให้เห็นด้วย**
+-- เพราะโค้ดแค่ return เงียบๆ (อาการที่เจอจริง: ท่าโจมตีเล่นปกติแต่มือว่างเปล่า)
+--
+-- ตรงกับกฎเหล็กของโปรเจ็คเรื่อง StreamingEnabled: ลูปถามใหม่ ไม่ใช่จำไว้ตอนเริ่ม
+local function prefabFolder()
+	return ReplicatedStorage:FindFirstChild("WOLD_Weapons")
+end
 
 -- How each weapon sits in the hand. Tuned per weapon because the prefabs have different origins: a sword is
 -- held mid-blade, a bow across the grip, a book flat on the palm.
@@ -157,6 +168,7 @@ local function holdWeapon(player, weaponId, meta)
 	local character = player.Character
 	if not character then return end
 	clearHeldWeapon(character)
+	local PREFABS = prefabFolder()
 	if not weaponId or not PREFABS then return end
 
 	local item = ItemCatalog.Get(weaponId)
@@ -169,7 +181,16 @@ local function holdWeapon(player, weaponId, meta)
 	-- สกินที่ติดตั้งไว้: มีโมเดลของตัวเองใน WOLD_Skins ก็ใช้ ไม่มีก็ย้อมโมเดลเดิม
 	local skin = meta and meta.skin and ItemCatalog.Get(meta.skin) or nil
 	local skinFolder = ReplicatedStorage:FindFirstChild("WOLD_Skins")
+	-- ลำดับการหาโมเดลถือ: สกินที่ติดตั้งไว้ → โมเดลเฉพาะของไอเทมนั้นเอง → รูปทรงมาตรฐานของอาวุธชนิดนั้น
+	--
+	-- ชั้นกลางคือ **เครื่องมือทอง**: มันมีโมเดลของตัวเองใน `WOLD_Skins` (ชื่อ = id ของไอเทม) แต่ยังใช้
+	-- `prefab` เดิมเป็นตัวบอกท่าจับอยู่ จึงต้องหาโดยใช้ `weaponId` ไม่ใช่ `shapeId`
+	--
+	-- **ห้ามเอาไปไว้ใน `WOLD_Weapons`** โฟลเดอร์นั้นถูกลบทิ้งแล้วสร้างใหม่ทุกครั้งที่เซิร์ฟเวอร์บูต
+	-- (`WeaponPrefabs.server.lua`) ของที่วางมือไว้ในเพลสจะหายหมด — `WOLD_Skins` ไม่ถูกแตะ
+	local own = skinFolder and skinFolder:FindFirstChild(weaponId)
 	local prefab = (skin and skinFolder and skinFolder:FindFirstChild(skin.model or meta.skin))
+		or own
 		or PREFABS:FindFirstChild(shapeId)
 	if not prefab then return end
 
@@ -180,9 +201,12 @@ local function holdWeapon(player, weaponId, meta)
 		model:Destroy()
 		return
 	end
+	-- ย้อมสีเฉพาะตอนที่ยืมรูปทรงมาตรฐานมาใช้ — โมเดลที่ปั้นมาเพื่อของชิ้นนั้นโดยเฉพาะมีสีของมันเองแล้ว
+	-- ถ้าย้อมทับจะกลายเป็นก้อนสีเดียวทั้งชิ้น ลายและวัสดุที่ออกแบบไว้หายหมด
+	local borrowed = prefab.Parent == PREFABS
 	if skin then
-		if prefab.Parent == PREFABS then tintModel(model, skin.tint, skin.material) end
-	elseif item and item.tint then
+		if borrowed then tintModel(model, skin.tint, skin.material) end
+	elseif item and item.tint and borrowed then
 		tintModel(model, item.tint, item.material or Enum.Material.Metal)
 	end
 	weaponId = shapeId

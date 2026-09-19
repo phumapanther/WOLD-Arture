@@ -39,7 +39,7 @@ end
 
 local function buildProcedural(colour)
 	local model = Instance.new("Model")
-	model.Name = "AuraRing"
+	model.Name = "AuraGlow"
 	local core = Instance.new("Part")
 	core.Name = "Core"
 	core.Size = Vector3.new(0.2, 0.2, 0.2)
@@ -50,13 +50,23 @@ local function buildProcedural(colour)
 	core.Parent = model
 	model.PrimaryPart = core
 
-	-- **ฟุ้ง สว่าง และอ่านออกว่าเป็นรัศมี** (ผู้ใช้สั่งแก้ 2026-09-18) ทำด้วยอนุภาคสามชั้นทับกัน ไม่ใช่ชั้นเดียว
-	-- ที่เร่ง Rate ขึ้นเฉยๆ — ชั้นเดียวยิ่งถี่ยิ่งกลายเป็นเสาควันทึบ สามชั้นคนละหน้าที่จึงยังโปร่งอยู่:
+	-- **พุ่งออกจากใจกลางตัวไปรอบทิศ ไม่ใช่เป็นเส้น** (ผู้ใช้สั่งแก้ 2026-09-18 รอบสอง)
+	--
+	-- ของเดิมใช้ `Shape = Cylinder` + core ขนาด 4.6 x 0.2 x 4.6 ตั้งใจให้เป็น "วงแบนที่เอว" แต่ได้เส้นตรง
+	-- เส้นเดียวแทน เพราะ **แกนของทรงกระบอกใน Roblox คือแกน X ของพาร์ท ไม่ใช่แกน Y** — ขนาดนั้นจึงแปลว่า
+	-- แท่งยาว 4.6 รัศมี 0.1 (พิสูจน์ด้วยภาพจากสตูดิโอ: ได้เส้นแบนตามที่ผู้ใช้เห็นเป๊ะ)
+	--
+	-- ทางแก้ไม่ใช่การสลับแกน แต่เลิกใช้ Cylinder ไปเลย: `Sphere` + `Volume` + `ShapeInOut = Outward`
+	-- **ทรงกลมไม่มีแกน** อาการ "เป็นเส้นไปทางใดทางหนึ่ง" จึงเกิดซ้ำไม่ได้ต่อให้ใครมาแก้ขนาด core ทีหลัง
+	-- เม็ดเกิดกระจายอยู่ในลูกกลมแล้ววิ่งออกจากศูนย์กลาง = รัศมีรอบตัวจริงๆ
+	--
+	-- ยังเป็นอนุภาคสามชั้นทับกันเหมือนเดิม ไม่ใช่ชั้นเดียวที่เร่ง Rate (ชั้นเดียวยิ่งถี่ยิ่งเป็นก้อนควันทึบ):
 	--
 	--   Haze  หมอกนุ่มเม็ดใหญ่ ลอยช้า โปร่งมาก = ตัว "ฟุ้ง"
-	--   Ring  ลำแสงเม็ดเล็กพุ่งขึ้นจากวงที่เอว   = ตัว "ชัด" ที่บอกว่ามันเป็นวง
+	--   Burst ลำแสงเม็ดเล็กพุ่งออกจากตัว        = ตัว "ชัด" ที่บอกว่ามันแผ่เป็นรัศมี
 	--   Motes ประกายกะพริบลอยขึ้นช้าๆ            = ตัว "สว่าง" ที่ตาจับได้ก่อนเพื่อน
 	--
+	-- `Acceleration` แนวตั้งเล็กน้อยที่ Haze/Motes ให้ยังรู้สึกว่าออร่า "ลอยขึ้น" ไม่ใช่ระเบิดออกด้านข้างอย่างเดียว
 	-- ทุกชั้นใช้ `LightEmission = 1` และสีเดียวกัน กลางคืนจึงเรืองแสงจริง ไม่ใช่แค่สีจางบนพื้นมืด
 	local function emitter(name, parent)
 		local p = Instance.new("ParticleEmitter")
@@ -64,10 +74,9 @@ local function buildProcedural(colour)
 		p.Color = ColorSequence.new(colour)
 		p.LightEmission = 1
 		p.LightInfluence = 0 -- ไม่ให้แสงในฉากมากดสีให้หม่นตอนกลางคืน
-		p.Shape = Enum.ParticleEmitterShape.Cylinder
-		p.ShapeStyle = Enum.ParticleEmitterShapeStyle.Surface
-		p.EmissionDirection = Enum.NormalId.Top
-		p.SpreadAngle = Vector2.new(18, 18)
+		p.Shape = Enum.ParticleEmitterShape.Sphere
+		p.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+		p.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
 		p.Parent = parent
 		return p
 	end
@@ -87,22 +96,25 @@ local function buildProcedural(colour)
 	haze.Rate = 26
 	haze.Speed = NumberRange.new(0.8, 1.6)
 	haze.RotSpeed = NumberRange.new(-24, 24)
-	haze.SpreadAngle = Vector2.new(40, 40)
+	haze.SpreadAngle = Vector2.new(12, 12)
+	haze.Acceleration = Vector3.new(0, 1.2, 0)
 
-	local ring = emitter("Ring", core)
-	ring.Size = NumberSequence.new({
+	-- เม็ดเล็กพุ่งออกเร็ว อายุสั้น จึงไม่ลอยไกลจนกลายเป็นเมฆก้อนโต — อ่านออกว่าแผ่ออกจากตัว
+	local burst = emitter("Burst", core)
+	burst.Size = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0.55),
 		NumberSequenceKeypoint.new(0.7, 0.32),
 		NumberSequenceKeypoint.new(1, 0),
 	})
-	ring.Transparency = NumberSequence.new({
+	burst.Transparency = NumberSequence.new({
 		NumberSequenceKeypoint.new(0, 0.08),
 		NumberSequenceKeypoint.new(0.8, 0.4),
 		NumberSequenceKeypoint.new(1, 1),
 	})
-	ring.Lifetime = NumberRange.new(1.3, 2.0)
-	ring.Rate = 70
-	ring.Speed = NumberRange.new(2.6, 4.2)
+	burst.Lifetime = NumberRange.new(0.9, 1.4)
+	burst.Rate = 70
+	burst.Speed = NumberRange.new(2.0, 3.0)
+	burst.SpreadAngle = Vector2.new(6, 6)
 
 	local motes = emitter("Motes", core)
 	motes.Size = NumberSequence.new({
@@ -116,8 +128,9 @@ local function buildProcedural(colour)
 	motes.Lifetime = NumberRange.new(2.0, 3.4)
 	motes.Rate = 22
 	motes.Speed = NumberRange.new(0.6, 1.8)
-	motes.SpreadAngle = Vector2.new(60, 60)
+	motes.SpreadAngle = Vector2.new(20, 20)
 	motes.RotSpeed = NumberRange.new(-90, 90)
+	motes.Acceleration = Vector3.new(0, 1.6, 0)
 
 	-- ไฟจริงด้วย ไม่ใช่แค่อนุภาคเรืองแสง ยืนในที่ร่มแล้วต้องเห็นพื้นรอบตัวติดสีออร่า
 	local glow = Instance.new("PointLight")
@@ -153,9 +166,10 @@ local function draw(player, auraId)
 			d.Massless = true
 		end
 	end
-	-- วงอนุภาคทรงกระบอกที่ระดับเอว ปรับขนาด core ให้เป็นวงที่ Cylinder ปล่อยจากผิว (กว้างขึ้นเป็น 4.6 ให้หมอกไม่ทับหน้า)
-	if model.Name == "AuraRing" then core.Size = Vector3.new(4.6, 0.2, 4.6) end
-	model:PivotTo(root.CFrame * CFrame.new(0, -1.5, 0))
+	-- ลูกกลมที่อนุภาคเกิดข้างใน สูง 4.4 กว้าง 4.0 ≈ ครอบตั้งแต่เท้าถึงหัวพอดี จุดศูนย์กลางเยื้องลงจาก
+	-- HumanoidRootPart นิดเดียว (ไม่ใช่ -1.5 แบบวงที่เอวเดิม) ไม่งั้นรัศมีจะไปกองอยู่แถวขา
+	if model.Name == "AuraGlow" then core.Size = Vector3.new(4.0, 4.4, 4.0) end
+	model:PivotTo(root.CFrame * CFrame.new(0, -0.5, 0))
 	model.Parent = folder
 	local weld = Instance.new("WeldConstraint")
 	weld.Part0 = root

@@ -43,6 +43,19 @@ end
 
 local rad = math.rad
 
+--------------------------------------------------------------------------------
+-- สองมือประกบด้าม
+--
+-- **มือซ้ายต้องข้ามมาจับด้ามที่ฝั่งขวา ไม่ใช่มาบรรจบกันที่แนวกลางลำตัว**
+-- ดาบถูกเชื่อมกับ `RightHand` อย่างเดียว (`WeaponVisuals` ต่อ Motor6D ที่มือขวา) ด้ามจึงอยู่ทางขวาเสมอ
+-- ของเดิมกวาดแขนเข้าในเท่ากันสองข้าง (ขวา -16 ซ้าย +16) สองมือเลยไปเจอกันกลางอก ซึ่งไม่มีอะไรอยู่ตรงนั้น
+-- มือซ้ายเลยลอยเปล่าข้างดาบ ไม่ได้จับอะไร
+--
+-- ปรับสองปุ่มนี้ปุ่มเดียวพอ ทุกท่าที่ใช้มืออ่านค่าจากตรงนี้หมด
+local L_CROSS = 34 -- องศาที่ไหล่ซ้ายกวาดเข้าใน — มากกว่าขวาเท่าตัว เพราะต้องข้ามลำตัวไปหาด้าม
+local L_TUCK = 24  -- ข้อศอกซ้ายงอเก็บ ให้ฝ่ามือทาบลงบนด้ามใต้มือขวา ไม่ใช่เลยไปอีกฝั่ง
+local R_IN = 14    -- ไหล่ขวากวาดเข้าในเล็กน้อย ด้ามจะได้อยู่หน้าลำตัว ไม่กางออกข้าง
+
 local function pose(parent, name, cf, easing)
 	local p = Instance.new("Pose")
 	p.Name = name
@@ -97,10 +110,10 @@ end
 --------------------------------------------------------------------------------
 local IDLE = {
 	waist = CFrame.Angles(rad(-6), 0, 0), -- leaning very slightly FORWARD over the weight of it
-	rShoulder = CFrame.Angles(rad(62), 0, rad(-16)),
-	rElbow = CFrame.Angles(0, 0, 0), -- straight
-	lShoulder = CFrame.Angles(rad(62), 0, rad(16)),
-	lElbow = CFrame.Angles(0, 0, 0), -- straight
+	rShoulder = CFrame.Angles(rad(62), 0, rad(-R_IN)),
+	rElbow = CFrame.Angles(0, 0, 0), -- straight: มือขวาคือมือที่ถือด้ามจริง
+	lShoulder = CFrame.Angles(rad(62), 0, rad(L_CROSS)),
+	lElbow = CFrame.Angles(rad(L_TUCK), 0, 0), -- งอเก็บให้มือซ้ายไปทาบด้ามใต้มือขวา
 }
 
 -- Breathing, so the guard is not a statue: the tip dips and lifts a couple of degrees.
@@ -108,8 +121,8 @@ build("Greatsword_Idle", Enum.AnimationPriority.Idle, true, {
 	{ 0.0, IDLE },
 	{ 1.6, copy(IDLE, {
 		waist = CFrame.Angles(rad(-8), 0, 0),
-		rShoulder = CFrame.Angles(rad(65), 0, rad(-16)),
-		lShoulder = CFrame.Angles(rad(65), 0, rad(16)),
+		rShoulder = CFrame.Angles(rad(65), 0, rad(-R_IN)),
+		lShoulder = CFrame.Angles(rad(65), 0, rad(L_CROSS)),
 	}) },
 	{ 3.2, IDLE },
 })
@@ -131,19 +144,19 @@ build("Greatsword_Idle", Enum.AnimationPriority.Idle, true, {
 local OVERHEAD = {
 	-- Straight arms directly above the head, arching BACK to load the swing: positive X on the waist.
 	waist = CFrame.Angles(rad(22), 0, 0),
-	rShoulder = CFrame.Angles(rad(172), 0, rad(-8)),
+	rShoulder = CFrame.Angles(rad(172), 0, rad(-(R_IN - 4))),
 	rElbow = CFrame.Angles(0, 0, 0),
-	lShoulder = CFrame.Angles(rad(172), 0, rad(8)),
-	lElbow = CFrame.Angles(0, 0, 0),
+	lShoulder = CFrame.Angles(rad(172), 0, rad(L_CROSS - 6)),
+	lElbow = CFrame.Angles(rad(L_TUCK - 6), 0, 0), -- ชูขึ้นแล้วยังคงคาบด้ามไว้ทั้งสองมือ
 }
 
 local GROUND = {
 	-- Arms straight down in front, body folded FORWARD over them: the blade is in the earth.
 	waist = CFrame.Angles(rad(-42), 0, 0),
-	rShoulder = CFrame.Angles(rad(14), 0, rad(-10)),
+	rShoulder = CFrame.Angles(rad(14), 0, rad(-(R_IN - 4))),
 	rElbow = CFrame.Angles(0, 0, 0),
-	lShoulder = CFrame.Angles(rad(14), 0, rad(10)),
-	lElbow = CFrame.Angles(0, 0, 0),
+	lShoulder = CFrame.Angles(rad(14), 0, rad(L_CROSS - 6)),
+	lElbow = CFrame.Angles(rad(L_TUCK - 6), 0, 0), -- ฟาดลงถึงพื้นโดยยังประกบสองมืออยู่
 	easing = Enum.PoseEasingStyle.Linear,
 }
 
@@ -158,8 +171,9 @@ build("Greatsword_Swing", Enum.AnimationPriority.Action4, false, {
 	-- Hauling it back out.
 	{ 1.75, copy(IDLE, {
 		waist = CFrame.Angles(rad(-18), 0, 0),
-		rShoulder = CFrame.Angles(rad(44), 0, rad(-16)),
-		lShoulder = CFrame.Angles(rad(44), 0, rad(16)),
+		rShoulder = CFrame.Angles(rad(44), 0, rad(-R_IN)),
+		lShoulder = CFrame.Angles(rad(44), 0, rad(L_CROSS)),
+		lElbow = CFrame.Angles(rad(L_TUCK), 0, 0),
 	}) },
 	{ 2.00, IDLE },
 })
