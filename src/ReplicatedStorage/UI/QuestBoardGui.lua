@@ -368,7 +368,12 @@ function QuestBoardGui:Render(data)
 	end
 
 	if order == 0 then
-		local empty = label(self.board, "ไม่มีใบประกาศบนกระดาน", 13, TEXT_LIGHT)
+		-- **กระดานว่างเพราะทำครบ ไม่เหมือนกระดานว่างเพราะไม่มีงาน** ใบที่ส่งไปแล้ววันนี้ถูกซ่อน (รับซ้ำไม่ได้
+		-- เมืองละ 3 ใบต่อวัน) ถ้าไม่บอกเหตุผล ผู้เล่นที่เพิ่งส่งครบจะอ่านว่ากระดานพัง
+		local text = (data.finishedToday or 0) > 0
+			and "ส่งงานของกระดานนี้ครบแล้ววันนี้ — กลับมาใหม่พรุ่งนี้"
+			or "ไม่มีใบประกาศบนกระดาน"
+		local empty = label(self.board, text, 13, TEXT_LIGHT)
 		empty.Size = UDim2.new(1, 0, 0, 60)
 	end
 end

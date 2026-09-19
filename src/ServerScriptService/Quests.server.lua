@@ -93,6 +93,36 @@ local function activeOf(player)
 	return data.Quests
 end
 
+-- งานที่ **ส่งไปแล้ววันนี้** — กันรับซ้ำ
+--
+-- ของเดิมไม่มีตารางนี้เลย: พอส่งงานเสร็จ ใบนั้นหลุดจากรายการที่ถืออยู่ ตัวกรอง "รับไปแล้วไม่ต้องโชว์ซ้ำ"
+-- จึงเลิกกรองมันทันที แล้วใบเดิมก็เด้งกลับขึ้นบอร์ดให้รับใหม่ได้ไม่จำกัดรอบ (ผู้ใช้แจ้ง 2026-09-19)
+-- กติกาที่ผู้ใช้ตั้งไว้คือ **เมืองละ 3 งาน วันละครั้ง** ซึ่งบังคับได้ก็ต่อเมื่อจำว่าใครส่งใบไหนไปแล้ว
+--
+-- **เก็บในโปรไฟล์และล้างตัวเองเมื่อเลขวันเปลี่ยน** ไม่ต้องมีใครมากวาด — เลขวันมาจาก `QuestConfig.DayNumber`
+-- ตัวเดียวกับที่บอร์ดใช้สุ่มงาน บอร์ดสุ่มชุดใหม่เมื่อไหร่ สิทธิ์ก็คืนมาพอดีกันเมื่อนั้น
+local function doneOf(player)
+	local data = ProfileAccess.Get(player)
+	if not data then return nil end
+	local day = QuestConfig.DayNumber()
+	local done = data.QuestsDone
+	if type(done) ~= "table" or done.day ~= day then
+		done = { day = day, keys = {} }
+		data.QuestsDone = done
+	end
+	done.keys = done.keys or {}
+	return done.keys
+end
+
+-- กุญแจของงานหนึ่งใบ: เมืองต้นทาง + ชนิด + ของ/มอน
+--
+-- **ไม่เอา `need` มาเป็นส่วนหนึ่งของกุญแจ** จำนวนเป็นของที่สุ่มมาพร้อมใบ ถ้าเอามาด้วย ใบที่สุ่มจำนวนใหม่
+-- จะนับเป็นคนละงานทันที · ใช้เมืองต้นทาง (`q.board`) ไม่ใช่บอร์ดที่ยืนอยู่ งานที่รับจากบอร์ดรวมจึงตัด
+-- สิทธิ์ของเมืองนั้นถูกต้อง
+local function questKey(q)
+	return ("%s|%s|%s"):format(tostring(q.board), tostring(q.kind), tostring(q.item or q.mob))
+end
+
 -- ความคืบหน้าของงานหนึ่ง
 --
 -- **งานเก็บของนับจากกระเป๋าสดๆ ไม่ได้นับสะสม** ของที่มีอยู่แล้วก่อนรับงานจึงใช้ส่งได้ทันที ซึ่งตรงกับ
@@ -139,6 +169,33 @@ local function allQuests()
 	return everything
 end
 
+-- ใบที่ "คนนี้ยังรับได้จริง" ที่บอร์ดนี้ — **ที่เดียว** ใช้ทั้งตอนวาดหน้าจอและตอนกดรับ
+--
+-- สองฝั่งต้องกรองเหมือนกันเป๊ะ เพราะเลขที่ไคลเอนต์ส่งกลับมาคือเลขในรายการ *ที่กรองแล้ว* ของเดิมเขียนตัวกรอง
+-- ไว้สองที่ พอวันนี้ต้องเพิ่มเงื่อนไข "ส่งไปแล้ววันนี้" เข้าไป ถ้าเติมข้างเดียวคนกดใบแรกจะได้ใบอื่นแทน
+-- โดยไม่มี error ให้เห็น
+--
+-- คืนจำนวนใบที่ซ่อนเพราะส่งไปแล้วมาด้วย หน้าจอจะได้บอกได้ว่า "ครบแล้ววันนี้" ไม่ใช่ "บอร์ดว่างเปล่า"
+local function offeredFor(player, boardId)
+	local held = activeOf(player) or {}
+	local done = doneOf(player) or {}
+	local source = (boardId == QuestConfig.MainBoardId) and allQuests() or questsOf(boardId)
+
+	local offered, finished = {}, 0
+	for _, q in ipairs(source) do
+		if done[questKey(q)] then
+			finished += 1
+		else
+			local mine = false
+			for _, h in ipairs(held) do
+				if sameQuest(h, q) then mine = true break end
+			end
+			if not mine then offered[#offered + 1] = q end
+		end
+	end
+	return offered, finished
+end
+
 local function snapshot(player, boardId)
 	local isMain = boardId == QuestConfig.MainBoardId
 	local board = not isMain and boardById(boardId) or nil
@@ -173,21 +230,17 @@ local function snapshot(player, boardId)
 	local active = {}
 	for _, q in ipairs(held) do active[#active + 1] = decorate(q) end
 
-	-- **ไม่โชว์งานที่รับไปแล้วซ้ำในช่องที่ยังไม่รับ**
+	-- **ไม่โชว์งานที่รับไปแล้วซ้ำในช่องที่ยังไม่รับ และไม่โชว์งานที่ส่งไปแล้ววันนี้เลย**
 	--
 	-- บอร์ดเป็นของเซิร์ฟเวอร์ งานยังอยู่บนบอร์ดหลังมีคนรับ (คนอื่นก็รับได้) แต่สำหรับ *คนที่รับไปแล้ว*
 	-- มันไม่ใช่ใบประกาศที่รับได้อีก มันคืองานที่กำลังทำอยู่ — การโชว์ทั้งสองที่ทำให้เห็นงานเดียวกันสองใบ
-	-- ซึ่งเป็นอาการที่ผู้ใช้เจอ
+	local raw, finished = offeredFor(player, boardId)
 	local offered = {}
-	for _, q in ipairs(isMain and allQuests() or questsOf(boardId)) do
-		local alreadyHeld = false
-		for _, mine in ipairs(held) do
-			if sameQuest(mine, q) then alreadyHeld = true break end
-		end
-		if not alreadyHeld then offered[#offered + 1] = decorate(q) end
-	end
+	for _, q in ipairs(raw) do offered[#offered + 1] = decorate(q) end
 
 	return {
+		-- ส่งครบแล้วกี่ใบวันนี้ หน้าจอใช้แยก "บอร์ดว่าง" ออกจาก "ทำครบแล้ว รอพรุ่งนี้"
+		finishedToday = finished,
 		boardId = boardId,
 		boardName = isMain and QuestConfig.MainBoardName or board.name,
 		blurb = isMain and QuestConfig.MainBoardBlurb or board.blurb,
@@ -211,21 +264,13 @@ local function accept(player, boardId, index)
 			("รับได้สูงสุด %d งาน"):format(QuestConfig.MaxActive))
 	end
 
-	-- **สร้างรายการเดียวกับที่ไคลเอนต์เห็น ไม่ใช่รายการดิบของบอร์ด**
+	-- **รายการเดียวกับที่ไคลเอนต์เห็น ไม่ใช่รายการดิบของบอร์ด**
 	--
-	-- หน้าจอโชว์เฉพาะงานที่ยังไม่ได้รับ (กรองงานที่ถืออยู่ออกไปแล้ว) เลขที่ส่งกลับมาจึงเป็นเลขของรายการ
-	-- ที่กรองแล้ว ถ้าเอาไปเปิดรายการดิบตรงๆ คนที่ถืองานอยู่หนึ่งใบจะกดใบแรกแล้วได้ใบที่สองแทน
+	-- หน้าจอโชว์เฉพาะใบที่ยังรับได้ (กรองใบที่ถืออยู่และใบที่ส่งไปแล้ววันนี้ออก) เลขที่ส่งกลับมาจึงเป็นเลข
+	-- ของรายการที่กรองแล้ว ถ้าเอาไปเปิดรายการดิบตรงๆ คนที่ถืองานอยู่หนึ่งใบจะกดใบแรกแล้วได้ใบที่สองแทน
 	--
 	-- บอร์ดรวมยิ่งชัด: เลขของมันมาจากงานทุกเมืองต่อกัน ซึ่งไม่ตรงกับบอร์ดไหนเลย
-	local source = (boardId == QuestConfig.MainBoardId) and allQuests() or questsOf(boardId)
-	local offered = {}
-	for _, q in ipairs(source) do
-		local held = false
-		for _, mine in ipairs(list) do
-			if sameQuest(mine, q) then held = true break end
-		end
-		if not held then offered[#offered + 1] = q end
-	end
+	local offered = offeredFor(player, boardId)
 
 	local quest = offered[index]
 	if not quest then return end
@@ -301,6 +346,11 @@ local function turnIn(player, boardId, index)
 
 	Inventory.AddItem(player, "Silver", silver)
 	table.remove(list, index)
+
+	-- **ปั๊มตราว่าใบนี้ของเมืองนี้ส่งไปแล้ววันนี้** ต้องอยู่หลังจ่ายรางวัลสำเร็จ ไม่ใช่ตอนกด — ทางออกก่อนหน้านี้
+	-- (ของไม่ครบ กระเป๋าเต็ม) ต้องไม่กินสิทธิ์ของวันนั้นไป
+	local done = doneOf(player)
+	if done then done[questKey(quest)] = true end
 	if gold > 0 then Inventory.AddGold(player, gold) end
 	if quest.xp and quest.xp > 0 then Progression.AwardExp(player, quest.xp) end
 

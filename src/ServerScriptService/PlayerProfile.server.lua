@@ -61,6 +61,9 @@ local ProfileTemplate = {
 	-- แบทเทิลพาส { season, xp, premium, claimedFree = {[tier]=true}, claimedPremium = {[tier]=true} } | nil
 	BattlePass = nil,
 	Quests = nil,
+	-- เควสที่ส่งไปแล้ววันนี้ { day = เลขวันจาก QuestConfig.DayNumber, keys = { ["เมือง|ชนิด|ของ"] = true } }
+	-- | nil = ยังไม่เคยส่งอะไร — Quests.server ล้างทั้งก้อนเองเมื่อเลขวันเปลี่ยน (กันรับงานเดิมซ้ำในวันเดียว)
+	QuestsDone = nil,
 	Collection = nil,
 	-- แต้มกิจกรรม สะสมข้ามเซสชัน ใช้จัดอันดับในหินสื่อสาร
 	EventPoints = 0,
