@@ -7,21 +7,25 @@ local ShopConfig = {}
 
 -- What the shopkeeper hands over, at a fixed price. Stock is unlimited -- a shop that ran out would just
 -- be a wall between a player and the game while nobody is around to restock it.
+--
+-- **ทุกราคา ×10 จากเดิม ยกเว้นจักรยาน** (ผู้ใช้กำหนด 2026-09-19 — พลั่ว 120→1,200 อีเต้อ 150→1,500
+-- ขวาน 140→1,400 ขนมปัง 12→120 น้ำ 8→80 คันเบ็ด 90→900 หนอน 2→20) เงินที่หาได้จากการขายของยังเท่าเดิม
+-- ตั้งใจให้ของในร้านเป็นเป้าที่ต้องเก็บเงิน ไม่ใช่ของที่ซื้อได้จากกำไรรอบเดียว
 ShopConfig.Sells = {
-	{ id = "Shovel", price = 120 },
-	{ id = "Pickaxe", price = 150 },
-	{ id = "Axe", price = 140 },
-	{ id = "Bread", price = 12 },
-	{ id = "Water", price = 8 },
+	{ id = "Shovel", price = 1200 },
+	{ id = "Pickaxe", price = 1500 },
+	{ id = "Axe", price = 1400 },
+	{ id = "Bread", price = 120 },
+	{ id = "Water", price = 80 },
 	-- Fishing. The rod is a one-off purchase; worms are the running cost, and one is spent per catch, so a
 	-- stack is how long a session at the water lasts.
-	{ id = "FishingRod", price = 90 },
-	{ id = "Worm", price = 2 },
-	-- จักรยาน ราคาที่ผู้ใช้กำหนด
+	{ id = "FishingRod", price = 900 },
+	{ id = "Worm", price = 20 },
+	-- จักรยาน ราคาที่ผู้ใช้กำหนด — **คันเดียวในร้านที่ไม่ถูก ×10** (ผู้ใช้สั่งเว้นไว้ 2026-09-19)
 	--
-	-- **แพงที่สุดในร้านอยู่คนละชั้น** (ถัดมาคือพลั่ว 150) โดยตั้งใจ: ทุกคนได้ฟรีหนึ่งคันตั้งแต่เริ่มเกม
-	-- อยู่แล้ว ราคานี้จึงเป็นค่าปรับของการทำหาย ไม่ใช่ราคาที่ต้องจ่ายเพื่อเริ่มมี — และต้องแพงพอที่การซื้อ
-	-- เก็บไว้หลายคันจะไม่คุ้มกว่าการเรียกคันเดิมออกมาใช้
+	-- ยังแพงที่สุดในร้านอยู่ (ถัดมาคืออีเต้อ 1,500) แต่ไม่ได้อยู่คนละชั้นเหมือนเดิมแล้ว: ทุกคนได้ฟรีหนึ่งคัน
+	-- ตั้งแต่เริ่มเกมอยู่แล้ว ราคานี้จึงเป็นค่าปรับของการทำหาย ไม่ใช่ราคาที่ต้องจ่ายเพื่อเริ่มมี — และต้องแพงพอ
+	-- ที่การซื้อเก็บไว้หลายคันจะไม่คุ้มกว่าการเรียกคันเดิมออกมาใช้
 	{ id = "Monowheel", price = 5000 },
 }
 

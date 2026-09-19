@@ -280,9 +280,26 @@ local function gather(node, player)
 		Inventory.WearEquipped(player, 1)
 	end
 
+	-- ของแถม (`bonus`): ได้ **เพิ่ม** จากของหลัก ไม่ใช่ **แทน** อย่าง `alt` — ตอนนี้คือเศษหินจากสายแร่
+	--
+	-- แจกทีหลังของหลักเสมอ และกระเป๋าเต็มตรงนี้ไม่ใช่ความล้มเหลว: การขุดสำเร็จไปแล้ว ของหลักอยู่ในมือแล้ว
+	-- ของแถมที่ใส่ไม่ลงจึงหายไปเงียบๆ ไม่ใช่ขึ้น "กระเป๋าเต็ม" สีแดงให้คนที่เพิ่งขุดได้ตกใจเล่น
+	local bonusId, bonusCount = nil, nil
+	local bonus = config.bonus
+	if bonus and math.random() < (bonus.chance or 0.25) then
+		local amount = ClassPerks.HarvestFor(player, math.random(bonus.min or 1, bonus.max or 1))
+		if Inventory.AddItem(player, bonus.item, amount) then
+			bonusId, bonusCount = bonus.item, amount
+		end
+	end
+
 	local item = ItemCatalog.Get(itemId)
-	Remotes.SocialNotify:FireClient(player, "info",
-		("ได้ %s x%d"):format(item and item.name or itemId, count))
+	local text = ("ได้ %s x%d"):format(item and item.name or itemId, count)
+	if bonusId then
+		local extra = ItemCatalog.Get(bonusId)
+		text ..= (" + %s x%d"):format(extra and extra.name or bonusId, bonusCount)
+	end
+	Remotes.SocialNotify:FireClient(player, "info", text)
 
 	task.delay(GatherConfig.RespawnSeconds, function()
 		if node.Parent then setSpent(node, false) end

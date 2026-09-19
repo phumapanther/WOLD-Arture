@@ -139,6 +139,17 @@ local function playEquipSound(player)
 	game:GetService("Debris"):AddItem(sound, CombatConfig.EquipSoundMaxSeconds)
 end
 
+-- "3 นาที" / "45 วินาที" — ยาชูกำลังอยู่หนึ่งนาที ถ้าปัดเป็นนาทีเสมอ ของที่สั้นกว่านั้นจะแจ้งว่า "0 นาที"
+local function durationText(seconds)
+	if seconds < 60 then return ("%d วินาที"):format(math.floor(seconds)) end
+	return ("%d นาที"):format(math.floor(seconds / 60))
+end
+
+-- แจ้งคนกินว่าได้บัพอะไรนานเท่าไหร่ ชื่อบัพมาจาก Vitals ที่เดียว (ดู `Vitals.BuffText`)
+local function notifyBuff(player, buff, seconds)
+	Remotes.SocialNotify:FireClient(player, "info", ("%s %s"):format(Vitals.BuffText(buff), durationText(seconds)))
+end
+
 local function canAct(player)
 	-- Nothing in the bag is usable while crawling: a downed player cannot rummage.
 	return not Vitals.IsDowned(player)
@@ -171,8 +182,7 @@ local function applyUse(player, item)
 		if use.mana then Vitals.AddMana(player, 99) end
 		if use.buff then
 			Vitals.AddBuff(player, use.buff, use.seconds or 300)
-			local what = use.buff == "noHunger" and "ไม่หิว" or use.buff == "noStamina" and "วิ่งไม่เหนื่อย" or "ไม่หิว ไม่เหนื่อย"
-			Remotes.SocialNotify:FireClient(player, "info", ("%s %d นาที"):format(what, math.floor((use.seconds or 300) / 60)))
+			notifyBuff(player, use.buff, use.seconds or 300)
 		end
 	elseif use.stat == "firstaid" then
 		-- กล่องปฐมพยาบาล: พันแผลแล้วเลือดเต็ม (ท่าพันแผลอยู่ฝั่งไคลเอนต์ระหว่างรอ)
@@ -192,10 +202,9 @@ local function applyUse(player, item)
 		local prize = ItemCatalog.Get(got.id)
 		Remotes.SocialNotify:FireClient(player, "info", ("กล่องเวทมนตร์: ได้ %s x%d"):format(prize and prize.name or got.id, got.count))
 	elseif use.stat == "buff" then
-		-- อาหารพรีเมียม: ไม่หิว/ไม่เหนื่อยชั่วคราว
+		-- ของพรีเมียม: บัพชั่วคราวล้วน ไม่ทำให้อิ่ม (ยาชูกำลัง) — ชื่อบัพรับได้ทั้งเดี่ยว "both" "all" และตาราง
 		Vitals.AddBuff(player, use.buff, use.seconds or 600)
-		local what = use.buff == "noHunger" and "ไม่หิว" or use.buff == "noStamina" and "วิ่งไม่เหนื่อย" or "ไม่หิว ไม่เหนื่อย"
-		Remotes.SocialNotify:FireClient(player, "info", ("%s %d นาที"):format(what, math.floor((use.seconds or 600) / 60)))
+		notifyBuff(player, use.buff, use.seconds or 600)
 	end
 	return true
 end

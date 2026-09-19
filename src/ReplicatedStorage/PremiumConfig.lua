@@ -32,14 +32,20 @@ PremiumConfig.GemPacks = {
 --------------------------------------------------------------------------------
 
 -- แต่ละแถว: ไอเทมในแคตตาล็อก จำนวน ราคาเพชร คำโปรย
+--
+-- **ราคาทั้งแผง ผู้ใช้กำหนดเอง 2026-09-19** (เดิมเครื่องมือ 600-800 อาหาร 120-150) ไม่ได้คิดจากสูตรไหน
+-- ห้ามไปปรับตามหลักเศรษฐกิจภายหลังโดยไม่ถาม: เครื่องมือถูกลงเพราะควรซื้อได้จากเพชรก้อนแรก
+-- ส่วนอาหารบัพสั้นลงมาก (นาที ไม่ใช่ชั่วโมง ดู ItemCatalog) ราคาจึงเป็นของใช้แล้วหมด ไม่ใช่ของสะสม
+--
+-- คำโปรยของอาหารต้องตรงกับ `use.seconds` ใน ItemCatalog เสมอ — คนอ่านป้ายก่อนจ่ายเพชร
 PremiumConfig.Shop = {
-	{ id = "gold_axe", item = "GoldAxe", count = 1, price = 800, blurb = "ตัดไม้ได้ตลอดกาล ไม่มีวันพัง" },
-	{ id = "gold_pickaxe", item = "GoldPickaxe", count = 1, price = 800, blurb = "ขุดแร่ได้ตลอดกาล ไม่มีวันพัง" },
-	{ id = "gold_shovel", item = "GoldShovel", count = 1, price = 600, blurb = "ขุดสมุนไพรได้ตลอดกาล ไม่มีวันพัง" },
-	{ id = "gold_rod", item = "GoldFishingRod", count = 1, price = 600, blurb = "ตกปลาได้ตลอดกาล ไม่มีวันพัง" },
-	{ id = "feast_hearty", item = "Feast_Hearty", count = 3, price = 120, blurb = "ไม่หิว 30 นาที ×3" },
-	{ id = "tonic_vigor", item = "Tonic_Vigor", count = 3, price = 120, blurb = "วิ่งไม่เหนื่อย 30 นาที ×3" },
-	{ id = "feast_royal", item = "Feast_Royal", count = 1, price = 150, blurb = "ไม่หิว ไม่เหนื่อย 1 ชั่วโมง" },
+	{ id = "gold_axe", item = "GoldAxe", count = 1, price = 250, blurb = "ตัดไม้ได้ตลอดกาล ไม่มีวันพัง" },
+	{ id = "gold_pickaxe", item = "GoldPickaxe", count = 1, price = 250, blurb = "ขุดแร่ได้ตลอดกาล ไม่มีวันพัง" },
+	{ id = "gold_shovel", item = "GoldShovel", count = 1, price = 200, blurb = "ขุดสมุนไพรได้ตลอดกาล ไม่มีวันพัง" },
+	{ id = "gold_rod", item = "GoldFishingRod", count = 1, price = 400, blurb = "ตกปลาได้ตลอดกาล ไม่มีวันพัง" },
+	{ id = "feast_hearty", item = "Feast_Hearty", count = 1, price = 60, blurb = "อิ่มทันที + บัพทุกอย่าง 3 นาที" },
+	{ id = "tonic_vigor", item = "Tonic_Vigor", count = 1, price = 30, blurb = "เลือด มานา สตามินา ไม่ลด 1 นาที" },
+	{ id = "feast_royal", item = "Feast_Royal", count = 1, price = 80, blurb = "อิ่มทันที + บัพทุกอย่าง 10 นาที" },
 }
 
 --------------------------------------------------------------------------------

@@ -479,16 +479,24 @@ ItemCatalog.Items = {
 		unbreakable = true, fishing = true, prefab = "FishingRod", tint = Color3.fromRGB(230, 190, 80),
 		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 } },
 
-	-- อาหารเสริมบัพ: กินแล้วไม่หิว / ไม่เหนื่อย ตามเวลา (Vitals.AddBuff) ซื้อจากร้านพรีเมียมหรือได้จากพาส
+	-- อาหารเสริมบัพ: ซื้อจากร้านพรีเมียมหรือได้จากพาส บัพอยู่ในหน่วยความจำ (Vitals.AddBuff) ออกเกมแล้วหาย
+	--
+	-- **สั้นแต่แรง** (ผู้ใช้กำหนด 2026-09-19 — เดิมบัพเดียว 30-60 นาที): สองมื้อให้ **บัพทุกอย่าง**
+	-- (ไม่หิว/ไม่เหนื่อย/มานาไม่ลด/เกราะไม่ลด/เลือดไม่ลด) แต่นับเป็นนาที ไม่ใช่ชั่วโมง ของแบบนี้จึงเป็น
+	-- "ของกินก่อนลุยบอส" ไม่ใช่ "ซื้อทีเดียวแล้วลืมระบบหิวไปทั้งเซสชัน"
+	--
+	-- `buff = "all"` อ่านลิสต์จาก `Vitals.BuffNames` ตอนกิน — บัพใหม่ในอนาคตจึงมาถึงอาหารพวกนี้เอง
 	Feast_Hearty = { food = true, icon = "rbxassetid://90476697790239", name = "มื้อใหญ่นักเดินทาง", kind = "consumable", -- decal 135271030319763
 		weight = 0.5, stackSize = 20, value = 0, sellable = false,
-		use = { stat = "buff", buff = "noHunger", seconds = 30 * 60 } },
+		use = { stat = "meal", hunger = true, buff = "all", seconds = 3 * 60 } },
+	-- ยาชูกำลัง: ไม่ใช่อาหาร ไม่ทำให้อิ่ม — กันสามหลอดที่หมดระหว่างสู้ (เลือด ❤️‍🩹 มานา 💙 สตามินา 💛)
+	-- หนึ่งนาทีพอดี เพราะ "เลือดไม่ลด" คือกันตายเต็มรูปแบบ ยาวกว่านี้คือขายความอมตะราคาถูก
 	Tonic_Vigor = { food = true, icon = "rbxassetid://93573276910747", name = "ยาชูกำลัง", kind = "consumable", -- decal 124890963484629
 		weight = 0.5, stackSize = 20, value = 0, sellable = false,
-		use = { stat = "buff", buff = "noStamina", seconds = 30 * 60 } },
+		use = { stat = "buff", buff = { "noHp", "noMana", "noStamina" }, seconds = 60 } },
 	Feast_Royal = { food = true, icon = "rbxassetid://79094106381921", name = "งานเลี้ยงราชสำนัก", kind = "consumable", -- decal 117700288552786
 		weight = 0.8, stackSize = 20, value = 0, sellable = false,
-		use = { stat = "buff", buff = "both", seconds = 60 * 60 } },
+		use = { stat = "meal", hunger = true, buff = "all", seconds = 10 * 60 } },
 
 	--------------------------------------------------------------------------
 	-- สกินอาวุธ (จากกาชา) `skinFor` = อาวุธที่ติดตั้งได้ ติดตั้งแล้วเก็บ id ไว้ใน meta.skin ของอาวุธชิ้นนั้น

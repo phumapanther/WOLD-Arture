@@ -131,14 +131,49 @@ function Vitals.SetStamina(player, value)
 end
 
 --------------------------------------------------------------------------------
--- บัพจากอาหารพรีเมียม: ไม่หิว / ไม่เหนื่อย ชั่วคราว
+-- บัพจากอาหารพรีเมียม (ชั่วคราว): ความหิว/สตามินา/มานา/เกราะ/เลือด ไม่ลด — ห้าตัวเดียวกับที่ HUD โชว์
 --------------------------------------------------------------------------------
 
--- buff = "noHunger" | "noStamina" | "both" (= ทั้งสอง) ซ้อนกัน = ต่อเวลาจากที่เหลือ
+-- บัพทั้งหมดที่มี เรียงเหมือนที่ HUD โชว์ (`HudGui` BUFF_ORDER) — ลิสต์นี้คือความหมายของ `"all"`
+-- เพิ่มบัพใหม่ที่นี่ที่เดียว แล้วอาหาร "บัพทุกอย่าง" ได้ไปด้วยเองทันที ไม่ต้องไปแก้ ItemCatalog ตามทีหลัง
+Vitals.BuffNames = { "noHunger", "noStamina", "noMana", "noArmor", "noHp" }
+
+-- ป้ายไทยของแต่ละบัพ — ถ้อยคำเดียวกับที่ HUD โชว์ (`HudGui.BUFF_LOOK`) เพราะคนกินอ่านสองที่แล้วต้องเห็นตรงกัน
+-- อยู่ที่นี่ไม่ใช่ที่ HudGui เพราะฝั่งเซิร์ฟเวอร์เป็นคนส่งข้อความตอนกิน และเซิร์ฟเวอร์ไม่ควร require โมดูล UI
+Vitals.BuffLabels = {
+	noHunger = "ความหิวไม่ลด",
+	noStamina = "สตามินาไม่ลด",
+	noMana = "มานาไม่ลด",
+	noArmor = "เกราะไม่ลด",
+	noHp = "เลือดไม่ลด",
+}
+
+-- คำบรรยายบัพชุดหนึ่ง (รับค่าเดียวกับ `Vitals.AddBuff`) สำหรับแจ้งเตือนคนกินและคำโปรยในร้าน
+function Vitals.BuffText(buff)
+	if buff == "all" then return "บัพทุกอย่าง" end
+	local names = buff == "both" and { "noHunger", "noStamina" }
+		or type(buff) == "table" and buff
+		or { buff }
+	local parts = {}
+	for _, name in ipairs(names) do parts[#parts + 1] = Vitals.BuffLabels[name] or name end
+	return table.concat(parts, " · ")
+end
+
+-- buff = ชื่อบัพเดี่ยว | "both" (ไม่หิว+ไม่เหนื่อย) | "all" (ทุกบัพ) | ตารางชื่อบัพ
+-- ซ้อนกัน = ต่อเวลาจากที่เหลือ
 function Vitals.AddBuff(player, buff, seconds)
 	local mine = Buffs[player] or {}
 	Buffs[player] = mine
-	local names = buff == "both" and { "noHunger", "noStamina" } or { buff }
+	local names
+	if type(buff) == "table" then
+		names = buff
+	elseif buff == "all" then
+		names = Vitals.BuffNames
+	elseif buff == "both" then
+		names = { "noHunger", "noStamina" }
+	else
+		names = { buff }
+	end
 	for _, name in ipairs(names) do
 		local base = math.max(os.clock(), mine[name] or 0)
 		mine[name] = base + seconds
@@ -168,7 +203,11 @@ function Vitals.TrySpendMana(player, cost)
 	if not state then return false end
 	cost = cost or 1
 	if state.mana < cost then return false end
-	state.mana -= cost
+	-- บัพ 💙 "มานาไม่ลด": ยังต้องมีพิปพอจะร่ายเหมือนเดิม แค่ร่ายแล้วไม่เสีย — เหมือน SetStamina ที่ปฏิเสธ
+	-- เฉพาะ "การลด" ไม่ใช่ตรึงหลอดไว้เต็ม ทางอื่นที่เติมมานาจึงไม่ถูกบัพนี้ขัดขวาง
+	if not Vitals.HasBuff(player, "noMana") then
+		state.mana -= cost
+	end
 	Vitals.Send(player, true)
 	return true
 end
@@ -309,6 +348,9 @@ function Vitals.ApplyDamage(player, amount, kind)
 	local state = States[player]
 	if not state or amount <= 0 then return false end
 	if Vitals.IsInvulnerable(player) then return false end
+	-- บัพ ❤️‍🩹 "เลือดไม่ลด" (ยาชูกำลัง/มื้อใหญ่/งานเลี้ยง): กันไว้ก่อนถึงเกราะ เพราะบัพนี้แปลว่าไม่เจ็บเลย
+	-- ไม่ใช่ "เกราะรับไว้แทน" — คืน false เหมือนอมตะ คนกินจึงไม่ได้ยินเสียงเจ็บจากสิ่งที่ไม่ได้ทำอะไรเขา
+	if Vitals.HasBuff(player, "noHp") then return false end
 
 	-- Already down: there is no blood left to take. A body on the floor is still within a monster's reach, so
 	-- this fires constantly -- it used to spend every one of those hits on nothing and make a noise each time.
@@ -325,7 +367,8 @@ function Vitals.ApplyDamage(player, amount, kind)
 		amount -= absorbed
 		-- The guard's armour absorbs the blow without being spent by it. Everything else is unchanged: the
 		-- hit is still halved, so a guard is not invulnerable -- their plate simply never wears out.
-		if not ClassPerks.Has(player, "armorNeverBreaks") then
+		-- บัพ 🖤 "เกราะไม่ลด" ทำเหมือนเกราะการ์ด: ยังรับแรงแทนเลือดครึ่งหนึ่งเหมือนเดิม แต่ตัวเกราะไม่สึก
+		if not ClassPerks.Has(player, "armorNeverBreaks") and not Vitals.HasBuff(player, "noArmor") then
 			state.armor -= absorbed
 			-- Wear the piece itself down, so it can be repaired or replaced rather than silently regenerating.
 			if entry then entry.durability = state.armor end
@@ -662,7 +705,9 @@ function Vitals.Tick(player, state, dt)
 	if swimming then
 		-- Only actual swimming costs stamina; floating still lets a player rest indefinitely.
 		if humanoid.MoveDirection.Magnitude > 0 then
-			state.stamina = math.max(0, state.stamina - VitalsConfig.SwimStaminaDrainPerSec * dt)
+			-- ผ่าน SetStamina ไม่ใช่เขียนทับ `state.stamina` ตรงๆ ไม่งั้นบัพ 💛 "สตามินาไม่ลด" กับเพิร์คนักบวช
+			-- หยุดได้แค่การวิ่ง แล้วคนที่กินยาชูกำลังไว้ก็ยังจมน้ำตายอยู่ — ซึ่งตรงข้ามกับที่ป้ายบัพบอก
+			Vitals.SetStamina(player, state.stamina - VitalsConfig.SwimStaminaDrainPerSec * dt)
 		end
 		if state.stamina <= 0 then
 			-- Ten seconds to drown regardless of size, for the same reason hunger scales.
