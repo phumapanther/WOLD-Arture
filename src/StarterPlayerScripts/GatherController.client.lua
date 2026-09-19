@@ -479,22 +479,37 @@ end
 -- [F] ฟาร์มออโต้ -- and the bare key is how they stop it again once they have walked away from any node.
 Remotes.ToggleAutoFarm.OnClientEvent:Connect(toggleAuto)
 
+-- ปุ่ม F ที่โผล่อยู่บนจอตอนนี้ (ปุ่มไหนก็ได้ ไม่ใช่แค่ของฟาร์มออโต้)
+--
+-- เดิมที่นี่ไล่หาเฉพาะ `AutoFarmPrompt` ของจุดเก็บของ — พอมีปุ่ม F ของระบบอื่นเกิดขึ้น (คลังเมืองที่
+-- อนุสาวรีย์) การกด F ตรงนั้นจะ **เปิดคลังและสั่งฟาร์มออโต้พร้อมกัน** แล้วตัวละครจะเดินออกจาก
+-- หน้าต่างที่เพิ่งเปิด ซึ่งอ่านไม่ออกเลยว่าเกิดอะไรขึ้น
+--
+-- `PromptShown`/`PromptHidden` ยิงที่ไคลเอนต์ของคนที่เห็นปุ่มนั้นอยู่แล้ว จึงเป็นคำตอบที่ถูกเสมอและ
+-- ถูกกว่าการไล่วัดระยะทุกจุดในแมพทุกครั้งที่กด F — และครอบคลุมปุ่ม F ที่ใครจะเพิ่มมาในอนาคตเองด้วย
+local shownFPrompts = {}
+ProximityPromptService.PromptShown:Connect(function(prompt)
+	if prompt.KeyboardKeyCode == Enum.KeyCode.F then shownFPrompts[prompt] = true end
+end)
+ProximityPromptService.PromptHidden:Connect(function(prompt)
+	shownFPrompts[prompt] = nil
+end)
+
+-- ปุ่มที่ถูกลบทิ้งระหว่างโชว์อยู่ไม่ยิง PromptHidden เสมอไป ตัวที่ตายแล้วจึงถูกคัดทิ้งตอนอ่าน
+-- ไม่งั้นมันจะกลืนคีย์ F ของคนนั้นไปทั้งเซสชัน
+local function anyFPromptShown()
+	for prompt in pairs(shownFPrompts) do
+		if prompt.Parent and prompt.Enabled then return true end
+		shownFPrompts[prompt] = nil
+	end
+	return false
+end
+
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
 	if input.KeyCode ~= Enum.KeyCode.F then return end
-	-- The prompt already fired for us if one was in range; this only covers being away from a node.
-	local nearPrompt = false
-	local r = rootOf()
-	if r then
-		for _, node in ipairs(CollectionService:GetTagged(TAG)) do
-			local pr = node:FindFirstChild("AutoFarmPrompt", true)
-			if pr and pr.Enabled and (pr.Parent.Position - r.Position).Magnitude <= pr.MaxActivationDistance then
-				nearPrompt = true
-				break
-			end
-		end
-	end
-	if not nearPrompt then toggleAuto() end
+	-- ปุ่มบนจอเป็นเจ้าของคีย์เสมอ (มันยิง Triggered ให้เองอยู่แล้ว) คีย์เปล่าใช้ได้เฉพาะตอนไม่มีปุ่มไหนโชว์
+	if not anyFPromptShown() then toggleAuto() end
 end)
 
 -- Changing what is held changes what the run is allowed to target, so any change stops it.

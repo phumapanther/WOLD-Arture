@@ -982,7 +982,8 @@ function SocialGui:RenderFriends(friends, pending)
 
 		local name = label(f, friend.name, 13, TEXT_LIGHT)
 		name.Position = UDim2.new(0, 28, 0, 0)
-		name.Size = UDim2.new(1, -230, 1, 0)
+		-- แคบลงจาก -230 เพราะแถวนี้มีสี่ปุ่มแล้ว (ชวนตี้ · คุย · โทร · ลบ) ชื่อยาวถูกตัดด้วย … ตามเดิม
+		name.Size = UDim2.new(1, -286, 1, 0)
 		name.TextTruncate = Enum.TextTruncate.AtEnd
 
 		-- Only an online friend can be messaged, and the button says so rather than failing on tap.
@@ -991,6 +992,21 @@ function SocialGui:RenderFriends(friends, pending)
 		talk.AnchorPoint = Vector2.new(1, 0.5)
 		talk.Position = UDim2.new(1, -136, 0.5, 0)
 		talk.Size = UDim2.fromOffset(54, 26)
+
+		-- ชวนเข้าตี้ — **ทางเดียวที่ชวนกันได้** (ผู้ใช้กำหนด 2026-09-19) ไม่มีปุ่มที่ตัวคนในโลก ไม่มีคำสั่งแชท
+		-- อยู่ในแถวนี้เพราะตี้ตั้งกับสหาย และเซิร์ฟเวอร์ก็ปฏิเสธคนที่ไม่ใช่สหายอยู่แล้ว ปุ่มจึงไม่ได้อยู่ผิดที่
+		local party = button(f, "ชวนตี้", 12,
+			friend.online and Color3.fromRGB(64, 86, 62) or Color3.fromRGB(46, 48, 58))
+		party.AnchorPoint = Vector2.new(1, 0.5)
+		party.Position = UDim2.new(1, -194, 0.5, 0)
+		party.Size = UDim2.fromOffset(56, 26)
+		party.Activated:Connect(function()
+			if not friend.online then
+				self:SetStatus("เพื่อนคนนี้ไม่ได้อยู่ในเซิร์ฟเวอร์นี้", "error")
+				return
+			end
+			if self.callbacks.partyInvite then self.callbacks.partyInvite(friend.userId) end
+		end)
 
 		-- Telepathy sits next to the chat button because it is the same act aimed at the same person.
 		local call = button(f, "โทร", 12,

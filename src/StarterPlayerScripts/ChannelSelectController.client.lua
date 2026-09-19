@@ -40,7 +40,7 @@ local locked = false -- survives a rebuild: a rotation must not un-black a scree
 local buildGui, applySnapshot
 
 AvatarThumbnails.OnAnyLoaded(function(userId, content)
-	-- only Roleplay has real per-channel row tables; Stories/Tanding are { comingSoon = TextLabel }, not indexable this way
+	-- only Roleplay has real per-channel row tables; Farming/PVP are { comingSoon = TextLabel }, not indexable this way
 	for channel, row in pairs(gui.rows.Roleplay) do
 		if row._playerIds then
 			for slot, id in ipairs(row._playerIds) do
@@ -81,7 +81,7 @@ local JOIN_TIMEOUT = 60
 -- still coming.
 local function resetToLobby(status)
 	-- ponytail: reset every Roleplay row's status rather than tracking which one was mid-join (only ever one in
-	-- flight per client); Stories/Tanding aren't real per-channel tables (see ChannelSelectGui.new), so they're excluded.
+	-- flight per client); Farming/PVP aren't real per-channel tables (see ChannelSelectGui.new), so they're excluded.
 	locked = false
 	gui:Unlock() -- only a failed/timed-out join reaches here; a successful one blacks out the screen for good
 	-- Still in the lobby after all, so the music comes back with the screen.

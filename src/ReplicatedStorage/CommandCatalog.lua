@@ -18,6 +18,7 @@ CommandCatalog.Commands = {
 	{ name = "gold", args = "<จำนวน> [คน]", desc = "เสกตัง (ติดลบ = ลด)", scope = "admin" },
 	{ name = "gems", args = "<จำนวน> [คน]", desc = "เสกเพชร (ติดลบ = ลด)", scope = "admin" },
 	{ name = "passxp", args = "<จำนวน> [คน]", desc = "เติม XP แบทเทิลพาส", scope = "admin" },
+	{ name = "town", args = "[claim|free <เมือง>]", desc = "ดู/แก้เจ้าของเมือง", scope = "admin" },
 	{ name = "tpto", args = "<คน>", desc = "วาปไปหา", scope = "admin" },
 	{ name = "bring", args = "<คน>", desc = "ดึงมาหา", scope = "admin" },
 	{ name = "goto", args = "<x> <y> <z>", desc = "วาปไปพิกัด", scope = "admin" },

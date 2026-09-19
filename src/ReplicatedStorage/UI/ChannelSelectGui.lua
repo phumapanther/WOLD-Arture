@@ -8,7 +8,13 @@ local ChannelSelectGui = {}
 ChannelSelectGui.__index = ChannelSelectGui
 
 local ACTIVE_MODES = { Roleplay = true }
-local MODE_ORDER = { "Stories", "Roleplay", "Tanding" }
+-- ชื่อโหมดเป็นชื่อของ "เพลสปลายทาง" ไม่ใช่ป้ายเฉยๆ (ผู้ใช้เปลี่ยน 2026-09-19: Stories → Farming,
+-- Tanding → PVP) ดูแผนของสองโหมดนี้ใน `docs/design/05-future-modes.md`
+--
+-- **เปิดให้กดได้เมื่อเพลสปลายทางมีจริงเท่านั้น** — เพิ่มชื่อลง `ACTIVE_MODES` วันที่เพลสนั้นพร้อม
+-- ไม่ใช่วันที่ตั้งชื่อปุ่ม ไม่งั้นปุ่มพาไปที่ว่างเปล่า และ **ล็อบบี้เป็นทางแยกเดียวของทั้งเกม**:
+-- หนึ่งไอดีอยู่ได้แมพเดียว การเปลี่ยนโหมดจึงต้องกลับมาที่หน้านี้เสมอ
+local MODE_ORDER = { "Farming", "Roleplay", "PVP" }
 
 -- Fill this in from Studio once there's real art (Asset Manager -> Decal/Image -> copy its rbxassetid).
 -- Left empty on purpose: an image ID we can't verify from here could point at nothing and silently show a
@@ -309,8 +315,8 @@ function ChannelSelectGui.new()
 		}
 	end
 
-	-- Stories/Tanding: a single "coming soon" placeholder frame each, swapped in when that tab is selected
-	for _, mode in ipairs({ "Stories", "Tanding" }) do
+	-- Farming/PVP: a single "coming soon" placeholder frame each, swapped in when that tab is selected
+	for _, mode in ipairs({ "Farming", "PVP" }) do
 		local soon = Instance.new("TextLabel")
 		soon.Size = UDim2.new(1, 0, 1, 0)
 		soon.BackgroundTransparency = 1

@@ -15,4 +15,17 @@ TownAccess.IsHome = nil
 -- รายชื่อเมืองทั้งหมด { { id, name }, ... }
 TownAccess.Towns = nil
 
+-- AnchorOf(townId) -> BasePart ที่ปุ่มยึดเมืองแขวนอยู่ (คลังเมืองใช้วัดระยะว่าคนกดยืนที่อนุสาวรีย์จริง)
+TownAccess.AnchorOf = nil
+
+-- Owners() -> ตารางเจ้าของเมืองทั้งหมด (อ่านสดจาก DataStore) สำหรับคำสั่งแอดมิน
+TownAccess.Owners = nil
+
+-- ForceOwner(townId, clanId | nil, clanName) -> บังคับตั้ง/ล้างเจ้าของเมือง สำหรับคำสั่งแอดมิน
+TownAccess.ForceOwner = nil
+
+-- OpenVault(player, townId) -> เปิดคลังเมืองให้คนนั้น (ตรวจสิทธิ์ข้างใน) เติมโดย TownVault.server
+-- ปุ่ม F ที่ TownCapture สร้างเป็นคนเรียก — ยังไม่มีค่า = ระบบคลังยังไม่โหลด ปุ่มจะบอกคนกดตรงๆ
+TownAccess.OpenVault = nil
+
 return TownAccess

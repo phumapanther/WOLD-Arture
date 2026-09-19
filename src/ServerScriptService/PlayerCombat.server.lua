@@ -28,6 +28,8 @@ local Classes = require(game.ServerScriptService.Classes)
 local ClassConfig = require(game.ReplicatedStorage.ClassConfig)
 local WeaponVisualsAccess = require(game.ServerScriptService.WeaponVisualsAccess)
 local Vitals = require(game.ServerScriptService.Vitals)
+-- ตี้: คนในตี้เดียวกันตีกันไม่ได้ (ผู้ใช้กำหนด 2026-09-19) `Party` เป็นโมดูลสถานะเฉยๆ ไม่ require อะไรกลับมา
+local Party = require(game.ServerScriptService.Party)
 local Consuming = require(game.ServerScriptService.Consuming)
 local StatusEffects = require(game.ServerScriptService.StatusEffects)
 local Remotes = require(game.ReplicatedStorage.Remotes)
@@ -298,7 +300,9 @@ local function fireProjectile(player, attack, aim)
 
 	local function damageAt(position)
 		for _, other in ipairs(Players:GetPlayers()) do
-			if other ~= player then
+			-- คนในตี้เดียวกันไม่ใช่เป้า: ลูกธนูทะลุผ่านไปเหมือนไม่มีใครยืนอยู่ตรงนั้น ไม่ใช่ "โดนแต่ 0 ดาเมจ"
+			-- ด่านอยู่ตรงนี้ ไม่ใช่ใน ApplyDamage เพราะ Vitals ไม่รู้ว่าใครเป็นคนตี — มันเห็นแค่คนที่ถูกตี
+			if other ~= player and not Party.SameParty(player, other) then
 				local otherChar = other.Character
 				if otherChar and distanceToBody(position, otherChar) <= CombatConfig.ProjectileHitRadius
 					and not Vitals.IsInvulnerable(other) then
@@ -419,7 +423,9 @@ local function resolveHit(player, state, attack)
 	end
 
 	for _, other in ipairs(Players:GetPlayers()) do
-		if other ~= player and not state.hitThisSwing[other] then
+		-- เพื่อนร่วมตี้ไม่ถูกทำเครื่องหมาย `hitThisSwing` ด้วย: การเหวี่ยงผ่านตัวเพื่อนไม่ควร "ใช้สิทธิ์"
+		-- การโดนของหมัดนั้นไป คนที่ยืนถัดไปข้างหลังจึงยังโดนอยู่
+		if other ~= player and not state.hitThisSwing[other] and not Party.SameParty(player, other) then
 			local otherChar = other.Character
 			if otherChar and distanceToBody(origin, otherChar) <= attack.range then
 				state.hitThisSwing[other] = true

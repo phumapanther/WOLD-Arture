@@ -180,6 +180,55 @@ function ClanStore.UpdateTowns(transform)
 end
 
 --------------------------------------------------------------------------------
+-- คลังเมือง
+--------------------------------------------------------------------------------
+
+-- **คีย์ต่อเมือง ไม่ได้อยู่ในคีย์ `towns`** — คีย์ towns ถูกอ่านทุก 30 วิจากทุกเซิร์ฟเวอร์และถูกเขียนทุกครั้ง
+-- ที่มีคนยึดเมือง เอาตาราง 54 ช่องกับ log ไปฝากไว้ด้วยแปลว่าการยึดเมืองต้องแบกคลังไปมาทุกครั้ง
+-- และการหยิบของหนึ่งชิ้นจะไปแย่ง UpdateAsync กับการยึดเมืองของอีกเซิร์ฟเวอร์
+--
+-- และไม่ได้อยู่ในตัวแคลนด้วย เพราะคลังนี้เป็นของ **เมือง**: เมืองเปลี่ยนมือแล้วของยังอยู่ที่เดิม
+-- (ผู้ใช้กำหนดว่าคลังผูกกับ "แคลนที่ยึดอยู่" ไม่ใช่กับแคลนใดแคลนหนึ่งถาวร)
+local function townVaultKey(townId)
+	return "townvault:" .. tostring(townId)
+end
+
+local TownVaultCache = {}
+
+-- { vault = { [ช่อง] = { id, count, durability, meta } }, log = { {name, action, id, count, at}, ... } }
+function ClanStore.GetTownVault(townId, fresh)
+	if not fresh or not store then return TownVaultCache[townId] or { vault = {}, log = {} } end
+	local success, data = pcall(function() return store:GetAsync(townVaultKey(townId)) end)
+	if success and type(data) == "table" then TownVaultCache[townId] = data end
+	return TownVaultCache[townId] or { vault = {}, log = {} }
+end
+
+-- transform(data) -> data ที่แก้แล้ว หรือ nil = ไม่เปลี่ยน · คืนค่าล่าสุดของคลังนั้น
+-- ใช้ UpdateAsync ด้วยเหตุผลเดียวกับคลังแคลน: สองคนหยิบพร้อมกันจาก SetAsync = ของงอกหรือของหาย
+function ClanStore.UpdateTownVault(townId, transform)
+	if not store then
+		local current = TownVaultCache[townId] or { vault = {}, log = {} }
+		local changed = transform(current)
+		if changed then TownVaultCache[townId] = changed end
+		return TownVaultCache[townId]
+	end
+	local success, result = pcall(function()
+		return store:UpdateAsync(townVaultKey(townId), function(old)
+			local current = (type(old) == "table") and old or { vault = {}, log = {} }
+			current.vault = current.vault or {}
+			current.log = current.log or {}
+			return transform(current)
+		end)
+	end)
+	if not success then
+		warn("[ClanStore] แก้คลังเมืองไม่ได้:", result)
+		return nil
+	end
+	if type(result) == "table" then TownVaultCache[townId] = result end
+	return TownVaultCache[townId]
+end
+
+--------------------------------------------------------------------------------
 -- สร้างแคลน
 --------------------------------------------------------------------------------
 

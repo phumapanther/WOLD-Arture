@@ -28,6 +28,8 @@ local Vitals = require(game.ServerScriptService.Vitals)
 local Progression = require(game.ServerScriptService.Progression)
 local Classes = require(game.ServerScriptService.Classes)
 local EventState = require(game.ServerScriptService.EventState)
+local TownAccess = require(game.ServerScriptService.TownAccess)
+local ClanAccess = require(game.ServerScriptService.ClanAccess)
 local EventConfig = require(game.ReplicatedStorage.EventConfig)
 local VehicleConfig = require(game.ReplicatedStorage.Vehicle.Config)
 local VehicleService = require(game.ServerScriptService.Vehicle.Service)
@@ -140,6 +142,46 @@ Commands.gems = function(admin, args)
 	Remotes.PremiumUpdate:FireClient(target, { gems = PremiumAccess.GetGems(target) })
 	reply(admin, ("เพชร %s%d -> %s (ตอนนี้ %d)"):format(amount >= 0 and "+" or "", math.floor(amount),
 		target.Name, PremiumAccess.GetGems(target)))
+end
+
+-- /town [claim <เมือง> | free <เมือง>] -- ส่องว่าเมืองไหนเป็นของแคลนไหน "จริงๆ" และแก้ได้ถ้าเพี้ยน
+--
+-- มีไว้เพราะรอบที่แล้วเสียเวลาไปหนึ่งรอบเต็มกับการเดาว่าทำไมปุ่มที่อนุสาวรีย์ไม่สลับ คำตอบคือคีย์ `towns`
+-- ไม่มีรายการของเมืองนั้น ทั้งที่หน้าแคลนโชว์ว่ายึดอยู่ (`clan.towns` เป็นแค่สำเนาไว้โชว์ ไม่ใช่ตัวตัดสิน)
+-- คำสั่งนี้ตอบคำถามนั้นได้ใน 1 วินาที และบอกด้วยว่าแอตทริบิวต์ ClanId บนตัวเราคืออะไร ซึ่งเป็นอีกครึ่ง
+-- ของการตัดสินว่าจะโชว์ปุ่ม E หรือ F
+Commands.town = function(admin, args)
+	if not TownAccess.Owners then return reply(admin, "ระบบเมืองยังไม่พร้อม") end
+	local action = args[1] and string.lower(args[1]) or nil
+
+	if action == "claim" or action == "free" then
+		local townId = args[2]
+		if not townId then return reply(admin, "ใช้: /town claim <ชื่อเมือง> | /town free <ชื่อเมือง>") end
+		-- รับชื่อเมืองแบบไม่สนตัวพิมพ์ แล้วแปลงเป็น id จริงจากรายชื่อเดียวกับที่ระบบใช้
+		local match
+		for _, t in ipairs(TownAccess.Towns or {}) do
+			if string.lower(t.id) == string.lower(townId) then match = t end
+		end
+		if not match then return reply(admin, "ไม่รู้จักเมืองนี้: " .. townId) end
+
+		if action == "free" then
+			TownAccess.ForceOwner(match.id, nil, nil)
+			return reply(admin, ("ปล่อย%sแล้ว (ไม่มีเจ้าของ)"):format(match.name))
+		end
+		local clan = ClanAccess.ClanOf and ClanAccess.ClanOf(admin) or nil
+		if not clan then return reply(admin, "คุณไม่ได้อยู่ในแคลน") end
+		TownAccess.ForceOwner(match.id, clan.id, clan.name)
+		return reply(admin, ("ตั้งให้แคลน %s ถือ%sแล้ว"):format(clan.name, match.name))
+	end
+
+	local lines = { ("ClanId ของคุณ: %s"):format(tostring(admin:GetAttribute("ClanId"))) }
+	local owners = TownAccess.Owners() or {}
+	for _, t in ipairs(TownAccess.Towns or {}) do
+		local o = owners[t.id]
+		lines[#lines + 1] = ("%s (%s): %s"):format(t.name, t.id,
+			o and ("แคลน %s [%s]"):format(o.clanName or "?", tostring(o.clanId)) or "ไม่มีเจ้าของ")
+	end
+	reply(admin, table.concat(lines, "\n"))
 end
 
 -- /passxp <amount> [player] -- เติม XP แบทเทิลพาสตรงๆ ไว้เทสรับของ

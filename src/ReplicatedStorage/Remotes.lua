@@ -92,6 +92,9 @@ local EVENTS = {
 	"RequestBankAction",
 	"RequestShowCard", "CardStateChanged", -- profile card raised over a player, seen by everyone nearby
 	"RequestCall", "CallStateChanged", -- telepathy: ring, answer, decline, hang up (UI only, no audio yet)
+	-- ปาร์ตี้: คำขอเข้ามาทางเดียว (ชวน/รับ/ปฏิเสธ/ออก) · สถานะออกไปให้ทุกคนในตี้พร้อมเลือด-ความหิวของกันและกัน
+	-- · คำเชิญยิงถึงคนที่ถูกชวนคนเดียว หน้าต่างถาม "ตกลงไหม" จึงขึ้นได้แม้หินสื่อสารปิดอยู่
+	"RequestPartyAction", "PartyStateChanged", "PartyInvite",
 	-- The shopkeeper. ShopOpen carries the whole price list down when a player walks up, so the client
 	-- never computes a price and never has one to lie about; RequestShopAction is buy/sell by slot or id.
 	"RequestShopOpen", "ShopOpen", "RequestShopAction",
@@ -136,6 +139,9 @@ local EVENTS = {
 	"QuestUpdate", "RequestQuestAction",
 	-- แคลน: เซิร์ฟเวอร์ส่งภาพทั้งชุด (รายการแคลน + แคลนของเรา) ไคลเอนต์ส่งกลับแค่ว่ากดอะไร
 	"ClanUpdate", "RequestClanAction",
+	-- คลังเมือง: ของเมืองที่แคลนผู้ยึดใช้ร่วมกัน เปิดด้วยปุ่ม F ที่อนุสาวรีย์ (คนละหน้าต่างกับคลังแคลน)
+	-- สแนปช็อตมีทั้งของในคลังและ log 10 รายการล่าสุด ไคลเอนต์ไม่เคยคำนวณอะไรเอง
+	"RequestTownVault", "TownVaultUpdate",
 	-- พ่อค้าประจำเมือง: รับซื้อเฉพาะของถิ่นนั้น คนในแคลนเจ้าของเมืองได้ราคาดีกว่า
 	"TownBuyerUpdate", "RequestTownSell",
 	-- ร้านพรีเมียม/กาชา/แบทเทิลพาส: ภาพเดียวส่งกลับทุกครั้งที่กดอะไร และการติดตั้ง/ถอดสกิน

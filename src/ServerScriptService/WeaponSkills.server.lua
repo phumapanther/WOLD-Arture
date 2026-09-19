@@ -13,6 +13,7 @@ local Debris = game:GetService("Debris")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
+local Party = require(game.ServerScriptService.Party)
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local Consuming = require(game.ServerScriptService.Consuming)
 local StatusEffects = require(game.ServerScriptService.StatusEffects)
@@ -51,6 +52,8 @@ end
 -- reward the basic attacks use.
 local function damageAndScore(caster, victim, amount)
 	if Vitals.IsInvulnerable(victim) then return end
+	-- สกิลก็คือการตีอย่างหนึ่ง เพื่อนร่วมตี้จึงไม่โดนเหมือนกัน (ท่าฮีลหมู่ไม่ผ่านทางนี้ มันรักษา ไม่ได้ตี)
+	if Party.SameParty(caster, victim) then return end
 	local wasDowned = Vitals.IsDowned(victim)
 	Vitals.ApplyDamage(victim, amount, "combat")
 	-- A skill landing is a blow like any other, so the music hears about it the same way.

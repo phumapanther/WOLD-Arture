@@ -95,7 +95,11 @@ local function townName(townId)
 	return townId
 end
 
-local Prompts = {} -- [townId] = prompt
+local Prompts = {} -- [townId] = ปุ่มยึดเมือง (E)
+local VaultPrompts = {} -- [townId] = ปุ่มคลังเมือง (F)
+-- ชิ้นที่ปุ่มแขวนอยู่ · คลังเมืองแขวนปุ่ม F ของมันที่ชิ้นเดียวกัน แทนที่จะไปค้นหาเสาเองอีกรอบ
+-- (การหาเสากลางของอนุสาวรีย์เป็นโค้ดที่เปราะ มีที่เดียวพอ — ดู `wire` ข้างล่าง)
+local Anchors = {} -- [townId] = BasePart
 local refreshPrompt -- ข้างล่าง ใช้หลังยึดเพื่อให้ปุ่มเปลี่ยนทันทีโดยไม่ต้องเดินออกแล้วเข้าใหม่
 
 local function capture(player, townId)
@@ -195,6 +199,11 @@ local function wire(model, townId)
 	end
 	if not anchor then return end
 	wired[model] = true
+	Anchors[townId] = anchor
+	-- ไคลเอนต์ใช้สองอย่างนี้ตัดสินว่าจะโชว์ปุ่มไหนให้เจ้าของจอ (ดู `TownVaultController`):
+	-- ไม่มีแคลน = ไม่เห็นปุ่มอะไรเลย · มีแคลนแต่ไม่ใช่เจ้าของเมือง = เห็นแค่ E · เจ้าของเมือง = เห็นแค่ F
+	model:SetAttribute("TownId", townId)
+	model:SetAttribute("TownName", townName(townId))
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "CapturePrompt"
@@ -211,6 +220,35 @@ local function wire(model, townId)
 	prompt.Triggered:Connect(function(player)
 		capture(player, townId)
 	end)
+
+	-- **ปุ่มคลังเมืองสร้างที่นี่ด้วย ไม่ใช่ในสคริปต์คลัง** — ทั้งสองปุ่มแขวนชิ้นเดียวกัน เกิดพร้อมกัน
+	-- และถูกสแตมป์ด้วยข้อมูลชุดเดียวกัน รอบแรกแยกไปสร้างในสคริปต์คลังแล้วรอ `TownAccess.AnchorOf`
+	-- ซึ่งเป็นการนัดเวลาข้ามสคริปต์โดยไม่จำเป็น และเป็นทางที่ปุ่ม F หายไปเงียบๆ ได้
+	local vault = Instance.new("ProximityPrompt")
+	vault.Name = "TownVaultPrompt"
+	vault.ActionText = "คลังเมือง"
+	vault.ObjectText = townName(townId)
+	vault.KeyboardKeyCode = Enum.KeyCode.F
+	vault.MaxActivationDistance = PROMPT_DISTANCE
+	vault.RequiresLineOfSight = false
+	vault.Parent = anchor
+	VaultPrompts[townId] = vault
+	vault.Triggered:Connect(function(player)
+		-- ตรรกะคลังอยู่ที่ `TownVault.server` ที่นี่แค่เป็นปุ่ม — ยังไม่โหลดก็บอกไป ไม่ใช่เงียบ
+		if TownAccess.OpenVault then
+			TownAccess.OpenVault(player, townId)
+		else
+			Remotes.SocialNotify:FireClient(player, "warn", "ระบบคลังเมืองยังไม่พร้อม")
+		end
+	end)
+
+	-- ไคลเอนต์หาปุ่มจากแท็ก ไม่ใช่จากการไล่หาโมเดลในแมพ (ดู `TownVaultController`):
+	-- ภายใต้ StreamingEnabled การค้นหาโมเดลจากชื่อเป็นคำตอบที่ถูกบ้างผิดบ้างแล้วแต่จังหวะ
+	for _, p in ipairs({ prompt, vault }) do
+		p:SetAttribute("TownId", townId)
+		CollectionService:AddTag(p, "WOLD_TownPrompt")
+	end
+
 	refreshPrompt(townId)
 end
 
@@ -227,6 +265,15 @@ function refreshPrompt(townId)
 	local action = ok and "ยึดเมือง" or (why or "ยึดไม่ได้")
 	local object = owner and ("%s — แคลน %s"):format(townName(townId), owner.clanName) or townName(townId)
 	local hold = ok and ClanConfig.CaptureSeconds or 0
+	-- **ประกาศเจ้าของเมืองไว้บนตัวปุ่มเอง** ไม่ใช่บนโมเดลที่ไล่หาขึ้นไปข้างบน: ปุ่มคือสิ่งที่ไคลเอนต์
+	-- ถืออยู่ในมือตอนตัดสินว่าจะโชว์หรือซ่อน การเอาคำตอบไปวางไว้คนละที่กับคำถามคือที่มาของรอบที่แล้ว
+	-- ที่ปุ่ม E ยังขึ้นให้เจ้าของเมืองและปุ่ม F ไม่ขึ้นให้ใครเลย
+	--
+	-- `""` = ไม่มีใครถือเมืองนี้ · nil = สคริปต์นี้ยังไม่ได้พูด ซึ่งไคลเอนต์แปลว่า "ยังไม่รู้ อย่าเพิ่งซ่อนอะไร"
+	local ownerId = owner and owner.clanId or ""
+	prompt:SetAttribute("OwnerClanId", ownerId)
+	local vault = VaultPrompts[townId]
+	if vault and vault.Parent then vault:SetAttribute("OwnerClanId", ownerId) end
 	if prompt.ActionText ~= action then prompt.ActionText = action end
 	if prompt.ObjectText ~= object then prompt.ObjectText = object end
 	if prompt.HoldDuration ~= hold then prompt.HoldDuration = hold end
@@ -246,6 +293,73 @@ task.spawn(function()
 		end
 		task.wait(0.5)
 	end
+end)
+
+--------------------------------------------------------------------------------
+-- ซ่อมข้อมูลเก่า: เมืองที่ถูกยึด "ก่อน" จะมีคีย์ `towns`
+--
+-- เจอจริง 2026-09-19: แคลนถือซอลต์เมียร์อยู่ (หน้าแคลนโชว์ "ยึดเมือง: Saltmere") แต่คีย์ `towns`
+-- ไม่มีรายการนั้น — ป้ายบนปุ่มฟ้องตรงๆ ว่าขึ้น "ซอลต์เมียร์" เฉยๆ ไม่มี "— แคลน ..." ต่อท้าย
+-- ผลคือทั้งเกมคิดว่าเมืองนี้ไม่มีเจ้าของ: ปุ่ม E ยังขึ้นให้เจ้าของเมือง และปุ่มคลังเมือง F ไม่ขึ้นให้ใครเลย
+--
+-- ต้นเหตุคือการย้ายตัวตัดสินจาก `clan.towns` มาที่คีย์ `towns` (2026-09-18) ของที่ยึดไว้ก่อนหน้านั้น
+-- ไม่เคยถูกเขียนลงคีย์ใหม่ · ตัวซ่อมนี้ยกสำเนาในตัวแคลนขึ้นมาเป็นความจริง **ครั้งเดียวตอนเซิร์ฟบูต**
+-- แล้วจะไม่ทำอะไรอีกเลยในรอบถัดๆ ไป เพราะหลังจากนี้คีย์ `towns` จะมีข้อมูลครบแล้ว
+--------------------------------------------------------------------------------
+
+local MAX_CLANS_TO_SCAN = 40 -- กัน GetAsync ยาวเป็นพรืดถ้าวันหนึ่งมีแคลนเยอะ
+
+local function reconcileFromClans()
+	refreshOwners(true)
+
+	local index = ClanStore.Index(true) or {}
+	local count = 0
+	for _ in pairs(index) do count += 1 end
+	if count == 0 then return end
+	if count > MAX_CLANS_TO_SCAN then
+		warn(("[TownCapture] แคลน %d แคลน มากกว่าเพดานสแกน %d — ข้ามการซ่อมเมือง")
+			:format(count, MAX_CLANS_TO_SCAN))
+		return
+	end
+
+	local missing = {}
+	for clanId in pairs(index) do
+		local clan = ClanStore.Get(clanId, true)
+		task.wait(0.2) -- อ่านทีละแคลนแบบไม่รีบ ไม่ไปแย่งโควตากับการเล่นจริง
+		for townId, held in pairs((clan and clan.towns) or {}) do
+			if held and not Owner[townId] then
+				missing[townId] = {
+					clanId = clan.id,
+					clanName = clan.name,
+					-- ไม่รู้เวลายึดจริงก็ถือว่ายึดตอนนี้ คูลดาวน์เริ่มใหม่ ซึ่งเป็นฝั่งที่ปลอดภัยกว่า
+					since = (clan.townsAt and clan.townsAt[townId]) or os.time(),
+				}
+			end
+		end
+	end
+	if not next(missing) then return end
+
+	local towns = ClanStore.UpdateTowns(function(t)
+		local changed = false
+		for townId, rec in pairs(missing) do
+			if not t[townId] then t[townId] = rec changed = true end
+		end
+		return changed and t or nil
+	end)
+	if towns then
+		Owner = towns
+		ownerLoadedAt = os.clock()
+		for townId, rec in pairs(missing) do
+			print(("[TownCapture] ซ่อมเจ้าของเมือง %s -> แคลน %s"):format(townId, rec.clanName))
+		end
+		for id in pairs(Prompts) do refreshPrompt(id) end
+	end
+end
+
+task.spawn(function()
+	task.wait(8) -- ให้ระบบแคลนกับ DataStore ตั้งตัวก่อน แล้วค่อยซ่อม
+	local ok, err = pcall(reconcileFromClans)
+	if not ok then warn("[TownCapture] ซ่อมเจ้าของเมืองไม่สำเร็จ:", err) end
 end)
 
 --------------------------------------------------------------------------------
@@ -269,3 +383,37 @@ TownAccess.IsHome = function(player, townId)
 end
 
 TownAccess.Towns = TOWNS
+
+-- ชิ้นที่ปุ่มยึดเมืองแขวนอยู่ — คลังเมืองเอาไปแขวนปุ่ม F และใช้วัดระยะว่าคนกดยืนอยู่ที่อนุสาวรีย์จริง
+TownAccess.AnchorOf = function(townId)
+	return Anchors[townId]
+end
+
+-- ตารางเจ้าของเมืองทั้งหมด (อ่านสด) ไว้ให้คำสั่งแอดมินส่องว่าใครถืออะไรอยู่จริง
+TownAccess.Owners = function()
+	refreshOwners(true)
+	return Owner
+end
+
+-- บังคับตั้งเจ้าของ — สำหรับคำสั่งแอดมินเท่านั้น ใช้ตอนข้อมูลเก่าเพี้ยนและไม่อยากรอตัวซ่อมตอนบูต
+TownAccess.ForceOwner = function(townId, clanId, clanName)
+	local towns = ClanStore.UpdateTowns(function(t)
+		if clanId then
+			-- หนึ่งแคลนถือได้เมืองเดียว กฎเดียวกับการยึดปกติ
+			for id, o in pairs(t) do
+				if o.clanId == clanId and id ~= townId then t[id] = nil end
+			end
+			t[townId] = { clanId = clanId, clanName = clanName, since = os.time() }
+		else
+			t[townId] = nil
+		end
+		return t
+	end)
+	if towns then
+		Owner = towns
+		ownerLoadedAt = os.clock()
+		LocalReadyAt[townId] = os.clock() + COOLDOWN_SECONDS
+		for id in pairs(Prompts) do refreshPrompt(id) end
+	end
+	return towns and towns[townId] or nil
+end

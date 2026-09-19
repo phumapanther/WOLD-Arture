@@ -232,6 +232,20 @@ function Vitals.HealFraction(player, fraction)
 	Vitals.Heal(player, maxHP(player) * fraction)
 end
 
+-- เลือดกับความหิวเป็นสัดส่วน 0-1 สำหรับคนอื่นที่มีสิทธิ์เห็น (ตอนนี้คือเพื่อนร่วมตี้)
+--
+-- คืนสัดส่วน ไม่ใช่ตัวเลขดิบ เพราะเพดานเลือด/ความหิวโตตามเลเวล — "45" ของคนเลเวล 60 กับเลเวล 3
+-- ไม่ได้แปลว่าอันตรายเท่ากัน และหลอดที่คนอื่นเห็นควรอ่านได้ทันทีโดยไม่ต้องรู้เลเวลของเจ้าตัว
+function Vitals.Fractions(player)
+	local state = States[player]
+	if not state then return nil end
+	return {
+		hp = state.hp / maxHP(player),
+		hunger = state.hunger / maxHunger(player),
+		downed = state.downed == true,
+	}
+end
+
 -- สถานะบัพทั้งหมดสำหรับ HUD: [ชื่อ] = วินาทีที่เหลือ หรือ -1 = ไม่มีวันหมด (จากอาชีพ/อมตะ)
 --   noHunger 💚 · noStamina 💛 · noMana 💙 · noArmor 🖤 · noHp ❤️‍🩹
 function Vitals.BuffSnapshot(player)

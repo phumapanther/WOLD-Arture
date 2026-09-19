@@ -54,6 +54,18 @@ ClanConfig.VaultCols = 9
 ClanConfig.VaultRows = 9
 ClanConfig.VaultSlots = ClanConfig.VaultCols * ClanConfig.VaultRows
 
+-- คลังเมือง: ของ **เมือง** ไม่ใช่ของแคลน — แคลนไหนยึดเมืองอยู่ก็ใช้คลังนั้น (ผู้ใช้กำหนด 2026-09-19)
+--
+-- 9x6 = 54 ช่อง กว้างเท่าคลังแคลนแต่ตื้นกว่า: มันเป็นที่เก็บของ **ที่สอง** ที่ได้มาเพราะยึดเมืองได้
+-- ถ้าใหญ่กว่าคลังแคลนเอง คลังแคลนจะกลายเป็นของที่ไม่มีใครใช้
+ClanConfig.TownVaultCols = 9
+ClanConfig.TownVaultRows = 6
+ClanConfig.TownVaultSlots = ClanConfig.TownVaultCols * ClanConfig.TownVaultRows
+
+-- **ทุกคนในแคลนที่ยึดอยู่หยิบเข้า-ออกได้ ไม่มีชั้นยศ** (ต่างจากคลังแคลนที่หยิบออกได้แค่หัวกับรองหัว)
+-- สิ่งที่มาแทนการจำกัดสิทธิ์คือ Log ย้อนหลัง 10 ครั้ง: ของหายแล้วรู้ว่าใครเอาไป ซึ่งเป็นสิ่งที่ผู้ใช้สั่ง
+ClanConfig.TownVaultLogSize = 10
+
 -- เรทแปลงซิลเวอร์ในคลังเป็นเงินในเกมตอนแจกจ่าย ผู้ใช้กำหนด 1 ต่อ 1
 ClanConfig.SilverToGold = 1
 

@@ -338,6 +338,10 @@ gui:On("call", function(userId)
 	Remotes.RequestCall:FireServer("start", userId)
 end)
 
+gui:On("partyInvite", function(userId)
+	Remotes.RequestPartyAction:FireServer("invite", userId)
+end)
+
 call:On("answer", function()
 	Remotes.RequestCall:FireServer("answer")
 end)
