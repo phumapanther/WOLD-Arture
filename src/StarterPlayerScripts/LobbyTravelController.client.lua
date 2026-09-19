@@ -116,6 +116,82 @@ local function hideSoon(after)
 	end)
 end
 
+--------------------------------------------------------------------------------
+-- จอดำระหว่างรอเทเลพอร์ต
+--
+-- เวลาที่ผู้เล่นรอจริงไม่ได้อยู่ที่แถบ 5 วิ แต่อยู่**หลัง**แถบเต็ม: Roblox ต้องหา (หรือปลุก) เซิร์ฟเวอร์
+-- ล็อบบี้ให้ก่อน กินเวลาหลายวินาทีและไม่มีทางรู้ล่วงหน้าว่ากี่วินาที ของเดิมช่วงนี้ยังยืนอยู่ในโลกเหมือนเดิม
+-- มีแค่แถบเล็กๆ มุมบน ผู้เล่นจึงอ่านว่า "เกมค้าง" ไม่ใช่ "กำลังโหลด" (ผู้ใช้แจ้ง 2026-09-19)
+--
+-- ทรงเดียวกับปุ่ม JOIN ในล็อบบี้ที่ผู้ใช้สั่งให้ "ดับหน้าจอทันที" · และจอเดียวกันนี้ถูกส่งต่อไปเป็นหน้าโหลด
+-- ของปลายทางด้วย `SetTeleportGui` จอจึงไม่กระพริบกลับมาเป็นเกมกลางทางแล้วค่อยดำอีกรอบ
+--
+-- **สำเนาที่ส่งให้ SetTeleportGui เป็นภาพนิ่ง** — หน้าโหลดของปลายทางไม่มีสคริปต์รัน จุดไข่ปลาที่ขยับได้จึงมี
+-- เฉพาะฝั่งนี้ และต้องลงทะเบียน**ตั้งแต่สคริปต์เริ่ม** ไม่ใช่ตอนกดปุ่ม ไม่งั้นเทเลพอร์ตเริ่มไปก่อนแล้วไม่ทัน
+local TeleportService = game:GetService("TeleportService")
+
+local function buildVeil()
+	local veil = Instance.new("ScreenGui")
+	veil.Name = "LobbyTravelVeil"
+	veil.ResetOnSpawn = false
+	veil.IgnoreGuiInset = true
+	veil.DisplayOrder = 1000 -- เหนือทุกอย่างในเกม (แบนเนอร์อีเวนต์ 30 · เลขพิกัด 999)
+	veil.Enabled = false
+
+	local sheet = Instance.new("Frame")
+	sheet.Name = "Sheet"
+	sheet.Size = UDim2.fromScale(1, 1)
+	sheet.BackgroundColor3 = Color3.new(0, 0, 0)
+	sheet.BorderSizePixel = 0
+	sheet.Parent = veil
+
+	local title = Instance.new("TextLabel")
+	title.Name = "Title"
+	title.AnchorPoint = Vector2.new(0.5, 0.5)
+	title.Position = UDim2.fromScale(0.5, 0.5)
+	title.Size = UDim2.new(1, -40, 0, 30)
+	title.BackgroundTransparency = 1
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 20
+	title.TextColor3 = RUNE
+	title.Text = "กำลังพาไปหน้าล็อบบี้"
+	title.Parent = sheet
+
+	local sub = Instance.new("TextLabel")
+	sub.AnchorPoint = Vector2.new(0.5, 0)
+	sub.Position = UDim2.new(0.5, 0, 0.5, 22)
+	sub.Size = UDim2.new(1, -40, 0, 20)
+	sub.BackgroundTransparency = 1
+	sub.Font = Enum.Font.Gotham
+	sub.TextSize = 13
+	sub.TextColor3 = Color3.fromRGB(176, 178, 188)
+	sub.Text = "กำลังหาเซิร์ฟเวอร์ล็อบบี้ รอสักครู่"
+	sub.Parent = sheet
+
+	return veil, title
+end
+
+local veil, veilTitle = buildVeil()
+veil.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+
+pcall(function()
+	local carry = buildVeil()
+	carry.Enabled = true
+	TeleportService:SetTeleportGui(carry)
+end)
+
+local function veilOn()
+	veil.Enabled = true
+	task.spawn(function()
+		local dots = 0
+		while veil.Enabled do
+			dots = (dots + 1) % 4
+			veilTitle.Text = "กำลังพาไปหน้าล็อบบี้" .. string.rep(".", dots)
+			task.wait(0.4)
+		end
+	end)
+end
+
 Remotes.LobbyTravelChanged.OnClientEvent:Connect(function(state, detail)
 	if state == "started" then
 		local seconds = tonumber(detail) or 5
@@ -145,11 +221,14 @@ Remotes.LobbyTravelChanged.OnClientEvent:Connect(function(state, detail)
 		hint.Visible = false
 		fill.BackgroundColor3 = GOOD
 		fill.Size = UDim2.fromScale(1, 1)
-		gui.Enabled = true
+		gui.Enabled = false -- แถบเล็กไม่ต้องแล้ว จอดำพูดแทนทั้งจอ
 		gui:SetAttribute("HideToken", nil)
+		veilOn()
 
 	elseif state == "stopped" then
 		stopTicker()
+		-- "failed" มาถึงได้หลังจอดำขึ้นแล้ว (TeleportInitFailed) ต้องคืนจอให้เขาก่อน ไม่งั้นดำค้างทั้งที่ยังอยู่ในเกม
+		veil.Enabled = false
 		caption.Text = REASONS[detail] or "ยกเลิกการกลับหน้าล็อบบี้"
 		caption.TextColor3 = BAD
 		hint.Visible = false
