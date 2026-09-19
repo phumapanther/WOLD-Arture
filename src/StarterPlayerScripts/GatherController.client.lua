@@ -201,6 +201,14 @@ local autoThread = nil
 -- On-screen state. The first version reported everything through print(), which no player ever sees -- so
 -- auto-farm looked broken whether it was running or not.
 local banner
+-- แถบสถานะเป็น **ปุ่ม** ไม่ใช่ป้าย เพราะบนมือถือไม่มีคีย์ F ให้กดหยุด
+--
+-- ทางหยุดที่มีอยู่เดิมทั้งหมดต้องใช้คีย์บอร์ด หรือไม่ก็เป็นทางอ้อม (เดินกลับไปแตะปุ่มที่ต้นไม้ · ถอด
+-- เครื่องมือ · ตาย) — คนเล่นมือถือเปิดออโต้แล้วหยุดไม่ได้จริงๆ (ผู้ใช้ถาม 2026-09-19)
+--
+-- ปุ่มหยุดอยู่บนแถบที่ขึ้นมาอยู่แล้วตอนออโต้ทำงาน ไม่ต้องเพิ่มปุ่มถาวรใน `TouchActionGui`: มันโผล่มาเฉพาะ
+-- ตอนที่มีอะไรให้หยุด และอยู่ตรงที่ตาจ้องอยู่แล้วพอดี
+local bannerTap -- ตั้งค่าหลัง stopAuto ถูกประกาศ (local ใน Lua ยังเป็น nil จนกว่าบรรทัดนั้นจะรัน)
 local function setBanner(text)
 	if not banner then
 		local gui = Instance.new("ScreenGui")
@@ -210,10 +218,14 @@ local function setBanner(text)
 		gui.DisplayOrder = 12
 		gui.Parent = player:WaitForChild("PlayerGui")
 
-		local label = Instance.new("TextLabel")
+		local label = Instance.new("TextButton")
+		label.AutoButtonColor = false
+		label.Activated:Connect(function()
+			if bannerTap then bannerTap() end
+		end)
 		label.AnchorPoint = Vector2.new(0.5, 0)
 		label.Position = UDim2.new(0.5, 0, 0, 74)
-		label.Size = UDim2.fromOffset(260, 30)
+		label.Size = UDim2.fromOffset(300, 30) -- กว้างขึ้นจาก 260: ข้อความมีคำว่า "แตะแถบนี้เพื่อหยุด" ต่อท้ายแล้ว
 		label.BackgroundColor3 = Color3.fromRGB(26, 28, 34)
 		label.BackgroundTransparency = 0.2
 		label.BorderSizePixel = 0
@@ -413,7 +425,11 @@ local function startAuto()
 		return
 	end
 	autoFarming = true
-	setBanner(heldTool and "ฟาร์มออโต้: เปิด — กด F เพื่อหยุด" or "ฟาร์มออโต้ (สัตว์): เปิด — กด F เพื่อหยุด")
+	-- บอกทางหยุดที่ **เครื่องนี้** ใช้ได้จริง เครื่องที่มีทั้งสองอย่างบอกทั้งสองทาง
+	local how = UserInputService.KeyboardEnabled
+		and (UserInputService.TouchEnabled and "กด F หรือแตะแถบนี้เพื่อหยุด" or "กด F เพื่อหยุด")
+		or "แตะแถบนี้เพื่อหยุด"
+	setBanner((heldTool and "ฟาร์มออโต้: เปิด" or "ฟาร์มออโต้ (สัตว์): เปิด") .. " — " .. how)
 
 	autoThread = task.spawn(function()
 		local lastFailed = nil
@@ -451,6 +467,12 @@ end
 
 local function toggleAuto()
 	if autoFarming then stopAuto() else startAuto() end
+end
+
+-- แตะแถบสถานะ = หยุด (ไม่ใช่สลับ) แถบขึ้นเฉพาะตอนเปิดอยู่ การแตะจึงมีความหมายเดียว และการแตะพลาดตอน
+-- แถบเตือน "ต้องมือเปล่า/ถือเครื่องมือ" ก็ไม่ไปเปิดออโต้ให้โดยไม่ตั้งใจ
+bannerTap = function()
+	if autoFarming then stopAuto() end
 end
 
 -- Two ways in, on purpose. The prompt is how a player DISCOVERS it -- walking up to a tree and seeing
