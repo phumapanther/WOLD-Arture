@@ -162,7 +162,10 @@ end
 --------------------------------------------------------------------------------
 
 -- สุ่มหนึ่งชิ้นจากสระตามน้ำหนัก rarity ของแต่ละไอเทม
-local function roll(pool)
+-- `uniform` = ทุกชิ้นโอกาสเท่ากัน ใช้กับตู้ที่มีเพดานรายชิ้น (ถ่วงน้ำหนักแล้วเพดานจะแตก)
+local function roll(pool, uniform)
+	if #pool == 0 then return nil end
+	if uniform then return pool[math.random(1, #pool)] end
 	local total = 0
 	local weights = {}
 	for i, id in ipairs(pool) do
@@ -203,9 +206,25 @@ local function pull(player, bannerId, times)
 		return Remotes.SocialNotify:FireClient(player, "error", ("เพชรไม่พอ (ต้องใช้ %d)"):format(cost))
 	end
 
+	-- **ตัวนับการันตีอยู่ในโปรไฟล์ ไม่ใช่ตัวแปรในลูป** — ผู้ใช้กำหนดว่า "สุ่ม 10 ครั้งได้ของหลัก 1 ชิ้น"
+	-- ถ้านับเฉพาะในชุด 10 ครั้ง คนกดเดี่ยว 10 ครั้งจะไม่ได้การันตีเลย ทั้งที่จ่ายแพงกว่าด้วยซ้ำ
+	-- ตัวนับสะสมข้ามการกดและข้ามเซสชัน รีเซ็ตทุกครั้งที่ออกของหลัก
+	local data = ProfileAccess.Get(player)
+	local pity = data and data.GachaPity or nil
+	if data and not pity then pity = {}; data.GachaPity = pity end
+	local filler = PremiumConfig.GachaFiller(ItemCatalog)
+
 	local results = {}
 	for _ = 1, times do
-		local id = roll(banner.pool)
+		-- ของหลักออก 10% หรือออกแน่นอนเมื่อพลาดติดกันครบเพดาน
+		-- ตู้ที่ตั้ง `pity = false` ไม่มีการันตี (ตู้รวม) — ตัวนับไม่ถูกใช้และไม่ถูกเขียนด้วย
+		local usePity = banner.pity ~= false
+		local miss = (pity and pity[bannerId] or 0)
+		local jackpot = math.random() < PremiumConfig.JackpotChance(banner)
+			or (usePity and miss + 1 >= PremiumConfig.GachaPity)
+		if pity and usePity then pity[bannerId] = jackpot and 0 or (miss + 1) end
+		local id = roll(jackpot and banner.pool or filler, jackpot and banner.uniform or false)
+		if not id then break end
 		local item = ItemCatalog.Get(id)
 		if not Inventory.AddItem(player, id, 1) then
 			-- ที่ว่างหมดกลางทาง (ไม่น่าเกิด) คืนเพชรตามสัดส่วนที่ยังไม่ได้ของ
