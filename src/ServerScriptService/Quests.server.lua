@@ -275,7 +275,7 @@ local function accept(player, boardId, index)
 	local quest = offered[index]
 	if not quest then return end
 
-	-- คัดลอก ไม่ได้อ้างถึงตัวเดียวกับบอร์ด: บอร์ดสุ่มใหม่ทุกครึ่งชั่วโมง งานที่รับไปแล้วต้องไม่หายไปด้วย
+	-- คัดลอก ไม่ได้อ้างถึงตัวเดียวกับบอร์ด: บอร์ดสุ่มใหม่ทุกวัน งานที่รับไปแล้วต้องไม่หายไปด้วย
 	list[#list + 1] = {
 		kind = quest.kind, item = quest.item, mob = quest.mob, need = quest.need,
 		gold = quest.gold, xp = quest.xp, board = quest.board, got = 0,
