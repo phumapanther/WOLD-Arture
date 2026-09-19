@@ -31,12 +31,25 @@ Remotes.PremiumUpdate.OnClientEvent:Connect(function(data)
 	if gui:IsOpen() then gui:Render(latest) end
 end)
 
-local opener = player:WaitForChild("PlayerGui"):WaitForChild("WOLD_OpenPremium", 30)
-if opener then
-	opener.Event:Connect(function(tab)
-		gui:Show(tab, latest)
-		Remotes.RequestPremium:FireServer("refresh")
-	end)
+-- **หน้าต่างนี้เป็นเจ้าของ BindableEvent เอง ไม่ใช่รอให้ HudController สร้างให้**
+--
+-- ของเดิมคือ `WaitForChild("WOLD_OpenPremium", 30)` ซึ่งเงียบสนิทเมื่อหมดเวลา (`if opener then`) — ถ้า
+-- HudController ไปถึงบรรทัดที่สร้างช้ากว่า 30 วิ (เกมจริงโหลดนานกว่า Studio มาก) หน้าจอนี้จะไม่ผูกอะไรเลย
+-- ปุ่มทั้งสามในเมนูสามจุดกดแล้วจึงไม่มีอะไรขึ้น **และไม่มี error ให้เห็น** — อาการเดียวกับกฎเหล็ก
+-- StreamingEnabled ใน CLAUDE.md
+--
+-- ทรงที่ใช้ได้จริงในเกมนี้คือทรงเดียวกับ `WOLD_ToggleInventory`/`WOLD_RequestAction`: **เจ้าของหน้าต่าง
+-- สร้างช่องทาง ฝั่งที่กดปุ่มไปหยิบตอนกด** (`FindFirstChild` ตอนคลิก) ไม่มีใครต้องรอใคร
+local pg = player:WaitForChild("PlayerGui")
+local opener = pg:FindFirstChild("WOLD_OpenPremium")
+if not opener then
+	opener = Instance.new("BindableEvent")
+	opener.Name = "WOLD_OpenPremium"
+	opener.Parent = pg
 end
+opener.Event:Connect(function(tab)
+	gui:Show(tab, latest)
+	Remotes.RequestPremium:FireServer("refresh")
+end)
 
 Remotes.RequestPremium:FireServer("refresh")

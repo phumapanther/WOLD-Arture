@@ -49,14 +49,29 @@ function TutorialGui.new()
 	----------------------------------------------------------------------------
 	-- ปุ่มกลมเครื่องหมายตกใจ
 	--
-	-- อยู่ใต้ปุ่มสามจุดที่มุมขวาบน ตามที่ผู้ใช้สั่ง ตำแหน่งอิงจากขอบขวาเสมอ จึงไม่หลุดจอไม่ว่าจอกว้างแค่ไหน
+	-- **อยู่ในกล่องทรงเดียวกับ `menuGroup` ของ HUD (220x140 ชิดขวาบน) และย่อด้วยสเกลตัวเดียวกัน**
+	-- (baseline 1280 พื้น 0.55) ปุ่มสามจุดย่อ/ขยับตามขนาดจอ ส่วนปุ่มนี้เคยตรึงพิกเซลตายตัวจากขอบขวา
+	-- พอจอเปลี่ยนขนาด สองปุ่มจึงเดินคนละทางแล้วซ้อนกัน (ผู้ใช้แจ้ง 2026-09-19) — อยู่กล่องเดียวกันแล้ว
+	-- ระยะห่างจะคงที่ทุกขนาดจอโดยไม่ต้องคำนวณอะไรเพิ่ม
+	--
+	-- วางไว้ **ซ้ายมือของปุ่มสามจุด แถวเดียวกัน** ไม่ใช่ใต้ปุ่มอีกต่อไป เพราะใต้ปุ่มคือที่ของแผงเมนูที่
+	-- กางลงมา (y 56 ลงไป สูงขึ้นทุกครั้งที่เพิ่มเมนู) ปุ่มที่อยู่ตรงนั้นจะถูกแผงทับทุกครั้งที่เปิดเมนู
 	----------------------------------------------------------------------------
+	local corner_group = Instance.new("Frame")
+	corner_group.Name = "TopRight"
+	corner_group.AnchorPoint = Vector2.new(1, 0)
+	corner_group.Position = UDim2.new(1, 0, 0, 0)
+	corner_group.Size = UDim2.fromOffset(220, 140)
+	corner_group.BackgroundTransparency = 1
+	corner_group.Parent = gui
+	Responsive.Scale(corner_group, 0.55) -- 0.55 = ค่าเดียวกับ HudGui.responsiveScale
+
 	local button = Instance.new("TextButton")
 	button.Name = "TutorialButton"
 	button.AnchorPoint = Vector2.new(1, 0)
-	-- ปุ่มสามจุดอยู่สูงราว 8px สูง 28 ตัวนี้จึงเริ่มที่ 44 เว้นช่องไฟไว้
-	button.Position = UDim2.new(1, -12, 0, 44)
-	button.Size = UDim2.fromOffset(34, 34)
+	-- ปุ่มสามจุด: ขอบขวาที่ 216 กว้าง 44 สูงจากบน 4 (กึ่งกลางที่ y=26) → ตัวนี้จบที่ 164 เว้นช่องไฟ 8
+	button.Position = UDim2.new(1, -56, 0, 7)
+	button.Size = UDim2.fromOffset(38, 38)
 	-- โปร่งใสตามที่สั่ง: เห็นโลกข้างหลังได้ แต่ยังอ่านออก
 	button.BackgroundColor3 = STONE
 	button.BackgroundTransparency = 0.35
@@ -66,7 +81,7 @@ function TutorialGui.new()
 	button.TextColor3 = RUNE
 	button.Text = "!"
 	button.AutoButtonColor = false
-	button.Parent = gui
+	button.Parent = corner_group
 	corner(button, UDim.new(1, 0))
 	local glow = stroke(button, RUNE, 0.2, 2)
 	self.button = button

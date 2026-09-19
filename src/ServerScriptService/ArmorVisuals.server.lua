@@ -1,6 +1,6 @@
 -- ArmorVisuals.server.lua: ใส่เกราะแล้วเห็นเกราะบนตัวจริง
 --
--- โมเดลเกราะสามชุดอยู่ใน `workspace.Model_Item` แต่ละชุดประกอบด้วยชิ้นส่วนที่ **ตั้งชื่อตามข้อต่อ R15**
+-- โมเดลเกราะสามชุดอยู่ใน `Model_Item` (ServerStorage ก่อน แล้วค่อย workspace — ดู `KitWear.Model`) แต่ละชุดประกอบด้วยชิ้นส่วนที่ **ตั้งชื่อตามข้อต่อ R15**
 -- (`Armor_UpperTorso`, `Armor_LeftHand`, ...) จึงสวมได้ด้วยการจับคู่ชื่อตรงๆ ไม่ต้องวัดตำแหน่งเอง
 --
 -- ชิ้นที่ไม่ตรงกับชื่อ R15 (`Armor_Seams`, `Armor_Pouch`, `Armor_Plume`, `Armor_SteamPlant`,

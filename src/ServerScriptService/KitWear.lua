@@ -1,4 +1,4 @@
--- KitWear: สวม "ชุดคิท" (โมเดลชิ้นส่วนใน `workspace.Model_Item`) ลงบนตัวละคร R15
+-- KitWear: สวม "ชุดคิท" (โมเดลชิ้นส่วนใน `Model_Item`) ลงบนตัวละคร R15
 --
 -- ยกออกมาจาก `ArmorVisuals.server.lua` ตอนที่ชุดแคลนต้องการกลไกเดียวกันเป๊ะ — สองระบบที่สวมชุดคนละชุดแต่
 -- เชื่อมชิ้นส่วนแบบเดียวกัน ถ้าลอกโค้ดกันไว้คนละไฟล์ วันที่ต้องแก้เรื่องสเกลหรือของตกแต่ง จะแก้ที่เดียวแล้ว
@@ -16,11 +16,18 @@ local DECOR_HOST = "UpperTorso" -- ชิ้นตกแต่งที่ไม
 
 -- **ลูปถามใหม่ ไม่ใช่เก็บ reference ตอนบูต** เพลสนี้เปิด StreamingEnabled โฟลเดอร์กับโมเดลมาถึงคนละรอบ
 -- การเก็บไว้ตอนเริ่มอาจได้ nil แล้วเงียบไปตลอดทั้งรอบ
+--
+-- **หาใน `ServerStorage.Model_Item` ก่อน `workspace.Model_Item`** ต้นแบบชุดไม่ได้เป็นของในโลก มันมีไว้ให้
+-- โคลนอย่างเดียว อยู่ใน workspace เมื่อไหร่ผู้เล่นก็เห็นมันยืนอยู่ตรงนั้น (ชุดแฟชั่นสามชุดเคยอยู่ที่พิกัด
+-- 0,0,0 ซึ่งผิวดินอยู่ y=56 จึงโผล่ "ใต้โลก") — ฝั่ง workspace ยังหาอยู่เพื่อให้ชุดที่ผู้ใช้วางเองในแมพใช้ได้
+local ServerStorage = game:GetService("ServerStorage")
+
 function KitWear.Model(kitName)
-	local folder = workspace:FindFirstChild("Model_Item")
-	if not folder then return nil end
-	local kit = folder:FindFirstChild(kitName)
-	if kit and kit:IsA("Model") then return kit end
+	for _, parent in ipairs({ ServerStorage, workspace }) do
+		local folder = parent:FindFirstChild("Model_Item")
+		local kit = folder and folder:FindFirstChild(kitName)
+		if kit and kit:IsA("Model") then return kit end
+	end
 	return nil
 end
 
@@ -37,7 +44,7 @@ function KitWear.Wear(character, kitName, tint, folderName)
 
 	local kit = KitWear.Model(kitName)
 	if not kit then
-		warn(("[KitWear] ไม่เจอโมเดล %s ใน workspace.Model_Item"):format(kitName))
+		warn(("[KitWear] ไม่เจอโมเดล %s ใน ServerStorage.Model_Item หรือ workspace.Model_Item"):format(kitName))
 		return false
 	end
 	local kitRoot = kit:FindFirstChild("Root")

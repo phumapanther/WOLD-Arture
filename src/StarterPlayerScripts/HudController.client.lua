@@ -102,13 +102,22 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 -- ปุ่มร้านพรีเมียม/กาชา/แบทเทิลพาส ในเมนูสามจุด (ผู้ใช้กำหนดตำแหน่ง) เปิดหน้ารวมที่แท็บนั้น
--- คุยกับ PremiumController ผ่าน BindableEvent ใน PlayerGui แบบเดียวกับปุ่มกลิ้ง (WOLD_RequestAction)
-local openPremium = Instance.new("BindableEvent")
-openPremium.Name = "WOLD_OpenPremium"
-openPremium.Parent = player:WaitForChild("PlayerGui")
-gui:AddMenuItem("💎 ร้านค้าพรีเมียม", Color3.fromRGB(70, 100, 150), function() openPremium:Fire("shop") end)
-gui:AddMenuItem("🎰 กาชา", Color3.fromRGB(120, 70, 150), function() openPremium:Fire("gacha") end)
-gui:AddMenuItem("🎫 แบทเทิลพาส", Color3.fromRGB(150, 110, 40), function() openPremium:Fire("pass") end)
+--
+-- **หยิบช่องทางตอนกด ไม่ใช่ตอนบูต** เจ้าของช่องทางคือ `PremiumController` (มันเป็นเจ้าของหน้าต่าง)
+-- ทรงเดียวกับปุ่มกระเป๋า/หินสื่อสารบนจอสัมผัส — ไม่มีสองสคริปต์ต้องมาถึงพร้อมกัน จึงไม่มีจังหวะให้แพ้
+-- ถ้าหน้าจอพรีเมียมยังไม่พร้อมจริงๆ ให้ดังออกมาเป็น warn ไม่ใช่เงียบ (ของเดิมเงียบจนหาไม่เจอว่าพังตรงไหน)
+local function openPremium(tab)
+	local bindable = player:FindFirstChild("PlayerGui")
+	bindable = bindable and bindable:FindFirstChild("WOLD_OpenPremium")
+	if bindable then
+		bindable:Fire(tab)
+	else
+		warn("[Hud] ยังไม่มี WOLD_OpenPremium ใน PlayerGui — PremiumController ยังไม่พร้อมหรือหยุดกลางทาง")
+	end
+end
+gui:AddMenuItem("💎 ร้านค้าพรีเมียม", Color3.fromRGB(70, 100, 150), function() openPremium("shop") end)
+gui:AddMenuItem("🎰 กาชา", Color3.fromRGB(120, 70, 150), function() openPremium("gacha") end)
+gui:AddMenuItem("🎫 แบทเทิลพาส", Color3.fromRGB(150, 110, 40), function() openPremium("pass") end)
 
 gui:OnLobbyRequested(function()
 	-- Server-authoritative: it saves the player's position THEN teleports, because PlayerRemoving does not
