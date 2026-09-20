@@ -43,9 +43,9 @@ PremiumConfig.Shop = {
 	{ id = "gold_pickaxe", item = "GoldPickaxe", count = 1, price = 250, blurb = "ขุดแร่ได้ตลอดกาล ไม่มีวันพัง" },
 	{ id = "gold_shovel", item = "GoldShovel", count = 1, price = 200, blurb = "ขุดสมุนไพรได้ตลอดกาล ไม่มีวันพัง" },
 	{ id = "gold_rod", item = "GoldFishingRod", count = 1, price = 400, blurb = "ตกปลาได้ตลอดกาล ไม่มีวันพัง" },
-	{ id = "feast_hearty", item = "Feast_Hearty", count = 1, price = 60, blurb = "อิ่มทันที + บัพทุกอย่าง 3 นาที" },
-	{ id = "tonic_vigor", item = "Tonic_Vigor", count = 1, price = 30, blurb = "เลือด มานา สตามินา ไม่ลด 1 นาที" },
-	{ id = "feast_royal", item = "Feast_Royal", count = 1, price = 80, blurb = "อิ่มทันที + บัพทุกอย่าง 10 นาที" },
+	{ id = "feast_hearty", item = "Feast_Hearty", count = 1, price = 60, blurb = "อิ่มทันที + บัพทุกอย่างยกเว้นเลือด 3 นาที" },
+	{ id = "tonic_vigor", item = "Tonic_Vigor", count = 1, price = 30, blurb = "มานา สตามินา ไม่ลด 1 นาที" },
+	{ id = "feast_royal", item = "Feast_Royal", count = 1, price = 80, blurb = "อิ่มทันที + บัพทุกอย่างยกเว้นเลือด 10 นาที" },
 }
 
 --------------------------------------------------------------------------------

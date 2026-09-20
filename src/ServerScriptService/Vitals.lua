@@ -148,33 +148,39 @@ Vitals.BuffLabels = {
 	noHp = "เลือดไม่ลด",
 }
 
+-- ชื่อกลุ่มที่ `AddBuff` กับ `BuffText` รับได้ — **ที่เดียวที่นิยามว่ากลุ่มไหนมีบัพอะไรบ้าง**
+--
+-- `food` = ทุกอย่าง **ยกเว้นเลือดไม่ลด** (ผู้ใช้สั่ง 2026-09-20: เอาบัพเลือดไม่ลดออกจากอาหารทุกชนิด)
+-- อาหารที่กันตายได้ทำให้ของกินกลายเป็นปุ่มอมตะ ส่วนบัพอื่นแค่ทำให้เล่นสบายขึ้น ไม่ได้ลบความเสี่ยงทิ้ง
+-- `noHp` ยังมีอยู่ในระบบและยังใช้ได้ (อมตะของแอดมิน) แค่ไม่มีอาหารชิ้นไหนให้อีกแล้ว
+Vitals.BuffGroups = {
+	all = { "noHunger", "noStamina", "noMana", "noArmor", "noHp" },
+	food = { "noHunger", "noStamina", "noMana", "noArmor" },
+	both = { "noHunger", "noStamina" },
+}
+
+-- คืนรายชื่อบัพจากค่าที่รับได้ทุกแบบ: ชื่อกลุ่ม · ชื่อบัพเดี่ยว · ตารางชื่อบัพ
+local function buffNames(buff)
+	if type(buff) == "table" then return buff end
+	return Vitals.BuffGroups[buff] or { buff }
+end
+
 -- คำบรรยายบัพชุดหนึ่ง (รับค่าเดียวกับ `Vitals.AddBuff`) สำหรับแจ้งเตือนคนกินและคำโปรยในร้าน
 function Vitals.BuffText(buff)
 	if buff == "all" then return "บัพทุกอย่าง" end
-	local names = buff == "both" and { "noHunger", "noStamina" }
-		or type(buff) == "table" and buff
-		or { buff }
+	if buff == "food" then return "บัพทุกอย่างยกเว้นเลือด" end
+	local names = buffNames(buff)
 	local parts = {}
 	for _, name in ipairs(names) do parts[#parts + 1] = Vitals.BuffLabels[name] or name end
 	return table.concat(parts, " · ")
 end
 
--- buff = ชื่อบัพเดี่ยว | "both" (ไม่หิว+ไม่เหนื่อย) | "all" (ทุกบัพ) | ตารางชื่อบัพ
+-- buff = ชื่อบัพเดี่ยว | ชื่อกลุ่มใน `Vitals.BuffGroups` ("all" / "food" / "both") | ตารางชื่อบัพ
 -- ซ้อนกัน = ต่อเวลาจากที่เหลือ
 function Vitals.AddBuff(player, buff, seconds)
 	local mine = Buffs[player] or {}
 	Buffs[player] = mine
-	local names
-	if type(buff) == "table" then
-		names = buff
-	elseif buff == "all" then
-		names = Vitals.BuffNames
-	elseif buff == "both" then
-		names = { "noHunger", "noStamina" }
-	else
-		names = { buff }
-	end
-	for _, name in ipairs(names) do
+	for _, name in ipairs(buffNames(buff)) do
 		local base = math.max(os.clock(), mine[name] or 0)
 		mine[name] = base + seconds
 	end
