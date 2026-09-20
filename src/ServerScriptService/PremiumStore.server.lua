@@ -13,6 +13,7 @@ if ServerConfig.IsLobby then return end
 
 local PremiumConfig = require(game.ReplicatedStorage.PremiumConfig)
 local Vip = require(game.ServerScriptService.Vip)
+local AdminRoster = require(game.ServerScriptService.AdminRoster)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local InventoryConfig = require(game.ReplicatedStorage.InventoryConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
@@ -39,10 +40,31 @@ local function addGems(player, n)
 	return true
 end
 
+-- **แอดมินมีเพชร 99,999 เสมอ** (ผู้ใช้สั่ง 2026-09-20)
+--
+-- เติมกลับให้เต็มหลังทุกการใช้จ่าย ไม่ใช่แจกครั้งเดียวตอนเข้าเกม — จุดประสงค์คือเทสของในร้านได้ไม่รู้จบ
+-- ถ้าแจกครั้งเดียว วันที่ทดสอบกาชารัวๆ มันก็หมดอยู่ดีแล้วต้องมาพิมพ์ `/gems` ใหม่ทุกรอบ
+--
+-- **ตัวเลขนี้ไม่ใช่เพดานของคนทั่วไป** ใครไม่ใช่แอดมินไม่ถูกแตะเลยสักบรรทัด — และคนที่ถูกถอดจากแอดมิน
+-- ก็แค่หยุดถูกเติม เพชรที่มีอยู่ไม่ถูกริบ (การริบของที่เคยให้ไปแล้วคือสิ่งที่ไม่มีใครอธิบายได้ตอนเกิดขึ้น)
+local ADMIN_GEMS = 99999
+
+local function topUpAdmin(player)
+	if not AdminRoster.IsAdmin(player) then return end
+	local data = ProfileAccess.Get(player)
+	if not data then return end
+	if (data.Gems or 0) >= ADMIN_GEMS then return end
+	data.Gems = ADMIN_GEMS
+end
+
 -- หักเพชร คืน true ถ้าพอ ไม่พอไม่หัก
 local function spendGems(player, n)
 	if gemsOf(player) < n then return false end
-	return addGems(player, -n)
+	local ok = addGems(player, -n)
+	-- เติมคืนหลังหัก ไม่ใช่ข้ามการหัก: ของที่ซื้อยังต้องเดินผ่านด่าน "เพชรพอไหม" เหมือนคนอื่นทุกประการ
+	-- ทางที่ข้ามการหักไปเลยคือทางที่บั๊กเรื่องราคาจะไม่มีวันถูกเจอตอนเทส
+	topUpAdmin(player)
+	return ok
 end
 
 PremiumAccess.GetGems = gemsOf
@@ -333,7 +355,24 @@ end
 -- คำขอจากไคลเอนต์
 --------------------------------------------------------------------------------
 
+-- เติมให้ตอนเข้าเกม (โปรไฟล์อาจโหลดช้ากว่าการเข้า จึงลองซ้ำอีกหน่อยแทนที่จะยิงครั้งเดียวแล้วแล้วกัน)
+-- และเติมอีกทีทุกครั้งที่เปิดหน้าร้าน เผื่อเพิ่งได้สิทธิ์แอดมินระหว่างเล่น
+Players.PlayerAdded:Connect(function(player)
+	task.spawn(function()
+		for _ = 1, 20 do
+			if not player.Parent then return end
+			if ProfileAccess.Get(player) then
+				topUpAdmin(player)
+				push(player)
+				return
+			end
+			task.wait(1)
+		end
+	end)
+end)
+
 Remotes.RequestPremium.OnServerEvent:Connect(function(player, action, a, b)
+	topUpAdmin(player)
 	if action == "refresh" then push(player)
 	elseif action == "buy" then buy(player, tostring(a))
 	elseif action == "pull" then pull(player, tostring(a), tonumber(b))

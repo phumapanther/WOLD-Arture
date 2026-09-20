@@ -320,16 +320,27 @@ function ChannelSelectGui.new()
 
 	-- **โหมดฟาร์มมิ่งมีรายการจริงแล้ว** (2026-09-20): กล่องเปล่าที่ `RenderFarms` เติมแถวลงไป
 	-- แถวของโหมดนี้ไม่เหมือนกันสักคน (เกาะของตัวเอง + เกาะที่ถูกชวน) จึงสร้างตอนได้ข้อมูล ไม่ใช่สร้างล่วงหน้า
-	local farmList = Instance.new("Frame")
-	farmList.Size = UDim2.new(0.86, 0, 0.6, 0)
-	farmList.Position = UDim2.fromScale(0.07, 0.3)
-	farmList.BackgroundColor3 = Color3.fromRGB(16, 18, 24)
-	farmList.BackgroundTransparency = 0.35
+	-- **ขนาด/ตำแหน่ง/วัสดุ ลอกจากรายการช่อง Roleplay ทุกค่า** (บรรทัดเดียวกับ `list` ข้างบน)
+	-- ผู้ใช้ทักว่ากล่องสองโหมดไม่เท่ากัน — มันคือแผงเดียวกันในสายตาคนเล่น แค่สลับเนื้อข้างใน
+	-- ค่าพวกนี้คิดมาจากความสูงหัวจอและขอบล่างของมือถือ/จอแนวตั้งแล้ว การตั้งเลขเองใหม่จึงเพี้ยนแน่นอน
+	local farmList = Instance.new("ScrollingFrame")
+	farmList.AnchorPoint = Vector2.new(0.5, 0)
+	farmList.Size = UDim2.new(0.94, 0, 1, -TOP_BAR - bottomMargin)
+	farmList.Position = UDim2.new(0.5, 0, 0, TOP_BAR + headerDrop)
+	farmList.BackgroundColor3 = Responsive.GlassColor
+	farmList.BackgroundTransparency = Responsive.GlassTransparency
 	farmList.BorderSizePixel = 0
+	farmList.ScrollBarThickness = 6
+	farmList.ScrollBarImageColor3 = ACCENT
+	farmList.CanvasSize = UDim2.new(0, 0, 0, 0)
+	farmList.AutomaticCanvasSize = Enum.AutomaticSize.Y
 	farmList.Visible = false
 	farmList.Parent = root
 	corner(farmList, UDim.new(0, 20))
 	glassStroke(farmList, 0.8)
+	local farmSizeConstraint = Instance.new("UISizeConstraint")
+	farmSizeConstraint.MinSize = Vector2.new(480, 260)
+	farmSizeConstraint.Parent = farmList
 	local farmLayout = Instance.new("UIListLayout")
 	farmLayout.Padding = UDim.new(0, 8)
 	farmLayout.Parent = farmList
@@ -356,6 +367,8 @@ function ChannelSelectGui.new()
 
 	self.farmList = farmList
 	self.farmSmall = small
+	-- ความสูงแถวเดียวกับแถวช่อง Roleplay ด้วยเหตุผลเดียวกับขนาดกล่อง: สองโหมดต้องอ่านเป็นแผงเดียวกัน
+	self.farmRowH = ROW_H
 	self.rows.Farming = { list = farmList }
 
 	-- PVP: a single "coming soon" placeholder frame, swapped in when that tab is selected
@@ -425,7 +438,7 @@ function ChannelSelectGui:RenderFarms(rows)
 	end
 
 	local small = self.farmSmall
-	local ROW_H = small and 72 or 96
+	local ROW_H = self.farmRowH or (small and 72 or 96)
 
 	if not rows or #rows == 0 then
 		local empty = Instance.new("TextLabel")
@@ -452,7 +465,9 @@ function ChannelSelectGui:RenderFarms(rows)
 
 		local title = Instance.new("TextLabel")
 		title.Size = UDim2.new(1, -180, 0, small and 24 or 30)
-		title.Position = UDim2.new(0, small and 14 or 20, 0, small and 12 or 18)
+		-- วางจากกึ่งกลางแถว ไม่ใช่นับลงมาจากขอบบน — แถวสูงเท่าไหร่ข้อความก็ยังอยู่กลางเสมอ
+		title.AnchorPoint = Vector2.new(0, 1)
+		title.Position = UDim2.new(0, small and 14 or 20, 0.5, small and 2 or 2)
 		title.BackgroundTransparency = 1
 		title.Font = Enum.Font.SourceSansBold
 		title.TextSize = small and 17 or 22
@@ -464,7 +479,7 @@ function ChannelSelectGui:RenderFarms(rows)
 
 		local sub = Instance.new("TextLabel")
 		sub.Size = UDim2.new(1, -180, 0, small and 18 or 22)
-		sub.Position = UDim2.new(0, small and 14 or 20, 0, small and 36 or 50)
+		sub.Position = UDim2.new(0, small and 14 or 20, 0.5, small and 4 or 4)
 		sub.BackgroundTransparency = 1
 		sub.Font = Enum.Font.SourceSans
 		sub.TextSize = small and 12 or 15
