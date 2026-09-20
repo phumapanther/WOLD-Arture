@@ -10,11 +10,15 @@
 ## 1. รูปทรงใหญ่: 1 Universe / 3 Places
 
 ```
-Universe "WOLD Arture"
-├── Place: WOLD Arture      (เพลสหลัก 88774255487951 — ล็อบบี้ + ช่อง Roleplay)   ← มีอยู่แล้ว
-├── Place: WOLD Farming     (เกาะลอยฟ้า — Reserved Server รายคน)                  ← ต้องสร้าง
-└── Place: WOLD Arena       (สนาม PVP — ล็อบบี้ในตัว + ด่าน 3v3)                    ← ต้องสร้าง
+Universe "WOLD Arture"  (universeId 10765335572)
+├── Place: [Roplay] Arthur World  88774255487951   ล็อบบี้ + ช่อง Roleplay      ← มีอยู่แล้ว
+├── Place: WOLD Farming          136992335889132   เกาะลอยฟ้า (Reserved รายคน)  ← **สร้างแล้ว 2026-09-20**
+└── Place: WOLD Arena            ยังไม่มี            สนาม PVP 3v3                ← ต้องสร้าง
 ```
+
+**เกาะอยู่ในเพลส `WOLD Farming` แล้ว** — ภูมิประเทศเกาะ + จุดเกิดที่ (0, 817, 0) · workspace สะอาด
+(มีแค่ Terrain กับ `WOLD_SkyIsland`) · ไม่มีจุดเกิดหลงเหลือในความว่าง
+เลขเพลสนี้คือค่าที่ `ChannelRegistry`/แท็บ Farming ในล็อบบี้ต้องใช้ตอนทำ Phase 1a
 
 **ต้องเป็น Place แยกในจักรวาลเดียวกัน ไม่ใช่จักรวาลใหม่ และไม่ใช่เซิร์ฟในเพลสเดิม**
 

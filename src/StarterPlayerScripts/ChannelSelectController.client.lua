@@ -35,12 +35,14 @@ playerGui.ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor
 -- instance so a rotation doesn't blank the list until the next server broadcast.
 local gui
 local lastSnapshot = nil
+local lastFarms = nil -- แถวโหมดฟาร์มมิ่งของ "คนนี้" — ต่างกันทุกคน จึงเก็บไว้วาดใหม่ตอนสร้าง GUI ใหม่ (หมุนจอ)
 local locked = false -- survives a rebuild: a rotation must not un-black a screen that is mid-join
 
 local buildGui, applySnapshot
 
 AvatarThumbnails.OnAnyLoaded(function(userId, content)
-	-- only Roleplay has real per-channel row tables; Farming/PVP are { comingSoon = TextLabel }, not indexable this way
+	-- only Roleplay has real per-channel row tables; Farming is a list rebuilt by RenderFarms and PVP is
+	-- { comingSoon = TextLabel } -- neither is indexable this way
 	for channel, row in pairs(gui.rows.Roleplay) do
 		if row._playerIds then
 			for slot, id in ipairs(row._playerIds) do
@@ -52,8 +54,12 @@ AvatarThumbnails.OnAnyLoaded(function(userId, content)
 	end
 end)
 
-function applySnapshot(data)
+function applySnapshot(data, farms)
 	lastSnapshot = data
+	if farms then
+		lastFarms = farms
+		gui:RenderFarms(farms)
+	end
 	for mode, channels in pairs(data) do
 		for channel, d in pairs(channels) do
 			gui:SetChannelData(mode, channel, d)
@@ -91,10 +97,20 @@ local function resetToLobby(status)
 	end
 end
 
+-- เหตุผลที่เข้าเกาะฟาร์มไม่ได้ ต้องบอกเป็นภาษาคน ไม่ใช่รหัสที่มีแต่คนเขียนโค้ดอ่านออก
+local FARM_REASONS = {
+	need_vip = "ต้องมี VIP ก่อนถึงจะเข้าเกาะของตัวเองได้ — ซื้อได้ที่ร้านเพชรในเกม",
+	not_invited = "เจ้าของเกาะยังไม่ได้ชวนคุณ",
+	farm_not_ready = "โหมดฟาร์มมิ่งยังไม่เปิด",
+	create_failed = "สร้างเกาะไม่สำเร็จ ลองใหม่อีกครั้ง",
+	teleport_failed = "เข้าเกาะไม่สำเร็จ ลองใหม่อีกครั้ง",
+}
+
 Remotes.JoinFailed.OnClientEvent:Connect(function(reason)
 	warn("[ChannelSelect] join failed:", reason)
 	pendingJoin += 1 -- a real answer arrived; any in-flight timeout for this attempt should no-op
 	resetToLobby("error")
+	gui:SetFarmStatus(FARM_REASONS[reason])
 end)
 
 local function onJoin(mode, channel)
@@ -141,7 +157,7 @@ function buildGui()
 	gui.gui.Parent = playerGui
 	gui:Show()
 	if locked then gui:Lock() end
-	if lastSnapshot then applySnapshot(lastSnapshot) end
+	if lastSnapshot then applySnapshot(lastSnapshot, lastFarms) end
 	if old then old.gui:Destroy() end
 end
 

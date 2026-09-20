@@ -30,6 +30,7 @@ local Classes = require(game.ServerScriptService.Classes)
 local EventState = require(game.ServerScriptService.EventState)
 local TownAccess = require(game.ServerScriptService.TownAccess)
 local ClanAccess = require(game.ServerScriptService.ClanAccess)
+local Vip = require(game.ServerScriptService.Vip)
 local EventConfig = require(game.ReplicatedStorage.EventConfig)
 local VehicleConfig = require(game.ReplicatedStorage.Vehicle.Config)
 local VehicleService = require(game.ServerScriptService.Vehicle.Service)
@@ -182,6 +183,22 @@ Commands.town = function(admin, args)
 			o and ("แคลน %s [%s]"):format(o.clanName or "?", tostring(o.clanId)) or "ไม่มีเจ้าของ")
 	end
 	reply(admin, table.concat(lines, "\n"))
+end
+
+-- /vip <วัน> [คน] -- ให้/ต่อ VIP ตรงๆ ไว้เทสโหมดฟาร์มมิ่งโดยไม่ต้องเสียเพชร · ติดลบ = ตัดวัน
+--
+-- ของจริงซื้อด้วยเพชรในหน้าร้านแคช (ผู้ใช้กำหนด 2026-09-20) คำสั่งนี้มีไว้เทสอย่างเดียว เหมือน `/gems`
+Commands.vip = function(admin, args)
+	local days = tonumber(args[1])
+	if not days then return reply(admin, "ใช้: /vip <วัน> [คน]  (ติดลบ = ตัดวัน)") end
+	local target = resolveTarget(admin, args[2])
+	if not target then return end
+	local until_ = Vip.Grant(target, days)
+	if not until_ then return reply(admin, "โปรไฟล์ยังไม่พร้อม") end
+	local left = math.floor(Vip.SecondsLeft(target) / 86400 + 0.5)
+	Remotes.PremiumUpdate:FireClient(target, { vipLeft = Vip.SecondsLeft(target) })
+	reply(admin, ("VIP %s%d วัน -> %s (เหลือ %d วัน)"):format(days >= 0 and "+" or "", math.floor(days),
+		target.Name, left))
 end
 
 -- /passxp <amount> [player] -- เติม XP แบทเทิลพาสตรงๆ ไว้เทสรับของ

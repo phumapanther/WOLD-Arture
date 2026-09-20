@@ -54,6 +54,11 @@ local ProfileTemplate = {
 	ClanApply = nil,
 	-- เพชร (สกุลเงินพรีเมียม) ตอนนี้ได้จาก /gems เท่านั้น วันหน้าซื้อด้วยโรบัค
 	Gems = 0,
+	-- VIP หมดอายุเมื่อไหร่ (os.time) · 0 = ไม่เคยซื้อ (ผู้ใช้กำหนด 2026-09-20: ขายด้วยเพชรในหน้าร้านแคช)
+	--
+	-- เก็บเป็น "เวลาหมดอายุ" ไม่ใช่ธง true/false เพราะต่ออายุคือการบวกเวลาเพิ่ม และเวลาที่เหลือคือสิ่งที่
+	-- คนจ่ายเงินอยากเห็น · เป็น os.time (เวลาจริง) ไม่ใช่ os.clock เพราะต้องเดินต่อตอนออกเกมด้วย
+	VipUntil = 0,
 	-- ออร่าที่เปิดอยู่ (item id) | nil = ปิด
 	Aura = nil,
 	-- ใส่ชุดแคลนอยู่ไหม (กดจากแหวนแคลน) | nil = ไม่ได้ใส่ — ออกจากแคลนแล้วถอดเองโดย ClanOutfit.server
@@ -222,6 +227,21 @@ end
 -- the DataStore on its own schedule, so calling this often is cheap — it just keeps the in-memory profile
 -- current, which is what PlayerRemoving and BindToClose then persist. Without it, everything earned since the
 -- last 7-second tick was lost by anyone who left in between.
+-- อ่านโปรไฟล์ของ userId แบบไม่แตะเซสชัน — ใช้ในล็อบบี้ที่ไม่มีโปรไฟล์ของใครโหลดอยู่เลย
+--
+-- ถ้าคนนั้นมีโปรไฟล์เปิดอยู่ในเซิร์ฟนี้ ตอบจากในหน่วยความจำทันที (ไม่ยิง DataStore ซ้ำ)
+-- ไม่งั้นค่อย `Store:GetAsync` ซึ่งเป็นการอ่านอย่างเดียว **ไม่ล็อกเซสชัน** จึงไม่ไปเตะคนที่กำลังเล่นอยู่
+ProfileAccess.PeekAsync = function(userId)
+	userId = tonumber(userId)
+	if not userId then return nil end
+	for player, profile in pairs(Profiles) do
+		if player.UserId == userId then return profile.Data end
+	end
+	local ok, view = pcall(function() return Store:GetAsync(profileKey(userId)) end)
+	if not ok or not view then return nil end
+	return view.Data
+end
+
 ProfileAccess.Flush = function(player)
 	if Profiles[player] then saveAll(player) end
 end

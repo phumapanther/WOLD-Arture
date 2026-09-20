@@ -7,7 +7,10 @@ local Responsive = require(script.Parent.Responsive)
 local ChannelSelectGui = {}
 ChannelSelectGui.__index = ChannelSelectGui
 
-local ACTIVE_MODES = { Roleplay = true }
+-- โหมดที่กดได้จริง — **เปิดเมื่อเพลสปลายทางมีจริงเท่านั้น**
+-- Farming เปิดแล้ว 2026-09-20 (เพลส `WOLD Farming` = `ServerConfig.FarmingPlaceId`)
+-- PVP ยังไม่มีเพลส จึงยังปิดอยู่
+local ACTIVE_MODES = { Roleplay = true, Farming = true }
 -- ชื่อโหมดเป็นชื่อของ "เพลสปลายทาง" ไม่ใช่ป้ายเฉยๆ (ผู้ใช้เปลี่ยน 2026-09-19: Stories → Farming,
 -- Tanding → PVP) ดูแผนของสองโหมดนี้ใน `docs/design/05-future-modes.md`
 --
@@ -315,8 +318,48 @@ function ChannelSelectGui.new()
 		}
 	end
 
-	-- Farming/PVP: a single "coming soon" placeholder frame each, swapped in when that tab is selected
-	for _, mode in ipairs({ "Farming", "PVP" }) do
+	-- **โหมดฟาร์มมิ่งมีรายการจริงแล้ว** (2026-09-20): กล่องเปล่าที่ `RenderFarms` เติมแถวลงไป
+	-- แถวของโหมดนี้ไม่เหมือนกันสักคน (เกาะของตัวเอง + เกาะที่ถูกชวน) จึงสร้างตอนได้ข้อมูล ไม่ใช่สร้างล่วงหน้า
+	local farmList = Instance.new("Frame")
+	farmList.Size = UDim2.new(0.86, 0, 0.6, 0)
+	farmList.Position = UDim2.fromScale(0.07, 0.3)
+	farmList.BackgroundColor3 = Color3.fromRGB(16, 18, 24)
+	farmList.BackgroundTransparency = 0.35
+	farmList.BorderSizePixel = 0
+	farmList.Visible = false
+	farmList.Parent = root
+	corner(farmList, UDim.new(0, 20))
+	glassStroke(farmList, 0.8)
+	local farmLayout = Instance.new("UIListLayout")
+	farmLayout.Padding = UDim.new(0, 8)
+	farmLayout.Parent = farmList
+	local farmPad = Instance.new("UIPadding")
+	farmPad.PaddingLeft = UDim.new(0, 20)
+	farmPad.PaddingRight = UDim.new(0, 20)
+	farmPad.PaddingTop = UDim.new(0, 20)
+	farmPad.PaddingBottom = UDim.new(0, 20)
+	farmPad.Parent = farmList
+	-- บรรทัดบอกเหตุผลตอนเข้าเกาะไม่ได้ — แถวของโหมดนี้ไม่มีช่องสถานะของตัวเองเหมือนแถวช่อง Roleplay
+	-- และ "กดแล้วจอกลับมาเฉยๆ ไม่บอกอะไร" คือสิ่งที่อ่านว่าเกมพัง
+	local farmStatus = Instance.new("TextLabel")
+	farmStatus.LayoutOrder = -1
+	farmStatus.Size = UDim2.new(1, 0, 0, small and 20 or 24)
+	farmStatus.BackgroundTransparency = 1
+	farmStatus.Font = Enum.Font.SourceSansBold
+	farmStatus.TextSize = small and 14 or 17
+	farmStatus.TextColor3 = Color3.fromRGB(230, 170, 90)
+	farmStatus.TextXAlignment = Enum.TextXAlignment.Left
+	farmStatus.Text = ""
+	farmStatus.Visible = false
+	farmStatus.Parent = farmList
+	self.farmStatus = farmStatus
+
+	self.farmList = farmList
+	self.farmSmall = small
+	self.rows.Farming = { list = farmList }
+
+	-- PVP: a single "coming soon" placeholder frame, swapped in when that tab is selected
+	for _, mode in ipairs({ "PVP" }) do
 		local soon = Instance.new("TextLabel")
 		soon.Size = UDim2.new(1, 0, 1, 0)
 		soon.BackgroundTransparency = 1
@@ -357,6 +400,7 @@ end
 
 function ChannelSelectGui:_selectMode(mode)
 	self.list.Visible = (mode == "Roleplay")
+	if self.farmList then self.farmList.Visible = (mode == "Farming") end
 	for _, m in ipairs(MODE_ORDER) do
 		if self.rows[m] and self.rows[m].comingSoon then
 			self.rows[m].comingSoon.Visible = (m == mode)
@@ -365,6 +409,97 @@ function ChannelSelectGui:_selectMode(mode)
 		self.tabs[m].BackgroundTransparency = (m == mode) and 0 or 0.85
 		self.tabs[m].TextColor3 = (m == mode) and Color3.fromRGB(30, 24, 10) or TEXT_LIGHT
 	end
+end
+
+-- `rows` = { { ownerId, ownerName, mine, locked = "vip" | nil }, ... } · nil/ว่าง = ยังไม่ได้ข้อมูล
+--
+-- วาดใหม่ทั้งกล่องทุกครั้ง ไม่ได้ไล่แก้ทีละแถว: รายการนี้สั้น (ตัวเอง + คนที่ชวนเรา) และเปลี่ยนได้ทั้งชุด
+-- เมื่อ VIP หมดอายุหรือมีคนชวนเพิ่ม — การไล่ patch ทีละแถวคือที่มาของแถวค้างที่ไม่ตรงกับความจริง
+function ChannelSelectGui:RenderFarms(rows)
+	local list = self.farmList
+	if not list then return end
+	for _, child in ipairs(list:GetChildren()) do
+		-- บรรทัดสถานะอยู่ต่อ (LayoutOrder -1) ไม่งั้นข้อความ "ต้องมี VIP" จะหายไปพร้อมการวาดรอบถัดไป
+		-- ซึ่งมาถึงทุก 5 วินาทีอยู่แล้ว = คนอ่านไม่ทัน
+		if child ~= self.farmStatus and (child:IsA("Frame") or child:IsA("TextLabel")) then child:Destroy() end
+	end
+
+	local small = self.farmSmall
+	local ROW_H = small and 72 or 96
+
+	if not rows or #rows == 0 then
+		local empty = Instance.new("TextLabel")
+		empty.Size = UDim2.new(1, 0, 0, 60)
+		empty.BackgroundTransparency = 1
+		empty.Font = Enum.Font.SourceSans
+		empty.TextSize = small and 16 or 20
+		empty.TextColor3 = TEXT_MUTED
+		empty.Text = "กำลังโหลด..."
+		empty.Parent = list
+		return
+	end
+
+	for order, farm in ipairs(rows) do
+		local row = Instance.new("Frame")
+		row.Size = UDim2.new(1, 0, 0, ROW_H)
+		row.BackgroundColor3 = GLASS
+		row.BackgroundTransparency = 0.9
+		row.BorderSizePixel = 0
+		row.LayoutOrder = order
+		row.Parent = list
+		corner(row)
+		glassStroke(row, 0.75)
+
+		local title = Instance.new("TextLabel")
+		title.Size = UDim2.new(1, -180, 0, small and 24 or 30)
+		title.Position = UDim2.new(0, small and 14 or 20, 0, small and 12 or 18)
+		title.BackgroundTransparency = 1
+		title.Font = Enum.Font.SourceSansBold
+		title.TextSize = small and 17 or 22
+		title.TextColor3 = TEXT_LIGHT
+		title.TextXAlignment = Enum.TextXAlignment.Left
+		title.TextTruncate = Enum.TextTruncate.AtEnd
+		title.Text = ("เกาะของ %s"):format(farm.ownerName or "?")
+		title.Parent = row
+
+		local sub = Instance.new("TextLabel")
+		sub.Size = UDim2.new(1, -180, 0, small and 18 or 22)
+		sub.Position = UDim2.new(0, small and 14 or 20, 0, small and 36 or 50)
+		sub.BackgroundTransparency = 1
+		sub.Font = Enum.Font.SourceSans
+		sub.TextSize = small and 12 or 15
+		sub.TextColor3 = farm.locked and Color3.fromRGB(230, 170, 90) or TEXT_MUTED
+		sub.TextXAlignment = Enum.TextXAlignment.Left
+		sub.Text = farm.locked == "vip" and "ต้องมี VIP — ซื้อได้ที่ร้านเพชรในเกม"
+			or (farm.mine and "เกาะส่วนตัวของคุณ" or "คุณถูกชวนเข้าเกาะนี้")
+		sub.Parent = row
+
+		local JOIN_W = small and 84 or 110
+		local JOIN_H = small and 32 or 40
+		local join = Instance.new("TextButton")
+		join.AnchorPoint = Vector2.new(1, 0.5)
+		join.Position = UDim2.new(1, small and -12 or -20, 0.5, 0)
+		join.Size = UDim2.fromOffset(JOIN_W, JOIN_H)
+		join.Font = Enum.Font.SourceSansBold
+		join.TextSize = small and 15 or 18
+		join.TextColor3 = Color3.new(1, 1, 1)
+		join.BackgroundColor3 = farm.locked and Color3.fromRGB(70, 72, 86) or Color3.fromRGB(52, 178, 108)
+		join.AutoButtonColor = farm.locked == nil
+		join.Text = farm.locked and "ล็อก" or "เข้า"
+		join.Parent = row
+		corner(join, UDim.new(0, 10))
+		join.MouseButton1Click:Connect(function()
+			if self._locked or farm.locked then return end
+			if self.onJoin then self.onJoin("Farming", farm.ownerId) end
+		end)
+	end
+end
+
+-- ข้อความเหตุผลเหนือรายการเกาะ · nil/"" = ซ่อน
+function ChannelSelectGui:SetFarmStatus(text)
+	if not self.farmStatus then return end
+	self.farmStatus.Text = text or ""
+	self.farmStatus.Visible = (text ~= nil and text ~= "")
 end
 
 function ChannelSelectGui:OnJoin(callback)

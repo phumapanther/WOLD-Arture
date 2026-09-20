@@ -12,6 +12,7 @@ local ServerConfig = require(game.ServerScriptService.ServerConfig)
 if ServerConfig.IsLobby then return end
 
 local PremiumConfig = require(game.ReplicatedStorage.PremiumConfig)
+local Vip = require(game.ServerScriptService.Vip)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local InventoryConfig = require(game.ReplicatedStorage.InventoryConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
@@ -115,6 +116,10 @@ local function snapshot(player)
 	local bp = passOf(player)
 	return {
 		gems = gemsOf(player),
+		-- วินาทีที่เหลือของ VIP (0 = ไม่ได้เป็น) หน้าร้านเอาไปโชว์บนปุ่มว่า "เหลือ n วัน"
+		vipLeft = Vip.SecondsLeft(player),
+		vipDays = PremiumConfig.Vip.days,
+		vipPrice = PremiumConfig.Vip.price,
 		buffs = Vitals.BuffsLeft and Vitals.BuffsLeft(player) or {},
 		robuxEnabled = next(PremiumConfig.Products) ~= nil,
 		pass = bp and {
@@ -154,6 +159,27 @@ local function buy(player, shopId)
 	end
 	local item = ItemCatalog.Get(row.item)
 	Remotes.SocialNotify:FireClient(player, "info", ("ซื้อ %s x%d แล้ว (-%d เพชร)"):format(item and item.name or row.item, row.count, row.price))
+	push(player)
+end
+
+-- ซื้อ/ต่ออายุ VIP — ผู้ใช้กำหนดให้ขายด้วยเพชรในหน้าร้านนี้ (2026-09-20)
+--
+-- VIP ไม่ใช่ไอเทม จึงไม่ผ่าน `buy` ที่ต้องมีที่ว่างในกระเป๋า: มันคือเวลาที่เขียนลงโปรไฟล์
+-- **หักเพชรก่อนแล้วค่อยเขียน** และถ้าเขียนไม่ได้ต้องคืนเพชร ทรงเดียวกับ `buy` เป๊ะ
+local function buyVip(player)
+	local vip = PremiumConfig.Vip
+	if not spendGems(player, vip.price) then
+		return Remotes.SocialNotify:FireClient(player, "error", ("เพชรไม่พอ (ต้องใช้ %d)"):format(vip.price))
+	end
+	local until_ = Vip.Grant(player, vip.days)
+	if not until_ then
+		addGems(player, vip.price)
+		return Remotes.SocialNotify:FireClient(player, "error", "ซื้อไม่สำเร็จ คืนเพชรแล้ว")
+	end
+	if ProfileAccess.Flush then ProfileAccess.Flush(player) end
+	local left = math.floor(Vip.SecondsLeft(player) / 86400 + 0.5)
+	Remotes.SocialNotify:FireClient(player, "info",
+		("เป็น VIP แล้ว เหลือ %d วัน (-%d เพชร)"):format(left, vip.price))
 	push(player)
 end
 
@@ -314,5 +340,6 @@ Remotes.RequestPremium.OnServerEvent:Connect(function(player, action, a, b)
 	elseif action == "claim" then claim(player, a, tostring(b))
 	elseif action == "unlockpass" then unlockPremium(player)
 	elseif action == "buygems" then buyGems(player, a)
+	elseif action == "buyvip" then buyVip(player)
 	end
 end)

@@ -172,6 +172,20 @@ end
 
 status(("เริ่มเขียนเกาะที่ %s"):format(tostring(ORIGIN)))
 
+-- **ล้างเพลสทั้งใบก่อนสร้าง** (`workspace:SetAttribute("SkyIslandWipe", true)`)
+--
+-- มีไว้สำหรับเพลสฟาร์มที่เกิดจากการ publish ทับสำเนาแมพหลัก: ของเกมหลักทั้งชุดติดมาด้วย ซึ่งเกาะไม่ต้องใช้
+-- และคนเข้าเกาะไม่ควรต้องโหลด · **กันพลาดสองชั้น**: ทำงานเฉพาะเมื่อสั่งเองเท่านั้น และไม่มีวันทำงานใน
+-- เพลสหลัก (ด่านที่หัวไฟล์กันไว้ก่อนถึงตรงนี้แล้ว)
+if workspace:GetAttribute("SkyIslandWipe") == true then
+	status("ล้างเพลสก่อนสร้างเกาะ (SkyIslandWipe)")
+	for _, c in ipairs(workspace:GetChildren()) do
+		if not c:IsA("Terrain") and not c:IsA("Camera") then c:Destroy() end
+	end
+	T:Clear()
+	workspace:SetAttribute("SkyIslandWipe", false)
+end
+
 -- เขียนทับของเดิมได้เสมอ: ลบกล่องเดิมก่อน แล้วค่อยเขียนใหม่ รันซ้ำจึงไม่ได้เกาะซ้อนสองชั้น
 eraseAll()
 
@@ -280,8 +294,13 @@ spawn.Color = Color3.fromRGB(120, 120, 128)
 spawn.Position = ORIGIN + Vector3.new(0, DOME + 1, 0)
 spawn.Parent = folder
 
--- เผื่อรันในเพลสใหม่ที่ยังมีพื้นเริ่มต้นติดมา
+-- เผื่อรันในเพลสใหม่ที่ยังมีพื้นเริ่มต้นติดมา — **ต้องเก็บจุดเกิดเดิมด้วย ไม่ใช่แค่พื้น**
+-- Roblox สุ่มเลือกจาก SpawnLocation ทุกอันในเกม จุดเกิดของ Baseplate ที่ y=0.5 จะอยู่ใต้เกาะกลางอากาศ
+-- คนที่โดนสุ่มไปโผล่ตรงนั้นคือร่วงลงเหวทันทีที่เข้าเกม (เจอจริงตอนสร้างเพลสฟาร์มรอบแรก)
 local base = workspace:FindFirstChild("Baseplate")
 if base then base:Destroy() end
+for _, c in ipairs(workspace:GetChildren()) do
+	if c:IsA("SpawnLocation") then c:Destroy() end
+end
 
 status(("เกาะรัศมี %d ลึก %d · เขียน %d/%d ก้อน ใน %.0f วิ"):format(R, DEPTH, filled, total, os.clock() - t0), true)

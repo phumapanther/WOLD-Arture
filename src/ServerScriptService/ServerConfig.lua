@@ -8,6 +8,11 @@ local ChannelRegistry = require(script.Parent.Lobby.ChannelRegistry)
 local FORCE_CHANNEL_IN_STUDIO_FOR_TESTING = true
 
 local ServerConfig = {}
+
+-- **เพลสปลายทางของโหมดฟาร์มมิ่ง** (เกาะลอยฟ้า) — อยู่ใน universe เดียวกับเกมหลัก ข้อมูลผู้เล่นจึงใช้ร่วมกัน
+-- ตั้งชื่อ "WOLD Farming" บนเว็บ · 0 = ยังไม่มีเพลส (ล็อบบี้จะขึ้นแถวโหมดนี้เป็น "ยังไม่เปิด" แทน)
+ServerConfig.FarmingPlaceId = 136992335889132
+
 ServerConfig.IsLobby = game.PrivateServerId == ""
 if FORCE_CHANNEL_IN_STUDIO_FOR_TESTING and game:GetService("RunService"):IsStudio() then
 	ServerConfig.IsLobby = false

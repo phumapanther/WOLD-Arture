@@ -218,6 +218,51 @@ function PremiumGui:renderShop()
 		if not enabled then b.TextColor3 = TEXT_MUTED end
 	end
 
+	-- VIP — ผู้ใช้สั่งให้ขายด้วยเพชรในหน้านี้ (2026-09-20) วางไว้เหนือของในร้าน เพราะมันไม่ใช่ไอเทม
+	-- แต่เป็นสิทธิ์ที่มีวันหมดอายุ และเป็นกุญแจของทั้งโหมดฟาร์มมิ่ง
+	do
+		local vip = PremiumConfig.Vip
+		local left = self.data.vipLeft or 0
+		local days = math.floor(left / 86400 + 0.5)
+		local frame = Instance.new("Frame")
+		frame.LayoutOrder = 5
+		frame.Size = UDim2.new(1, -6, 0, 54)
+		frame.BackgroundColor3 = ROW
+		frame.BorderSizePixel = 0
+		frame.Parent = list
+		corner(frame, UDim.new(0, 8))
+		-- ขอบทองตอนเป็น VIP อยู่: ของที่จ่ายเงินไปแล้วต้องเห็นได้ทันทีว่ายังใช้ได้อยู่
+		if left > 0 then
+			local edge = Instance.new("UIStroke")
+			edge.Color = RUNE
+			edge.Transparency = 0.35
+			edge.Thickness = 1
+			edge.Parent = frame
+		end
+
+		local crown = label(frame, "👑", 22)
+		crown.Position = UDim2.new(0, 12, 0.5, -16)
+		crown.Size = UDim2.fromOffset(34, 32)
+
+		local name = label(frame, ("%s — %d วัน"):format(vip.name, vip.days), 13, left > 0 and RUNE or nil)
+		name.Position = UDim2.new(0, 56, 0, 6)
+		name.Size = UDim2.new(1, -190, 0, 18)
+
+		local blurb = label(frame,
+			left > 0 and ("เหลืออีก %d วัน · ซื้อซ้ำ = ต่ออายุทบจากของเดิม"):format(days) or vip.blurb,
+			11, TEXT_MUTED)
+		blurb.Position = UDim2.new(0, 56, 0, 26)
+		blurb.Size = UDim2.new(1, -190, 0, 22)
+
+		local afford = gems >= vip.price
+		local buy = button(frame, ("💎 %d"):format(vip.price), afford and GREEN or GREY, function()
+			self:fire("buyvip")
+		end)
+		buy.AnchorPoint = Vector2.new(1, 0.5)
+		buy.Position = UDim2.new(1, -8, 0.5, 0)
+		buy.Size = UDim2.fromOffset(110, 32)
+	end
+
 	for order, row in ipairs(PremiumConfig.Shop) do
 		local item = ItemCatalog.Get(row.item)
 		local frame = Instance.new("Frame")

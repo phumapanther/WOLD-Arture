@@ -20,6 +20,7 @@ gui:On("pull", function(banner, times) Remotes.RequestPremium:FireServer("pull",
 gui:On("claim", function(tier, track) Remotes.RequestPremium:FireServer("claim", tier, track) end)
 gui:On("unlockpass", function() Remotes.RequestPremium:FireServer("unlockpass") end)
 gui:On("buygems", function(index) Remotes.RequestPremium:FireServer("buygems", index) end)
+gui:On("buyvip", function() Remotes.RequestPremium:FireServer("buyvip") end)
 
 Remotes.PremiumUpdate.OnClientEvent:Connect(function(data)
 	-- /gems ส่งมาแค่ก้อนเล็ก { gems } ให้รวมกับภาพเดิม ไม่ให้สถานะพาสหาย

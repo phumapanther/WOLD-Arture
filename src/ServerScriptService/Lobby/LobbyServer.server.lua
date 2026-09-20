@@ -6,6 +6,8 @@ if not ServerConfig.IsLobby then return end
 local Players = game:GetService("Players")
 local TeleportService = game:GetService("TeleportService")
 local ChannelRegistry = require(script.Parent.ChannelRegistry)
+local FarmRegistry = require(script.Parent.FarmRegistry)
+local Vip = require(game.ServerScriptService.Vip)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local FIXED_CHANNELS = { Roleplay = 5 } -- ponytail: one constant; raise the number here if you want more channels
@@ -17,6 +19,45 @@ for mode in pairs(FIXED_CHANNELS) do
 	ChannelRegistry.SubscribeToHeartbeats(mode, function(channel, count, playerIds)
 		liveData[mode][channel] = { count = count, playerIds = playerIds, updatedAt = os.clock() }
 	end)
+end
+
+--------------------------------------------------------------------------------
+-- โหมดฟาร์มมิ่ง: เกาะของคุณเอง + เกาะที่คุณถูกชวน
+--
+-- ต่างจากช่อง Roleplay ที่มี 5 ห้องตายตัวเหมือนกันทุกคน — แถวของโหมดนี้ **ไม่เหมือนกันสักคน**
+-- จึงคิดต่อคนตอนจะส่ง ไม่ใช่คิดรวมแล้วกระจาย
+--
+-- ทุกแถวต้องยิง DataStore (VIP หนึ่งครั้ง + รายชื่อเกาะที่ถูกชวนหนึ่งครั้ง) จึงแคชไว้ต่อคน:
+-- ล็อบบี้ส่งรายการใหม่ทุก 5 วิอยู่แล้ว ถ้าไม่แคชคือยิง DataStore ทุก 5 วิต่อหัวจนโควตาหมด
+local farmCache = {} -- [player] = { at = os.clock(), rows = {...} }
+local FARM_CACHE_SECONDS = 30
+
+local function nameOf(player)
+	return player.DisplayName ~= "" and player.DisplayName or player.Name
+end
+
+local function farmRowsFor(player)
+	local cached = farmCache[player]
+	if cached and os.clock() - cached.at < FARM_CACHE_SECONDS then return cached.rows end
+
+	local rows = {}
+	local hasVip = Vip.PeekAsync and select(1, Vip.PeekAsync(player.UserId)) or false
+	-- แถวของตัวเองมาก่อนเสมอ และ **ขึ้นให้เห็นแม้ยังไม่มี VIP** — ปุ่มที่หายไปไม่ได้ขายอะไรให้ใคร
+	rows[#rows + 1] = {
+		ownerId = player.UserId,
+		ownerName = nameOf(player),
+		mine = true,
+		locked = (not hasVip) and "vip" or nil,
+	}
+	for ownerId, ownerName in pairs(FarmRegistry.InvitedTo(player.UserId)) do
+		local id = tonumber(ownerId)
+		if id and id ~= player.UserId then
+			rows[#rows + 1] = { ownerId = id, ownerName = tostring(ownerName), mine = false }
+		end
+	end
+
+	farmCache[player] = { at = os.clock(), rows = rows }
+	return rows
 end
 
 local function snapshot()
@@ -36,7 +77,7 @@ local function snapshot()
 end
 
 Players.PlayerAdded:Connect(function(player)
-	Remotes.ChannelList:FireClient(player, snapshot())
+	Remotes.ChannelList:FireClient(player, snapshot(), farmRowsFor(player))
 	for mode in pairs(FIXED_CHANNELS) do
 		ChannelRegistry.RequestFreshData(mode)
 	end
@@ -49,7 +90,7 @@ local REFRESH_SECONDS = 5
 local function broadcast()
 	local data = snapshot()
 	for _, player in ipairs(Players:GetPlayers()) do
-		Remotes.ChannelList:FireClient(player, data)
+		Remotes.ChannelList:FireClient(player, data, farmRowsFor(player))
 	end
 end
 
@@ -75,11 +116,15 @@ Remotes.RequestChannelRefresh.OnServerEvent:Connect(function(player)
 	for mode in pairs(FIXED_CHANNELS) do
 		ChannelRegistry.RequestFreshData(mode)
 	end
-	Remotes.ChannelList:FireClient(player, snapshot())
+	-- กดรีเฟรชเองคือการบอกว่า "ข้อมูลที่เห็นอาจเก่า" ทิ้งแคชเกาะไปด้วย ไม่งั้นคนเพิ่งซื้อ VIP
+	-- จะยังเห็นแถวล็อกอยู่อีกครึ่งนาทีทั้งที่กดรีเฟรชแล้ว
+	farmCache[player] = nil
+	Remotes.ChannelList:FireClient(player, snapshot(), farmRowsFor(player))
 end)
 
 Players.PlayerRemoving:Connect(function(player)
 	lastManualRefresh[player] = nil
+	farmCache[player] = nil
 end)
 
 -- Real teleport failures (server unreachable, and — always, in Studio — "there is no second server to reach")
@@ -90,12 +135,14 @@ end)
 local lastAttempt = {} -- [player] = { accessCode: string, retried: boolean }
 
 TeleportService.TeleportInitFailed:Connect(function(player, teleportResult, errorMessage, targetPlaceId)
-	if targetPlaceId ~= game.PlaceId then return end
 	local attempt = lastAttempt[player]
+	-- ปลายทางเป็นเพลสเกาะได้แล้ว ไม่ใช่เพลสนี้เสมอไป — เทียบกับเพลสที่พยายามไปจริง ไม่ใช่ `game.PlaceId`
+	local expected = (attempt and attempt.placeId) or game.PlaceId
+	if targetPlaceId ~= expected then return end
 	if attempt and not attempt.retried then
 		attempt.retried = true -- per spec §6: one retry before giving up
 		task.spawn(function()
-			pcall(function() TeleportService:TeleportToPrivateServer(game.PlaceId, attempt.accessCode, { player }) end)
+			pcall(function() TeleportService:TeleportToPrivateServer(expected, attempt.accessCode, { player }) end)
 		end)
 		return
 	end
@@ -104,7 +151,42 @@ TeleportService.TeleportInitFailed:Connect(function(player, teleportResult, erro
 	Remotes.JoinFailed:FireClient(player, "teleport_failed")
 end)
 
+-- เข้าเกาะฟาร์ม: `channel` คือ **userId ของเจ้าของเกาะ** ไม่ใช่เลขห้อง
+--
+-- ตรวจสิทธิ์ที่นี่ใหม่ทั้งหมด ไม่เชื่อแถวที่ไคลเอนต์เห็น: เกาะของตัวเองต้องมี VIP · เกาะคนอื่นต้องถูกชวนไว้จริง
+local function joinFarm(player, ownerId)
+	if ServerConfig.FarmingPlaceId == 0 then
+		return Remotes.JoinFailed:FireClient(player, "farm_not_ready")
+	end
+	if ownerId == player.UserId then
+		local hasVip = Vip.PeekAsync and select(1, Vip.PeekAsync(player.UserId)) or false
+		if not hasVip then return Remotes.JoinFailed:FireClient(player, "need_vip") end
+	elseif not FarmRegistry.IsGuest(ownerId, player.UserId) then
+		return Remotes.JoinFailed:FireClient(player, "not_invited")
+	end
+
+	local ok, accessCode = pcall(FarmRegistry.GetOrCreate, ownerId)
+	if not ok then
+		warn("[Lobby] สร้างเกาะของ", ownerId, "ไม่ได้:", accessCode)
+		return Remotes.JoinFailed:FireClient(player, "create_failed")
+	end
+	-- เกาะอยู่คนละเพลส จึงต้องบอกเลขเพลสด้วย (ของช่อง Roleplay เป็นเพลสเดียวกับล็อบบี้)
+	lastAttempt[player] = { accessCode = accessCode, retried = false, placeId = ServerConfig.FarmingPlaceId }
+	local teleportOk, err = pcall(function()
+		TeleportService:TeleportToPrivateServer(ServerConfig.FarmingPlaceId, accessCode, { player })
+	end)
+	if not teleportOk then
+		lastAttempt[player] = nil
+		warn("[Lobby] เทเลพอร์ตเข้าเกาะล้มเหลวทันที:", err)
+		Remotes.JoinFailed:FireClient(player, "teleport_failed")
+	end
+end
+
 Remotes.JoinChannel.OnServerEvent:Connect(function(player, mode, channel)
+	if mode == "Farming" then
+		if type(channel) ~= "number" then return end
+		return joinFarm(player, math.floor(channel))
+	end
 	if not FIXED_CHANNELS[mode] or type(channel) ~= "number" or channel < 1 or channel > FIXED_CHANNELS[mode] then
 		return
 	end

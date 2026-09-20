@@ -55,4 +55,11 @@ ProfileAccess.SerializeVault = nil
 -- waiting for the next autosave tick. Call it after anything worth keeping.
 ProfileAccess.Flush = nil
 
+-- PeekAsync(userId) -> ตารางข้อมูลโปรไฟล์ (อ่านอย่างเดียว) หรือ nil
+--
+-- **ใช้ในล็อบบี้** ซึ่งไม่ได้เปิดเซสชันโปรไฟล์ของใครเลย (ProfileStore ล็อกเซสชันไว้กับเซิร์ฟช่อง) แต่ต้อง
+-- รู้บางอย่างของคนที่ยืนอยู่ตรงนั้น เช่น "เป็น VIP ไหม" เพื่อวาดแถวโหมดฟาร์มมิ่ง — อ่านผ่านทางนี้เท่านั้น
+-- **ห้ามเปิดเซสชันในล็อบบี้** ไม่งั้นจะไปแย่งล็อกกับเซิร์ฟที่เขากำลังเล่นอยู่ แล้วเขาจะโดนเตะออกจากเกม
+ProfileAccess.PeekAsync = nil
+
 return ProfileAccess
