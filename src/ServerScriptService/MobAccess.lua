@@ -26,4 +26,25 @@ MobAccess.SpawnHunters = nil
 -- and the kind's display name, or nil. Left nil in the lobby, so every caller must check.
 MobAccess.SpawnBoss = nil
 
+--------------------------------------------------------------------------------
+-- อีเวนต์ที่มีมอนเป็นตัวเอก (บอสโลก)
+--------------------------------------------------------------------------------
+
+-- ตั้งโดย `WorldBoss.server` · Mobs.server เรียกทุกครั้งที่มอนซึ่งเกิดจากหมุดที่มี `EventOnly`
+-- โดนตี — (eventId, ผู้ตี, ดาเมจที่เข้าจริง) ทิศทางเดียว: ระบบมอนรายงาน ระบบอีเวนต์เก็บยอดเอง
+--
+-- **ยอดสะสมต้องอยู่ฝั่งอีเวนต์ ไม่ใช่ฝั่งมอน** เพราะบอสโลกไม่จำเป็นต้องตาย พอหมดเวลาโมเดลถูกลบทิ้ง
+-- พร้อมสถานะของมัน ถ้าเก็บยอดไว้ในตัวมอน รางวัลของรอบที่บอสรอดจะหายไปทั้งรอบ
+MobAccess.OnEventDamage = nil
+
+-- ตั้งโดย `WorldBoss.server` · เรียกตอนมอนของอีเวนต์ตายพอดี — (eventId, คนฟันไม้สุดท้าย)
+-- แยกจาก OnEventDamage เพราะ "คนทำดาเมจเยอะสุด" กับ "คนฟันไม้สุดท้าย" เป็นรางวัลคนละใบ
+MobAccess.OnEventKill = nil
+
+-- ตั้งโดย Mobs.server · เปิด/ปิดหมุดที่ติด `EventOnly = <id>` และนับว่ามอนของอีเวนต์นั้นยังอยู่กี่ตัว
+-- มีไว้ให้ระบบอีเวนต์ที่ **ไม่ใช่** Mobs.server เป็นเจ้าของ (บอสโลก) สั่งมอนได้โดยไม่ต้องแตะตาราง `Live`
+MobAccess.StartEventSpawners = nil
+MobAccess.StopEventSpawners = nil
+MobAccess.EventMobsAlive = nil
+
 return MobAccess

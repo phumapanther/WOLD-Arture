@@ -9,6 +9,7 @@ local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local ClassPerks = require(game.ServerScriptService.ClassPerks)
 local PremiumAccess = require(script.Parent.PremiumAccess)
+local SocialConfig = require(game.ReplicatedStorage.SocialConfig)
 
 local Progression = {}
 
@@ -95,6 +96,40 @@ end
 --------------------------------------------------------------------------------
 
 -- Every EXP source funnels through here so the level-up rules live in one place.
+-- แจก EXP ให้ทั้งตี้ของคนที่ลงมือ — **ใช้กับการฆ่ามอนเท่านั้น** (ผู้ใช้กำหนด 2026-09-20)
+--
+-- ไม่ได้เอาไปใส่ใน `AwardExp` เองเพราะ EXP มาจากหลายทางที่ไม่ควรแชร์: เก็บของ ตกปลา ส่งเควส ซ่อมหม้อแปลง
+-- ล้วนเป็นงานที่คนเดียวทำคนเดียวได้ ถ้าแชร์หมดตี้จะกลายเป็นเครื่องคูณ EXP ของทุกกิจกรรมในเกม
+--
+-- คนที่ไม่มีตี้ได้เต็มเหมือนเดิม ไม่ถูกหัก 30% — การหักมาพร้อมการแชร์เสมอ ไม่ใช่โทษของการมีตี้
+function Progression.AwardExpParty(player, amount)
+	if not amount or amount <= 0 then return end
+	local Party = require(script.Parent.Party)
+	local party = Party.Of(player)
+	if not party then return Progression.AwardExp(player, amount) end
+
+	local shared = math.max(1, math.floor(amount * SocialConfig.PartyExpShare + 0.5))
+	local origin = nil
+	if SocialConfig.PartyExpRange > 0 then
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		origin = root and root.Position or nil
+	end
+
+	for _, member in ipairs(party.members) do
+		local near = true
+		if origin then
+			local character = member.Character
+			local root = character and character:FindFirstChild("HumanoidRootPart")
+			near = root ~= nil and (root.Position - origin).Magnitude <= SocialConfig.PartyExpRange
+		end
+		-- คนที่ตายอยู่/ออกเกมไปแล้วข้ามไป แต่คนที่ล้มอยู่ยังได้ (เขาอยู่ในวงล่าด้วย แค่กำลังแย่)
+		if near and member.Parent then
+			Progression.AwardExp(member, shared)
+		end
+	end
+end
+
 function Progression.AwardExp(player, amount)
 	local state = States[player]
 	if not state or amount <= 0 then return end

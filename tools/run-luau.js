@@ -11,7 +11,7 @@ const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
 const lib = args.includes("--no-lib") ? "" : read("mapgen/lib.lua");
 // --kit also concatenates the modelkit chain, so one phase can shape terrain with L and raise buildings with K
 const kit = args.includes("--kit")
-  ? `local K = (function()\n${read("modelkit/kit.lua")}\nend)()\n${read("modelkit/interior.lua")}\n${read("modelkit/interior2.lua")}\n${read("modelkit/roofs.lua")}\nlocal R = (function()\n${read("modelkit/rig.lua")}\nend)()\n`
+  ? `local K = (function()\n${read("modelkit/kit.lua")}\nend)()\n${read("modelkit/interior.lua")}\n${read("modelkit/interior2.lua")}\n${read("modelkit/roofs.lua")}\nlocal R = (function()\n${read("modelkit/rig.lua")}\nend)()\n${read("modelkit/armor.lua")}\n`
   : "";
 // --models loads the building generators in register-only mode, so a phase can call K.place("Village_Tavern", ...)
 const models = args.includes("--models")

@@ -31,6 +31,8 @@ local EventState = require(game.ServerScriptService.EventState)
 local TownAccess = require(game.ServerScriptService.TownAccess)
 local ClanAccess = require(game.ServerScriptService.ClanAccess)
 local Vip = require(game.ServerScriptService.Vip)
+local MobAccess = require(game.ServerScriptService.MobAccess)
+local GatherConfig = require(game.ReplicatedStorage.GatherConfig)
 local EventConfig = require(game.ReplicatedStorage.EventConfig)
 local VehicleConfig = require(game.ReplicatedStorage.Vehicle.Config)
 local VehicleService = require(game.ServerScriptService.Vehicle.Service)
@@ -183,6 +185,26 @@ Commands.town = function(admin, args)
 			o and ("แคลน %s [%s]"):format(o.clanName or "?", tostring(o.clanId)) or "ไม่มีเจ้าของ")
 	end
 	reply(admin, table.concat(lines, "\n"))
+end
+
+-- /boss [ระยะ] -- เสกบอสฟอร์จวอร์เดนมาที่ตัวเรา ไว้เทสมูฟเซ็ตโดยไม่ต้องรออีเวนต์
+--
+-- ใช้ทางเดียวกับบอสที่คนกดซับใน TikTok ซื้อ (`MobAccess.SpawnBoss`) ต่างแค่ชนิดกับสเกล — ไม่มีทางเกิดที่สอง
+-- ให้ต้องดูแล · ระยะดีฟอลต์ 45 เพราะตัวมันสูง 27 studs การเสกใกล้กว่านี้คือโผล่มาทับหัวคนเสก
+Commands.boss = function(admin, args)
+	if not MobAccess.SpawnBoss then return reply(admin, "ระบบมอนยังไม่พร้อม") end
+	local config = GatherConfig.Mobs.Forgewarden
+	if not config then return reply(admin, "ยังไม่มีบอสในคอนฟิก") end
+	-- ตัวมันสูงราว 40 studs หลังขยายรอบ 2026-09-20 — เสกใกล้กว่า 40 คือโผล่มาทับหัวคนเสก
+	local distance = math.clamp(tonumber(args[1]) or 60, 40, 200)
+	local model = MobAccess.SpawnBoss(admin, distance, {
+		kind = "Forgewarden",
+		scale = config.scale or 3.9,
+		power = 1,
+		title = config.name,
+	})
+	if not model then return reply(admin, "เสกบอสไม่สำเร็จ (หาพื้นวางไม่ได้ ลองที่โล่งกว่านี้)") end
+	reply(admin, ("เสก %s แล้ว (ห่าง %d studs)"):format(config.name, distance))
 end
 
 -- /vip <วัน> [คน] -- ให้/ต่อ VIP ตรงๆ ไว้เทสโหมดฟาร์มมิ่งโดยไม่ต้องเสียเพชร · ติดลบ = ตัดวัน
@@ -344,6 +366,28 @@ end
 -- /slime [off] -- บังคับให้สไลม์กลายพันธุ์โผล่เดี๋ยวนี้
 Commands.slime = function(admin, args)
 	forceEvent(admin, "slime", args, "อีเวนต์สไลม์กลายพันธุ์")
+end
+
+-- /worldboss [off|rank] -- บังคับให้บอสโลกตื่นเดี๋ยวนี้ / จบอีเวนต์ / ดูตารางดาเมจตอนนี้
+--
+-- ของจริงตื่นเองสองทุ่มเวลาไทยและอยู่ 59 นาที (`EventConfig.Events.worldboss`) คำสั่งนี้มีไว้เทส
+-- โดยไม่ต้องรอถึงเวลา · `rank` คือสิ่งเดียวที่คำสั่งอีเวนต์ตัวอื่นไม่มี: ระหว่างสู้ต้องเห็นว่ายอดเดินอยู่จริง
+-- ไม่งั้นจะรู้ว่าการนับดาเมจพังก็ตอนจบอีเวนต์ซึ่งสายไปแล้ว
+Commands.worldboss = function(admin, args)
+	local sub = (args[1] or ""):lower()
+	if sub == "rank" or sub == "top" then
+		local access = MobAccess.WorldBoss
+		if not access then return reply(admin, "ระบบบอสโลกยังไม่พร้อม") end
+		local rows = access.Standings()
+		if #rows == 0 then return reply(admin, "ยังไม่มีใครทำดาเมจใส่บอสโลก") end
+		local lines = {}
+		for i, row in ipairs(rows) do
+			lines[#lines + 1] = ("%d. %s — %d"):format(i, row.name, math.floor(row.damage))
+			if i >= 10 then break end
+		end
+		return reply(admin, table.concat(lines, "\n"))
+	end
+	forceEvent(admin, "worldboss", args, "อีเวนต์บอสโลก")
 end
 
 -- /mob [จำนวน] -- เสกมอนสุ่มรอบตัว ห่าง 15 สตัด ไล่ล่าเฉพาะคนสั่ง ไม่เลิกตาม

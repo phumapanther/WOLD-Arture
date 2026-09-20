@@ -1,0 +1,251 @@
+-- WorldBoss.server.lua: บอสโลก — ตื่นตามนาฬิกา อยู่ได้ตามเวลา แล้วจ่ายรางวัลตามดาเมจที่แต่ละคนทำไว้
+--
+-- ผู้ใช้กำหนด (2026-09-20):
+--   เกิดสองทุ่ม · ประกาศตอนเกิด · อยู่ 59 นาที · รางวัลเรียงจากคนทำดาเมจมากสุดไปน้อยสุด ·
+--   **บอสไม่ต้องตายก็ได้** ถ้าตาย อีเวนต์จบทันที · หมดเวลา อีเวนต์ก็จบ · คนฟันไม้สุดท้ายได้กล่องเวทมนตร์ 1 ใบ
+--
+-- ไฟล์นี้เป็นเจ้าของอีเวนต์ `worldboss` แต่ **ไม่ได้เป็นเจ้าของบอส**:
+--   · เวลา (สองทุ่ม / 59 นาที)            → `WorldEvents.server` + `EventConfig.Events.worldboss`
+--   · ตัวบอส เลือด ดาเมจ ดรอปตอนตาย      → `GatherConfig.Mobs.Forgewarden` + `Mobs.server`
+--   · จะไปโผล่ตรงไหน                      → หมุด `workspace.WOLD.BossSpawns.BossSpawn_Forgewarden`
+--   · **ใครทำดาเมจไปเท่าไหร่ และใครได้อะไร → ไฟล์นี้**
+--
+-- **ยอดดาเมจต้องเก็บไว้ที่นี่ ไม่ใช่ในตัวบอส** เพราะบอสไม่จำเป็นต้องตาย พอหมดเวลาโมเดลถูกลบทิ้งพร้อม
+-- สถานะทั้งก้อน ถ้ายอดอยู่ในนั้น รอบที่บอสรอดจะไม่มีใครได้อะไรเลยทั้งที่ตีกันมาชั่วโมงหนึ่ง
+local Players = game:GetService("Players")
+local ServerConfig = require(game.ServerScriptService.ServerConfig)
+
+if ServerConfig.IsLobby then return end
+
+local EventConfig = require(game.ReplicatedStorage.EventConfig)
+local GatherConfig = require(game.ReplicatedStorage.GatherConfig)
+local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
+local EventState = require(game.ServerScriptService.EventState)
+local MobAccess = require(game.ServerScriptService.MobAccess)
+local Inventory = require(game.ServerScriptService.Inventory)
+local Progression = require(game.ServerScriptService.Progression)
+local Remotes = require(game.ReplicatedStorage.Remotes)
+
+local ID = "worldboss"
+local WB = EventConfig.WorldBoss or {}
+
+--------------------------------------------------------------------------------
+-- ตารางดาเมจของรอบนี้
+--------------------------------------------------------------------------------
+
+-- [userId] = { name = ชื่อ, damage = ยอดสะสม }
+--
+-- คีย์เป็น userId ไม่ใช่ตัว Player: คนที่หลุดแล้วเข้าใหม่กลางอีเวนต์ต้องได้ยอดเดิมต่อ ไม่ใช่เริ่มนับใหม่
+-- และตอนประกาศท็อป 3 ต้องขึ้นชื่อได้แม้เจ้าตัวออกไปแล้ว
+local Tally = {}
+local Killed = false
+local LastHitUserId = nil
+
+local function resetRound()
+	Tally = {}
+	Killed = false
+	LastHitUserId = nil
+end
+
+--------------------------------------------------------------------------------
+-- รับรายงานจากระบบมอน
+--------------------------------------------------------------------------------
+
+-- Mobs.server เรียกทุกครั้งที่มอนซึ่งเกิดจากหมุดที่มี `EventOnly` โดนตี — ทิศทางเดียว ไม่มีการถามกลับ
+MobAccess.OnEventDamage = function(eventId, player, amount)
+	if eventId ~= ID or not player or not amount or amount <= 0 then return end
+	-- รับต่อเมื่ออีเวนต์เดินอยู่จริง ตัวที่ยังค้างอยู่หลังอีเวนต์จบจะไม่ไหลเข้ารอบถัดไป
+	if not EventState.IsActive(ID) then return end
+
+	local row = Tally[player.UserId]
+	if not row then
+		row = { name = player.DisplayName or player.Name, damage = 0 }
+		Tally[player.UserId] = row
+	end
+	row.damage += amount
+	row.name = player.DisplayName or player.Name
+end
+
+MobAccess.OnEventKill = function(eventId, killer)
+	if eventId ~= ID then return end
+	Killed = true
+	LastHitUserId = killer and killer.UserId or nil
+end
+
+--------------------------------------------------------------------------------
+-- การจ่ายรางวัล
+--------------------------------------------------------------------------------
+
+-- เกณฑ์ขั้นต่ำคิดจากเลือดในคอนฟิก ไม่ใช่เลือดจริงของตัวที่เกิด (ตัวกลางคืนเลือดหนากว่า) — เกณฑ์ที่ขยับ
+-- ตามเวลากลางวัน/กลางคืนอธิบายให้ผู้เล่นฟังไม่ได้ว่าทำไมรอบนี้ตีเท่าเดิมแล้วไม่ติด
+local function minimumDamage()
+	local config = GatherConfig.Mobs[WB.kind or ""]
+	local hp = config and config.hp or 0
+	return hp * (WB.MinDamageFraction or 0)
+end
+
+local function bracketFor(rank)
+	for _, entry in ipairs(WB.Ranks or {}) do
+		if rank <= (entry.upTo or math.huge) then return entry end
+	end
+	return nil
+end
+
+-- จ่ายของหนึ่งชุดให้คนหนึ่งคน คืนข้อความสรุปสั้นๆ ที่จะส่งกลับไปให้เจ้าตัว
+local function payTo(player, bracket, extraItems)
+	local parts = {}
+
+	if bracket.gold and bracket.gold > 0 then
+		Inventory.AddGold(player, bracket.gold)
+		table.insert(parts, ("%d เหรียญ"):format(bracket.gold))
+	end
+	if bracket.xp and bracket.xp > 0 then
+		-- ไม่แชร์เข้าตี้: การแชร์ผูกกับ "ฆ่ามอนหนึ่งตัว" (`AwardExpParty`) ส่วนนี่คือรางวัลอีเวนต์ที่
+		-- คนในตี้ทุกคนได้ของตัวเองตามดาเมจของตัวเองอยู่แล้ว แชร์ซ้ำอีกชั้นคือการจ่ายสองรอบ
+		Progression.AwardExp(player, bracket.xp)
+	end
+
+	local items = {}
+	for _, item in ipairs(bracket.items or {}) do table.insert(items, item) end
+	for _, item in ipairs(extraItems or {}) do table.insert(items, item) end
+
+	for _, item in ipairs(items) do
+		local name = (ItemCatalog.Get(item.id) or {}).name or item.id
+		if Inventory.AddItem(player, item.id, item.count or 1) then
+			table.insert(parts, ("%s x%d"):format(name, item.count or 1))
+		else
+			-- ของหายเงียบๆ ไม่ได้ — คนที่สู้มาชั่วโมงหนึ่งต้องรู้ว่าทำไมไม่มีของเข้ากระเป๋า
+			Remotes.SocialNotify:FireClient(player, "error",
+				("กระเป๋าเต็ม ไม่ได้รับ %s x%d"):format(name, item.count or 1))
+		end
+	end
+
+	return table.concat(parts, " · ")
+end
+
+local function payout()
+	local ranked = {}
+	local least = minimumDamage()
+	for userId, row in pairs(Tally) do
+		if row.damage >= least then
+			table.insert(ranked, { userId = userId, name = row.name, damage = row.damage })
+		end
+	end
+	-- มากไปน้อย เสมอกันตัดด้วย userId ให้ลำดับคงที่ ไม่ใช่ลำดับของ pairs ซึ่งสลับได้ทุกครั้ง
+	table.sort(ranked, function(a, b)
+		if a.damage == b.damage then return a.userId < b.userId end
+		return a.damage > b.damage
+	end)
+
+	if #ranked == 0 then
+		Remotes.SocialNotify:FireAllClients("info", "ฟอร์จวอร์เดนกลับลงเตาหลอม — ไม่มีใครเข้าเกณฑ์รับรางวัล")
+		return
+	end
+
+	for rank, row in ipairs(ranked) do
+		local bracket = bracketFor(rank)
+		local player = Players:GetPlayerByUserId(row.userId)
+		-- คนที่ออกจากเกมไปแล้วข้ามไป: `Inventory` ไม่มีที่ให้ของลง และการเก็บรางวัลไว้รับทีหลังคือระบบเมล
+		-- ซึ่งเกมยังไม่มี (วันไหนมี ให้เติมตรงนี้ที่เดียว)
+		if bracket and player then
+			local extra = nil
+			if Killed and LastHitUserId == row.userId and WB.LastHit then
+				extra = { { id = WB.LastHit.item, count = WB.LastHit.count or 1 } }
+			end
+			local summary = payTo(player, bracket, extra)
+			Remotes.SocialNotify:FireClient(player, "info",
+				("%s (ดาเมจ %d) ได้รับ %s"):format(bracket.label or ("อันดับ " .. rank),
+					math.floor(row.damage), summary ~= "" and summary or "-"))
+			if extra then
+				Remotes.SocialNotify:FireClient(player, "info", "ไม้สุดท้ายเป็นของคุณ! ได้กล่องเวทมนตร์เพิ่ม")
+			end
+		end
+	end
+
+	-- ประกาศท็อปให้ทั้งเซิร์ฟเห็น: ตารางอันดับที่ไม่มีใครเห็นไม่ใช่ตารางอันดับ
+	local top = {}
+	for i = 1, math.min(WB.AnnounceTop or 3, #ranked) do
+		table.insert(top, ("%d. %s (%d)"):format(i, ranked[i].name, math.floor(ranked[i].damage)))
+	end
+	Remotes.SocialNotify:FireAllClients("info", ("%s — %s"):format(
+		Killed and "ฟอร์จวอร์เดนถูกปราบแล้ว!" or "ฟอร์จวอร์เดนถอยกลับเตาหลอม",
+		table.concat(top, "  ")))
+end
+
+--------------------------------------------------------------------------------
+-- อีเวนต์
+--------------------------------------------------------------------------------
+
+EventState.Register(ID, {
+	start = function()
+		resetRound()
+		if not MobAccess.StartEventSpawners then
+			-- ไม่มีระบบมอน = ประกาศที่ไม่มีบอสอยู่ข้างหลัง ซึ่งแย่กว่าไม่ประกาศ · โยนให้ WorldEvents
+			-- ยกเลิกอีเวนต์ทิ้ง (มันจับ error ของ start hook ไว้อยู่แล้ว)
+			error("[WorldBoss] MobAccess.StartEventSpawners ยังไม่ถูกตั้ง (Mobs.server ไม่ได้รัน?)", 0)
+		end
+		local spawners = MobAccess.StartEventSpawners(ID)
+		if not spawners or spawners == 0 then
+			-- เพลสนี้ไม่มีหมุดบอสเลย (ยังไม่ได้รัน `mapgen/83_boss_spawner.lua` หรืออยู่คนละเพลส)
+			-- ล้มตั้งแต่ตรงนี้ดีกว่าประกาศแล้วให้คนวิ่งหาทั้งชั่วโมง
+			error("[WorldBoss] ไม่มีหมุดที่ติด EventOnly = worldboss ในเพลสนี้", 0)
+		end
+
+		local config = GatherConfig.Mobs[WB.kind or ""]
+		-- อ่านเวลาที่เหลือ **จากตัวอีเวนต์** ไม่ใช่จาก durationSeconds ในคอนฟิก: เซิร์ฟที่บูตมากลางรอบ
+		-- ได้เวลาที่เหลือจริง (ดู `minRemainingSeconds`) ประกาศว่า 59 นาทีทุกครั้งจะโกหกในกรณีนั้น
+		local entry = EventState.Active[ID]
+		local left = entry and entry.endsAt and (entry.endsAt - workspace:GetServerTimeNow())
+			or ((EventConfig.Events[ID] or {}).durationSeconds or 0)
+		local minutes = math.floor(left / 60)
+		Remotes.SocialNotify:FireAllClients("info",
+			("%s ตื่นแล้ว! เหลือเวลา %d นาที — รางวัลแจกตามดาเมจที่ทำได้")
+				:format(config and config.name or "บอสโลก", minutes))
+	end,
+
+	stop = function()
+		-- จ่ายรางวัล **ก่อน** เก็บบอสออก และทั้งสองทางออกใช้ทางเดียวกัน: ตายก็จบ หมดเวลาก็จบ
+		-- (ผู้ใช้กำหนดว่าบอสไม่ต้องตายก็ได้ รางวัลจึงผูกกับดาเมจ ไม่ได้ผูกกับการฆ่า)
+		local ok, err = pcall(payout)
+		if not ok then warn("[WorldBoss] จ่ายรางวัลไม่สำเร็จ:", err) end
+
+		if MobAccess.StopEventSpawners then MobAccess.StopEventSpawners(ID) end
+		resetRound()
+	end,
+})
+
+--------------------------------------------------------------------------------
+-- ทางเข้าสำหรับคำสั่งแอดมิน
+--------------------------------------------------------------------------------
+
+-- ผ่าน `MobAccess` เหมือนทุกอย่างที่ข้ามไฟล์ในระบบนี้ — `AdminCommands` require ไฟล์ .server.lua ไม่ได้
+MobAccess.WorldBoss = {
+	Id = ID,
+
+	Start = function()
+		if EventState.IsActive(ID) then return false, "บอสโลกกำลังเกิดอยู่แล้ว" end
+		if not EventState.Start then return false, "ระบบอีเวนต์ยังไม่พร้อม" end
+		EventState.Start(ID)
+		if not EventState.IsActive(ID) then return false, "เริ่มไม่สำเร็จ (ดู Output)" end
+		return true
+	end,
+
+	Stop = function()
+		if not EventState.IsActive(ID) then return false, "ตอนนี้ไม่มีบอสโลก" end
+		EventState.Stop(ID)
+		return true
+	end,
+
+	-- ตารางดาเมจตอนนี้ เรียงแล้ว — ใช้ดูว่าใครนำอยู่ระหว่างสู้
+	Standings = function()
+		local out = {}
+		for userId, row in pairs(Tally) do
+			table.insert(out, { userId = userId, name = row.name, damage = row.damage })
+		end
+		table.sort(out, function(a, b)
+			if a.damage == b.damage then return a.userId < b.userId end
+			return a.damage > b.damage
+		end)
+		return out
+	end,
+}

@@ -219,6 +219,10 @@ local function distanceToBody(origin, character)
 	local down = (humanoid and humanoid.HipHeight or 2) + half.Y
 	local up = half.Y * 2.2 -- torso above the root plus the head, in the same proportion the rig has
 
+	-- มอนตัวใหญ่ที่ขยับช้าขอให้ตีโดนง่ายกว่ากล่องจริงของมัน (`Mobs.applyHitPad` เขียนค่านี้ไว้ตอนเกิด
+	-- คิดจากขนาดหลังย่อขยายแล้ว) · คนกับหุ่นซ้อมไม่มีแอตทริบิวต์นี้ ระยะจึงเท่าเดิมเป๊ะ
+	local pad = character:GetAttribute("WOLD_HitPad") or 0
+
 	local delta = origin - hrp.Position
 	local dx = math.max(0, math.abs(delta.X) - half.X)
 	local dz = math.max(0, math.abs(delta.Z) - half.Z)
@@ -228,7 +232,7 @@ local function distanceToBody(origin, character)
 	elseif delta.Y < -down then
 		dy = -down - delta.Y
 	end
-	return math.sqrt(dx * dx + dy * dy + dz * dz)
+	return math.max(0, math.sqrt(dx * dx + dy * dy + dz * dz) - pad)
 end
 
 -- Where a shot is headed. `aim` is the world point under the client's crosshair; only that client knows

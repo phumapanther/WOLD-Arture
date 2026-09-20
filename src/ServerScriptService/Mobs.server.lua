@@ -231,9 +231,28 @@ local function rigR15(model)
         end
     end
 
+    -- ชิ้นไหน "ถูกขับด้วยข้อต่ออยู่แล้ว" — ดูจาก **Part1 ของ Motor6D ทุกตัวในโมเดล** ไม่ใช่จากการที่ชิ้นนั้น
+    -- มี Motor6D เป็นลูก
+    --
+    -- **บั๊กที่ทำให้บอสฟอร์จวอร์เดนแตกเป็นสองตัวซ้อนกัน (ผู้ใช้แจ้ง 2026-09-20)**: ต้นแบบของบอสแปลงข้อต่อ
+    -- เป็น Motor6D มาแล้วครบ 15 ตัว แต่ **แขวนไว้ที่ฝั่ง Part0** (ชิ้นแม่) ซึ่งแปลว่าชิ้นปลายทาง —
+    -- Head / LeftHand / RightHand / LeftFoot / RightFoot — ไม่มี Motor6D เป็นลูกของตัวเองสักตัว
+    -- โค้ดเดิมจึงตัดสินว่ามันยังไม่มีข้อต่อ แล้วทำสองอย่างที่พังทั้งคู่:
+    --   1. **สร้าง Motor6D ซ้ำ** ทับตัวที่มีอยู่แล้ว = ข้อต่อสองตัวขับชิ้นเดียวกัน ซึ่งเอนจิ้นแก้ด้วยการ
+    --      ตัดร่างออกเป็นสองก้อน — ก้อนหนึ่งนิ่ง อีกก้อนขยับ ซ้อนกันอยู่
+    --   2. **ลบ weld ทุกตัวที่แตะชิ้นนั้น** = เขา หน้ากาก ถุงมือ **ดาบ** และสนับแข้ง หลุดจากแขนขา
+    --      แล้วไปโดนเชื่อมติดกับ root ในลูปข้างล่างแทน → ดาบไม่แกว่งตามแขน ขาไม่แกว่งตอนเดิน
+    --
+    -- ถามจาก Part1 จึงถูกเสมอไม่ว่าใครจะแขวน Motor6D ไว้ตรงไหน (มาตรฐาน R15 ของ Roblox แขวนที่ Part1
+    -- ส่วน `rigR15` ตัวนี้เองแขวนที่ Part0 — สองแบบในเกมเดียวกันอยู่แล้ว การถามจากชื่อพ่อแม่จึงผิดแน่นอน)
+    local driven = {}
+    for _, d in ipairs(model:GetDescendants()) do
+        if d:IsA("Motor6D") and d.Part1 then driven[d.Part1] = true end
+    end
+
     for _, joint in ipairs(R15_JOINTS) do
         local part, parent, name = found[joint[1]], found[joint[2]], joint[3]
-        if part:FindFirstChildWhichIsA("Motor6D") then
+        if driven[part] then
             jointed[part] = true
         else
             -- The welds holding this part rigid have to go, wherever they were parented.
@@ -398,6 +417,19 @@ local function buildFromModel(config)
         end
     end
 
+    -- ชิ้นที่ถูก weld ไว้กับอะไรสักอย่างแล้ว — **ดูจากตัว weld ทุกตัวในโมเดล ไม่ใช่จากลูกของชิ้นนั้น**
+    --
+    -- เกราะของโรงงาน (`R.weld`) แขวน WeldConstraint ไว้ที่ตัวแผ่นเกราะ แต่ของที่คนอื่นทำอาจแขวนไว้ที่
+    -- ชิ้นแม่หรือที่โมเดล ซึ่งจะถูกมองว่า "ยังไม่ถูกเชื่อม" แล้วโดนเชื่อมติด root ซ้ำอีกเส้น —
+    -- เส้นที่สองนั้นทำให้แขนขาที่อนิเมชันควรขยับ กลายเป็นก้อนแข็งติดกับลำตัว
+    local welded = {}
+    for _, w in ipairs(model:GetDescendants()) do
+        if w:IsA("WeldConstraint") or w:IsA("Weld") then
+            if w.Part0 then welded[w.Part0] = true end
+            if w.Part1 then welded[w.Part1] = true end
+        end
+    end
+
     -- Everything else rides along rather than fighting the physics: an anchored limb would pin the monster
     -- in place, and a colliding one would trip it over its own body.
     for _, d in ipairs(model:GetDescendants()) do
@@ -414,7 +446,7 @@ local function buildFromModel(config)
             -- ของมันเอง (LegL1Upper ฯลฯ) rigR15 จึงคืนตารางเปล่า และขาทั้งแปดถูกเชื่อมติดลำตัว
             -- **เชื่อมแล้วขาขยับไม่ได้เลย** ไม่ว่าจะขยับด้วยอนิเมชันหรือด้วยการเขียน C0 ตรงๆ ก็ตาม
             -- ซึ่งคือเหตุผลจริงที่ขาแมงมุมไม่ขยับ — คอมเมนต์ข้างบนเตือนเรื่องนี้ไว้แล้วแต่เช็คไม่ครบ
-            if not jointed[d] and not ownJointed[d] and not d:FindFirstChildWhichIsA("WeldConstraint") then
+            if not jointed[d] and not ownJointed[d] and not welded[d] then
                 local weld = Instance.new("WeldConstraint")
                 weld.Part0 = rootPart
                 weld.Part1 = d
@@ -505,6 +537,32 @@ local function buildFromModel(config)
     return model
 end
 
+-- ฮิตบ็อกซ์เผื่อ: "ตีให้โดนง่ายขึ้นอีกเท่านี้" เป็นสัดส่วนของตัวมัน
+--
+-- ผู้ใช้สั่ง 2026-09-20 ให้บอสโดนตีง่ายขึ้นอีก 50% · **ไม่ได้ทำด้วยการขยาย HumanoidRootPart** เพราะ root
+-- เป็นชิ้นเดียวที่ชนได้จริงของมอน การขยายมันคือการขยายตัวที่โลกจับต้องได้ — คนจะเข้าไปใกล้ไม่ได้
+-- (ยืนห่างขึ้นเท่ากับที่ขยาย) และฐานที่กว้างขึ้นก็ไปเกยพื้นที่ต่างระดับ · ทำเป็น **ส่วนลดระยะ** แทน:
+-- `PlayerCombat.distanceToBody` ลบค่านี้ออกจากระยะที่วัดได้ กล่องที่ใช้ตัดสินว่า "ฟันโดน" จึงใหญ่ขึ้น
+-- โดยที่ตัวจริงเท่าเดิม
+--
+-- เขียนเป็นแอตทริบิวต์บนโมเดล ไม่ใช่ตารางในไฟล์นี้ เพราะคนที่ต้องอ่านอยู่คนละสคริปต์และคนละระบบ
+local function applyHitPad(model, config)
+	local fraction = config.hitPadFraction
+	if not fraction or fraction <= 0 then return end
+	local root = model.PrimaryPart
+	if not root then return end
+	-- **วัดจากตัวที่มองเห็น ไม่ใช่จาก root** (วัดในเพลสจริงแล้ว 2026-09-20): บอสตัวกว้าง 28 studs
+	-- แต่ HumanoidRootPart ของมันคือ HRP มาตรฐานของโครง R15 ที่กว้างแค่ 8.6 — กล่องที่ใช้ตัดสินว่า
+	-- "ฟันโดน" จึงเล็กกว่าไหล่ของมันสามเท่า ฟันเข้าที่ขาแล้วไม่โดนคือเรื่องปกติ
+	--
+	-- ระยะเผื่อจึงมีสองท่อน: ท่อนแรกไล่กล่องให้ทันซิลูเอต (ครึ่งความกว้างตัว ลบครึ่งความกว้าง root)
+	-- ท่อนที่สองคือของแถมที่ผู้ใช้ขอ (+50% ของครึ่งความกว้างตัว) · วัดหลังย่อขยายแล้ว จึงโตตามสเกลเอง
+	local _, body = model:GetBoundingBox()
+	local bodyHalf = (body.X + body.Z) * 0.25
+	local rootHalf = (root.Size.X + root.Size.Z) * 0.25
+	model:SetAttribute("WOLD_HitPad", math.max(0, bodyHalf - rootHalf) + bodyHalf * fraction)
+end
+
 -- The monster for a config: the user's model where there is one, the placeholder ball otherwise.
 local function buildMonster(config)
     return buildFromModel(config) or buildSlime(config)
@@ -580,7 +638,8 @@ local function drop(model, config, killer, loot)
 		end
 	end
 	if config.xp and config.xp > 0 then
-		Progression.AwardExp(killer, config.xp)
+		-- ฆ่ามอนแล้วแชร์ทั้งตี้ คนละ 70% (ผู้ใช้กำหนด 2026-09-20) — คนไม่มีตี้ยังได้เต็มเหมือนเดิม
+		Progression.AwardExpParty(killer, config.xp)
 	end
 	-- ลงสมุดสะสม บันทึกตามชนิด ไม่ใช่ตามตัว — สมุดตอบว่า "ฆ่าอะไรไปกี่ตัว"
 	Collection.RecordMob(killer, config.name or kind)
@@ -743,6 +802,14 @@ local function damage(model, amount, attacker)
 		return false
 	end
 
+	-- อีเวนต์ที่แจกรางวัลตามดาเมจ (บอสโลก) ต้องรู้ยอดสะสม **ระหว่างสู้** ไม่ใช่ตอนจบ: บอสอาจไม่ตายเลย
+	-- และตอนหมดเวลาโมเดลถูกลบไปพร้อมสถานะของมัน
+	--
+	-- นับได้ไม่เกินเลือดที่เหลือจริง ไม้สุดท้ายที่ฟันทะลุเลือดจึงไม่กลายเป็นดาเมจหมื่นในตารางอันดับ
+	if state.eventId and attacker and MobAccess.OnEventDamage then
+		MobAccess.OnEventDamage(state.eventId, attacker, math.min(amount, math.max(0, state.hp)))
+	end
+
 	state.hp -= amount
 	showDamageNumber(model, amount, false)
 	playAt(model, state.config.hitSound, GatherConfig.MobHitVolume)
@@ -762,6 +829,10 @@ local function damage(model, amount, attacker)
 	end
 
 	if state.hp <= 0 then
+		-- ใครฟันไม้สุดท้าย — บอกก่อน `drop`/`despawn` ตรงนี้ที่เดียวที่ยังรู้ทั้งอีเวนต์และคนตี
+		if state.eventId and MobAccess.OnEventKill then
+			MobAccess.OnEventKill(state.eventId, attacker)
+		end
 		-- The death sound has to outlive the model, so it plays from a bare part left behind rather than
 		-- from the monster that is about to be destroyed underneath it.
 		local root = model.PrimaryPart
@@ -994,10 +1065,17 @@ local function spawnOne(spawner, kind, config)
 			-- **หนึ่งตัวต่อสปอว์เนอร์ ไม่ใช่สุ่มทุกตัวที่เกิด** ถ้าสุ่มรายตัว ฝูงละ 8 จะมีบอสหลายตัวและ
 			-- จำนวนไม่คงที่ทุกรอบ สปอว์เนอร์ที่ไม่ต้องการบอสตั้ง NoBoss ได้
 			local isBoss = not spawner:GetAttribute("HasBoss") and not spawner:GetAttribute("NoBoss")
-			if isBoss then
-				-- ใหญ่ก่อนวัด ไม่งั้นจะยกตัวด้วยขนาดเดิมแล้วเข่าจมดิน
-				model:ScaleTo(SPAWNER_BOSS_SCALE)
+
+			-- **มอนบางชนิดมีขนาดของตัวเองในคอนฟิก** (บอสใหญ่ประจำโลก `GatherConfig.Mobs.Forgewarden`)
+			-- ตัวคูณนี้ไม่เกี่ยวกับ "บอสประจำสปอว์เนอร์" ข้างล่าง มันคือขนาดที่ชนิดนั้นควรเป็นเสมอ
+			-- ชนิดที่ไม่ได้ประกาศ `scale` ได้ 1 เท่าเดิมทุกตัว พฤติกรรมของสปอว์เนอร์เก่าจึงไม่เปลี่ยน
+			local kindScale = config.scale or 1
+			-- ใหญ่ก่อนวัด ไม่งั้นจะยกตัวด้วยขนาดเดิมแล้วเข่าจมดิน
+			local totalScale = kindScale * (isBoss and SPAWNER_BOSS_SCALE or 1)
+			if totalScale ~= 1 then
+				model:ScaleTo(totalScale)
 			end
+			applyHitPad(model, config)
 
 			-- **ยกขึ้นตามขนาดตัวจริง ไม่ใช่ +2 ตายตัว** — โกเลมกับแมงมุมสูงกว่านั้นมาก การวางที่ +2 ทำให้
 			-- ครึ่งล่างของตัวจมอยู่ในพื้น เอนจิ้นก็ดันมันออกมาด้วยแรงมหาศาล ตัวเลยพุ่งไถลไปไกล ซึ่งตรงกับ
@@ -1053,6 +1131,9 @@ local function spawnOne(spawner, kind, config)
 				loot = isBoss and { amount = 2, chance = 2, boss = true } or nil,
 				-- Walk and swing. nil for a slime or anything else with no rig to drive.
 				tracks = loadMobTracks(model, config),
+				-- ตัวนี้เกิดมาเพราะอีเวนต์ไหน — อ่านจากหมุด **ตอนเกิด** ไม่ใช่ตอนตาย เพราะตอนหมดเวลา
+				-- หมุดอาจถูกล้างแล้ว และตัวที่โดนตีอยู่ต้องรู้ว่าจะรายงานดาเมจไปที่อีเวนต์ไหน
+				eventId = spawner:GetAttribute("EventOnly"),
 				spawner = spawner,
 				home = Vector3.new(x, y, z),
 				nextAttackAt = 0,
@@ -1094,6 +1175,7 @@ local function spawnHunter(kind, config, victim, origin, distance, boss)
 			-- monster placed at the usual two studs starts with its knees in the ground.
 			local size = boss and boss.scale or 1
 			if size ~= 1 then model:ScaleTo(size) end
+			applyHitPad(model, config)
 			-- วัดหลัง ScaleTo จึงได้ขนาดจริงของบอส เหมือนทางเกิดปกติ: ยกครึ่งตัว + 1 แล้วปล่อยให้ตกเอง
 			-- ดีกว่าเดาว่า 2 คูณสเกลพอ ซึ่งยังจมสำหรับตัวที่สูงอยู่แล้ว
 			local _, mobSize = model:GetBoundingBox()
@@ -1533,30 +1615,65 @@ function Mobs.OnEventMobKilled(spawner)
 	if EventState.Stop then EventState.Stop(eventId) end
 end
 
+-- เปิด/ปิดหมุดของอีเวนต์ใดก็ได้ — สไลม์ใช้ผ่าน hook ข้างล่าง บอสโลกใช้ผ่าน `MobAccess`
+--
+-- แยกออกมาเป็นฟังก์ชันเพราะ **`EventState.Register` มีที่ให้ลงทะเบียนได้อีเวนต์ละเจ้าเดียว** และเจ้าของ
+-- อีเวนต์บอสโลกคือ `WorldBoss.server` (มันเป็นคนแจกรางวัล) ไม่ใช่ไฟล์นี้ — ไฟล์นี้แค่รู้ว่าหมุดอยู่ไหน
+-- และมอนตัวไหนยังยืนอยู่ ซึ่งเป็นความรู้ที่ออกไปนอกไฟล์ไม่ได้ (`Live` เป็น local)
+-- คืน **จำนวนหมุด** ที่เปิดให้ เพื่อให้เจ้าของอีเวนต์ยกเลิกตัวเองได้ถ้าเพลสนี้ไม่มีหมุดเลย
+-- (ประกาศว่าบอสตื่นในเพลสที่ไม่มีที่ให้มันยืน = คนวิ่งหาทั้งชั่วโมงแล้วไม่เจออะไร)
+local function openEventSpawners(id)
+	local spawners = eventSpawners(id)
+	for _, spawner in ipairs(spawners) do
+		-- นาฬิกาเกิดใหม่ถูกล้าง ไม่ใช่รอให้หมด มันถูกตั้งโดยตัวที่ตายไปรอบก่อน (อาจเป็นอีเวนต์เมื่อวาน)
+		-- ประกาศแล้วไม่มีอะไรโผล่มายี่สิบเก้านาทีคือการโกหก
+		spawner:SetAttribute("ReadyAt", nil)
+		spawner:SetAttribute("Alive", 0)
+		spawner:SetAttribute("Spawned", 0)
+		-- ด่าน "ต้องเดินออกไปก่อน" ของหมุดแบบ TriggerRadius ไม่ควรค้างข้ามอีเวนต์
+		spawner:SetAttribute("AwaitExit", nil)
+	end
+	return #spawners
+end
+
+local function closeEventSpawners(id)
+	for _, spawner in ipairs(eventSpawners(id)) do
+		for model, state in pairs(Live) do
+			if state.spawner == spawner then despawn(model) end
+		end
+		spawner:SetAttribute("ReadyAt", nil)
+		spawner:SetAttribute("Alive", 0)
+		spawner:SetAttribute("Spawned", 0)
+		spawner:SetAttribute("AwaitExit", nil)
+	end
+end
+
+MobAccess.StartEventSpawners = openEventSpawners
+MobAccess.StopEventSpawners = closeEventSpawners
+
+-- มอนของอีเวนต์นี้ยังยืนอยู่กี่ตัว — บอสโลกใช้ตอบว่า "หมดเวลาแล้วบอสยังไม่ตาย"
+MobAccess.EventMobsAlive = function(id)
+	local n = 0
+	for _, spawner in ipairs(eventSpawners(id)) do
+		n += spawner:GetAttribute("Alive") or 0
+	end
+	return n
+end
+
 EventState.Register("slime", {
 	start = function()
-		for _, spawner in ipairs(eventSpawners("slime")) do
-			-- The respawn clock is cleared rather than waited out. It was set by whatever killed the last one,
-			-- possibly during the previous event, and an announcement that produced nothing for twenty-nine
-			-- minutes would be a lie.
-			spawner:SetAttribute("ReadyAt", nil)
-			spawner:SetAttribute("Alive", 0)
-			spawner:SetAttribute("Spawned", 0)
-		end
+		-- The respawn clock is cleared rather than waited out. It was set by whatever killed the last one,
+		-- possibly during the previous event, and an announcement that produced nothing for twenty-nine
+		-- minutes would be a lie.
+		--
 		-- Nothing else to do: the stocking loop runs every two seconds and its EventOnly check now passes, so
 		-- the three of them walk into the world on the next tick.
+		openEventSpawners("slime")
 	end,
 
 	stop = function()
 		-- Gone when the half hour is up, killed or not. A mutant left standing after the event would be a
 		-- free weapon roll for whoever wandered past afterwards.
-		for _, spawner in ipairs(eventSpawners("slime")) do
-			for model, state in pairs(Live) do
-				if state.spawner == spawner then despawn(model) end
-			end
-			spawner:SetAttribute("ReadyAt", nil)
-			spawner:SetAttribute("Alive", 0)
-			spawner:SetAttribute("Spawned", 0)
-		end
+		closeEventSpawners("slime")
 	end,
 })

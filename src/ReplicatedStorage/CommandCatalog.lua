@@ -20,6 +20,8 @@ CommandCatalog.Commands = {
 	{ name = "passxp", args = "<จำนวน> [คน]", desc = "เติม XP แบทเทิลพาส", scope = "admin" },
 	{ name = "town", args = "[claim|free <เมือง>]", desc = "ดู/แก้เจ้าของเมือง", scope = "admin" },
 	{ name = "vip", args = "<วัน> [คน]", desc = "ให้/ต่อ VIP (ติดลบ = ตัด)", scope = "admin" },
+	{ name = "boss", args = "[ระยะ]", desc = "เสกบอสฟอร์จวอร์เดน", scope = "admin" },
+	{ name = "worldboss", args = "[off|rank]", desc = "บอสโลก: เริ่ม/จบ/ดูตารางดาเมจ", scope = "admin" },
 	{ name = "tpto", args = "<คน>", desc = "วาปไปหา", scope = "admin" },
 	{ name = "bring", args = "<คน>", desc = "ดึงมาหา", scope = "admin" },
 	{ name = "goto", args = "<x> <y> <z>", desc = "วาปไปพิกัด", scope = "admin" },
