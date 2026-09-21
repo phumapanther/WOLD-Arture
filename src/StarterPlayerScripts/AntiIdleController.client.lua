@@ -165,5 +165,38 @@ task.spawn(function()
 	end
 end)
 
+--------------------------------------------------------------------------------
+-- ตัวแยกโรค: VirtualUser ตัวเดียวที่โดน หรือ capability `LocalUser` หายไปทั้งยวง
+--
+-- `game:GetEngineFeature` เป็นอีก API ที่ต้องใช้ capability เดียวกัน และ **ไม่เกี่ยวกับ VirtualUser เลย**
+-- ถ้ามันพังด้วย = เธรดนี้ไม่มี `LocalUser` เลยสักนิด ซึ่งเป็นอาการเดียวกับบั๊กที่ Roblox เคยแก้ไปเมื่อ
+-- 2026-04 (devforum: "lacking capability LocalUser" กับ GetEngineFeature) → เป็นเรื่องฝั่งแพลตฟอร์ม
+-- ถ้ามันผ่าน = `LocalUser` มีอยู่ แต่ VirtualUser ถูกปิดแยกต่างหาก → เป็นเรื่องนโยบายของ Roblox
+--
+-- พิมพ์ครั้งเดียวตอนบูต เอาไว้แปะรายงานบั๊กและเอาไว้ดูว่าวันไหน Roblox แก้ให้แล้ว
+--------------------------------------------------------------------------------
+do
+	local RunService = game:GetService("RunService")
+
+	-- คืน "ผ่าน" / "ไม่มีสิทธิ์" / "พังด้วยเหตุอื่น" — **ต้องแยกสามทาง ไม่ใช่สองทาง** ชื่อฟีเจอร์ที่ไม่มีอยู่จริง
+	-- ก็ error เหมือนกัน ถ้านับรวมเป็น "ไม่ผ่าน" จะอ่านผลผิดทั้งหมด
+	local function tryCall(fn)
+		local ok, err = pcall(fn)
+		if ok then return "ผ่าน" end
+		err = tostring(err)
+		if err:find("lacking capability", 1, true) then return "ไม่มีสิทธิ์" end
+		return "พังด้วยเหตุอื่น (" .. err:sub(1, 60) .. ")"
+	end
+
+	local clientVersion = "?"
+	pcall(function() clientVersion = version() end)
+
+	print(("[AntiIdle] ตรวจสิทธิ์: GetEngineFeature=%s · VirtualUser.MoveMouse=%s · Studio=%s · ไคลเอนต์ %s")
+		:format(
+			tryCall(function() return game:GetEngineFeature("AnimatorLuau") end),
+			tryCall(function() return VirtualUser:MoveMouse(Vector2.new()) end),
+			tostring(RunService:IsStudio()), clientVersion))
+end
+
 print(("[AntiIdle] ทำงานแล้ว — ปลอมอินพุตทุก %d วินาทีที่ไม่มีการกดจริง (เพลส %d)")
 	:format(NUDGE_AFTER, game.PlaceId))
