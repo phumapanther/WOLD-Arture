@@ -993,6 +993,10 @@ PlayerJoin.Each(function(player)
 end)
 
 local function dispatch(player, message)
+	-- Whitespace around the line is thrown away before anything looks at it. A leading space used to mean the
+	-- line was not a command at all and vanished without a word -- which is indistinguishable from a command
+	-- that did nothing, and the console handed the admin exactly that space every time it opened.
+	message = message:match("^%s*(.-)%s*$") or message
 	if message:sub(1, 1) ~= "/" then return end
 
 	local parts = {}

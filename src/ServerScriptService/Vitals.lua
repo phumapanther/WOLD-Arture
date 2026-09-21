@@ -426,6 +426,8 @@ end
 -- own, and pitching its C0. The humanoid stays upright underneath (so the engine's mover still drives
 -- movement normally — measured 92 studs of crawling), while the visible body lies flat.
 local PRONE_PITCH = math.rad(-90) -- negative is face-down; positive lays the character on its back
+-- ความสูงสะโพกตอนยืนปกติของ R15 — ใช้ทั้งตอนยืนและตอนนอน (ท่านอนหย่อนร่างด้วย C0 แทน ดู `proneDrop`)
+local STAND_HIP_HEIGHT = 2
 
 local function rootJointOf(character)
 	local lowerTorso = character and character:FindFirstChild("LowerTorso")
@@ -463,6 +465,27 @@ local function uprightC0(character)
 end
 
 
+-- ท่านอน/ท่าคลาน: หย่อน **ร่างที่มองเห็น** ลงไปวางกับพื้น โดยไม่แตะแคปซูลที่ใช้ชนจริง
+--
+-- ผู้ใช้แจ้ง 2026-09-20 ว่าท่าคลาน "ไม่ถูกพื้นหรือจมพื้นมากไป" และ "โดนพื้นดึง" — สองอาการนี้มาจาก
+-- วิธีเดิมที่กดตัวลงด้วยการลด `HipHeight` เหลือ 0.6:
+--   · ระยะจากพื้นถึงร่างที่นอนอยู่ไม่ได้ขึ้นกับ HipHeight ตรงๆ แต่ขึ้นกับความหนาลำตัวหลังหมุน 90°
+--     เลขตายตัวตัวเดียวจึงถูกกับตัวละครขนาดเดียว และผู้เล่นในเกมนี้ **ตัวโตขึ้นตามเลเวล** (`Progression.ApplyScale`)
+--   · HipHeight 0.6 = แคปซูลที่ชนจริงลอยเหนือพื้นแค่ 0.6 สตัด มันจึงไปสะดุดทุกเนินเล็กๆ ของภูมิประเทศ
+--     ซึ่งคืออาการ "โดนพื้นดึง"
+--
+-- วิธีใหม่: **แคปซูลยืนสูงเท่าตอนเดินปกติ** (ไม่สะดุดอะไรอีกเลย) แล้วหย่อนเฉพาะร่างที่มองเห็นลงไปด้วย C0
+-- ระยะหย่อนคำนวณจากตัวจริงทุกครั้ง จึงถูกทั้งตัวเล็กตัวใหญ่
+local function proneDrop(character, humanoid)
+	local root = character:FindFirstChild("HumanoidRootPart")
+	if not root or not humanoid then return 0 end
+	-- ลำตัวหลังหมุนหน้าคว่ำ ความ "สูง" ของมันคือความหนา (แกน Z) ไม่ใช่ความสูงเดิม
+	local torso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("LowerTorso")
+	local halfThickness = torso and torso.Size.Z * 0.5 or 0.5
+	local centreAboveFloor = humanoid.HipHeight + root.Size.Y * 0.5
+	return math.max(0, centreAboveFloor - halfThickness - VitalsConfig.ProneClearance)
+end
+
 -- A body lying flat has arms, legs, torso and head all scraping the floor (measured: eleven parts touching),
 -- and their friction fights the humanoid's mover — crawling slowed to about 2 studs where 12 was expected.
 -- The root capsule alone is enough to stand on, so the visible limbs stop colliding while prone.
@@ -492,16 +515,18 @@ local function applyDownedPosture(player, downed)
 		humanoid.WalkSpeed = VitalsConfig.DownedWalkSpeed
 		humanoid.JumpPower = 0
 		humanoid.JumpHeight = 0
-		humanoid.HipHeight = VitalsConfig.DownedHipHeight
+		-- **ไม่ลด HipHeight อีกแล้ว** — ดูเหตุผลที่ `proneDrop` การคลานจึงลื่นเหมือนเดิน ไม่สะดุดพื้น
+		humanoid.HipHeight = STAND_HIP_HEIGHT
 		local joint, upright = uprightC0(character)
 		if joint and upright then
-			joint.C0 = upright * CFrame.Angles(PRONE_PITCH, 0, 0)
+			joint.C0 = upright * CFrame.new(0, -proneDrop(character, humanoid), 0)
+				* CFrame.Angles(PRONE_PITCH, 0, 0)
 		end
 		setLimbCollision(character, false)
 	else
 		humanoid.JumpPower = 50
 		humanoid.JumpHeight = 7.2
-		humanoid.HipHeight = 2
+		humanoid.HipHeight = STAND_HIP_HEIGHT
 		humanoid.WalkSpeed = 8
 		local joint = rootJointOf(character)
 		if joint and UPRIGHT_C0[character] then
@@ -586,6 +611,13 @@ function Vitals.Respawn(player)
 	local state = States[player]
 	if not state then return end
 	if state.downed then clearDowned(player, state) end
+	-- **เกราะกันตีเริ่มตั้งแต่ตอนกดปุ่ม ไม่ใช่ตอนร่างใหม่มาถึง** (ผู้ใช้แจ้ง 2026-09-20: "กดเกิดใหม่แล้ว
+	-- โดนตีอีกรอบ ตายทันทีอีกรอบ")
+	--
+	-- ระหว่าง `clearDowned` กับวินาทีที่ร่างใหม่ประกอบเสร็จ ผู้เล่นคนนี้ **ไม่ได้ล้มแล้ว** (ด่านกันดาเมจของ
+	-- คนล้มหลุดไป) แต่เลือดยังเป็น 0 อยู่ มอนที่ยืนตีอยู่ตรงนั้นจึงตีเข้า แล้วส่งเขากลับเข้าท่าล้มอีกรอบ
+	-- ทันทีที่เพิ่งกดขอเกิดใหม่ · `ResetForRespawn` จะตั้งค่านี้ใหม่อีกครั้งตอนร่างใหม่มาถึง
+	state.invulnUntil = os.clock() + VitalsConfig.RespawnInvulnSeconds
 	-- Bleeding out and pressing "respawn now" ARE deaths, so they must cost the level like any other. Killing
 	-- the humanoid rather than calling LoadCharacter is what makes that automatic: LoadCharacter rebuilds the
 	-- rig without the humanoid ever dying, so Humanoid.Died — the one hook every death path shares — would
@@ -784,13 +816,14 @@ function Vitals.SetProne(player, prone, onBack)
 	if Vitals.IsDowned(player) then return end
 
 	if prone then
+		humanoid.HipHeight = STAND_HIP_HEIGHT
 		local joint, upright = uprightC0(character)
 		if joint and upright then
-			joint.C0 = upright * CFrame.Angles(onBack and -PRONE_PITCH or PRONE_PITCH, 0, 0)
+			joint.C0 = upright * CFrame.new(0, -proneDrop(character, humanoid), 0)
+				* CFrame.Angles(onBack and -PRONE_PITCH or PRONE_PITCH, 0, 0)
 		end
-		humanoid.HipHeight = VitalsConfig.DownedHipHeight
 	else
-		humanoid.HipHeight = 2
+		humanoid.HipHeight = STAND_HIP_HEIGHT
 		local joint = rootJointOf(character)
 		if joint and UPRIGHT_C0[character] then
 			joint.C0 = UPRIGHT_C0[character]

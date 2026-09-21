@@ -187,6 +187,12 @@ local function applyUse(player, item)
 	elseif use.stat == "firstaid" then
 		-- กล่องปฐมพยาบาล: พันแผลแล้วเลือดเต็ม (ท่าพันแผลอยู่ฝั่งไคลเอนต์ระหว่างรอ)
 		Vitals.HealFraction(player, 1)
+		-- บัพหลังพันแผล (ตอนนี้คือ "เลือดไม่ลด" 10 วิ) — อ่านจาก ItemCatalog ไม่ได้ฝังชื่อบัพไว้ตรงนี้
+		-- จะเปลี่ยนบัพหรือเวลาในอนาคตก็แก้ที่ไอเทมชิ้นนั้นที่เดียว เหมือนอาหารทุกจาน
+		if use.buff then
+			Vitals.AddBuff(player, use.buff, use.seconds or 10)
+			notifyBuff(player, use.buff, use.seconds or 10)
+		end
 	elseif use.stat == "healfull" then
 		-- ยาใหญ่: เลือดเต็มหลอด เป็นสัดส่วนไม่ใช่ตัวเลข เลือดสูงสุดโตตามเลเวลแต่ขวดนี้เต็มเสมอ
 		Vitals.HealFraction(player, 1)

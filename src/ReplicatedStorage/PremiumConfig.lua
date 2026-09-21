@@ -114,15 +114,20 @@ PremiumConfig.Gacha = {
 	{
 		-- **ตู้รวม** (ผู้ใช้กำหนด 2026-09-19): ของทุกตู้กองรวมกัน ถูกที่สุด แต่ออกยากที่สุดและ**ไม่มีการันตี**
 		--
-		-- เพดานสองชั้นที่ต้องไม่ละเมิด: ต่อชิ้นไม่เกิน 1% · รวมทุกชิ้นไม่เกิน 10%
-		-- `JackpotChance` คิดให้เองจากจำนวนของในสระ = min(10%, 1% x จำนวนชิ้น) เพดานจึงถูกเสมอ
-		-- ไม่ว่าจะเพิ่มของอีกกี่ชิ้นในอนาคต (ตอนนี้ 15 ชิ้น -> รวม 10% ต่อชิ้น 0.67%)
+		-- เพดานสองชั้นที่ต้องไม่ละเมิด: ต่อชิ้นไม่เกิน 0.5% · รวมทุกชิ้นไม่เกิน 5%
+		-- `JackpotChance` คิดให้เองจากจำนวนของในสระ = min(5%, 0.5% x จำนวนชิ้น) เพดานจึงถูกเสมอ
+		-- ไม่ว่าจะเพิ่มของอีกกี่ชิ้นในอนาคต (ตอนนี้ 15 ชิ้น -> รวม 5% ต่อชิ้น 0.33%)
+		--
+		-- **ผู้ใช้สั่งลดครึ่งหนึ่ง 2026-09-20** (เดิม 1% ต่อชิ้น / รวม 10%) — ของแรร์ในตู้รวมจึงออกยากขึ้น
+		-- เท่าตัว สมกับที่มันเป็นตู้ถูกสุดและไม่มีการันตี · ตู้เฉพาะทางไม่ถูกแตะ ยังออกของหลัก 10% เท่าเดิม
+		-- **ลดที่เพดานทั้งสองชั้น ไม่ใช่แค่ชั้นเดียว** ถ้าลดแค่ `perItemCap` พอของครบ 20 ชิ้นเมื่อไหร่
+		-- ตัว min จะไปติดเพดานรวม 10% เหมือนเดิม แล้วการลดครั้งนี้จะหายไปเงียบๆ
 		--
 		-- **`uniform = true` สำคัญมาก** ถ้าปล่อยให้ถ่วงน้ำหนักตาม rarity เหมือนตู้อื่น ของระดับ "หายาก"
 		-- (weight 30 เทียบกับตำนาน 2) จะกินส่วนแบ่งจนเกิน 1% ต่อชิ้นทันที = ผิดเพดานที่ผู้ใช้กำหนด
 		id = "all", name = "กาชารวม", icon = "🎰", cost = 25, cost10 = 225,
 		blurb = "รวมของทุกตู้ไว้ที่เดียว ราคาถูกสุด แต่โอกาสต่ำและไม่มีการันตี",
-		perItemCap = 0.01, jackpotCap = 0.10, uniform = true, pity = false,
+		perItemCap = 0.005, jackpotCap = 0.05, uniform = true, pity = false,
 		pool = {}, -- เติมจากตู้อื่นข้างล่าง
 	},
 }
@@ -171,22 +176,26 @@ local function gold(n) return { gold = n } end
 local function gems(n) return { gems = n } end
 local function item(id, n) return { item = id, count = n or 1 } end
 
+-- หีบสายฟรีให้ทีละใบ **สายพรีเมียมให้ทีละสิบใบ** (ผู้ใช้กำหนด 2026-09-20 — เดิมสายพรีเมียมก็ใบเดียว)
+-- หีบหนึ่งกองได้ 8 ใบ สิบใบจึงกินสองช่องและหนักราว 80-100 หน่วย: ตั้งใจให้เป็นของที่ต้องขนกลับบ้าน
 PremiumConfig.Pass.Free = {
 	[1] = silver(100), [2] = gold(1000), [3] = silver(150), [4] = item("Bread", 5), [5] = item("Chest_Wood"),
 	[6] = silver(150), [7] = gold(1500), [8] = item("Insignia", 1), [9] = silver(200), [10] = item("Chest_Ironbound"),
 	[11] = silver(200), [12] = gold(2000), [13] = item("Feast_Hearty"), [14] = silver(250), [15] = item("Chest_Ironbound"),
 	[16] = silver(250), [17] = item("Coal", 20), [18] = gold(2500), [19] = silver(300), [20] = item("Chest_Silver"),
 	[21] = silver(300), [22] = item("Insignia", 2), [23] = gold(3000), [24] = silver(350), [25] = item("Chest_Silver"),
-	[26] = silver(400), [27] = item("Tonic_Vigor"), [28] = gold(4000), [29] = silver(500), [30] = item("Chest_Gold"),
+	-- ขั้นสุดท้ายสายฟรี: กล่องเวทมนตร์ **ใบเดียว** (ผู้ใช้กำหนด) — สายพรีเมียมได้สิบใบที่ขั้นเดียวกัน
+	[26] = silver(400), [27] = item("Tonic_Vigor"), [28] = gold(4000), [29] = item("Chest_Gold"), [30] = item("MagicBox", 1),
 }
 
 PremiumConfig.Pass.Premium = {
-	[1] = gems(50), [2] = item("Chemical", 3), [3] = silver(300), [4] = item("GearSpare", 3), [5] = item("Chest_Ironbound"),
-	[6] = item("Blueprint", 2), [7] = gold(3000), [8] = item("Insignia", 3), [9] = item("Feast_Royal"), [10] = item("Chest_Silver"),
-	[11] = item("Chemical", 5), [12] = silver(500), [13] = gems(50), [14] = item("GearSpare", 5), [15] = item("Chest_Silver"),
-	[16] = item("Blueprint", 3), [17] = gold(5000), [18] = item("Insignia", 5), [19] = item("Feast_Royal", 2), [20] = item("Chest_Gold"),
-	[21] = item("Chemical", 8), [22] = silver(800), [23] = gems(100), [24] = item("GearSpare", 8), [25] = item("Chest_Gold"),
-	[26] = item("Blueprint", 5), [27] = gold(8000), [28] = item("Insignia", 10), [29] = silver(1000), [30] = item("Chest_Gold", 2),
+	[1] = gems(50), [2] = item("Chemical", 3), [3] = silver(300), [4] = item("GearSpare", 3), [5] = item("Chest_Ironbound", 10),
+	[6] = item("Blueprint", 2), [7] = gold(3000), [8] = item("Insignia", 3), [9] = item("Feast_Royal"), [10] = item("Chest_Silver", 10),
+	[11] = item("Chemical", 5), [12] = silver(500), [13] = gems(50), [14] = item("GearSpare", 5), [15] = item("Chest_Silver", 10),
+	[16] = item("Blueprint", 3), [17] = gold(5000), [18] = item("Insignia", 5), [19] = item("Feast_Royal", 2), [20] = item("Chest_Gold", 10),
+	[21] = item("Chemical", 8), [22] = silver(800), [23] = gems(100), [24] = item("GearSpare", 8), [25] = item("Chest_Gold", 10),
+	-- ขั้นสุดท้ายสายพรีเมียม: กล่องเวทมนตร์ 10 ใบ (หีบทอง 20 ใบที่เคยอยู่ขั้นนี้ย้ายไปขั้น 29)
+	[26] = item("Blueprint", 5), [27] = gold(8000), [28] = item("Insignia", 10), [29] = item("Chest_Gold", 20), [30] = item("MagicBox", 10),
 }
 
 --------------------------------------------------------------------------------

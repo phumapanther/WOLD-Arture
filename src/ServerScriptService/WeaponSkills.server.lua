@@ -135,6 +135,83 @@ function Skills.LungeSlash(player)
 	return true
 end
 
+-- โล่: คำท้าทองคำ — ออร่าทองแผ่ออกจากตัว มอนรอบตัวหันมาหาคนใช้ และเลือดไม่ลด 5 วินาที
+--
+-- ผู้ใช้กำหนด 2026-09-20 · นี่คือสกิลแท็งก์ตัวแรกของเกม: มันไม่ได้ทำดาเมจเลยสักหน่วย สิ่งที่มันซื้อคือ
+-- **สิบวินาทีที่มอนทุกตัวตีคนที่ทนได้ แทนที่จะตีคนที่ทนไม่ได้**
+--
+-- บัพ "เลือดไม่ลด" ใช้ตัวเดียวกับของแอดมิน/อาหารเดิม (`Vitals.AddBuff`) ไม่ได้ทำระบบอมตะอันที่สอง —
+-- `ApplyDamage` เช็ค noHp อยู่แล้วทุกทางที่ดาเมจเข้า ดังนั้นตกเขา จมน้ำ หรือโดนบอสทุบก็กันได้เหมือนกันหมด
+local BULWARK_SECONDS = 5 -- บัพ ❤️ เลือดไม่ลด (ผู้ใช้สั่ง 2026-09-20 — เดิม 10 วิ)
+local BULWARK_RADIUS = 60
+
+function Skills.Bulwark(player)
+	local character, hrp = characterParts(player)
+	if not hrp then return false end
+
+	Remotes.SkillUsed:FireAllClients(player, "Bulwark")
+	Vitals.AddBuff(player, "noHp", BULWARK_SECONDS)
+
+	local MobAccess = require(game.ServerScriptService.MobAccess)
+	if MobAccess.Taunt then MobAccess.Taunt(player, BULWARK_RADIUS) end
+
+	-- ออร่าทอง: ทำบนเซิร์ฟเวอร์เพื่อให้ **ทุกคนเห็น** ว่าคนนี้กำลังรับแทนอยู่ ไม่ใช่เอฟเฟกต์ส่วนตัวของคนใช้
+	--
+	-- ทรง Sphere + Volume + Outward ตามบทเรียนของระบบออร่า: `Cylinder` เอาแกนตามแกน X ของพาร์ท
+	-- แผ่นแบนที่ตั้งใจให้เป็นวงรอบเอวเลยกลายเป็นเส้นตรงเส้นเดียว
+	local glow = Instance.new("Part")
+	glow.Name = "BulwarkAura"
+	glow.Size = Vector3.new(4.0, 4.4, 4.0)
+	glow.Transparency = 1
+	glow.Anchored = false
+	glow.CanCollide = false
+	glow.CanQuery = false
+	glow.CanTouch = false
+	glow.Massless = true
+	glow.CFrame = hrp.CFrame * CFrame.new(0, -0.5, 0)
+	glow.Parent = character
+
+	local weld = Instance.new("WeldConstraint")
+	weld.Part0 = hrp
+	weld.Part1 = glow
+	weld.Parent = glow
+
+	local gold = Color3.fromRGB(255, 196, 74)
+	local haze = Instance.new("ParticleEmitter")
+	haze.Name = "Haze"
+	haze.Color = ColorSequence.new(gold)
+	haze.Size = NumberSequence.new(2.6)
+	haze.Transparency = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.3, 0.55), NumberSequenceKeypoint.new(1, 1),
+	})
+	haze.Rate = 26
+	haze.Lifetime = NumberRange.new(0.9, 1.4)
+	haze.Speed = NumberRange.new(2, 4)
+	haze.Shape = Enum.ParticleEmitterShape.Sphere
+	haze.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+	haze.ShapeInOut = Enum.ParticleEmitterShapeInOut.Outward
+	haze.LightEmission = 1
+	haze.LightInfluence = 0
+	haze.Parent = glow
+
+	local motes = haze:Clone()
+	motes.Name = "Motes"
+	motes.Size = NumberSequence.new(0.35)
+	motes.Rate = 34
+	motes.Speed = NumberRange.new(5, 9)
+	motes.Transparency = NumberSequence.new(0.1)
+	motes.Parent = glow
+
+	local light = Instance.new("PointLight")
+	light.Color = gold
+	light.Range = 18
+	light.Brightness = 2.4
+	light.Parent = glow
+
+	Debris:AddItem(glow, BULWARK_SECONDS)
+	return true
+end
+
 -- Bow: hop backwards and fire a spread of arrows, each a fast raycast rather than a physical part.
 function Skills.ScatterShot(player)
 	local character, hrp = characterParts(player)
@@ -196,6 +273,8 @@ function Skills.ScatterShot(player)
 end
 
 -- Staff: heal every ally within range, and the caster.
+local HEAL_FRACTION = 0.25 -- ฮีลกี่ % ของเลือดเต็ม (ผู้ใช้กำหนด)
+
 function Skills.GroupHeal(player)
 	local _, hrp = characterParts(player)
 	if not hrp then return false end
@@ -236,9 +315,14 @@ function Skills.GroupHeal(player)
 		if aura.Parent then aura:Destroy() end
 	end)
 
-	Vitals.Heal(player, 35)
+	-- **25% ของเลือดเต็ม ไม่ใช่ 35 หน่วยตายตัว** (ผู้ใช้สั่ง 2026-09-20)
+	--
+	-- เพดานเลือดโตตามเลเวล (`ProgressionConfig.MaxHPPerLevel` +5/เลเวล → 595 ที่เลเวล 100) เลขตายตัว
+	-- จึงเป็นท่าฮีลที่แรงมากตอนต้นเกมและไร้ความหมายตอนปลาย · สัดส่วนอ่านค่าจากเพดานของ **แต่ละคน**
+	-- คนเลเวลสูงที่มาช่วยจึงได้ฮีลที่คุ้มกับตัวเขาเอง
+	Vitals.HealFraction(player, HEAL_FRACTION)
 	for _, ally in ipairs(playersNear(hrp.Position, RADIUS, player)) do
-		Vitals.Heal(ally, 35)
+		Vitals.HealFraction(ally, HEAL_FRACTION)
 	end
 	return true
 end

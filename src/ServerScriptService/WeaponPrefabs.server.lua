@@ -571,6 +571,125 @@ function Builders.Spatula()
 end
 
 --------------------------------------------------------------------------------
+-- โล่ไอน้ำ — ทรงหยดน้ำ (heater shield) ตามภาพอ้างอิงที่ผู้ใช้ส่งมา (decal 128590551137093)
+--------------------------------------------------------------------------------
+
+-- **ผังต่างจากอาวุธชิ้นอื่นในไฟล์นี้โดยตั้งใจ** ชิ้นอื่นวาง "ปลายที่ใช้งาน" ไว้ที่จุดกำเนิดแล้วให้ด้ามยื่นไป +Y
+-- เพราะมันถูกจับด้วยมือ · โล่ไม่ได้ถูกจับ มัน **รัดอยู่กับท่อนแขนขวา** (ผู้ใช้กำหนด) ผังจึงเป็น:
+--   · หน้าโล่หันไป -Z (ตรงกับกติกา "หน้า = -Z" ของโปรเจ็ค)  · กว้างตามแกน X  · สูงตามแกน Y
+--   · จุดกำเนิด = กลางแผ่น ซึ่งเป็น PrimaryPart ที่ไม่ถูกหมุน (Motor6D ขับชิ้นนี้ ถ้าเอาทรงกระบอกที่ถูก
+--     roll ไว้มาเป็นตัวขับ โล่จะนอนขวางแขนทั้งใบ — บทเรียนเดียวกับคทาในไฟล์นี้)
+-- ระยะวางบนแขนอยู่ที่ `GRIP.Shield` ใน `WeaponVisuals` ไม่ใช่ที่นี่
+function Builders.Shield()
+	local b = {}
+	local COPPER = Color3.fromRGB(186, 112, 66)
+	local COPPER_DARK = Color3.fromRGB(138, 78, 46)
+	local RUBY = Color3.fromRGB(214, 62, 86)
+
+	local W, H, T = 2.00, 1.80, 0.18   -- กว้าง · สูงของส่วนสี่เหลี่ยม · ความหนาแผ่น
+	local POINT = 1.05                 -- ความยาวของปลายแหลมที่ยื่นลงจากขอบล่าง
+	local half = W / 2
+
+	-- แผ่นหลักอยู่ที่จุดกำเนิดพอดี = PrimaryPart
+	local plate = box(b, "Plate", CFrame.new(), Vector3.new(W, H, T), STEEL, Enum.Material.Metal)
+
+	-- ปลายแหลมล่าง: ลิ่มสองชิ้นประกบ เต็มความสูงตรงกลางและเรียวเป็นศูนย์ที่ขอบข้าง
+	--
+	-- ใช้ลิ่มเองแทน `bladeTip` เพราะ bladeTip ถูกเขียนตามผังของดาบ (หนาตามแกน X กว้างตามแกน Z)
+	-- ส่วนโล่หนาตามแกน Z กว้างตามแกน X — เอามาใช้ตรงๆ จะได้ปลายที่บิดไปคนละระนาบ
+	local ptY = -H / 2 - POINT / 2
+	wedge(b, "PointR", CFrame.new(half / 2, ptY, 0) * yaw(deg(-90)),
+		Vector3.new(T, POINT, half), STEEL, Enum.Material.Metal)
+	wedge(b, "PointL", CFrame.new(-half / 2, ptY, 0) * yaw(deg(90)),
+		Vector3.new(T, POINT, half), STEEL, Enum.Material.Metal)
+
+	-- ขอบทองเหลืองรอบใบ — เป็นสิ่งที่ทำให้อ่านออกว่าเป็นโล่ ไม่ใช่แผ่นเหล็กสี่เหลี่ยม
+	local RIM = 0.22
+	box(b, "RimTop", CFrame.new(0, H / 2 - 0.02, 0), Vector3.new(W + 0.14, RIM, T + 0.08), GOLD, Enum.Material.Metal)
+	for _, sx in ipairs({ -1, 1 }) do
+		box(b, "RimSide", CFrame.new(sx * (half - 0.02), 0, 0), Vector3.new(RIM, H + 0.10, T + 0.08), GOLD, Enum.Material.Metal)
+		-- ขอบเฉียงสองเส้นที่วิ่งลงไปบรรจบกันที่ปลาย มุมคำนวณจากสัดส่วนจริงของปลาย ไม่ได้เดา
+		-- **มุมวัดจากแกนตั้ง ไม่ใช่จากแกนนอน** (`atan2(half, POINT)` ไม่ใช่ `atan2(POINT, half)`)
+		-- แท่งขอบมีความยาวอยู่บนแกน Y ของมันเอง การเอียงจึงคือมุมระหว่างขอบกับแนวตั้ง — สลับสองค่านี้
+		-- แล้วขอบทองจะสั้นกว่าปลายเหล็กในแนวดิ่งและยื่นเกินออกด้านข้าง (เห็นเป็นปลายเหล็กโผล่ใต้กรอบ)
+		local angle = math.atan2(half, POINT)
+		local runLen = math.sqrt(POINT * POINT + half * half)
+		box(b, "RimPoint", CFrame.new(sx * half / 2, ptY, 0) * roll(-sx * angle),
+			Vector3.new(RIM, runLen + 0.14, T + 0.08), GOLD, Enum.Material.Metal)
+	end
+
+	-- แถบเหล็กกลางตั้งและแถบขวาง เหมือนในภาพ
+	-- ความสูงกับจุดกึ่งกลางคิดจากขอบบนจริง ไม่ได้ตั้งลอยๆ — รอบแรกแถบโผล่พ้นขอบทองด้านบนเป็นติ่ง
+	local spineTop, spineBottom = H / 2 - 0.02, -H / 2 - POINT * 0.45
+	box(b, "SpineBand", CFrame.new(0, (spineTop + spineBottom) / 2, -0.04),
+		Vector3.new(0.34, spineTop - spineBottom, T + 0.06), DARK_STEEL, Enum.Material.Metal)
+	box(b, "CrossBand", CFrame.new(0, -0.05, -0.04), Vector3.new(W - 0.20, 0.26, T + 0.05), DARK_STEEL, Enum.Material.Metal)
+
+	-- เฟืองสามตัวบนหน้าโล่ · `gear`/`disc` หันหน้าตามแกน X ของเฟรม จึง yaw 90 ให้หันออกหน้าโล่ (-Z)
+	--
+	-- **หลัง `FACE` แล้ว local +X ของเฟรมคือ -Z ของโลก = ด้านหน้าโล่** ค่าบวกใน CFrame.new ตัวแรกจึงแปลว่า
+	-- "ขยับออกมาข้างหน้า" — รอบแรกผมใส่ค่าลบ หน้าปัดกับเข็มเลยไปซ่อนอยู่หลังขอบทองจนเหลือแต่วงกลมทึบ
+	local FACE = yaw(deg(90))
+	gear(b, "GearBig", CFrame.new(0.54, 0.38, -T / 2 - 0.02) * FACE, 0.46, 11, 0.08, GOLD)
+	gear(b, "GearSmall", CFrame.new(-0.52, -0.44, -T / 2 - 0.02) * FACE, 0.34, 9, 0.08, GOLD)
+	gear(b, "GearTiny", CFrame.new(0.50, -0.52, -T / 2 - 0.02) * FACE, 0.24, 7, 0.07, COPPER)
+
+	-- หน้าปัดแรงดัน: ขอบทองเหลือง หน้าปัดขาว เข็มหนึ่งอัน
+	local gaugeAt = CFrame.new(-0.52, 0.46, -T / 2 - 0.04) * FACE
+	disc(b, "GaugeRim", gaugeAt, 0.30, 0.10, GOLD, Enum.Material.Metal)
+	disc(b, "GaugeFace", gaugeAt * CFrame.new(0.06, 0, 0), 0.23, 0.04, PAGES, Enum.Material.SmoothPlastic)
+	box(b, "GaugeNeedle", gaugeAt * CFrame.new(0.09, 0.07, 0.01) * pitch(deg(35)),
+		Vector3.new(0.03, 0.18, 0.035), RUBY, Enum.Material.Neon)
+	ball(b, "GaugePin", gaugeAt * CFrame.new(0.10, 0, 0), 0.07, GOLD_DARK, Enum.Material.Metal)
+
+	-- โล่กลางรูปหยดน้ำเล็ก (escutcheon) ทองแดง + กุญแจมีมงกุฎ ตามภาพ
+	box(b, "Boss", CFrame.new(0, -0.02, -T / 2 - 0.08), Vector3.new(0.76, 0.86, 0.16), COPPER, Enum.Material.Metal)
+	box(b, "BossRim", CFrame.new(0, -0.02, -T / 2 - 0.07), Vector3.new(0.86, 0.94, 0.12), GOLD_DARK, Enum.Material.Metal)
+	-- โล่เล็กตรงกลางมีปลายแหลมของตัวเองเหมือนในภาพ ไม่ใช่สี่เหลี่ยมตัด — ลิ่มคู่เดียวกับปลายใบใหญ่
+	for _, sx in ipairs({ -1, 1 }) do
+		wedge(b, "BossPoint", CFrame.new(sx * 0.19, -0.62, -T / 2 - 0.08) * yaw(deg(-90 * sx)),
+			Vector3.new(0.16, 0.34, 0.38), COPPER, Enum.Material.Metal)
+		wedge(b, "BossPointRim", CFrame.new(sx * 0.215, -0.64, -T / 2 - 0.07) * yaw(deg(-90 * sx)),
+			Vector3.new(0.12, 0.38, 0.43), GOLD_DARK, Enum.Material.Metal)
+	end
+	box(b, "Crown", CFrame.new(0, 0.38, -T / 2 - 0.17), Vector3.new(0.36, 0.09, 0.06), GOLD, Enum.Material.Metal)
+	for i = -1, 1 do
+		box(b, "CrownSpike", CFrame.new(i * 0.13, 0.45, -T / 2 - 0.17), Vector3.new(0.07, 0.11, 0.06), GOLD, Enum.Material.Metal)
+	end
+	box(b, "KeyShaft", CFrame.new(0, -0.14, -T / 2 - 0.18), Vector3.new(0.08, 0.52, 0.06), GOLD, Enum.Material.Metal)
+	disc(b, "KeyBow", CFrame.new(0, 0.18, -T / 2 - 0.18) * FACE, 0.13, 0.06, GOLD, Enum.Material.Metal)
+	disc(b, "KeyBowHole", CFrame.new(0, 0.18, -T / 2 - 0.22) * FACE, 0.06, 0.04, COPPER_DARK, Enum.Material.Metal)
+	box(b, "KeyBit", CFrame.new(0.09, -0.36, -T / 2 - 0.18), Vector3.new(0.12, 0.09, 0.06), GOLD, Enum.Material.Metal)
+	box(b, "KeyBit2", CFrame.new(0.08, -0.22, -T / 2 - 0.18), Vector3.new(0.09, 0.08, 0.06), GOLD, Enum.Material.Metal)
+
+	-- อัญมณีมุมบนและกลางยอด สลับแดง-เขียวเหมือนภาพ
+	ball(b, "GemTop", CFrame.new(0, H / 2 + 0.02, -T / 2 - 0.02), 0.20, RUBY, Enum.Material.Neon)
+	for _, sx in ipairs({ -1, 1 }) do
+		ball(b, "GemUpper", CFrame.new(sx * (half - 0.10), H / 2 - 0.30, -T / 2 - 0.02), 0.17,
+			sx < 0 and RUBY or GEM, Enum.Material.Neon)
+		ball(b, "GemLower", CFrame.new(sx * (half - 0.12), -0.62, -T / 2 - 0.02), 0.15,
+			sx < 0 and GEM or RUBY, Enum.Material.Neon)
+	end
+	ball(b, "GemPoint", CFrame.new(0, ptY - POINT / 2 + 0.16, -T / 2 - 0.02), 0.17, GEM, Enum.Material.Neon)
+
+	-- หมุดรอบขอบ — ระยะห่างคงที่ ไม่ใช่สุ่ม ของที่ตีด้วยมือยังเรียงเป็นระเบียบ
+	for i = -2, 2 do
+		ball(b, "RivetTop", CFrame.new(i * 0.42, H / 2 - 0.02, -T / 2 - 0.06), 0.09, GOLD_DARK, Enum.Material.Metal)
+		for _, sx in ipairs({ -1, 1 }) do
+			ball(b, "RivetSide", CFrame.new(sx * (half - 0.02), i * 0.42, -T / 2 - 0.06), 0.09, GOLD_DARK, Enum.Material.Metal)
+		end
+	end
+
+	-- ด้านหลัง: สายรัดแขนสองเส้นกับคานจับ — ส่วนนี้ไม่ได้อยู่ในภาพ (ภาพเห็นแต่ด้านหน้า) แต่ถ้าไม่มี
+	-- โล่จะดูเหมือนแผ่นป้ายที่ลอยติดแขนอยู่เฉยๆ
+	box(b, "StrapUpper", CFrame.new(0, 0.34, T / 2 + 0.10), Vector3.new(1.10, 0.20, 0.10), LEATHER)
+	box(b, "StrapLower", CFrame.new(0, -0.30, T / 2 + 0.10), Vector3.new(1.10, 0.20, 0.10), LEATHER)
+	box(b, "GripBar", CFrame.new(0.42, 0.02, T / 2 + 0.18), Vector3.new(0.12, 0.70, 0.12), DARK_WOOD)
+
+	return assembleBag("Shield", plate, b)
+end
+
+--------------------------------------------------------------------------------
 
 -- Rebuilt on every server start rather than trusted to survive in the place file: that is exactly how the
 -- originals were lost. Cheap enough (four models of five parts) that there is no reason to cache them.

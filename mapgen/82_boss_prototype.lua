@@ -387,7 +387,12 @@ local _, size = built:GetBoundingBox()
 local root = workspace:FindFirstChild("WOLD") or Instance.new("Folder")
 root.Name = "WOLD"
 root.Parent = workspace
-root:SetAttribute("Progress", ("Boss_Forgewarden %d ชิ้น สูง %.1f studs (x2.6 = %.0f) ข้อต่อ %d"):format(
-	#built:GetDescendants(), size.Y, size.Y * 2.6, madeJoints))
+-- สเกลตอนเกิดจริงอ่านจากคอนฟิกของเกม ไม่ใช่เลขที่พิมพ์ไว้ตรงนี้ — รอบก่อนเขียน 2.6 ไว้ตายตัวแล้วพอ
+-- ผู้ใช้สั่งให้ใหญ่ขึ้นเป็น 3.9 ข้อความสรุปก็รายงานความสูงผิดไปทั้งที่โมเดลถูก
+local liveScale = 1
+local okConf, conf = pcall(function() return require(game.ReplicatedStorage.GatherConfig).Mobs.Forgewarden end)
+if okConf and conf and conf.scale then liveScale = conf.scale end
+root:SetAttribute("Progress", ("Boss_Forgewarden %d ชิ้น สูง %.1f studs (x%.1f = %.0f) ข้อต่อ %d"):format(
+	#built:GetDescendants(), size.Y, liveScale, size.Y * liveScale, madeJoints))
 root:SetAttribute("Status", "done")
 print("[Boss] " .. root:GetAttribute("Progress"))

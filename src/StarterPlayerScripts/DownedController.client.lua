@@ -30,16 +30,39 @@ local deadline = 0
 local proneConnection = nil
 local crawlTrack = nil
 
+-- นับรอบของการเข้าท่าคลาน — ทุกครั้งที่สั่งหยุด เลขนี้เดินหน้า งานที่ค้างอยู่ระหว่าง `task.wait` จึงรู้ว่า
+-- ตัวเองถูกยกเลิกไปแล้วและต้องไม่เล่นท่าต่อ
+--
+-- **นี่คือต้นเหตุของ "เกิดใหม่แล้วค้างท่าว่ายน้ำยืนตั้ง"** (ผู้ใช้แจ้ง 2026-09-20): `CharacterAdded` รอ 0.3 วิ
+-- ให้ร่างประกอบเสร็จก่อนเริ่มท่า ถ้าข่าว "ไม่ได้ล้มแล้ว" มาถึงระหว่างรอ การหยุดจะเกิดก่อนการเริ่ม
+-- แล้วท่าว่ายน้ำก็ถูกเปิดบนร่างใหม่ที่ยืนอยู่ดีๆ โดยไม่มีอะไรมาปิดมันอีกเลย
+local generation = 0
+
 local function stopProne()
+	generation += 1
 	if proneConnection then
 		proneConnection:Disconnect()
 		proneConnection = nil
 	end
 	if crawlTrack then crawlTrack:Stop(0.2) end
 	crawlTrack = nil
+
+	-- กวาดท่าคลานที่อาจค้างอยู่บนร่างปัจจุบันด้วย (คนละร่างกับตอนที่เราเปิดไว้ก็ได้ เช่นร่างเพิ่งถูกสร้างใหม่)
+	-- `crawlTrack` ชี้ไปที่ Animator ของร่างเก่าเสมอ การหยุดมันจึงไม่ช่วยอะไรกับร่างที่ผู้เล่นกำลังใช้อยู่
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
+	if animator then
+		for _, track in ipairs(animator:GetPlayingAnimationTracks()) do
+			if track.Animation and track.Animation.AnimationId == VitalsConfig.CrawlAnimation then
+				track:Stop(0)
+			end
+		end
+	end
 end
 
 local function startProne()
+	if not downed then return end -- กันการเปิดท่าคลานทับร่างที่ลุกขึ้นแล้ว
 	local character = player.Character
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return end
@@ -99,12 +122,14 @@ Remotes.DownedStateChanged.OnClientEvent:Connect(function(isDowned, seconds)
 end)
 
 -- The character is rebuilt on respawn, so the prone hooks must be re-established (or dropped) accordingly.
-player.CharacterAdded:Connect(function()
+player.CharacterAdded:Connect(function(character)
 	stopProne()
-	if downed then
-		task.wait(0.3) -- let the rig finish assembling before grabbing its joints
-		startProne()
-	end
+	if not downed then return end
+	local mine = generation
+	task.wait(0.3) -- let the rig finish assembling before grabbing its joints
+	-- ถามใหม่หลังรอ: ระหว่าง 0.3 วินาทีนั้นอาจมีข่าวว่าไม่ได้ล้มแล้ว หรือร่างถูกสร้างใหม่อีกรอบ
+	if mine ~= generation or not downed or player.Character ~= character then return end
+	startProne()
 end)
 
 RunService.Heartbeat:Connect(function()

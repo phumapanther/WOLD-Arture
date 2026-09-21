@@ -284,6 +284,7 @@ end
 -- channel servers switch chat off, so SendAsync has nowhere to go -- and it buys no safety: the server
 -- checks the UserId allow-list on this remote exactly as it does on a chat line.
 local function send(text)
+	text = text:match("^%s*(.-)%s*$") or text
 	if text == "" then return end
 	append("> " .. text, ACCENT)
 	-- Remembered for the arrow keys. The same command twice running is stored once: a history that repeats
@@ -297,6 +298,24 @@ local function send(text)
 end
 
 box:GetPropertyChangedSignal("Text"):Connect(function()
+	-- A space in front of the line is never something anyone meant to type: a command starts with "/", and
+	-- dispatch drops anything that does not -- SILENTLY, so a line with a space in front looks like a
+	-- command that did nothing. Opening the console with F2 left one there every time (user, 2026-09-20),
+	-- and the admin had to notice it and backspace before every single command.
+	--
+	-- Stripped here rather than only at send time so what is on screen is what will be sent, and because the
+	-- suggestion list matches on the raw text: " /gi" offers nothing, "/gi" offers /give.
+	local trimmed = box.Text:gsub("^%s+", "")
+	if trimmed ~= box.Text then
+		local cursorAt = box.CursorPosition
+		local removed = #box.Text - #trimmed
+		box.Text = trimmed
+		-- Keep the caret over the same character it was over, instead of throwing it to the end: the space
+		-- may have been removed from under a half-typed line the player is still editing in the middle of.
+		box.CursorPosition = cursorAt > 0 and math.max(1, cursorAt - removed) or cursorAt
+		return -- assigning Text re-enters this handler; the work below happens on that pass
+	end
+
 	-- Typing puts the box back at the end of the history: the line is the player's own again rather than one
 	-- that was recalled, so Down should return to it and not to whatever was there before Up was pressed.
 	cursor = #history + 1

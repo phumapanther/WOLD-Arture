@@ -45,6 +45,15 @@ local GRIP = {
 	-- Leaned forward from -20 to -90: the blade was standing bolt upright. The lean is applied BEFORE the
 	-- handle offset below, so the grip stays put in the palm and only the blade swings down and forward.
 	Sword = SWORD_GRIP,
+	-- โล่: จุดยึดคือ `RightLowerArm` ไม่ใช่ฝ่ามือ (ดู `ANCHOR_ALWAYS`)
+	--
+	-- **อยู่ข้างแขนด้านนอก ไม่ใช่หน้าแขน** (ผู้ใช้สั่งรอบสอง 2026-09-20) — หน้าโล่ของโมเดลคือ -Z
+	-- การ yaw -90° ทำให้ -Z ไปชี้ +X = ด้านนอกของแขนขวา ส่วนความกว้างของใบไปวางตามแนวหน้า-หลัง
+	-- ซึ่งคือทรงของโล่ที่รัดแขนจริง เวลามองจากด้านข้างจะเห็นเต็มใบ
+	-- ผู้ใช้ปรับจากภาพในเกมรอบสอง (2026-09-20): เลื่อนลงให้เลยมือ และถอยออกจากแขนให้เห็นช่องว่าง
+	-- 0.15 = กลางแผ่นอยู่แถวข้อมือ ตัวใบจึงคลุมท่อนแขนล่างและปลายเลยมือลงไป · 0.75 = ห่างจากแขน
+	-- พอให้เห็นว่าเป็นของที่รัดอยู่ ไม่ใช่แผ่นที่ทาบติดเนื้อแขน
+	Shield = CFrame.new(0.75, 0.15, 0) * CFrame.Angles(0, math.rad(-90), 0),
 	-- The greatsword is built to the sword's layout (blade at the origin, grip along +Y), so it takes the
 	-- sword's offset -- pushed a little further out because the hilt sits further up a longer weapon.
 	Greatsword = SWORD_GRIP * CFrame.new(0, -1.0, 0),
@@ -96,6 +105,15 @@ local ATTACH_TO = {
 	Staff = "UpperTorso",
 }
 
+-- ของที่ **ไม่ได้ถืออยู่ในมือเลย** ไม่ว่าจะกำลังตีอยู่หรือไม่ — ตอนนี้มีโล่ชิ้นเดียว
+--
+-- ผู้ใช้กำหนด 2026-09-20: "ตำแหน่งที่ถืออาวุธจะอยู่ที่แขนขวา แบบโล่ติดแขน ติดตรงหน้าแขน ไม่ใช่ฝั่งมือ"
+-- แยกจาก `ATTACH_TO` ข้างบนเพราะอันนั้นเป็นของที่ย้ายที่ **เฉพาะตอนตี** แล้วกลับมาอยู่ในมือตอนเดิน
+-- ส่วนโล่รัดอยู่กับแขนตลอดเวลา ไม่มีจังหวะไหนที่มันควรไปอยู่ในฝ่ามือ
+local ANCHOR_ALWAYS = {
+	Shield = "RightLowerArm",
+}
+
 -- ...but that is only right while the attack pose is up.
 --
 -- Out of combat there is no pose holding the arms in place, so a book hanging in front of a chest that is
@@ -114,6 +132,11 @@ local CARRY_GRIP = {
 	-- staff's origin already sits near its middle, unlike the sword's, which hangs from the hilt at +2.
 	Staff = CFrame.new(0, -0.6, 0) * CFrame.Angles(math.rad(-90), 0, 0),
 }
+-- โล่รัดท่อนแขนขวา — วัดจากผังของโมเดล (`Builders.Shield`): หน้าโล่หันไป -Z กลางแผ่นอยู่ที่จุดกำเนิด
+--
+-- ท่อนแขนล่างของ R15 หันแกนเหมือนตัวละคร (แกน Y ลงตามแขน · -Z คือด้านหน้าตัว) ค่านี้จึงเป็นการเลื่อนล้วน
+-- ไม่ต้องหมุน: ออกด้านนอกตัวเล็กน้อย · ยกขึ้นให้ใบโล่คลุมตั้งแต่ข้อศอกลงมา (ตัวโล่ห้อยลงจากจุดกำเนิด
+-- ราว 2 สตัด) · ดันไปข้างหน้าแขนพอให้ไม่จมเข้าไปในเนื้อแขน
 local DEFAULT_GRIP = CFrame.new(0, -1, 0) * CFrame.Angles(math.rad(-90), 0, 0)
 
 -- Who is currently mid-attack, so the two chest-mounted weapons know which way round they should be.
@@ -129,6 +152,12 @@ local STANCE_SECONDS = 1.5
 -- Where a given weapon should be jointed. The hand by default; the chest for the spellbook and staff, but
 -- only while their attack pose is actually up.
 local function anchorPartFor(character, weaponId, fighting)
+	local always = ANCHOR_ALWAYS[weaponId]
+	if always then
+		local part = character:FindFirstChild(always)
+		-- ไม่เจอชิ้นที่ต้องการ (โครง R6 หรือร่างยังประกอบไม่เสร็จ) ก็ตกไปใช้มือตามเดิม ดีกว่าไม่โผล่เลย
+		if part then return part end
+	end
 	local wanted = fighting and ATTACH_TO[weaponId] or nil
 	if wanted then
 		local part = character:FindFirstChild(wanted)
@@ -147,7 +176,7 @@ local function clearHeldWeapon(character)
 	local existing = character:FindFirstChild("EquippedWeapon")
 	if existing then existing:Destroy() end
 	-- The joint can live on the hand or the torso, so clear both rather than assuming.
-	for _, name in ipairs({ "RightHand", "Right Arm", "UpperTorso" }) do
+	for _, name in ipairs({ "RightHand", "Right Arm", "UpperTorso", "RightLowerArm" }) do
 		local part = character:FindFirstChild(name)
 		local grip = part and part:FindFirstChild("WeaponGrip")
 		if grip then grip:Destroy() end

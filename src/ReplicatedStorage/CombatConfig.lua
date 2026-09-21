@@ -62,11 +62,35 @@ CombatConfig.Weapons = {
 		idleTimeout = 4,
 		attacks = {
 			{ animation = "rbxassetid://121629606581159", damage = 42, -- Greatsword_Swing
-			  windup = 1.2, active = 0.25, recovery = 0.55, range = 9,
-			  effect = "dizzy", effectSeconds = 3, slam = 1.45 },
+			  -- recovery +0.5 และ effectSeconds 3 -> 1.5 (ผู้ใช้สั่ง 2026-09-20): ดาบใหญ่ยังเป็นอาวุธที่
+			  -- "ตีโดนหนึ่งทีซื้อเวลาให้ตัวเอง" แต่เวลาที่ซื้อได้สั้นลงครึ่งหนึ่ง และจังหวะระหว่างไม้ยาวขึ้น
+			  windup = 1.2, active = 0.25, recovery = 1.05, range = 9,
+			  effect = "dizzy", effectSeconds = 1.5, slam = 1.45 },
 		},
 		chainResetDelay = 0.5,
 		chainWindow = 2.6,
+	},
+	-- โล่ไอน้ำ: **ใช้มูฟเซ็ตต่อยธรรมดา** ตามที่ผู้ใช้กำหนด — ท่าเดียวกับหมัดเปล่าทั้งสองไม้ สลับซ้ายขวา
+	-- ต่างกันแค่มีโล่อยู่บนแขน (ซึ่งอ่านออกว่าเป็นการกระแทกด้วยโล่) และ **ทุกหมัดทำให้ช้าลง 1.5 วินาที**
+	--
+	-- `effectFactor` 0.5 = เหลือครึ่งความเร็ว (ค่านี้ผมตั้งเอง ผู้ใช้กำหนดมาแค่ระยะเวลา) — คทาใช้ 0.1
+	-- ซึ่งเกือบเท่าการสตัน ส่วนครึ่งหนึ่งคือ "ตามไม่ทันแต่ยังวิ่งหนีได้"
+	Shield = {
+		idleAnimation = "",
+		guardAnimation = "",
+		guardWalkSpeed = 5,
+		idleTimeout = 4,
+		attacks = {
+			-- ดาเมจ 10 -> 20 ต่อหมัด และสโลว์ 1.5 -> 2 วินาที (ผู้ใช้สั่ง 2026-09-20)
+			-- **เลขที่นี่คือเลขที่ใช้จริง** `ItemCatalog.Shield.damage` เป็นค่าสำรองของอาวุธที่ไม่มีตารางท่า
+			-- แก้ที่เดียวไม่พอ ต้องตรงกันทั้งสองที่ ไม่งั้นตัวเลขในหน้าไอเทมจะโกหกคนอ่าน
+			{ animation = "rbxassetid://123567461001098", damage = 20, windup = 0.12, active = 0.12, recovery = 0.24, range = 5.5,
+			  effect = "slow", effectSeconds = 2, effectFactor = 0.5 }, -- Punch_Right
+			{ animation = "rbxassetid://74899499463368", damage = 20, windup = 0.12, active = 0.12, recovery = 0.24, range = 5.5,
+			  effect = "slow", effectSeconds = 2, effectFactor = 0.5 }, -- Punch_Left
+		},
+		chainResetDelay = 0,
+		chainWindow = 1.2,
 	},
 	-- The three tools fight exactly as the sword does -- same idle, same slash, same timing -- because that
 	-- is what the user asked for, and because a tool is a heavy thing on a stick, which is what the sword
@@ -264,6 +288,13 @@ CombatConfig.Sounds = {
 		hitVolume = 0.09,
 		hitSeconds = 0.55,
 	},
+	-- โล่: เสียงเหล็กแบบเดียวกับดาบแต่เบากว่า — มันกระแทกด้วยหน้าโล่ ไม่ได้เฉือน
+	Shield = {
+		cast = "",
+		hit = "rbxassetid://114083734266818",
+		hitVolume = 0.07,
+		hitSeconds = 0.5,
+	},
 	Pistol = {
 		cast = "rbxassetid://110507208537712",
 		-- The clip runs 5.95 seconds. Half a second cut it off mid-crack -- the shot had no tail, so it
@@ -294,6 +325,8 @@ CombatConfig.SkillSounds = {
 	ScatterShot = "rbxassetid://120465457667697", -- arrow_q
 	Fireball = "rbxassetid://118145699359127",    -- magic_q
 	GroupHeal = "rbxassetid://118799033183305",   -- staff_q
+	-- ยืมเสียงของคทาไปก่อน: ทั้งคู่เป็นเวทที่แผ่ออกจากตัวคนใช้ ไม่ใช่สิ่งที่พุ่งไปข้างหน้า
+	Bulwark = "rbxassetid://118799033183305",
 }
 
 -- The animation a skill plays, keyed by SKILL id the same way the sounds above are -- so the two halves of

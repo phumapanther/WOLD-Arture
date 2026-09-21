@@ -39,6 +39,14 @@ local MOB_TAG = "WOLD_Mob"
 -- บอสประจำสปอว์เนอร์ ตัวใหญ่ 3 เท่า พลัง (เลือด/ดาเมจ) 5 เท่า ตามที่ผู้ใช้กำหนด
 local SPAWNER_BOSS_SCALE = 3
 local SPAWNER_BOSS_POWER = 5
+-- โอกาสที่ **ฝูงหนึ่งรอบ** จะมีจ่าฝูงโผล่มาด้วย (ผู้ใช้กำหนด 2026-09-20)
+--
+-- ของเดิมคือ "ตัวแรกที่เกิดหลังไม่มีบอส = บอสเสมอ" ซึ่งแปลว่า **ทุกสปอว์เนอร์มีบอสตลอดเวลา** จ่าฝูงจึง
+-- ไม่ใช่เรื่องพิเศษอะไรเลย · ตอนนี้ทอยครั้งเดียวตอนฝูงเริ่มเกิดใหม่: ติด = ตัวแรกของรอบนั้นเป็นบอส
+-- ไม่ติด = ทั้งรอบไม่มีบอสเลยจนกว่าฝูงจะตายเกลี้ยงแล้วเริ่มรอบใหม่
+--
+-- **ทอยต่อรอบ ไม่ใช่ต่อตัว** — ทอย 25% รายตัวกับฝูงละ 3 จะได้บอสจริงๆ 58% ของรอบ ซึ่งไม่ใช่ที่สั่งมา
+local SPAWNER_BOSS_CHANCE = 0.25
 
 -- [model] = { config, hp, spawner, home, nextAttackAt, target }
 local Live = {}
@@ -250,15 +258,37 @@ local function rigR15(model)
         if d:IsA("Motor6D") and d.Part1 then driven[d.Part1] = true end
     end
 
+    -- ชิ้นที่เป็น "โครงกระดูก" ของ R15 — ใช้ตัดสินว่า weld เส้นไหนคือเส้นที่ตรึงข้อต่อไว้ (ต้องลบ)
+    -- และเส้นไหนคือของประดับที่แขวนอยู่บนแขนขา (ต้องเก็บ)
+    local rigPart = {}
+    for _, joint in ipairs(R15_JOINTS) do
+        rigPart[found[joint[1]]] = true
+        rigPart[found[joint[2]]] = true
+    end
+
+    -- **ข้อต่อแบบ constraint ต้องออกก่อน** — โครง R15 รุ่นใหม่จาก `CreateHumanoidModelFromDescription`
+    -- ใช้ `AnimationConstraint` + `BallSocketConstraint` ไม่ใช่ Motor6D (โครงกระดูก 15 + 14 ตัว)
+    -- ถ้าปล่อยไว้แล้วเราใส่ Motor6D ทับ จะมีสองระบบขับชิ้นเดียวกัน = ร่างแตกเป็นสองก้อนซ้อนกัน
+    -- ซึ่งคืออาการ "ไส้ในขยับโผล่ออกมา แต่ตัวนอกนิ่งสนิท" ที่ผู้ใช้เจอกับโครงกระดูก
+    for _, d in ipairs(model:GetDescendants()) do
+        if d:IsA("AnimationConstraint") or d:IsA("BallSocketConstraint") then d:Destroy() end
+    end
+
     for _, joint in ipairs(R15_JOINTS) do
         local part, parent, name = found[joint[1]], found[joint[2]], joint[3]
         if driven[part] then
             jointed[part] = true
         else
-            -- The welds holding this part rigid have to go, wherever they were parented.
+            -- **ลบเฉพาะ weld ที่ตรึงชิ้นนี้ไว้กับโครงกระดูกด้วยกันเอง** ไม่ใช่ทุกเส้นที่แตะมัน
+            --
+            -- ของเดิมลบหมด ซึ่งลบ weld ของ **ของประดับ** ไปด้วย — ซี่โครง กะโหลก ฟัน **ดาบ** และ **โล่**
+            -- ของโครงกระดูกทั้ง 29 เส้นเป็นเส้นแบบนั้นทั้งหมด (`Blade|RightHand` `Shield|LeftHand`
+            -- `Rib|UpperTorso` ...) พอถูกลบ ของพวกนั้นก็ไม่มีอะไรยึด แล้วไปโดนลูปข้างล่างเชื่อมติด root แทน
+            -- ผลคือ **ไส้ในเปลือย R15 ขยับอยู่ตัวเดียว ส่วนกระดูกกับอาวุธลอยนิ่งอยู่กับที่** ตามภาพที่ผู้ใช้ส่งมา
             for _, d in ipairs(model:GetDescendants()) do
-                if (d:IsA("WeldConstraint") or d:IsA("Weld")) and (d.Part1 == part or d.Part0 == part) then
-                    d:Destroy()
+                if (d:IsA("WeldConstraint") or d:IsA("Weld")) then
+                    local other = (d.Part0 == part) and d.Part1 or ((d.Part1 == part) and d.Part0 or nil)
+                    if other and rigPart[other] then d:Destroy() end
                 end
             end
             -- C0/C1 from where the parts already are, so the rig keeps the pose the artist built rather than
@@ -639,7 +669,8 @@ local function drop(model, config, killer, loot)
 	end
 	if config.xp and config.xp > 0 then
 		-- ฆ่ามอนแล้วแชร์ทั้งตี้ คนละ 70% (ผู้ใช้กำหนด 2026-09-20) — คนไม่มีตี้ยังได้เต็มเหมือนเดิม
-		Progression.AwardExpParty(killer, config.xp)
+		-- จ่าฝูงให้ EXP สองเท่า (`loot.xp`) ตัวคูณมาจากตอนเกิด ไม่ใช่ตอนตาย ด้วยเหตุผลเดียวกับดรอป
+		Progression.AwardExpParty(killer, config.xp * ((loot and loot.xp) or 1))
 	end
 	-- ลงสมุดสะสม บันทึกตามชนิด ไม่ใช่ตามตัว — สมุดตอบว่า "ฆ่าอะไรไปกี่ตัว"
 	Collection.RecordMob(killer, config.name or kind)
@@ -661,6 +692,12 @@ local function despawn(model)
 		local alive = state.spawner:GetAttribute("Alive") or 0
 		local left = math.max(0, alive - 1)
 		state.spawner:SetAttribute("Alive", left)
+
+		-- ฝูงตายเกลี้ยง = จบรอบ ทอยใหม่ตอนฝูงหน้าเริ่มเกิด
+		if left == 0 then
+			state.spawner:SetAttribute("BossRolled", nil)
+			state.spawner:SetAttribute("BossPending", nil)
+		end
 
 		-- ตัวสุดท้ายของสปอว์เนอร์แบบ Trigger ตายแล้ว: ล็อกไว้จนกว่าคนจะเดินออกจากพื้นที่
 		--
@@ -886,6 +923,32 @@ end
 
 MobAccess.Stun = stun
 
+-- ดึงความสนใจของมอนทุกตัวในรัศมีมาที่คนคนเดียว — สกิล Q ของโล่ (`WeaponSkills.Bulwark`)
+--
+-- เขียนไว้ในไฟล์นี้เพราะ "ใครเป็นเป้าของมอนตัวนี้" อยู่ในตาราง `Live` ซึ่งเป็น local ของไฟล์นี้ และเพราะ
+-- การเปลี่ยนเป้าต้องไม่ไปยุ่งกับกติกาอื่นของ AI (ตัวที่ถูกเสกมาไล่ล่าคนเดียว ตัวที่กำลังโผล่จากพื้น ตัวที่ถูกสตัน)
+--
+-- **ไม่ได้ล็อกเป้าไว้ตลอด** — ลูป AI จะเปลี่ยนเป้าเองเมื่อคนที่ถูกท้าตาย ล้ม หรือวิ่งพ้นระยะ leash
+-- ซึ่งเป็นพฤติกรรมที่ถูกแล้ว: คำท้าคือการดึงความสนใจ ไม่ใช่กาวติดเป้า
+MobAccess.Taunt = function(player, radius)
+	local character = player and player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then return 0 end
+
+	local pulled = 0
+	for model, state in pairs(Live) do
+		local mobRoot = model.PrimaryPart
+		-- ตัวที่ถูกเสกมาไล่ล่าคนใดคนหนึ่งโดยเฉพาะ (`hunt`) ไม่รับคำท้า มันมีเป้าของมันที่ห้ามเปลี่ยน
+		if mobRoot and model.Parent and not state.hunt then
+            if (mobRoot.Position - root.Position).Magnitude <= (radius or 60) then
+                state.target = player
+                pulled += 1
+            end
+		end
+	end
+	return pulled
+end
+
 --------------------------------------------------------------------------------
 -- Spawning
 --------------------------------------------------------------------------------
@@ -1064,7 +1127,12 @@ local function spawnOne(spawner, kind, config)
 			--
 			-- **หนึ่งตัวต่อสปอว์เนอร์ ไม่ใช่สุ่มทุกตัวที่เกิด** ถ้าสุ่มรายตัว ฝูงละ 8 จะมีบอสหลายตัวและ
 			-- จำนวนไม่คงที่ทุกรอบ สปอว์เนอร์ที่ไม่ต้องการบอสตั้ง NoBoss ได้
-			local isBoss = not spawner:GetAttribute("HasBoss") and not spawner:GetAttribute("NoBoss")
+			--
+			-- **ตอนนี้ต้องทอยผ่านก่อนด้วย** (`BossPending` ตั้งไว้ตอนฝูงเริ่มรอบใหม่ ดู `SPAWNER_BOSS_CHANCE`)
+			-- ธงถูกล้างทันทีที่ใช้ไป รอบหนึ่งจึงได้จ่าฝูงได้ตัวเดียวเสมอ
+			local isBoss = spawner:GetAttribute("BossPending") == true
+				and not spawner:GetAttribute("HasBoss")
+				and not spawner:GetAttribute("NoBoss")
 
 			-- **มอนบางชนิดมีขนาดของตัวเองในคอนฟิก** (บอสใหญ่ประจำโลก `GatherConfig.Mobs.Forgewarden`)
 			-- ตัวคูณนี้ไม่เกี่ยวกับ "บอสประจำสปอว์เนอร์" ข้างล่าง มันคือขนาดที่ชนิดนั้นควรเป็นเสมอ
@@ -1119,6 +1187,8 @@ local function spawnOne(spawner, kind, config)
 					humanoid.DisplayName = ("จ่าฝูง%s"):format(config.name or kind)
 				end
 				spawner:SetAttribute("HasBoss", true)
+				-- ใช้สิทธิ์ของรอบนี้ไปแล้ว ตัวที่เหลือในฝูงเป็นลูกน้องทั้งหมด
+				spawner:SetAttribute("BossPending", false)
 			end
 			Live[model] = {
 				config = config,
@@ -1127,8 +1197,10 @@ local function spawnOne(spawner, kind, config)
 				damageScale = scale,
 				-- จำว่าตัวนี้คือบอสของสปอว์เนอร์ไหน เพื่อคืนตำแหน่งให้ตัวถัดไปตอนมันตาย
 				bossOf = isBoss and spawner or nil,
-				-- ดรอปแบบบอส: ออกสองเท่าและโอกาสของหายากสองเท่า เหมือนบอสของ TikTok
-				loot = isBoss and { amount = 2, chance = 2, boss = true } or nil,
+				-- ดรอปแบบบอส · **ผู้ใช้สั่งเพิ่มอีกเท่าตัว 2026-09-20 พร้อมกับที่ทำให้จ่าฝูงหายาก**
+				-- วัตถุดิบออก 4 เท่าของมอนธรรมดา (เดิม 2) · EXP 2 เท่า (เดิมเท่าเดิม) · โอกาสของหายาก 2 เท่า
+				-- จ่าฝูงที่เจอนานๆ ครั้งต้องคุ้มค่ากับการที่มันไม่โผล่มาทุกฝูงอีกแล้ว
+				loot = isBoss and { amount = 4, chance = 2, xp = 2, boss = true } or nil,
 				-- Walk and swing. nil for a slime or anything else with no rig to drive.
 				tracks = loadMobTracks(model, config),
 				-- ตัวนี้เกิดมาเพราะอีเวนต์ไหน — อ่านจากหมุด **ตอนเกิด** ไม่ใช่ตอนตาย เพราะตอนหมดเวลา
@@ -1173,7 +1245,9 @@ local function spawnHunter(kind, config, victim, origin, distance, boss)
 			-- A boss is the same monster, made bigger and meaner. ScaleTo BEFORE the pivot, and lift it by
 			-- the scale as well: a model scaled about its own pivot grows downward too, so a tripled
 			-- monster placed at the usual two studs starts with its knees in the ground.
-			local size = boss and boss.scale or 1
+			-- ขนาดของบอสที่สั่งมาเฉพาะกิจมาก่อน ถ้าไม่ได้สั่งก็ใช้ขนาดประจำชนิดนั้น (`config.scale`)
+			-- ไม่คูณกันสองชั้น: `MobAccess.SpawnBoss` ส่ง `config.scale` มาให้อยู่แล้วตอนเสกบอสประจำโลก
+			local size = (boss and boss.scale) or config.scale or 1
 			if size ~= 1 then model:ScaleTo(size) end
 			applyHitPad(model, config)
 			-- วัดหลัง ScaleTo จึงได้ขนาดจริงของบอส เหมือนทางเกิดปกติ: ยกครึ่งตัว + 1 แล้วปล่อยให้ตกเอง
@@ -1209,7 +1283,7 @@ local function spawnHunter(kind, config, victim, origin, distance, boss)
 				-- A boss drops twice as much and rolls its rare drops at twice the odds, per the user. Stamped
 				-- at spawn like damageScale, so what a monster is worth is decided when it appears rather than
 				-- read off a table that may have changed by the time it dies.
-				loot = boss and { amount = 2, chance = 2, boss = true } or nil,
+				loot = boss and { amount = 4, chance = 2, xp = 2, boss = true } or nil,
 				-- Walk and swing. nil for a slime or anything else with no rig to drive.
 				tracks = loadMobTracks(model, config),
 				-- No spawner: nothing counts it, and nothing brings it back.
@@ -1346,6 +1420,16 @@ local function serviceSpawner(spawner)
 		end
 
 		if not somebodyNear then return end
+	end
+
+	-- ทอยว่ารอบนี้มีจ่าฝูงไหม — ทำตอนฝูงว่างเปล่า ซึ่งคือจุดเริ่มของ "รอบ" หนึ่ง
+	--
+	-- เก็บผลไว้บนตัวสปอว์เนอร์ ไม่ใช่ในตัวแปรของไฟล์นี้ ด้วยเหตุผลเดียวกับนาฬิกา `ReadyAt`: มันรอดจากการ
+	-- โหลดสคริปต์ใหม่ และอ่านได้จากข้างนอกตอนอยากรู้ว่าสปอว์เนอร์ตัวนี้กำลังจะปล่อยอะไร
+	-- ฝูงยังเกิดไม่ครบ/ยังมีตัวรอดอยู่ = ยังเป็นรอบเดิม ธง `BossRolled` ถูกล้างตอนตัวสุดท้ายตาย (`despawn`)
+	if alive <= 0 and not spawner:GetAttribute("BossRolled") then
+		spawner:SetAttribute("BossRolled", true)
+		spawner:SetAttribute("BossPending", math.random() < SPAWNER_BOSS_CHANCE)
 	end
 
 	if alive >= wanted then return end

@@ -476,7 +476,9 @@ local BUFF_LOOK = {
 	noStamina = { emoji = "💛", text = "สตามินาไม่ลด" },
 	noMana = { emoji = "💙", text = "มานาไม่ลด" },
 	noArmor = { emoji = "🖤", text = "เกราะไม่ลด" },
-	noHp = { emoji = "❤️‍🩹", text = "เลือดไม่ลด" },
+	-- หัวใจแดงล้วน (ผู้ใช้สั่ง 2026-09-20) — ของเดิมเป็นหัวใจมีผ้าพันแผล ซึ่งฟอนต์บางเครื่องวาดแยกเป็น
+	-- สองตัวอักษรเพราะมันเป็น emoji ประสม (❤️ + ZWJ + 🩹)
+	noHp = { emoji = "❤️", text = "เลือดไม่ลด" },
 }
 
 local function buffLeftText(seconds)

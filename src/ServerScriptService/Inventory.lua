@@ -77,14 +77,52 @@ end
 -- `meta` is per-ITEM data that makes two otherwise identical items different things: a vehicle key's plate,
 -- for one. Anything carrying it is never merged into a stack, because merging would throw away every copy's
 -- meta but the first -- two car keys would become "CarKey x2" for a single car.
+-- ถืออยู่ในกระเป๋าตอนนี้กี่ชิ้น (ไม่นับของที่สวมอยู่ — เพดานพกติดตัวใช้กับของกินของใช้ ซึ่งไม่มีอะไรสวมได้)
+function Inventory.CountOf(player, id)
+	local state = States[player]
+	if not state then return 0 end
+	local total = 0
+	for i = 1, InventoryConfig.SlotCount do
+		local slot = state.slots[i]
+		if slot and slot.id == id then total += slot.count or 1 end
+	end
+	return total
+end
+
+-- ยังรับของชิ้นนี้ได้อีกกี่ชิ้นก่อนชนเพดานพกติดตัว · nil = ไม่มีเพดาน (ของส่วนใหญ่ในเกม)
+function Inventory.RoomUnderLimit(player, id)
+	local limit = ItemCatalog.BagLimit(id)
+	if not limit then return nil end
+	return math.max(0, limit - Inventory.CountOf(player, id))
+end
+
+-- ของที่เกินเพดานไปไหน — ตั้งโดย `BankVault.server` ให้ชี้ไปที่คลังของมาดามออเรเลีย
+--
+-- เป็น hook ไม่ใช่ `require` ตรงๆ เพราะกระเป๋าไม่ควรรู้จักคลัง: ของที่ล้นจะไปลงที่ไหนเป็นการตัดสินใจ
+-- ของเกม ไม่ใช่ของโครงสร้างข้อมูล · ไม่มีใครตั้ง = ของที่เกินไม่ถูกเพิ่ม และ AddItem คืน false
+Inventory.Overflow = nil
+
 function Inventory.AddItem(player, id, count, durability, meta)
 	local state = States[player]
 	if not state or not ItemCatalog.Exists(id) then return false end
 	count = count or 1
 
+	-- **เพดานพกติดตัว** (ยา/อาหาร/เครื่องดื่ม กองเดียว — ผู้ใช้สั่ง 2026-09-20)
+	--
+	-- ตัดสินตั้งแต่ก่อนลงช่อง ไม่ใช่ตัดทิ้งทีหลัง: ส่วนที่เกินต้องไปลงคลังให้ครบจำนวน ไม่ใช่หายไปเฉยๆ
+	-- ของที่มี `meta` (กุญแจรถ ปลาที่มีน้ำหนัก) ไม่ถูกจำกัด — มันเป็นของเฉพาะชิ้น ไม่ใช่ของที่กองได้
+	local spill = 0
+	if not meta then
+		local room = Inventory.RoomUnderLimit(player, id)
+		if room and count > room then
+			spill = count - room
+			count = room
+		end
+	end
+
 	local stackSize = ItemCatalog.StackSize(id)
 	if meta then stackSize = 1 end
-	if stackSize > 1 then
+	if count > 0 and stackSize > 1 then
 		for i = 1, InventoryConfig.SlotCount do
 			local slot = state.slots[i]
 			if slot and slot.id == id and slot.count < stackSize then
@@ -93,7 +131,7 @@ function Inventory.AddItem(player, id, count, durability, meta)
 				count -= moved
 				if count <= 0 then
 					Inventory.Send(player)
-					return true
+					return Inventory.SpillOver(player, id, spill, durability)
 				end
 			end
 		end
@@ -103,6 +141,8 @@ function Inventory.AddItem(player, id, count, durability, meta)
 		local free = firstFreeSlot(state)
 		if not free then
 			Inventory.Send(player)
+			-- กระเป๋าเต็มจริงๆ ของที่เหลือรวมส่วนที่เกินเพดานด้วย ลองส่งเข้าคลังทั้งก้อน
+			Inventory.SpillOver(player, id, spill + count, durability)
 			return false -- bag full; whatever fitted has been kept
 		end
 		local put = math.min(stackSize, count)
@@ -120,7 +160,25 @@ function Inventory.AddItem(player, id, count, durability, meta)
 	end
 
 	Inventory.Send(player)
-	return true
+	return Inventory.SpillOver(player, id, spill, durability)
+end
+
+-- ส่งส่วนที่เกินเพดานเข้าคลัง คืน true เมื่อ "ของทุกชิ้นมีที่อยู่แล้ว"
+--
+-- คลังเต็มด้วย = คืน false เหมือนกระเป๋าเต็ม ผู้เรียกที่เคยรับมือกับกระเป๋าเต็มอยู่แล้ว (คราฟ ร้านค้า
+-- รางวัลพาส) จึงรับมือกับกรณีนี้ได้โดยไม่ต้องแก้อะไร — และของไม่หายไปเงียบๆ
+function Inventory.SpillOver(player, id, count, durability)
+	if not count or count <= 0 then return true end
+	if not Inventory.Overflow then return false end
+	local placed = Inventory.Overflow(player, id, count, durability) or 0
+	if placed <= 0 then return false end
+
+	local item = ItemCatalog.Get(id)
+	local name = item and item.name or id
+	local limit = ItemCatalog.BagLimit(id)
+	Remotes.SocialNotify:FireClient(player, "info",
+		("%s พกได้ไม่เกิน %d ชิ้น — ส่วนที่เกิน %d ชิ้นเข้าคลังแล้ว"):format(name, limit or 0, placed))
+	return placed >= count
 end
 
 -- Would `count` of `id` fit, without actually putting them anywhere?

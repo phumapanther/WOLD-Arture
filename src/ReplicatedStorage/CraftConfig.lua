@@ -75,6 +75,12 @@ CraftConfig.Recipes = {
 	{ id = "Greatsword", tab = "weapon", chance = 0.25, gold = 25000,
 		cost = { GearSpare = 8, IronOre = 15, WoodScrap = 15, Coal = 15, Slime = 15, Blueprint = 5, Silver = 250 } },
 
+	-- โล่ไอน้ำ (ผู้ใช้กำหนด 2026-09-20) — สูตรเดียวกับดาบใหญ่ **แต่ไม่มีไม้เลย** มันเป็นแผ่นเหล็กทั้งใบ
+	-- เหล็กกับถ่านหินขึ้นเป็นอย่างละ 30 (ดาบใหญ่ใช้ 15) และเพิ่มสารเคมี 8 สำหรับหน้าปัดแรงดันกับเฟืองในตัว
+	-- โอกาสสำเร็จกับค่าจ้างเท่าดาบใหญ่ เพราะมันเป็นของชั้นเดียวกัน แค่คนละบทบาท
+	{ id = "Shield", tab = "weapon", chance = 0.25, gold = 25000,
+		cost = { GearSpare = 8, IronOre = 30, Coal = 30, Chemical = 8, Slime = 15, Blueprint = 5, Silver = 250 } },
+
 	-- Bullets moved off the weapon bench and in here with the everyday goods, where a near-certain 95% is
 	-- what makes ammunition something you top up rather than gamble on.
 	-- `yields` is how many come out of one attempt; absent means one, which is what every other recipe
@@ -104,6 +110,10 @@ CraftConfig.Recipes = {
 	{ id = "Spellbook", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 15 } },
 	{ id = "Bow", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 15 } },
 	{ id = "Pistol", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 25 } },
+	-- สองชิ้นหนักสุดราคาเท่ากันที่ 30 เหรียญ (ผู้ใช้กำหนด 2026-09-20) — แพงกว่าปืนซึ่งเคยเป็นของที่แพงที่สุด
+	-- เพราะทั้งคู่เป็นของที่ต้องลุ้นคราฟ 25% เหมือนกัน คนที่พลาดสามสิบครั้งจึงเดินมาเอาไปได้แน่ๆ หนึ่งชิ้น
+	{ id = "Greatsword", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 30 } },
+	{ id = "Shield", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 30 } },
 
 	----------------------------------------------------------------------------
 	-- The garage.

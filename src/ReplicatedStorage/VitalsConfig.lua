@@ -10,7 +10,9 @@ VitalsConfig.MaxStamina = 100
 -- Mana is spent in whole pips, not a smooth bar: the HUD draws three gems and every weapon skill costs one,
 -- so the value is the number of pips rather than a 0-100 pool.
 VitalsConfig.MaxMana = 3
-VitalsConfig.ManaRegenSeconds = 24 -- seconds to regain one pip
+-- ผู้ใช้สั่ง 2026-09-20: พิปละ **14 วินาที** (เดิม 24) — สกิลคูลดาวน์เหลือ 6 วินาทีเท่ากันหมดแล้ว
+-- ตัวที่คุมจังหวะจริงจึงกลายเป็นมานา ไม่ใช่คูลดาวน์: ร่ายรัวได้สามครั้งแล้วต้องรอพิปคืน
+VitalsConfig.ManaRegenSeconds = 14 -- seconds to regain one pip
 -- The bar is drawn against the armor you are WEARING, not an absolute ceiling: the bare starter armor should
 -- read full at 20/20, not a fifth full at 20/100. Better armor raises this along with the value.
 VitalsConfig.MaxArmor = 20
@@ -49,8 +51,13 @@ VitalsConfig.FallDamagePerStud = 0.6
 VitalsConfig.VoidY = -200
 
 VitalsConfig.DownedSeconds = 10 * 60 -- the countdown shown in the centre of the screen
-VitalsConfig.DownedWalkSpeed = 6 -- crawling pace
-VitalsConfig.DownedHipHeight = 0.6 -- lowers the capsule so the prone body rests near the floor
+-- ความเร็วคลาน — ผู้ใช้สั่ง 2026-09-20 ให้ "ช้าแบบเดิน" ซึ่งคือความเร็วโหมดเดินของเกมนี้ (`MovementConfig` = 4)
+VitalsConfig.DownedWalkSpeed = 4
+-- **เลิกใช้แล้ว** เก็บไว้กันของเก่าที่ยังอ่านอยู่พัง — ท่านอนไม่ได้กดตัวลงด้วย HipHeight อีกต่อไป
+-- (แคปซูลเตี้ย 0.6 ไปสะดุดพื้นจนคลานแล้วสะดุด) ดู `Vitals.proneDrop`
+VitalsConfig.DownedHipHeight = 0.6
+-- ร่างที่นอนอยู่ลอยเหนือพื้นเท่านี้ — พอให้ไม่จมพื้นและไม่ลอยจนเห็นช่องว่าง
+VitalsConfig.ProneClearance = 0.1
 VitalsConfig.RespawnInvulnSeconds = 10 -- blinking, immune to every damage source
 
 -- Armor eats half of each incoming COMBAT hit (falls, drowning and starvation ignore it entirely). It does

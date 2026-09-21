@@ -464,9 +464,19 @@ GatherConfig.Mobs.Spider = {
 	},
 }
 
+-- **ขนาดของมอนรูปร่างคน** (ผู้ใช้สั่ง 2026-09-20: "ขนาดรูปร่างคน เพิ่มขึ้นให้ได้ขนาดเท่าตัวคน")
+--
+-- วัดในเพลสแล้ว: โครง R15 ของมอนพวกนี้สูง **5.20 สตัด** ส่วนร่างมาตรฐานของ Roblox สูง 5.18 — เท่ากันเป๊ะ
+-- แต่ **ผู้เล่นใช้อวตารของตัวเอง** ซึ่งส่วนใหญ่สูงกว่าร่างมาตรฐาน (หมวก ผม สัดส่วนที่ตั้งเอง) มอนจึงดูเตี้ยกว่า
+-- คนที่ยืนข้างๆ ทั้งที่ตัวเลขบอกว่าเท่ากัน · 1.15 = สูงราว 6.0 สตัด ซึ่งพอๆ กับอวตารทั่วไป
+--
+-- ปรับที่ `scale` ของมอนแต่ละชนิดได้เลย ไม่ต้องแตะโมเดล — `spawnOne`/`spawnHunter` คูณให้ตอนเกิด
+local HUMANOID_SCALE = 1.15
+
 GatherConfig.Mobs.Skeleton = {
 	name = "โครงกระดูก",
 	model = "Monster_Skeleton",
+	scale = HUMANOID_SCALE,   -- ตัวเท่าคน (ดูหมายเหตุเหนือ Skeleton)
 	hp = 70,
 	damage = 12,
 	attackCooldown = 1.6,
@@ -497,6 +507,7 @@ GatherConfig.Mobs.Skeleton = {
 GatherConfig.Mobs.Bandit = {
 	name = "โจรป่า",
 	model = "Monster_Bandit",
+	scale = HUMANOID_SCALE,   -- ตัวเท่าคน (ดูหมายเหตุเหนือ Skeleton)
 	hp = 85,
 	damage = 14,
 	attackCooldown = 1.3,
@@ -549,6 +560,7 @@ GatherConfig.Mobs.StoneGolem = {
 GatherConfig.Mobs.ClockworkSentry = {
 	name = "ทหารจักรกล",
 	model = "Monster_ClockworkSentry",
+	scale = HUMANOID_SCALE,   -- ตัวเท่าคน (ดูหมายเหตุเหนือ Skeleton)
 	hp = 140,
 	damage = 18,
 	attackCooldown = 1.1, -- it does not tire
@@ -574,6 +586,7 @@ GatherConfig.Mobs.ClockworkSentry = {
 GatherConfig.Mobs.Ghoul = {
 	name = "ผีดิบ",
 	model = "Monster_Ghoul",
+	scale = HUMANOID_SCALE,   -- ตัวเท่าคน (ดูหมายเหตุเหนือ Skeleton)
 	hp = 95,
 	damage = 15,
 	attackCooldown = 1.5,
@@ -652,6 +665,7 @@ GatherConfig.Mobs.Wolf = {
 GatherConfig.Mobs.Wraith = {
 	name = "วิญญาณ",
 	model = "Monster_Wraith",
+	scale = HUMANOID_SCALE,   -- ตัวเท่าคน (ดูหมายเหตุเหนือ Skeleton)
 	hp = 140, damage = 24,
 	attackCooldown = 1.6, attackRange = 7,
 	aggroRange = 50, leashRange = 120,

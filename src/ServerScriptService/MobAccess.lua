@@ -26,6 +26,10 @@ MobAccess.SpawnHunters = nil
 -- and the kind's display name, or nil. Left nil in the lobby, so every caller must check.
 MobAccess.SpawnBoss = nil
 
+-- ตั้งโดย Mobs.server · (player, radius) ดึงมอนทุกตัวในรัศมีมาสนใจคนนี้ คืนจำนวนตัวที่รับคำท้า
+-- ใช้โดยสกิล Q ของโล่ · ปล่อยเป็น nil ในล็อบบี้ ทุกคนที่เรียกต้องเช็คก่อน
+MobAccess.Taunt = nil
+
 --------------------------------------------------------------------------------
 -- อีเวนต์ที่มีมอนเป็นตัวเอก (บอสโลก)
 --------------------------------------------------------------------------------

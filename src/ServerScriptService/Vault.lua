@@ -79,6 +79,16 @@ local function put(state, id, count, durability, meta)
 	return placed
 end
 
+-- ของที่ **ล้นเพดานพกติดตัว** ลงชั้นวางตรงๆ โดยไม่ผ่านกระเป๋า (ผู้ใช้สั่ง 2026-09-20: "ถ้าเกิน เด้งเข้าคลัง")
+--
+-- `Inventory.AddItem` เรียกผ่าน hook `Inventory.Overflow` ที่ `BankVault.server` ตั้งไว้ คืนจำนวนที่ลงจริง
+-- คลังเต็มก็คืน 0 แล้วฝั่งกระเป๋าจะรายงานว่าใส่ไม่หมด — ไม่มีทางที่ของจะหายระหว่างทาง
+function Vault.Deposit(player, id, count, durability, meta)
+	local state = States[player]
+	if not state then return 0 end
+	return put(state, id, count, durability, meta)
+end
+
 -- Bag slot -> vault. `count` is clamped to what the slot actually holds, so a client asking for a thousand of
 -- a stack of three moves three.
 --
@@ -133,6 +143,21 @@ function Vault.Take(player, inventory, slotIndex, count)
 		want = math.clamp(math.floor(count), 1, held)
 	end
 	if slot.meta then want = held end
+
+	-- **เพดานพกติดตัว**: เบิกได้แค่เท่าที่กระเป๋ายังรับไหว
+	--
+	-- ถ้าไม่ตัดตรงนี้ ของที่เบิกเกินจะถูก `AddItem` เด้งกลับเข้าคลังทันทีที่ออกมา แล้วหน้าต่างจะกะพริบ
+	-- เหมือนกดไม่ติด ทั้งที่ของวิ่งครบรอบไปแล้ว — เตือนตรงๆ ว่าพกได้เท่าไหร่ดีกว่าปล่อยให้งง
+	if not slot.meta and inventory.RoomUnderLimit then
+		local room = inventory.RoomUnderLimit(player, slot.id)
+		if room then
+			local name = ItemCatalog.DisplayName(slot.id, slot.meta)
+			if room <= 0 then
+				return false, ("พก%sได้ไม่เกิน %d ชิ้น"):format(name, ItemCatalog.BagLimit(slot.id) or 0)
+			end
+			want = math.min(want, room)
+		end
+	end
 
 	-- One at a time, so a part-full bag takes what fits instead of refusing the lot. Anything carrying meta is
 	-- a single item by definition and goes in one call, which is also the only way its meta survives.

@@ -55,28 +55,28 @@ ItemCatalog.Items = {
 		name = "ดาบ", kind = "weapon", weight = 6, stackSize = 1,
 		damage = 18, range = 7,
 		maxDurability = 120,
-		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 },
+		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 6 },
 	},
 	Bow = {
 		icon = "rbxassetid://100309435801424", -- assets/item-icons/Bow.png
 		name = "ธนู", kind = "weapon", weight = 4, stackSize = 1,
 		damage = 12, range = 6, -- melee fallback; the skill is the real attack
 		maxDurability = 100,
-		skill = { id = "ScatterShot", name = "ยิงกระจาย", manaCost = 1, cooldown = 3 },
+		skill = { id = "ScatterShot", name = "ยิงกระจาย", manaCost = 1, cooldown = 6 },
 	},
 	Staff = {
 		icon = "rbxassetid://86359404715162", -- assets/item-icons/Staff.png
 		name = "ไม้คทา", kind = "weapon", weight = 5, stackSize = 1,
 		damage = 10, range = 6,
 		maxDurability = 90,
-		skill = { id = "GroupHeal", name = "ฮีลหมู่", manaCost = 1, cooldown = 3 },
+		skill = { id = "GroupHeal", name = "ฮีลหมู่", manaCost = 1, cooldown = 6 },
 	},
 	Spellbook = {
 		icon = "rbxassetid://98989238832991", -- assets/item-icons/Spellbook.png
 		name = "สมุดเวท", kind = "weapon", weight = 3, stackSize = 1,
 		damage = 8, range = 5,
 		maxDurability = 80,
-		skill = { id = "Fireball", name = "ลูกไฟ", manaCost = 1, cooldown = 3 },
+		skill = { id = "Fireball", name = "ลูกไฟ", manaCost = 1, cooldown = 6 },
 	},
 
 	--------------------------------------------------------------------------
@@ -88,6 +88,8 @@ ItemCatalog.Items = {
 	-- Damage sits below the sword's 18: a pickaxe swung at a person should be
 	-- worse than a weapon made for it, or nobody would ever carry a sword.
 	--------------------------------------------------------------------------
+	-- **เครื่องมือกับปืนไม่มีสกิล Q** (ผู้ใช้สั่ง 2026-09-20) — ของพวกนี้ไม่ใช่อาวุธที่เอาไว้สู้
+	-- `WeaponSkills` ปฏิเสธเงียบๆ เหมือนตอนมือเปล่าอยู่แล้ว (`if not item.skill then return end`)
 	-- Two-handed, slow, and it leaves whatever it lands on seeing stars. The stun is the reason to carry
 	-- something this slow: one swing every two seconds is a bad trade for damage alone.
 	Greatsword = {
@@ -99,32 +101,44 @@ ItemCatalog.Items = {
 		maxDurability = 200,
 		-- The SAME skill as the sword, by the user's instruction: one leap, one sound, one handler. Only the
 		-- name on the button differs, because a greatsword lunging is not called the same thing.
-		skill = { id = "LungeSlash", name = "ฟันสังหาร", manaCost = 1, cooldown = 3 },
+		skill = { id = "LungeSlash", name = "ฟันสังหาร", manaCost = 1, cooldown = 6 },
+	},
+
+	-- โล่ไอน้ำ (ผู้ใช้สั่ง 2026-09-20) — รัดอยู่กับท่อนแขนขวา ไม่ได้ถืออยู่ในมือ
+	--
+	-- ตีด้วยท่าต่อยธรรมดา (ดู `CombatConfig.Weapons.Shield`) แต่ทุกหมัดทำให้คนโดนช้าลง **2 วินาที** —
+	-- อาวุธที่ไม่ได้ชนะด้วยดาเมจ แต่ชนะด้วยการที่อีกฝ่ายหนีไม่พ้น
+	-- ดาเมจต่อหมัด 10 -> **20** (ผู้ใช้สั่ง 2026-09-20) ยังต่ำกว่าดาบ 18 ต่อฟันเมื่อคิดว่าหมัดแลกมากับ
+	-- การไม่มีระยะเอื้อม: 5.5 สตัดคือต้องยืนติดตัวคนโดน
+	Shield = {
+		icon = "rbxassetid://98926854898318", -- โล่ไอน้ำ (ภาพจริงอยู่ใน decal 128590551137093)
+		name = "โล่ไอน้ำ", kind = "weapon", weight = 10, stackSize = 1,
+		damage = 20, range = 5.5,
+		-- อึดที่สุดในบรรดาอาวุธ: มันคือของที่เอาไว้รับ ไม่ใช่ของที่เอาไว้ฟาด
+		maxDurability = 240,
+		skill = { id = "Bulwark", name = "คำท้าทองคำ", manaCost = 1, cooldown = 6 },
 	},
 
 	Axe = {
 		icon = "rbxassetid://94868056279785",
 		name = "ขวาน", kind = "weapon", weight = 5, stackSize = 1,
 		damage = 14, range = 7,
-		maxDurability = 100,
+		maxDurability = 50, -- ครึ่งหนึ่งของเดิม (100) ผู้ใช้สั่ง 2026-09-20
 		gathers = "axe",
-		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 },
 	},
 	Pickaxe = {
 		icon = "rbxassetid://71353632810064",
 		name = "อีเต้อ", kind = "weapon", weight = 6, stackSize = 1,
 		damage = 13, range = 7,
-		maxDurability = 110,
+		maxDurability = 55, -- ครึ่งหนึ่งของเดิม (110) ผู้ใช้สั่ง 2026-09-20
 		gathers = "pickaxe",
-		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 },
 	},
 	Shovel = {
 		icon = "rbxassetid://111182494345005",
 		name = "พลั่ว", kind = "weapon", weight = 4, stackSize = 1,
 		damage = 11, range = 7,
-		maxDurability = 90,
+		maxDurability = 45, -- ครึ่งหนึ่งของเดิม (90) ผู้ใช้สั่ง 2026-09-20
 		gathers = "shovel",
-		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 },
 	},
 
 	Pistol = {
@@ -135,7 +149,6 @@ ItemCatalog.Items = {
 		-- pistol a tool of arrest rather than a way to kill people faster than a sword.
 		damage = 0, range = 6,
 		maxDurability = 120,
-		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 },
 	},
 	FishingRod = {
 		icon = "rbxassetid://108988125515479",
@@ -146,7 +159,6 @@ ItemCatalog.Items = {
 		damage = 3, range = 6,
 		maxDurability = 80,
 		fishing = true,
-		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 },
 	},
 
 	--------------------------------------------------------------------------
@@ -175,7 +187,7 @@ ItemCatalog.Items = {
 	--------------------------------------------------------------------------
 	Bread = { food = true,
 		icon = "rbxassetid://70954901802854", -- assets/item-icons/Bread.png
-		name = "ขนมปัง", kind = "consumable", weight = 0.5, stackSize = 16,
+		name = "ขนมปัง", kind = "consumable", weight = 0.5, stackSize = 7, bagStacks = 1,
 		use = { stat = "hunger", amount = 35 },
 		useSound = "Eat",
 	},
@@ -235,20 +247,20 @@ ItemCatalog.Items = {
 	-- เบากว่าขนมปังและสแตคได้มากกว่า เพราะมันคือของที่ได้มาฟรีระหว่างทำอย่างอื่น ไม่ใช่ของที่ตั้งใจซื้อ
 	Apple = { food = true,
 		icon = "rbxassetid://74006451323045", -- แอปเปิล (ภาพจริงใน decal 71786438182204)
-		name = "แอปเปิล", kind = "consumable", weight = 0.3, stackSize = 32,
+		name = "แอปเปิล", kind = "consumable", weight = 0.3, stackSize = 99,
 		value = 5,
 		use = { stat = "hunger", amount = 18 },
 		useSound = "Eat",
 	},
 	Water = { food = true,
 		icon = "rbxassetid://128474051932298", -- assets/item-icons/Water.png
-		name = "น้ำเปล่า", kind = "consumable", weight = 1, stackSize = 16,
+		name = "น้ำเปล่า", kind = "consumable", weight = 1, stackSize = 5, bagStacks = 1,
 		use = { stat = "mana", amount = 1 },
 		useSound = "Drink",
 	},
 	HealthPotion = { medicine = true,
 		icon = "rbxassetid://70766990190847", -- assets/item-icons/HealthPotion.png
-		name = "ยาฮีล", kind = "consumable", weight = 0.8, stackSize = 5,
+		name = "ยาฮีล", kind = "consumable", weight = 0.8, stackSize = 5, bagStacks = 1,
 		use = { stat = "hp", amount = 40 },
 		useSound = "Drink",
 	},
@@ -257,7 +269,7 @@ ItemCatalog.Items = {
 	-- ไอคอนยังใช้ขวดยาฮีลไปก่อน (placeholder) เปลี่ยนเมื่อผู้ใช้อัปโหลดรูปขวดใหญ่
 	GreatPotion = { medicine = true,
 		icon = "rbxassetid://87021272690877", -- placeholder: ขวดเดียวกับยาฮีล
-		name = "ยาใหญ่", kind = "consumable", weight = 1.5, stackSize = 5, value = 0, sellable = false,
+		name = "ยาใหญ่", kind = "consumable", weight = 1.5, stackSize = 3, bagStacks = 1, value = 0, sellable = false,
 		use = { stat = "healfull" },
 		useSound = "Drink",
 	},
@@ -459,25 +471,22 @@ ItemCatalog.Items = {
 	--------------------------------------------------------------------------
 	-- ของร้านพรีเมียม (ซื้อด้วยเพชร ดู PremiumConfig) — ขายให้บาร์นาบีไม่ได้ทั้งหมด
 	--
-	-- **เครื่องมือทอง** ทำงานเหมือนตัวธรรมดาทุกอย่าง (gathers/fishing/สกิล) แต่ `unbreakable` ไม่สึก
+	-- **เครื่องมือทอง** ทำงานเหมือนตัวธรรมดาทุกอย่าง (gathers/fishing) แต่ `unbreakable` ไม่สึก
+	-- และ **ไม่มีสกิล Q เหมือนตัวธรรมดา** (ผู้ใช้สั่ง 2026-09-20) จ่ายเพชรแล้วไม่ต้องสึก ไม่ได้แปลว่าได้ท่าพิเศษ
 	-- `prefab` บอก WeaponVisuals ว่าใช้โมเดลถือของตัวไหน (ยังไม่มีโมเดลทองแยก) `tint` ย้อมเป็นทอง
 	--------------------------------------------------------------------------
 	GoldAxe = { icon = "rbxassetid://112706662089183", name = "ขวานทอง", kind = "weapon", weight = 5, -- decal 96307353249988
 		stackSize = 1, value = 0, sellable = false, damage = 14, range = 7, maxDurability = 100,
-		unbreakable = true, gathers = "axe", prefab = "Axe", tint = Color3.fromRGB(230, 190, 80),
-		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 } },
+		unbreakable = true, gathers = "axe", prefab = "Axe", tint = Color3.fromRGB(230, 190, 80) },
 	GoldPickaxe = { icon = "rbxassetid://104069293674602", name = "อีเต้อทอง", kind = "weapon", weight = 6, -- decal 109840986974799
 		stackSize = 1, value = 0, sellable = false, damage = 13, range = 7, maxDurability = 110,
-		unbreakable = true, gathers = "pickaxe", prefab = "Pickaxe", tint = Color3.fromRGB(230, 190, 80),
-		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 } },
+		unbreakable = true, gathers = "pickaxe", prefab = "Pickaxe", tint = Color3.fromRGB(230, 190, 80) },
 	GoldShovel = { icon = "rbxassetid://106548425269373", name = "พลั่วทอง", kind = "weapon", weight = 4, -- decal 100681966190887
 		stackSize = 1, value = 0, sellable = false, damage = 11, range = 7, maxDurability = 90,
-		unbreakable = true, gathers = "shovel", prefab = "Shovel", tint = Color3.fromRGB(230, 190, 80),
-		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 } },
+		unbreakable = true, gathers = "shovel", prefab = "Shovel", tint = Color3.fromRGB(230, 190, 80) },
 	GoldFishingRod = { icon = "rbxassetid://76978041372503", name = "คันเบ็ดทอง", kind = "weapon", weight = 3, -- decal 78554973201530
 		stackSize = 1, value = 0, sellable = false, damage = 3, range = 6, maxDurability = 80,
-		unbreakable = true, fishing = true, prefab = "FishingRod", tint = Color3.fromRGB(230, 190, 80),
-		skill = { id = "LungeSlash", name = "พุ่งฟัน", manaCost = 1, cooldown = 3 } },
+		unbreakable = true, fishing = true, prefab = "FishingRod", tint = Color3.fromRGB(230, 190, 80) },
 
 	-- อาหารเสริมบัพ: ซื้อจากร้านพรีเมียมหรือได้จากพาส บัพอยู่ในหน่วยความจำ (Vitals.AddBuff) ออกเกมแล้วหาย
 	--
@@ -488,15 +497,15 @@ ItemCatalog.Items = {
 	-- **ไม่มีอาหารชิ้นไหนให้ "เลือดไม่ลด" อีกแล้ว** (ผู้ใช้สั่ง 2026-09-20) — กลุ่ม `"food"` ใน
 	-- `Vitals.BuffGroups` คือทุกบัพยกเว้นเลือด · บัพใหม่ในอนาคตเติมที่นั่นแล้วอาหารได้ไปด้วยเอง
 	Feast_Hearty = { food = true, icon = "rbxassetid://90476697790239", name = "มื้อใหญ่นักเดินทาง", kind = "consumable", -- decal 135271030319763
-		weight = 0.5, stackSize = 20, value = 0, sellable = false,
+		weight = 0.5, stackSize = 7, bagStacks = 1, value = 0, sellable = false,
 		use = { stat = "meal", hunger = true, buff = "food", seconds = 3 * 60 } },
 	-- ยาชูกำลัง: ไม่ใช่อาหาร ไม่ทำให้อิ่ม — กันสองหลอดที่หมดระหว่างสู้ (มานา 💙 สตามินา 💛)
 	-- เดิมมี "เลือดไม่ลด" ด้วย ผู้ใช้สั่งเอาออก 2026-09-20 · เวลาเท่าเดิมคือหนึ่งนาที
 	Tonic_Vigor = { food = true, icon = "rbxassetid://93573276910747", name = "ยาชูกำลัง", kind = "consumable", -- decal 124890963484629
-		weight = 0.5, stackSize = 20, value = 0, sellable = false,
+		weight = 0.5, stackSize = 5, bagStacks = 1, value = 0, sellable = false,
 		use = { stat = "buff", buff = { "noMana", "noStamina" }, seconds = 60 } },
 	Feast_Royal = { food = true, icon = "rbxassetid://79094106381921", name = "งานเลี้ยงราชสำนัก", kind = "consumable", -- decal 117700288552786
-		weight = 0.8, stackSize = 20, value = 0, sellable = false,
+		weight = 0.8, stackSize = 7, bagStacks = 1, value = 0, sellable = false,
 		use = { stat = "meal", hunger = true, buff = "food", seconds = 10 * 60 } },
 
 	--------------------------------------------------------------------------
@@ -568,13 +577,13 @@ ItemCatalog.Items = {
 	-- เมนูจากครัว (คราฟที่เตา/เครื่องปั่น) `food` = เก็บในตู้เย็นได้ `use.stat = "meal"` = อิ่มทันที (+บัพ)
 	--------------------------------------------------------------------------
 	FriedRice = { icon = "rbxassetid://128491566497246", name = "ข้าวผัด", kind = "consumable", food = true,
-		weight = 0.6, stackSize = 10, value = 0, sellable = false,
+		weight = 0.6, stackSize = 7, bagStacks = 1, value = 0, sellable = false,
 		use = { stat = "meal", hunger = true } },
 	Steak = { icon = "rbxassetid://117145640008136", name = "สเต็ก", kind = "consumable", food = true,
-		weight = 0.8, stackSize = 10, value = 0, sellable = false,
+		weight = 0.8, stackSize = 7, bagStacks = 1, value = 0, sellable = false,
 		use = { stat = "meal", hunger = true, buff = "noHunger", seconds = 15 * 60 } },
 	AppleJuice = { icon = "rbxassetid://97122445855806", name = "น้ำแอปเปิล", kind = "consumable", food = true,
-		weight = 0.5, stackSize = 10, value = 0, sellable = false,
+		weight = 0.5, stackSize = 7, bagStacks = 1, value = 0, sellable = false,
 		use = { stat = "meal", mana = true, buff = "noStamina", seconds = 5 * 60 } },
 
 	-- กล่องเวทมนตร์: เปิดแล้วสุ่มของทุกอย่างที่มีในเซิร์ฟ (เรทใน PremiumConfig.MagicBox)
@@ -584,9 +593,11 @@ ItemCatalog.Items = {
 
 	-- กล่องปฐมพยาบาล: **ใครก็ใช้ได้** (ผู้ใช้สั่ง 2026-09-18 — เดิมเป็นของนักบวชเท่านั้น) ใช้แล้วพันแผลตาม
 	-- ลำดับในคู่มือภาพ (ล้างแผล → สำลี → ผ้าก๊อซ → กดห้ามเลือด → พันยึด) แล้วเลือดเต็ม
+	-- พันแผลเสร็จแล้วได้ **บัพเลือดไม่ลด 10 วินาที** ด้วย (ผู้ใช้สั่ง 2026-09-20) — ช่วงที่ลุกขึ้นมาจาก
+	-- การพันแผลกลางวงคือช่วงที่เลือดเต็มแล้วโดนซ้ำจนล้มใหม่ทันที บัพสั้นๆ ตรงนี้คือเวลาให้ถอยออกมา
 	FirstAidKit = { icon = "rbxassetid://71486682078701", name = "กล่องปฐมพยาบาล", kind = "consumable",
-		medicine = true, weight = 1.2, stackSize = 5, value = 0, sellable = false,
-		use = { stat = "firstaid", pose = "bandage", holdSeconds = 6 } },
+		medicine = true, weight = 1.2, stackSize = 1, bagStacks = 1, value = 0, sellable = false,
+		use = { stat = "firstaid", pose = "bandage", holdSeconds = 6, buff = "noHp", seconds = 10 } },
 
 	-- ออร่า (จากกาชา) ใช้ = เปิด/ปิด เอฟเฟกต์ลอยรอบตัว ไม่ถูกใช้หมด `model` = โมเดลใน ReplicatedStorage.WOLD_Effects
 	-- ถ้ามี ไม่มีก็สร้างวงอนุภาคสี `colour` ให้
@@ -731,6 +742,18 @@ function ItemCatalog.IsStorable(id)
 	-- ท้ายรถก็เก็บได้ด้วย และปลอดภัย: ท้ายรถเก็บเป็นจำนวนล้วน (`trunk[id] = n`) ไม่มีที่เก็บ meta
 	-- ซึ่งเป็นปัญหาสำหรับกุญแจที่มีทะเบียนติดมา แต่จักรยานไม่มี meta จึงไม่มีอะไรให้หาย
 	return item.kind ~= "key"
+end
+
+-- **เพดานจำนวนที่พกติดตัวได้** (ผู้ใช้สั่ง 2026-09-20) — `bagStacks` = จำนวน "กอง" ที่กระเป๋าถือได้
+-- นับรวมทั้งกระเป๋า ไม่ใช่ต่อช่อง: ยา อาหาร และเครื่องดื่มถือได้กองเดียว ส่วนที่เกิน `Inventory.AddItem`
+-- ส่งเข้าคลังของมาดามออเรเลียให้เอง · ไม่มีฟิลด์นี้ = ไม่จำกัด (แอปเปิลตั้งใจให้ไม่จำกัด)
+--
+-- ที่เป็น "กอง" ไม่ใช่ "ชิ้น" เพราะเลขที่คนเล่นเห็นคือขนาดกอง การเขียนเพดานเป็นชิ้นจะทำให้ทุกครั้งที่
+-- ขนาดกองเปลี่ยน ต้องมาไล่แก้เพดานตามทุกชิ้น แล้วสักวันจะลืม
+function ItemCatalog.BagLimit(id)
+	local item = ItemCatalog.Items[id]
+	if not item or not item.bagStacks then return nil end
+	return item.bagStacks * (item.stackSize or 1)
 end
 
 -- Weapons and armor carry durability, so they can never stack; everything else stacks by its own limit.
