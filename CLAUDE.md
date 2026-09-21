@@ -621,6 +621,10 @@ roll 90 องศาให้เสมอ เพราะแกนของ Cyli
 ตอนนี้เพราะ accessCode ไม่เคยถึงมือไคลเอนต์ — แต่ด่านที่ตัวเกาะยังต้องมี ตอนระบบชวนเพื่อนเปิด
 
 **เพลส `WOLD Farming` = 136992335889132** (universe เดียวกับเกมหลัก 10765335572) มีเกาะอยู่แล้ว จุดเกิด (0, 817, 0)
+**เปิดเพลสใน Studio: ดับเบิลคลิก `open-farming.bat` / `open-main.bat`** (หรือชอร์ตคัต `WOLD Farming (Studio)` /
+`WOLD Arture (Studio)` บนเดสก์ท็อป ไอคอนอยู่ที่ `assets/roblox-studio.ico`) — ใช้ลิงก์
+`roblox-studio:1+launchmode:edit+task:EditPlace+placeId:<id>+universeId:10765335572` ที่ตัวติดตั้ง Studio ลงทะเบียนไว้
+ไม่ต้องรู้พาธ exe ที่เปลี่ยนทุกครั้งที่อัปเดต · หน้าต่างที่ได้ชื่อ "การทำฟาร์ม WOLD - Roblox Studio"
 **เกาะลอยฟ้าเขียนแล้ว**: `mapgen/80_sky_island.lua` (เกาะเปล่าๆ ตามภาพที่ผู้ใช้ส่ง ผู้ใช้จะตกแต่งเอง) รันด้วย `--no-lib`
 ยืนได้เองไม่ใช้ lib/world-layout · กันรันผิดเพลสด้วยแอตทริบิวต์ `SkyIslandOrigin` · ภาพใน `docs/shots/island-*.png`
 ⚠️ **ตอนนี้มีพรีวิวค้างอยู่ในเพลสหลักที่ (20000, 2500, 0)** — ลบก่อน publish ด้วย `SkyIslandErase = true` แล้วรันไฟล์เดิมซ้ำ
