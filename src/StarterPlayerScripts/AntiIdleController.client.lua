@@ -1,92 +1,166 @@
 -- AntiIdleController: keeps Roblox from disconnecting a player for standing still (error 278).
 --
--- Roblox ships an idle timer of its own: about twenty minutes with no input at all and the player is
--- dropped, whatever the game thinks about it. For most games that is sensible. For a roleplay game it is
--- wrong -- sitting still IS the activity. Somebody sitting cross-legged in the tavern listening to two other
--- people talk is playing, and the server was throwing them out for it.
+-- Roblox ships an idle timer of its own: twenty minutes with no input at all and the player is dropped,
+-- whatever the game thinks about it. For most games that is sensible. For a roleplay game it is wrong --
+-- sitting still IS the activity. Somebody sitting cross-legged in the tavern listening to two other people
+-- talk is playing, and the server was throwing them out for it.
 --
--- HOW IT IS SWITCHED OFF
+--------------------------------------------------------------------------------
+-- ⚠️ สิ่งที่วัดได้จริงในเกมจริง (2026-09-21) — อ่านก่อนแก้อะไรในไฟล์นี้
+--------------------------------------------------------------------------------
 --
--- The timer cannot be configured, but it can be answered: any real input resets it, and VirtualUser can
--- supply that input on the player's behalf.
+-- ผู้ใช้เปิด F9 ในเพลสหลักแล้วเจอ:
 --
--- **สองชั้น ไม่ใช่ชั้นเดียว** (2026-09-21 — ผู้ใช้โดนเตะจริงทั้งที่ไฟล์นี้มีอยู่แล้ว)
+--   [AntiIdle] ทำงานแล้ว ... (เพลส 88774255487951)          ← ไฟล์อยู่ในบิลด์แล้ว
+--   [AntiIdle] ปลอมอินพุตไม่สำเร็จ (Idled):
+--       The current thread cannot call 'CaptureController' (lacking capability LocalUser)
 --
---   ชั้นที่ 1  `Player.Idled` — สัญญาณตรงจาก Roblox ว่ากำลังจะเตะ ของเดิมมีแค่ชั้นนี้
---   ชั้นที่ 2  นาฬิกาของเราเอง — ไม่มีอินพุตจริงเกิน `NUDGE_AFTER` วินาที ก็ปลอมให้เลย ไม่ต้องรอใครบอก
+-- **VirtualUser ทุกเมธอดเป็น LocalUserSecurity** (ตรวจกับ API reference แล้ว ทั้ง 13 ตัว รวม
+-- `Button2Down`/`SetKeyDown`/`MoveMouse` — ไม่มีตัวไหนเป็นทางอ้อม) เธรดที่ไม่มี capability `LocalUser`
+-- จึงเรียกไม่ได้สักตัว
 --
--- ที่ต้องมีชั้นที่สองเพราะ **ชั้นแรกพึ่งสัญญาณที่เราไม่ได้เป็นคนยิง** ถ้ามันไม่มา หรือมาช้ากว่าที่เซิร์ฟเวอร์
--- ตัดสินใจ ก็ไม่มีอะไรมาปลุกอีกเลย — เป็นรูปแบบเดียวกับกฎเหล็กเรื่อง StreamingEnabled ในคู่มือนี้:
--- **ลูปที่ถามใหม่เรื่อยๆ ไม่มีจังหวะให้แพ้** ส่วนตัวที่ผูกกับเหตุการณ์ครั้งเดียวมีเสมอ
+-- **ข้อที่ยังไม่รู้ และไฟล์นี้ถูกเขียนขึ้นเพื่อตอบมัน:** ข้อความบอกว่า "**เธรดปัจจุบัน**เรียกไม่ได้" ไม่ใช่
+-- "สคริปต์นี้เรียกไม่ได้" — และครั้งที่พังคือครั้งที่เรียกจาก **callback ของ `Player.Idled`** ซึ่งเป็นเธรดที่
+-- เอนจินปลุกขึ้นมา ไม่ใช่เธรดของสคริปต์เอง เป็นไปได้ว่า capability หายไปเฉพาะเธรดนั้น
 --
--- สองนาทีคือเลขที่เลือกให้ "ถี่พอจะไม่มีวันไปถึง 20 นาที แม้พลาดไปติดๆ กันหลายรอบ" โดยไม่ได้ยิงถี่จนเปลือง
+-- ไฟล์นี้จึง **ไม่เรียก VirtualUser จาก callback อีกแล้ว** ทุกการเรียกเกิดบนเธรดที่ `task.spawn` ออกมาจาก
+-- ตัวสคริปต์ตอนบูตเธรดเดียว · `Idled` เหลือหน้าที่แค่ยกธงให้ลูปนั้นมาเก็บ
+--
+-- ถ้ารอบหน้ายังเจอ `ปลอมอินพุตไม่สำเร็จ (heartbeat)` = ทั้งสคริปต์ไม่มี capability นี้ ไม่ใช่แค่เธรด
+-- **แปลว่าทางนี้ตายแล้ว ไม่มีทางอื่นในเอนจิน** เหลือแต่ป้ายเตือนข้างล่างซึ่งทำงานอยู่แล้ว
+--------------------------------------------------------------------------------
 --
 -- คลิกขวา ไม่ใช่คลิกซ้าย: คลิกซ้ายคือการกดของจริงลงบนอะไรก็ตามที่อยู่ใต้เมาส์ ซึ่งตอนยืนอยู่กลางจัตุรัส
--- อาจเป็นปุ่มร้านค้าหรือผู้เล่นคนอื่น · ตรวจแล้วว่าเกมนี้ **ไม่ได้ผูกอะไรไว้กับปุ่มขวาเลย** (ไม่มี
--- `MouseButton2` ในสคริปต์ไคลเอนต์สักไฟล์) มันจึงเป็นอินพุตที่ไม่ทำอะไรนอกจากถูกนาฬิกาของ Roblox มองเห็น
---
--- หมายเหตุ: นี่เป็นวิธีมาตรฐานที่เกมที่เผยแพร่แล้วจำนวนมากใช้กัน แต่ Roblox เขียนคู่มือ VirtualUser ไว้
--- สำหรับการทดสอบอัตโนมัติ ไม่ใช่เรื่องนี้ — ที่นี่ไม่มีการปลอมการเล่นเกม มีแต่คลิกที่ไม่ทำอะไรเลย
+-- อาจเป็นปุ่มร้านค้าหรือผู้เล่นคนอื่น · ตรวจแล้วว่าเกมนี้ไม่ได้ผูกอะไรไว้กับปุ่มขวาเลย
 --
 -- Client-side because the idle timer is: the server never sees the input that would have reset it.
 --
--- ⚠️ **ไฟล์นี้คุ้มครองเฉพาะเพลสที่มันอยู่** เพลส `WOLD Farming` (เกาะลอยฟ้า 136992335889132) ยังไม่มี
--- สคริปต์ฝั่งไคลเอนต์เลยสักไฟล์ ใครไปยืนนิ่งบนเกาะก็ยังโดนเตะอยู่ดี — ต้องก๊อบไฟล์นี้เข้าไปด้วย
+-- ⚠️ ไฟล์นี้คุ้มครองเฉพาะเพลสที่มันอยู่ เพลส `WOLD Farming` (เกาะลอยฟ้า) ยังไม่มีสคริปต์ไคลเอนต์เลย
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local VirtualUser = game:GetService("VirtualUser")
 
 local player = Players.LocalPlayer
 
--- ไม่มีอินพุตจริงนานเท่านี้ (วินาที) = ปลอมให้หนึ่งครั้ง · เพดานของ Roblox คือ 1200 วินาที
-local NUDGE_AFTER = 120
-local CHECK_EVERY = 15
-
-local LOG_FIRST = 3 -- พิมพ์การปลอมกี่ครั้งแรกลง F9 แล้วเงียบ (ดูเหตุผลที่ท้ายไฟล์)
+local KICK_AFTER = 1200 -- เพดานของ Roblox (วินาที) ไม่ใช่ของเรา ปรับไม่ได้
+local NUDGE_AFTER = 120 -- เงียบเท่านี้แล้วปลอมอินพุตหนึ่งครั้ง — พลาดติดกันเก้ารอบก็ยังไม่ถึงเพดาน
+local CHECK_EVERY = 5
+local WARN_BEFORE = 300 -- เหลือเวลาเท่านี้ก่อนถูกเตะ ถึงจะขึ้นป้าย (เฉพาะตอนปลอมไม่ได้)
+local LOG_FIRST = 3     -- พิมพ์การปลอมกี่ครั้งแรก แล้วเงียบ — สามบรรทัดพอพิสูจน์ ส่วนทุก 2 นาทีคือขยะ
 
 local lastInput = os.clock()
-local warned = false
+local idledFlag = false
+local fakeWorks = nil -- nil = ยังไม่เคยลอง · true/false = ผลครั้งล่าสุด
 local nudges = 0
+local warnedPath = {} -- เตือนทางละครั้ง ไม่ใช่ครั้งเดียวรวมทุกทาง ไม่งั้นทางที่สองจะเงียบหาย
 
+--------------------------------------------------------------------------------
+-- ป้ายเตือน: ตาข่ายรองรับสำหรับวันที่ปลอมอินพุตไม่ได้
+--
+-- ไม่ได้ช่วยคนที่ลุกไปทำอย่างอื่นจริงๆ แต่ช่วย **คนที่นั่งอ่านแชทอยู่** ซึ่งคือเคสที่ไฟล์นี้ถูกเขียนขึ้นมา
+-- เพื่อเขาตั้งแต่แรก — เขาเห็นจอ แค่ไม่ได้แตะอะไร กดปุ่มเดียวก็รอด
+--------------------------------------------------------------------------------
+local warnGui, warnLabel
+
+local function ensureWarnGui()
+	if warnGui then return end
+	warnGui = Instance.new("ScreenGui")
+	warnGui.Name = "AntiIdleWarning"
+	warnGui.ResetOnSpawn = false
+	warnGui.IgnoreGuiInset = true
+	warnGui.DisplayOrder = 900
+	warnGui.Enabled = false
+	warnGui.Parent = player:WaitForChild("PlayerGui")
+
+	local frame = Instance.new("Frame")
+	frame.AnchorPoint = Vector2.new(0.5, 0)
+	frame.Position = UDim2.new(0.5, 0, 0.06, 0)
+	frame.Size = UDim2.new(0.5, 0, 0, 56)
+	frame.BackgroundColor3 = Color3.fromRGB(28, 22, 16)
+	frame.BackgroundTransparency = 0.15
+	frame.BorderSizePixel = 0
+	frame.Parent = warnGui
+	Instance.new("UICorner").Parent = frame
+	local stroke = Instance.new("UIStroke")
+	stroke.Color = Color3.fromRGB(214, 164, 72)
+	stroke.Thickness = 2
+	stroke.Parent = frame
+
+	warnLabel = Instance.new("TextLabel")
+	warnLabel.Size = UDim2.new(1, -24, 1, 0)
+	warnLabel.Position = UDim2.new(0, 12, 0, 0)
+	warnLabel.BackgroundTransparency = 1
+	warnLabel.Font = Enum.Font.GothamMedium
+	warnLabel.TextScaled = true
+	warnLabel.TextColor3 = Color3.fromRGB(246, 226, 186)
+	warnLabel.Text = ""
+	warnLabel.Parent = frame
+end
+
+local function showWarning(secondsLeft)
+	ensureWarnGui()
+	warnLabel.Text = ("ขยับเมาส์หรือกดปุ่มอะไรก็ได้ — อีก %d นาทีระบบของ Roblox จะตัดการเชื่อมต่อเพราะอยู่นิ่ง")
+		:format(math.max(1, math.ceil(secondsLeft / 60)))
+	warnGui.Enabled = true
+end
+
+local function hideWarning()
+	if warnGui then warnGui.Enabled = false end
+end
+
+--------------------------------------------------------------------------------
+
+-- **เรียกจากเธรดของลูปเท่านั้น** อย่าเรียกจาก callback ของ event ดูเหตุผลที่หัวไฟล์
 local function nudge(reason)
 	local quietFor = os.clock() - lastInput -- วัดก่อนรีเซ็ต ไม่งั้นได้ศูนย์ทุกครั้ง
 
-	-- pcall เพราะ VirtualUser เป็นบริการที่ปฏิเสธได้ตามบริบทที่เรียก — ถ้าวันหนึ่ง Roblox ปิดทางนี้
-	-- ลูปต้องไม่ตายไปเงียบๆ พร้อมกัน ต้องมีเสียงให้เห็นใน F9 หนึ่งครั้ง
+	-- pcall เพราะ VirtualUser เป็น LocalUserSecurity ทั้งบริการ — ถ้าเรียกไม่ได้ ลูปต้องไม่ตายไปด้วย
 	local ok, err = pcall(function()
 		-- CaptureController first, or the click has no controller to come from and is ignored.
 		VirtualUser:CaptureController()
 		VirtualUser:ClickButton2(Vector2.new())
 	end)
+
+	fakeWorks = ok
 	if ok then
 		lastInput = os.clock()
+		hideWarning()
 		nudges += 1
-		-- **พิมพ์แค่สามครั้งแรก** ไม่ใช่ทุกครั้ง: สามบรรทัดพอจะพิสูจน์ว่ามันทำงานจริงในเกมที่ publish แล้ว
-		-- (ซึ่งเป็นคำถามที่ตอบไม่ได้ถ้าไม่มีอะไรพิมพ์เลย) ส่วนการพิมพ์ทุก 2 นาทีตลอดทั้งเซสชันคือขยะใน F9
-		-- ของคนเล่นจริง — 30 บรรทัดต่อชั่วโมง ต่อคน
 		if nudges <= LOG_FIRST then
 			print(("[AntiIdle] ปลอมอินพุตครั้งที่ %d (%s) — เงียบมา %d วินาที")
 				:format(nudges, reason, math.floor(quietFor)))
 		end
-	elseif not warned then
-		warned = true
-		warn(("[AntiIdle] ปลอมอินพุตไม่สำเร็จ (%s): %s — ผู้เล่นจะโดนเตะที่ 20 นาทีตามเดิม"):format(reason, tostring(err)))
+	elseif not warnedPath[reason] then
+		warnedPath[reason] = true
+		warn(("[AntiIdle] ปลอมอินพุตไม่สำเร็จ (%s): %s"):format(reason, tostring(err)))
 	end
 end
 
--- ชั้นที่ 1: สัญญาณจาก Roblox เอง
-player.Idled:Connect(function() nudge("Idled") end)
+-- อินพุตจริงทุกชนิดรีเซ็ตนาฬิกาของเรา — `InputChanged` ครอบเมาส์ขยับกับจอยแพดด้วย
+local function sawInput()
+	lastInput = os.clock()
+	hideWarning()
+end
+UserInputService.InputBegan:Connect(sawInput)
+UserInputService.InputChanged:Connect(sawInput)
 
--- อินพุตจริงทุกชนิดรีเซ็ตนาฬิกาของเรา — รวม `InputChanged` ซึ่งครอบเมาส์ขยับกับจอยแพด
-UserInputService.InputBegan:Connect(function() lastInput = os.clock() end)
-UserInputService.InputChanged:Connect(function() lastInput = os.clock() end)
+-- ชั้นที่ 1: สัญญาณจาก Roblox เอง — **ยกธงอย่างเดียว ไม่เรียก VirtualUser ตรงนี้**
+player.Idled:Connect(function() idledFlag = true end)
 
--- ชั้นที่ 2: ลูปที่ถามใหม่เรื่อยๆ
+-- ชั้นที่ 2: ลูปที่ถามใหม่เรื่อยๆ และเป็นเธรดเดียวที่ได้แตะ VirtualUser
 task.spawn(function()
 	while true do
 		task.wait(CHECK_EVERY)
-		if os.clock() - lastInput >= NUDGE_AFTER then
-			nudge("heartbeat")
+		local quiet = os.clock() - lastInput
+		local wanted = idledFlag and "Idled" or (quiet >= NUDGE_AFTER and "heartbeat" or nil)
+		idledFlag = false
+
+		if wanted then nudge(wanted) end
+
+		-- ปลอมไม่ได้ = เตือนด้วยตา · เวลาที่เหลือคิดจากนาฬิกาของเราเอง ซึ่งเริ่มนับพร้อมกับของ Roblox
+		if fakeWorks == false then
+			local left = KICK_AFTER - (os.clock() - lastInput)
+			if left <= WARN_BEFORE then showWarning(left) else hideWarning() end
 		end
 	end
 end)
