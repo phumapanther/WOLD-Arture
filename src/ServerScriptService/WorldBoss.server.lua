@@ -48,6 +48,31 @@ local function resetRound()
 end
 
 --------------------------------------------------------------------------------
+-- หลอดเลือดใต้ป้ายประกาศ (ผู้ใช้สั่ง 2026-09-21)
+--
+-- **โพล ไม่ใช่ผูกกับการโดนตี** — สองเหตุผล:
+--   1. เลือดเปลี่ยนได้โดยไม่มีใครตี (ฟื้นตัว · ตายเพราะตกเหว · ถูกเก็บตอนหมดเวลา) การอัปเดตเฉพาะ
+--      ตอนโดนตีจะค้างเลขเก่าไว้บนจอทุกกรณีเหล่านั้น
+--   2. ตอนบอสโผล่ยังไม่มีใครตีมันสักที แต่หลอดต้องขึ้นแล้ว
+--
+-- และมันคือลูปที่ถามใหม่เรื่อยๆ ตามกฎเหล็กของโปรเจ็คนี้ ไม่มีจังหวะให้แพ้
+--
+-- ครึ่งวินาทีคือ "ไวพอจะเห็นหลอดขยับตอนตีจริง" · `EventState.SetHealth` เงียบเมื่อค่าไม่เปลี่ยน
+-- ช่วงที่ไม่มีใครตีจึงไม่มีแพ็กเก็ตวิ่งเลย และเพดานจริงคือ 2 ครั้ง/วินาที ไม่ใช่ทุกครั้งที่ดาบโดน
+local POLL_SECONDS = 0.5
+
+local function watchHealth()
+	task.spawn(function()
+		while EventState.IsActive(ID) do
+			if MobAccess.EventMobHealth then
+				EventState.SetHealth(ID, MobAccess.EventMobHealth(ID))
+			end
+			task.wait(POLL_SECONDS)
+		end
+	end)
+end
+
+--------------------------------------------------------------------------------
 -- รับรายงานจากระบบมอน
 --------------------------------------------------------------------------------
 
@@ -201,6 +226,8 @@ EventState.Register(ID, {
 		Remotes.SocialNotify:FireAllClients("info",
 			("%s ตื่นแล้ว! เหลือเวลา %d นาที — รางวัลแจกตามดาเมจที่ทำได้")
 				:format(config and config.name or "บอสโลก", minutes))
+
+		watchHealth()
 	end,
 
 	stop = function()
@@ -211,6 +238,9 @@ EventState.Register(ID, {
 
 		if MobAccess.StopEventSpawners then MobAccess.StopEventSpawners(ID) end
 		resetRound()
+		-- ไม่ต้องล้างหลอดเลือดตรงนี้: `WorldEvents.stop` ลบ `EventState.Active[ID]` ทิ้งไป **ก่อน**
+		-- เรียก hook นี้ ค่าที่ค้างอยู่จึงหายไปพร้อมกันทั้งก้อน และลูปโพลเห็น `IsActive` เป็นเท็จ
+		-- แล้วหยุดเองในครึ่งวินาทีถัดไป
 	end,
 })
 

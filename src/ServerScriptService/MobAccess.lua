@@ -51,4 +51,8 @@ MobAccess.StartEventSpawners = nil
 MobAccess.StopEventSpawners = nil
 MobAccess.EventMobsAlive = nil
 
+-- ตั้งโดย Mobs.server · (eventId) → (เลือดตอนนี้, เลือดเต็ม) ของมอนอีเวนต์นั้นรวมทุกตัว
+-- `WorldBoss.server` โพลค่านี้แล้วส่งขึ้นป้ายประกาศเป็นหลอดเลือดที่ทุกคนเห็น (ผู้ใช้สั่ง 2026-09-21)
+MobAccess.EventMobHealth = nil
+
 return MobAccess

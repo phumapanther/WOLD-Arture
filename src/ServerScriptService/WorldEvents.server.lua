@@ -35,6 +35,8 @@ local function picture()
 			startedAt = entry.startedAt,
 			endsAt = entry.endsAt,
 			detail = entry.detail,
+			-- { current, maximum } ของเป้าหมายที่มีเลือด (บอสโลก) — ไม่มี = ไม่มีหลอดใต้ป้าย
+			hp = entry.hp,
 		}
 	end
 	return out

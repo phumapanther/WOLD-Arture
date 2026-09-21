@@ -23,10 +23,20 @@ local FOLDERS = { "Model_moster", "Model_mosterV2", "New_moster" }
 -- ดาบเอนไปข้างหน้าเท่านี้ (เท่าเฟส 85 ที่ผู้ใช้ไม่ได้ติ) และกางออกข้างตัวเท่านี้
 local LEAN_DEGREES = 17
 local FLARE_DEGREES = 8
--- **บอสต้องกางกว่านั้นมาก** ไหล่มันมีหนามสามซี่ยื่นออกไปถึง 2.5 studs จากแกนกลาง (วัดในเพลส) และดาบ
--- ยาว 8 studs ที่ตั้งเกือบตรงจะไต่ผ่านแนวหนามพอดี = "ดาบแทงหัวไหล่" ตามภาพ · 32° ดันปลายออกไปพ้นไหล่
-local BOSS_FLARE_DEGREES = 32
-local BOSS_LEAN_DEGREES = 20
+-- **รอบที่สี่ (2026-09-21): กางน้อยลง แต่ถอยออกจากตัวแทน**
+--
+-- 32° เคยถูกเลือกเพื่อหนีหนามบ่า แต่ **มันแก้ผิดทาง** — ถ่ายภาพจากตัวโคลนใน Workspace แล้วเห็นชัดว่า
+-- ดาบกลายเป็นเสาเฉียง 45° ที่พาดข้ามอกขึ้นไป ปลายเลยหัวไป 3.6 studs และกางพ้นตัวไปอีก 3.5
+-- **มันไม่ได้ดูเหมือน "ถือดาบ" มันดูเหมือนดาบเสียบอยู่บนไหล่**
+--
+-- วิธีที่ถูกคือ **ตั้งใบให้เกือบตรง แล้วเลื่อนทั้งเล่มออกจากลำตัว** (`BOSS_PALM_*` ข้างล่าง) ไหล่จึงพ้น
+-- ด้วยระยะห่าง ไม่ใช่ด้วยมุม · ยืนยันด้วยภาพเทียบสี่ท่าใน `docs/shots/boss-sword-*.jpg`
+local BOSS_FLARE_DEGREES = 14
+local BOSS_LEAN_DEGREES = 18
+-- บอสถือดาบห่างตัวกว่ามอนตัวอื่น เพราะการ์ดดาบมันยาว 3.74 studs (กว้างกว่าลำตัวที่ 2.20 เสียอีก)
+-- วางกลางฝ่ามือเป๊ะแล้วปลายการ์ดจะจมอยู่ในเกราะบ่าเสมอ ไม่ว่าจะเอียงใบไปทางไหน
+local BOSS_PALM_OUT = 0.6
+local BOSS_PALM_FORWARD = 0.55
 
 -- ช่องว่างระหว่างใบโล่กับแขน เท่ากับของผู้เล่น (`GRIP.Shield` = 0.75 บนแขนกว้าง 1.0 ใบหนา 0.18)
 -- ด้ามอยู่ห่างจากจุดกึ่งกลางมือไปข้างหน้าเท่านี้ (โรงงานใช้ 0.5 กับโครงกระดูก)
@@ -213,7 +223,9 @@ for _, folderName in ipairs(FOLDERS) do
 								gripPart = p
 							end
 						end
-						local palm = mount.CFrame * CFrame.new(side * PALM_OUT, -0.1, -PALM_FORWARD)
+						local palmOut = isBoss and BOSS_PALM_OUT or PALM_OUT
+						local palmForward = isBoss and BOSS_PALM_FORWARD or PALM_FORWARD
+						local palm = mount.CFrame * CFrame.new(side * palmOut, -0.1, -palmForward)
 						-- ตำแหน่งที่ต้องการของ "จุดกึ่งกลางด้าม" — ขยับทั้งพวงด้วยผลต่าง ไม่ใช่วางชิ้นเดียว
 						local gripNow = Vector3.zero
 						local n = 0

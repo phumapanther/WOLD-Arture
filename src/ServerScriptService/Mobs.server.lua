@@ -1744,6 +1744,25 @@ MobAccess.EventMobsAlive = function(id)
 	return n
 end
 
+-- เลือดรวมของมอนอีเวนต์นี้ คืน (เลือดตอนนี้, เลือดเต็ม) — บอสโลกเอาไปทำหลอดใต้ป้ายประกาศ
+--
+-- **อ่านจาก `Live` ไม่ใช่จาก `Humanoid.Health`** เลขที่ระบบใช้ตัดสินว่าตายหรือยังอยู่ในตารางนี้
+-- ส่วน Humanoid เป็นแค่ปลายทางที่ถูกเขียนตาม · และตัวที่ตายแล้วถูกลบออกจาก `Live` ทันที
+-- จึงไม่ต้องกรองซาก
+--
+-- รวมทุกตัวของอีเวนต์เดียวกัน ไม่ใช่เฉพาะตัวแรก: วันไหนอีเวนต์ปล่อยบอสสองตัว หลอดจะเป็นเลือดรวม
+-- ของทั้งสนามเองโดยไม่ต้องแก้อะไร (ตอนนี้บอสโลกมีหมุดเดียว ตัวเดียว)
+MobAccess.EventMobHealth = function(id)
+	local current, maximum = 0, 0
+	for _, state in pairs(Live) do
+		if state.eventId == id and (state.hp or 0) > 0 then
+			current += state.hp
+			maximum += state.maxHp or state.hp
+		end
+	end
+	return current, maximum
+end
+
 EventState.Register("slime", {
 	start = function()
 		-- The respawn clock is cleared rather than waited out. It was set by whatever killed the last one,
