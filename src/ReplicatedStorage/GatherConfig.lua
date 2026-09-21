@@ -226,23 +226,11 @@ GatherConfig.Nodes = {
 -- อีกชิ้นติดมือมาด้วย — ตีสายแร่ก็ได้เศษหินที่หุ้มมัน ขุดดินหาสมุนไพรก็เจอหนอนในดิน
 --------------------------------------------------------------------------------
 
--- ขุดแร่แล้วได้เศษหิน · 35% × 1-2 ก้อน
+-- **การขุดไม่มี `bonus` แล้ว มันมี `roll` แทน** (ผู้ใช้สั่งรื้อเรทใหม่ทั้งหมด 2026-09-21)
 --
--- หินเป็นวัตถุดิบคราฟที่หาง่ายอยู่แล้ว ตัวเลขนี้จึงเป็น "ของแถมที่รู้สึกได้" ไม่ใช่เหตุผลให้ไปขุดเพชร
--- เพื่อเอาหิน — คนอยากได้หินยังทุบก้อนหิน (1-3 ก้อน ทุกครั้ง 3 วิ) เร็วกว่าเสมอ
+-- ของแถม "ขุดแร่แล้วได้เศษหิน 35%" ถูกยุบเข้าไปอยู่ในตารางสุ่มข้างล่างแล้ว — ตอนนี้หินไม่ใช่ของแถม
+-- มันคือของที่ได้บ่อยที่สุด ดูหัวข้อถัดไป
 --
--- ติดให้เองทุกจุดที่ "ขุดด้วยอีเต้อและของหลักไม่ใช่หินอยู่แล้ว" แทนการไล่พิมพ์ทีละแร่ — แร่ใหม่ที่เพิ่ม
--- ทีหลังจึงได้กฎนี้ไปด้วยวันที่มันเกิด ไม่มีทางลืม (ก้อนหินธรรมดาหลุดออกไปเองเพราะของหลักมันคือหิน)
-GatherConfig.OreStoneBonus = { item = "Stone", min = 1, max = 2, chance = 0.35 }
-
-do
-	for _, node in pairs(GatherConfig.Nodes) do
-		if node.tool == "pickaxe" and node.item ~= GatherConfig.OreStoneBonus.item and node.bonus == nil then
-			node.bonus = GatherConfig.OreStoneBonus
-		end
-	end
-end
-
 -- ขุดสมุนไพรกับเกี่ยวข้าวแล้วเจอหนอน · 30% × 1-2 ตัว
 --
 -- เหยื่อตกปลาที่เดิมมีทางได้แค่ซื้อจากบาร์นาบีกับแปลงผัก ทั้งสองอย่างนี้คือการรื้อดินและรื้อกอ ซึ่งเป็นที่ที่
@@ -257,6 +245,81 @@ end
 GatherConfig.WormBonus = { item = "Worm", min = 1, max = 2, chance = 0.30 }
 GatherConfig.Nodes.Herb.bonus = GatherConfig.WormBonus
 GatherConfig.Nodes.WheatField.bonus = GatherConfig.WormBonus
+
+--------------------------------------------------------------------------------
+-- ตารางสุ่มของการขุด — `roll` (ผู้ใช้กำหนด 2026-09-21)
+--
+-- การขุดเลิกเป็น "ทุบสายแร่เหล็กแล้วได้แร่เหล็กแน่ๆ" แล้ว มันคือการทุบหินที่มีแร่ฝังอยู่ ของที่ออกมา
+-- ส่วนใหญ่จึงเป็นหิน และแร่คือสิ่งที่ "บางทีก็เจอ" — สายแร่บอกแค่ว่าตรงนั้นมีโอกาสเจออะไรมากที่สุด
+--
+--   สายแร่ทั่วไป   หิน 70% · แร่ของสายนั้นเอง 15% · ถ่านหิน 10% · แร่อื่น 5%
+--   สายถ่านหิน     หิน 50% · ถ่านหิน 45% · แร่อื่น 5%
+--   ก้อนหินธรรมดา  หิน 99% · แร่อื่น 1%
+--
+-- `roll` เป็น **ของหลัก ไม่ใช่ของแถม**: สุ่มได้อะไรก็ได้อันนั้นอย่างเดียว ต่างจาก `bonus` ที่ได้เพิ่ม
+-- (Gathering.server อ่าน `roll` ก่อน `alt` และของขุดไม่มี `alt` อยู่แล้ว)
+--
+-- ติดให้เองทุกจุดที่ `tool == "pickaxe"` ด้วยเหตุผลเดิมของของแถมเศษหิน: แร่ชนิดใหม่ที่เพิ่มทีหลังจะได้
+-- กฎนี้ไปด้วยวันที่มันเกิด ไม่ต้องมีใครจำ
+--------------------------------------------------------------------------------
+
+-- แร่ที่นับเป็น "แร่อื่นๆ" — คริสตัลอยู่ในนี้ด้วยเพราะมันขุดด้วยอีเต้อเหมือนกันและเป็นของที่ฝังอยู่ในหิน
+-- ส่วนหินกับถ่านหิน **ไม่อยู่ในลิสต์นี้** ทั้งสองมีช่องของตัวเองในทุกตารางอยู่แล้ว
+GatherConfig.Ores = { "IronOre", "SilverOre", "GoldOre", "MagicOre", "Diamond", "Crystal" }
+
+-- ได้กี่ชิ้นต่อครั้ง เท่ากับ min/max ของจุดที่ขุดแร่นั้นโดยตรง — ขุดเหล็กแล้วบังเอิญได้เพชร ก็ได้เพชร
+-- เท่าที่สายแร่เพชรให้ ไม่ใช่เท่าที่สายแร่เหล็กให้
+GatherConfig.OreYield = {
+	Stone = { min = 1, max = 3 },
+	Coal = { min = 1, max = 3 },
+	IronOre = { min = 1, max = 3 },
+	SilverOre = { min = 1, max = 3 },
+	GoldOre = { min = 1, max = 2 },
+	MagicOre = { min = 1, max = 2 },
+	Diamond = { min = 1, max = 1 },
+	Crystal = { min = 1, max = 1 },
+}
+
+do
+	local function slice(list, item, chance)
+		local yield = GatherConfig.OreYield[item] or { min = 1, max = 1 }
+		list[#list + 1] = { item = item, chance = chance, min = yield.min, max = yield.max }
+	end
+
+	-- เศษ "แร่อื่น" หารเท่าๆ กัน · `except` คือแร่ของสายนั้นเอง ซึ่งมีช่อง 15% ของตัวเองอยู่แล้ว
+	local function others(list, chance, except)
+		local pool = {}
+		for _, id in ipairs(GatherConfig.Ores) do
+			if id ~= except then pool[#pool + 1] = id end
+		end
+		for _, id in ipairs(pool) do slice(list, id, chance / #pool) end
+	end
+
+	local function tableFor(item)
+		local list = {}
+		if item == "Stone" then
+			slice(list, "Stone", 0.99)
+			others(list, 0.01)
+		elseif item == "Coal" then
+			slice(list, "Stone", 0.50)
+			slice(list, "Coal", 0.45)
+			others(list, 0.05)
+		else
+			slice(list, "Stone", 0.70)
+			slice(list, item, 0.15)
+			slice(list, "Coal", 0.10)
+			others(list, 0.05, item)
+		end
+		return list
+	end
+
+	for _, node in pairs(GatherConfig.Nodes) do
+		if node.tool == "pickaxe" then
+			node.roll = tableFor(node.item)
+			node.bonus = nil -- กันไว้: หินอยู่ในตารางหลักแล้ว ของแถมเศษหินซ้ำอีกชั้นไม่ใช่ที่สั่ง
+		end
+	end
+end
 
 --------------------------------------------------------------------------------
 -- Monsters

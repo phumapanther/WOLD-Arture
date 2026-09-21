@@ -70,16 +70,19 @@ CraftConfig.Recipes = {
 		cost = { IronOre = 7, Slime = 15, GearSpare = 10, WoodScrap = 15, Blueprint = 5, Silver = 100 } },
 	{ id = "Sword", tab = "weapon", chance = 0.50, gold = 12000,
 		cost = { IronOre = 10, Slime = 15, WoodScrap = 15, Blueprint = 2 } },
-	-- The greatsword sits between the two: a quarter of the pistol's odds-to-own, but it costs coal and
-	-- gears on top of the sword's ore, which is what makes it the thing you build after the farms are running.
+	-- **สูตรรอบ 2026-09-21 (ผู้ใช้กำหนดใหม่ทั้งสองชิ้น)** — ของสองชิ้นนี้เลิกกินสไลม์กับซิลเวอร์แล้ว
+	-- มันกินแร่แทน ซึ่งผูกม้านั่งอาวุธเข้ากับการขุดเหมืองโดยตรง: ไม่มีใครตีดาบใหญ่ได้ถ้ายังไม่เคยลงเหมือง
+	--
+	-- ดาบใหญ่ = เหล็กกับไม้เป็นหลัก (30/30) เติมทองให้คม · โล่ = แร่ครบทุกชนิดอย่างละนิด เพราะมันเป็น
+	-- แผ่นประกบหลายชั้น ไม่ใช่ก้อนเหล็กก้อนเดียว — เพชรกับแร่เวทเป็นตัวที่ทำให้โล่หายากกว่าดาบใหญ่จริงๆ
+	-- แม้โอกาสสำเร็จจะเท่ากัน
 	{ id = "Greatsword", tab = "weapon", chance = 0.25, gold = 25000,
-		cost = { GearSpare = 8, IronOre = 15, WoodScrap = 15, Coal = 15, Slime = 15, Blueprint = 5, Silver = 250 } },
+		cost = { IronOre = 30, GoldOre = 15, Blueprint = 5, Chemical = 5, Coal = 30, GearSpare = 8, WoodScrap = 30 } },
 
-	-- โล่ไอน้ำ (ผู้ใช้กำหนด 2026-09-20) — สูตรเดียวกับดาบใหญ่ **แต่ไม่มีไม้เลย** มันเป็นแผ่นเหล็กทั้งใบ
-	-- เหล็กกับถ่านหินขึ้นเป็นอย่างละ 30 (ดาบใหญ่ใช้ 15) และเพิ่มสารเคมี 8 สำหรับหน้าปัดแรงดันกับเฟืองในตัว
-	-- โอกาสสำเร็จกับค่าจ้างเท่าดาบใหญ่ เพราะมันเป็นของชั้นเดียวกัน แค่คนละบทบาท
+	-- โล่ไอน้ำ — โอกาสสำเร็จกับค่าจ้างเท่าดาบใหญ่ เพราะมันเป็นของชั้นเดียวกัน แค่คนละบทบาท
 	{ id = "Shield", tab = "weapon", chance = 0.25, gold = 25000,
-		cost = { GearSpare = 8, IronOre = 30, Coal = 30, Chemical = 8, Slime = 15, Blueprint = 5, Silver = 250 } },
+		cost = { IronOre = 15, SilverOre = 7, GoldOre = 7, MagicOre = 5, Diamond = 5, Blueprint = 5,
+			Chemical = 5, Coal = 30, GearSpare = 8 } },
 
 	-- Bullets moved off the weapon bench and in here with the everyday goods, where a near-certain 95% is
 	-- what makes ammunition something you top up rather than gamble on.
@@ -92,8 +95,22 @@ CraftConfig.Recipes = {
 	{ id = "HealthPotion", tab = "misc", chance = 0.95, gold = 500, yields = 2,
 		cost = { Crystal = 10, Herb = 15 } },
 
+	----------------------------------------------------------------------------
+	-- ชุดเกราะสามชั้น (ผู้ใช้กำหนดสูตรครบทั้งสามเมื่อ 2026-09-21)
+	--
+	-- เรียงตามค่าเกราะใน ItemCatalog: หนัง 60 · โซ่ 140 · เหล็กหนัก 260 — โอกาสสำเร็จกับค่าจ้างจึงไล่
+	-- ตามนั้นด้วย ไม่ใช่ตัวเลขสุ่ม: เกราะหนังเป็นชุดแรกที่คนเพิ่งเริ่มพอจะทำเองได้ (หนังกวาง/ม้า + เมือก
+	-- สไลม์ ล้วนเป็นของที่ได้จากการเดินเล่น) ส่วนเกราะเหล็กหนักกินแร่ทอง 30 ซึ่งต้องขุดจริงถึงจะได้
+	--
+	-- **วัสดุเป็นของผู้ใช้ทั้งหมด ส่วน `chance`/`gold` สองชุดใหม่เป็นของที่ตั้งให้ตามลำดับชั้นนี้**
+	-- อยากให้ทำง่าย/ยากกว่านี้ แก้สองเลขนี้พอ ไม่ต้องแตะวัสดุ
+	----------------------------------------------------------------------------
+	{ id = "LeatherArmor", tab = "armor", chance = 0.90, gold = 3000,
+		cost = { Leather = 30, Fiber = 15, Slime = 30, Silver = 100 } },
 	{ id = "ChainmailArmor", tab = "armor", chance = 0.75, gold = 6000,
-		cost = { IronOre = 10, Fiber = 15, Slime = 15, Silver = 50 } },
+		cost = { IronOre = 10, SilverOre = 10, Fiber = 15, Slime = 15, Silver = 50 } },
+	{ id = "PlateArmor", tab = "armor", chance = 0.60, gold = 12000,
+		cost = { IronOre = 30, GoldOre = 30, Coal = 15, Silver = 500 } },
 
 	----------------------------------------------------------------------------
 	-- The unlucky man's page.

@@ -14,6 +14,22 @@ local KitWear = {}
 
 local DECOR_HOST = "UpperTorso" -- ชิ้นตกแต่งที่ไม่ตรงกับข้อต่อ R15 ไปเกาะกับอะไร
 
+-- **หมวก/เกราะหัวใหญ่กว่าชิ้นอื่น** (ผู้ใช้สั่ง 2026-09-21)
+--
+-- ชิ้นที่สวมหัวถูกปั้นมาพอดีกับ "หัว R15 เปล่าๆ" แต่ตัวละครจริงมีผมของ Roblox (Accessory) โผล่พ้นหัว
+-- ขึ้นไปเสมอ และชุดแฟชั่นบางชุดก็มีผมติดมากับสกิน หมวกขนาดพอดีหัวจึงครอบไม่มิดทุกครั้ง ผมทะลุออกข้าง
+--
+-- ขยายรอบ **จุดกึ่งกลางหัว** ไม่ใช่ยกขึ้น: ชิ้นถูก `PivotTo` ไปที่ CFrame ของพาร์ท Head พอดี การ
+-- `ScaleTo` จึงโตออกทุกทิศเท่าๆ กันรอบจุดนั้น — บนพอจะกลืนผม ข้างพอจะกลืนหู
+--
+-- **ตัวเลขเดียวคุมทั้งเกม** ทั้งเกราะสามชุด ชุดแฟชั่นจากกาชา และชุดแคลน ล้วนผ่าน KitWear.Wear ตัวนี้
+-- อยากให้ใหญ่กว่านี้อีกแก้บรรทัดเดียว (1.0 = กลับไปเท่าชิ้นอื่น · 2.0 = เท่าตัว)
+--
+-- ที่มาของ 1.5: หัว R15 กว้าง 1.20 studs ส่วนชิ้นสวมหัวในคิททั้งห้าชุดกว้าง 1.3-1.7 คือแค่ "พอดีหัว"
+-- คูณ 1.5 ได้ราว 2.0-2.5 ซึ่งพอจะกลืนทรงผมของ Roblox ที่ยื่นพ้นหัวขึ้นไปราวหนึ่ง stud
+local HEAD_SCALE = 1.5
+local HEAD_LIMB = "Head"
+
 -- **ลูปถามใหม่ ไม่ใช่เก็บ reference ตอนบูต** เพลสนี้เปิด StreamingEnabled โฟลเดอร์กับโมเดลมาถึงคนละรอบ
 -- การเก็บไว้ตอนเริ่มอาจได้ nil แล้วเงียบไปตลอดทั้งรอบ
 --
@@ -80,8 +96,12 @@ function KitWear.Wear(character, kitName, tint, folderName)
 
 			if host and host:IsA("BasePart") then
 				local clone = piece:Clone()
-				if scale ~= 1 then
-					local ok = pcall(function() clone:ScaleTo(scale) end)
+				-- หัวได้ตัวคูณเพิ่มจาก `scale` ของทั้งชุด ไม่ใช่แทนที่ — ชุดยังต้องย่อ/ขยายตามตัวละคร
+				-- ที่โตขึ้นทุก 10 เลเวลเหมือนเดิม หมวกแค่โตกว่าชิ้นอื่นในชุดเดียวกัน
+				local pieceScale = scale
+				if not isDecor and limbName == HEAD_LIMB then pieceScale = scale * HEAD_SCALE end
+				if pieceScale ~= 1 then
+					local ok = pcall(function() clone:ScaleTo(pieceScale) end)
 					if not ok then scale = 1 end
 				end
 

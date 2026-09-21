@@ -251,8 +251,26 @@ local function gather(node, player)
 	--
 	-- `alt` มีไว้ให้แปลงผักซึ่งผู้ใช้กำหนดว่าได้ "หนอนที่เป็นเหยื่อตกปลา หรือ ผักรวม" — เป็นของคนละชิ้น
 	-- ที่ออกจากจุดเดียวกัน ไม่ใช่ของชิ้นเดียวที่จำนวนต่างกัน จึงต้องสุ่มทั้ง id และจำนวนไปด้วยกัน
+	--
+	-- `roll` (การขุด) มาก่อน `alt`: มันไม่ใช่ "ของหลักหรือของสำรอง" แต่เป็นตารางที่ครอบทุกผลลัพธ์อยู่แล้ว
+	-- ตั้งแต่หินยันเพชร ของหลัก `config.item` เหลือเป็นแค่ตัวสำรองถ้าตารางสุ่มพลาด (ดู GatherConfig.roll)
 	local itemId, minCount, maxCount = config.item, config.min, config.max
-	if config.alt and math.random() < (config.alt.chance or 0.5) then
+	if config.roll then
+		-- หารด้วยผลรวมจริง ไม่ใช่สมมติว่าเป็น 1 พอดี — ตารางถูกประกอบจากการหารเศษ ผลบวกทศนิยมจึง
+		-- อาจขาดไปเศษเสี้ยว และการสุ่มที่ตกร่องนั้นจะเงียบๆ คืนของผิดทุกครั้งที่เกิด
+		local total = 0
+		for _, entry in ipairs(config.roll) do total += entry.chance end
+		local pick = math.random() * total
+		local chosen = config.roll[#config.roll]
+		for _, entry in ipairs(config.roll) do
+			pick -= entry.chance
+			if pick <= 0 then
+				chosen = entry
+				break
+			end
+		end
+		itemId, minCount, maxCount = chosen.item, chosen.min, chosen.max
+	elseif config.alt and math.random() < (config.alt.chance or 0.5) then
 		itemId = config.alt.item
 		minCount = config.alt.min or minCount
 		maxCount = config.alt.max or maxCount
