@@ -42,10 +42,15 @@ local player = Players.LocalPlayer
 local NUDGE_AFTER = 120
 local CHECK_EVERY = 15
 
+local LOG_FIRST = 3 -- พิมพ์การปลอมกี่ครั้งแรกลง F9 แล้วเงียบ (ดูเหตุผลที่ท้ายไฟล์)
+
 local lastInput = os.clock()
 local warned = false
+local nudges = 0
 
 local function nudge(reason)
+	local quietFor = os.clock() - lastInput -- วัดก่อนรีเซ็ต ไม่งั้นได้ศูนย์ทุกครั้ง
+
 	-- pcall เพราะ VirtualUser เป็นบริการที่ปฏิเสธได้ตามบริบทที่เรียก — ถ้าวันหนึ่ง Roblox ปิดทางนี้
 	-- ลูปต้องไม่ตายไปเงียบๆ พร้อมกัน ต้องมีเสียงให้เห็นใน F9 หนึ่งครั้ง
 	local ok, err = pcall(function()
@@ -55,6 +60,14 @@ local function nudge(reason)
 	end)
 	if ok then
 		lastInput = os.clock()
+		nudges += 1
+		-- **พิมพ์แค่สามครั้งแรก** ไม่ใช่ทุกครั้ง: สามบรรทัดพอจะพิสูจน์ว่ามันทำงานจริงในเกมที่ publish แล้ว
+		-- (ซึ่งเป็นคำถามที่ตอบไม่ได้ถ้าไม่มีอะไรพิมพ์เลย) ส่วนการพิมพ์ทุก 2 นาทีตลอดทั้งเซสชันคือขยะใน F9
+		-- ของคนเล่นจริง — 30 บรรทัดต่อชั่วโมง ต่อคน
+		if nudges <= LOG_FIRST then
+			print(("[AntiIdle] ปลอมอินพุตครั้งที่ %d (%s) — เงียบมา %d วินาที")
+				:format(nudges, reason, math.floor(quietFor)))
+		end
 	elseif not warned then
 		warned = true
 		warn(("[AntiIdle] ปลอมอินพุตไม่สำเร็จ (%s): %s — ผู้เล่นจะโดนเตะที่ 20 นาทีตามเดิม"):format(reason, tostring(err)))
