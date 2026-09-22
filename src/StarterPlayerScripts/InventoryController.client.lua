@@ -204,6 +204,18 @@ gui:OnSlotClicked(function(index)
 				or "ใช้กับเกราะที่สวมอยู่"
 			table.insert(entries, { label = hint, onClick = function() end })
 		end
+	elseif item.kind == "placeable" then
+		-- ของวางบนเกาะ: ทางเดียวคือเข้าโหมดวาง (IslandBuildController เป็นเจ้าของช่องทาง หยิบตอนกด ไม่รอไว้ล่วงหน้า)
+		if workspace:GetAttribute("IslandMode") == true then
+			table.insert(entries, { label = "วางบนเกาะ", onClick = function()
+				local opener = game.ReplicatedStorage:FindFirstChild("WOLD_StartPlacing")
+				if not opener then warn("[Inventory] ไม่พบ WOLD_StartPlacing (IslandBuildController ไม่ได้รัน?)") return end
+				gui:Hide()
+				opener:Fire(index, slot.id)
+			end })
+		else
+			table.insert(entries, { label = "วางได้บนเกาะฟาร์มเท่านั้น", onClick = function() end })
+		end
 	end
 
 	-- ไม่มีปุ่ม "ให้" สำหรับของประจำตำแหน่ง (ตะหลิวเชฟ แหวนแคลน) ด้วยเหตุผลเดียวกับปุ่มทิ้งของกุญแจรถ
