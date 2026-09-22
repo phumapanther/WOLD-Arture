@@ -53,7 +53,11 @@ assert(live and #live:GetChildren() == 3, "ซื้อแล้วต้อง�
 assert(entryOf(penUid).animal == "Chicken", "จำชนิดที่เลี้ยง")
 local chick = live:GetChildren()[1]
 assert(CollectionService:HasTag(chick, "WOLD_Node") and chick:GetAttribute("NodeKind") == "Chicken", "ไก่ติดแท็ก")
-assert(chick:GetAttribute("HerdAnimal") == true, "ต้องติด HerdAnimal (เก็บแล้วหาย)")
+-- **เก็บซ้ำได้แล้ว ไม่ใช่เก็บครั้งเดียวหาย** (ผู้ใช้เลือก 2026-09-22) — `HerdAnimal` คือธงที่สั่ง
+-- Gathering ให้ลบตัวนั้นทิ้งหลังเก็บ ตอนนี้ต้องไม่มี และต้องมีคูลดาวน์ของตัวเองแทน
+assert(chick:GetAttribute("HerdAnimal") == nil, "ต้องไม่ติด HerdAnimal แล้ว (เก็บซ้ำได้)")
+assert(chick:GetAttribute("RespawnSeconds") == C.PenHarvestSeconds, "คูลดาวน์เก็บซ้ำของตัวเอง")
+assert(chick:GetAttribute("YieldMin") == C.PenYield.Chicken.min, "จำนวนที่ได้มากกว่าฝูงในแมพหลัก")
 -- ยังโตไม่พอ: ปุ่มถูกปิด
 assert(chick:GetAttribute("Spent") == true, "ตัวที่เพิ่งเกิดต้องยังเก็บไม่ได้")
 A("ZonesTick")
@@ -73,10 +77,26 @@ while not anyPrompt and os.clock() - waited < 8 do
 	if not anyPrompt then task.wait(0.5) end
 end
 assert(anyPrompt, "ปุ่มเก็บต้องเปิด (Gathering ใส่ปุ่มให้แล้ว)")
-table.insert(out, "โตแล้วปุ่มเก็บเปิด ✓ (เก็บแล้วหายเพราะ HerdAnimal)")
+table.insert(out, "โตแล้วปุ่มเก็บเปิด ✓ (เก็บซ้ำได้ มีคูลดาวน์)")
+
+-- **เก็บจริงแล้วต้องยังอยู่ แต่เก็บซ้ำทันทีไม่ได้** — หัวใจของสิ่งที่ผู้ใช้สั่งรอบนี้
+-- เรียก `Gather` ฝั่งเซิร์ฟเวอร์ตรงๆ เพราะกด E จากเครื่องมือทำไม่ได้ (ProximityPrompt จำลองไม่ได้)
+local eggBefore = A("Count", player, "Egg") or 0
+local gathered = A("Gather", player, chick)
+assert(gathered, "เก็บไข่ไม่สำเร็จ")
+assert(chick.Parent ~= nil, "เก็บแล้วสัตว์ต้องยังอยู่ ไม่ใช่หายไป")
+local gained = (A("Count", player, "Egg") or 0) - eggBefore
+assert(gained >= C.PenYield.Chicken.min and gained <= C.PenYield.Chicken.max,
+	("ได้ไข่ %d ฟอง ต้องอยู่ในช่วง %d-%d"):format(gained, C.PenYield.Chicken.min, C.PenYield.Chicken.max))
+assert(chick:GetAttribute("Spent") == true, "เก็บแล้วต้องติดคูลดาวน์")
+A("ZonesTick")
+assert(chick:GetAttribute("Spent") == true, "ZonesTick ต้องไม่ปลดคูลดาวน์ให้ (Gathering เป็นเจ้าของ)")
+A("Revoke", player, "Egg", gained) -- โปรไฟล์จริง ไม่ทิ้งของเทสไว้
+table.insert(out, ("เก็บซ้ำได้: ไข่ %d ฟอง · สัตว์ยังอยู่ · ติดคูลดาวน์ %d นาที")
+	:format(gained, C.PenHarvestSeconds / 60))
 -- ซื้อชนิดอื่นทับไม่ได้
 ok, why = A("PenBuy", player, pen, "Cow", 1); assert(not ok, "ต้องห้ามเลี้ยงสองชนิด")
--- เพดาน 5: ซื้อเกินแล้วต้องได้แค่ที่ว่าง
+-- เพดาน PenMax: ซื้อเกินแล้วต้องได้แค่ที่ว่าง
 ok = A("PenBuy", player, pen, "Chicken", 20)
 assert(#live:GetChildren() == C.PenMax, ("เพดาน %d ได้ %d"):format(C.PenMax, #live:GetChildren()))
 ok, why = A("PenBuy", player, pen, "Chicken", 1)

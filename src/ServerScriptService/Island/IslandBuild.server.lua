@@ -388,6 +388,12 @@ end
 --
 -- ⚠️ เทสที่เสกของทับกองเดิมของผู้ใช้ **ต้องส่ง count เป็นส่วนต่าง** ไม่งั้นกองที่เขามีอยู่ก่อนหายไปด้วย
 -- (เจอจริง 2026-09-22: เทสหนอนกวาดผัก 52 ชิ้นของผู้ใช้ทิ้งทั้งกอง ทั้งที่ตัวมันเองทำเกิดแค่ 45)
+-- สั่งเก็บเกี่ยวจากเทส (เทสเท่านั้น) — กด ProximityPrompt จากสคริปต์ไม่ได้ ดู GatherAccess
+IslandAccess.Gather = function(player, node)
+	local gather = require(game.ServerScriptService.GatherAccess).Gather
+	return gather and gather(player, node) or false
+end
+
 IslandAccess.Revoke = function(player, id, count)
 	local want = math.min(count or math.huge, Inventory.CountOf(player, id))
 	if want <= 0 then return 0 end

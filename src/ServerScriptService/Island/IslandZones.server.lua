@@ -84,9 +84,21 @@ local function spawnAnimal(model, kind)
 	animal:SetAttribute("NodeKind", kind)
 	-- **นาฬิกาของตัวมันเอง** ไม่ใช่ของคอก — ซื้อคนละเวลา โตคนละเวลา (ผู้ใช้สั่ง "คูลดาวน์ต่อตัว")
 	animal:SetAttribute("ReadyAt", os.time() + IslandConfig.PenGrowSeconds)
-	-- `HerdAnimal` คือธงที่ Gathering ของเกมหลักอ่านแล้ว **ลบตัวนั้นทิ้งหลังเก็บ** — ตรงกับที่ผู้ใช้สั่ง
-	-- ว่า "เก็บแล้วหายไป" พอดี จึงไม่ต้องเขียนตรรกะการลบเองเลย
-	animal:SetAttribute("HerdAnimal", true)
+
+	-- **เก็บซ้ำได้ ไม่ใช่เก็บครั้งเดียวแล้วหาย** (ผู้ใช้เลือก 2026-09-22)
+	--
+	-- เดิมติดธง `HerdAnimal` ซึ่ง Gathering อ่านแล้ว**ลบตัวนั้นทิ้ง** — วัว 1,800 เหรียญให้นมมูลค่า
+	-- 7 เหรียญแล้วจบ · ตอนนี้ปล่อยให้วงจร "เก็บแล้วรอ" ปกติของ Gathering ทำงานแทน โดยตั้งคูลดาวน์
+	-- ของตัวเองผ่าน `RespawnSeconds` (แมพหลักไม่มีแอตทริบิวต์นี้ จึงยังใช้ค่ากลางเหมือนเดิม)
+	animal:SetAttribute("RespawnSeconds", IslandConfig.PenHarvestSeconds)
+	-- ได้ของมากกว่าฝูงในแมพหลัก เพราะตัวนี้ซื้อมาด้วยเงิน
+	local yield = IslandConfig.PenYield and IslandConfig.PenYield[kind]
+	if yield then
+		animal:SetAttribute("YieldMin", yield.min)
+		animal:SetAttribute("YieldMax", yield.max)
+	end
+	-- สัตว์ที่เพิ่งถูกเก็บไม่ต้องจางเป็นผี — มันยังยืนอยู่ตรงนั้นจริงๆ แค่รีดนมซ้ำไม่ได้ชั่วคราว
+	animal:SetAttribute("NoFade", true)
 	animal:SetAttribute("Spent", true) -- ยังโตไม่พอ: ปุ่มถูกปิดไว้จนกว่า tickPen จะปลดให้
 	animal:SetAttribute("BornAt", os.time()) -- ใช้คำนวณสเกลระหว่างโต
 	pcall(function() animal:ScaleTo(IslandConfig.PenBabyScale) end) -- เกิดมาตัวเล็ก แล้วค่อยโต
@@ -185,13 +197,17 @@ local function tickPen(model, entry)
 		local span = math.max(1, readyAt - bornAt)
 		local progress = math.clamp((now - bornAt) / span, 0, 1)
 
-		if animal:GetAttribute("Spent") and readyAt <= now then
+		-- ⚠️ **ปลดล็อกได้ครั้งเดียว ตอนโตเสร็จเท่านั้น** หลังจากนั้น `Spent` เป็นของ Gathering ล้วนๆ
+		-- (มันตั้งตอนเก็บ แล้วล้างเองเมื่อครบ `RespawnSeconds`) — ถ้าตรงนี้ยังล้างให้ด้วย สัตว์ที่เพิ่ง
+		-- ถูกรีดนมจะกลับมาเก็บได้ทันทีในวินาทีถัดไป คูลดาวน์จะไม่มีความหมายเลย
+		if not animal:GetAttribute("Grown") and readyAt <= now then
+			animal:SetAttribute("Grown", true)
 			animal:SetAttribute("Spent", nil)
 			pcall(function() animal:ScaleTo(1) end) -- โตเต็มวัย
 			for _, d in ipairs(animal:GetDescendants()) do
 				if d:IsA("ProximityPrompt") then d.Enabled = true end
 			end
-		elseif animal:GetAttribute("Spent") then
+		elseif not animal:GetAttribute("Grown") then
 			-- **ค่อยๆ โตให้เห็น** เหมือนพืชในแปลง — `ScaleTo` รับสเกลสัมบูรณ์ จึงคำนวณจากความคืบหน้าตรงๆ
 			local want = IslandConfig.PenBabyScale + (1 - IslandConfig.PenBabyScale) * progress
 			pcall(function() animal:ScaleTo(want) end)
@@ -201,8 +217,17 @@ local function tickPen(model, entry)
 		local label = ANIMAL_NAMES[animal.Name] or animal.Name
 		for _, d in ipairs(animal:GetDescendants()) do
 			if d:IsA("ProximityPrompt") and d.Name == "GatherPrompt" then
-				d.ObjectText = (readyAt <= now) and (label .. " · โตแล้ว")
-					or ("%s · โตอีก %d นาที"):format(label, math.max(1, math.ceil((readyAt - now) / 60)))
+				if readyAt > now then
+					d.ObjectText = ("%s · โตอีก %d นาที"):format(label, math.max(1, math.ceil((readyAt - now) / 60)))
+				elseif animal:GetAttribute("Spent") then
+					-- เก็บไปแล้ว รอรอบหน้า · Gathering เป็นเจ้าของนาฬิกานี้ เราแค่ถามมันว่าเหลือเท่าไหร่
+					local again = animal:GetAttribute("ReadyAgainAt")
+					d.ObjectText = (again and again > now)
+						and ("%s · เก็บได้อีก %d นาที"):format(label, math.max(1, math.ceil((again - now) / 60)))
+						or (label .. " · เก็บไปแล้ว")
+				else
+					d.ObjectText = label .. " · เก็บได้"
+				end
 			end
 		end
 	end

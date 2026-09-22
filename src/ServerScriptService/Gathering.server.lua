@@ -252,6 +252,10 @@ local function gather(node, player)
 	-- จึงยังเป็น 60 วินาทีเท่าเดิมทุกจุด
 	local respawn = node:GetAttribute("RespawnSeconds") or GatherConfig.RespawnSeconds
 	SpentUntil[node] = os.clock() + respawn
+	-- ประกาศเวลาที่เก็บได้อีกครั้งไว้บนตัวโหนด เพื่อให้ระบบอื่นเขียนป้ายนับถอยหลังได้โดยไม่ต้องรู้จัก
+	-- ตาราง `SpentUntil` ที่เป็นของไฟล์นี้คนเดียว (คอกสัตว์บนเกาะใช้อยู่) · `os.time` ไม่ใช่ `os.clock`
+	-- เพราะอีกฝั่งเทียบกับนาฬิกาเดียวกับ `ReadyAt`
+	node:SetAttribute("ReadyAgainAt", os.time() + respawn)
 	setSpent(node, true)
 
 	-- สัตว์ในฝูงถูกฟาร์มแล้วหายไปเลย (ผู้ใช้กำหนด) AnimalHerds เห็นตัวหายแล้วเติมตัวใหม่ให้เองหลัง
@@ -288,6 +292,12 @@ local function gather(node, player)
 		minCount = config.alt.min or minCount
 		maxCount = config.alt.max or maxCount
 	end
+
+	-- **จำนวนต่อจุดได้** แอตทริบิวต์ `YieldMin`/`YieldMax` บนตัวโหนดชนะค่ากลาง — ทรงเดียวกับ
+	-- `RespawnSeconds` ข้างบน · สัตว์ในคอกบนเกาะใช้ตัวนี้ให้ของมากกว่าฝูงในแมพหลัก เพราะมันต้องซื้อ
+	-- ด้วยเงิน ส่วนฝูงในแมพหลักเดินไปเก็บฟรี — **แมพหลักไม่มีแอตทริบิวต์นี้ จึงไม่ถูกแตะเลย**
+	local overMin, overMax = node:GetAttribute("YieldMin"), node:GetAttribute("YieldMax")
+	if overMin and overMax then minCount, maxCount = overMin, overMax end
 
 	local count = math.random(minCount, maxCount)
 	-- The merchant's sharp eye. Doubled before the bag is asked, so a full bag refuses the whole doubled
@@ -344,6 +354,9 @@ local function gather(node, player)
 	task.delay(respawn, function()
 		if node.Parent then setSpent(node, false) end
 	end)
+	-- ทางออกอื่นทุกทาง `return` เปล่า (ยังไม่ถึงเวลา / ไม่มีเครื่องมือ / กระเป๋าเต็ม) — บอกว่า "สำเร็จ"
+	-- ให้ `GatherAccess.Gather` เอาไปใช้ได้ ปุ่มที่เรียกมาไม่ได้สนใจค่านี้อยู่แล้ว
+	return true
 end
 
 --------------------------------------------------------------------------------
@@ -443,6 +456,11 @@ end
 function publishRequirementLater(node)
 	local config = configFor(node)
 	if config then node:SetAttribute("RequiredTool", config.tool) end
+end
+
+-- ประตูให้ระบบอื่น/เทสสั่งเก็บเกี่ยวได้ — กด ProximityPrompt จากสคริปต์ไม่ได้ (ดู GatherAccess)
+require(game.ServerScriptService.GatherAccess).Gather = function(player, node)
+	return gather(node, player)
 end
 
 for _, node in ipairs(CollectionService:GetTagged(TAG)) do

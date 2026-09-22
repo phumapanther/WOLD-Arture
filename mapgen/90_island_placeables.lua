@@ -451,6 +451,15 @@ local ANIMALS = {
 for _, a in ipairs(ANIMALS) do
 	local name, body, head, len, tall, wide, extra = a[1], a[2], a[3], a[4], a[5], a[6], a[7]
 	proto("Animal_" .. name, function(m)
+		-- **โมเดลจริงจากเกมหลัก** (ผู้ใช้สั่ง 2026-09-22) — ของที่ปั้นเองข้างล่างเหลือไว้เป็นตัวสำรอง
+		-- เผื่อรันเฟสโดยไม่ใส่ `--furniture` (ซึ่งเป็นตัวที่ฝัง `animals.lua` เข้ามา)
+		local build = _G.WOLD_MAIN_MODELS and _G.WOLD_MAIN_MODELS.animals
+		local real = build and build(name)
+		if real then
+			for _, c in ipairs(real:GetChildren()) do c.Parent = m end
+			real:Destroy()
+			return
+		end
 		local legH = tall * 0.38
 		K.box(m, K.at(0, legH + tall * 0.3, 0), Vector3.new(wide, tall * 0.6, len), MAT.SmoothPlastic, body, { name = "Body" })
 		K.box(m, K.at(0, legH + tall * 0.62, -len / 2 - wide * 0.3), Vector3.new(wide * 0.8, tall * 0.5, wide * 0.7), MAT.SmoothPlastic, head, { name = "Head" })
