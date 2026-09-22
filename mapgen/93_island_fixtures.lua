@@ -88,9 +88,24 @@ end
 --------------------------------------------------------------------------------
 -- 3. กำแพงล่องหนรอบขอบ
 --------------------------------------------------------------------------------
-local oldWall = island:FindFirstChild("EdgeWall")
-if oldWall then oldWall:Destroy() end
-local wall = Instance.new("Folder"); wall.Name = "EdgeWall"; wall.Parent = island
+-- ⚠️ **ห้ามลบทั้งโฟลเดอร์** (แก้ 2026-09-22: ผู้ใช้แจ้งว่ากำแพงที่สร้างเองหายไป)
+--
+-- ของเดิม `EdgeWall:Destroy()` แล้วสร้างใหม่ ซึ่งลบ**ทุกอย่าง**ในนั้น รวมถึงกำแพงที่ผู้ใช้เพิ่มเอง
+-- หรือชิ้นที่ลากย้ายไว้ · เฟสนี้เป็นเจ้าของเฉพาะชิ้นชื่อ `Seg00`-`Seg95` ที่มันปั้นเอง — ลบเฉพาะพวกนั้น
+-- แล้วของที่ผู้ใช้วางเองรอดทุกครั้งที่รันซ้ำ (กติกาเดียวกับที่เฟส 91 ใช้กับ `Fixed`)
+local wall = island:FindFirstChild("EdgeWall")
+if not wall then
+	wall = Instance.new("Folder"); wall.Name = "EdgeWall"; wall.Parent = island
+end
+-- ⚠️ **ตัดสินจากแอตทริบิวต์ ไม่ใช่จากชื่อ** (ผู้ใช้แจ้ง 2026-09-22: เคยสร้างกำแพงชื่อ `Seg00` ไว้เอง
+-- แล้วหายไป) — ชื่อเป็นของใครก็ได้ ผู้ใช้ลอกชื่อเดิมมาตั้งเพราะมันสื่อความหมายดีอยู่แล้ว
+-- เฟสปั๊ม `PhaseBuilt = true` บนชิ้นที่มันสร้าง แล้วลบเฉพาะชิ้นที่มีตรานั้น
+--
+-- ของเก่าที่สร้างไว้ก่อนมีตรานี้จะไม่มีแอตทริบิวต์ = **รอดทั้งหมด** ซึ่งปลอดภัยกว่าเดาผิดแล้วลบงานคน
+local keptWall = 0
+for _, c in ipairs(wall:GetChildren()) do
+	if c:GetAttribute("PhaseBuilt") then c:Destroy() else keptWall += 1 end
+end
 
 -- วงรีเดียวกับเกาะ หดเข้ามา WALL_MARGIN · แต่ละชิ้นหันด้านหนาเข้าหาศูนย์กลาง และยาวพอให้ชนกับชิ้นข้างๆ
 local rx, rz = R - WALL_MARGIN, (R - WALL_MARGIN) * OVAL
@@ -115,8 +130,12 @@ for i = 0, WALL_SEGMENTS - 1 do
 	seg.Size = Vector3.new(span + 2, WALL_HEIGHT, WALL_THICK) -- +2 ให้ซ้อนกับชิ้นถัดไป ไม่มีร่องให้ลอด
 	seg.CFrame = CFrame.new(CENTER.X + mid.X, ground + WALL_HEIGHT / 2, CENTER.Z + mid.Y)
 		* CFrame.Angles(0, -math.atan2(p1.Y - p0.Y, p1.X - p0.X), 0)
+	seg:SetAttribute("PhaseBuilt", true) -- ตราของเฟส: รันซ้ำแล้วลบเฉพาะชิ้นนี้ ไม่แตะของผู้ใช้
 	seg.Parent = wall
 	built += 1
+end
+if keptWall > 0 then
+	print(("[Fixtures] คงกำแพงที่ผู้ใช้เพิ่มเองไว้ %d ชิ้น"):format(keptWall))
 end
 
 --------------------------------------------------------------------------------
@@ -125,9 +144,18 @@ end
 -- **เดินตามขอบดินจริง ไม่ใช่กรอบสี่เหลี่ยมที่พิมพ์ไว้** ผู้ใช้ระบายดินรูปไหน ขยายทีหลัง หรือย้ายไปที่อื่น
 -- รันเฟสนี้ซ้ำแล้วรั้วตามไปเอง · ช่องดิน = ช่องที่ผิวเป็นวัสดุ Ground (เหมือนที่ IslandGrid.isSoil ใช้)
 local CELL = 4
-local oldFence = island:FindFirstChild("SoilFence")
-if oldFence then oldFence:Destroy() end
-local fence = Instance.new("Folder"); fence.Name = "SoilFence"; fence.Parent = island
+-- ⚠️ เหตุผลเดียวกับ EdgeWall: ลบเฉพาะชิ้นที่เฟสนี้ปั้นเอง (`Rail` / `Post`) ของที่ผู้ใช้เพิ่มเองรอด
+local fence = island:FindFirstChild("SoilFence")
+if not fence then
+	fence = Instance.new("Folder"); fence.Name = "SoilFence"; fence.Parent = island
+end
+local keptFence = 0
+for _, c in ipairs(fence:GetChildren()) do
+	if c:GetAttribute("PhaseBuilt") then c:Destroy() else keptFence += 1 end
+end
+if keptFence > 0 then
+	print(("[Fixtures] คงรั้วที่ผู้ใช้เพิ่มเองไว้ %d ชิ้น"):format(keptFence))
+end
 
 local function soilAt(cx, cz)
 	local wx = CENTER.X + (cx + 0.5) * CELL
@@ -184,6 +212,7 @@ else
 						local rail = Instance.new("Part")
 						rail.Anchored = true
 						rail.Name = "Rail"
+						rail:SetAttribute("PhaseBuilt", true)
 						rail.Size = long
 						rail.CFrame = CFrame.new(wx, y + ry, wz)
 						rail.Material = Enum.Material.Wood
@@ -194,6 +223,7 @@ else
 					local post = Instance.new("Part")
 					post.Anchored = true
 					post.Name = "Post"
+					post:SetAttribute("PhaseBuilt", true)
 					post.Size = Vector3.new(0.4, 3.2, 0.4)
 					post.CFrame = CFrame.new(wx + (d.along == "x" and CELL / 2 or 0), y + 1.6, wz + (d.along == "z" and CELL / 2 or 0))
 					post.Material = Enum.Material.Wood
