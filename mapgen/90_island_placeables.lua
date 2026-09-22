@@ -17,9 +17,13 @@ local function status(msg, done)
 	print("[Placeables] " .. msg)
 end
 
+-- ต้นแบบที่ผู้ใช้แก้มือในโชว์รูมแล้ว adopt (เฟส 92) ติด Manual=true — รันเฟสนี้ซ้ำจะไม่ทับ (กติกาเดิมของโปรเจ็ค)
 local folder = RS:FindFirstChild("WOLD_Placeables")
-if folder then folder:Destroy() end
-folder = Instance.new("Folder"); folder.Name = "WOLD_Placeables"; folder.Parent = RS
+if not folder then folder = Instance.new("Folder"); folder.Name = "WOLD_Placeables"; folder.Parent = RS end
+local keep = {}
+for _, m in ipairs(folder:GetChildren()) do
+	if m:GetAttribute("Manual") then keep[m.Name] = true else m:Destroy() end
+end
 
 local function cells(studs) return math.max(1, math.ceil(studs / CELL - 0.05)) end
 
@@ -45,6 +49,7 @@ local function finish(m)
 end
 
 local function proto(name, fn)
+	if keep[name] then print("[Placeables] " .. name .. " แก้มือไว้ (Manual) — คงเดิม"); return end
 	local m = Instance.new("Model"); m.Name = name
 	fn(m)
 	finish(m)
@@ -111,8 +116,10 @@ end)
 -- ย่อเหลือ 0.6: ประตู 7x11 ยังเดินเข้าได้สบาย (ตัวละครสูง ~5.5) กระท่อม 59x46 = 15x12 ช่อง — ค่านี้ Claude ตั้ง จูนได้ที่เดียว
 local HOUSE_SCALE = 0.6
 for _, name in ipairs({ "House_StoneCottage", "House_Roundhouse", "House_Longhouse", "House_PipeWorker", "House_Townhouse" }) do
-	local m = K.place(name, folder, CFrame.new())
-	if m then
+	local m = not keep[name] and K.place(name, folder, CFrame.new())
+	if keep[name] then
+		print("[Placeables] " .. name .. " แก้มือไว้ (Manual) — คงเดิม")
+	elseif m then
 		m:ScaleTo(HOUSE_SCALE)
 		finish(m)
 	else
