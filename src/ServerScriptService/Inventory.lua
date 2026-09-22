@@ -128,6 +128,34 @@ function Inventory.CountOf(player, id)
 	return total
 end
 
+-- เอาของชนิดหนึ่งออกจากกระเป๋า กี่ช่องก็ได้ · **ทั้งหมดหรือไม่เอาเลย** คืน true เมื่อเอาออกครบ
+--
+-- ⚠️ **ห้ามวนด้วย `#state.slots`** ช่องเป็น sparse (ของอยู่ช่อง 2, 5, 40 ได้) และ `#` บนตารางที่มีรู
+-- คืน "ขอบ" อันไหนก็ได้ — ช่อง 1 ว่างเมื่อไหร่มันคืน 0 แล้ววนศูนย์รอบ · เคยมีสามที่ลอกลูปนี้ไปเอง
+-- (ค่าเข้าแคลน · ส่งเควส · Revoke ของเทส) ทั้งสามจึงพลาดของในกระเป๋า VIP ที่อยู่ช่อง 37+ เสมอ
+--
+-- **ตรวจให้ครบก่อนแตะสักช่อง** ของเดิมลบไปเรื่อยๆ แล้วค่อยบอกว่า "ของไม่พอ" — ผู้เล่นเสียของที่ลบไปแล้ว
+-- ฟรีโดยไม่ได้อะไรกลับ (เควสที่ส่งไม่สำเร็จกินปลาไปครึ่งกองจริงๆ)
+function Inventory.RemoveById(player, id, count)
+	local state = States[player]
+	if not state or count <= 0 then return count <= 0 end
+	if Inventory.CountOf(player, id) < count then return false end
+
+	local left = count
+	local from, to = rangeFor(id)
+	for i = to, from, -1 do -- ไล่จากท้ายมาหน้า การลบทำให้ของในช่องถัดไปไม่ขยับ
+		if left <= 0 then break end
+		local slot = state.slots[i]
+		if slot and slot.id == id then
+			local take = math.min(left, slot.count or 1)
+			Inventory.RemoveFromSlot(player, i, take)
+			left -= take
+		end
+	end
+	return left <= 0
+end
+
+
 -- ยังรับของชิ้นนี้ได้อีกกี่ชิ้นก่อนชนเพดานพกติดตัว · nil = ไม่มีเพดาน (ของส่วนใหญ่ในเกม)
 function Inventory.RoomUnderLimit(player, id)
 	local limit = ItemCatalog.BagLimit(id)

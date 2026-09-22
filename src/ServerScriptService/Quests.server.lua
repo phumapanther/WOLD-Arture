@@ -326,20 +326,8 @@ local function turnIn(player, boardId, index)
 
 	-- งานเก็บของ/ตกปลา: เอาของออกจากกระเป๋าจริงๆ
 	if countsFromBag(quest) then
-		local left = quest.need
-		local state = Inventory.Get(player)
-		if not state then return end
-		-- ไล่จากช่องท้ายมาหน้า เพราะการลบทำให้ index ขยับ
-		for i = #state.slots, 1, -1 do
-			if left <= 0 then break end
-			local slot = state.slots[i]
-			if slot and slot.id == quest.item then
-				local take = math.min(left, slot.count or 1)
-				Inventory.RemoveFromSlot(player, i, take)
-				left -= take
-			end
-		end
-		if left > 0 then
+		-- ทั้งหมดหรือไม่เอาเลย — ของเดิมลบไปก่อนแล้วค่อยบอกว่าไม่พอ ผู้เล่นเสียของฟรี
+		if not Inventory.RemoveById(player, quest.item, quest.need) then
 			return Remotes.SocialNotify:FireClient(player, "error", "ของไม่พอ")
 		end
 	end

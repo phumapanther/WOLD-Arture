@@ -179,7 +179,11 @@ local function spawnEntry(entry)
 	if harvest then
 		model:SetAttribute("NodeKind", harvest)
 		model:SetAttribute("RespawnSeconds", DECOR_RESPAWN)
-		CollectionService:AddTag(model, "WOLD_Node")
+		-- ⚠️ **ต้นไม้ที่ปลูกเองไม่ติดแท็กตรงนี้** `IslandZones.tickTree` เป็นคนติดให้ตอนมันโตเต็มที่
+		-- ติดตั้งแต่วางลง = ต้นกล้าเพิ่งปลูกก็ตัดได้ทันที แล้วระยะการโตทั้งสามขั้นก็ไม่มีความหมายเลย
+		-- (แท็กคือสิ่งเดียวที่ทำให้ `Gathering` ใส่ปุ่มให้ ส่วน NodeKind/RespawnSeconds ตั้งล่วงหน้าได้
+		-- ไม่มีใครอ่านจนกว่าจะมีแท็ก)
+		if entry.id ~= IslandConfig.TreeItem then CollectionService:AddTag(model, "WOLD_Node") end
 	end
 
 	-- ปุ่มเก็บ: F กดค้าง ครึ่งวิ กันเผลอ · E ปล่อยไว้ให้ปุ่มของแปลง (ปลูก/เก็บเกี่ยว) ในไฟล์ IslandPlots
@@ -380,18 +384,14 @@ end
 
 -- คืนของออกจากกระเป๋า (เทสเท่านั้น) — คู่กับ Grant เพื่อให้เทสเก็บกวาดตัวเองได้
 -- ไม่มีตัวนี้ เทสที่เสกของทุกรอบจะทำกระเป๋าผู้ใช้เต็มจนเก็บของคืนจากเกาะไม่ได้ (เจอจริง 2026-09-22)
-IslandAccess.Revoke = function(player, id)
-	local state = Inventory.Get(player)
-	if not state then return 0 end
-	local removed = 0
-	for i = #state.slots, 1, -1 do
-		local slot = state.slots[i]
-		if slot and slot.id == id then
-			removed += slot.count or 1
-			Inventory.RemoveFromSlot(player, i, slot.count or 1)
-		end
-	end
-	return removed
+-- `count` = เอาออกไม่เกินเท่านี้ · **nil = เอาออกทั้งหมด** (ผู้เรียกเดิมไม่ส่งมา จึงไม่เปลี่ยนพฤติกรรม)
+--
+-- ⚠️ เทสที่เสกของทับกองเดิมของผู้ใช้ **ต้องส่ง count เป็นส่วนต่าง** ไม่งั้นกองที่เขามีอยู่ก่อนหายไปด้วย
+-- (เจอจริง 2026-09-22: เทสหนอนกวาดผัก 52 ชิ้นของผู้ใช้ทิ้งทั้งกอง ทั้งที่ตัวมันเองทำเกิดแค่ 45)
+IslandAccess.Revoke = function(player, id, count)
+	local want = math.min(count or math.huge, Inventory.CountOf(player, id))
+	if want <= 0 then return 0 end
+	return Inventory.RemoveById(player, id, want) and want or 0
 end
 
 -- จัดกระเป๋า + อ่านลำดับช่อง (เทสเท่านั้น) — `require(Inventory)` ใน sandbox คืนสำเนาว่าง

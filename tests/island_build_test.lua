@@ -12,7 +12,13 @@ local t0 = os.clock()
 while not A("Data") and os.clock() - t0 < 20 do task.wait(0.2) end
 local data = assert(A("Data"), "ข้อมูลเกาะไม่โหลด")
 assert(data.starter == true, "ธงชุดเริ่มต้น")
-local slot = assert(A("FindSlot", player, "FarmPlot"), "ไม่มี FarmPlot ในกระเป๋า")
+-- เสกของที่เทสนี้ต้องใช้เอง ไม่พึ่งกระเป๋าผู้ใช้ (เขาวางไปหมดแล้วก็ได้ หรือยังไม่เคยเข้าเกาะเลย)
+-- แปลงต้องมีสองอัน: อันแรกวางลงเกาะ อันที่สองใช้ทดสอบกรณีวางไม่ได้ (ทับ/ขอบ/จุดเกิด)
+for id, want in pairs({ FarmPlot = 2, Deco_Fence = 1 }) do
+	local have = A("Count", player, id) or 0
+	if have < want then A("Grant", player, id, want - have) end
+end
+local slot = assert(A("FindSlot", player, "FarmPlot"), "เสก FarmPlot ไม่ได้")
 
 local before = #data.placed
 -- แปลงต้องอยู่บนผืนดิน (ผู้ใช้ปั้นไว้ฝั่งตะวันออก) · ช่อง (20,0) วัดแล้วเป็นดินราบ
@@ -35,7 +41,7 @@ local sx, sz = G.cellOf(sp.Position.X, sp.Position.Z)
 ok, why = A("Place", player, slot, sx, sz, 0); assert(not ok and why == "blocked", "จุดเกิด: " .. tostring(why))
 ok, why = A("Place", player, 99, 20, 20, 0); assert(not ok and why == "noitem", "ช่องว่าง: " .. tostring(why))
 
-local fence = assert(A("FindSlot", player, "Deco_Fence"), "ไม่มีรั้ว")
+local fence = assert(A("FindSlot", player, "Deco_Fence"), "เสกรั้วไม่ได้")
 local fenceCount = A("Count", player, "Deco_Fence")
 -- รั้วเป็นของตกแต่ง ห้ามอยู่บนดิน → วางฝั่งตะวันตกที่เป็นหญ้าราบ
 ok, why = A("Place", player, fence, -16, 6, 1); assert(ok, "รั้วหมุน: " .. tostring(why))

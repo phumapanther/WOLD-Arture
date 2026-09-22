@@ -12,7 +12,8 @@ local data = assert(A("Data"), "ข้อมูลเกาะไม่โหล
 local uid, placedHere
 for _, e in ipairs(data.placed) do if e.id == "FarmPlot" and not e.crop then uid = e.uid break end end
 if not uid then
-	local s = assert(A("FindSlot", player, "FarmPlot"), "ไม่มีแปลงในกระเป๋า")
+	if not A("FindSlot", player, "FarmPlot") then A("Grant", player, "FarmPlot", 1) end
+	local s = assert(A("FindSlot", player, "FarmPlot"), "เสกแปลงไม่ได้")
 	assert(A("Place", player, s, 22, 4, 0)) -- ต้องอยู่บนผืนดิน
 	data = A("Data")
 	uid = data.placed[#data.placed].uid
@@ -54,5 +55,32 @@ assert(e.crop == nil and e.at == nil, "แปลงว่างอีกคร�
 assert(not model:FindFirstChild("Crop"), "โมเดลพืชหาย")
 A("Tick")
 assert(model.Soil.PlotPrompt.ActionText == "หยอดเมล็ด", "ป้ายกลับเป็นหยอดเมล็ด")
+-- **หนอนติดมากับดิน** (ผู้ใช้สั่ง 2026-09-22) — 30% ต่อการเก็บหนึ่งครั้ง
+--
+-- เทสว่า "หาได้จริงไหม" ไม่ใช่ "เรทตรงไหม": 30 ครั้งที่ 30% พลาดหมดได้ 0.7^30 = 1 ใน 8,000
+-- (ถ้าอยากวัดเรทจริงต้องหลายพันครั้ง ซึ่งไม่คุ้มเวลาในเทสที่รันทุกรอบ)
+-- ⚠️ **คืนของทุกชิ้นที่ลูปนี้ทำให้เกิด** โปรไฟล์นี้เป็นของผู้ใช้จริง — สามสิบรอบทิ้งผักไว้สี่สิบกว่าชิ้น
+-- บวกหนอนบวกเมล็ดที่เสกมา ซึ่งพอให้กระเป๋าเต็มจนเทสรอบหน้าวางของไม่ได้ (เคยเจอมาแล้ว ค้าง 5 ชิ้น)
+local ROUNDS = 30
+local wormsBefore = A("Count", player, "Worm")
+local cropBefore = A("Count", player, cropItem)
+local seedBefore = A("Count", player, "Seed")
+local harvested = 0
+for _ = 1, ROUNDS do
+	if not A("FindSlot", player, "Seed") then A("Grant", player, "Seed", 10) end
+	if not A("Plant", player, model) then break end
+	A("SetEntry", uid, "at", os.time() - 100000)
+	if not A("Harvest", player, model) then break end
+	harvested += 1
+end
+assert(harvested == ROUNDS, ("เก็บเกี่ยวได้ %d/%d ครั้ง"):format(harvested, ROUNDS))
+local wormsGained = A("Count", player, "Worm") - wormsBefore
+assert(wormsGained > 0, ("เก็บ %d ครั้งไม่ได้หนอนเลย — โอกาสพลาดเองคือ 1 ใน 8,000"):format(ROUNDS))
+
+for _, pair in ipairs({ { "Worm", wormsBefore }, { cropItem, cropBefore }, { "Seed", seedBefore } }) do
+	local extra = A("Count", player, pair[1]) - pair[2]
+	if extra > 0 then A("Revoke", player, pair[1], extra) end
+end
+
 if placedHere then assert(A("Pickup", player, uid), "เก็บแปลงที่เทสวางคืน") end -- โปรไฟล์จริง ไม่ทิ้งของเทสไว้
-return "plots ok: " .. cropItem
+return ("plots ok: %s · หนอนจาก %d ครั้ง = %d ตัว"):format(cropItem, ROUNDS, wormsGained)

@@ -67,19 +67,7 @@ local function silverHeld(player)
 end
 
 local function takeSilver(player, amount)
-	local state = Inventory.Get(player)
-	if not state then return false end
-	local left = amount
-	for i = #state.slots, 1, -1 do
-		if left <= 0 then break end
-		local slot = state.slots[i]
-		if slot and slot.id == SILVER then
-			local take = math.min(left, slot.count or 1)
-			Inventory.RemoveFromSlot(player, i, take)
-			left -= take
-		end
-	end
-	return left <= 0
+	return Inventory.RemoveById(player, SILVER, amount)
 end
 
 --------------------------------------------------------------------------------

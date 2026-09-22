@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Inventory = require(game.ServerScriptService.Inventory)
 local IslandAccess = require(script.Parent.IslandAccess)
 local IslandConfig = require(ReplicatedStorage.IslandConfig)
+local GatherConfig = require(ReplicatedStorage.GatherConfig)
 local ItemCatalog = require(ReplicatedStorage.ItemCatalog)
 local Remotes = require(ReplicatedStorage.Remotes)
 
@@ -130,6 +131,24 @@ local function harvest(player, model)
 	if not Inventory.AddItem(player, entry.crop, amount) then return false, "full" end
 	local item = ItemCatalog.Get(entry.crop)
 	Remotes.SocialNotify:FireClient(player, "info", ("เก็บเกี่ยวได้ %s x%d"):format(item and item.name or entry.crop, amount))
+
+	-- หนอนติดมากับดิน (ผู้ใช้สั่ง 2026-09-22) — เกณฑ์เดียวกับสมุนไพร/นาข้าวในแมพหลัก
+	--
+	-- ใช้ `GatherConfig.WormBonus` ตัวเดียวกันเลย ไม่ได้ตั้งเลขใหม่ · เป็น **ของแถม** เหมือนที่นั่น
+	-- ไม่ใช่ของที่ได้ *แทน* ผัก (แปลงผักในแมพหลักใช้ `alt` ซึ่งแลกผักทิ้ง — บนเกาะผู้เล่นจ่ายค่าเมล็ด
+	-- กับรอเวลามาแล้ว การเอาผลผลิตของเขาไปทั้งกองเพื่อแจกหนอนไม่ใช่สิ่งที่สั่ง)
+	--
+	-- กระเป๋าเต็มตรงนี้ = หนอนหายเงียบๆ ไม่ขึ้นเตือนสีแดง เหมือน `Gathering` ทำกับของแถมทุกตัว
+	-- เพราะการเก็บเกี่ยวสำเร็จไปแล้ว
+	local bonus = GatherConfig.WormBonus
+	if bonus and math.random() < bonus.chance then
+		local extra = math.random(bonus.min, bonus.max)
+		if Inventory.HasRoomFor(player, bonus.item, extra) and Inventory.AddItem(player, bonus.item, extra) then
+			local worm = ItemCatalog.Get(bonus.item)
+			Remotes.SocialNotify:FireClient(player, "info",
+				("เจอ%s x%d ในดิน"):format(worm and worm.name or bonus.item, extra))
+		end
+	end
 	entry.crop, entry.at = nil, nil
 	local state = Plots[model]
 	if state then state.stage = nil end
