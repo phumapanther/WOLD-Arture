@@ -112,6 +112,171 @@ proto("Deco_PathTile", function(m)
 	K.box(m, K.at(0, 0.15, 0), Vector3.new(3.9, 0.3, 3.9), MAT.Cobblestone, C.stone)
 end)
 
+
+---------------------------------------------------------------- ของตกแต่งชิ้นเล็ก (ผู้ใช้สั่ง 2026-09-22)
+-- ก้อนหิน พุ่ม ตอไม้ โคมตั้งพื้น ป้าย บ่อน้ำ — ของเล็กๆ ที่เอาไว้ "โรย" ให้เกาะไม่ว่างเปล่า
+-- ส่วนใหญ่ 1x1 ช่อง ราคาถูกกว่าของใหญ่มาก เพราะตั้งใจให้ซื้อทีละหลายชิ้น
+
+proto("Deco_Rock", function(m)
+	-- กองหินเล็ก — เอียงคนละมุม ไม่ให้ดูเป็นลูกบาศก์วางเรียง
+	K.box(m, K.at(0, 0.75, 0) * K.yaw(0.4) * K.pitch(0.12), Vector3.new(2.6, 1.5, 2.2), MAT.Slate, C.stone)
+	K.box(m, K.at(0.9, 0.5, -0.7) * K.yaw(-0.9), Vector3.new(1.4, 1.0, 1.3), MAT.Slate, C.darkStone)
+	K.box(m, K.at(-0.8, 0.4, 0.8) * K.yaw(1.2) * K.pitch(-0.2), Vector3.new(1.1, 0.8, 1.0), MAT.Slate, C.stone)
+end)
+
+proto("Deco_RockBig", function(m)
+	-- หินก้อนใหญ่ 2x2 — เป็นจุดเด่นกลางสนาม ไม่ใช่ของโรย
+	K.box(m, K.at(0, 1.9, 0) * K.yaw(0.3) * K.pitch(0.08), Vector3.new(5.2, 3.8, 4.6), MAT.Slate, C.stone)
+	K.box(m, K.at(1.9, 0.9, 1.2) * K.yaw(-0.7), Vector3.new(2.4, 1.8, 2.2), MAT.Slate, C.darkStone)
+	K.box(m, K.at(-1.6, 0.7, -1.4) * K.yaw(1.1), Vector3.new(2.0, 1.4, 1.8), MAT.Slate, C.darkStone)
+	K.ball(m, K.at(0.4, 3.6, -0.6), 2.0, MAT.Grass, C.moss, { cancollide = false })
+end)
+
+proto("Deco_Bush", function(m)
+	K.ball(m, K.at(0, 1.3, 0), 3.0, MAT.Grass, C.moss, { cancollide = false })
+	K.ball(m, K.at(1.0, 1.0, 0.6), 2.1, MAT.Grass, C.grass, { cancollide = false })
+	K.ball(m, K.at(-0.9, 1.1, -0.7), 2.3, MAT.Grass, C.moss, { cancollide = false })
+end)
+
+proto("Deco_Stump", function(m)
+	K.cyl(m, K.at(0, 0.8, 0), 1.5, 1.6, MAT.Wood, C.wood)
+	K.cyl(m, K.at(0, 1.62, 0), 1.35, 0.12, MAT.Wood, C.oak, { cancollide = false })
+	K.box(m, K.at(1.6, 0.25, 0.9) * K.yaw(0.5), Vector3.new(2.2, 0.5, 0.5), MAT.Wood, C.wood)
+end)
+
+proto("Deco_Lantern", function(m)
+	-- โคมตั้งพื้นเตี้ย ต่างจาก Deco_Lamp ที่เป็นเสาสูง — วางตามทางเดินได้ถี่กว่า
+	K.cyl(m, K.at(0, 0.2, 0), 0.9, 0.4, MAT.Metal, C.iron)
+	K.cyl(m, K.at(0, 1.1, 0), 0.22, 1.8, MAT.Metal, C.iron)
+	local glass = K.box(m, K.at(0, 2.4, 0), Vector3.new(1.2, 1.4, 1.2), MAT.Glass, C.lamp, { transparency = 0.35 })
+	K.box(m, K.at(0, 3.25, 0), Vector3.new(1.5, 0.3, 1.5), MAT.Metal, C.brass)
+	local light = Instance.new("PointLight")
+	light.Color = C.lamp
+	light.Range = 18
+	light.Brightness = 1.4
+	light.Parent = glass
+end)
+
+proto("Deco_Signpost", function(m)
+	K.cyl(m, K.at(0, 2.0, 0), 0.22, 4.0, MAT.Wood, C.plankDark)
+	K.box(m, K.at(0.9, 3.4, 0), Vector3.new(2.6, 0.9, 0.18), MAT.Wood, C.plank)
+	K.box(m, K.at(-0.8, 2.5, 0), Vector3.new(2.2, 0.8, 0.18), MAT.Wood, C.plank)
+end)
+
+proto("Deco_Well", function(m)
+	-- บ่อน้ำ 2x2 ของตกแต่งกลางลาน ไม่ได้ใช้งานจริง
+	for i = 0, 11 do
+		local a = i * math.pi / 6
+		K.box(m, K.at(math.cos(a) * 2.0, 0.9, math.sin(a) * 2.0) * K.yaw(-a),
+			Vector3.new(0.7, 1.8, 1.1), MAT.Cobblestone, C.stone)
+	end
+	K.cyl(m, K.at(0, 0.5, 0), 1.7, 0.2, MAT.Water, C.glass, { cancollide = false, transparency = 0.3 })
+	for _, x in ipairs({ -2.0, 2.0 }) do
+		K.box(m, K.at(x, 3.2, 0), Vector3.new(0.3, 3.0, 0.3), MAT.Wood, C.plankDark)
+	end
+	K.box(m, K.at(0, 4.9, 0), Vector3.new(5.2, 0.35, 3.4), MAT.Wood, C.plank)
+	K.cyl(m, K.at(0, 4.3, 0) * K.roll(math.pi / 2), 0.28, 3.4, MAT.Wood, C.wood)
+end)
+
+---------------------------------------------------------------- เฟอร์นิเจอร์ในบ้าน (ผู้ใช้สั่ง 2026-09-22)
+--
+-- **ชื่อโมเดลคือสิ่งที่ทำให้มันใช้งานได้จริง ห้ามเปลี่ยน**
+--
+-- `CraftStations.server` กับ `StorageChests.server` หาที่ทำงานของมันจาก **ชื่อโมเดล** (ตาราง `STATIONS`
+-- และ `STORAGE`) ไม่ใช่จากแท็กหรือแอตทริบิวต์ — ต้นแบบชื่อ `Stove` จึงกลายเป็นเตาทำอาหารที่ใช้ได้จริง
+-- ทันทีที่ถูกวางลงโลก โดยไม่ต้องเขียนโค้ดเชื่อมอะไรเลย
+--
+-- ตู้เย็น/ตู้ยาต้องมี `StorageSlots`/`StorageAccepts`/`StorageClass` ติดมาด้วย — ใส่ใน builder เพราะ
+-- `IslandBuild` โคลนต้นแบบทั้งก้อน แอตทริบิวต์จึงติดไปเอง
+
+proto("Stove", function(m)
+	-- ช่องไฟต้องชื่อ FireboxHearth — CraftStations จุดไฟที่ชิ้นนั้นตอนทำอาหาร
+	K.box(m, K.at(0, 1.6, 0), Vector3.new(5.0, 3.2, 3.0), MAT.Cobblestone, C.darkStone)
+	K.box(m, K.at(0, 3.4, 0), Vector3.new(5.4, 0.4, 3.4), MAT.Metal, C.iron)
+	local hearth = K.box(m, K.at(0, 1.2, -1.4), Vector3.new(3.0, 1.8, 0.4), MAT.Metal, C.coal)
+	hearth.Name = "FireboxHearth"
+	K.cyl(m, K.at(-1.2, 4.0, 0), 0.9, 0.8, MAT.Metal, C.steel)
+	K.cyl(m, K.at(1.2, 4.0, 0), 0.7, 0.6, MAT.Metal, C.brass)
+	K.box(m, K.at(2.2, 5.6, 0), Vector3.new(0.9, 4.4, 0.9), MAT.Metal, C.iron)
+end)
+
+proto("SteamBlender", function(m)
+	K.box(m, K.at(0, 0.5, 0), Vector3.new(3.0, 1.0, 2.6), MAT.Metal, C.brassDark)
+	local jar = K.cyl(m, K.at(0, 2.4, 0), 1.1, 2.8, MAT.Glass, C.glass, { transparency = 0.45 })
+	jar.Name = "Jar"
+	K.cyl(m, K.at(0, 3.9, 0), 1.2, 0.5, MAT.Metal, C.brass)
+	K.cyl(m, K.at(1.5, 1.6, 0) * K.roll(math.pi / 2), 0.3, 1.2, MAT.Metal, C.copper)
+	K.box(m, K.at(-1.6, 1.4, 0), Vector3.new(0.5, 1.6, 0.5), MAT.Metal, C.iron)
+end)
+
+proto("AlchemyStill", function(m)
+	K.cyl(m, K.at(0, 1.4, 0), 1.6, 2.8, MAT.Metal, C.copper)
+	K.cyl(m, K.at(0, 3.1, 0), 1.0, 0.8, MAT.Metal, C.brass)
+	-- ท่อขด ให้ดูเป็นเครื่องกลั่น ไม่ใช่ถังเปล่า
+	for i = 1, 5 do
+		local a = i * 1.1
+		K.cyl(m, K.at(math.cos(a) * 1.9, 3.6 + i * 0.42, math.sin(a) * 1.9) * K.roll(math.pi / 2),
+			0.22, 1.4, MAT.Metal, C.copper, { cancollide = false })
+	end
+	K.cyl(m, K.at(1.9, 0.9, 0), 0.8, 1.6, MAT.Glass, C.crystal, { transparency = 0.4 })
+	K.box(m, K.at(0, 0.2, 0), Vector3.new(4.0, 0.4, 4.0), MAT.Slate, C.darkStone)
+end)
+
+proto("IceBox", function(m)
+	K.box(m, K.at(0, 2.2, 0), Vector3.new(3.2, 4.4, 2.4), MAT.Metal, C.white)
+	K.box(m, K.at(0, 3.3, -1.25), Vector3.new(2.8, 2.0, 0.2), MAT.Metal, C.steel)
+	K.box(m, K.at(0, 1.2, -1.25), Vector3.new(2.8, 1.8, 0.2), MAT.Metal, C.steel)
+	K.cyl(m, K.at(1.1, 3.3, -1.45) * K.roll(math.pi / 2), 0.12, 0.9, MAT.Metal, C.brass)
+	K.cyl(m, K.at(1.1, 1.2, -1.45) * K.roll(math.pi / 2), 0.12, 0.9, MAT.Metal, C.brass)
+	m:SetAttribute("StorageSlots", 25)
+	m:SetAttribute("StorageAccepts", "food")
+	m:SetAttribute("StorageClass", "Chef")
+end)
+
+proto("ApothecaryCabinet", function(m)
+	K.box(m, K.at(0, 2.4, 0), Vector3.new(3.4, 4.8, 1.8), MAT.Wood, C.plankDark)
+	for _, y in ipairs({ 1.2, 2.4, 3.6 }) do
+		K.box(m, K.at(0, y, -0.95), Vector3.new(3.0, 0.15, 0.2), MAT.Wood, C.oak, { cancollide = false })
+		for _, x in ipairs({ -0.9, 0, 0.9 }) do
+			K.cyl(m, K.at(x, y + 0.45, -0.85), 0.24, 0.8, MAT.Glass, C.crystal,
+				{ cancollide = false, transparency = 0.35 })
+		end
+	end
+	m:SetAttribute("StorageSlots", 25)
+	m:SetAttribute("StorageAccepts", "medicine")
+	m:SetAttribute("StorageClass", "Priest")
+end)
+
+---------------------------------------------------------------- ฟาร์มผิดกฎหมาย (ผู้ใช้สั่ง — ตั้งในบ้านได้)
+--
+-- ชื่อต้องตรงกับ `FarmConfig`/`IllegalFarm.server` เหมือนกัน — `DistillSet` `Reactor` `Boxs`
+-- วางแล้วเป็นจุดฟาร์มจริง (กฎของมันเองยังใช้: คูลดาวน์ 30 นาที ต้องมีคนในเซิร์ฟครบ ทหารยามฟาร์มไม่ได้)
+
+proto("DistillSet", function(m)
+	K.box(m, K.at(0, 0.3, 0), Vector3.new(4.4, 0.6, 3.2), MAT.Metal, C.iron)
+	K.cyl(m, K.at(-1.2, 2.0, 0), 1.2, 3.0, MAT.Metal, C.verdigris)
+	K.cyl(m, K.at(1.3, 1.5, 0), 0.9, 2.2, MAT.Glass, C.crystal, { transparency = 0.4 })
+	K.cyl(m, K.at(0, 3.2, 0) * K.roll(math.pi / 2), 0.2, 2.4, MAT.Metal, C.copper, { cancollide = false })
+	K.cyl(m, K.at(-1.2, 3.8, 0), 0.5, 0.8, MAT.Metal, C.brass)
+end)
+
+proto("Reactor", function(m)
+	K.cyl(m, K.at(0, 2.0, 0), 1.8, 4.0, MAT.Metal, C.steel)
+	K.cyl(m, K.at(0, 4.2, 0), 2.0, 0.5, MAT.Metal, C.brassDark)
+	K.box(m, K.at(0, 2.2, -1.9), Vector3.new(1.6, 1.6, 0.3), MAT.Glass, C.ember, { transparency = 0.3 })
+	for i = 0, 3 do
+		local a = i * math.pi / 2 + 0.4
+		K.cyl(m, K.at(math.cos(a) * 2.1, 1.0, math.sin(a) * 2.1), 0.28, 2.0, MAT.Metal, C.copper)
+	end
+	K.box(m, K.at(0, 0.25, 0), Vector3.new(4.6, 0.5, 4.6), MAT.Metal, C.iron)
+end)
+
+proto("Boxs", function(m)
+	K.crate(m, K.at(-1.0, 0, -0.8), 2.6, C.oak)
+	K.crate(m, K.at(1.2, 0, 0.9), 2.4, C.wood)
+	K.crate(m, K.at(0.2, 2.5, -0.4), 2.2, C.plankDark)
+end)
+
 ---------------------------------------------------------------- บ้าน 5 แบบจาก modelkit (K.place ใส่ Root ที่จุดกำเนิดให้ finish ย้ายไปกึ่งกลาง)
 -- modelkit ปั้นบ้านตามสเกลเมืองหลัก (ประตู 12x18 เพดาน 26) กระท่อมหินจึงกว้าง 98 studs = 25 ช่อง กินเกาะไปหนึ่งในสี่
 -- ย่อเหลือ 0.6: ประตู 7x11 ยังเดินเข้าได้สบาย (ตัวละครสูง ~5.5) กระท่อม 59x46 = 15x12 ช่อง — ค่านี้ Claude ตั้ง จูนได้ที่เดียว

@@ -9,6 +9,17 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
+
+-- ของที่ "วางแล้วใช้งานได้จริง" ไม่ใช่ของประดับเฉยๆ — ระบบเจ้าของมันหาจากชื่อโมเดล
+-- (`CraftStations.STATIONS` / `CraftStations.STORAGE` / `FarmConfig` ของ `IllegalFarm`)
+local FUNCTIONAL = {
+	Stove = true, SteamBlender = true, AlchemyStill = true,
+	IceBox = true, ApothecaryCabinet = true,
+	DistillSet = true, Reactor = true, Boxs = true,
+}
+
+-- ในนั้น สามอันนี้ต้องติดแท็ก `WOLD_Farm` เพิ่มด้วย
+local FARM_NODES = { DistillSet = true, Reactor = true, Boxs = true }
 local Inventory = require(game.ServerScriptService.Inventory)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
@@ -109,6 +120,36 @@ local function spawnEntry(entry)
 	local w, d = footprintOf(proto)
 	local model = proto:Clone()
 	model.Name = tostring(entry.uid)
+
+	-- **เฟอร์นิเจอร์ที่ใช้งานได้จริงต้องคงชื่อต้นแบบไว้ในลูก**
+	--
+	-- `CraftStations` (เตา/เครื่องปั่น/เครื่องต้มยา/ตู้เย็น/ตู้ยา) และ `IllegalFarm` หาที่ทำงานของมันจาก
+	-- **ชื่อโมเดล** แต่บรรทัดบนเพิ่งเปลี่ยนชื่อเป็น uid ไปแล้ว (ซึ่งจำเป็น ระบบเกาะอ้างของจาก uid)
+	-- → ใส่ลูกอีกชั้นที่ชื่อเดิมไว้ข้างใน ระบบพวกนั้นกวาด `GetDescendants` อยู่แล้วจึงเจอเอง
+	--
+	-- ทำเป็น Model ว่างที่ครอบของจริงไม่ได้ (จะไปยุ่งกับ PivotTo/Footprint) จึงใช้ **Model ลูกที่ชื่อถูก
+	-- แล้วย้ายชิ้นส่วนเข้าไป** — โครงข้างนอกยังเป็นตัวที่ระบบเกาะรู้จัก
+	if FUNCTIONAL[entry.id] then
+		local inner = Instance.new("Model")
+		inner.Name = entry.id
+		for _, child in ipairs(model:GetChildren()) do
+			if child ~= model.PrimaryPart then child.Parent = inner end
+		end
+		-- แอตทริบิวต์ของตู้ (StorageSlots/Accepts/Class) ต้องตามไปอยู่กับชื่อที่ระบบมองหา
+		for key, value in pairs(proto:GetAttributes()) do
+			if key:sub(1, 7) == "Storage" then inner:SetAttribute(key, value) end
+		end
+		inner.Parent = model
+		-- ฟาร์มผิดกฎหมายหาจุดจาก **แท็ก** ไม่ใช่ชื่อ (ต่างจากครัว/ตู้) — ในเกมหลักเฟส 63 เป็นคนติดให้
+		-- บนเกาะของโผล่มาตอนผู้เล่นวาง จึงต้องติดตรงนี้
+		if FARM_NODES[entry.id] then
+			-- **ต้องตั้ง `FarmKind` ก่อนติดแท็ก** `IllegalFarm.configFor` อ่านชนิดจาก**แอตทริบิวต์**
+			-- ไม่ใช่จากชื่อโมเดล (ต่างจาก CraftStations) — ติดแท็กเปล่าๆ จะได้ warn แล้วไม่มีปุ่ม
+			-- และลำดับสำคัญ: แท็กคือตัวจุดชนวน `GetInstanceAddedSignal` ซึ่งอ่านแอตทริบิวต์ทันที
+			inner:SetAttribute("FarmKind", entry.id)
+			CollectionService:AddTag(inner, "WOLD_Farm")
+		end
+	end
 	local wx, wz = IslandGrid.centreOf(entry.x, entry.z, w, d, entry.r)
 	model:PivotTo(IslandGrid.pivotFor(entry.x, entry.z, w, d, entry.r, groundAt(wx, wz)))
 	model:SetAttribute("Uid", entry.uid)
@@ -291,6 +332,22 @@ IslandAccess.Count = Inventory.CountOf
 -- ลองดูว่าวางตรงนี้ได้ไหมโดยไม่วางจริง (เทสใช้หาช่องว่าง) — nil itemId = ไม่สนใจกฎดิน
 IslandAccess.CanPlaceAt = function(cx, cz, w, d, r, itemId)
 	return (IslandGrid.canPlace(Occupied, noBuildZones(), cx, cz, w, d, r or 0, itemId))
+end
+
+-- คืนของออกจากกระเป๋า (เทสเท่านั้น) — คู่กับ Grant เพื่อให้เทสเก็บกวาดตัวเองได้
+-- ไม่มีตัวนี้ เทสที่เสกของทุกรอบจะทำกระเป๋าผู้ใช้เต็มจนเก็บของคืนจากเกาะไม่ได้ (เจอจริง 2026-09-22)
+IslandAccess.Revoke = function(player, id)
+	local state = Inventory.Get(player)
+	if not state then return 0 end
+	local removed = 0
+	for i = #state.slots, 1, -1 do
+		local slot = state.slots[i]
+		if slot and slot.id == id then
+			removed += slot.count or 1
+			Inventory.RemoveFromSlot(player, i, slot.count or 1)
+		end
+	end
+	return removed
 end
 
 IslandAccess.Grant = function(player, id, count)

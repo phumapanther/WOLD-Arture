@@ -42,6 +42,28 @@ ShopConfig.IslandSells = {
 	{ id = "Deco_Bench", price = 350 },
 	{ id = "Deco_Lamp", price = 400 },
 	{ id = "Deco_Tree", price = 600 },
+
+	-- ของตกแต่งชิ้นเล็ก (ผู้ใช้สั่ง 2026-09-22) — ถูกกว่าของใหญ่มาก ตั้งใจให้ซื้อทีละหลายชิ้นมาโรย
+	{ id = "Deco_Rock", price = 40 },
+	{ id = "Deco_Bush", price = 60 },
+	{ id = "Deco_Stump", price = 60 },
+	{ id = "Deco_Lantern", price = 220 },
+	{ id = "Deco_Signpost", price = 180 },
+	{ id = "Deco_RockBig", price = 250 },
+	{ id = "Deco_Well", price = 1200 },
+
+	-- เฟอร์นิเจอร์ในบ้าน ใช้งานได้จริง — แพงกว่าของตกแต่งเพราะมันคือเครื่องมือ ไม่ใช่ของประดับ
+	{ id = "IceBox", price = 4000 },
+	{ id = "ApothecaryCabinet", price = 4000 },
+	{ id = "Stove", price = 6000 },
+	{ id = "SteamBlender", price = 7000 },
+	{ id = "AlchemyStill", price = 7000 },
+
+	-- ฟาร์มผิดกฎหมาย — แพงที่สุดในหมวดของใช้ เพราะมันพิมพ์เงินได้ (คูลดาวน์ 30 นาที/จุด)
+	{ id = "Boxs", price = 15000 },
+	{ id = "DistillSet", price = 18000 },
+	{ id = "Reactor", price = 18000 },
+
 	{ id = "AnimalPen", price = 3500 },
 	{ id = "MineZone", price = 5000 },
 	{ id = "House_StoneCottage", price = 20000 },

@@ -173,6 +173,13 @@ end
 
 -- ฝั่งเซิร์ฟเวอร์มีทุกอย่างตั้งแต่บูต (StreamingEnabled เป็นเรื่องของไคลเอนต์) กวาด 380,000 ชิ้นจึงทำ
 -- ครั้งแรกแล้วนานๆ ครั้ง ไม่ใช่ทุกครึ่งวิ
+--
+-- **ยกเว้นบนเกาะฟาร์มมิ่ง** ที่นั่นเตา/ตู้เย็น/ตู้ยาเป็นของที่ผู้เล่น **ซื้อมาวางเอง** ไม่ใช่ของที่ยืนอยู่
+-- ตั้งแต่เซิร์ฟบูต — รอ 60 วินาทีหลังวางเตาถึงจะกดได้ อ่านเหมือนของพัง (เจอจริงตอนเทส 2026-09-22)
+-- และเกาะเล็กกว่าแมพหลักหลายสิบเท่า (ไม่กี่พันชิ้น) กวาดถี่ๆ จึงถูกมาก
+local ServerConfig = require(game.ServerScriptService.ServerConfig)
+local SWEEP_SECONDS = ServerConfig.IsFarm and 1 or 60
+
 task.spawn(function()
 	while true do
 		for _, d in ipairs(workspace:GetDescendants()) do
@@ -183,6 +190,6 @@ task.spawn(function()
 				if store then wireStorage(d, store) end
 			end
 		end
-		task.wait(60)
+		task.wait(SWEEP_SECONDS)
 	end
 end)

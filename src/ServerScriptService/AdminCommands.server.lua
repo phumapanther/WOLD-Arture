@@ -31,6 +31,7 @@ local EventState = require(game.ServerScriptService.EventState)
 local TownAccess = require(game.ServerScriptService.TownAccess)
 local ClanAccess = require(game.ServerScriptService.ClanAccess)
 local Vip = require(game.ServerScriptService.Vip)
+local PremiumConfig = require(game.ReplicatedStorage.PremiumConfig)
 local MobAccess = require(game.ServerScriptService.MobAccess)
 local GatherConfig = require(game.ReplicatedStorage.GatherConfig)
 local EventConfig = require(game.ReplicatedStorage.EventConfig)
@@ -221,6 +222,45 @@ Commands.vip = function(admin, args)
 	Remotes.PremiumUpdate:FireClient(target, { vipLeft = Vip.SecondsLeft(target) })
 	reply(admin, ("VIP %s%d วัน -> %s (เหลือ %d วัน)"):format(days >= 0 and "+" or "", math.floor(days),
 		target.Name, left))
+end
+
+-- /givevip [คน] -- แจก VIP 30 วัน · **คนที่มีอยู่แล้วไม่ได้เพิ่ม** (ผู้ใช้สั่ง 2026-09-22)
+--
+-- ต่างจาก `/vip <วัน>` ซึ่งทบเวลาเสมอ (ไว้เทส) — ตัวนี้ไว้ **แจกจริง** เช่นแจกในไลฟ์หรือแจกรางวัล
+-- ถ้าแจกซ้ำคนเดิมโดยทบเวลาไปเรื่อยๆ คนที่กดรับหลายรอบจะได้ VIP ยาวกว่าคนอื่นโดยไม่ตั้งใจ
+--
+-- แจกทีละหลายคนได้ด้วย `/givevip all` — กันเคสแจกทั้งเซิร์ฟตอนไลฟ์แล้วต้องพิมพ์ทีละชื่อ
+Commands.givevip = function(admin, args)
+	local days = PremiumConfig.Vip and PremiumConfig.Vip.days or 30
+	local targets = {}
+	if args[1] == "all" or args[1] == "ทุกคน" then
+		for _, p in ipairs(Players:GetPlayers()) do targets[#targets + 1] = p end
+	else
+		local one = resolveTarget(admin, args[1])
+		if not one then return end
+		targets[1] = one
+	end
+
+	local given, skipped = {}, {}
+	for _, target in ipairs(targets) do
+		-- **ด่านนี้คือทั้งหมดของคำสั่ง**: มีอยู่แล้วไม่แตะเลย ไม่ใช่ทบให้สั้นลง
+		if Vip.Has(target) then
+			skipped[#skipped + 1] = ("%s (เหลือ %d วัน)")
+				:format(target.Name, math.floor(Vip.SecondsLeft(target) / 86400 + 0.5))
+		elseif Vip.Grant(target, days) then
+			given[#given + 1] = target.Name
+			Remotes.PremiumUpdate:FireClient(target, { vipLeft = Vip.SecondsLeft(target) })
+			Remotes.SocialNotify:FireClient(target, "info",
+				("ได้รับ VIP %d วัน — เปิดโหมดฟาร์มมิ่งได้แล้ว"):format(days))
+		else
+			skipped[#skipped + 1] = target.Name .. " (โปรไฟล์ยังไม่พร้อม)"
+		end
+	end
+
+	local parts = {}
+	if #given > 0 then parts[#parts + 1] = ("แจก VIP %d วัน -> %s"):format(days, table.concat(given, ", ")) end
+	if #skipped > 0 then parts[#parts + 1] = ("ข้าม (มี VIP อยู่แล้ว): %s"):format(table.concat(skipped, ", ")) end
+	reply(admin, #parts > 0 and table.concat(parts, " · ") or "ไม่มีใครให้แจก")
 end
 
 -- /passxp <amount> [player] -- เติม XP แบทเทิลพาสตรงๆ ไว้เทสรับของ

@@ -629,6 +629,31 @@ ItemCatalog.Items = {
 	Deco_Crate = { icon = "", name = "ลังไม้", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false },
 	Deco_Barrel = { icon = "", name = "ถังไม้", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false },
 	Deco_PathTile = { icon = "", name = "แผ่นทางเดินหิน", kind = "placeable", weight = 0.5, stackSize = 50, value = 0, sellable = false },
+
+	-- ของตกแต่งชิ้นเล็ก (ผู้ใช้สั่ง 2026-09-22) — สแตคเยอะ ราคาถูก ตั้งใจให้ซื้อทีละหลายชิ้นมาโรย
+	--
+	-- **`spot` บอกว่าเหมาะกับที่ไหน** ("out" นอกบ้าน · "in" ในบ้าน · "both" ได้ทั้งคู่) ร้านเอาไปโชว์เป็นป้าย
+	-- กำกับเฉยๆ **ไม่ได้บังคับ** — ระบบวางของตัดสินจากพื้นที่จริง ไม่ได้รู้ว่าตรงไหนคือ "ในบ้าน"
+	-- และการห้ามวางเก้าอี้กลางแจ้งก็ไม่ใช่กฎที่ผู้เล่นจะขอบคุณ
+	Deco_Rock = { icon = "", name = "ก้อนหิน", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false, spot = "out" },
+	Deco_RockBig = { icon = "", name = "หินก้อนใหญ่", kind = "placeable", weight = 2, stackSize = 10, value = 0, sellable = false, spot = "out" },
+	Deco_Bush = { icon = "", name = "พุ่มไม้", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false, spot = "out" },
+	Deco_Stump = { icon = "", name = "ตอไม้", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false, spot = "out" },
+	Deco_Lantern = { icon = "", name = "โคมตั้งพื้น", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false, spot = "both" },
+	Deco_Signpost = { icon = "", name = "ป้ายบอกทาง", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false, spot = "out" },
+	Deco_Well = { icon = "", name = "บ่อน้ำ", kind = "placeable", weight = 2, stackSize = 3, value = 0, sellable = false, spot = "out" },
+
+	-- เฟอร์นิเจอร์ในบ้าน — **ใช้งานได้จริง** ชื่อโมเดลตรงกับที่ CraftStations/StorageChests มองหา
+	Stove = { icon = "", name = "เตาทำอาหาร", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
+	SteamBlender = { icon = "", name = "เครื่องปั่นไอน้ำ", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
+	AlchemyStill = { icon = "", name = "เครื่องต้มยา", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
+	IceBox = { icon = "", name = "ตู้เย็น", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
+	ApothecaryCabinet = { icon = "", name = "ตู้ยา", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
+
+	-- ฟาร์มผิดกฎหมาย — วางในบ้านแล้วเป็นจุดฟาร์มจริง (กฎของ IllegalFarm ยังใช้ครบ)
+	DistillSet = { icon = "", name = "ชุดกลั่น", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
+	Reactor = { icon = "", name = "เตาปฏิกรณ์", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
+	Boxs = { icon = "", name = "กองลังของเถื่อน", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
 	House_StoneCottage = { icon = "", name = "กระท่อมหิน", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false },
 	House_Roundhouse = { icon = "", name = "บ้านทรงกลม", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false },
 	House_Longhouse = { icon = "", name = "บ้านยาว", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false },

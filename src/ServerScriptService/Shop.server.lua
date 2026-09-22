@@ -141,12 +141,20 @@ end
 -- player's own bag would fetch. Sent whole rather than asked for piecemeal, so the window cannot show a
 -- half-updated mixture of old and new prices.
 local function snapshot(player)
+	-- ป้ายบอกว่าของชิ้นนี้เหมาะตั้งในบ้านหรือนอกบ้าน (ItemCatalog.spot)
+	--
+	-- **เป็นคำแนะนำ ไม่ใช่กฎ** ระบบวางของไม่รู้ว่าตรงไหนคือ "ในบ้าน" (บ้านเป็นโมเดลที่ผู้เล่นวางเอง
+	-- ไม่มีห้องที่เกมรู้จัก) และการห้ามวางเก้าอี้กลางแจ้งก็ไม่ใช่กฎที่ผู้เล่นจะขอบคุณ —
+	-- สิ่งที่ช่วยได้จริงคือบอกว่าของชิ้นนี้ตั้งใจทำมาเพื่ออะไร แล้วปล่อยให้เขาตัดสินใจเอง
+	local SPOT_TAG = { ["in"] = " (ในบ้าน)", out = " (นอกบ้าน)", both = "" }
+
 	local sells = {}
 	for index, entry in ipairs(SELLS) do
 		local item = ItemCatalog.Get(entry.id)
 		if item then
 			table.insert(sells, {
-				index = index, id = entry.id, name = item.name,
+				index = index, id = entry.id,
+				name = item.name .. (SPOT_TAG[item.spot] or ""),
 				icon = item.icon, price = entry.price,
 			})
 		end

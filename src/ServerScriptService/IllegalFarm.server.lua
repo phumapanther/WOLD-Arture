@@ -20,6 +20,7 @@ local CollectionService = game:GetService("CollectionService")
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
+local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 
 if ServerConfig.IsLobby then return end
 
@@ -192,7 +193,17 @@ end
 --
 -- Counted fresh on every press rather than cached: both halves of it change while a node sits there, and a
 -- cached answer would either lock a spot that has filled up or open one that has emptied out.
+--
+-- **บนเกาะฟาร์มมิ่งใช้กฎคนละชุด** (ผู้ใช้กำหนด 2026-09-22): ทำคนเดียวได้เลย ไม่ต้องรอให้ครบ 5 คน
+-- แต่ **จุดละครั้งเดียวต่อวัน** แทนคูลดาวน์ 30 นาที
+--
+-- เหตุผลที่กฎเดิมใช้ที่นั่นไม่ได้: เกาะเป็นเซิร์ฟส่วนตัวรายคน หัวนับจึงเป็น 1 เสมอ และไม่มีทหารยามมาเดินเล่น
+-- ในเกาะของคนอื่นได้ — ซื้อของ 18,000 มาวางแล้วกดไม่ได้ตลอดกาล
+--
+-- ที่เลือก "วันละครั้ง" ไม่ใช่ "คูลดาวน์ 30 นาที" เพราะ 30 นาทีบนเซิร์ฟที่ไม่มีใครมาจับ = เครื่องพิมพ์เงิน
+-- ที่เดินทั้งวัน · วันละครั้งยังคุ้มกับการซื้อ แต่ไม่ล้มเศรษฐกิจของเกมหลักที่ของพวกนี้ไหลไปรวมกัน
 local function serverAllowsFarming()
+	if ServerConfig.IsFarm then return true end
 	if #Players:GetPlayers() >= FarmConfig.MinPlayers then return true end
 	if FarmConfig.OrClass then
 		for _, other in ipairs(Players:GetPlayers()) do
@@ -200,6 +211,31 @@ local function serverAllowsFarming()
 		end
 	end
 	return false
+end
+
+-- บนเกาะ: จุดนี้ทำไปแล้ววันนี้หรือยัง
+--
+-- **เก็บในโปรไฟล์ ไม่ใช่ในหน่วยความจำเซิร์ฟเวอร์** เกาะส่วนตัวปิดทุกครั้งที่เจ้าของออก ถ้าเก็บใน
+-- หน่วยความจำ ออกแล้วเข้าใหม่ = รีเซ็ตทันที ซึ่งเท่ากับไม่มีลิมิตเลย
+--
+-- ใช้ `QuestConfig.DayNumber()` ตัวเดียวกับบอร์ดเควส — **ห้ามคำนวณวันเองที่อื่น** (กติกาเดิมของโปรเจ็ค)
+-- วันพลิกเที่ยงคืนไทยพร้อมกันทั้งเกม
+local QuestConfig = require(game.ReplicatedStorage.QuestConfig)
+
+local function islandDoneToday(player, node, mark)
+	local data = ProfileAccess.Get(player)
+	if not data then return false end
+	local day = QuestConfig.DayNumber()
+	local done = data.FarmDone
+	if type(done) ~= "table" or done.day ~= day then
+		done = { day = day, keys = {} }
+		data.FarmDone = done
+	end
+	done.keys = done.keys or {}
+	-- กุญแจ = ชนิดของจุด ไม่ใช่ตัวโมเดล — ย้ายของหรือเก็บแล้ววางใหม่ต้องไม่รีเซ็ตสิทธิ์
+	local key = node.Name
+	if mark then done.keys[key] = true end
+	return done.keys[key] == true
 end
 
 local function work(node, player)
@@ -218,6 +254,11 @@ local function work(node, player)
 		return Remotes.SocialNotify:FireClient(player, "error",
 			FarmConfig.ClosedMessage:format(FarmConfig.MinPlayers))
 	end
+	-- บนเกาะ: วันละครั้งต่อชนิด (แทนคูลดาวน์ 30 นาทีของเกมหลัก)
+	if ServerConfig.IsFarm and islandDoneToday(player, node, false) then
+		return Remotes.SocialNotify:FireClient(player, "error",
+			"วันนี้ใช้ไปแล้ว — บนเกาะทำได้วันละครั้งต่อจุด")
+	end
 	if StatusEffects.IsDizzy(player) then
 		return Remotes.SocialNotify:FireClient(player, "error", "ยังมึนอยู่ รอสักครู่")
 	end
@@ -233,6 +274,10 @@ local function work(node, player)
 
 	-- Spent BEFORE anything else happens. The user's rule, and it is also what stops two players finishing
 	-- the same press on the same frame and both being paid for it.
+	--
+	-- สิทธิ์รายวันบนเกาะปั๊มตรงนี้ด้วยเหตุผลเดียวกันเป๊ะ — ปั๊มตอนจ่ายรางวัลแทนจะเปิดช่องให้กดรัวๆ
+	-- ระหว่างที่มินิเกมยังไม่จบ แล้วได้ของหลายรอบในวันเดียว
+	if ServerConfig.IsFarm then islandDoneToday(player, node, true) end
 	ReadyAt[node] = os.clock() + FarmConfig.CooldownSeconds
 	publishCooldown(node, FarmConfig.CooldownSeconds)
 	setPrompts(node, false)
