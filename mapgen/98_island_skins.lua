@@ -81,6 +81,28 @@ local function install(name, parent)
 	for _, d in ipairs(model:GetDescendants()) do
 		if d:IsA("BasePart") then d.Anchored = true end
 	end
+
+	-- ⚠️ **เชื่อมทุกชิ้นเข้า `Root` ด้วย** (แก้ 2026-09-22: ผู้ใช้แจ้งว่าถือเครื่องมือทองแล้วไม่เห็นโมเดล)
+	--
+	-- `WeaponVisuals` ปลด `Anchored` ตอนเอาไปแขวนกับมือ (ไม่งั้นตัวละครถูกตรึง) แล้วขับ **เฉพาะ
+	-- `PrimaryPart`** ด้วย Motor6D ตัวเดียว — ชิ้นที่เหลือที่ไม่ได้เชื่อมไว้จึงร่วงลงพื้นทันที
+	-- เหลือแต่ `Root` ที่มองไม่เห็นอยู่ในมือ = **อาการคือ "ไม่ขึ้นโมเดลเลย" ไม่ใช่ "โมเดลเพี้ยน"**
+	--
+	-- ตอนที่เป็นต้นแบบนอนรออยู่ มันถูก anchored อยู่แล้ว weld จึงไม่มีผลอะไรจนกว่าจะถูกถือ
+	local root = model.PrimaryPart or model:FindFirstChild("Root")
+	if root then
+		model.PrimaryPart = root
+		for _, d in ipairs(model:GetDescendants()) do
+			if d:IsA("BasePart") and d ~= root then
+				local weld = Instance.new("WeldConstraint")
+				weld.Part0 = root
+				weld.Part1 = d
+				weld.Parent = root
+			end
+		end
+	else
+		missing[#missing + 1] = name .. "(ไม่มี Root ให้เชื่อม)"
+	end
 	model.Parent = parent
 	made[#made + 1] = name
 end

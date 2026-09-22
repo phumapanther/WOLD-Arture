@@ -341,7 +341,9 @@ local function wirePen(model)
 	prompt.Parent = anchor
 	prompt.Triggered:Connect(function(player)
 		if not IslandAccess.IsOwner(player) then return notify(player, "error", "เฉพาะเจ้าของเกาะ") end
-		Remotes.IslandPenOpen:FireClient(player, penSnapshot(model))
+		local snap = penSnapshot(model)
+		snap.open = true -- **เฉพาะการกด E เท่านั้นที่เปิดหน้าต่างได้** ดูหมายเหตุที่ลูปส่งภาพใหม่
+		Remotes.IslandPenOpen:FireClient(player, snap)
 		Watching[player] = model -- แถบความคืบหน้าต้องเดิน จึงต้องส่งภาพใหม่เรื่อยๆ ขณะเปิดอยู่
 	end)
 end
@@ -386,12 +388,18 @@ Remotes.IslandPenBuy.OnServerEvent:Connect(function(player, uid, kind, count)
 	if not ok then
 		notify(player, "error", why)
 	end
-	Remotes.IslandPenOpen:FireClient(player, penSnapshot(model)) -- วาดใหม่เสมอ สำเร็จหรือไม่ก็ตาม
+	local after = penSnapshot(model)
+	after.open = true -- ซื้อแล้วหน้าต่างต้องยังอยู่ (สำเร็จหรือไม่ก็ตาม)
+	Remotes.IslandPenOpen:FireClient(player, after)
 end)
 
 -- ส่งภาพคอกใหม่ให้คนที่เปิดหน้าต่างค้างไว้ — แถบโตจึงเดินจริง ไม่ใช่ค้างที่ % ตอนเปิด
 --
--- หยุดเองเมื่อผู้เล่นเดินห่างเกินระยะกดปุ่ม (หน้าต่างปิดไปแล้วในทางปฏิบัติ) หรือคอกถูกเก็บคืน
+-- ⚠️ **ภาพชุดนี้ไม่มีธง `open`** (ผู้ใช้แจ้ง 2026-09-22: ปิดหน้าต่างแล้วมันเด้งกลับมารัวๆ)
+-- การปิดหน้าต่างเกิดฝั่งไคลเอนต์ เซิร์ฟเวอร์ไม่มีทางรู้เองว่าปิดไปแล้ว — ถ้าภาพที่ส่งมาอัปเดต
+-- แถบความคืบหน้า "เปิด" หน้าต่างได้ด้วย มันก็จะเปิดกลับมาเองทุก 3 วินาที ตลอดที่ยังยืนอยู่ใกล้คอก
+--
+-- หยุดเองเมื่อผู้เล่นเดินห่างเกินระยะกดปุ่ม หรือคอกถูกเก็บคืน — และเมื่อไคลเอนต์บอกว่าปิดแล้ว
 task.spawn(function()
 	while true do
 		task.wait(3)
@@ -407,6 +415,10 @@ task.spawn(function()
 			end
 		end
 	end
+end)
+
+Remotes.IslandPenClose.OnServerEvent:Connect(function(player)
+	Watching[player] = nil
 end)
 
 game:GetService("Players").PlayerRemoving:Connect(function(player)

@@ -69,7 +69,11 @@ close.TextColor3 = TEXT
 close.Text = "X"
 close.Parent = panel
 local cc = Instance.new("UICorner"); cc.CornerRadius = UDim.new(0, 8); cc.Parent = close
-close.MouseButton1Click:Connect(function() gui.Enabled = false end)
+local function shut()
+	gui.Enabled = false
+	Remotes.IslandPenClose:FireServer() -- ไม่บอก เซิร์ฟเวอร์ก็ยิงภาพใหม่ใส่ทุก 3 วิต่อไป
+end
+close.MouseButton1Click:Connect(shut)
 
 local list = Instance.new("ScrollingFrame")
 list.Position = UDim2.new(0, 12, 0, 62)
@@ -138,6 +142,7 @@ local function row(index, animal, snap)
 end
 
 local function draw(snap)
+	if not snap.open and not gui.Enabled then return end -- ปิดอยู่ ไม่ต้องวาดอะไรเลย
 	currentUid = snap.uid
 	for _, c in ipairs(list:GetChildren()) do
 		if c:IsA("Frame") then c:Destroy() end
@@ -179,8 +184,10 @@ local function draw(snap)
 	end
 
 	for i, animal in ipairs(snap.animals) do row(i, animal, snap) end
-	gui.Enabled = true
+	-- **ภาพที่ส่งมาอัปเดตแถบความคืบหน้าไม่มีสิทธิ์เปิดหน้าต่าง** มีแต่การกด E กับการซื้อ (`snap.open`)
+	-- ไม่งั้นปิดแล้วมันเด้งกลับมาเองทุก 3 วินาที
+	if snap.open then gui.Enabled = true end
 end
 
 Remotes.IslandPenOpen.OnClientEvent:Connect(draw)
-player.CharacterRemoving:Connect(function() gui.Enabled = false end)
+player.CharacterRemoving:Connect(shut)
