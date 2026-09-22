@@ -44,28 +44,44 @@ local pen = assert(A("ModelOf", penUid))
 A("ZonesTick")
 assert(pen:FindFirstChild("PenPrompt", true), "ปุ่มคอก")
 local snap = A("PenSnapshot", pen)
-assert(#snap.animals == #C.PenAnimals and snap.max == 10, "สแนปช็อตคอก")
+assert(#snap.animals == #C.PenAnimals and snap.max == C.PenMax, "สแนปช็อตคอก")
 -- ซื้อไก่ 3 ตัว
 ok, why = A("PenBuy", player, pen, "Chicken", 3)
 assert(ok, "ซื้อไก่: " .. tostring(why))
-local e = entryOf(penUid)
-assert(e.animal == "Chicken" and e.queue == 3, "คิวสัตว์ " .. tostring(e.queue))
--- เร่งเวลาให้เกิดทีละตัวครบ
-for i = 1, 3 do
-	A("SetEntry", penUid, "nextAt", os.time() - 1)
-	A("ZonesTick")
-end
 local live = pen:FindFirstChild("Livestock")
-assert(live and #live:GetChildren() == 3, "ไก่เกิดครบ 3 ได้ " .. (live and #live:GetChildren() or -1))
+assert(live and #live:GetChildren() == 3, "ซื้อแล้วต้องเกิดทันที 3 ตัว ได้ " .. (live and #live:GetChildren() or -1))
+assert(entryOf(penUid).animal == "Chicken", "จำชนิดที่เลี้ยง")
 local chick = live:GetChildren()[1]
 assert(CollectionService:HasTag(chick, "WOLD_Node") and chick:GetAttribute("NodeKind") == "Chicken", "ไก่ติดแท็ก")
-table.insert(out, "คอก: ซื้อไก่ 3 เกิดครบ ติดแท็กกด E ได้")
+assert(chick:GetAttribute("HerdAnimal") == true, "ต้องติด HerdAnimal (เก็บแล้วหาย)")
+-- ยังโตไม่พอ: ปุ่มถูกปิด
+assert(chick:GetAttribute("Spent") == true, "ตัวที่เพิ่งเกิดต้องยังเก็บไม่ได้")
+A("ZonesTick")
+assert(chick:GetAttribute("Spent") == true, "ยังไม่ถึงเวลาก็ยังเก็บไม่ได้")
+table.insert(out, "คอก: ซื้อไก่ 3 เกิดทันที · ยังโตไม่พอ เก็บไม่ได้")
+-- เร่งนาฬิกาของตัวมันเอง แล้วต้องปลดให้เก็บได้
+for _, a in ipairs(live:GetChildren()) do a:SetAttribute("ReadyAt", os.time() - 1) end
+A("ZonesTick")
+assert(chick:GetAttribute("Spent") == nil, "โตแล้วต้องเก็บได้")
+-- Gathering ของเกมหลักเป็นคนใส่ปุ่ม ซึ่งมาถึงคนละจังหวะกับการเกิด — รอมันตามให้ทัน แล้วปลดอีกรอบ
+local anyPrompt, waited = false, os.clock()
+while not anyPrompt and os.clock() - waited < 8 do
+	A("ZonesTick")
+	for _, d in ipairs(chick:GetDescendants()) do
+		if d:IsA("ProximityPrompt") and d.Enabled then anyPrompt = true end
+	end
+	if not anyPrompt then task.wait(0.5) end
+end
+assert(anyPrompt, "ปุ่มเก็บต้องเปิด (Gathering ใส่ปุ่มให้แล้ว)")
+table.insert(out, "โตแล้วปุ่มเก็บเปิด ✓ (เก็บแล้วหายเพราะ HerdAnimal)")
 -- ซื้อชนิดอื่นทับไม่ได้
 ok, why = A("PenBuy", player, pen, "Cow", 1); assert(not ok, "ต้องห้ามเลี้ยงสองชนิด")
--- เพดาน 10
+-- เพดาน 5: ซื้อเกินแล้วต้องได้แค่ที่ว่าง
 ok = A("PenBuy", player, pen, "Chicken", 20)
-assert(entryOf(penUid).queue + #live:GetChildren() <= C.PenMax, "เกินเพดาน")
-table.insert(out, "เพดาน 10 ตัว ✓ ชนิดเดียวต่อคอก ✓")
+assert(#live:GetChildren() == C.PenMax, ("เพดาน %d ได้ %d"):format(C.PenMax, #live:GetChildren()))
+ok, why = A("PenBuy", player, pen, "Chicken", 1)
+assert(not ok and why:find("เต็ม"), "คอกเต็มต้องปฏิเสธ: " .. tostring(why))
+table.insert(out, ("เพดาน %d ตัว ✓ ชนิดเดียวต่อคอก ✓"):format(C.PenMax))
 
 ----------------------------------------------------------------- โซนแร่
 assert(A("Grant", player, "MineZone", 1), "เสกโซนแร่")

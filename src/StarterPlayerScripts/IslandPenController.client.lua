@@ -107,9 +107,10 @@ local function row(index, animal, snap)
 	name.Text = ("%s  ·  %d เหรียญ"):format(animal.name, animal.price)
 	name.Parent = frame
 
-	-- ซื้อทีละ 1 หรือ 5 — คอกรับได้สิบตัว ปุ่มสองปุ่มพอ ไม่ต้องมีช่องพิมพ์เลข
+	-- ซื้อทีละ 1 หรือเต็มคอก — เพดานแค่ห้าตัว ปุ่มสองปุ่มพอ ไม่ต้องมีช่องพิมพ์เลข
+	-- (เซิร์ฟเวอร์ตัดจำนวนให้พอดีที่ว่างอยู่แล้ว กด "เต็มคอก" ตอนมีอยู่ 3 จึงซื้อแค่ 2)
 	local x = 0
-	for _, n in ipairs({ 1, 5 }) do
+	for _, n in ipairs({ 1, snap.max }) do
 		local b = Instance.new("TextButton")
 		b.AnchorPoint = Vector2.new(1, 0.5)
 		b.Position = UDim2.new(1, -10 - x, 0.5, 0)
@@ -119,11 +120,11 @@ local function row(index, animal, snap)
 		b.Font = Enum.Font.GothamBold
 		b.TextSize = 15
 		b.TextColor3 = TEXT
-		b.Text = "+" .. n
+		b.Text = n == 1 and "+1" or "เต็มคอก"
 		b.Parent = frame
 		local bc = Instance.new("UICorner"); bc.CornerRadius = UDim.new(0, 7); bc.Parent = b
 		-- คอกที่มีสัตว์ชนิดอื่นอยู่แล้ว: ปิดปุ่มไว้เลย ดีกว่ากดแล้วโดนปฏิเสธ
-		local blocked = snap.kind ~= nil and snap.kind ~= animal.kind and (snap.count > 0 or snap.queued > 0)
+		local blocked = snap.kind ~= nil and snap.kind ~= animal.kind and snap.count > 0
 		if blocked then
 			b.BackgroundColor3 = Color3.fromRGB(58, 56, 62)
 			b.AutoButtonColor = false
@@ -141,8 +142,9 @@ local function draw(snap)
 	for _, c in ipairs(list:GetChildren()) do
 		if c:IsA("Frame") then c:Destroy() end
 	end
-	local waiting = snap.queued > 0 and (" · กำลังมาอีก %d"):format(snap.queued) or ""
-	subtitle.Text = ("ในคอก %d/%d ตัว%s"):format(snap.count, snap.max, waiting)
+	local growing = snap.count - (snap.ready or 0)
+	local tail = growing > 0 and (" · กำลังโต %d"):format(growing) or ""
+	subtitle.Text = ("ในคอก %d/%d ตัว · เก็บได้ %d%s"):format(snap.count, snap.max, snap.ready or 0, tail)
 	for i, animal in ipairs(snap.animals) do row(i, animal, snap) end
 	gui.Enabled = true
 end

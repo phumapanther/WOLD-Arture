@@ -73,6 +73,30 @@ function IslandGrid.surfaceAt(cx, cz)
 	return hit.Position.Y, hit.Material
 end
 
+-- มีอะไรตั้งอยู่บนช่องนี้ไหม — กล่องสูงจากผิวดินขึ้นไป ClearanceHeight
+--
+-- **กันเฉพาะของที่ชนได้และมองเห็น** ghost/แผ่นสีของระบบวางเอง (CanQuery=false) กับกำแพงล่องหนไม่ถูกนับ
+-- ตัว Terrain ไม่ถูกนับอยู่แล้วเพราะ GetPartBoundsInBox มองแต่ Part
+function IslandGrid.obstructed(cx, cz)
+	local y = IslandGrid.surfaceAt(cx, cz)
+	if not y then return true end
+	local wx, wz = IslandGrid.worldOf(cx, cz)
+	local size = Vector3.new(Config.Cell - 0.6, Config.ClearanceHeight, Config.Cell - 0.6)
+	local at = CFrame.new(wx, y + Config.ClearanceHeight / 2 - 0.4, wz)
+	local params = OverlapParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { workspace:FindFirstChild("IslandGhost") }
+	params.MaxParts = 6
+	for _, part in ipairs(workspace:GetPartBoundsInBox(at, size, params)) do
+		if part.CanCollide and part.CanQuery and part.Transparency < 1 then
+			-- ตัวละครกับของที่ตกอยู่ไม่ใช่สิ่งกีดขวางถาวร
+			local model = part:FindFirstAncestorOfClass("Model")
+			if not (model and model:FindFirstChildOfClass("Humanoid")) then return true end
+		end
+	end
+	return false
+end
+
 function IslandGrid.isSoil(cx, cz)
 	local _, material = IslandGrid.surfaceAt(cx, cz)
 	return material == Config.SoilMaterial
@@ -93,12 +117,17 @@ function IslandGrid.canPlace(occupied, zones, x, z, w, d, r, itemId)
 			if occupied[IslandGrid.key(cx, cz)] then return false, "occupied" end
 			local y, material = IslandGrid.surfaceAt(cx, cz)
 			if not y then return false, "edge" end -- ไม่มีพื้นใต้ช่องนี้ = นอกเกาะ
+			-- พื้นต้องเป็นหญ้า (หรือดินสำหรับแปลงผัก) — น้ำ หิน ทราย ทางเดิน วางไม่ได้ (ผู้ใช้สั่ง)
+			if not Config.BuildMaterials[material] then return false, "badground" end
 			lo, hi = math.min(lo, y), math.max(hi, y)
 			if careSoil then
 				local soil = material == Config.SoilMaterial
 				if wantSoil and not soil then return false, "needsoil" end
 				if not wantSoil and soil then return false, "onsoil" end
 			end
+			-- ช่องนี้ว่างจริงไหม: มีโมเดล/ชิ้นส่วนอะไรตั้งอยู่เหนือมันหรือเปล่า (ของที่ผู้ใช้วางไว้ในแมพ
+			-- ไม่ได้อยู่ในตาราง `occupied` ซึ่งรู้จักแต่ของที่ผู้เล่นวางผ่านระบบ)
+			if IslandGrid.obstructed(cx, cz) then return false, "obstructed" end
 		end
 	end
 	-- พื้นต้องราบพอ ไม่งั้นของไปเกาะหน้าผาแล้วจมครึ่งตัว (โมเดลวางตามความสูงกึ่งกลาง footprint จุดเดียว)

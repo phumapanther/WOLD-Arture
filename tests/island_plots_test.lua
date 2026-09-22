@@ -13,7 +13,7 @@ local uid, placedHere
 for _, e in ipairs(data.placed) do if e.id == "FarmPlot" and not e.crop then uid = e.uid break end end
 if not uid then
 	local s = assert(A("FindSlot", player, "FarmPlot"), "ไม่มีแปลงในกระเป๋า")
-	assert(A("Place", player, s, 20, 20, 0))
+	assert(A("Place", player, s, 22, 4, 0)) -- ต้องอยู่บนผืนดิน
 	data = A("Data")
 	uid = data.placed[#data.placed].uid
 	placedHere = true
@@ -25,7 +25,9 @@ end
 local model = assert(A("ModelOf", uid))
 A("Tick")
 assert(model.Soil:FindFirstChild("PlotPrompt"), "ปุ่มแปลง")
-assert(A("FindSlot", player, "Seed"), "ต้องมีเมล็ด (ชุดเริ่มต้นให้ 5)")
+-- เมล็ดในชุดเริ่มต้นอาจถูกใช้ไปหมดจากการเทสรอบก่อน — เทสเสกของตัวเองแทนการพึ่งกระเป๋าจริง
+if not A("FindSlot", player, "Seed") then A("Grant", player, "Seed", 5) end
+assert(A("FindSlot", player, "Seed"), "ต้องมีเมล็ด")
 
 local seeds = A("Count", player, "Seed")
 local ok, why = A("Plant", player, model); assert(ok, "หยอด: " .. tostring(why))

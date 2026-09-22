@@ -32,7 +32,7 @@ function instancePath(file) {
     // A long bracket the source cannot contain: pick a level no ]=*] in the file matches.
     let eq = "=";
     while (src.includes("]" + eq + "]")) eq += "=";
-    const code = `if game.PlaceId ~= 88774255487951 then return "REFUSED" end
+    const code = `if game.PlaceId ~= 88774255487951 and game.PlaceId ~= 136992335889132 then return "REFUSED" end
 local inst = ${target}
 inst.Source = [${eq}[${src}]${eq}]
 return inst:GetFullName() .. " len=" .. #inst.Source`;

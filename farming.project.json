@@ -4,8 +4,6 @@
     "src/ServerScriptService/AdminChest.server.lua",
     "src/ServerScriptService/AnimalHerds.server.lua",
     "src/ServerScriptService/DevTeleport.server.lua",
-    "src/ServerScriptService/Fishing.server.lua",
-    "src/ServerScriptService/Gathering.server.lua",
     "src/ServerScriptService/IllegalFarm.server.lua",
     "src/ServerScriptService/Leaderboards.server.lua",
     "src/ServerScriptService/Mobs.server.lua",

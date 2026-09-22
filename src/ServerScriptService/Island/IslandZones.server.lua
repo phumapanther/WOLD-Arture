@@ -74,6 +74,12 @@ local function spawnAnimal(model, kind)
 	local x, z = randomSpotIn(model, 4)
 	animal:PivotTo(CFrame.new(x, groundAt(x, z), z) * CFrame.Angles(0, math.random() * math.pi * 2, 0))
 	animal:SetAttribute("NodeKind", kind)
+	-- **นาฬิกาของตัวมันเอง** ไม่ใช่ของคอก — ซื้อคนละเวลา โตคนละเวลา (ผู้ใช้สั่ง "คูลดาวน์ต่อตัว")
+	animal:SetAttribute("ReadyAt", os.time() + IslandConfig.PenGrowSeconds)
+	-- `HerdAnimal` คือธงที่ Gathering ของเกมหลักอ่านแล้ว **ลบตัวนั้นทิ้งหลังเก็บ** — ตรงกับที่ผู้ใช้สั่ง
+	-- ว่า "เก็บแล้วหายไป" พอดี จึงไม่ต้องเขียนตรรกะการลบเองเลย
+	animal:SetAttribute("HerdAnimal", true)
+	animal:SetAttribute("Spent", true) -- ยังโตไม่พอ: ปุ่มถูกปิดไว้จนกว่า tickPen จะปลดให้
 	CollectionService:AddTag(animal, NODE_TAG)
 	animal.Parent = penFolder(model)
 	return true
@@ -87,17 +93,22 @@ local function penSnapshot(model)
 	for _, a in ipairs(IslandConfig.PenAnimals) do
 		table.insert(rows, { kind = a.kind, name = a.name, price = a.price })
 	end
+	-- นับตัวที่โตพร้อมเก็บแล้ว ให้หน้าจอบอกได้ว่ารออะไรอยู่
+	local ready, now = 0, os.time()
+	for _, a in ipairs(penFolder(model):GetChildren()) do
+		if (a:GetAttribute("ReadyAt") or 0) <= now then ready += 1 end
+	end
 	return {
 		uid = entry and entry.uid,
 		animals = rows,
 		count = penCount(model),
+		ready = ready,
 		max = IslandConfig.PenMax,
-		queued = entry and entry.queue or 0,
 		kind = entry and entry.animal,
 	}
 end
 
--- ซื้อสัตว์ n ตัว: หักเงินทันที แล้วเข้าคิวให้ทยอยเกิด (ไม่โผล่พรึบเดียว)
+-- ซื้อสัตว์ n ตัว: เกิดในคอกทันที หักเงินตามจำนวนที่เกิดจริง (ผู้ใช้สั่ง "ซื้อแล้วนับสัตว์ในคอกเลย")
 local function penBuy(player, model, kind, count)
 	if not IslandAccess.IsOwner(player) then return false, "เฉพาะเจ้าของเกาะ" end
 	local entry = IslandAccess.EntryOf(model)
@@ -107,7 +118,8 @@ local function penBuy(player, model, kind, count)
 	if not spec then return false, "ไม่มีสัตว์ชนิดนั้น" end
 
 	count = math.clamp(math.floor(tonumber(count) or 1), 1, IslandConfig.PenMax)
-	local room = IslandConfig.PenMax - (penCount(model) + (entry.queue or 0))
+	-- **นับจากตัวที่ยืนอยู่จริงในคอก** (ผู้ใช้สั่ง) ไม่มีคิวให้ค้าง ซื้อเท่าไหร่ก็โผล่เท่านั้นทันที
+	local room = IslandConfig.PenMax - penCount(model)
 	if room <= 0 then return false, ("คอกเต็มแล้ว (%d ตัว)"):format(IslandConfig.PenMax) end
 	count = math.min(count, room)
 
@@ -115,31 +127,39 @@ local function penBuy(player, model, kind, count)
 	local cost = spec.price * count
 	if not state or state.gold < cost then return false, "เงินไม่พอ" end
 
-	-- คอกหนึ่งเลี้ยงชนิดเดียว: ซื้อชนิดใหม่ทับของเดิมไม่ได้ ต้องเก็บคอกแล้ววางใหม่ (ของเดิมหายไปพร้อมคอก)
-	if entry.animal and entry.animal ~= kind and (penCount(model) > 0 or (entry.queue or 0) > 0) then
-		return false, "คอกนี้เลี้ยง" .. kind .. "ไม่ได้ มีสัตว์ชนิดอื่นอยู่"
+	-- คอกหนึ่งเลี้ยงชนิดเดียว: ซื้อชนิดใหม่ทับของเดิมไม่ได้ · คอกที่ว่างแล้วเปลี่ยนชนิดได้เลย
+	if entry.animal and entry.animal ~= kind and penCount(model) > 0 then
+		return false, "คอกนี้มีสัตว์ชนิดอื่นอยู่ รอเก็บให้หมดก่อน"
 	end
 
-	Inventory.AddGold(player, -cost)
+	local born = 0
+	for _ = 1, count do
+		if spawnAnimal(model, kind) then born += 1 end
+	end
+	if born == 0 then return false, "ปล่อยสัตว์ลงคอกไม่สำเร็จ" end
+	Inventory.AddGold(player, -spec.price * born)
 	entry.animal = kind
-	entry.queue = (entry.queue or 0) + count
-	entry.nextAt = os.time() + IslandConfig.PenSpawnSeconds
-	notify(player, "info", ("ซื้อ%s %d ตัว — ทยอยมาถึงคอกทีละตัว"):format(spec.name, count))
+	notify(player, "info", ("ซื้อ%s %d ตัว — โตพอให้เก็บใน %d นาที"):format(spec.name, born, IslandConfig.PenGrowSeconds / 60))
 	return true
 end
 
+-- ปลดล็อกสัตว์ที่โตครบแล้วทีละตัว · คอกที่ว่างหมดคืนชนิดให้ว่าง (เลี้ยงชนิดใหม่ได้)
+--
+-- **สถานะอยู่บนตัวสัตว์ ไม่ใช่ในโปรไฟล์** ตั้งใจ: สัตว์เป็นของชั่วคราวที่หายไปตอนเก็บและหายตอนเซิร์ฟปิด
+-- (เหมือนสัตว์ในเกมหลักและของในหีบ) ถ้าเก็บลงโปรไฟล์ด้วย จะต้องตามซิงก์สองที่ตลอดชีวิตโปรเจ็ค
 local function tickPen(model, entry)
-	-- ตัวที่ถูกกินไป (Gathering ไม่ลบสัตว์ แต่ผู้เล่นอาจลบมือใน Studio) นับจากของจริงเสมอ
-	local queue = entry.queue or 0
-	if queue <= 0 or not entry.animal then return end
-	if penCount(model) >= IslandConfig.PenMax then
-		entry.queue = 0
+	local live = penFolder(model):GetChildren()
+	if #live == 0 then
+		if entry.animal then entry.animal = nil end
 		return
 	end
-	if os.time() >= (entry.nextAt or 0) then
-		if spawnAnimal(model, entry.animal) then
-			entry.queue = queue - 1
-			entry.nextAt = os.time() + IslandConfig.PenSpawnSeconds
+	local now = os.time()
+	for _, animal in ipairs(live) do
+		if animal:GetAttribute("Spent") and (animal:GetAttribute("ReadyAt") or 0) <= now then
+			animal:SetAttribute("Spent", nil)
+			for _, d in ipairs(animal:GetDescendants()) do
+				if d:IsA("ProximityPrompt") then d.Enabled = true end
+			end
 		end
 	end
 end

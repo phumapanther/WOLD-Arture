@@ -26,7 +26,7 @@ local GREEN = Color3.fromRGB(90, 220, 110)
 local RED = Color3.fromRGB(230, 80, 80)
 local REASON_TEXT = {
 	edge = "ใกล้ขอบเกาะเกินไป", blocked = "ตรงนี้วางไม่ได้", occupied = "วางทับของอื่น",
-	needsoil = "ต้องวางบนผืนดิน", onsoil = "ผืนดินไว้ปลูกผักเท่านั้น", steep = "พื้นชันเกินไป",
+	needsoil = "ต้องวางบนผืนดิน", onsoil = "ผืนดินไว้ปลูกผักเท่านั้น", steep = "พื้นชันเกินไป", badground = "ต้องเป็นพื้นหญ้า", obstructed = "มีของตั้งอยู่แล้ว",
 }
 
 local starter = Instance.new("BindableEvent")
