@@ -8,6 +8,7 @@ const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] :
 const scale = opt("--scale", "1"), timeout = Number(opt("--timeout", "1800"));
 const root = path.join(__dirname, "..");
 const read = (p) => fs.readFileSync(path.join(root, p), "utf8");
+const NL = String.fromCharCode(10);
 const lib = args.includes("--no-lib") ? "" : read("mapgen/lib.lua");
 // --kit also concatenates the modelkit chain, so one phase can shape terrain with L and raise buildings with K
 const kit = args.includes("--kit")
@@ -17,7 +18,16 @@ const kit = args.includes("--kit")
 const models = args.includes("--models")
   ? `K.REGISTER_ONLY = true\n${["village", "houses", "city", "castle", "castle_parts", "npcs", "animals"].map((n) => read(`models/${n}.lua`)).join("\n")}\nK.REGISTER_ONLY = false\n`
   : "";
-const code = `local SCALE = ${scale}\nlocal LAYOUT_JSON = [==[${read("docs/design/world-layout.json")}]==]\n${lib}\n${kit}\n${models}\n${read(file)}\n`;
+// --skins embeds the skin/fashion builders from assets/models-from-factory (each file is `return function() ... end`)
+// into _G.WOLD_SKIN_BUILDERS so a phase can call them by name. These models were placed by hand in the main
+// place and never travelled with Rojo, which is why the island had none of them.
+const skins = args.includes("--skins")
+  ? "_G.WOLD_SKIN_BUILDERS = {}" + NL + fs.readdirSync(path.join(root, "assets/models-from-factory"))
+      .filter((f) => f.endsWith(".lua"))
+      .map((f) => `_G.WOLD_SKIN_BUILDERS["${f.slice(0, -4)}"] = (function()` + NL + read("assets/models-from-factory/" + f) + NL + "end)()" + NL)
+      .join("")
+  : "";
+const code = `local SCALE = ${scale}\nlocal LAYOUT_JSON = [==[${read("docs/design/world-layout.json")}]==]\n${lib}\n${kit}\n${models}\n${skins}\n${read(file)}\n`;
 const POLL = `local r = workspace:FindFirstChild("WOLD"); return r and ((r:GetAttribute("Status") or "?") .. " | " .. (r:GetAttribute("Progress") or "")) or "no WOLD folder"`;
 (async () => {
   const c = await connect();
