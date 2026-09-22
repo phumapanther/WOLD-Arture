@@ -19,6 +19,7 @@ local Bank = require(game.ServerScriptService.Bank)
 local Collection = require(game.ServerScriptService.Collection)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local ChannelRegistry = require(game.ServerScriptService.Lobby.ChannelRegistry)
+local GlobalRanks = require(game.ServerScriptService.GlobalRanks)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 --------------------------------------------------------------------------------
@@ -97,6 +98,16 @@ local function build(player)
 	local levels = sortedBy(function(p) return Progression.GetLevel(p) end)
 	local points = sortedBy(function(p) return EventPoints.Get(p) end)
 
+	-- **เลเวลกับเงินเป็นอันดับของทั้งเกม ไม่ใช่แค่เซิร์ฟนี้** (ผู้ใช้กำหนด 2026-09-22)
+	--
+	-- อ่านจาก OrderedDataStore ซึ่งทุกเซิร์ฟเวอร์เขียนลงที่เดียวกัน · อ่านไม่ได้ (API ปิด / DataStore ล่ม)
+	-- ก็ตกกลับไปใช้ตารางในเซิร์ฟเวอร์แบบเดิม ดีกว่าโชว์ตารางว่าง
+	--
+	-- **เหตุผลที่บนเกาะต้องใช้อันแบบนี้**: เกาะเป็นเซิร์ฟส่วนตัว `Players:GetPlayers()` คืนชื่อเดียว
+	-- ตารางในเซิร์ฟจึงไม่มีความหมายเลยที่นั่น
+	local globalLevels = GlobalRanks.Top("levels")
+	local globalGold = GlobalRanks.Top("gold")
+
 	-- ช่อง: รวมข้อมูลที่ได้ยินจากช่องอื่น บวกช่องนี้ซึ่งรู้จำนวนจริงอยู่แล้ว
 	local now = os.clock()
 	local channels = {}
@@ -123,8 +134,11 @@ local function build(player)
 	end)
 
 	return {
-		levels = levels,
-		gold = gold,
+		levels = #globalLevels > 0 and globalLevels or levels,
+		gold = #globalGold > 0 and globalGold or gold,
+		-- หน้าจอใช้บอกผู้เล่นว่าตารางที่เห็นครอบคลุมแค่ไหน
+		levelsScope = #globalLevels > 0 and "global" or "server",
+		goldScope = #globalGold > 0 and "global" or "server",
 		points = points,
 		channels = channels,
 		myChannel = mine,

@@ -228,7 +228,8 @@ local function register(npc)
 
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "VaultPrompt"
-	prompt.ActionText = "ธนาคาร/คลัง"
+	-- ป้ายปรับได้จากแอตทริบิวต์ เพราะ "นายธนาคาร" ไม่ใช่คำที่ถูกเสมอ — บนเกาะมันคือลังไม้ ไม่ใช่คน
+	prompt.ActionText = npc:GetAttribute("NpcAction") or "ธนาคาร/คลัง"
 	prompt.ObjectText = npc:GetAttribute("NpcName") or "นายธนาคาร"
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.MaxActivationDistance = RANGE

@@ -61,6 +61,35 @@ local function label(parent, text, size, color, align)
 	return l
 end
 
+--------------------------------------------------------------------------------
+-- แท็บกระเป๋า
+--------------------------------------------------------------------------------
+
+-- **"ของใช้ในฟาร์ม" = ของที่เอาไปวางบนเกาะได้เท่านั้น** (kind = "placeable")
+--
+-- ผู้ใช้กำหนด (2026-09-22): "พวกวัตถุดิบที่ได้จากฟาร์มเป็นของเกมหลักทั้งหมด" — ข้าว ผัก นม ไข่ ไม้
+-- แร่ ปลา ที่หาได้บนเกาะ **ไม่ใช่ของฟาร์ม** มันคือวัตถุดิบของเกมหลักที่บังเอิญหาได้บนเกาะ และเอาไป
+-- ขาย/คราฟ/ส่งเควสในเกมหลักได้ทั้งหมด · สิ่งที่แยกจริงๆ คือบ้าน รั้ว แปลงผัก คอกสัตว์ โซนแร่ ต้นไม้
+-- ซึ่งใช้ได้ที่เดียวคือบนเกาะ
+--
+-- แยกด้วย `kind` ไม่ใช่รายชื่อไอเทม — เพิ่มของวางใหม่ใน ItemCatalog แล้วมันเข้าแท็บถูกเอง
+InventoryGui.Tabs = {
+	{ id = "all", label = "ทั้งหมด" },
+	{ id = "main", label = "ของเกมหลัก" },
+	{ id = "farm", label = "ของใช้ในฟาร์ม" },
+}
+
+local FARM_KINDS = { placeable = true }
+
+-- ของชิ้นนี้อยู่ในแท็บที่เลือกไหม
+function InventoryGui.InTab(itemId, tab)
+	if tab == nil or tab == "all" then return true end
+	local item = ItemCatalog.Get(itemId)
+	local isFarm = item ~= nil and FARM_KINDS[item.kind] == true
+	if tab == "farm" then return isFarm end
+	return not isFarm
+end
+
 function InventoryGui.new()
 	local self = setmetatable({}, InventoryGui)
 	self.slotButtons = {}
@@ -209,6 +238,51 @@ function InventoryGui.new()
 	end
 
 	--------------------------------------------------------------------------
+	-- แท็บกรองของ: ทั้งหมด / ของเกมหลัก / ของใช้ในฟาร์ม
+	--------------------------------------------------------------------------
+	--
+	-- **เป็นตัวกรองการมองเห็น ไม่ใช่การจัดเรียงใหม่** ช่องที่เท่าไหร่ยังเป็นช่องนั้น — เลขช่องคือสิ่งเดียว
+	-- ที่ทุกคำสั่ง (ใส่/ใช้/ทิ้ง/ให้/ฝาก) ใช้อ้างถึงของชิ้นหนึ่ง ถ้าแท็บขยับเลขช่อง คนกดของชิ้นแรกจะได้
+	-- ของอีกชิ้นโดยไม่มี error ให้เห็น (บทเรียนเดียวกับบอร์ดเควสที่กรองคนละแบบสองที่)
+	-- ช่องที่ไม่เข้าแท็บจึงถูกหรี่ลง ไม่ใช่ถูกเอาออก
+	local tabBar = Instance.new("Frame")
+	tabBar.Name = "Tabs"
+	tabBar.Position = UDim2.new(0.3, 0, 0, small and 24 or 34)
+	tabBar.Size = UDim2.new(0.68, -18, 0, small and 20 or 24)
+	tabBar.BackgroundTransparency = 1
+	tabBar.Parent = panel
+
+	local tabLayout = Instance.new("UIListLayout")
+	tabLayout.FillDirection = Enum.FillDirection.Horizontal
+	tabLayout.Padding = UDim.new(0, 4)
+	tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	tabLayout.Parent = tabBar
+
+	self.bagTab = "all"
+	self.bagTabs = {}
+	for order, spec in ipairs(InventoryGui.Tabs) do
+		local b = Instance.new("TextButton")
+		b.LayoutOrder = order
+		b.Size = UDim2.new(1 / #InventoryGui.Tabs, -4, 1, 0)
+		b.BackgroundColor3 = GLASS
+		b.BackgroundTransparency = 0.45
+		b.BorderSizePixel = 0
+		b.Font = Enum.Font.GothamMedium
+		b.TextSize = small and 11 or 12
+		b.TextColor3 = TEXT_MUTED
+		b.Text = spec.label
+		b.AutoLocalize = false
+		b.Parent = tabBar
+		corner(b, UDim.new(0, 6))
+		b.Activated:Connect(function()
+			self.bagTab = spec.id
+			self:RefreshTabs()
+			if self.lastData then self:Render(self.lastData) end
+		end)
+		self.bagTabs[spec.id] = b
+	end
+
+	--------------------------------------------------------------------------
 	-- Slot grid (right).
 	--------------------------------------------------------------------------
 	local grid = Instance.new("Frame")
@@ -324,7 +398,20 @@ end
 -- Rendering
 --------------------------------------------------------------------------------
 
+-- ไฮไลต์แท็บที่เลือกอยู่
+function InventoryGui:RefreshTabs()
+	if not self.bagTabs then return end
+	for id, button in pairs(self.bagTabs) do
+		local on = (id == self.bagTab)
+		button.BackgroundTransparency = on and 0 or 0.45
+		button.TextColor3 = on and ACCENT or TEXT_MUTED
+	end
+end
+
 function InventoryGui:Render(data)
+	-- เก็บไว้ให้ปุ่มแท็บวาดใหม่ได้โดยไม่ต้องรอข้อมูลรอบถัดไปจากเซิร์ฟเวอร์
+	self.lastData = data
+	self:RefreshTabs()
 	self.goldLabel.Text = ("%d เหรียญ"):format(data.gold or 0)
 
 	local weight = data.weight or 0
@@ -357,11 +444,20 @@ function InventoryGui:Render(data)
 			entry.stroke.Color = kg and FishingConfig.TierFor(kg).color
 				or (item and KIND_TINT[item.kind] or GLASS)
 			entry.stroke.Transparency = 0.35
+			-- นอกแท็บที่เลือก: หรี่ลง **แต่ยังกดได้** ช่องยังเป็นช่องเดิม เลขช่องไม่ขยับ
+			local inTab = InventoryGui.InTab(slot.id, self.bagTab)
+			entry.icon.ImageTransparency = inTab and 0 or 0.72
+			entry.name.TextTransparency = inTab and 0 or 0.72
+            entry.count.TextTransparency = inTab and 0 or 0.72
+			if not inTab then entry.stroke.Transparency = 0.85 end
 		else
 			entry.icon.Image = ""
 			entry.icon.Visible = false
+			entry.icon.ImageTransparency = 0
 			entry.name.Text = ""
+			entry.name.TextTransparency = 0
 			entry.count.Text = ""
+			entry.count.TextTransparency = 0
 			entry.stroke.Color = GLASS
 			entry.stroke.Transparency = 0.85
 		end

@@ -1369,6 +1369,19 @@ function SocialGui:RenderRanking(data)
 
 	local SUFFIX = { levels = "", gold = " เหรียญ", points = " แต้ม", channels = " คน" }
 
+	-- **บอกว่าตารางนี้กว้างแค่ไหน** เลเวลกับเงินเป็นอันดับของทั้งเกม (OrderedDataStore) ส่วนแต้มกิจกรรม
+	-- ยังเป็นของคนในเซิร์ฟเวอร์นี้ · ถ้าไม่บอก คนเล่นบนเกาะส่วนตัวจะอ่านตารางแต้มที่มีชื่อตัวเองคนเดียว
+	-- แล้วนึกว่าระบบพัง
+	local scope = data[tab .. "Scope"]
+	local note = (tab == "levels" or tab == "gold")
+		and (scope == "global" and "อันดับของผู้เล่นทั้งเกม" or "อันดับในเซิร์ฟเวอร์นี้ (ยังอ่านตารางรวมไม่ได้)")
+		or (tab == "points" and "แต้มของคนในเซิร์ฟเวอร์นี้" or nil)
+	if note then
+		local hint = label(list, note, 11, TEXT_MUTED, Enum.TextXAlignment.Center)
+		hint.Size = UDim2.new(1, 0, 0, 20)
+		hint.LayoutOrder = 0
+	end
+
 	for order, entry in ipairs(rows) do
 		local row = Instance.new("Frame")
 		row.LayoutOrder = order
