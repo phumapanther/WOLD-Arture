@@ -421,6 +421,11 @@ IslandAccess.HasRoom = function(player, id, count)
 	return Inventory.HasRoomFor(player, id, count or 1)
 end
 
+IslandAccess.SortSide = function(player, which)
+	Inventory.AutoSort(player, which)
+	return true
+end
+
 IslandAccess.Sort = function(player)
 	Inventory.AutoSort(player)
 	local state = Inventory.Get(player)

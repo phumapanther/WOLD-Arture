@@ -281,7 +281,8 @@ function Inventory.MigrateVipSlots(player)
 	return moved
 end
 
-function Inventory.AutoSort(player)
+-- `which` = "main" | "farm" | nil (nil = จัดทั้งสองใบ)
+function Inventory.AutoSort(player, which)
 	local state = States[player]
 	if not state then return end
 
@@ -334,8 +335,9 @@ function Inventory.AutoSort(player)
 		end
 	end
 
-	sortRange(1, InventoryConfig.SlotCount)
-	sortRange(InventoryConfig.VipSlotStart, InventoryConfig.VipSlotEnd)
+	-- **จัดเฉพาะใบที่ขอมา** กระเป๋าสองใบแยกกันแล้ว การกดจัดใบหนึ่งไม่ควรไปสลับของอีกใบที่มองไม่เห็นอยู่
+	if which ~= "farm" then sortRange(1, InventoryConfig.SlotCount) end
+	if which ~= "main" then sortRange(InventoryConfig.VipSlotStart, InventoryConfig.VipSlotEnd) end
 
 	Inventory.Send(player)
 end

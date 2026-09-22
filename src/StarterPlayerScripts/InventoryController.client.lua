@@ -87,8 +87,8 @@ gui:OnCloseRequested(function()
 	gui:Hide()
 end)
 
-gui:OnSortRequested(function()
-	Remotes.RequestAutoSort:FireServer()
+gui:OnSortRequested(function(tab)
+	Remotes.RequestAutoSort:FireServer(tab)
 end)
 
 -- Everyone standing close enough to hand something to. Sorted by distance so the nearest person -- almost

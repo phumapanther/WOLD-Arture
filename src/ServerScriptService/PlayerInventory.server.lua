@@ -252,9 +252,11 @@ Remotes.RequestInventoryRefresh.OnServerEvent:Connect(function(player)
 	Inventory.Send(player)
 end)
 
-Remotes.RequestAutoSort.OnServerEvent:Connect(function(player)
+Remotes.RequestAutoSort.OnServerEvent:Connect(function(player, tab)
 	if not canAct(player) then return end
-	Inventory.AutoSort(player)
+	-- **จัดเฉพาะกระเป๋าใบที่เปิดอยู่** ไคลเอนต์ส่งชื่อแท็บมา · ค่าอื่นที่ไม่รู้จัก (หรือไคลเอนต์เก่า
+	-- ที่ไม่ส่งอะไรมา) = จัดทั้งสองใบเหมือนเดิม ซึ่งไม่ทำอะไรพัง แค่ไม่ใช่สิ่งที่ผู้ใช้ขอ
+	Inventory.AutoSort(player, tab == "main" and "main" or tab == "farm" and "farm" or nil)
 	flush(player)
 end)
 

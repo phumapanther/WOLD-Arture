@@ -399,6 +399,8 @@ function InventoryGui.new()
 	sort.Parent = panel
 	corner(sort, UDim.new(0, 8))
 	self.sortButton = sort
+	-- ตั้งป้ายครั้งแรกให้ตรงกับแท็บที่เปิดอยู่ (RefreshTabs ตัวก่อนหน้านี้ถูกเรียกก่อนปุ่มจะถูกสร้าง)
+	self:RefreshTabs()
 
 	local hint = label(panel, "แตะช่องเพื่อใช้ / สวมใส่", 11, TEXT_MUTED)
 	hint.AnchorPoint = Vector2.new(0, 1)
@@ -419,10 +421,17 @@ end
 -- ไฮไลต์แท็บที่เลือกอยู่
 function InventoryGui:RefreshTabs()
 	if not self.bagTabs then return end
+	local label
 	for id, button in pairs(self.bagTabs) do
 		local on = (id == self.bagTab)
 		button.BackgroundTransparency = on and 0 or 0.45
 		button.TextColor3 = on and ACCENT or TEXT_MUTED
+		if on then label = button.Text end
+	end
+	-- **ปุ่มบอกว่ากำลังจะจัดใบไหน** กระเป๋าสองใบแยกกันแล้ว ปุ่มที่เขียนแค่ "จัดกระเป๋า" ทำให้ไม่รู้ว่า
+	-- ของอีกใบจะขยับด้วยหรือเปล่า — ซึ่งเป็นที่มาของความรู้สึก "ของหายไปรวมที่ไหนก็ไม่รู้"
+	if self.sortButton and label then
+		self.sortButton.Text = "จัด" .. label
 	end
 end
 
@@ -576,7 +585,16 @@ function InventoryGui:EndDragGhost()
 	end
 end
 function InventoryGui:OnEquipSlotClicked(callback) self.onEquipSlotClicked = callback end
-function InventoryGui:OnSortRequested(callback) self.sortButton.Activated:Connect(callback) end
+-- **ส่งแท็บที่เปิดอยู่ไปด้วย** ปุ่มจัดกระเป๋าควรจัด "กระเป๋าใบที่กำลังดูอยู่" ไม่ใช่ทั้งสองใบพร้อมกัน
+-- (ผู้ใช้แจ้ง 2026-09-22: กดแล้วของอีกใบก็ขยับตามไปด้วย ทั้งที่มองไม่เห็น เลยดูเหมือนของหาย)
+function InventoryGui:OnSortRequested(callback)
+	self.sortButton.Activated:Connect(function()
+		callback(self.bagTab)
+	end)
+end
+
+-- แท็บที่เปิดอยู่ตอนนี้ ("main" | "farm")
+function InventoryGui:CurrentTab() return self.bagTab end
 function InventoryGui:OnCloseRequested(callback)
 	self.closeButton.Activated:Connect(callback)
 	-- The backdrop ignores any release that belongs to the tap which opened the panel. Without this a single
