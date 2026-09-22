@@ -395,6 +395,15 @@ IslandAccess.Revoke = function(player, id)
 end
 
 -- จัดกระเป๋า + อ่านลำดับช่อง (เทสเท่านั้น) — `require(Inventory)` ใน sandbox คืนสำเนาว่าง
+-- สวม/ถอดอาวุธผ่านเซิร์ฟเวอร์จริง (เทสเท่านั้น) — `require(Inventory)` ใน sandbox คืนสำเนาว่าง
+IslandAccess.Equip = function(player, slotIndex)
+	return Inventory.Equip(player, slotIndex)
+end
+
+IslandAccess.Unequip = function(player, kind)
+	return Inventory.Unequip(player, kind or "weapon")
+end
+
 IslandAccess.Sort = function(player)
 	Inventory.AutoSort(player)
 	local state = Inventory.Get(player)

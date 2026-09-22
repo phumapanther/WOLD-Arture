@@ -98,8 +98,13 @@ Remotes.RequestReturnToLobby.OnServerEvent:Connect(function(player)
 		-- never started, in which case there is nothing to save anyway.
 		if ProfileAccess.Flush then ProfileAccess.Flush(player) end
 
+		-- **ต้องระบุเพลสหลัก ไม่ใช่ `game.PlaceId`**
+		--
+		-- ล็อบบี้คือเซิร์ฟสาธารณะของ *เพลสหลัก* · `game.PlaceId` ถูกตอนอยู่ในเพลสหลัก แต่บนเกาะ
+		-- มันคือเลขของเกาะเอง = เทเลพอร์ตกลับมาที่เดิม ซึ่งดูเหมือนปุ่มไม่ทำงาน (ผู้ใช้แจ้ง 2026-09-22)
+		local destination = ServerConfig.MainPlaceId or game.PlaceId
 		local ok, err = pcall(function()
-			TeleportService:Teleport(game.PlaceId, player)
+			TeleportService:Teleport(destination, player)
 		end)
 		if not ok then
 			warn("[LobbyTravel] teleport failed for", player.UserId, err)
