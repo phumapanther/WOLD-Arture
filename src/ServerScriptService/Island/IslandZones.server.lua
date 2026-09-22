@@ -52,6 +52,14 @@ end
 -- คอกสัตว์
 --------------------------------------------------------------------------------
 
+-- ชื่อไทยของสัตว์แต่ละชนิด สร้างจากคอนฟิกเอง ไม่ต้องพิมพ์ซ้ำ
+-- ใครเปิดหน้าต่างคอกไหนค้างอยู่ — ส่งภาพใหม่ทุกไม่กี่วินาทีให้แถบโตเดินจริง
+-- (ทรงเดียวกับที่บอร์ดเควสให้ไคลเอนต์ถามซ้ำ แต่ที่นี่เซิร์ฟเวอร์ผลักเอง เพราะมันเป็นเจ้าของนาฬิกา)
+local Watching = {} -- [player] = penModel
+
+local ANIMAL_NAMES = {}
+for _, a in ipairs(IslandConfig.PenAnimals) do ANIMAL_NAMES[a.kind] = a.name end
+
 local function penFolder(model)
 	local f = model:FindFirstChild("Livestock")
 	if not f then f = Instance.new("Folder"); f.Name = "Livestock"; f.Parent = model end
@@ -80,6 +88,8 @@ local function spawnAnimal(model, kind)
 	-- ว่า "เก็บแล้วหายไป" พอดี จึงไม่ต้องเขียนตรรกะการลบเองเลย
 	animal:SetAttribute("HerdAnimal", true)
 	animal:SetAttribute("Spent", true) -- ยังโตไม่พอ: ปุ่มถูกปิดไว้จนกว่า tickPen จะปลดให้
+	animal:SetAttribute("BornAt", os.time()) -- ใช้คำนวณสเกลระหว่างโต
+	pcall(function() animal:ScaleTo(IslandConfig.PenBabyScale) end) -- เกิดมาตัวเล็ก แล้วค่อยโต
 	CollectionService:AddTag(animal, NODE_TAG)
 	animal.Parent = penFolder(model)
 	return true
@@ -95,14 +105,29 @@ local function penSnapshot(model)
 	end
 	-- นับตัวที่โตพร้อมเก็บแล้ว ให้หน้าจอบอกได้ว่ารออะไรอยู่
 	local ready, now = 0, os.time()
+	-- ตัวที่ยังโตไม่เสร็จ: ส่งความคืบหน้าไปให้หน้าจอวาดเป็นแถบ (ผู้ใช้สั่ง "ขึ้นเป็นบาร์โหลดไว้ก็ได้")
+	local growing = {}
 	for _, a in ipairs(penFolder(model):GetChildren()) do
-		if (a:GetAttribute("ReadyAt") or 0) <= now then ready += 1 end
+		local readyAt = a:GetAttribute("ReadyAt") or 0
+		if readyAt <= now then
+			ready += 1
+		else
+			local bornAt = a:GetAttribute("BornAt") or (readyAt - IslandConfig.PenGrowSeconds)
+			local span = math.max(1, readyAt - bornAt)
+			growing[#growing + 1] = {
+				name = ANIMAL_NAMES[a.Name] or a.Name,
+				progress = math.clamp((now - bornAt) / span, 0, 1),
+				secondsLeft = math.max(0, readyAt - now),
+			}
+		end
 	end
+	table.sort(growing, function(x, y) return x.secondsLeft < y.secondsLeft end)
 	return {
 		uid = entry and entry.uid,
 		animals = rows,
 		count = penCount(model),
 		ready = ready,
+		growing = growing,
 		max = IslandConfig.PenMax,
 		kind = entry and entry.animal,
 	}
@@ -155,10 +180,29 @@ local function tickPen(model, entry)
 	end
 	local now = os.time()
 	for _, animal in ipairs(live) do
-		if animal:GetAttribute("Spent") and (animal:GetAttribute("ReadyAt") or 0) <= now then
+		local readyAt = animal:GetAttribute("ReadyAt") or 0
+		local bornAt = animal:GetAttribute("BornAt") or (readyAt - IslandConfig.PenGrowSeconds)
+		local span = math.max(1, readyAt - bornAt)
+		local progress = math.clamp((now - bornAt) / span, 0, 1)
+
+		if animal:GetAttribute("Spent") and readyAt <= now then
 			animal:SetAttribute("Spent", nil)
+			pcall(function() animal:ScaleTo(1) end) -- โตเต็มวัย
 			for _, d in ipairs(animal:GetDescendants()) do
 				if d:IsA("ProximityPrompt") then d.Enabled = true end
+			end
+		elseif animal:GetAttribute("Spent") then
+			-- **ค่อยๆ โตให้เห็น** เหมือนพืชในแปลง — `ScaleTo` รับสเกลสัมบูรณ์ จึงคำนวณจากความคืบหน้าตรงๆ
+			local want = IslandConfig.PenBabyScale + (1 - IslandConfig.PenBabyScale) * progress
+			pcall(function() animal:ScaleTo(want) end)
+		end
+
+		-- นาฬิกาบนปุ่ม ทรงเดียวกับแปลงผัก (ObjectText) — ไม่ต้องมีโค้ดไคลเอนต์
+		local label = ANIMAL_NAMES[animal.Name] or animal.Name
+		for _, d in ipairs(animal:GetDescendants()) do
+			if d:IsA("ProximityPrompt") and d.Name == "GatherPrompt" then
+				d.ObjectText = (readyAt <= now) and (label .. " · โตแล้ว")
+					or ("%s · โตอีก %d นาที"):format(label, math.max(1, math.ceil((readyAt - now) / 60)))
 			end
 		end
 	end
@@ -298,6 +342,7 @@ local function wirePen(model)
 	prompt.Triggered:Connect(function(player)
 		if not IslandAccess.IsOwner(player) then return notify(player, "error", "เฉพาะเจ้าของเกาะ") end
 		Remotes.IslandPenOpen:FireClient(player, penSnapshot(model))
+		Watching[player] = model -- แถบความคืบหน้าต้องเดิน จึงต้องส่งภาพใหม่เรื่อยๆ ขณะเปิดอยู่
 	end)
 end
 
@@ -342,6 +387,30 @@ Remotes.IslandPenBuy.OnServerEvent:Connect(function(player, uid, kind, count)
 		notify(player, "error", why)
 	end
 	Remotes.IslandPenOpen:FireClient(player, penSnapshot(model)) -- วาดใหม่เสมอ สำเร็จหรือไม่ก็ตาม
+end)
+
+-- ส่งภาพคอกใหม่ให้คนที่เปิดหน้าต่างค้างไว้ — แถบโตจึงเดินจริง ไม่ใช่ค้างที่ % ตอนเปิด
+--
+-- หยุดเองเมื่อผู้เล่นเดินห่างเกินระยะกดปุ่ม (หน้าต่างปิดไปแล้วในทางปฏิบัติ) หรือคอกถูกเก็บคืน
+task.spawn(function()
+	while true do
+		task.wait(3)
+		for player, model in pairs(Watching) do
+			local char = player.Character
+			local hrp = char and char:FindFirstChild("HumanoidRootPart")
+			if not player.Parent or not model.Parent or not hrp then
+				Watching[player] = nil
+			elseif (model:GetPivot().Position - hrp.Position).Magnitude > 40 then
+				Watching[player] = nil
+			else
+				Remotes.IslandPenOpen:FireClient(player, penSnapshot(model))
+			end
+		end
+	end
+end)
+
+game:GetService("Players").PlayerRemoving:Connect(function(player)
+	Watching[player] = nil
 end)
 
 IslandAccess.PenBuy = penBuy

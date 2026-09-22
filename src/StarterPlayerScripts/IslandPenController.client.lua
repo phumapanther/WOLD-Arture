@@ -142,9 +142,42 @@ local function draw(snap)
 	for _, c in ipairs(list:GetChildren()) do
 		if c:IsA("Frame") then c:Destroy() end
 	end
-	local growing = snap.count - (snap.ready or 0)
-	local tail = growing > 0 and (" · กำลังโต %d"):format(growing) or ""
+	local growing = snap.growing or {}
+	local tail = #growing > 0 and (" · กำลังโต %d"):format(#growing) or ""
 	subtitle.Text = ("ในคอก %d/%d ตัว · เก็บได้ %d%s"):format(snap.count, snap.max, snap.ready or 0, tail)
+
+	-- **แถบความคืบหน้าของตัวที่ยังโตไม่เสร็จ** (ผู้ใช้สั่ง 2026-09-22)
+	-- วาดก่อนรายการสัตว์ที่ซื้อได้ เพราะมันคือ "สถานะตอนนี้" ส่วนรายการข้างล่างคือ "จะซื้ออะไรต่อ"
+	for gi, g in ipairs(growing) do
+		local bar = Instance.new("Frame")
+		bar.LayoutOrder = -100 + gi
+		bar.Size = UDim2.new(1, -6, 0, 30)
+		bar.BackgroundColor3 = Color3.fromRGB(30, 28, 34)
+		bar.BorderSizePixel = 0
+		bar.Parent = list
+		local bc = Instance.new("UICorner"); bc.CornerRadius = UDim.new(0, 7); bc.Parent = bar
+
+		local fill = Instance.new("Frame")
+		fill.Size = UDim2.new(math.clamp(g.progress or 0, 0, 1), 0, 1, 0)
+		fill.BackgroundColor3 = Color3.fromRGB(86, 132, 74)
+		fill.BorderSizePixel = 0
+		fill.Parent = bar
+		local fc = Instance.new("UICorner"); fc.CornerRadius = UDim.new(0, 7); fc.Parent = fill
+
+		local text = Instance.new("TextLabel")
+		text.BackgroundTransparency = 1
+		text.Size = UDim2.new(1, -16, 1, 0)
+		text.Position = UDim2.new(0, 10, 0, 0)
+		text.Font = Enum.Font.GothamMedium
+		text.TextSize = 13
+		text.TextColor3 = TEXT
+		text.TextXAlignment = Enum.TextXAlignment.Left
+		local mins = math.max(1, math.ceil((g.secondsLeft or 0) / 60))
+		text.Text = ("%s · โตอีก %d นาที (%d%%)"):format(g.name or "สัตว์", mins, math.floor((g.progress or 0) * 100))
+		text.ZIndex = 2
+		text.Parent = bar
+	end
+
 	for i, animal in ipairs(snap.animals) do row(i, animal, snap) end
 	gui.Enabled = true
 end

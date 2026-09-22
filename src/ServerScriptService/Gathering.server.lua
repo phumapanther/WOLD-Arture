@@ -111,6 +111,15 @@ local function hasTool(player, needed)
 end
 
 local function isSpent(node)
+	-- **แอตทริบิวต์ `Spent` มาก่อนเสมอ** (แก้ 2026-09-22: ซื้อสัตว์มาแล้วเก็บได้ทันทีทั้งที่ยังไม่โต)
+	--
+	-- ระบบอื่นตั้งธงนี้เพื่อบอกว่า "ยังเก็บไม่ได้" โดยไม่ผ่านคูลดาวน์ของไฟล์นี้ — `IslandZones` ตั้งให้
+	-- สัตว์ที่เพิ่งเกิดจนกว่า `ReadyAt` จะถึง · ของเดิมอ่านแต่ตาราง `SpentUntil` ของตัวเอง ธงจึงถูก
+	-- มองข้ามทั้งหมด แล้วสัตว์แรกเกิดก็ถูกรีดนมได้ทันที
+	--
+	-- อ่านจาก **ตัวโหนด** ไม่ใช่จากตารางในหน่วยความจำ = ใครตั้งก็ได้ผลเหมือนกันหมด
+	if node:GetAttribute("Spent") then return true end
+
 	local until_ = SpentUntil[node]
 	if not until_ then return false end
 	if os.clock() >= until_ then
@@ -368,6 +377,12 @@ local function register(node)
 	prompt.MaxActivationDistance = GatherConfig.Range
 	prompt.HoldDuration = config.seconds or 2
 	prompt.RequiresLineOfSight = false
+	-- **โหนดที่ติดธง `Spent` มาก่อนแล้วต้องเกิดมาพร้อมปุ่มที่ปิดอยู่** (แก้ 2026-09-22)
+	--
+	-- `setSpent` เป็นตัวเดียวที่เคยปิดปุ่ม ซึ่งครอบคลุมเฉพาะโหนดที่ "เพิ่งถูกเก็บไป" — แต่สัตว์ที่
+	-- `IslandZones` เพิ่งให้เกิดติดธงมาตั้งแต่ต้นโดยไม่เคยผ่าน `setSpent` เลย ปุ่มจึงเปิดค้าง
+	-- แล้วรีดนมลูกไก่แรกเกิดได้ทันที
+	prompt.Enabled = not node:GetAttribute("Spent")
 	prompt.Parent = anchor
 	publishRequirementLater(node)
 
@@ -406,6 +421,8 @@ local function register(node)
 	auto.RequiresLineOfSight = false
 	-- Under the gather prompt rather than over it, so [E] reads first.
 	auto.UIOffset = Vector2.new(0, 44)
+	-- ปุ่มฟาร์มออโต้ต้องเกิดมาปิดเหมือนปุ่มเก็บ ไม่งั้นสัตว์แรกเกิดยังมีปุ่ม F ค้างให้กด
+	auto.Enabled = not node:GetAttribute("Spent")
 	auto.Parent = anchor
 
 	auto.Triggered:Connect(function(player)

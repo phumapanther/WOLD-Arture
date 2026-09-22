@@ -12,9 +12,28 @@ local Inventory = {}
 
 local States = {} -- [player] = { slots, equipped = {weapon, armor}, gold }
 
+-- **คีย์ช่องต้องเป็นตัวเลขเสมอ** (แก้ 2026-09-22: วางของไม่ได้ ขึ้น "ไม่มีของชิ้นนั้นในกระเป๋า")
+--
+-- ⚠️ ตารางช่องเป็น **sparse** (ของอยู่ช่อง 2, 4, 37-43 แล้วที่เหลือเป็น nil) · DataStore เก็บเป็น JSON
+-- ซึ่งไม่มี sparse array — ตอนเซฟมันกลายเป็น object แล้วตอนโหลดกลับมา **คีย์ทุกตัวเป็นสตริง**
+-- `state.slots[40]` (ตัวเลข) จึงหาไม่เจอ ทั้งที่ `pairs` ยังเห็นของครบ (`FindSlotById` จึงคืนเลขที่
+-- เอาไปใช้ต่อไม่ได้ แล้ว `place` ก็ตอบ noitem)
+--
+-- เกิดขึ้นชัดตอนแยกช่อง VIP เพราะช่อง 37-54 ทำให้ตารางเป็น sparse แน่นอน — ก่อนหน้านี้ของมักอัดชิด
+-- ช่อง 1..n จึงรอดมาเป็น array จริงบ่อยๆ และไม่มีใครเจอ
+local function normaliseSlots(saved)
+	local out = {}
+	if type(saved) ~= "table" then return out end
+	for k, v in pairs(saved) do
+		local index = tonumber(k)
+		if index and v then out[index] = v end
+	end
+	return out
+end
+
 function Inventory.Add(player, saved)
 	States[player] = {
-		slots = saved and saved.Slots or {},
+		slots = normaliseSlots(saved and saved.Slots),
 		equipped = saved and saved.Equipped or {},
 		gold = saved and saved.Gold or 0,
 		-- [hotbar 1-6] = item id. Ids rather than bag positions: the bag gets sorted and items move, and a
@@ -497,11 +516,27 @@ function Inventory.FindSlotById(player, id)
 	return nil
 end
 
+-- **ตารางช่องต้องส่งเป็น array ต่อเนื่อง** (แก้ 2026-09-22: กระเป๋าขึ้นว่างเปล่าแต่เซิร์ฟเวอร์บอกเต็ม)
+--
+-- ⚠️ `state.slots` เป็น **sparse table**: ของอยู่ช่อง 1-3 กับ 37-40 แล้วช่อง 4-36 เป็น nil
+-- วัดจริงได้ `#slots = 0` และมีรู 36 ช่อง — Roblox ส่ง sparse array ข้าม remote ไม่ได้
+-- มันแปลงคีย์ตัวเลขเป็น**สตริง** ฝั่งไคลเอนต์ `data.slots[37]` (ตัวเลข) จึงหาไม่เจอสักช่อง
+--
+-- เติม `false` ในรูให้ครบก่อนส่ง → เป็น array จริงยาว TotalSlotCount · ไคลเอนต์อ่าน `false`
+-- เป็น "ช่องว่าง" เหมือน nil ทุกประการ (ทั้งสองอย่างเป็น falsy)
+local function wireSlots(slots)
+	local out = table.create(InventoryConfig.TotalSlotCount, false)
+	for i = 1, InventoryConfig.TotalSlotCount do
+		out[i] = slots[i] or false
+	end
+	return out
+end
+
 function Inventory.Send(player)
 	local state = States[player]
 	if not state then return end
 	Remotes.InventoryUpdate:FireClient(player, {
-		slots = state.slots,
+		slots = wireSlots(state.slots),
 		equipped = state.equipped,
 		gold = state.gold,
 		hotbar = state.hotbar,

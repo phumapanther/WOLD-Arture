@@ -100,6 +100,8 @@ end)
 
 ---------------------------------------------------------------- ต้นไม้ 2x2 · ลัง · ถัง · แผ่นทางเดิน
 proto("Deco_Tree", function(m)
+	-- โอ๊กจริงจากชุดเดียวกับแมพหลัก · ย่อ 0.5 เพราะต้นจริงสูงราว 40 studs ซึ่งใหญ่เกินสวนบนเกาะ
+	if borrowAsset(m, "oak", 1, 7) then return end
 	K.cyl(m, K.at(0, 3, 0), 0.7, 6, MAT.Wood, C.wood)
 	K.ball(m, K.at(0, 8, 0), 6.5, MAT.Grass, C.moss, { cancollide = false })
 	K.ball(m, K.at(1.8, 6.5, 1.2), 4.2, MAT.Grass, C.grass, { cancollide = false })
@@ -113,11 +115,64 @@ proto("Deco_PathTile", function(m)
 end)
 
 
+
+---------------------------------------------------------------- ยืมโมเดลจริงจากเกมหลัก
+--
+-- **ต้นไม้ พุ่มไม้ ก้อนหิน ใช้ของชุดเดียวกับแมพหลัก** (ผู้ใช้ทักว่าของเกาะดูเหมือนสร้างใหม่ 2026-09-22)
+-- ไม่ใช่กล่องที่ปั้นเอง — `ServerStorage.WOLD_Assets.<kind>` คือชุดที่ผู้ใช้อนุมัติไว้ตั้งแต่ 2026-09-06
+-- (พุ่ม Foliage Pack · หินมอส Mossy rock pack · โอ๊ก/สนจริง) ติดตั้งด้วย `mapgen/assets_setup.lua`
+--
+-- คืน false เมื่อไม่มีชุดโมเดล — `proto` ที่เรียกจะตกไปใช้ของที่ปั้นเองแทน จึงยังได้ของครบเสมอ
+local ASSETS = game:GetService("ServerStorage"):FindFirstChild("WOLD_Assets")
+
+local function borrowAsset(m, kind, index, scale)
+	local folder = ASSETS and ASSETS:FindFirstChild(kind)
+	if not folder then return false end
+	local picks = folder:GetChildren()
+	if #picks == 0 then return false end
+	table.sort(picks, function(a, b) return a.Name < b.Name end)
+	local src = picks[((index - 1) % #picks) + 1]
+
+	-- ย้ายชิ้นส่วนเข้ามาในต้นแบบของเรา แล้ววางฐานไว้ที่ y = 0 (กติกาของทุกต้นแบบในไฟล์นี้)
+	-- **`scale` คือ "อยากให้กว้างกี่ studs" ไม่ใช่ตัวคูณ** — โมเดลจาก Creator Store ขนาดต่างกันมาก
+	-- (หินมอสก้อนหนึ่งกว้าง 32 studs อีกก้อน 6) ตัวคูณตายตัวจึงให้ผลคนละเรื่องทุกก้อน
+	local clone = src:Clone()
+	if scale and clone:IsA("Model") then
+		local _, raw = clone:GetBoundingBox()
+		local widest = math.max(raw.X, raw.Z)
+		if widest > 0.1 then
+			pcall(function() clone:ScaleTo(scale / widest) end)
+		end
+	end
+	-- ⚠️ **ต้องย้ายมาที่จุดกำเนิดก่อน** ต้นแบบใน `WOLD_Assets` เก็บพิกัดโลกเดิมของมันไว้ (โมเดลที่
+	-- InsertService โหลดมาอยู่ที่ไหนก็ได้) — ถ้าไม่ย้าย กล่องครอบจะกินตั้งแต่จุดกำเนิดไปถึงตรงนั้น
+	-- แล้ว Footprint กลายเป็นพันช่อง (วัดจริงรอบแรก: ก้อนหิน 1290x432 ช่อง กว้าง 2,580 studs)
+	local cf, size = clone:GetBoundingBox()
+	local okMove = pcall(function()
+		clone:PivotTo(clone:GetPivot() * cf:Inverse() * CFrame.new(0, size.Y / 2, 0))
+	end)
+	if not okMove then clone:Destroy(); return false end
+
+	-- แล้วค่อยวางฐานที่ y = 0 ตามกติกาของทุกต้นแบบในไฟล์นี้
+	local lowest = math.huge
+	for _, d in ipairs(clone:GetDescendants()) do
+		if d:IsA("BasePart") then lowest = math.min(lowest, d.Position.Y - d.Size.Y / 2) end
+	end
+	if lowest == math.huge then clone:Destroy(); return false end
+	local ok2 = pcall(function() clone:PivotTo(clone:GetPivot() + Vector3.new(0, -lowest, 0)) end)
+	if not ok2 then clone:Destroy(); return false end
+
+	for _, c in ipairs(clone:GetChildren()) do c.Parent = m end
+	clone:Destroy()
+	return true
+end
+
 ---------------------------------------------------------------- ของตกแต่งชิ้นเล็ก (ผู้ใช้สั่ง 2026-09-22)
 -- ก้อนหิน พุ่ม ตอไม้ โคมตั้งพื้น ป้าย บ่อน้ำ — ของเล็กๆ ที่เอาไว้ "โรย" ให้เกาะไม่ว่างเปล่า
 -- ส่วนใหญ่ 1x1 ช่อง ราคาถูกกว่าของใหญ่มาก เพราะตั้งใจให้ซื้อทีละหลายชิ้น
 
 proto("Deco_Rock", function(m)
+	if borrowAsset(m, "rock", 1, 3.2) then return end
 	-- กองหินเล็ก — เอียงคนละมุม ไม่ให้ดูเป็นลูกบาศก์วางเรียง
 	K.box(m, K.at(0, 0.75, 0) * K.yaw(0.4) * K.pitch(0.12), Vector3.new(2.6, 1.5, 2.2), MAT.Slate, C.stone)
 	K.box(m, K.at(0.9, 0.5, -0.7) * K.yaw(-0.9), Vector3.new(1.4, 1.0, 1.3), MAT.Slate, C.darkStone)
@@ -125,6 +180,7 @@ proto("Deco_Rock", function(m)
 end)
 
 proto("Deco_RockBig", function(m)
+	if borrowAsset(m, "rock", 3, 6.5) then return end
 	-- หินก้อนใหญ่ 2x2 — เป็นจุดเด่นกลางสนาม ไม่ใช่ของโรย
 	K.box(m, K.at(0, 1.9, 0) * K.yaw(0.3) * K.pitch(0.08), Vector3.new(5.2, 3.8, 4.6), MAT.Slate, C.stone)
 	K.box(m, K.at(1.9, 0.9, 1.2) * K.yaw(-0.7), Vector3.new(2.4, 1.8, 2.2), MAT.Slate, C.darkStone)
@@ -133,6 +189,7 @@ proto("Deco_RockBig", function(m)
 end)
 
 proto("Deco_Bush", function(m)
+	if borrowAsset(m, "bush", 1, 4) then return end
 	K.ball(m, K.at(0, 1.3, 0), 3.0, MAT.Grass, C.moss, { cancollide = false })
 	K.ball(m, K.at(1.0, 1.0, 0.6), 2.1, MAT.Grass, C.grass, { cancollide = false })
 	K.ball(m, K.at(-0.9, 1.1, -0.7), 2.3, MAT.Grass, C.moss, { cancollide = false })

@@ -426,6 +426,32 @@ IslandAccess.SortSide = function(player, which)
 	return true
 end
 
+-- ตารางช่องเป็นรูปทรงอะไร (เทส) — sparse array ข้าม remote แล้วกลายเป็น dict คีย์สตริง
+IslandAccess.SlotsShape = function(player)
+	local state = Inventory.Get(player)
+	if not state then return "ไม่มี state" end
+	local IC = require(game.ReplicatedStorage.InventoryConfig)
+	local n, maxKey, holes = 0, 0, 0
+	for k in pairs(state.slots) do
+		n += 1
+		if type(k) == "number" and k > maxKey then maxKey = k end
+	end
+	for i = 1, maxKey do if state.slots[i] == nil then holes += 1 end end
+	return ("ช่องที่มีของ %d · ดัชนีสูงสุด %d · ช่องว่างคั่นกลาง %d · #slots (array length) = %d")
+		:format(n, maxKey, holes, #state.slots)
+end
+
+IslandAccess.DumpSlots = function(player)
+	local state = Inventory.Get(player)
+	if not state then return "ไม่มี state" end
+	local rows = {}
+	for k, v in pairs(state.slots) do
+		rows[#rows + 1] = ("[%s:%s]=%s x%s"):format(type(k), tostring(k), tostring(v and v.id), tostring(v and v.count))
+	end
+	table.sort(rows)
+	return table.concat(rows, " | ")
+end
+
 IslandAccess.Sort = function(player)
 	Inventory.AutoSort(player)
 	local state = Inventory.Get(player)
