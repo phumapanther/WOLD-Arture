@@ -68,6 +68,23 @@ if not BUILDERS then
 	return
 end
 
+-- **ระยะยกของโรงงาน (O) ที่ต้องหักออก** — ผู้ใช้แจ้ง 2026-09-22: "สกินทองถือกลางอุปกรณ์ ไม่ใช่ตรงด้าม"
+--
+-- โรงงานยกโมเดลขึ้นพ้นแท่นโชว์ก่อน export ส่วนผังของเกมคือ **ปลายที่ใช้งานอยู่ที่จุดกำเนิด ด้ามที่ y = 2.0**
+-- ซึ่ง `WeaponVisuals.GRIP` วัดมาจากผังนั้น · ไม่หักออก = ทั้งชิ้นสูงเกินไป 2.2 ฝ่ามือเลยไปอยู่กลางด้าม
+-- (วัดยืนยัน: ดาบมี `Handle` ที่ y 4.20 ซึ่ง 4.20 - 2.2 = 2.00 ตรงผังเป๊ะ · ปืน `Grip` 3.40 - 1.4 = 2.00)
+--
+-- **`Root` ไม่ขยับ** มันคือ PrimaryPart ที่ Motor6D ขับ ต้องอยู่ที่จุดกำเนิดเสมอ — ที่เลื่อนคือตัวโมเดล
+local LIFT = {
+	Skin_Sword_Ember = 2.2, Skin_Sword_Frost = 2.2,
+	Skin_Greatsword_Gold = 2.9, Skin_Greatsword_Void = 2.9,
+	Skin_Bow_Vine = 2.6,
+	Skin_Pistol_Brass = 1.4,
+	Skin_Staff_Storm = 2.4,
+	Skin_Spellbook_Blood = 0.5,
+	GoldAxe = 2.2, GoldPickaxe = 2.2, GoldShovel = 2.2, GoldFishingRod = 2.2,
+}
+
 local made, kept, missing = {}, 0, {}
 
 local function install(name, parent)
@@ -92,6 +109,15 @@ local function install(name, parent)
 	local root = model.PrimaryPart or model:FindFirstChild("Root")
 	if root then
 		model.PrimaryPart = root
+
+		-- หักระยะยกของโรงงานออกก่อน แล้วค่อยเชื่อม (weld จำระยะตอนที่มันถูกสร้าง — สร้างก่อนเลื่อนไม่ได้)
+		local lift = LIFT[name]
+		if lift then
+			for _, d in ipairs(model:GetDescendants()) do
+				if d:IsA("BasePart") and d ~= root then d.CFrame = d.CFrame - Vector3.new(0, lift, 0) end
+			end
+		end
+
 		for _, d in ipairs(model:GetDescendants()) do
 			if d:IsA("BasePart") and d ~= root then
 				local weld = Instance.new("WeldConstraint")
