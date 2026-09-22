@@ -11,7 +11,7 @@ const connect = require("./mcp-client");
     const src = fs.readFileSync(file, "utf8").replace(/\r\n/g, "\n");
     let eq = "=";
     while (src.includes("]" + eq + "]")) eq += "=";
-    const code = `if game.PlaceId ~= 88774255487951 then return "REFUSED" end
+    const code = `if game.PlaceId ~= 88774255487951 and game.PlaceId ~= 136992335889132 then return "REFUSED" end
 local m = Instance.new("ModuleScript")
 m.Name = "SyntaxCheck_" .. math.random(1, 1e9)
 -- Sandboxed: the assistant thread may only require sandboxed modules (everything in the place carries

@@ -12,15 +12,16 @@
 -- ฝั่งหลังใช้วาดรายการ ถ้าเขียนแค่ฝั่งเดียว จะได้แขกที่เข้าได้แต่ไม่เห็นเกาะ หรือเห็นแต่เข้าไม่ได้
 local DataStoreService = game:GetService("DataStoreService")
 local TeleportService = game:GetService("TeleportService")
-local ServerConfig = require(game.ServerScriptService.ServerConfig)
 
 local store = DataStoreService:GetDataStore("WOLD_FarmRegistry_v1")
 
 local FarmRegistry = {}
 
 -- เพลสปลายทางของเกาะ (คนละเพลสกับเกมหลัก จักรวาลเดียวกัน) — ดู `ServerConfig.FarmingPlaceId`
+-- require ตอนใช้ ไม่ใช่ตอนโหลด: ServerConfig เองก็ require ไฟล์นี้ (เพื่อ OwnerOfServer ตอนบูตเกาะ) ถ้า require บนหัวไฟล์
+-- จะวนกัน "required recursively" · ฟังก์ชันนี้ถูกเรียกเฉพาะตอนล็อบบี้จองเซิร์ฟ ซึ่ง ServerConfig โหลดเสร็จไปนานแล้ว
 local function farmPlaceId()
-	return ServerConfig.FarmingPlaceId
+	return require(game.ServerScriptService.ServerConfig).FarmingPlaceId
 end
 
 local function farmKey(ownerUserId) return "farm_" .. ownerUserId end

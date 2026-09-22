@@ -163,6 +163,8 @@ local EVENTS = {
 	-- kind now, the kind arriving, and how far along the change is -- everything else the client reads out
 	-- of the shared WeatherConfig rather than being told.
 	"WeatherChanged",
+	-- เกาะฟาร์ม: วาง (slot, cx, cz, r) เข้า → ตอบกลับทางเดียวกัน (ok, remaining) · เก็บ (uid) เข้า
+	"IslandPlace", "IslandPickup",
 }
 local FUNCTIONS = { "GetSpawnPosition" } -- DataStore-backed lookups can only run server-side; the client must ask
 

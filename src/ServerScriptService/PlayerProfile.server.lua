@@ -38,6 +38,8 @@ local ProfileTemplate = {
 	-- real item in the bag (ItemCatalog CarKey/BoatKey/AirshipKey, with the plate in the slot's meta), so it
 	-- saves with the inventory and can be handed to somebody else.
 	Vehicles = nil,
+	-- ของบนเกาะฟาร์ม {starter, placed = {{uid,id,x,z,r,crop?,at?}}, nextUid} | nil — Island/IslandBuild เขียนตรง
+	-- เข้าตารางเหมือน Vehicles (ไม่มี serializer) ดู docs/superpowers/specs/2026-09-21-island-placement-design.md
 	-- When the old daily chest was last opened. The chest it belonged to is gone -- it became the admin chest,
 	-- which has no cooldown to remember -- but the field stays: every saved profile already has it, and
 	-- removing a key from the template is how a Reconcile starts rewriting profiles for no reason.
@@ -145,12 +147,16 @@ local function profileKey(userId)
 end
 
 local function resolvedSpawnPosition(profile)
+	-- บนเกาะ พิกัดที่เซฟไว้เป็นของเมืองหลัก ซึ่งบนเกาะคือกลางอากาศ → ใช้ SpawnLocation ของเกาะเสมอ
+	if ServerConfig.IsFarm then return SpawnSelector.ResolvePosition(nil) end
 	local saved = profile.Data.Position
 	local savedVector = saved and Vector3.new(saved.x, saved.y, saved.z)
 	return SpawnSelector.ResolvePosition(savedVector)
 end
 
 local function savePosition(player)
+	-- พิกัดเกมหลักในโปรไฟล์ต้องรอดข้ามการไปเกาะ ไม่งั้นกลับเมืองแล้วโผล่ที่ (0, 817, 0) ของเกาะ
+	if ServerConfig.IsFarm then return end
 	local profile = Profiles[player]
 	local character = player.Character
 	local hrp = character and character:FindFirstChild("HumanoidRootPart")

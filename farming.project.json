@@ -21,7 +21,9 @@
     "src/ServerScriptService/WorldEvents.server.lua",
     "src/ServerScriptService/Lobby/BuildLobbyRoom.server.lua",
     "src/ServerScriptService/Lobby/LobbyServer.server.lua",
-    "src/ServerScriptService/Lobby/ChannelServer.server.lua"
+    "src/ServerScriptService/Lobby/ChannelServer.server.lua",
+    "src/StarterPlayerScripts/VehicleController.client.lua",
+    "src/StarterPlayerScripts/VehicleSoundController.client.lua"
   ],
   "tree": {
     "$className": "DataModel",

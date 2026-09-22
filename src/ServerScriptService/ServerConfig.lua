@@ -13,11 +13,22 @@ local ServerConfig = {}
 -- ตั้งชื่อ "WOLD Farming" บนเว็บ · 0 = ยังไม่มีเพลส (ล็อบบี้จะขึ้นแถวโหมดนี้เป็น "ยังไม่เปิด" แทน)
 ServerConfig.FarmingPlaceId = 136992335889132
 
-ServerConfig.IsLobby = game.PrivateServerId == ""
+local FarmRegistry = require(script.Parent.Lobby.FarmRegistry)
+
+-- เพลสเกาะฟาร์มรู้ตัวจาก PlaceId ไม่ใช่จาก PrivateServerId: Studio Play ในเพลสนี้จึงเป็นเกาะเสมอโดยไม่ต้องพึ่ง
+-- FORCE flag และเซิร์ฟสาธารณะของเพลสนี้ (ถ้ามีใครหลงเข้ามา) ก็ไม่กลายเป็นล็อบบี้
+ServerConfig.IsFarm = game.PlaceId == ServerConfig.FarmingPlaceId
+
+ServerConfig.IsLobby = game.PrivateServerId == "" and not ServerConfig.IsFarm
 if FORCE_CHANNEL_IN_STUDIO_FOR_TESTING and game:GetService("RunService"):IsStudio() then
 	ServerConfig.IsLobby = false
 end
-if ServerConfig.IsLobby then
+if ServerConfig.IsFarm then
+	ServerConfig.Mode = "Farming"
+	-- nil ใน Studio (ไม่มี Reserved Server) → IslandBuild ให้คนแรกที่เข้าเป็นเจ้าของ · nil ในเซิร์ฟจริง = ไม่ได้มาจากล็อบบี้
+	ServerConfig.FarmOwnerId = FarmRegistry.OwnerOfServer(game.PrivateServerId)
+	ServerConfig.Channel = ServerConfig.FarmOwnerId or 0
+elseif ServerConfig.IsLobby then
 	ServerConfig.Mode = nil
 	ServerConfig.Channel = nil
 elseif FORCE_CHANNEL_IN_STUDIO_FOR_TESTING and game:GetService("RunService"):IsStudio() then
@@ -27,8 +38,9 @@ else
 	ServerConfig.Mode, ServerConfig.Channel = ChannelRegistry.IdentifySelf()
 end
 
--- game.PrivateServerId cannot be read from LocalScripts at all ("PrivateServerId cannot be checked on the
--- client") — replicate the one bit clients actually need via a Workspace Attribute, which replicates automatically.
+-- ไคลเอนต์อ่านสองบิตนี้จาก Workspace (PrivateServerId/PlaceId ฝั่งไคลเอนต์เชื่อไม่ได้) — IslandMode ต้องมาก่อน IsLobby
+-- เพราะทุก LocalScript รอ IsLobby แล้วอ่าน IslandMode ทันที ถ้ากลับลำดับจะได้ nil ชั่วขณะ
+workspace:SetAttribute("IslandMode", ServerConfig.IsFarm)
 workspace:SetAttribute("IsLobby", ServerConfig.IsLobby)
 
 -- Printed once, from the module every server script requires before anything else, so the first line in a
