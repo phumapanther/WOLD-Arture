@@ -1,0 +1,36 @@
+{
+  "name": "WOLD Farming",
+  "globIgnorePaths": [
+    "src/ServerScriptService/AdminChest.server.lua",
+    "src/ServerScriptService/AnimalHerds.server.lua",
+    "src/ServerScriptService/DevTeleport.server.lua",
+    "src/ServerScriptService/Fishing.server.lua",
+    "src/ServerScriptService/Gathering.server.lua",
+    "src/ServerScriptService/IllegalFarm.server.lua",
+    "src/ServerScriptService/Leaderboards.server.lua",
+    "src/ServerScriptService/Mobs.server.lua",
+    "src/ServerScriptService/Quests.server.lua",
+    "src/ServerScriptService/TikTokLive.server.lua",
+    "src/ServerScriptService/TownBuyers.server.lua",
+    "src/ServerScriptService/TownCapture.server.lua",
+    "src/ServerScriptService/TownVault.server.lua",
+    "src/ServerScriptService/Transformers.server.lua",
+    "src/ServerScriptService/TreasureChests.server.lua",
+    "src/ServerScriptService/VehicleMain.server.lua",
+    "src/ServerScriptService/WorldBoss.server.lua",
+    "src/ServerScriptService/WorldEvents.server.lua",
+    "src/ServerScriptService/Lobby/BuildLobbyRoom.server.lua",
+    "src/ServerScriptService/Lobby/LobbyServer.server.lua",
+    "src/ServerScriptService/Lobby/ChannelServer.server.lua"
+  ],
+  "tree": {
+    "$className": "DataModel",
+    "ServerScriptService": { "$path": "src/ServerScriptService" },
+    "ReplicatedStorage": { "$path": "src/ReplicatedStorage" },
+    "StarterGui": { "$path": "src/StarterGui" },
+    "StarterPlayer": {
+      "$className": "StarterPlayer",
+      "StarterPlayerScripts": { "$path": "src/StarterPlayerScripts" }
+    }
+  }
+}
