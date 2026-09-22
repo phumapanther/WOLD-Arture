@@ -46,7 +46,11 @@ local function accepts(model, id)
 end
 
 -- ตู้ที่จำกัดอาชีพ (ตู้ยา = นักบวช)
+--
+-- **บนเกาะไม่จำกัดอาชีพ** (ผู้ใช้กำหนด 2026-09-22) เหตุผลเดียวกับเตาใน `CraftStations`: เกาะเป็นเซิร์ฟ
+-- ส่วนตัวของคนที่ซื้อตู้มาเอง การกันด้วยอาชีพไม่ได้แบ่งงานกับใคร มันแค่ล็อกของที่เขาจ่ายเงินไปแล้ว
 local function mayOpen(player, model)
+	if ServerConfig.IsFarm then return true end
 	local class = model:GetAttribute("StorageClass")
 	if not class then return true end
 	return Classes.Has(player, class)

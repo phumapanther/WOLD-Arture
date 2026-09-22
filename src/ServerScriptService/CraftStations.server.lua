@@ -143,13 +143,11 @@ local function wireStation(model, spec)
 	prompt.HoldDuration = 0
 	prompt.Parent = anchor
 	prompt.Triggered:Connect(function(player)
-		-- ตัวดักชั่วคราว (2026-09-18): ผู้ใช้กด E ที่เตาแล้วไม่มีอะไรเกิดขึ้นเลย ไม่มี error ไม่มีข้อความ
-		-- สามบรรทัดนี้แยกให้ได้ว่าเงียบตรงไหน: ปุ่มไม่ยิง / ตะหลิวไม่ผ่าน / OpenAt ยังว่าง — ลบเมื่อจบเรื่อง
-		print(("[Kitchen] %s กด %s — ตะหลิว=%s OpenAt=%s"):format(
-			player.Name, spec.station,
-			tostring(not spec.needs or hasItem(player, spec.needs)),
-			tostring(CraftAccess.OpenAt ~= nil)))
-		if spec.needs and not hasItem(player, spec.needs) then
+		-- **ครัวบนเกาะไม่ต้องเป็นเชฟ** (ผู้ใช้กำหนด 2026-09-22: "เกาะตัวเองใช้ได้เลย ไม่ต้องเป็นเชฟ")
+		--
+		-- เกาะเป็นเซิร์ฟส่วนตัวของคนคนเดียวที่ซื้อเตาด้วยเงินตัวเอง การกันด้วยอาชีพตรงนั้นไม่ได้แบ่งงาน
+		-- กันระหว่างผู้เล่น มันแค่ทำให้ของที่ซื้อมาใช้ไม่ได้ · เมืองหลักยังเป็นของเชฟเหมือนเดิม
+		if spec.needs and not ServerConfig.IsFarm and not hasItem(player, spec.needs) then
 			return Remotes.SocialNotify:FireClient(player, "warn", "ต้องมีตะหลิวเชฟ (เฉพาะอาชีพเชฟ)")
 		end
 		if not CraftAccess.OpenAt then
