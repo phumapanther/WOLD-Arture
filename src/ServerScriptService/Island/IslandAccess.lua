@@ -11,6 +11,13 @@ IslandAccess.Place = nil -- (player, slotIndex, cx, cz, r) -> ok, reason
 IslandAccess.Pickup = nil -- (player, uid) -> ok, reason
 IslandAccess.FindSlot = nil -- (player, itemId) -> slotIndex   (ให้สคริปต์ทดสอบ ซึ่ง require Inventory ไม่ได้)
 IslandAccess.Count = nil -- (player, itemId) -> n
+IslandAccess.CanPlaceAt = nil -- (cx, cz, w, d, r, itemId) -> ok, reason (ลองดูเฉยๆ ไม่วางจริง)
+IslandAccess.Grant = nil -- (player, itemId, count) เสกของเข้ากระเป๋า (เทสเท่านั้น)
+
+-- ตั้งโดย IslandZones (คอก/โซนแร่/ต้นไม้)
+IslandAccess.PenBuy = nil -- (player, penModel, kind, count) -> ok, reason
+IslandAccess.PenSnapshot = nil -- (penModel) -> ภาพรวมของคอกสำหรับวาดหน้าจอ
+IslandAccess.ZonesTick = nil -- () รันรอบเดียวทันที (เทส)
 
 -- ตั้งโดย IslandPlots
 IslandAccess.Plant = nil -- (player, plotModel) -> ok, reason

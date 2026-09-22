@@ -42,6 +42,8 @@ ShopConfig.IslandSells = {
 	{ id = "Deco_Bench", price = 350 },
 	{ id = "Deco_Lamp", price = 400 },
 	{ id = "Deco_Tree", price = 600 },
+	{ id = "AnimalPen", price = 3500 },
+	{ id = "MineZone", price = 5000 },
 	{ id = "House_StoneCottage", price = 20000 },
 	{ id = "House_Roundhouse", price = 25000 },
 	{ id = "House_Longhouse", price = 30000 },

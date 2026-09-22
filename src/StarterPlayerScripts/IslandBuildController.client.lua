@@ -24,7 +24,10 @@ local gui = IslandBuildGui.new(player:WaitForChild("PlayerGui"))
 
 local GREEN = Color3.fromRGB(90, 220, 110)
 local RED = Color3.fromRGB(230, 80, 80)
-local REASON_TEXT = { edge = "ใกล้ขอบเกาะเกินไป", blocked = "ตรงนี้วางไม่ได้", occupied = "วางทับของอื่น" }
+local REASON_TEXT = {
+	edge = "ใกล้ขอบเกาะเกินไป", blocked = "ตรงนี้วางไม่ได้", occupied = "วางทับของอื่น",
+	needsoil = "ต้องวางบนผืนดิน", onsoil = "ผืนดินไว้ปลูกผักเท่านั้น", steep = "พื้นชันเกินไป",
+}
 
 local starter = Instance.new("BindableEvent")
 starter.Name = "WOLD_StartPlacing"
@@ -165,7 +168,7 @@ RunService.RenderStepped:Connect(function()
 		return
 	end
 	local cx, cz = IslandGrid.anchorFor(hit.Position.X, hit.Position.Z, session.w, session.d, session.r)
-	local ok, reason = IslandGrid.canPlace(occupied, noBuildZones(), cx, cz, session.w, session.d, session.r)
+	local ok, reason = IslandGrid.canPlace(occupied, noBuildZones(), cx, cz, session.w, session.d, session.r, session.id)
 	session.cx, session.cz, session.ok, session.reason = cx, cz, ok, reason
 	session.ghost:PivotTo(IslandGrid.pivotFor(cx, cz, session.w, session.d, session.r, hit.Position.Y))
 

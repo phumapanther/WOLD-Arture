@@ -26,6 +26,9 @@ local REASON_TEXT = {
 	edge = "ใกล้ขอบเกาะเกินไป",
 	blocked = "ตรงนี้วางไม่ได้",
 	occupied = "วางทับของอื่น",
+	needsoil = "แปลงผักวางได้เฉพาะบนผืนดิน",
+	onsoil = "ผืนดินไว้ปลูกผักเท่านั้น วางของอื่นไม่ได้",
+	steep = "พื้นตรงนี้ชันเกินไป",
 	full = "กระเป๋าเต็ม",
 	growing = "เก็บเกี่ยวก่อนแล้วค่อยเก็บแปลง",
 	missing = "ไม่พบของชิ้นนั้นแล้ว",
@@ -181,7 +184,7 @@ local function place(player, slotIndex, cx, cz, r)
 	if not proto then return false, "noproto" end
 	if #Data.placed >= IslandConfig.MaxPlaced then return false, "limit" end
 	local w, d = footprintOf(proto)
-	local ok, reason = IslandGrid.canPlace(Occupied, noBuildZones(), cx, cz, w, d, r)
+	local ok, reason = IslandGrid.canPlace(Occupied, noBuildZones(), cx, cz, w, d, r, slot.id)
 	if not ok then return false, reason end
 	if not Inventory.RemoveFromSlot(player, slotIndex, 1) then return false, "noitem" end
 
@@ -281,6 +284,17 @@ IslandAccess.Place = place
 IslandAccess.Pickup = pickup
 IslandAccess.FindSlot = Inventory.FindSlotById
 IslandAccess.Count = Inventory.CountOf
+-- เสกของเข้ากระเป๋าสำหรับเทส (ของบางชิ้นยังไม่มีในชุดเริ่มต้น เช่นคอก/โซนแร่)
+-- ลองดูว่าวางตรงนี้ได้ไหมโดยไม่วางจริง (เทสใช้หาช่องว่าง) — nil itemId = ไม่สนใจกฎดิน
+IslandAccess.CanPlaceAt = function(cx, cz, w, d, r, itemId)
+	return (IslandGrid.canPlace(Occupied, noBuildZones(), cx, cz, w, d, r or 0, itemId))
+end
+
+IslandAccess.Grant = function(player, id, count)
+	if id == "gold" then Inventory.AddGold(player, count or 0); return true end
+	return Inventory.AddItem(player, id, count or 1)
+end
+
 -- ตัวแก้ค่าใน entry สำหรับเทส (เร่งเวลาปลูก) — ตารางที่ส่งข้าม BindableFunction เป็นสำเนา แก้ตรงๆ ไม่ถึงของจริง
 IslandAccess.SetEntry = function(uid, field, value)
 	local model = Models[uid]

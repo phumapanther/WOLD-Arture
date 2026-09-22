@@ -8,6 +8,7 @@
 local RS = game:GetService("ReplicatedStorage")
 local CELL = 4
 local C, MAT = K.C, K.MAT
+local rgbPink = Color3.fromRGB(226, 158, 158) -- หมู (จานสีของ kit ไม่มีชมพู)
 
 local function status(msg, done)
 	local f = workspace:FindFirstChild("WOLD")
@@ -125,6 +126,87 @@ for _, name in ipairs({ "House_StoneCottage", "House_Roundhouse", "House_Longhou
 	else
 		warn("[Placeables] ไม่มี builder ชื่อ " .. name)
 	end
+end
+
+---------------------------------------------------------------- คอกสัตว์ 5x5 ช่อง (รั้วรอบ + ประตู + รางอาหาร)
+proto("AnimalPen", function(m)
+	local S = 20 -- กว้าง 20 studs = 5 ช่อง
+	local half = S / 2
+	-- รั้วสี่ด้าน เว้นช่องประตูกว้าง 6 ตรงกลางด้านหน้า (-Z)
+	local function rail(cx, cz, len, along)
+		local size = along == "x" and Vector3.new(len, 0.3, 0.25) or Vector3.new(0.25, 0.3, len)
+		K.box(m, K.at(cx, 2.4, cz), size, MAT.Wood, C.plank)
+		K.box(m, K.at(cx, 1.2, cz), size, MAT.Wood, C.plank)
+	end
+	rail(0, half, S, "x")                       -- หลัง
+	rail(-half, 0, S, "z")                      -- ซ้าย
+	rail(half, 0, S, "z")                       -- ขวา
+	rail(-(half + 3) / 2 - 1.5, -half, half - 3, "x") -- หน้า ซ้ายประตู
+	rail((half + 3) / 2 + 1.5, -half, half - 3, "x")  -- หน้า ขวาประตู
+	for _, c in ipairs({ { -half, -half }, { half, -half }, { -half, half }, { half, half }, { -3, -half }, { 3, -half } }) do
+		K.box(m, K.at(c[1], 1.7, c[2]), Vector3.new(0.5, 3.4, 0.5), MAT.Wood, C.plankDark)
+	end
+	-- รางอาหารมุมหนึ่ง + จุดแขวนปุ่ม (ระบบหาชื่อ PenAnchor)
+	K.box(m, K.at(half - 4, 0.9, half - 4), Vector3.new(5, 1.2, 2), MAT.WoodPlanks, C.oak)
+	K.box(m, K.at(half - 4, 1.6, half - 4), Vector3.new(4.4, 0.6, 1.4), MAT.Ground, C.thatch)
+	local anchor = K.box(m, K.at(0, 1.5, -half), Vector3.new(1, 1, 1), MAT.SmoothPlastic, C.brass, { name = "PenAnchor", transparency = 1, cancollide = false })
+	anchor.CanQuery = false
+end)
+
+---------------------------------------------------------------- โซนแร่ 5x5 ช่อง (ลานหินมีหมุดมุม)
+proto("MineZone", function(m)
+	local S = 20
+	local half = S / 2
+	K.box(m, K.at(0, 0.2, 0), Vector3.new(S, 0.4, S), MAT.Slate, C.darkStone, { name = "Floor" })
+	-- หมุดหินสี่มุม บอกขอบเขตโซนให้เห็นชัดโดยไม่กั้นทาง
+	for _, c in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
+		local x, z = c[1] * (half - 1.5), c[2] * (half - 1.5)
+		K.box(m, K.at(x, 1.4, z), Vector3.new(1.8, 2.8, 1.8), MAT.Rock, C.stone)
+		K.box(m, K.at(x, 3.0, z), Vector3.new(1.1, 0.6, 1.1), MAT.Metal, C.brass)
+	end
+	-- รางเหล็กพาดกลางลาน ให้ดูเป็นเหมืองสตีมพังก์ ไม่ใช่แค่แผ่นเทา
+	for _, dz in ipairs({ -2.2, 2.2 }) do
+		K.box(m, K.at(0, 0.55, dz), Vector3.new(S - 4, 0.3, 0.5), MAT.Metal, C.rust)
+	end
+	for i = -3, 3 do
+		K.box(m, K.at(i * 2.4, 0.5, 0), Vector3.new(0.6, 0.25, 5.4), MAT.Wood, C.plankDark)
+	end
+	local anchor = K.box(m, K.at(0, 1.5, -half), Vector3.new(1, 1, 1), MAT.SmoothPlastic, C.brass, { name = "MineAnchor", transparency = 1, cancollide = false })
+	anchor.CanQuery = false
+end)
+
+---------------------------------------------------------------- สัตว์ในคอก 8 ชนิด (ทรงกล่อง แก้ในโชว์รูมได้)
+-- ตัวเล็ก ๆ พอให้แยกออกจากกัน — ระบบคอกโคลนไปวางในคอกแล้วติดแท็ก WOLD_Node ให้กด E ได้ตามเกมหลัก
+local ANIMALS = {
+	-- ชื่อ, สีตัว, สีหัว, ยาว, สูง, กว้าง, มีเขา/หงอน
+	{ "Chicken", C.white, C.paintRed, 1.6, 1.4, 1.2, "comb" },
+	{ "Duck", C.white, C.lamp, 1.8, 1.4, 1.3, "bill" },
+	{ "Pig", rgbPink, rgbPink, 2.8, 1.8, 1.6, nil },
+	{ "Goat", C.plaster, C.plaster, 2.6, 2.0, 1.4, "horn" },
+	{ "Sheep", C.sail, C.leather, 2.8, 2.0, 1.8, nil },
+	{ "Cow", C.white, C.black, 3.6, 2.4, 1.9, "horn" },
+	{ "Deer", C.leather, C.leather, 3.0, 2.4, 1.5, "antler" },
+	{ "Horse", C.wood, C.wood, 3.8, 2.8, 1.7, nil },
+}
+for _, a in ipairs(ANIMALS) do
+	local name, body, head, len, tall, wide, extra = a[1], a[2], a[3], a[4], a[5], a[6], a[7]
+	proto("Animal_" .. name, function(m)
+		local legH = tall * 0.38
+		K.box(m, K.at(0, legH + tall * 0.3, 0), Vector3.new(wide, tall * 0.6, len), MAT.SmoothPlastic, body, { name = "Body" })
+		K.box(m, K.at(0, legH + tall * 0.62, -len / 2 - wide * 0.3), Vector3.new(wide * 0.8, tall * 0.5, wide * 0.7), MAT.SmoothPlastic, head, { name = "Head" })
+		for _, c in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
+			K.box(m, K.at(c[1] * wide * 0.32, legH / 2, c[2] * len * 0.3), Vector3.new(wide * 0.22, legH, wide * 0.22), MAT.SmoothPlastic, head)
+		end
+		if extra == "horn" or extra == "antler" then
+			for _, sx in ipairs({ -1, 1 }) do
+				K.box(m, K.at(sx * wide * 0.25, legH + tall * 0.9, -len / 2 - wide * 0.2), Vector3.new(0.18, tall * 0.3, 0.18), MAT.SmoothPlastic, C.plaster)
+			end
+		elseif extra == "comb" then
+			K.box(m, K.at(0, legH + tall * 0.92, -len / 2 - wide * 0.3), Vector3.new(0.16, 0.4, 0.5), MAT.SmoothPlastic, C.paintRed)
+		elseif extra == "bill" then
+			K.box(m, K.at(0, legH + tall * 0.6, -len / 2 - wide * 0.72), Vector3.new(wide * 0.5, 0.22, 0.6), MAT.SmoothPlastic, C.lamp)
+		end
+	end)
 end
 
 ---------------------------------------------------------------- พืช 3 ชนิด (ทรงเต็มโต ระบบ ScaleTo ตามระยะ)

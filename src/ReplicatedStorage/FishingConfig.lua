@@ -211,6 +211,27 @@ FishingConfig.Zones = {
 		id = "StonemarkTarn", name = "ธารสโตนมาร์ก", centre = Vector2.new(-1560, -4068), radius = 50,
 		fish = { { item = "SilverSalmon", weight = 9 } },
 	},
+	-- **สระบนเกาะฟาร์ม** (เพลส 136992335889132) — ตกได้ครบทุกชนิดที่เกมหลักมี ตามที่ผู้ใช้สั่ง 2026-09-22
+	--
+	-- อยู่ในตารางเดียวกับเขตของเกมหลักได้เพราะเขตตัดสินจากพิกัด X/Z ล้วน และ (-95, -95) ไม่ไปชนเขตไหน
+	-- (เขตใกล้สุดคือโกลด์เมโดว์ ห่างกว่า 1,000 studs) เพลสหลักจึงไม่มีอะไรเปลี่ยน
+	--
+	-- `weight` ของทั้งเก้าตัวคือครึ่งหนึ่งของเขตต้นทาง: สระเดียวได้ทุกชนิด จึงไม่ควรได้ง่ายเท่าการเดินทาง
+	-- ไปจุดจริง — รวมกันแล้วปลาหายากออกราว 38 ต่อ 100 ของปลาธรรมดา
+	{
+		id = "IslandPond", name = "สระบนเกาะ", centre = Vector2.new(-95, -95), radius = 40,
+		fish = {
+			{ item = "Tanker", weight = 2 },
+			{ item = "MilkFish", weight = 6 },
+			{ item = "SwordFish", weight = 2 },
+			{ item = "GreenSnakehead", weight = 7 },
+			{ item = "LargemouthBass", weight = 5 },
+			{ item = "TigerBarb", weight = 6 },
+			{ item = "Sturgeon", weight = 3 },
+			{ item = "RainbowFish", weight = 4 },
+			{ item = "SilverSalmon", weight = 5 },
+		},
+	},
 }
 
 -- รัศมีที่ใช้เมื่อเขตไหนไม่ได้ระบุ `radius` เอง — ตรงกับที่ผู้ใช้กำหนดไว้สำหรับมาร์คทุกอัน

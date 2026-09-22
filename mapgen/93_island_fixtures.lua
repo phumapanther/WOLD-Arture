@@ -220,4 +220,92 @@ for i = 0, WALL_SEGMENTS - 1 do
 	built += 1
 end
 
-status(("done: กำแพง %d ชิ้น สูง %d รอบวงรี %.0f x %.0f · สระ · แท่นเกิดล่องหน"):format(built, WALL_HEIGHT, rx * 2, rz * 2), true)
+--------------------------------------------------------------------------------
+-- 4. รั้วรอบผืนดินปลูกผัก
+--------------------------------------------------------------------------------
+-- **เดินตามขอบดินจริง ไม่ใช่กรอบสี่เหลี่ยมที่พิมพ์ไว้** ผู้ใช้ระบายดินรูปไหน ขยายทีหลัง หรือย้ายไปที่อื่น
+-- รันเฟสนี้ซ้ำแล้วรั้วตามไปเอง · ช่องดิน = ช่องที่ผิวเป็นวัสดุ Ground (เหมือนที่ IslandGrid.isSoil ใช้)
+local CELL = 4
+local oldFence = island:FindFirstChild("SoilFence")
+if oldFence then oldFence:Destroy() end
+local fence = Instance.new("Folder"); fence.Name = "SoilFence"; fence.Parent = island
+
+local function soilAt(cx, cz)
+	local wx = CENTER.X + (cx + 0.5) * CELL
+	local wz = CENTER.Z + (cz + 0.5) * CELL
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Include
+	params.FilterDescendantsInstances = { T }
+	params.IgnoreWater = true
+	local hit = workspace:Raycast(Vector3.new(wx, CENTER.Y + 80, wz), Vector3.new(0, -300, 0), params)
+	return hit ~= nil and hit.Material == Enum.Material.Ground, hit and hit.Position.Y
+end
+
+-- สแกนทั้งเกาะหาช่องดิน (เกาะกว้าง 440 = ±55 ช่อง) แล้วเก็บขอบไว้: ช่องดินที่เพื่อนบ้านด้านนั้นไม่ใช่ดิน
+local soil, edges = {}, {}
+local minCX, maxCX, minCZ, maxCZ, soilCount = 1e9, -1e9, 1e9, -1e9, 0
+for cx = -56, 56 do
+	for cz = -56, 56 do
+		local is, y = soilAt(cx, cz)
+		if is then
+			soil[cx .. "," .. cz] = y
+			soilCount += 1
+			minCX, maxCX = math.min(minCX, cx), math.max(maxCX, cx)
+			minCZ, maxCZ = math.min(minCZ, cz), math.max(maxCZ, cz)
+		end
+	end
+end
+
+if soilCount == 0 then
+	status("ไม่เจอผืนดิน (วัสดุ Ground) — ข้ามการทำรั้ว")
+else
+	-- ประตู: เว้นรั้วสองช่องติดกันตรงกึ่งกลางด้านที่หันเข้าหาจุดเกิด (ด้าน -X ถ้าดินอยู่ทางตะวันออกของจุดเกิด)
+	local gateCZ = math.floor((minCZ + maxCZ) / 2)
+	local gateSide = (minCX + maxCX) / 2 > 0 and "west" or "east"
+	local DIRS = {
+		{ dx = 0, dz = -1, along = "x" }, -- เหนือ
+		{ dx = 0, dz = 1, along = "x" },  -- ใต้
+		{ dx = -1, dz = 0, along = "z" }, -- ตะวันตก
+		{ dx = 1, dz = 0, along = "z" },  -- ตะวันออก
+	}
+	local posts, rails = 0, 0
+	for key, y in pairs(soil) do
+		local cx, cz = key:match("(-?%d+),(-?%d+)")
+		cx, cz = tonumber(cx), tonumber(cz)
+		for _, d in ipairs(DIRS) do
+			if not soil[(cx + d.dx) .. "," .. (cz + d.dz)] then
+				-- ช่องประตู: สองช่องกลางด้านที่กำหนด ไม่ต้องมีรั้ว
+				local isGate = (gateSide == "west" and d.dx == -1 or gateSide == "east" and d.dx == 1)
+					and (cz == gateCZ or cz == gateCZ + 1)
+				if not isGate then
+					local wx = CENTER.X + (cx + 0.5) * CELL + d.dx * CELL / 2
+					local wz = CENTER.Z + (cz + 0.5) * CELL + d.dz * CELL / 2
+					local long = d.along == "x" and Vector3.new(CELL, 0.28, 0.24) or Vector3.new(0.24, 0.28, CELL)
+					for _, ry in ipairs({ 1.2, 2.4 }) do
+						local rail = Instance.new("Part")
+						rail.Anchored = true
+						rail.Name = "Rail"
+						rail.Size = long
+						rail.CFrame = CFrame.new(wx, y + ry, wz)
+						rail.Material = Enum.Material.Wood
+						rail.Color = Color3.fromRGB(159, 124, 90)
+						rail.Parent = fence
+						rails += 1
+					end
+					local post = Instance.new("Part")
+					post.Anchored = true
+					post.Name = "Post"
+					post.Size = Vector3.new(0.4, 3.2, 0.4)
+					post.CFrame = CFrame.new(wx + (d.along == "x" and CELL / 2 or 0), y + 1.6, wz + (d.along == "z" and CELL / 2 or 0))
+					post.Material = Enum.Material.Wood
+					post.Color = Color3.fromRGB(110, 82, 58)
+					post.Parent = fence
+					posts += 1
+				end
+			end
+		end
+	end
+	status(("รั้วรอบผืนดิน: ช่องดิน %d ช่อง · ราว %d เสา %d · ประตูด้าน%s"):format(soilCount, rails, posts, gateSide == "west" and "ตะวันตก" or "ตะวันออก"))
+end
+
+status(("done: กำแพง %d ชิ้น · สระ · แท่นเกิดล่องหน · รั้วผืนดิน"):format(built), true)
