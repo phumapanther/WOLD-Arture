@@ -138,7 +138,7 @@ local function setSpent(node, spent)
 	-- Both prompts: the gather one and the auto-farm one. FindFirstChildWhichIsA returns only the first,
 	-- which would have left the F prompt lit on a node that was already taken.
 	for _, d in ipairs(node:GetDescendants()) do
-		if d:IsA("ProximityPrompt") then d.Enabled = not spent end
+		if d:IsA("ProximityPrompt") and GatherConfig.OwnPrompts[d.Name] then d.Enabled = not spent end
 	end
 	-- Published so the client can tell "taken by someone else" from "hidden because you hold the wrong
 	-- tool". Without it the auto-farm would keep walking to a node that is already gone, and the client's

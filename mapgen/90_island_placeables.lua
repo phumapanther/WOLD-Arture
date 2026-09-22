@@ -167,6 +167,26 @@ local function borrowAsset(m, kind, index, scale)
 	return true
 end
 
+-- ยืมโมเดล **จากเพลสหลักจริงๆ** (ผู้ใช้สั่ง 2026-09-22: "ใช้โมเดลเดียวกันกับเกมส์หลักเลย")
+--
+-- ต่างจาก `borrowAsset` ที่หยิบจาก `WOLD_Assets` (ของ Creator Store ที่โหลดเข้าเพลสเกาะได้เอง) —
+-- เตา ตู้เย็น ตู้ยา เครื่องกลั่น ฯลฯ ถูกวางมือไว้ในเพลสหลัก **ไม่มีทางมาถึงเกาะเองเลย** จึงถูกคัดลอก
+-- ออกมาเป็นตัวเลขเก็บไว้ที่ `assets/models-from-main/furniture.lua` (รันเฟสด้วย `--furniture`)
+--
+-- ⚠️ **ย่อ 0.6 เท่ากับบ้าน** เฟอร์นิเจอร์พวกนี้ปั้นตามสเกลเมืองหลัก (ประตู 12x18) ส่วนบ้านบนเกาะย่อ
+-- 0.6 อยู่แล้ว — ไม่ย่อตามก็จะได้เตาสูงกว่าประตูบ้านที่มันต้องไปตั้งอยู่ข้างใน
+local MAIN_MODEL_SCALE = 0.6
+
+local function borrowMain(m, name)
+	local build = _G.WOLD_MAIN_MODELS and _G.WOLD_MAIN_MODELS.furniture
+	if not build then return false end
+	local src = build(name, MAIN_MODEL_SCALE)
+	if not src then return false end
+	for _, c in ipairs(src:GetChildren()) do c.Parent = m end
+	src:Destroy()
+	return true
+end
+
 ---------------------------------------------------------------- ของตกแต่งชิ้นเล็ก (ผู้ใช้สั่ง 2026-09-22)
 -- ก้อนหิน พุ่ม ตอไม้ โคมตั้งพื้น ป้าย บ่อน้ำ — ของเล็กๆ ที่เอาไว้ "โรย" ให้เกาะไม่ว่างเปล่า
 -- ส่วนใหญ่ 1x1 ช่อง ราคาถูกกว่าของใหญ่มาก เพราะตั้งใจให้ซื้อทีละหลายชิ้น
@@ -247,6 +267,7 @@ end)
 -- `IslandBuild` โคลนต้นแบบทั้งก้อน แอตทริบิวต์จึงติดไปเอง
 
 proto("Stove", function(m)
+	if borrowMain(m, "Stove") then return end
 	-- ช่องไฟต้องชื่อ FireboxHearth — CraftStations จุดไฟที่ชิ้นนั้นตอนทำอาหาร
 	K.box(m, K.at(0, 1.6, 0), Vector3.new(5.0, 3.2, 3.0), MAT.Cobblestone, C.darkStone)
 	K.box(m, K.at(0, 3.4, 0), Vector3.new(5.4, 0.4, 3.4), MAT.Metal, C.iron)
@@ -258,6 +279,7 @@ proto("Stove", function(m)
 end)
 
 proto("SteamBlender", function(m)
+	if borrowMain(m, "SteamBlender") then return end
 	K.box(m, K.at(0, 0.5, 0), Vector3.new(3.0, 1.0, 2.6), MAT.Metal, C.brassDark)
 	local jar = K.cyl(m, K.at(0, 2.4, 0), 1.1, 2.8, MAT.Glass, C.glass, { transparency = 0.45 })
 	jar.Name = "Jar"
@@ -267,6 +289,7 @@ proto("SteamBlender", function(m)
 end)
 
 proto("AlchemyStill", function(m)
+	if borrowMain(m, "AlchemyStill") then return end
 	K.cyl(m, K.at(0, 1.4, 0), 1.6, 2.8, MAT.Metal, C.copper)
 	K.cyl(m, K.at(0, 3.1, 0), 1.0, 0.8, MAT.Metal, C.brass)
 	-- ท่อขด ให้ดูเป็นเครื่องกลั่น ไม่ใช่ถังเปล่า
@@ -280,6 +303,12 @@ proto("AlchemyStill", function(m)
 end)
 
 proto("IceBox", function(m)
+	if borrowMain(m, "IceBox") then
+		m:SetAttribute("StorageSlots", 25)
+		m:SetAttribute("StorageAccepts", "food")
+		m:SetAttribute("StorageClass", "Chef")
+		return
+	end
 	K.box(m, K.at(0, 2.2, 0), Vector3.new(3.2, 4.4, 2.4), MAT.Metal, C.white)
 	K.box(m, K.at(0, 3.3, -1.25), Vector3.new(2.8, 2.0, 0.2), MAT.Metal, C.steel)
 	K.box(m, K.at(0, 1.2, -1.25), Vector3.new(2.8, 1.8, 0.2), MAT.Metal, C.steel)
@@ -291,6 +320,12 @@ proto("IceBox", function(m)
 end)
 
 proto("ApothecaryCabinet", function(m)
+	if borrowMain(m, "ApothecaryCabinet") then
+		m:SetAttribute("StorageSlots", 25)
+		m:SetAttribute("StorageAccepts", "medicine")
+		m:SetAttribute("StorageClass", "Priest")
+		return
+	end
 	K.box(m, K.at(0, 2.4, 0), Vector3.new(3.4, 4.8, 1.8), MAT.Wood, C.plankDark)
 	for _, y in ipairs({ 1.2, 2.4, 3.6 }) do
 		K.box(m, K.at(0, y, -0.95), Vector3.new(3.0, 0.15, 0.2), MAT.Wood, C.oak, { cancollide = false })
@@ -310,6 +345,7 @@ end)
 -- วางแล้วเป็นจุดฟาร์มจริง (กฎของมันเองยังใช้: คูลดาวน์ 30 นาที ต้องมีคนในเซิร์ฟครบ ทหารยามฟาร์มไม่ได้)
 
 proto("DistillSet", function(m)
+	if borrowMain(m, "DistillSet") then return end
 	K.box(m, K.at(0, 0.3, 0), Vector3.new(4.4, 0.6, 3.2), MAT.Metal, C.iron)
 	K.cyl(m, K.at(-1.2, 2.0, 0), 1.2, 3.0, MAT.Metal, C.verdigris)
 	K.cyl(m, K.at(1.3, 1.5, 0), 0.9, 2.2, MAT.Glass, C.crystal, { transparency = 0.4 })
@@ -318,6 +354,7 @@ proto("DistillSet", function(m)
 end)
 
 proto("Reactor", function(m)
+	if borrowMain(m, "Reactor") then return end
 	K.cyl(m, K.at(0, 2.0, 0), 1.8, 4.0, MAT.Metal, C.steel)
 	K.cyl(m, K.at(0, 4.2, 0), 2.0, 0.5, MAT.Metal, C.brassDark)
 	K.box(m, K.at(0, 2.2, -1.9), Vector3.new(1.6, 1.6, 0.3), MAT.Glass, C.ember, { transparency = 0.3 })
@@ -329,6 +366,7 @@ proto("Reactor", function(m)
 end)
 
 proto("Boxs", function(m)
+	if borrowMain(m, "Boxs") then return end
 	K.crate(m, K.at(-1.0, 0, -0.8), 2.6, C.oak)
 	K.crate(m, K.at(1.2, 0, 0.9), 2.4, C.wood)
 	K.crate(m, K.at(0.2, 2.5, -0.4), 2.2, C.plankDark)

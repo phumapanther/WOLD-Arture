@@ -27,7 +27,16 @@ const skins = args.includes("--skins")
       .map((f) => `_G.WOLD_SKIN_BUILDERS["${f.slice(0, -4)}"] = (function()` + NL + read("assets/models-from-factory/" + f) + NL + "end)()" + NL)
       .join("")
   : "";
-const code = `local SCALE = ${scale}\nlocal LAYOUT_JSON = [==[${read("docs/design/world-layout.json")}]==]\n${lib}\n${kit}\n${models}\n${skins}\n${read(file)}\n`;
+// --furniture embeds assets/models-from-main (models COPIED OUT OF THE MAIN PLACE, part by part) into
+// _G.WOLD_MAIN_MODELS. Same reason as --skins: a model is not code, so Rojo never carried it to the island
+// place, and the island ended up with hand-built boxes where the main game has real furniture.
+const furniture = args.includes("--furniture")
+  ? "_G.WOLD_MAIN_MODELS = {}" + NL + fs.readdirSync(path.join(root, "assets/models-from-main"))
+      .filter((f) => f.endsWith(".lua"))
+      .map((f) => `_G.WOLD_MAIN_MODELS["${f.slice(0, -4)}"] = (function()` + NL + read("assets/models-from-main/" + f) + NL + "end)()" + NL)
+      .join("")
+  : "";
+const code = `local SCALE = ${scale}\nlocal LAYOUT_JSON = [==[${read("docs/design/world-layout.json")}]==]\n${lib}\n${kit}\n${models}\n${skins}\n${furniture}\n${read(file)}\n`;
 const POLL = `local r = workspace:FindFirstChild("WOLD"); return r and ((r:GetAttribute("Status") or "?") .. " | " .. (r:GetAttribute("Progress") or "")) or "no WOLD folder"`;
 (async () => {
   const c = await connect();

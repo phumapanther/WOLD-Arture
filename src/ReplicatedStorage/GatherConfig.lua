@@ -740,4 +740,11 @@ GatherConfig.Mobs.Wraith = {
 	drops = { { item = "MagicOre", min = 1, max = 2 } },
 }
 
+-- ปุ่มที่ระบบเก็บเกี่ยวเป็นเจ้าของ
+--
+-- ⚠️ **โหนดหนึ่งตัวมีปุ่มของหลายระบบได้** ของตกแต่งบนเกาะที่ทุบเอาของได้มี `PickupPrompt` ของระบบเกาะ
+-- อยู่ด้วย (F เก็บคืนกระเป๋า) — ลูปที่เหมาเปิด/ปิด `ProximityPrompt` ทุกตัวในโหนดจะไปดับปุ่มนั้นด้วย
+-- แล้วของที่ซื้อมาวางก็เก็บคืนไม่ได้ (ตอนไม่ได้ถือเครื่องมือ และตลอด 30 นาทีหลังทุบ)
+GatherConfig.OwnPrompts = { GatherPrompt = true, AutoFarmPrompt = true }
+
 return GatherConfig

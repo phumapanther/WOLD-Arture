@@ -98,7 +98,7 @@ local function refreshPrompts()
 		if node:GetAttribute("Spent") ~= true then
 			local usable = canUse(node)
 			for _, d in ipairs(node:GetDescendants()) do
-				if d:IsA("ProximityPrompt") then
+				if d:IsA("ProximityPrompt") and GatherConfig.OwnPrompts[d.Name] then
 					-- ปุ่ม F ขึ้นเฉพาะจุดที่ออโต้จะเล็งจริง ไม่งั้นกดแล้วมันเดินไปที่อื่น
 					d.Enabled = usable and (d.Name ~= "AutoFarmPrompt" or autoTarget(node))
 				end

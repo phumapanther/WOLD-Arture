@@ -116,8 +116,10 @@ local function skinsFor(entry)
 	local item = ItemCatalog.Get(entry.id)
 	if not item then return {} end
 	local out = {}
+	-- ⚠️ ช่องว่างมาเป็น `false` ไม่ใช่ช่องที่หายไป (`Inventory.Send` เติมรูให้ครบก่อนส่ง เพราะ sparse array
+	-- ข้าม RemoteEvent ไม่ได้) — `slot.id` บน false คือ error ที่กินทั้งเมนู ไม่ใช่แค่รายการสกิน
 	for index, slot in pairs(latest.slots or {}) do
-		local skin = ItemCatalog.Get(slot.id)
+		local skin = slot and ItemCatalog.Get(slot.id)
 		if skin and ((item.kind == "weapon" and skin.kind == "skin" and skin.skinFor == entry.id)
 			or (item.kind == "armor" and skin.kind == "fashion")) then
 			out[#out + 1] = { index = tonumber(index), name = skin.name }
