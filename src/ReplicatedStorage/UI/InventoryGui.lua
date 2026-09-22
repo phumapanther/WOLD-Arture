@@ -23,7 +23,8 @@ local PANEL_BG = Color3.fromRGB(14, 13, 18)
 
 local COLS = 6
 -- Rows follow the bag size rather than being written down twice: change SlotCount and the grid follows.
-local ROWS = math.ceil(InventoryConfig.SlotCount / COLS)
+-- **กริดใหญ่พอสำหรับฝั่งที่ช่องเยอะที่สุด** ไม่ใช่ผลรวม — สองแท็บไม่เคยแสดงพร้อมกัน
+local ROWS = math.ceil(math.max(InventoryConfig.SlotCount, InventoryConfig.VipSlotCount) / COLS)
 
 -- Colour-codes the slot border by what is in it, so a bag reads at a glance without icon art.
 local KIND_TINT = {
@@ -445,12 +446,16 @@ function InventoryGui:Render(data)
 	-- ⚠️ **ปุ่มที่ i จึงไม่ใช่ช่องที่ i อีกต่อไป** `self.slotIndex[i]` เก็บเลขช่องจริงไว้ และทุกที่ที่
 	-- อ้างถึงของ (คลิก / เมนูกดค้าง / ลากใส่แถบไอเทม) ต้องอ่านจากตารางนั้น ไม่ใช่จากเลขปุ่ม —
 	-- เลขช่องคือชื่อเดียวที่เซิร์ฟเวอร์รู้จักของชิ้นหนึ่ง
+	-- **เดินช่วงดัชนีของแท็บนั้นจริงๆ** ของ VIP อยู่ช่อง 37-54 ไม่ใช่ 1-36 — เดินแค่ `#slotButtons`
+	-- จะมองไม่เห็นมันเลย (ช่องปุ่มมีน้อยกว่าเลขช่องจริง)
+	local from, to = 1, InventoryConfig.SlotCount
+	if self.bagTab == "farm" then
+		from, to = InventoryConfig.VipSlotStart, InventoryConfig.VipSlotEnd
+	end
 	local view = {}
-	for index = 1, #self.slotButtons do
+	for index = from, to do
 		local slot = data.slots and data.slots[index]
-		if slot and InventoryGui.InTab(slot.id, self.bagTab) then
-			view[#view + 1] = { slot = slot, index = index }
-		end
+		if slot then view[#view + 1] = { slot = slot, index = index } end
 	end
 	self.slotIndex = {}
 

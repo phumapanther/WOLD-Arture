@@ -5,6 +5,21 @@ local InventoryConfig = {}
 InventoryConfig.HotbarSlots = 6
 
 InventoryConfig.SlotCount = 36 -- the personal bag grid, 6 columns x 6 rows
+
+-- **ช่องของ "กระเป๋า VIP" อยู่แยกจาก 36 ช่องข้างบน** (ผู้ใช้สั่ง 2026-09-22)
+--
+-- ของเกาะ (บ้าน แปลงผัก รั้ว เมล็ด สัตว์เลี้ยง …) เคยกินช่องเดียวกับของเกมหลัก คนที่เข้าเกาะครั้งเดียว
+-- ก็เสียช่องถาวร 4-6 ช่องแล้วซื้อของในเมืองไม่ได้ ทั้งที่กระเป๋าดูเหมือนยังว่าง
+--
+-- **เป็นช่วงดัชนีที่ต่อท้าย ไม่ใช่ตารางใหม่** — `state.slots` ยังเป็นตารางเดียว มีโค้ด 67 จุดนอก
+-- `Inventory.lua` ที่วน `state.slots` อยู่ (จับกุม ออร่า คลัง คราฟ ตกปลา …) ถ้าแยกเป็นตารางที่สอง
+-- ต้องไล่แก้ทั้งหมดนั้น · ช่วงดัชนีทำให้ของยังอยู่ที่เดิมในสายตาโค้ดเก่า แค่ไม่แย่งช่องกัน
+InventoryConfig.VipSlotCount = 18 -- 6 คอลัมน์ x 3 แถว
+InventoryConfig.VipSlotStart = InventoryConfig.SlotCount + 1
+InventoryConfig.VipSlotEnd = InventoryConfig.SlotCount + InventoryConfig.VipSlotCount
+
+-- ช่องทั้งหมดที่มีจริง (ของเก่าที่วน 1..SlotCount ยังเห็นแค่กระเป๋าหลัก ซึ่งถูกแล้ว)
+InventoryConfig.TotalSlotCount = InventoryConfig.VipSlotEnd
 InventoryConfig.MaxWeight = 500 -- carry this much before the penalties below start (ผู้ใช้ปรับจาก 2000)
 
 -- Overencumbrance. Past MaxWeight you slow down in proportion to the excess, down to a floor so a hoarder can

@@ -66,8 +66,27 @@ end
 -- Adding and removing
 --------------------------------------------------------------------------------
 
-local function firstFreeSlot(state)
-	for i = 1, InventoryConfig.SlotCount do
+-- **ของชิ้นนี้อยู่ฝั่งไหนของกระเป๋า** — เกณฑ์เดียวกับแท็บบนหน้าจอเป๊ะ
+--
+-- `InventoryGui.IsFarmItem` อ่านจาก `vip = true` หรือ `kind == "placeable"` · ที่นี่ต้องคิดเหมือนกัน
+-- ไม่งั้นของจะไปลงช่องที่แท็บนั้นมองไม่เห็น แล้วอ่านเหมือนของหาย
+local function isVipItem(id)
+	local item = ItemCatalog.Get(id)
+	if not item then return false end
+	return item.vip == true or item.kind == "placeable"
+end
+
+-- ช่วงช่องที่ของชนิดนี้ใช้ได้
+local function rangeFor(id)
+	if isVipItem(id) then
+		return InventoryConfig.VipSlotStart, InventoryConfig.VipSlotEnd
+	end
+	return 1, InventoryConfig.SlotCount
+end
+
+local function firstFreeSlot(state, id)
+	local from, to = rangeFor(id)
+	for i = from, to do
 		if state.slots[i] == nil then return i end
 	end
 	return nil
@@ -82,7 +101,8 @@ function Inventory.CountOf(player, id)
 	local state = States[player]
 	if not state then return 0 end
 	local total = 0
-	for i = 1, InventoryConfig.SlotCount do
+	local from, to = rangeFor(id)
+	for i = from, to do
 		local slot = state.slots[i]
 		if slot and slot.id == id then total += slot.count or 1 end
 	end
@@ -123,7 +143,8 @@ function Inventory.AddItem(player, id, count, durability, meta)
 	local stackSize = ItemCatalog.StackSize(id)
 	if meta then stackSize = 1 end
 	if count > 0 and stackSize > 1 then
-		for i = 1, InventoryConfig.SlotCount do
+		local from, to = rangeFor(id)
+		for i = from, to do
 			local slot = state.slots[i]
 			if slot and slot.id == id and slot.count < stackSize then
 				local moved = math.min(stackSize - slot.count, count)
@@ -138,7 +159,7 @@ function Inventory.AddItem(player, id, count, durability, meta)
 	end
 
 	while count > 0 do
-		local free = firstFreeSlot(state)
+		local free = firstFreeSlot(state, id)
 		if not free then
 			Inventory.Send(player)
 			-- กระเป๋าเต็มจริงๆ ของที่เหลือรวมส่วนที่เกินเพดานด้วย ลองส่งเข้าคลังทั้งก้อน
@@ -197,8 +218,11 @@ function Inventory.HasRoomFor(player, id, count, meta)
 	local stackSize = ItemCatalog.StackSize(id)
 	if meta then stackSize = 1 end
 
+	-- **ถามเฉพาะฝั่งของมันเอง** ของเกาะเต็มไม่ได้แปลว่าซื้อยาในเมืองไม่ได้ และกลับกัน
+	local from, to = rangeFor(id)
+
 	if stackSize > 1 then
-		for i = 1, InventoryConfig.SlotCount do
+		for i = from, to do
 			local slot = state.slots[i]
 			if slot and slot.id == id and slot.count < stackSize then
 				count -= math.min(stackSize - slot.count, count)
@@ -207,7 +231,7 @@ function Inventory.HasRoomFor(player, id, count, meta)
 		end
 	end
 
-	for i = 1, InventoryConfig.SlotCount do
+	for i = from, to do
 		if not state.slots[i] then
 			count -= stackSize
 			if count <= 0 then return true end
@@ -235,71 +259,83 @@ end
 -- same way every time.
 local KIND_ORDER = { weapon = 1, armor = 2, consumable = 3, junk = 4 }
 
+-- **ย้ายของเกาะที่ค้างอยู่ในช่องเกมหลักไปช่อง VIP** (ของเก่าที่เซฟไว้ก่อนแยกช่อง 2026-09-22)
+--
+-- เรียกครั้งเดียวตอนโหลดโปรไฟล์ · ของที่ย้ายไม่ได้ (ช่อง VIP เต็ม) **ปล่อยไว้ที่เดิม** ดีกว่าทำหาย —
+-- มันยังใช้ได้ปกติ แค่ยังกินช่องเกมหลักอยู่จนกว่าจะเอาไปวางบนเกาะ
+function Inventory.MigrateVipSlots(player)
+	local state = States[player]
+	if not state then return 0 end
+	local moved = 0
+	for i = 1, InventoryConfig.SlotCount do
+		local slot = state.slots[i]
+		if slot and isVipItem(slot.id) then
+			local free = firstFreeSlot(state, slot.id)
+			if not free then break end
+			state.slots[free] = slot
+			state.slots[i] = nil
+			moved += 1
+		end
+	end
+	if moved > 0 then Inventory.Send(player) end
+	return moved
+end
+
 function Inventory.AutoSort(player)
 	local state = States[player]
 	if not state then return end
 
-	local totals = {} -- [id] = count, for stackables
-	local singles = {} -- weapons/armor keep their own durability, so they never merge
-	for i = 1, InventoryConfig.SlotCount do
-		local slot = state.slots[i]
-		if slot then
-			-- A slot with meta keeps its own identity, so it is sorted as a single rather than counted into
-			-- a total -- the same reason weapons and armor are.
-			if ItemCatalog.StackSize(slot.id) > 1 and not slot.meta then
-				totals[slot.id] = (totals[slot.id] or 0) + (slot.count or 1)
-			else
-				table.insert(singles, slot)
+	-- **จัดทีละฝั่ง** กระเป๋าหลักกับกระเป๋า VIP อยู่คนละช่วงดัชนีและไม่ปะปนกัน — อัดของฝั่งไหน
+	-- ก็ชิดหน้าของช่วงนั้น · ถ้าอัดรวมกันเหมือนเดิม ของ VIP จะถูกย้ายมาทับช่องเกมหลักทันที
+	local function sortRange(from, to)
+		local totals, singles = {}, {}
+		for i = from, to do
+			local slot = state.slots[i]
+			if slot then
+				-- A slot with meta keeps its own identity, so it is sorted as a single rather than counted
+				-- into a total -- the same reason weapons and armor are.
+				if ItemCatalog.StackSize(slot.id) > 1 and not slot.meta then
+					totals[slot.id] = (totals[slot.id] or 0) + (slot.count or 1)
+				else
+					table.insert(singles, slot)
+				end
+				state.slots[i] = nil
 			end
-			state.slots[i] = nil
+		end
+
+		local entries = {}
+		for id, count in pairs(totals) do
+			local stackSize = ItemCatalog.StackSize(id)
+			while count > 0 do
+				local put = math.min(stackSize, count)
+				table.insert(entries, { id = id, count = put })
+				count -= put
+			end
+		end
+		for _, slot in ipairs(singles) do
+			table.insert(entries, slot)
+		end
+
+		table.sort(entries, function(a, b)
+			-- **ของที่ไม่มีในแคตตาล็อกแล้วต้องไม่ทำให้การจัดกระเป๋าพังทั้งยก**
+			-- (`Get` คืน nil ได้จริง: ไอเทมที่ถูกถอดออกจากเกมแต่ยังค้างในเซฟเก่า)
+			local ia, ib = ItemCatalog.Get(a.id), ItemCatalog.Get(b.id)
+			local ka = KIND_ORDER[ia and ia.kind] or 9
+			local kb = KIND_ORDER[ib and ib.kind] or 9
+			if ka ~= kb then return ka < kb end
+			if a.id ~= b.id then return a.id < b.id end
+			return (a.count or 1) > (b.count or 1)
+		end)
+
+		for i, entry in ipairs(entries) do
+			local target = from + i - 1
+			if target > to then break end
+			state.slots[target] = entry
 		end
 	end
 
-	local entries = {}
-	for id, count in pairs(totals) do
-		local stackSize = ItemCatalog.StackSize(id)
-		while count > 0 do
-			local put = math.min(stackSize, count)
-			table.insert(entries, { id = id, count = put })
-			count -= put
-		end
-	end
-	for _, slot in ipairs(singles) do
-		table.insert(entries, slot)
-	end
-
-	-- **เรียงตามแท็บก่อน แล้วค่อยตามชนิด** (ผู้ใช้แจ้ง 2026-09-22)
-	--
-	-- กระเป๋าแบ่งเป็นสองแท็บที่ซ่อนของของอีกฝั่ง ถ้าเรียงรวมกันตามชนิดอย่างเดียว ของสองแท็บจะสลับกัน
-	-- เต็มไปหมด — จัดกระเป๋าแล้วแต่ละแท็บยังเห็นช่องว่างแทรกอยู่ทั่ว ซึ่งคือสิ่งที่ปุ่มนี้ควรกำจัด
-	--
-	-- ของฟาร์ม (`kind == "placeable"`) ไปอยู่ท้ายเสมอ ของเกมหลักอยู่ต้น — **ต้องตรงกับ
-	-- `InventoryGui.InTab`** ซึ่งแบ่งด้วยเกณฑ์เดียวกันเป๊ะ (ที่นั่นเรียกว่าแท็บ farm/main)
-	-- **เกณฑ์เดียวกับ `InventoryGui.IsFarmItem` เป๊ะ** ถ้าสองที่คิดไม่ตรงกัน จัดกระเป๋าแล้วแท็บจะยังมี
-	-- ช่องว่างแทรกอยู่ดี · `vip = true` คือตัวบังคับด้วยมือสำหรับของที่ไม่ใช่ `placeable` (เมล็ดพันธุ์)
-	local function tabRank(id)
-		local item = ItemCatalog.Get(id)
-		if not item then return 1 end
-		return (item.vip == true or item.kind == "placeable") and 2 or 1
-	end
-
-	table.sort(entries, function(a, b)
-		local ta, tb = tabRank(a.id), tabRank(b.id)
-		if ta ~= tb then return ta < tb end
-		-- **ของที่ไม่มีในแคตตาล็อกแล้วต้องไม่ทำให้การจัดกระเป๋าพังทั้งยก**
-		-- (`Get` คืน nil ได้จริง: ไอเทมที่ถูกถอดออกจากเกมแต่ยังค้างในเซฟเก่า) — เจอตอนเทส 2026-09-22
-		local ia, ib = ItemCatalog.Get(a.id), ItemCatalog.Get(b.id)
-		local ka = KIND_ORDER[ia and ia.kind] or 9
-		local kb = KIND_ORDER[ib and ib.kind] or 9
-		if ka ~= kb then return ka < kb end
-		if a.id ~= b.id then return a.id < b.id end
-		return (a.count or 1) > (b.count or 1)
-	end)
-
-	for i, entry in ipairs(entries) do
-		if i > InventoryConfig.SlotCount then break end
-		state.slots[i] = entry
-	end
+	sortRange(1, InventoryConfig.SlotCount)
+	sortRange(InventoryConfig.VipSlotStart, InventoryConfig.VipSlotEnd)
 
 	Inventory.Send(player)
 end
@@ -367,7 +403,7 @@ function Inventory.RepairAll(player)
 	end
 
 	for _, entry in pairs(state.equipped) do restore(entry) end
-	for i = 1, InventoryConfig.SlotCount do restore(state.slots[i]) end
+	for i = 1, InventoryConfig.TotalSlotCount do restore(state.slots[i]) end
 
 	if repaired then Inventory.Send(player) end
 	return repaired

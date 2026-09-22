@@ -404,6 +404,23 @@ IslandAccess.Unequip = function(player, kind)
 	return Inventory.Unequip(player, kind or "weapon")
 end
 
+-- อ่านช่องกระเป๋าดิบทั้งหมด รวมช่วง VIP (เทสเท่านั้น)
+IslandAccess.BagRaw = function(player)
+	local state = Inventory.Get(player)
+	if not state then return nil end
+	local IC = require(game.ReplicatedStorage.InventoryConfig)
+	local out = {}
+	for i = 1, IC.TotalSlotCount do
+		local slot = state.slots[i]
+		out[i] = slot and slot.id or false
+	end
+	return out
+end
+
+IslandAccess.HasRoom = function(player, id, count)
+	return Inventory.HasRoomFor(player, id, count or 1)
+end
+
 IslandAccess.Sort = function(player)
 	Inventory.AutoSort(player)
 	local state = Inventory.Get(player)

@@ -79,6 +79,13 @@ PlayerJoin.Each(function(player)
 
 	Inventory.Add(player, saved)
 
+	-- ของเกาะที่เซฟไว้ก่อนแยกช่อง (2026-09-22) ยังอยู่ในช่องเกมหลัก — ย้ายให้ตอนโหลด ครั้งเดียวต่อรอบเข้าเกม
+	-- เงียบเมื่อไม่มีอะไรต้องย้าย จึงปลอดภัยที่จะเรียกทุกครั้ง
+	local movedVip = Inventory.MigrateVipSlots(player)
+	if movedVip > 0 then
+		print(("[Inventory] ย้ายของเกาะ %d ชิ้นไปช่องกระเป๋า VIP ของ %s"):format(movedVip, player.Name))
+	end
+
 	if wantsGrant then
 		-- Clear first, so every tester ends up holding exactly the same kit rather than it piling on top of
 		-- whatever they happened to have.
