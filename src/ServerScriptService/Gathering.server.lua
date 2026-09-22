@@ -258,9 +258,11 @@ local function gather(node, player)
 	node:SetAttribute("ReadyAgainAt", os.time() + respawn)
 	setSpent(node, true)
 
-	-- สัตว์ในฝูงถูกฟาร์มแล้วหายไปเลย (ผู้ใช้กำหนด) AnimalHerds เห็นตัวหายแล้วเติมตัวใหม่ให้เองหลัง
-	-- RespawnSeconds — ไม่ใช่ตัวเดิมยืนโปร่งแสงรอ ลบหลังจากแจกของเสร็จในเฟรมถัดไป
-	if node:GetAttribute("HerdAnimal") then
+	-- เก็บแล้วหายไปเลย ไม่ใช่ตัวเดิมยืนโปร่งแสงรอเกิดใหม่:
+	--   · `HerdAnimal` — สัตว์ในฝูงแมพหลัก (AnimalHerds เติมตัวใหม่ให้เองหลัง RespawnSeconds)
+	--   · `OneShot`    — จุดที่สุ่มโผล่บนผืนดินของเกาะ (ผู้ใช้สั่ง "เก็บและหายไปเลย") ไม่มีใครเติมที่เดิม
+	--                    ตัวสุ่มจะไปเกิดที่ช่องใหม่แทน
+	if node:GetAttribute("HerdAnimal") or node:GetAttribute("OneShot") then
 		task.delay(0.15, function() if node.Parent then node:Destroy() end end)
 	end
 
