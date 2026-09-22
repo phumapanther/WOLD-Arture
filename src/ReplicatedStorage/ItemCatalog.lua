@@ -613,6 +613,29 @@ ItemCatalog.Items = {
 	Aura_Divine = { icon = "rbxassetid://89847370934558", name = "ออร่าเทวะ", kind = "aura", -- decal 122975692106374
 		rarity = "legendary", weight = 0.1, stackSize = 1, value = 0, sellable = false,
 		colour = Color3.fromRGB(255, 240, 160) },
+
+	--------------------------------------------------------------------------
+	-- ของวางบนเกาะฟาร์ม (2026-09-22) — `kind = "placeable"` ทุกชิ้น
+	--
+	-- ขนาดเป็นช่อง (Footprint) อยู่บนต้นแบบใน ReplicatedStorage.WOLD_Placeables ไม่ใช่ที่นี่ (คำนวณจากกล่องจริง
+	-- ตอนสร้าง — mapgen/90_island_placeables.lua) · icon = "" = ⌛ จนกว่าจะมีรูปจริง · ขายคืนไม่ได้ ·
+	-- `plot = true` = แปลงปลูก (Island/IslandPlots ต่อปุ่มให้) · ราคาอยู่ที่ ShopConfig.IslandSells
+	FarmPlot = { icon = "", name = "แปลงดิน", kind = "placeable", weight = 2, stackSize = 10, value = 0, sellable = false, plot = true },
+	Deco_Fence = { icon = "", name = "รั้วไม้", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false },
+	Deco_Lamp = { icon = "", name = "โคมไฟไอน้ำ", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false },
+	Deco_Bench = { icon = "", name = "ม้านั่ง", kind = "placeable", weight = 1, stackSize = 5, value = 0, sellable = false },
+	Deco_FlowerPot = { icon = "", name = "กระถางดอกไม้", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false },
+	Deco_Tree = { icon = "", name = "ต้นไม้", kind = "placeable", weight = 2, stackSize = 5, value = 0, sellable = false },
+	Deco_Crate = { icon = "", name = "ลังไม้", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false },
+	Deco_Barrel = { icon = "", name = "ถังไม้", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false },
+	Deco_PathTile = { icon = "", name = "แผ่นทางเดินหิน", kind = "placeable", weight = 0.5, stackSize = 50, value = 0, sellable = false },
+	House_StoneCottage = { icon = "", name = "กระท่อมหิน", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false },
+	House_Roundhouse = { icon = "", name = "บ้านทรงกลม", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false },
+	House_Longhouse = { icon = "", name = "บ้านยาว", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false },
+	House_PipeWorker = { icon = "", name = "บ้านช่างท่อ", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false },
+	House_Townhouse = { icon = "", name = "ทาวน์เฮาส์", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false },
+	-- เมล็ดพันธุ์ชนิดเดียว หยอดแล้วค่อยรู้ว่าเป็นอะไร (IslandConfig.Crops) — ไม่ใช่ placeable
+	Seed = { icon = "", name = "เมล็ดพันธุ์", kind = "junk", weight = 0.05, stackSize = 99, value = 0, sellable = false },
 }
 
 function ItemCatalog.Get(id)

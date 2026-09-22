@@ -26,6 +26,8 @@ local RANGE = 12
 -- The most a single press can buy. Not a game rule so much as a guard: it bounds the loop below, so a
 -- request for a billion is a slow no rather than a frozen server.
 local MAX_BUY = 999
+-- บนเกาะฟาร์มขายของวาง ไม่ใช่เครื่องมือ — ตารางเดียวที่ต่างกัน ที่เหลือ (ระยะ ราคารับซื้อ) เหมือนร้านเมืองหลัก
+local SELLS = ServerConfig.Mode == "Farming" and ShopConfig.IslandSells or ShopConfig.Sells
 
 --------------------------------------------------------------------------------
 -- Drifting prices
@@ -140,7 +142,7 @@ end
 -- half-updated mixture of old and new prices.
 local function snapshot(player)
 	local sells = {}
-	for index, entry in ipairs(ShopConfig.Sells) do
+	for index, entry in ipairs(SELLS) do
 		local item = ItemCatalog.Get(entry.id)
 		if item then
 			table.insert(sells, {
@@ -209,7 +211,7 @@ Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, 
 	if not state then return end
 
 	if action == "buy" then
-		local entry = ShopConfig.Sells[index]
+		local entry = SELLS[index]
 		if not entry then return end
 
 		-- How many. Clamped here rather than trusted: the client types a number into a box, and a box can

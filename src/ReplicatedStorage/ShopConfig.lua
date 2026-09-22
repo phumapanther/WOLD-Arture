@@ -29,6 +29,26 @@ ShopConfig.Sells = {
 	{ id = "Monowheel", price = 5000 },
 }
 
+-- ร้านบนเกาะฟาร์ม — Shop.server เลือกตารางนี้เมื่อ ServerConfig.Mode == "Farming" (สต็อกเกมหลักไม่เปลี่ยน)
+-- ราคาทั้งหมด Claude ตั้งไว้ก่อน ผู้ใช้ยังไม่ได้กำหนด (2026-09-22)
+ShopConfig.IslandSells = {
+	{ id = "Seed", price = 50 },
+	{ id = "FarmPlot", price = 300 },
+	{ id = "Deco_Fence", price = 50 },
+	{ id = "Deco_PathTile", price = 30 },
+	{ id = "Deco_FlowerPot", price = 150 },
+	{ id = "Deco_Crate", price = 200 },
+	{ id = "Deco_Barrel", price = 200 },
+	{ id = "Deco_Bench", price = 350 },
+	{ id = "Deco_Lamp", price = 400 },
+	{ id = "Deco_Tree", price = 600 },
+	{ id = "House_StoneCottage", price = 20000 },
+	{ id = "House_Roundhouse", price = 25000 },
+	{ id = "House_Longhouse", price = 30000 },
+	{ id = "House_PipeWorker", price = 40000 },
+	{ id = "House_Townhouse", price = 50000 },
+}
+
 -- What the shopkeeper buys, and for how much of the catalog `value`. Well under 1 on purpose: the gap
 -- between what a thing sells for and what it costs to buy back is the only thing stopping "buy low from
 -- the shop, sell high to the shop" being infinite money.
