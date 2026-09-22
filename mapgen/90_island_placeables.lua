@@ -395,4 +395,39 @@ proto("Crop_Herb", function(m)
 	end
 end)
 
+
+---------------------------------------------------------------- สัตว์เลี้ยง (ผู้ใช้สั่ง 2026-09-22)
+--
+-- **ไม่ใช่สัตว์ฟาร์ม** สัตว์ในคอกข้างบนเป็นกล่องนิ่งๆ ที่กด E เก็บผลผลิตแล้วหายไป ส่วนสองตัวนี้เป็น
+-- **rig จริงจากโรงงาน** (`models/animals.lua` → `R.quad`) มี Motor6D + Humanoid เดินได้ลื่นจริง
+-- ลูบหัวได้ (E) อุ้มย้ายที่ได้ (F) และให้บัพกับทั้งฟาร์มขณะอยู่บนเกาะ
+--
+-- ⚠️ **ห้ามผ่าน `finish()` แบบของอื่น** — `finish` สั่ง `Anchored = true` ทุกชิ้น ซึ่งจะตรึงสัตว์
+-- ไว้กับที่ถาวร เดินไม่ได้เลย · ต้องปล่อยให้ Humanoid คุมการเคลื่อนที่เอง
+for _, name in ipairs({ "Dog", "Cat" }) do
+	local id = "Pet_" .. name
+	if not keep[id] then
+		local built = K.place("Animal_" .. name, folder, CFrame.new())
+		if built then
+			built.Name = id
+			-- **ย่อลง** โรงงานปั้นตามสเกลเมืองหลัก (หมาสูง 11.5 studs = สูงกว่าตัวละคร ~5.5 สองเท่า)
+			-- 0.45 ได้หมาสูงราว 5 studs = แค่เอวคน ซึ่งคือขนาดที่คำว่า "สัตว์เลี้ยง" หมายถึง
+			-- `BeastGait` คูณระยะยกตัวกับจังหวะก้าวด้วย GetScale() ให้เอง จึงไม่ต้องแก้แอตทริบิวต์
+			built:ScaleTo(0.45)
+			-- ปุ่มตกแต่งของ kit ออก (ระบบสัตว์เลี้ยงใส่ปุ่ม E/F ของมันเอง) แต่ **ไม่แตะ Anchored**
+			for _, d in ipairs(built:GetDescendants()) do
+				if d:IsA("ProximityPrompt") then d:Destroy() end
+			end
+			-- Footprint ยังต้องมี ระบบวางของใช้หาขนาดช่อง — คิดจากกล่องจริงเหมือนของอื่น
+			local _, size = built:GetBoundingBox()
+			built:SetAttribute("Footprint", Vector2.new(cells(size.X), cells(size.Z)))
+			built:SetAttribute("Pet", true)
+			print(("[Placeables] %-20s %2dx%-2d ช่อง (rig เดินได้ %d ชิ้น)")
+				:format(id, cells(size.X), cells(size.Z), K.countParts(built)))
+		else
+			warn("[Placeables] ไม่มี builder Animal_" .. name .. " (ลืม --models?)")
+		end
+	end
+end
+
 status(("done: %d ต้นแบบใน ReplicatedStorage.WOLD_Placeables"):format(#folder:GetChildren()), true)

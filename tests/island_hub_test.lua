@@ -72,9 +72,8 @@ for _, id in ipairs(MAIN) do
 	assert(InventoryGui.InTab(id, "main"), id .. " ต้องอยู่แท็บเกมหลัก (วัตถุดิบจากฟาร์มเป็นของเกมหลัก)")
 	assert(not InventoryGui.InTab(id, "farm"), id .. " ต้องไม่อยู่แท็บฟาร์ม")
 end
-for _, id in ipairs({ "Wheat", "FarmPlot" }) do
-	assert(InventoryGui.InTab(id, "all"), "แท็บทั้งหมดต้องเห็นทุกอย่าง")
-end
+-- **ไม่มีแท็บ "ทั้งหมด" แล้ว** (ผู้ใช้สั่ง 2026-09-22) — สองแท็บแยกขาดจากกัน
+assert(#InventoryGui.Tabs == 2, "ต้องมีสองแท็บ ได้ " .. #InventoryGui.Tabs)
 -- นับของวางทั้งหมดในแคตตาล็อก ต้องเข้าแท็บฟาร์มครบ
 local placeables = 0
 for id, item in pairs(ItemCatalog.Items or {}) do
@@ -89,11 +88,20 @@ table.insert(out, ("แท็บกระเป๋า: ของวาง %d ช
 ----------------------------------------------------------------- 4) ฟ้าไม่รบกวนการวางของ
 local sky = workspace.WOLD_Island:FindFirstChild("Skyscape")
 if sky then
+	-- **ตรวจเฉพาะของที่เฟส 97 สร้าง** (Isle / CloudRaft) — ผู้ใช้ลากโมเดลของตัวเอง (ซากปรักหักพัง
+	-- หอคอย ต้นไม้ใหญ่) เข้ามาแต่งเกาะประดับเพิ่มได้ และของพวกนั้นชนได้ตามปกติซึ่งไม่เป็นไร:
+	-- มันอยู่ไกลเกิน 500 studs พ้นกำแพงล่องหนไปมาก ไม่มีใครเดินไปถึง
+	--
+	-- สิ่งที่ต้องกันจริงคือของที่ **ใกล้พอจะรบกวนตารางวางของ** ซึ่งคือของที่เฟสสร้างรอบเกาะ
 	local bad = 0
-	for _, d in ipairs(sky:GetDescendants()) do
-		if d:IsA("BasePart") and (d.CanQuery or d.CanCollide) then bad += 1 end
+	for _, m in ipairs(sky:GetChildren()) do
+		if m.Name == "Isle" or m.Name == "CloudRaft" then
+			for _, d in ipairs(m:GetDescendants()) do
+				if d:IsA("BasePart") and (d.CanQuery or d.CanCollide) then bad += 1 end
+			end
+		end
 	end
-	assert(bad == 0, ("ของประดับบนฟ้าต้องไม่ถูกเรย์ถามและไม่ชน พบ %d ชิ้นที่ผิด"):format(bad))
+	assert(bad == 0, ("เกาะประดับ/แพเมฆของเฟสต้องไม่ถูกเรย์ถามและไม่ชน พบ %d ชิ้นที่ผิด"):format(bad))
 	local isles, rafts = 0, 0
 	for _, m in ipairs(sky:GetChildren()) do
 		if m.Name == "Isle" then isles += 1 elseif m.Name == "CloudRaft" then rafts += 1 end

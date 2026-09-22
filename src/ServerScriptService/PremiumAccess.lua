@@ -11,4 +11,7 @@ PremiumAccess.AddPassXp = nil
 PremiumAccess.AddGems = nil
 PremiumAccess.GetGems = nil
 
+-- SpendGems(player, n) -> true ถ้าพอและหักแล้ว · ร้านบนเกาะใช้ซื้อของตกแต่ง/สัตว์เลี้ยง/ของผิดกฎหมาย
+PremiumAccess.SpendGems = nil
+
 return PremiumAccess

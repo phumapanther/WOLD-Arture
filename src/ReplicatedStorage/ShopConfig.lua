@@ -31,46 +31,63 @@ ShopConfig.Sells = {
 
 -- ร้านบนเกาะฟาร์ม — Shop.server เลือกตารางนี้เมื่อ ServerConfig.Mode == "Farming" (สต็อกเกมหลักไม่เปลี่ยน)
 -- ราคาทั้งหมด Claude ตั้งไว้ก่อน ผู้ใช้ยังไม่ได้กำหนด (2026-09-22)
+-- **สองสกุลเงิน** (ผู้ใช้กำหนด 2026-09-22)
+--
+--   `currency = "gems"`  เพชร — ของตกแต่ง สัตว์เลี้ยง ของผิดกฎหมาย และแปลงผักส่วนที่ซื้อเพิ่ม
+--   ไม่ใส่ (ดีฟอลต์)     เหรียญของเกมหลัก — เมล็ด บ้าน
+--
+-- แปลงผักมี **สองแถว** คือสิ่งเดียวที่ซื้อได้ทั้งสองสกุล: จ่ายเพชรถูก หรือจ่ายเหรียญแพงมาก
+-- (ผู้ใช้สั่ง "ซื้อเพิ่มใช้เพชร และใช้เงินเกมหลักได้ แต่แพงมาก") — 9 แปลงแรกยังแจกฟรีในชุดเริ่มต้น
 ShopConfig.IslandSells = {
 	{ id = "Seed", price = 50 },
-	{ id = "FarmPlot", price = 300 },
-	{ id = "Deco_Fence", price = 50 },
-	{ id = "Deco_PathTile", price = 30 },
-	{ id = "Deco_FlowerPot", price = 150 },
-	{ id = "Deco_Crate", price = 200 },
-	{ id = "Deco_Barrel", price = 200 },
-	{ id = "Deco_Bench", price = 350 },
-	{ id = "Deco_Lamp", price = 400 },
-	{ id = "Deco_Tree", price = 600 },
 
-	-- ของตกแต่งชิ้นเล็ก (ผู้ใช้สั่ง 2026-09-22) — ถูกกว่าของใหญ่มาก ตั้งใจให้ซื้อทีละหลายชิ้นมาโรย
-	{ id = "Deco_Rock", price = 40 },
-	{ id = "Deco_Bush", price = 60 },
-	{ id = "Deco_Stump", price = 60 },
-	{ id = "Deco_Lantern", price = 220 },
-	{ id = "Deco_Signpost", price = 180 },
-	{ id = "Deco_RockBig", price = 250 },
-	{ id = "Deco_Well", price = 1200 },
+	-- แปลงผัก: แจกฟรี 9 แปลงตอนเข้าเกาะครั้งแรก · ซื้อเพิ่มได้สองทาง
+	{ id = "FarmPlot", price = 40, currency = "gems" },
+	{ id = "FarmPlot", price = 25000 },
 
-	-- เฟอร์นิเจอร์ในบ้าน ใช้งานได้จริง — แพงกว่าของตกแต่งเพราะมันคือเครื่องมือ ไม่ใช่ของประดับ
-	{ id = "IceBox", price = 4000 },
-	{ id = "ApothecaryCabinet", price = 4000 },
-	{ id = "Stove", price = 6000 },
-	{ id = "SteamBlender", price = 7000 },
-	{ id = "AlchemyStill", price = 7000 },
-
-	-- ฟาร์มผิดกฎหมาย — แพงที่สุดในหมวดของใช้ เพราะมันพิมพ์เงินได้ (คูลดาวน์ 30 นาที/จุด)
-	{ id = "Boxs", price = 15000 },
-	{ id = "DistillSet", price = 18000 },
-	{ id = "Reactor", price = 18000 },
-
-	{ id = "AnimalPen", price = 3500 },
-	{ id = "MineZone", price = 5000 },
+	-- บ้าน: เหรียญเกมหลัก (ของชิ้นใหญ่ที่เก็บเงินทั้งเกมมาซื้อ)
 	{ id = "House_StoneCottage", price = 20000 },
 	{ id = "House_Roundhouse", price = 25000 },
 	{ id = "House_Longhouse", price = 30000 },
 	{ id = "House_PipeWorker", price = 40000 },
 	{ id = "House_Townhouse", price = 50000 },
+
+	-- ของตกแต่ง: เพชรทั้งหมด
+	{ id = "Deco_PathTile", price = 2, currency = "gems" },
+	{ id = "Deco_Rock", price = 3, currency = "gems" },
+	{ id = "Deco_Bush", price = 4, currency = "gems" },
+	{ id = "Deco_Stump", price = 4, currency = "gems" },
+	{ id = "Deco_Fence", price = 4, currency = "gems" },
+	{ id = "Deco_FlowerPot", price = 8, currency = "gems" },
+	{ id = "Deco_Crate", price = 10, currency = "gems" },
+	{ id = "Deco_Barrel", price = 10, currency = "gems" },
+	{ id = "Deco_Signpost", price = 12, currency = "gems" },
+	{ id = "Deco_RockBig", price = 14, currency = "gems" },
+	{ id = "Deco_Lantern", price = 15, currency = "gems" },
+	{ id = "Deco_Bench", price = 18, currency = "gems" },
+	{ id = "Deco_Lamp", price = 22, currency = "gems" },
+	{ id = "Deco_Tree", price = 30, currency = "gems" },
+	{ id = "Deco_Well", price = 60, currency = "gems" },
+
+	-- เฟอร์นิเจอร์ในบ้าน (ใช้งานได้จริง): เพชร
+	{ id = "IceBox", price = 120, currency = "gems" },
+	{ id = "ApothecaryCabinet", price = 120, currency = "gems" },
+	{ id = "Stove", price = 180, currency = "gems" },
+	{ id = "SteamBlender", price = 220, currency = "gems" },
+	{ id = "AlchemyStill", price = 220, currency = "gems" },
+
+	-- สัตว์เลี้ยง (ไม่ใช่สัตว์ฟาร์ม): เพชร · บัพให้ทั้งฟาร์มขณะอยู่บนเกาะ
+	{ id = "Pet_Cat", price = 250, currency = "gems" },
+	{ id = "Pet_Dog", price = 250, currency = "gems" },
+
+	-- ของผิดกฎหมาย: เพชร แพงที่สุดเพราะมันพิมพ์เงินได้
+	{ id = "Boxs", price = 400, currency = "gems" },
+	{ id = "DistillSet", price = 500, currency = "gems" },
+	{ id = "Reactor", price = 500, currency = "gems" },
+
+	-- คอก/โซนแร่: เหรียญเกมหลัก (เป็นเครื่องมือหาของ ไม่ใช่ของตกแต่ง)
+	{ id = "AnimalPen", price = 3500 },
+	{ id = "MineZone", price = 5000 },
 }
 
 -- What the shopkeeper buys, and for how much of the catalog `value`. Well under 1 on purpose: the gap

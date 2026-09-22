@@ -73,8 +73,9 @@ end
 -- ซึ่งใช้ได้ที่เดียวคือบนเกาะ
 --
 -- แยกด้วย `kind` ไม่ใช่รายชื่อไอเทม — เพิ่มของวางใหม่ใน ItemCatalog แล้วมันเข้าแท็บถูกเอง
+-- **แยกขาดจากกัน ไม่มีแท็บ "ทั้งหมด"** (ผู้ใช้สั่ง 2026-09-22): กดแท็บฟาร์มเห็นแต่ของฟาร์ม
+-- กดแท็บเกมหลักเห็นแต่ของเกมหลัก — ช่องนอกแท็บ**ว่างเปล่า** ไม่ใช่หรี่ลง
 InventoryGui.Tabs = {
-	{ id = "all", label = "ทั้งหมด" },
 	{ id = "main", label = "ของเกมหลัก" },
 	{ id = "farm", label = "ของใช้ในฟาร์ม" },
 }
@@ -83,7 +84,7 @@ local FARM_KINDS = { placeable = true }
 
 -- ของชิ้นนี้อยู่ในแท็บที่เลือกไหม
 function InventoryGui.InTab(itemId, tab)
-	if tab == nil or tab == "all" then return true end
+	if tab == nil then return true end
 	local item = ItemCatalog.Get(itemId)
 	local isFarm = item ~= nil and FARM_KINDS[item.kind] == true
 	if tab == "farm" then return isFarm end
@@ -258,7 +259,7 @@ function InventoryGui.new()
 	tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	tabLayout.Parent = tabBar
 
-	self.bagTab = "all"
+	self.bagTab = "main"
 	self.bagTabs = {}
 	for order, spec in ipairs(InventoryGui.Tabs) do
 		local b = Instance.new("TextButton")
@@ -355,6 +356,10 @@ function InventoryGui.new()
 		end)
 
 		slot.Activated:Connect(function()
+			-- ของที่ซ่อนอยู่เพราะอยู่คนละแท็บ **กดไม่ได้** — ช่องที่ดูว่างแต่เปิดเมนูของที่มองไม่เห็นขึ้นมา
+			-- คือสิ่งที่อธิบายไม่ได้เลยสำหรับคนเล่น
+			local held = self.lastData and self.lastData.slots and self.lastData.slots[i]
+			if held and not InventoryGui.InTab(held.id, self.bagTab) then return end
 			-- Bag slots click; the equipment slots above deliberately do not, since putting something on
 			-- already has its own heavier sound and the two together sounded like a stutter.
 			UiSound.Play("Click")
@@ -422,6 +427,11 @@ function InventoryGui:Render(data)
 
 	for i, entry in ipairs(self.slotButtons) do
 		local slot = data.slots and data.slots[i]
+		-- **ช่องที่ไม่เข้าแท็บวาดเป็นช่องว่าง** (ผู้ใช้สั่ง) — ไม่ใช่หรี่ลงแบบรอบแรก
+		--
+		-- ⚠️ **เลขช่องยังเป็นเลขเดิม** ตัวที่หายไปคือ "ภาพ" ไม่ใช่ "ที่อยู่ของของ" — ทุกคำสั่ง
+		-- (ใส่/ใช้/ทิ้ง/ให้/ฝาก) อ้างของจากเลขช่อง ถ้าแท็บขยับเลข คนกดของชิ้นแรกจะได้อีกชิ้นเงียบๆ
+		if slot and not InventoryGui.InTab(slot.id, self.bagTab) then slot = nil end
 		if slot then
 			local item = ItemCatalog.Get(slot.id)
 			local art = item and item.icon or ""
@@ -444,12 +454,6 @@ function InventoryGui:Render(data)
 			entry.stroke.Color = kg and FishingConfig.TierFor(kg).color
 				or (item and KIND_TINT[item.kind] or GLASS)
 			entry.stroke.Transparency = 0.35
-			-- นอกแท็บที่เลือก: หรี่ลง **แต่ยังกดได้** ช่องยังเป็นช่องเดิม เลขช่องไม่ขยับ
-			local inTab = InventoryGui.InTab(slot.id, self.bagTab)
-			entry.icon.ImageTransparency = inTab and 0 or 0.72
-			entry.name.TextTransparency = inTab and 0 or 0.72
-            entry.count.TextTransparency = inTab and 0 or 0.72
-			if not inTab then entry.stroke.Transparency = 0.85 end
 		else
 			entry.icon.Image = ""
 			entry.icon.Visible = false

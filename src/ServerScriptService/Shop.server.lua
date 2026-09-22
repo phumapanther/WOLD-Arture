@@ -14,6 +14,7 @@ if ServerConfig.IsLobby then return end
 
 local ShopConfig = require(game.ReplicatedStorage.ShopConfig)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
+local PremiumAccess = require(game.ServerScriptService.PremiumAccess)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
 local MarketAccess = require(game.ServerScriptService.MarketAccess)
@@ -156,6 +157,7 @@ local function snapshot(player)
 				index = index, id = entry.id,
 				name = item.name .. (SPOT_TAG[item.spot] or ""),
 				icon = item.icon, price = entry.price,
+				currency = entry.currency, -- nil = เหรียญ · "gems" = เพชร
 			})
 		end
 	end
@@ -230,9 +232,12 @@ Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, 
 			want = math.clamp(math.floor(amount), 1, MAX_BUY)
 		end
 
-		local affordable = math.floor(state.gold / entry.price)
+		-- **จ่ายด้วยเพชรหรือเหรียญ ตามที่แถวนั้นบอก** (ผู้ใช้กำหนด 2026-09-22)
+		local gems = entry.currency == "gems"
+		local purse = gems and PremiumAccess.GetGems and PremiumAccess.GetGems(player) or state.gold
+		local affordable = math.floor(purse / entry.price)
 		if affordable < 1 then
-			return Remotes.SocialNotify:FireClient(player, "error", "เงินไม่พอ")
+			return Remotes.SocialNotify:FireClient(player, "error", gems and "เพชรไม่พอ" or "เงินไม่พอ")
 		end
 		local count = math.min(want, affordable)
 
@@ -247,16 +252,22 @@ Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, 
 		if bought == 0 then
 			return Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม")
 		end
-		Inventory.AddGold(player, -entry.price * bought)
+		if gems then
+			-- **หักหลังของเข้ากระเป๋าแล้ว** เหมือนทางเหรียญ — กระเป๋าเต็มกลางคันจะได้จ่ายเท่าที่ได้จริง
+			PremiumAccess.SpendGems(player, entry.price * bought)
+		else
+			Inventory.AddGold(player, -entry.price * bought)
+		end
 
 		local item = ItemCatalog.Get(entry.id)
 		local name = item and item.name or entry.id
+		local unit = gems and " เพชร" or ""
 		if bought < want then
 			Remotes.SocialNotify:FireClient(player, "info",
-				("ซื้อ %s x%d ราคา %d (ได้ไม่ครบ %d)"):format(name, bought, entry.price * bought, want))
+				("ซื้อ %s x%d ราคา %d%s (ได้ไม่ครบ %d)"):format(name, bought, entry.price * bought, unit, want))
 		else
 			Remotes.SocialNotify:FireClient(player, "info",
-				("ซื้อ %s x%d ราคา %d"):format(name, bought, entry.price * bought))
+				("ซื้อ %s x%d ราคา %d%s"):format(name, bought, entry.price * bought, unit))
 		end
 
 	elseif action == "sell" then

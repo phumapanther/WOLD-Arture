@@ -238,7 +238,11 @@ local function gather(node, player)
 
 	-- Marked spent BEFORE anything is given, so two players finishing the same hold on the same frame
 	-- cannot both be paid for it.
-	SpentUntil[node] = os.clock() + GatherConfig.RespawnSeconds
+	-- **คูลดาวน์ต่อจุดได้** แอตทริบิวต์ `RespawnSeconds` บนตัวโหนดชนะค่ากลาง — ของตกแต่งบนเกาะ
+	-- (หิน/ต้นไม้ที่ซื้อมาวาง) ใช้ 30 นาทีตามที่ผู้ใช้กำหนด ส่วนจุดในแมพหลักไม่มีแอตทริบิวต์นี้
+	-- จึงยังเป็น 60 วินาทีเท่าเดิมทุกจุด
+	local respawn = node:GetAttribute("RespawnSeconds") or GatherConfig.RespawnSeconds
+	SpentUntil[node] = os.clock() + respawn
 	setSpent(node, true)
 
 	-- สัตว์ในฝูงถูกฟาร์มแล้วหายไปเลย (ผู้ใช้กำหนด) AnimalHerds เห็นตัวหายแล้วเติมตัวใหม่ให้เองหลัง
@@ -289,7 +293,16 @@ local function gather(node, player)
 	end
 
 	if config.xp and config.xp > 0 then
-		Progression.AwardExp(player, config.xp)
+		-- **บนเกาะ: EXP เพิ่มตามสัตว์เลี้ยงและจำนวนของตกแต่ง** (ผู้ใช้สั่ง 2026-09-22)
+		-- ตัวคูณอยู่กับ `IslandPets` ซึ่งเป็นเจ้าของคำถาม "ตอนนี้เกาะมีอะไรอยู่บ้าง" — ไฟล์นี้แค่ถาม
+		-- นอกเพลสเกาะ ช่องนี้เป็น nil ตัวคูณจึงเป็น 1 และเกมหลักไม่เปลี่ยนแปลงอะไรเลย
+		local xp = config.xp
+		local IslandAccess = ServerConfig.IsFarm
+			and require(game.ServerScriptService.Island.IslandAccess) or nil
+		if IslandAccess and IslandAccess.FarmExpMultiplier then
+			xp = math.floor(xp * IslandAccess.FarmExpMultiplier() + 0.5)
+		end
+		Progression.AwardExp(player, xp)
 	end
 
 	-- เครื่องมือสึกครั้งละ 1 ทุกครั้งที่เก็บสำเร็จ (ผู้ใช้กำหนด) เฉพาะจุดที่ต้องใช้เครื่องมือ — เก็บไข่ด้วยมือ
@@ -319,7 +332,7 @@ local function gather(node, player)
 	end
 	Remotes.SocialNotify:FireClient(player, "info", text)
 
-	task.delay(GatherConfig.RespawnSeconds, function()
+	task.delay(respawn, function()
 		if node.Parent then setSpent(node, false) end
 	end)
 end
@@ -377,6 +390,12 @@ local function register(node)
 	--
 	-- The server only draws it. Firing it tells the client to toggle its own loop, which is where auto-farm
 	-- has to live: it drives the local character's movement.
+	-- **ของตกแต่งบนเกาะไม่มีปุ่มฟาร์มออโต้**
+	--
+	-- ฟาร์มออโต้มีไว้เดินไล่เก็บโหนดหลายพันจุดในแมพหลัก บนเกาะมีก้อนหินที่ซื้อมาวางไม่กี่ก้อน
+	-- ซึ่งไม่มีอะไรให้ไล่ · และมันใช้ **F ชนกับปุ่มเก็บของคืนกระเป๋า** ของระบบเกาะพอดี
+	-- (วัดในเพลสแล้ว: ก้อนหินตกแต่งมี PickupPrompt[F] + GatherPrompt[E] + AutoFarmPrompt[F])
+	if node:GetAttribute("Uid") then return end
 	local auto = Instance.new("ProximityPrompt")
 	auto.Name = "AutoFarmPrompt"
 	auto.ActionText = "ฟาร์มออโต้"

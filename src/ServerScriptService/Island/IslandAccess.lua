@@ -19,6 +19,10 @@ IslandAccess.PenBuy = nil -- (player, penModel, kind, count) -> ok, reason
 IslandAccess.PenSnapshot = nil -- (penModel) -> ภาพรวมของคอกสำหรับวาดหน้าจอ
 IslandAccess.ZonesTick = nil -- () รันรอบเดียวทันที (เทส)
 
+-- ตั้งโดย IslandPets (สัตว์เลี้ยง + โบนัสจากของตกแต่ง)
+IslandAccess.GrowthMultiplier = nil -- () -> ตัวคูณเวลาโตของพืช (< 1 = เร็วขึ้น)
+IslandAccess.FarmExpMultiplier = nil -- () -> ตัวคูณ EXP จากการทำฟาร์ม (> 1 = ได้เพิ่ม)
+
 -- ตั้งโดย IslandPlots
 IslandAccess.Plant = nil -- (player, plotModel) -> ok, reason
 IslandAccess.Harvest = nil -- (player, plotModel) -> ok, reason

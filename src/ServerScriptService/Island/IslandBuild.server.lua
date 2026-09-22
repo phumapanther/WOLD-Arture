@@ -20,6 +20,20 @@ local FUNCTIONAL = {
 
 -- ในนั้น สามอันนี้ต้องติดแท็ก `WOLD_Farm` เพิ่มด้วย
 local FARM_NODES = { DistillSet = true, Reactor = true, Boxs = true }
+
+-- **ของตกแต่งที่เก็บเกี่ยวได้** (ผู้ใช้สั่ง 2026-09-22) — หินกับต้นไม้ที่ซื้อมาวาง ใช้ขวาน/อีเต้อ
+-- ทุบเอาของได้เหมือนในเกมหลัก แต่ **คูลดาวน์ 30 นาที** แทน 60 วินาที และ **โมเดลอยู่ที่เดิม**
+-- (ผู้ใช้เลือก) — ไม่หายไป ไม่ต้องซื้อใหม่ แค่รอจนกว่าจะเก็บได้อีก
+--
+-- `NodeKind` คือสิ่งที่ `Gathering` ใช้เปิดตาราง `GatherConfig.Nodes` — ชื่อต้องตรงกับที่นั่น
+local HARVESTABLE = {
+	Deco_Rock = "Rock",
+	Deco_RockBig = "Rock",
+	Deco_Tree = "Tree",
+	Deco_Stump = "Tree",
+	Deco_Bush = "Herb", -- พุ่มไม้ในเกมหลักคือจุดสมุนไพร ไม่ใช่ NodeKind ชื่อ Bush (ไม่มีอยู่จริง)
+}
+local DECOR_RESPAWN = 30 * 60
 local Inventory = require(game.ServerScriptService.Inventory)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
@@ -158,6 +172,15 @@ local function spawnEntry(entry)
 	model:SetAttribute("CellZ", entry.z)
 	model:SetAttribute("Rot", entry.r)
 	model:SetAttribute("Footprint", Vector2.new(w, d))
+
+	-- ของตกแต่งที่ทุบเอาของได้ — `Gathering` ของเกมหลักใส่ปุ่มและแจกของให้เอง เห็นแท็กเมื่อไหร่ก็ทำงาน
+	-- **ติดที่ตัวโมเดลนอกสุด** ต่างจากเฟอร์นิเจอร์ที่ต้องมีลูกชื่อถูก เพราะ Gathering อ่านจากแอตทริบิวต์
+	local harvest = HARVESTABLE[entry.id]
+	if harvest then
+		model:SetAttribute("NodeKind", harvest)
+		model:SetAttribute("RespawnSeconds", DECOR_RESPAWN)
+		CollectionService:AddTag(model, "WOLD_Node")
+	end
 
 	-- ปุ่มเก็บ: F กดค้าง ครึ่งวิ กันเผลอ · E ปล่อยไว้ให้ปุ่มของแปลง (ปลูก/เก็บเกี่ยว) ในไฟล์ IslandPlots
 	local item = ItemCatalog.Get(entry.id)

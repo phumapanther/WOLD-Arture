@@ -45,10 +45,19 @@ local function rollCrop()
 	return IslandConfig.Crops[#IslandConfig.Crops]
 end
 
+-- เวลาที่พืชชนิดนี้ต้องใช้ **หลังหักโบนัส** — สัตว์เลี้ยงบนเกาะทำให้โตเร็วขึ้น 10% (ผู้ใช้สั่ง)
+--
+-- **คิดสดทุกครั้ง ไม่เก็บลงแปลง** ผู้เล่นเอาสัตว์มาวางหรือเก็บคืนได้ตลอดเวลา ถ้าฝังเวลาที่ลดแล้วไว้
+-- ตอนหยอดเมล็ด แปลงที่ปลูกก่อนซื้อสัตว์จะไม่ได้โบนัสเลย และแปลงที่ปลูกตอนมีสัตว์จะได้ต่อไปแม้ขายสัตว์ทิ้ง
+local function growSeconds(spec)
+	local mul = IslandAccess.GrowthMultiplier and IslandAccess.GrowthMultiplier() or 1
+	return spec.seconds * mul
+end
+
 local function progressOf(entry)
 	local spec = cropSpec(entry.crop)
 	if not spec or not entry.at then return 1 end
-	return math.clamp((os.time() - entry.at) / spec.seconds, 0, 1)
+	return math.clamp((os.time() - entry.at) / growSeconds(spec), 0, 1)
 end
 
 local function stageOf(progress)
@@ -62,7 +71,7 @@ end
 local function minutesLeft(entry)
 	local spec = cropSpec(entry.crop)
 	if not spec then return 0 end
-	return math.max(0, math.ceil((spec.seconds - (os.time() - entry.at)) / 60))
+	return math.max(0, math.ceil((growSeconds(spec) - (os.time() - entry.at)) / 60))
 end
 
 --------------------------------------------------------------------------------
@@ -105,7 +114,7 @@ local function plant(player, model)
 	local state = Plots[model]
 	if state then state.stage = nil end -- ให้รอบถัดไปวาดใหม่
 	local item = ItemCatalog.Get(spec.item)
-	Remotes.SocialNotify:FireClient(player, "info", ("หยอดเมล็ดแล้ว — ขึ้นเป็น%s ใช้เวลา %d นาที"):format(item and item.name or spec.item, spec.seconds / 60))
+	Remotes.SocialNotify:FireClient(player, "info", ("หยอดเมล็ดแล้ว — ขึ้นเป็น%s ใช้เวลา %d นาที"):format(item and item.name or spec.item, growSeconds(spec) / 60))
 	return true
 end
 

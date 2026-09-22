@@ -650,6 +650,11 @@ ItemCatalog.Items = {
 	IceBox = { icon = "", name = "ตู้เย็น", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
 	ApothecaryCabinet = { icon = "", name = "ตู้ยา", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
 
+	-- สัตว์เลี้ยง (ไม่ใช่สัตว์ฟาร์ม) — rig เดินได้จริง ลูบหัว/อุ้มได้ ให้บัพทั้งฟาร์ม
+	-- `stackSize = 1` เพราะแต่ละตัวเป็นตัวของมันเอง ไม่ใช่ของที่กองรวมกันได้
+	Pet_Cat = { icon = "", name = "แมว", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Dog = { icon = "", name = "สุนัข", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+
 	-- ฟาร์มผิดกฎหมาย — วางในบ้านแล้วเป็นจุดฟาร์มจริง (กฎของ IllegalFarm ยังใช้ครบ)
 	DistillSet = { icon = "", name = "ชุดกลั่น", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
 	Reactor = { icon = "", name = "เตาปฏิกรณ์", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },

@@ -319,7 +319,10 @@ function ShopGui:Show(snapshot)
 		-- keeps working the same way whether the number was typed or left alone.
 		local want = nil
 		local frame = row(self.sellList, entry.index, entry.icon, entry.name,
-			("ราคา %d"):format(entry.price), "ซื้อ", Color3.fromRGB(150, 200, 140),
+			-- เพชรกับเหรียญต้องอ่านต่างกันทันที ไม่งั้น "ราคา 250" ของสัตว์เลี้ยงดูถูกกว่าบ้าน 20,000
+			-- ทั้งที่แพงกว่ามาก (ร้านบนเกาะขายสองสกุล ดู ShopConfig.IslandSells)
+			(entry.currency == "gems" and ("💎 %d"):format(entry.price) or ("ราคา %d"):format(entry.price)),
+			"ซื้อ", Color3.fromRGB(150, 200, 140),
 			function()
 				if self.onBuy then self.onBuy(entry.index, want) end
 			end)
