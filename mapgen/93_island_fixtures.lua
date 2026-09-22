@@ -109,7 +109,81 @@ else
 	T:FillCylinder(CFrame.new(POND_AT.X, bottom - 1, POND_AT.Y), 3, POND_R + POND_LIP, Enum.Material.Sand)
 	T:FillCylinder(CFrame.new(POND_AT.X, (bottom + waterTop) / 2, POND_AT.Y), waterTop - bottom, POND_R * 0.98, Enum.Material.Water)
 
-	status(("ขุดสระที่ (%.0f, %.0f) รัศมี %d ลึก %d ผิวดิน y=%.1f ผิวน้ำ y=%.1f"):format(POND_AT.X, POND_AT.Y, POND_R, POND_DEPTH, pondSurface, waterTop))
+	-- ประกาศพิกัดสระไว้บนโฟลเดอร์ ให้ระบบอื่น (ปลาว่าย) อ่านได้โดยไม่ต้องคำนวณซ้ำ — แก้เลขที่เฟสนี้ที่เดียว
+	island:SetAttribute("PondCentre", Vector3.new(POND_AT.X, waterTop, POND_AT.Y))
+	island:SetAttribute("PondRadius", POND_R)
+	island:SetAttribute("PondDepth", POND_DEPTH)
+
+	--------------------------------------------------------------------------
+	-- ของประดับในสระ: ทางไม้ยื่นลงน้ำ · ใบบัว 2 · ดอกบัว 1
+	--------------------------------------------------------------------------
+	local old = island:FindFirstChild("PondProps")
+	if old then old:Destroy() end
+	local props = Instance.new("Folder"); props.Name = "PondProps"; props.Parent = island
+
+	local function part(name, cf, size, material, colour, shape)
+		local p = Instance.new("Part")
+		p.Name = name
+		p.Anchored = true
+		p.Shape = shape or Enum.PartType.Block
+		p.Size = size
+		p.CFrame = cf
+		p.Material = material
+		p.Color = colour
+		p.TopSurface = Enum.SurfaceType.Smooth
+		p.BottomSurface = Enum.SurfaceType.Smooth
+		p.Parent = props
+		return p
+	end
+
+	-- ทางเดินไม้: เริ่มจากฝั่ง (ทิศ +X ของสระ) ยื่นเข้าหากลางสระ ยืนบนปลายแล้วตกปลาได้
+	-- พื้นทางอยู่เหนือผิวน้ำ 1.2 studs — เตี้ยพอให้เห็นว่าอยู่บนน้ำ แต่ไม่จมจนเดินแล้วว่ายน้ำ
+	local DOCK_LEN = POND_R + POND_LIP + 4
+	local deckY = waterTop + 1.2
+	local dirX, dirZ = 1, 0 -- ยื่นไปทางตะวันออก (ฝั่งที่ใกล้กลางเกาะ เดินมาจากจุดเกิดเจอก่อน)
+	local startX = POND_AT.X + dirX * (POND_R + POND_LIP + 2)
+	for i = 0, DOCK_LEN - 1, 3 do
+		local x = startX - dirX * i
+		local z = POND_AT.Y - dirZ * i
+		part("Plank", CFrame.new(x, deckY, z), Vector3.new(3.2, 0.4, 7), Enum.Material.WoodPlanks, Color3.fromRGB(150, 116, 82))
+		-- เสาค้ำทุกๆ 6 studs ลงไปถึงก้นสระ
+		if i % 6 == 0 then
+			for _, sz in ipairs({ -2.6, 2.6 }) do
+				local h = deckY - (bottom - 1)
+				part("Pile", CFrame.new(x, deckY - h / 2, z + sz), Vector3.new(0.7, h, 0.7), Enum.Material.Wood, Color3.fromRGB(96, 74, 56))
+			end
+		end
+	end
+	-- ปลายทางเดินกว้างขึ้นนิดให้ยืนสบาย
+	part("DeckEnd", CFrame.new(POND_AT.X + dirX * (POND_R + POND_LIP + 2 - DOCK_LEN), deckY, POND_AT.Y), Vector3.new(6, 0.4, 8), Enum.Material.WoodPlanks, Color3.fromRGB(150, 116, 82))
+
+	-- ใบบัวสองใบ ลอยบนผิวน้ำคนละมุม ห่างจากทางเดิน
+	local LILY = { { -0.55, 0.35, 6.5 }, { -0.15, -0.6, 8.5 } } -- ทิศ x,z (unit-ish) และระยะจากกลางสระ
+	for i, l in ipairs(LILY) do
+		local lx = POND_AT.X + l[1] * l[3]
+		local lz = POND_AT.Y + l[2] * l[3]
+		local pad = part("LilyPad" .. i, CFrame.new(lx, waterTop + 0.08, lz), Vector3.new(5.2, 0.16, 5.2), Enum.Material.Grass, Color3.fromRGB(64, 132, 62), Enum.PartType.Cylinder)
+		pad.CFrame = CFrame.new(lx, waterTop + 0.08, lz) * CFrame.Angles(0, 0, math.pi / 2) -- Cylinder แกน X → ตะแคงให้เป็นแผ่นแบน
+		pad.CanCollide = false
+		-- รอยหยักของใบบัว: ก้อนเล็กสีเดียวกันเว้าเข้าไปด้านหนึ่ง (ไม่ต้องเนียน แค่ไม่กลมเป๊ะ)
+		part("PadNotch" .. i, CFrame.new(lx + 2.2, waterTop + 0.08, lz + 1.4), Vector3.new(1.6, 0.18, 1.6), Enum.Material.Grass, Color3.fromRGB(58, 120, 56)).CanCollide = false
+	end
+
+	-- ดอกบัวหนึ่งดอก บนใบแรก: ฐานเขียว + กลีบชมพูหกกลีบ + เกสรเหลือง
+	local fx, fz = POND_AT.X + LILY[1][1] * LILY[1][3], POND_AT.Y + LILY[1][2] * LILY[1][3]
+	local baseY = waterTop + 0.3
+	part("FlowerBase", CFrame.new(fx, baseY, fz), Vector3.new(1.1, 0.5, 1.1), Enum.Material.Grass, Color3.fromRGB(72, 140, 66), Enum.PartType.Ball).CanCollide = false
+	for i = 0, 5 do
+		local a = i * math.pi / 3
+		local petal = part("Petal" .. i,
+			CFrame.new(fx + math.cos(a) * 0.75, baseY + 0.45, fz + math.sin(a) * 0.75)
+				* CFrame.Angles(0, -a, math.rad(38)),
+			Vector3.new(1.7, 0.22, 0.85), Enum.Material.SmoothPlastic, Color3.fromRGB(240, 156, 198))
+		petal.CanCollide = false
+	end
+	part("Stamen", CFrame.new(fx, baseY + 0.75, fz), Vector3.new(0.7, 0.7, 0.7), Enum.Material.Neon, Color3.fromRGB(252, 226, 120), Enum.PartType.Ball).CanCollide = false
+
+	status(("ขุดสระที่ (%.0f, %.0f) รัศมี %d ลึก %d ผิวน้ำ y=%.1f · ทางไม้ + ใบบัว 2 + ดอกบัว 1"):format(POND_AT.X, POND_AT.Y, POND_R, POND_DEPTH, waterTop))
 end
 
 --------------------------------------------------------------------------------
