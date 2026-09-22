@@ -465,3 +465,47 @@ end)
 CollectionService:GetInstanceAddedSignal(BOARD_TAG):Connect(function(model)
 	if model:IsA("Model") then wire(model) end
 end)
+
+--------------------------------------------------------------------------------
+-- ช่องเทสใน Studio
+--------------------------------------------------------------------------------
+
+-- ทรงเดียวกับ ServerStorage.IslandTest: `execute_luau` ของ MCP รันใน sandbox ที่ `require` ได้สำเนาใหม่
+-- ของทุกโมดูล (QuestAccess ที่มันเห็นจึงเป็นตารางว่าง) ส่วน BindableFunction เป็น instance จึงข้าม
+-- sandbox ได้ และ callback รันในบริบทของไฟล์นี้ — เทส tests/island_quest_test.lua ใช้ทางนี้
+--
+-- Studio เท่านั้น เซิร์ฟเวอร์จริงไม่มีช่องนี้
+if game:GetService("RunService"):IsStudio() then
+	local bf = Instance.new("BindableFunction")
+	bf.Name = "QuestTest"
+	bf.OnInvoke = function(op, ...)
+		if op == "Snapshot" then return snapshot(...) end
+		if op == "Offered" then return (offeredFor(...)) end
+		if op == "Key" then return questKey(...) end
+		-- โปรไฟล์: sandbox require ProfileAccess ได้สำเนาว่าง จึงต้องผ่านทางนี้เหมือนกัน
+		if op == "Held" then return activeOf(...) end
+		if op == "AddHeld" then
+			local player, quest = ...
+			local list = activeOf(player)
+			if not list then return false end
+			list[#list + 1] = quest
+			return #list
+		end
+		if op == "DropHeld" then
+			local player, n = ...
+			local list = activeOf(player)
+			if not list then return false end
+			for i = #list, (n or 1) + 1, -1 do table.remove(list, i) end
+			return #list
+		end
+		if op == "MarkDone" then
+			local player, k, on = ...
+			local done = doneOf(player)
+			if not done then return false end
+			done[k] = on or nil
+			return true
+		end
+		error("QuestTest: ไม่มี op " .. tostring(op))
+	end
+	bf.Parent = game:GetService("ServerStorage")
+end
