@@ -268,9 +268,26 @@ function Inventory.AutoSort(player)
 		table.insert(entries, slot)
 	end
 
+	-- **เรียงตามแท็บก่อน แล้วค่อยตามชนิด** (ผู้ใช้แจ้ง 2026-09-22)
+	--
+	-- กระเป๋าแบ่งเป็นสองแท็บที่ซ่อนของของอีกฝั่ง ถ้าเรียงรวมกันตามชนิดอย่างเดียว ของสองแท็บจะสลับกัน
+	-- เต็มไปหมด — จัดกระเป๋าแล้วแต่ละแท็บยังเห็นช่องว่างแทรกอยู่ทั่ว ซึ่งคือสิ่งที่ปุ่มนี้ควรกำจัด
+	--
+	-- ของฟาร์ม (`kind == "placeable"`) ไปอยู่ท้ายเสมอ ของเกมหลักอยู่ต้น — **ต้องตรงกับ
+	-- `InventoryGui.InTab`** ซึ่งแบ่งด้วยเกณฑ์เดียวกันเป๊ะ (ที่นั่นเรียกว่าแท็บ farm/main)
+	local function tabRank(id)
+		local item = ItemCatalog.Get(id)
+		return (item and item.kind == "placeable") and 2 or 1
+	end
+
 	table.sort(entries, function(a, b)
-		local ka = KIND_ORDER[ItemCatalog.Get(a.id).kind] or 9
-		local kb = KIND_ORDER[ItemCatalog.Get(b.id).kind] or 9
+		local ta, tb = tabRank(a.id), tabRank(b.id)
+		if ta ~= tb then return ta < tb end
+		-- **ของที่ไม่มีในแคตตาล็อกแล้วต้องไม่ทำให้การจัดกระเป๋าพังทั้งยก**
+		-- (`Get` คืน nil ได้จริง: ไอเทมที่ถูกถอดออกจากเกมแต่ยังค้างในเซฟเก่า) — เจอตอนเทส 2026-09-22
+		local ia, ib = ItemCatalog.Get(a.id), ItemCatalog.Get(b.id)
+		local ka = KIND_ORDER[ia and ia.kind] or 9
+		local kb = KIND_ORDER[ib and ib.kind] or 9
 		if ka ~= kb then return ka < kb end
 		if a.id ~= b.id then return a.id < b.id end
 		return (a.count or 1) > (b.count or 1)

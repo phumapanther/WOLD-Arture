@@ -359,14 +359,14 @@ function InventoryGui.new()
 		end)
 
 		slot.Activated:Connect(function()
-			-- ของที่ซ่อนอยู่เพราะอยู่คนละแท็บ **กดไม่ได้** — ช่องที่ดูว่างแต่เปิดเมนูของที่มองไม่เห็นขึ้นมา
-			-- คือสิ่งที่อธิบายไม่ได้เลยสำหรับคนเล่น
-			local held = self.lastData and self.lastData.slots and self.lastData.slots[i]
-			if held and not InventoryGui.InTab(held.id, self.bagTab) then return end
+			-- **ส่งเลขช่องจริง ไม่ใช่เลขปุ่ม** แท็บอัดของมาชิดหน้า ปุ่มที่ i จึงเป็นช่องอื่น
+			-- ช่องว่างในแท็บไม่มีของให้กด (slotIndex เป็น nil) จึงเงียบไปเฉยๆ
+			local index = self.slotIndex and self.slotIndex[i]
+			if not index then return end
 			-- Bag slots click; the equipment slots above deliberately do not, since putting something on
 			-- already has its own heavier sound and the two together sounded like a stutter.
 			UiSound.Play("Click")
-			if self.onSlotClicked then self.onSlotClicked(i) end
+			if self.onSlotClicked then self.onSlotClicked(index) end
 		end)
 
 		self.slotButtons[i] = { button = slot, name = name, count = count, stroke = slotStroke, icon = icon }
@@ -428,13 +428,27 @@ function InventoryGui:Render(data)
 	-- Turn the readout red once the player is actually being slowed, so the penalty is never a mystery.
 	self.weightLabel.TextColor3 = (weight > maxWeight) and Color3.fromRGB(224, 96, 84) or TEXT_MUTED
 
+	-- **แท็บที่เลือกถูกอัดไปชิดหน้าเสมอ** (ผู้ใช้แจ้ง 2026-09-22: จัดกระเป๋าแล้วยังเห็นช่องว่าง)
+	--
+	-- ของแท็บ VIP อยู่ท้ายกระเป๋าจริงๆ (AutoSort เรียงของเกมหลักก่อน) ถ้าวาดตามเลขช่องตรงๆ แท็บ VIP
+	-- จะขึ้นช่องว่างยาวเหยียดก่อนถึงของชิ้นแรก — ซึ่งดูเหมือนปุ่มจัดกระเป๋าไม่ทำงาน
+	--
+	-- ⚠️ **ปุ่มที่ i จึงไม่ใช่ช่องที่ i อีกต่อไป** `self.slotIndex[i]` เก็บเลขช่องจริงไว้ และทุกที่ที่
+	-- อ้างถึงของ (คลิก / เมนูกดค้าง / ลากใส่แถบไอเทม) ต้องอ่านจากตารางนั้น ไม่ใช่จากเลขปุ่ม —
+	-- เลขช่องคือชื่อเดียวที่เซิร์ฟเวอร์รู้จักของชิ้นหนึ่ง
+	local view = {}
+	for index = 1, #self.slotButtons do
+		local slot = data.slots and data.slots[index]
+		if slot and InventoryGui.InTab(slot.id, self.bagTab) then
+			view[#view + 1] = { slot = slot, index = index }
+		end
+	end
+	self.slotIndex = {}
+
 	for i, entry in ipairs(self.slotButtons) do
-		local slot = data.slots and data.slots[i]
-		-- **ช่องที่ไม่เข้าแท็บวาดเป็นช่องว่าง** (ผู้ใช้สั่ง) — ไม่ใช่หรี่ลงแบบรอบแรก
-		--
-		-- ⚠️ **เลขช่องยังเป็นเลขเดิม** ตัวที่หายไปคือ "ภาพ" ไม่ใช่ "ที่อยู่ของของ" — ทุกคำสั่ง
-		-- (ใส่/ใช้/ทิ้ง/ให้/ฝาก) อ้างของจากเลขช่อง ถ้าแท็บขยับเลข คนกดของชิ้นแรกจะได้อีกชิ้นเงียบๆ
-		if slot and not InventoryGui.InTab(slot.id, self.bagTab) then slot = nil end
+		local shown = view[i]
+		local slot = shown and shown.slot or nil
+		self.slotIndex[i] = shown and shown.index or nil
 		if slot then
 			local item = ItemCatalog.Get(slot.id)
 			local art = item and item.icon or ""
@@ -805,7 +819,19 @@ function InventoryGui:CloseItemMenu()
 end
 
 -- The button for a bag slot, so the menu can be placed beside the right one.
+--
+-- ⚠️ **รับเลขช่องจริง ไม่ใช่เลขปุ่ม** แท็บอัดของมาชิดหน้า ช่องที่ 30 จึงอาจเป็นปุ่มที่ 2 —
+-- ถ้าไล่หาจาก `slotButtons[index]` ตรงๆ เมนูกดค้างจะไปโผล่ข้างช่องอื่น (หรือหาไม่เจอแล้วไม่โผล่เลย)
 function InventoryGui:SlotButton(index)
+	if self.slotIndex then
+		for i, real in pairs(self.slotIndex) do
+			if real == index then
+				local entry = self.slotButtons[i]
+				return entry and entry.button or nil
+			end
+		end
+		return nil -- ของชิ้นนั้นอยู่คนละแท็บ จึงไม่มีปุ่มบนจอให้แขวนเมนู
+	end
 	local entry = self.slotButtons and self.slotButtons[index]
 	return entry and entry.button or nil
 end

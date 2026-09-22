@@ -373,6 +373,19 @@ IslandAccess.Revoke = function(player, id)
 	return removed
 end
 
+-- จัดกระเป๋า + อ่านลำดับช่อง (เทสเท่านั้น) — `require(Inventory)` ใน sandbox คืนสำเนาว่าง
+IslandAccess.Sort = function(player)
+	Inventory.AutoSort(player)
+	local state = Inventory.Get(player)
+	if not state then return nil end
+	local out = {}
+	for i = 1, 36 do
+		local slot = state.slots[i]
+		out[i] = slot and slot.id or false
+	end
+	return out
+end
+
 IslandAccess.Grant = function(player, id, count)
 	if id == "gold" then Inventory.AddGold(player, count or 0); return true end
 	return Inventory.AddItem(player, id, count or 1)

@@ -7,6 +7,7 @@
 -- single source of truth instead of each client running its own cycle and drifting apart.
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
+local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local DayNightConfig = require(game.ReplicatedStorage.DayNightConfig)
 local DayNightAccess = require(game.ServerScriptService.DayNightAccess)
 local WeatherConfig = require(game.ReplicatedStorage.WeatherConfig)
@@ -55,10 +56,22 @@ local function apply(clockTime)
 	Lighting.OutdoorAmbient = s.outdoorAmbient
 	Lighting.ColorShift_Top = s.colorShift
 	Lighting.FogColor = s.fogColor
-	Lighting.FogEnd = s.fogEnd
+	-- **บนเกาะลอยฟ้าหมอกต้องไกลกว่ามาก** ค่าในคอนฟิก (900-4,000 studs) ตั้งไว้สำหรับแมพหลักซึ่งมี
+	-- ภูเขาและป่าบังอยู่แล้ว · เกาะลอยกลางอากาศไม่มีอะไรบัง และเกาะประดับอยู่ที่ 760-1,900 studs
+	-- คูณ 4 ได้ 3,600-16,000: เห็นเกาะประดับครบทุกวง แต่ยังเหลือหมอกบางๆ ให้วงนอกจางหายไปในฟ้า
+	Lighting.FogEnd = ServerConfig.IsFarm and s.fogEnd * 4 or s.fogEnd
 	if atmosphere then
-		atmosphere.Density = s.atmosphereDensity
-		atmosphere.Haze = s.atmosphereHaze
+		-- ⚠️ **`Atmosphere.Density` คือตัวที่วาดพื้นสีเทาใต้เส้นขอบฟ้า** (ผู้ใช้แจ้ง 2026-09-22)
+		--
+		-- เอนจินวาดหมอกพื้นดินให้ครึ่งล่างของท้องฟ้าเสมอ ซึ่งถูกต้องตอนยืนบนแผ่นดิน — แต่บนเกาะลอยฟ้า
+		-- ครึ่งล่างคือ *ท้องฟ้า* ไม่ใช่พื้น มันจึงกลายเป็นผนังเทาทึบบังเกาะประดับทั้งหมด
+		--
+		-- **พิสูจน์แล้วว่าไม่ใช่หมอกและไม่ใช่ skybox**: ปิด FogEnd เป็น 100,000 แล้วยังเทาเหมือนเดิม ·
+		-- เปลี่ยน skybox ทั้งใบแล้วแถบเทายังอยู่ที่ความสูงเดิมเป๊ะ · เอา Atmosphere ออก = หายทันที
+		--
+		-- 0.05 ไม่ใช่ 0 — เหลือไว้นิดหน่อยให้ระยะไกลยังมีมิติ ไม่ใช่ฉากแบนๆ
+		atmosphere.Density = ServerConfig.IsFarm and 0.05 or s.atmosphereDensity
+		atmosphere.Haze = ServerConfig.IsFarm and 0 or s.atmosphereHaze
 		atmosphere.Color = s.atmosphereColor
 	end
 
