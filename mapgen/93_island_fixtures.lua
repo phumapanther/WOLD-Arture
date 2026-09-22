@@ -141,8 +141,13 @@ end
 --------------------------------------------------------------------------------
 -- 4. รั้วรอบผืนดินปลูกผัก
 --------------------------------------------------------------------------------
--- **เดินตามขอบดินจริง ไม่ใช่กรอบสี่เหลี่ยมที่พิมพ์ไว้** ผู้ใช้ระบายดินรูปไหน ขยายทีหลัง หรือย้ายไปที่อื่น
--- รันเฟสนี้ซ้ำแล้วรั้วตามไปเอง · ช่องดิน = ช่องที่ผิวเป็นวัสดุ Ground (เหมือนที่ IslandGrid.isSoil ใช้)
+-- **สี่เหลี่ยมผืนผ้าครอบผืนดิน** (ผู้ใช้สั่ง 2026-09-22: "วางรั้วใหม่ เป็นสี่เหลี่ยมผืนผ้าครอบตรงดิน")
+-- ของเดิมเดินตามขอบดินจริงซึ่งเป็นรูปอิสระ · ตอนนี้เป็นกรอบสี่เหลี่ยม แต่ยัง **หาขอบเอาเองจากดินจริง**
+-- ผู้ใช้ระบายดินเพิ่ม/ย้ายที่ แล้วรันเฟสซ้ำ รั้วตามไปเอง ไม่มีพิกัดพิมพ์ไว้ในไฟล์
+--
+-- ⚠️ **ใช้กรอบของ "ผืนดินที่ใหญ่ที่สุด" ไม่ใช่กรอบของดินทั้งหมด** — วัดแล้วบนเกาะมีดินสองผืน:
+-- ผืนใหญ่ 37x47 ช่อง (เต็มกรอบ ~99%) กับผืนเล็กที่หลุดออกไปทางตะวันตกอีก ~29 ช่อง
+-- กรอบที่ครอบทั้งสองผืนจะเป็น 68x49 ช่องซึ่ง **เป็นหญ้าเกินครึ่ง** = รั้วล้อมสนามหญ้าเปล่า
 local CELL = 4
 -- ⚠️ เหตุผลเดียวกับ EdgeWall: ลบเฉพาะชิ้นที่เฟสนี้ปั้นเอง (`Rail` / `Post`) ของที่ผู้ใช้เพิ่มเองรอด
 local fence = island:FindFirstChild("SoilFence")
@@ -157,28 +162,27 @@ if keptFence > 0 then
 	print(("[Fixtures] คงรั้วที่ผู้ใช้เพิ่มเองไว้ %d ชิ้น"):format(keptFence))
 end
 
-local function soilAt(cx, cz)
+local rayDown = RaycastParams.new()
+rayDown.FilterType = Enum.RaycastFilterType.Include
+rayDown.FilterDescendantsInstances = { T }
+rayDown.IgnoreWater = true
+
+local function surfaceAt(cx, cz)
 	local wx = CENTER.X + (cx + 0.5) * CELL
 	local wz = CENTER.Z + (cz + 0.5) * CELL
-	local params = RaycastParams.new()
-	params.FilterType = Enum.RaycastFilterType.Include
-	params.FilterDescendantsInstances = { T }
-	params.IgnoreWater = true
-	local hit = workspace:Raycast(Vector3.new(wx, CENTER.Y + 80, wz), Vector3.new(0, -300, 0), params)
-	return hit ~= nil and hit.Material == Enum.Material.Ground, hit and hit.Position.Y
+	local hit = workspace:Raycast(Vector3.new(wx, CENTER.Y + 80, wz), Vector3.new(0, -300, 0), rayDown)
+	return hit and hit.Material, hit and hit.Position.Y
 end
 
--- สแกนทั้งเกาะหาช่องดิน (เกาะกว้าง 440 = ±55 ช่อง) แล้วเก็บขอบไว้: ช่องดินที่เพื่อนบ้านด้านนั้นไม่ใช่ดิน
-local soil, edges = {}, {}
-local minCX, maxCX, minCZ, maxCZ, soilCount = 1e9, -1e9, 1e9, -1e9, 0
+-- สแกนทั้งเกาะหาช่องดิน (เกาะกว้าง 440 = ±55 ช่อง)
+local soil = {}
+local soilCount = 0
 for cx = -56, 56 do
 	for cz = -56, 56 do
-		local is, y = soilAt(cx, cz)
-		if is then
+		local mat, y = surfaceAt(cx, cz)
+		if mat == Enum.Material.Ground then
 			soil[cx .. "," .. cz] = y
 			soilCount += 1
-			minCX, maxCX = math.min(minCX, cx), math.max(maxCX, cx)
-			minCZ, maxCZ = math.min(minCZ, cz), math.max(maxCZ, cz)
 		end
 	end
 end
@@ -186,55 +190,102 @@ end
 if soilCount == 0 then
 	status("ไม่เจอผืนดิน (วัสดุ Ground) — ข้ามการทำรั้ว")
 else
-	-- ประตู: เว้นรั้วสองช่องติดกันตรงกึ่งกลางด้านที่หันเข้าหาจุดเกิด (ด้าน -X ถ้าดินอยู่ทางตะวันออกของจุดเกิด)
-	local gateCZ = math.floor((minCZ + maxCZ) / 2)
-	local gateSide = (minCX + maxCX) / 2 > 0 and "west" or "east"
-	local DIRS = {
-		{ dx = 0, dz = -1, along = "x" }, -- เหนือ
-		{ dx = 0, dz = 1, along = "x" },  -- ใต้
-		{ dx = -1, dz = 0, along = "z" }, -- ตะวันตก
-		{ dx = 1, dz = 0, along = "z" },  -- ตะวันออก
-	}
-	local posts, rails = 0, 0
-	for key, y in pairs(soil) do
-		local cx, cz = key:match("(-?%d+),(-?%d+)")
-		cx, cz = tonumber(cx), tonumber(cz)
-		for _, d in ipairs(DIRS) do
-			if not soil[(cx + d.dx) .. "," .. (cz + d.dz)] then
-				-- ช่องประตู: สองช่องกลางด้านที่กำหนด ไม่ต้องมีรั้ว
-				local isGate = (gateSide == "west" and d.dx == -1 or gateSide == "east" and d.dx == 1)
-					and (cz == gateCZ or cz == gateCZ + 1)
-				if not isGate then
-					local wx = CENTER.X + (cx + 0.5) * CELL + d.dx * CELL / 2
-					local wz = CENTER.Z + (cz + 0.5) * CELL + d.dz * CELL / 2
-					local long = d.along == "x" and Vector3.new(CELL, 0.28, 0.24) or Vector3.new(0.24, 0.28, CELL)
-					for _, ry in ipairs({ 1.2, 2.4 }) do
-						local rail = Instance.new("Part")
-						rail.Anchored = true
-						rail.Name = "Rail"
-						rail:SetAttribute("PhaseBuilt", true)
-						rail.Size = long
-						rail.CFrame = CFrame.new(wx, y + ry, wz)
-						rail.Material = Enum.Material.Wood
-						rail.Color = Color3.fromRGB(159, 124, 90)
-						rail.Parent = fence
-						rails += 1
-					end
-					local post = Instance.new("Part")
-					post.Anchored = true
-					post.Name = "Post"
-					post:SetAttribute("PhaseBuilt", true)
-					post.Size = Vector3.new(0.4, 3.2, 0.4)
-					post.CFrame = CFrame.new(wx + (d.along == "x" and CELL / 2 or 0), y + 1.6, wz + (d.along == "z" and CELL / 2 or 0))
-					post.Material = Enum.Material.Wood
-					post.Color = Color3.fromRGB(110, 82, 58)
-					post.Parent = fence
-					posts += 1
+	-- แยกผืนดินที่ไม่ติดกันออกจากกัน แล้วเอาผืนใหญ่สุด (flood fill สี่ทิศ)
+	local seen, best = {}, nil
+	for key in pairs(soil) do
+		if not seen[key] then
+			local queue, head = { key }, 1
+			seen[key] = true
+			local n, mnx, mxx, mnz, mxz = 0, 1e9, -1e9, 1e9, -1e9
+			while head <= #queue do
+				local k = queue[head]; head += 1
+				local cx, cz = k:match("(-?%d+),(-?%d+)")
+				cx, cz = tonumber(cx), tonumber(cz)
+				n += 1
+				mnx, mxx = math.min(mnx, cx), math.max(mxx, cx)
+				mnz, mxz = math.min(mnz, cz), math.max(mxz, cz)
+				for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+					local nk = (cx + d[1]) .. "," .. (cz + d[2])
+					if soil[nk] and not seen[nk] then seen[nk] = true; queue[#queue + 1] = nk end
 				end
+			end
+			if not best or n > best.n then
+				best = { n = n, mnx = mnx, mxx = mxx, mnz = mnz, mxz = mxz }
 			end
 		end
 	end
-	status(("รั้วรอบผืนดิน: ช่องดิน %d ช่อง · ราว %d เสา %d · ประตูด้าน%s"):format(soilCount, rails, posts, gateSide == "west" and "ตะวันตก" or "ตะวันออก"))
+
+	-- รั้ววางนอกกรอบดินหนึ่งช่อง — ทับช่องดินเองจะกินที่ปลูกไปหนึ่งแถวรอบด้าน
+	local x0, x1 = best.mnx - 1, best.mxx + 1
+	local z0, z1 = best.mnz - 1, best.mxz + 1
+
+	-- **ประตูต้องมี ไม่ใช่ของประดับ** `IslandGrid.reachable` เดิน flood fill จากจุดเกิด ถ้ารั้วปิดสนิท
+	-- ข้างในจะกลายเป็น "เดินเข้าไม่ได้" ทั้งผืน แล้ววางแปลงผักไม่ได้เลยสักช่อง (เคยเจอกับกำแพงล้อม 93 ช่อง)
+	-- เปิดสองช่องกลางด้านที่หันเข้าหาจุดเกิด
+	local spawnLoc = workspace:FindFirstChildWhichIsA("SpawnLocation", true)
+	local sx = spawnLoc and math.floor((spawnLoc.Position.X - CENTER.X) / CELL) or 0
+	local sz = spawnLoc and math.floor((spawnLoc.Position.Z - CENTER.Z) / CELL) or 0
+	local midX, midZ = (x0 + x1) / 2, (z0 + z1) / 2
+	local gateSide
+	if math.abs(sz - midZ) >= math.abs(sx - midX) then
+		gateSide = sz > midZ and "south" or "north"
+	else
+		gateSide = sx > midX and "east" or "west"
+	end
+	local gateA = math.floor((gateSide == "north" or gateSide == "south") and midX or midZ)
+	local gateB = gateA + 1
+
+	local function isGate(side, along)
+		return side == gateSide and (along == gateA or along == gateB)
+	end
+
+	local posts, rails, gateCells = 0, 0, 0
+	local function piece(name, size, cf, colour)
+		local p = Instance.new("Part")
+		p.Anchored = true
+		p.Name = name
+		p:SetAttribute("PhaseBuilt", true)
+		p.Size = size
+		p.CFrame = cf
+		p.Material = Enum.Material.Wood
+		p.Color = colour
+		p.Parent = fence
+		return p
+	end
+	local RAIL_COLOUR = Color3.fromRGB(159, 124, 90)
+	local POST_COLOUR = Color3.fromRGB(110, 82, 58)
+
+	-- เดินทีละช่องรอบกรอบ: สองด้านตามแกน X แล้วสองด้านตามแกน Z
+	local function run(side, from, to, fixed, alongX)
+		for a = from, to do
+			local cx = alongX and a or fixed
+			local cz = alongX and fixed or a
+			if isGate(side, a) then
+				gateCells += 1
+			else
+				local _, y = surfaceAt(cx, cz)
+				y = y or CENTER.Y
+				local wx = CENTER.X + (cx + 0.5) * CELL
+				local wz = CENTER.Z + (cz + 0.5) * CELL
+				local long = alongX and Vector3.new(CELL, 0.28, 0.24) or Vector3.new(0.24, 0.28, CELL)
+				for _, ry in ipairs({ 1.2, 2.4 }) do
+					piece("Rail", long, CFrame.new(wx, y + ry, wz), RAIL_COLOUR)
+					rails += 1
+				end
+				piece("Post", Vector3.new(0.4, 3.2, 0.4),
+					CFrame.new(wx + (alongX and CELL / 2 or 0), y + 1.6, wz + (alongX and 0 or CELL / 2)),
+					POST_COLOUR)
+				posts += 1
+			end
+		end
+	end
+	run("north", x0, x1, z0, true)
+	run("south", x0, x1, z1, true)
+	run("west", z0 + 1, z1 - 1, x0, false)
+	run("east", z0 + 1, z1 - 1, x1, false)
+
+	status(("รั้วสี่เหลี่ยมรอบผืนดิน: ดิน %d ช่อง (ผืนใหญ่สุด %d) · กรอบ %dx%d ช่อง · ราว %d เสา %d · ประตู %d ช่องด้าน%s")
+		:format(soilCount, best.n, x1 - x0 + 1, z1 - z0 + 1, rails, posts, gateCells, gateSide))
 end
 
 status(("done: กำแพง %d ชิ้น · แท่นเกิดล่องหน · รั้วผืนดิน"):format(built), true)
