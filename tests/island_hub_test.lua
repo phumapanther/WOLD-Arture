@@ -63,7 +63,9 @@ table.insert(out, ("อันดับเลเวลทั้งเกม: %d �
 ----------------------------------------------------------------- 3) แท็บกระเป๋า
 -- ของวางบนเกาะ = แท็บฟาร์ม · วัตถุดิบที่หาได้บนเกาะ = แท็บเกมหลัก (ผู้ใช้กำหนด)
 local FARM = { "FarmPlot", "AnimalPen", "MineZone", "Deco_Fence", "Deco_Tree" }
-local MAIN = { "Wheat", "Vegetable", "Milk", "Egg", "IronOre", "Fish", "WoodScrap", "Seed" }
+-- **`Seed` ย้ายไปกระเป๋า VIP แล้ว** (ผู้ใช้สั่ง 2026-09-22: มันใช้ได้แค่กับแปลงผักบนเกาะ)
+-- ส่วนวัตถุดิบที่ *เก็บได้* บนเกาะยังเป็นของเกมหลักตามเดิม
+local MAIN = { "Wheat", "Vegetable", "Milk", "Egg", "IronOre", "Fish", "WoodScrap" }
 for _, id in ipairs(FARM) do
 	assert(InventoryGui.InTab(id, "farm"), id .. " ต้องอยู่แท็บฟาร์ม")
 	assert(not InventoryGui.InTab(id, "main"), id .. " ต้องไม่อยู่แท็บเกมหลัก")
@@ -82,7 +84,8 @@ for id, item in pairs(ItemCatalog.Items or {}) do
 		assert(InventoryGui.InTab(id, "farm"), id .. " เป็น placeable แต่ไม่เข้าแท็บฟาร์ม")
 	end
 end
-table.insert(out, ("แท็บกระเป๋า: ของวาง %d ชิ้น → แท็บฟาร์ม · วัตถุดิบ/เมล็ด → แท็บเกมหลัก ✓")
+assert(InventoryGui.InTab("Seed", "farm"), "เมล็ดพันธุ์ต้องอยู่กระเป๋า VIP")
+table.insert(out, ("แท็บกระเป๋า: ของวาง %d ชิ้น + เมล็ด → กระเป๋า VIP · วัตถุดิบ → กระเป๋าหลัก ✓")
 	:format(placeables))
 
 ----------------------------------------------------------------- 4) ฟ้าไม่รบกวนการวางของ

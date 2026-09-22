@@ -275,9 +275,12 @@ function Inventory.AutoSort(player)
 	--
 	-- ของฟาร์ม (`kind == "placeable"`) ไปอยู่ท้ายเสมอ ของเกมหลักอยู่ต้น — **ต้องตรงกับ
 	-- `InventoryGui.InTab`** ซึ่งแบ่งด้วยเกณฑ์เดียวกันเป๊ะ (ที่นั่นเรียกว่าแท็บ farm/main)
+	-- **เกณฑ์เดียวกับ `InventoryGui.IsFarmItem` เป๊ะ** ถ้าสองที่คิดไม่ตรงกัน จัดกระเป๋าแล้วแท็บจะยังมี
+	-- ช่องว่างแทรกอยู่ดี · `vip = true` คือตัวบังคับด้วยมือสำหรับของที่ไม่ใช่ `placeable` (เมล็ดพันธุ์)
 	local function tabRank(id)
 		local item = ItemCatalog.Get(id)
-		return (item and item.kind == "placeable") and 2 or 1
+		if not item then return 1 end
+		return (item.vip == true or item.kind == "placeable") and 2 or 1
 	end
 
 	table.sort(entries, function(a, b)

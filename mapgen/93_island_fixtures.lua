@@ -42,16 +42,28 @@ status("start")
 --------------------------------------------------------------------------------
 -- 1. แท่นเกิดล่องหน
 --------------------------------------------------------------------------------
--- SpawnLocation ยังต้องมีอยู่ (SpawnSelector หาตัวนี้ และ Roblox ใช้มันเกิดจริง) แค่มองไม่เห็นและเดินทะลุพื้นมันได้
--- CanCollide = false ปลอดภัยเพราะผิวดินอยู่ใต้มันพอดี — ไม่ใช่แท่นลอย
+-- SpawnLocation ยังต้องมีอยู่ (SpawnSelector หาตัวนี้ และ Roblox ใช้มันเกิดจริง) แค่มองไม่เห็น
+--
+-- ⚠️ **ต้อง `CanCollide = true`** (แก้ 2026-09-22: ผู้ใช้เข้าเซิร์ฟจริงแล้วร่วงทะลุเกาะ ลอยนิ่งกลางฟ้า)
+--
+-- ของเดิมปิด collide ไว้โดยให้เหตุผลว่า "ผิวดินอยู่ใต้มันพอดี" ซึ่งจริงตอนที่เขียน แต่ **ผู้ใช้แต่งเกาะเองได้
+-- ตลอดเวลา** — ขุดสระ ปรับเนิน ย้ายดิน พอผิวดินใต้แท่นหายไปเมื่อไหร่ คนที่เกิดมาก็ไม่มีอะไรรองรับ
+-- แล้วร่วงทะลุเกาะลงไปเรื่อยๆ (กำแพงขอบกันแค่ด้านข้าง ไม่ได้กันด้านล่าง)
+--
+-- แท่นที่ชนได้แต่มองไม่เห็นแก้ได้ทั้งสองทาง: ยืนได้เสมอไม่ว่าใต้มันจะเป็นอะไร และยังมองไม่เห็นอยู่ดี
 local spawnLoc = workspace:FindFirstChildWhichIsA("SpawnLocation", true)
 if spawnLoc then
 	local ground = groundAt(spawnLoc.Position.X, spawnLoc.Position.Z)
 	if ground then
 		spawnLoc.CFrame = CFrame.new(spawnLoc.Position.X, ground + spawnLoc.Size.Y / 2, spawnLoc.Position.Z)
+	else
+		-- ไม่มีผิวดินใต้จุดเกิด (ผู้ใช้ขุดออก) — ยกขึ้นไประดับกลางเกาะแล้วให้แท่นเป็นพื้นแทน
+		spawnLoc.CFrame = CFrame.new(spawnLoc.Position.X, CENTER.Y + 17, spawnLoc.Position.Z)
+		warn("[Fixtures] ไม่เจอผิวดินใต้จุดเกิด — ใช้แท่นเกิดเป็นพื้นแทน")
 	end
 	spawnLoc.Transparency = 1
-	spawnLoc.CanCollide = false
+	spawnLoc.Anchored = true
+	spawnLoc.CanCollide = true
 	spawnLoc.CanQuery = false
 	spawnLoc.CanTouch = false
 	-- แผ่นตกแต่งที่มากับแท่นเกิด (Decal/SurfaceGui) ทำให้ยัง "เห็น" ได้แม้ Transparency = 1

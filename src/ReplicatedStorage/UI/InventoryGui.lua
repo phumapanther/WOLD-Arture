@@ -83,13 +83,22 @@ InventoryGui.Tabs = {
 	{ id = "farm", label = "กระเป๋า VIP" },
 }
 
+-- ของที่นับเป็น "กระเป๋า VIP" = ของวางบนเกาะ (`placeable`) **และของที่ใช้ได้เฉพาะบนเกาะ**
+--
+-- `vip = true` ในแคตตาล็อกเป็นตัวบังคับด้วยมือสำหรับของที่ไม่ใช่ `placeable` แต่ควรอยู่ฝั่งฟาร์ม —
+-- เมล็ดพันธุ์เป็นเคสแรก (ผู้ใช้แจ้ง 2026-09-22: มันใช้ได้แค่กับแปลงผักบนเกาะ ไม่มีความหมายในเกมหลัก)
 local FARM_KINDS = { placeable = true }
+
+function InventoryGui.IsFarmItem(itemId)
+	local item = ItemCatalog.Get(itemId)
+	if not item then return false end
+	return item.vip == true or FARM_KINDS[item.kind] == true
+end
 
 -- ของชิ้นนี้อยู่ในแท็บที่เลือกไหม
 function InventoryGui.InTab(itemId, tab)
 	if tab == nil then return true end
-	local item = ItemCatalog.Get(itemId)
-	local isFarm = item ~= nil and FARM_KINDS[item.kind] == true
+	local isFarm = InventoryGui.IsFarmItem(itemId)
 	if tab == "farm" then return isFarm end
 	return not isFarm
 end

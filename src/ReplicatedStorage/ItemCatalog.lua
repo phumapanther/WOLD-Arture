@@ -669,7 +669,7 @@ ItemCatalog.Items = {
 	-- โซนแร่: วางแล้วทุก 10 นาทีสุ่มก้อนแร่โผล่ให้ขุด · ย้ายได้ด้วยการเก็บแล้ววางใหม่
 	MineZone = { icon = "", name = "โซนแร่", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false },
 	-- เมล็ดพันธุ์ชนิดเดียว หยอดแล้วค่อยรู้ว่าเป็นอะไร (IslandConfig.Crops) — ไม่ใช่ placeable
-	Seed = { icon = "", name = "เมล็ดพันธุ์", kind = "junk", weight = 0.05, stackSize = 99, value = 0, sellable = false },
+	Seed = { icon = "", name = "เมล็ดพันธุ์", kind = "junk", weight = 0.05, stackSize = 99, value = 0, sellable = false, vip = true },
 }
 
 function ItemCatalog.Get(id)

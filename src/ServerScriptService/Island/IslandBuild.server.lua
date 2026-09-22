@@ -303,17 +303,38 @@ local function load(player)
 	rebuild()
 end
 
+-- **บอกให้ชัดว่าเซิร์ฟนี้เป็นเกาะของใคร** (เพิ่ม 2026-09-22 หลังผู้ใช้เข้าเซิร์ฟจริงแล้วยืนนิ่งทำอะไรไม่ได้)
+--
+-- อาการ "เข้าได้แต่ทำอะไรไม่ได้" มีสาเหตุเดียว: `ownerId` ไม่ตรงกับคนที่เข้ามา แล้ว `PlayerJoin` ก็
+-- `return` เงียบๆ — ไม่เตะ ไม่แจกชุดเริ่มต้น ไม่โหลดโปรไฟล์ ไม่มีอะไรบอกเลยว่าทำไม
+print(("[Island] เซิร์ฟนี้เป็นเกาะของ userId=%s (PrivateServerId=%s)")
+	:format(tostring(ownerId), game.PrivateServerId ~= "" and game.PrivateServerId or "ว่าง"))
+
 PlayerJoin.Each(function(player)
 	if ownerId == nil then
 		if RunService:IsStudio() then
 			ownerId = player.UserId
 			print(("[Island] Studio: %s เป็นเจ้าของเกาะ"):format(player.Name))
 		else
-			player:Kick("เข้าเกาะได้จากหน้าล็อบบี้เท่านั้น")
-			return
+			-- **เซิร์ฟเกาะที่ระบุเจ้าของไม่ได้ = ให้คนแรกที่เข้าเป็นเจ้าของ** (แก้ 2026-09-22)
+			--
+			-- ของเดิมเตะทิ้ง ซึ่งตั้งใจกันคนที่พยายามเข้าเพลสตรงๆ ไม่ผ่านล็อบบี้ · แต่มันเตะ **เจ้าของ
+			-- ตัวจริง** ด้วยเมื่อ DataStore อ่าน `farmcode_<id>` ไม่ได้ (ล่ม ช้า หรือเขียนไม่ทันตอนจอง)
+			-- ซึ่งกลายเป็น "ซื้อ VIP แล้วเข้าเกาะตัวเองไม่ได้" — แย่กว่าการปล่อยคนแปลกหน้าเข้าเซิร์ฟ
+			-- ส่วนตัวที่ไม่มีใครรู้ accessCode อยู่แล้ว
+			--
+			-- เซิร์ฟเกาะเป็น Reserved Server: เข้าได้เฉพาะคนที่ล็อบบี้ส่งมาเท่านั้น ด่านจริงอยู่ที่นั่น
+			ownerId = player.UserId
+			warn(("[Island] ระบุเจ้าของเกาะไม่ได้ — ให้ %s (userId=%d) เป็นเจ้าของ")
+				:format(player.Name, player.UserId))
 		end
 	end
-	if not isOwner(player) then return end -- แขก (ชุด C) ยังทำอะไรไม่ได้
+	if not isOwner(player) then
+		-- แขก (ชุด C) ยังทำอะไรไม่ได้ — แต่ต้องบอก ไม่ใช่เงียบ
+		warn(("[Island] %s (userId=%d) ไม่ใช่เจ้าของเกาะนี้ (เจ้าของ userId=%s) — เข้าได้แต่ยังทำอะไรไม่ได้")
+			:format(player.Name, player.UserId, tostring(ownerId)))
+		return
+	end
 	load(player)
 end)
 
