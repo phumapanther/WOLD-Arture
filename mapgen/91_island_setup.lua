@@ -2,7 +2,10 @@
 --
 --     WOLD_PLACE=136992335889132 node tools/run-luau.js mapgen/91_island_setup.lua --kit --models --no-lib
 --
--- รันซ้ำได้: ลบ WOLD_Island.Fixed เดิมทิ้งแล้วสร้างใหม่ (ไม่แตะ WOLD_Island.Placed ซึ่งเป็นของผู้เล่น)
+-- รันซ้ำได้: แทนที่ **เฉพาะบาร์นาบี** ไม่แตะของอื่นในโฟลเดอร์
+--
+-- ⚠️ เดิมลบทั้งโฟลเดอร์ `Fixed` ทิ้งแล้วสร้างใหม่ ซึ่งปลอดภัยตอนที่มีแต่ NPC ตัวเดียวอยู่ในนั้น
+-- แต่ตอนนี้ผู้ใช้ลากของตกแต่งเข้ามาไว้เองแล้ว (ต้นไม้ กังหัน ซาก กำแพง ฯลฯ) การรันเฟสซ้ำจะลบทิ้งหมด
 local CollectionService = game:GetService("CollectionService")
 
 local function status(msg, done)
@@ -16,8 +19,10 @@ end
 local island = workspace:FindFirstChild("WOLD_Island")
 if not island then island = Instance.new("Folder"); island.Name = "WOLD_Island"; island.Parent = workspace end
 local fixed = island:FindFirstChild("Fixed")
-if fixed then fixed:Destroy() end
-fixed = Instance.new("Folder"); fixed.Name = "Fixed"; fixed.Parent = island
+if not fixed then fixed = Instance.new("Folder"); fixed.Name = "Fixed"; fixed.Parent = island end
+-- ลบเฉพาะบาร์นาบีตัวเก่า ของตกแต่งที่ผู้ใช้วางเองอยู่รอด
+local old = fixed:FindFirstChild("Merchant_Barnaby")
+if old then old:Destroy() end
 
 local function groundAt(x, z)
 	local params = RaycastParams.new()
