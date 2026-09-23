@@ -239,6 +239,35 @@ local function islandDoneToday(player, node, mark)
 	return done.keys[key] == true
 end
 
+--------------------------------------------------------------------------------
+-- ป้าย 🔧 เหนือของฟาร์มผิดกฎหมาย (ผู้ใช้สั่ง 2026-09-23)
+--------------------------------------------------------------------------------
+--
+-- คูลดาวน์ของเซิร์ฟอยู่บนตัวโหนดแล้ว (`FarmReadyAt`) ไคลเอนต์อ่านเองได้ — แต่ **กติกา "วันละครั้ง"
+-- ของเกาะเป็นรายคน** (`profile.FarmDone`) ซึ่งไคลเอนต์ไม่มีทางรู้ จึงประกาศไว้บนตัว `Player`
+-- เป็นรายชื่อชนิดที่ใช้สิทธิ์ไปแล้ววันนี้ · คีย์เดียวกับที่ `islandDoneToday` ใช้ (ชื่อโหนด)
+local function publishFarmDone(player)
+	if not ServerConfig.IsFarm then return end
+	local data = ProfileAccess.Get(player)
+	local done = data and data.FarmDone
+	local names = {}
+	if type(done) == "table" and done.day == QuestConfig.DayNumber() then
+		for key in pairs(done.keys or {}) do names[#names + 1] = key end
+	end
+	table.sort(names)
+	player:SetAttribute("WOLD_FarmDone", #names > 0 and table.concat(names, ",") or nil)
+end
+
+task.spawn(function()
+	if not ServerConfig.IsFarm then return end
+	while true do
+		task.wait(3)
+		for _, player in ipairs(Players:GetPlayers()) do
+			pcall(publishFarmDone, player)
+		end
+	end
+end)
+
 local function work(node, player)
 	local config = configFor(node)
 	if not config then return end

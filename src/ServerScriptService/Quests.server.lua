@@ -460,6 +460,33 @@ CollectionService:GetInstanceAddedSignal(BOARD_TAG):Connect(function(model)
 end)
 
 --------------------------------------------------------------------------------
+--------------------------------------------------------------------------------
+-- ป้าย 💰 เหนือบอร์ดเควส (ผู้ใช้สั่ง 2026-09-23: "ถ้ามีเควสส่งได้ ขึ้นอีโมจิรูปเงิน")
+--------------------------------------------------------------------------------
+--
+-- **"ส่งได้ไหม" เป็นคำตอบรายคน** (ขึ้นกับงานที่ถืออยู่กับของในกระเป๋าของเขา) ป้ายจึงคำนวณที่นี่
+-- แล้วประกาศไว้บนตัว `Player` เป็นแอตทริบิวต์ — replicate ให้ฟรี ไม่ต้องมี remote ใหม่และไม่ต้อง
+-- ให้ไคลเอนต์รู้กติกาการนับ (ทรงเดียวกับ `VipUntil` ที่ `Vip.Publish` ทำอยู่)
+--
+-- ไม่ใช่ความลับอะไร ทุกคนอ่านของกันเองได้ แต่ป้ายจะถูกวาดโดยเจ้าของค่าเท่านั้น
+local function publishTurnIn(player)
+	local list = activeOf(player)
+	local ready = false
+	for _, quest in ipairs(list or {}) do
+		if progressOf(player, quest) >= quest.need then ready = true break end
+	end
+	player:SetAttribute("WOLD_QuestTurnIn", ready or nil)
+end
+
+task.spawn(function()
+	while true do
+		task.wait(3)
+		for _, player in ipairs(Players:GetPlayers()) do
+			pcall(publishTurnIn, player)
+		end
+	end
+end)
+
 -- ช่องเทสใน Studio
 --------------------------------------------------------------------------------
 

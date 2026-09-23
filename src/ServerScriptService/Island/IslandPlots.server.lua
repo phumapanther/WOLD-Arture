@@ -219,10 +219,14 @@ local function tick()
 						state.prompt.ActionText = "รอ..."
 						state.prompt.ObjectText = ("%s · เหลือ %d นาที"):format(name, minutesLeft(entry))
 					end
+					-- ประกาศให้ป้ายลอย (`IslandBadgeController`) อ่าน — **ไม่ให้มันอ่านข้อความบนปุ่ม**
+					-- ซึ่งเป็นคำไทยที่เปลี่ยนเมื่อไหร่ก็พังเงียบๆ · แอตทริบิวต์ replicate ให้ฟรีอยู่แล้ว
+					model:SetAttribute("Ripe", progress >= 1 or nil)
 				else
 					if state.stage then showCrop(model, entry, 1); state.stage = nil end
 					state.prompt.ActionText = "หยอดเมล็ด"
 					state.prompt.ObjectText = "แปลงว่าง"
+					model:SetAttribute("Ripe", nil)
 				end
 			end
 		end
