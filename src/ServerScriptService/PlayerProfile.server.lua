@@ -16,6 +16,7 @@ local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local SpawnSelector = require(game.ReplicatedStorage.SpawnSelector)
 local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
+local Vip = require(game.ServerScriptService.Vip)
 
 local ProfileTemplate = {
 	Position = nil, -- {x, y, z} | nil (nil = never saved yet)
@@ -248,6 +249,13 @@ ProfileAccess.PeekAsync = function(userId)
 	return view.Data
 end
 
+ProfileAccess.MessageAsync = function(userId, message)
+	userId = tonumber(userId)
+	if not userId or type(message) ~= "table" then return false end
+	local ok, sent = pcall(function() return Store:MessageAsync(profileKey(userId), message) end)
+	return ok and sent == true
+end
+
 ProfileAccess.Flush = function(player)
 	if Profiles[player] then saveAll(player) end
 end
@@ -271,6 +279,30 @@ if not ServerConfig.IsLobby then
 		end
 		profile:AddUserId(player.UserId)
 		profile:Reconcile()
+
+		-- ข้อความที่ฝากไว้ตอนเขาไม่ได้อยู่ในเซิร์ฟไหนเลย (ตอนนี้มีแต่การแจก VIP ผ่าน `/givevip`)
+		-- ProfileStore เก็บไว้ในเรคอร์ดของเขาเองและส่งให้ตรงนี้ **ต้องเรียก `processed()` เสมอ**
+		-- ไม่งั้นข้อความค้างอยู่ในคิว แล้วถูกส่งซ้ำทุกครั้งที่เขาเข้าเกม = แจกซ้ำไม่รู้จบ
+		--
+		-- ผูกก่อน `ProfileAccess.Set` ได้ เพราะมันเขียนลง `profile.Data` ซึ่งเป็นตารางเดียวกับที่ Set
+		-- จะส่งต่อไปอยู่แล้ว · ส่วนการประกาศ/แจ้งเตือนรอถึงหลังจากนั้นด้วย `task.defer`
+		profile:MessageHandler(function(message, processed)
+			local until_ = nil
+			if type(message) == "table" and message.kind == "vip" then
+				until_ = Vip.GrantData(profile.Data, message.days, message.onlyIfNone)
+			end
+			processed()
+			if not until_ then return end
+			local days = math.floor((until_ - os.time()) / 86400 + 0.5)
+			print(("[VIP] %s ได้รับ VIP ที่ฝากไว้ (เหลือ %d วัน)"):format(player.Name, days))
+			task.defer(function()
+				if not player:IsDescendantOf(Players) then return end
+				Vip.Publish(player)
+				Remotes.PremiumUpdate:FireClient(player, { vipLeft = math.max(0, until_ - os.time()) })
+				Remotes.SocialNotify:FireClient(player, "info",
+					("ได้รับ VIP %d วัน — เปิดโหมดฟาร์มมิ่งได้แล้ว"):format(days))
+			end)
+		end)
 		profile.OnSessionEnd:Connect(function()
 			Profiles[player] = nil
 			if EndingOurselves[player] then return end -- our own PlayerRemoving handler ended this, not a steal

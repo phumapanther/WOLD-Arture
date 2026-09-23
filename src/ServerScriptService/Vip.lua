@@ -31,13 +31,35 @@ end
 
 -- ต่ออายุ: **ทบจากเวลาที่เหลือ ไม่ใช่นับใหม่จากวันนี้** คนที่ซื้อซ้ำก่อนหมดอายุจึงไม่เสียวันที่จ่ายไปแล้ว
 -- คืนเวลาหมดอายุใหม่ หรือ nil ถ้าเขียนโปรไฟล์ไม่ได้ (ยังโหลดไม่เสร็จ/ออกเกมไปแล้ว)
-function Vip.Grant(player, days)
-	local data = ProfileAccess.Get(player)
+function Vip.Grant(player, days, onlyIfNone)
+	local until_ = Vip.GrantData(ProfileAccess.Get(player), days, onlyIfNone)
+	if until_ then Vip.Publish(player) end
+	return until_
+end
+
+-- เหมือน `Grant` แต่รับ **ตารางข้อมูลโปรไฟล์** ตรงๆ ไม่ใช่ Player — เพราะ VIP ที่ฝากไว้ตอนคนรับยัง
+-- ออฟไลน์ ถูกเปิดอ่านตอนโปรไฟล์เพิ่งโหลด ซึ่งยังไม่ได้ผูกเข้ากับ Player (ยังประกาศแอตทริบิวต์ไม่ได้)
+--
+-- `onlyIfNone = true` : มี VIP อยู่แล้วไม่แตะเลย — กติกาของ `/givevip` (ผู้ใช้สั่ง 2026-09-22)
+-- และต้องตัดสิน **ตอนส่งถึง** ไม่ใช่ตอนสั่งแจก เพราะระหว่างนั้นเขาอาจซื้อเองไปแล้ว
+function Vip.GrantData(data, days, onlyIfNone)
 	if not data then return nil end
-	local base = math.max(os.time(), tonumber(data.VipUntil) or 0)
-	data.VipUntil = base + math.floor((days or 0) * 86400)
-	Vip.Publish(player)
+	local until_ = tonumber(data.VipUntil) or 0
+	if onlyIfNone and until_ > os.time() then return nil end
+	data.VipUntil = math.max(os.time(), until_) + math.floor((days or 0) * 86400)
 	return data.VipUntil
+end
+
+-- แจกให้คนที่ **ไม่ได้อยู่ในเซิร์ฟนี้** (หรือไม่ได้ออนไลน์เลย) — ฝากข้อความไว้ในเรคอร์ดของเขาใน
+-- DataStore แล้ว ProfileStore ส่งให้เองตอนเขาเปิดเซสชันครั้งถัดไป หรือทันทีถ้าตอนนี้เล่นอยู่อีกเซิร์ฟ
+--
+-- **เขียนโปรไฟล์ของคนอื่นตรงๆ ไม่ได้** มันถูกล็อกเซสชันไว้ (ซึ่งเป็นสิ่งที่กันข้อมูลหายมาตั้งแต่ต้น)
+-- ทางฝากข้อความจึงเป็นทางเดียวที่ปลอดภัย · คืน true เมื่อฝากสำเร็จ
+function Vip.SendAsync(userId, days, onlyIfNone)
+	if not ProfileAccess.MessageAsync then return false end
+	return ProfileAccess.MessageAsync(userId, {
+		kind = "vip", days = days, onlyIfNone = onlyIfNone and true or nil,
+	}) and true or false
 end
 
 -- ถามแทนคนที่ **ไม่ได้อยู่ในเซิร์ฟนี้** หรืออยู่แต่โปรไฟล์ไม่ได้โหลด (ล็อบบี้) — ยิง DataStore หนึ่งครั้ง

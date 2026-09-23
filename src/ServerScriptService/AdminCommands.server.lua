@@ -224,21 +224,45 @@ Commands.vip = function(admin, args)
 		target.Name, left))
 end
 
--- /givevip [คน] -- แจก VIP 30 วัน · **คนที่มีอยู่แล้วไม่ได้เพิ่ม** (ผู้ใช้สั่ง 2026-09-22)
+-- /givevip <ชื่อ|all> [วัน] -- แจก VIP · **คนที่มีอยู่แล้วไม่ได้เพิ่ม** (ผู้ใช้สั่ง 2026-09-22)
 --
 -- ต่างจาก `/vip <วัน>` ซึ่งทบเวลาเสมอ (ไว้เทส) — ตัวนี้ไว้ **แจกจริง** เช่นแจกในไลฟ์หรือแจกรางวัล
 -- ถ้าแจกซ้ำคนเดิมโดยทบเวลาไปเรื่อยๆ คนที่กดรับหลายรอบจะได้ VIP ยาวกว่าคนอื่นโดยไม่ตั้งใจ
 --
+-- ไม่ใส่จำนวนวัน = ใช้ `PremiumConfig.Vip.days` (เท่ากับที่ขายในร้าน)
 -- แจกทีละหลายคนได้ด้วย `/givevip all` — กันเคสแจกทั้งเซิร์ฟตอนไลฟ์แล้วต้องพิมพ์ทีละชื่อ
+--
+-- **แจกคนที่ไม่ได้ออนไลน์ได้ด้วย โดยพิมพ์ชื่อ Roblox ของเขา** (ผู้ใช้สั่ง 2026-09-23) —
+-- เขียนโปรไฟล์คนอื่นตรงๆ ไม่ได้เพราะมันถูกล็อกเซสชัน จึง **ฝากข้อความไว้** แล้วเขาได้รับตอนเข้าเกม
+-- ครั้งถัดไป (`Vip.SendAsync`) · ด่าน "มีอยู่แล้วข้าม" ตัดสินตอนส่งถึง ไม่ใช่ตอนสั่งแจก
 Commands.givevip = function(admin, args)
-	local days = PremiumConfig.Vip and PremiumConfig.Vip.days or 30
+	local days = math.floor(tonumber(args[2]) or (PremiumConfig.Vip and PremiumConfig.Vip.days) or 30)
+	if days <= 0 then return reply(admin, "ใช้: /givevip <ชื่อ|all> [วัน]  (วันต้องมากกว่า 0)") end
+
 	local targets = {}
 	if args[1] == "all" or args[1] == "ทุกคน" then
 		for _, p in ipairs(Players:GetPlayers()) do targets[#targets + 1] = p end
+	elseif not args[1] or args[1] == "" then
+		targets[1] = admin
 	else
-		local one = resolveTarget(admin, args[1])
-		if not one then return end
-		targets[1] = one
+		local found = findPlayer(args[1])
+		if found == false then return reply(admin, ("ชื่อ %s ตรงกับหลายคน"):format(args[1])) end
+		if found then
+			targets[1] = found
+		else
+			-- ไม่อยู่ในเซิร์ฟนี้ → ถามชื่อกับ Roblox แล้วฝากไว้ · `GetUserIdFromNameAsync` ทั้งค้าง
+			-- ทั้งโยน error เมื่อไม่มีชื่อนั้นจริง จึงต้องหุ้ม pcall
+			local name = args[1]
+			local ok, userId = pcall(function() return Players:GetUserIdFromNameAsync(name) end)
+			if not ok or not userId then
+				return reply(admin, ("ไม่เจอผู้เล่นชื่อ %s (ทั้งในเซิร์ฟนี้และในระบบ Roblox)"):format(name))
+			end
+			if not Vip.SendAsync(userId, days, true) then
+				return reply(admin, "ฝากไม่สำเร็จ (DataStore ไม่ตอบ) ลองใหม่อีกครั้ง")
+			end
+			return reply(admin, ("ฝาก VIP %d วัน -> %s (id %d) · เขาจะได้รับตอนเข้าเกมครั้งถัดไป")
+				:format(days, name, userId))
+		end
 	end
 
 	local given, skipped = {}, {}
