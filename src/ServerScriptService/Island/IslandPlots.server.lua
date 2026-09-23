@@ -167,6 +167,17 @@ local function harvest(player, model)
 	--
 	-- กระเป๋าเต็มตรงนี้ = หนอนหายเงียบๆ ไม่ขึ้นเตือนสีแดง เหมือน `Gathering` ทำกับของแถมทุกตัว
 	-- เพราะการเก็บเกี่ยวสำเร็จไปแล้ว
+	-- **เมล็ดติดมาจากการเก็บเกี่ยว** (ผู้ใช้สั่ง 2026-09-23) — แปลงเลี้ยงตัวเองได้บ้างโดยไม่ต้องวิ่งซื้อทุกรอบ
+	-- แสงฟ้าคูณให้ด้วย เพราะมันคือ "วัตถุดิบ" ที่ออกจากแปลงเหมือนกัน
+	local seeds = IslandConfig.SeedBonus
+	if seeds and math.random() < seeds.chance then
+		local n = math.random(seeds.min, seeds.max)
+		if glow == "blue" then n = math.floor(n * G.yield + 0.5) end
+		if Inventory.HasRoomFor(player, IslandConfig.SeedItem, n) and Inventory.AddItem(player, IslandConfig.SeedItem, n) then
+			Remotes.SocialNotify:FireClient(player, "info", ("ได้เมล็ดพันธุ์ติดมา x%d"):format(n))
+		end
+	end
+
 	local bonus = GatherConfig.WormBonus
 	if bonus and math.random() < bonus.chance then
 		local extra = math.random(bonus.min, bonus.max)

@@ -92,7 +92,8 @@ local function spawnAnimal(model, kind, saved)
 	-- เดิมติดธง `HerdAnimal` ซึ่ง Gathering อ่านแล้ว**ลบตัวนั้นทิ้ง** — วัว 1,800 เหรียญให้นมมูลค่า
 	-- 7 เหรียญแล้วจบ · ตอนนี้ปล่อยให้วงจร "เก็บแล้วรอ" ปกติของ Gathering ทำงานแทน โดยตั้งคูลดาวน์
 	-- ของตัวเองผ่าน `RespawnSeconds` (แมพหลักไม่มีแอตทริบิวต์นี้ จึงยังใช้ค่ากลางเหมือนเดิม)
-	animal:SetAttribute("RespawnSeconds", IslandConfig.PenHarvestSeconds)
+	-- **แต่ละชนิดรอไม่เท่ากัน** (ผู้ใช้สั่ง 2026-09-23) — ไก่ 15 นาที ถึง ม้า 45 นาที
+	animal:SetAttribute("RespawnSeconds", IslandConfig.PenHarvestFor(kind))
 	-- ได้ของมากกว่าฝูงในแมพหลัก เพราะตัวนี้ซื้อมาด้วยเงิน
 	local yield = IslandConfig.PenYield and IslandConfig.PenYield[kind]
 	if yield then
@@ -131,25 +132,44 @@ local function penSnapshot(model)
 	for _, a in ipairs(IslandConfig.PenAnimals) do
 		table.insert(rows, { kind = a.kind, name = a.name, price = a.price })
 	end
-	-- นับตัวที่โตพร้อมเก็บแล้ว ให้หน้าจอบอกได้ว่ารออะไรอยู่
+	-- **สถานะรายตัว** (ผู้ใช้สั่ง 2026-09-23: "กดดูได้ด้วยว่าอีกนานไหมกว่าสัตว์แต่ละตัวจะเก็บผลผลิตได้")
+	--
+	-- สามสถานะ ไม่ใช่สอง: ยังโตไม่เสร็จ · โตแล้วแต่ติดคูลดาวน์หลังเพิ่งเก็บ · เก็บได้เลย
+	-- ของเดิมนับสองอย่างหลังรวมกันเป็น "เก็บได้" ซึ่งโกหกทุกครั้งที่เพิ่งรีดนมไป
 	local ready, now = 0, os.time()
-	-- ตัวที่ยังโตไม่เสร็จ: ส่งความคืบหน้าไปให้หน้าจอวาดเป็นแถบ (ผู้ใช้สั่ง "ขึ้นเป็นบาร์โหลดไว้ก็ได้")
 	local growing = {}
 	for _, a in ipairs(penFolder(model):GetChildren()) do
+		local name = ANIMAL_NAMES[a.Name] or a.Name
 		local readyAt = a:GetAttribute("ReadyAt") or 0
-		if readyAt <= now then
-			ready += 1
-		else
+		local again = a:GetAttribute("ReadyAgainAt")
+		if readyAt > now then
 			local bornAt = a:GetAttribute("BornAt") or (readyAt - IslandConfig.PenGrowSeconds)
 			local span = math.max(1, readyAt - bornAt)
 			growing[#growing + 1] = {
-				name = ANIMAL_NAMES[a.Name] or a.Name,
+				state = "grow",
+				name = name,
 				progress = math.clamp((now - bornAt) / span, 0, 1),
 				secondsLeft = math.max(0, readyAt - now),
 			}
+		elseif a:GetAttribute("Spent") and again and again > now then
+			-- ช่วงคูลดาวน์: ความคืบหน้าคิดจากคูลดาวน์ของ **ชนิดนั้น** ไม่ใช่ค่ากลาง
+			local span = math.max(1, IslandConfig.PenHarvestFor(a.Name))
+			growing[#growing + 1] = {
+				state = "cool",
+				name = name,
+				progress = math.clamp(1 - (again - now) / span, 0, 1),
+				secondsLeft = math.max(0, again - now),
+			}
+		else
+			ready += 1
+			growing[#growing + 1] = { state = "ready", name = name, progress = 1, secondsLeft = 0 }
 		end
 	end
-	table.sort(growing, function(x, y) return x.secondsLeft < y.secondsLeft end)
+	-- เรียงจากใกล้ได้ที่สุด · ตัวที่เก็บได้แล้วขึ้นก่อนเพื่อน
+	table.sort(growing, function(x, y)
+		if x.secondsLeft ~= y.secondsLeft then return x.secondsLeft < y.secondsLeft end
+		return x.name < y.name
+	end)
 	return {
 		uid = entry and entry.uid,
 		animals = rows,
@@ -408,7 +428,7 @@ local function tickMine(model, entry)
 		return
 	end
 	if os.time() >= entry.nextAt then
-		for _ = 1, IslandConfig.MinePerRound do
+		for _ = 1, math.random(IslandConfig.MinePerRoundMin, IslandConfig.MinePerRoundMax) do
 			if #folder:GetChildren() >= IslandConfig.MineMax then break end
 			spawnRock(model, rollRock())
 		end

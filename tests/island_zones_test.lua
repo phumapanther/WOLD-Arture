@@ -56,7 +56,8 @@ assert(CollectionService:HasTag(chick, "WOLD_Node") and chick:GetAttribute("Node
 -- **เก็บซ้ำได้แล้ว ไม่ใช่เก็บครั้งเดียวหาย** (ผู้ใช้เลือก 2026-09-22) — `HerdAnimal` คือธงที่สั่ง
 -- Gathering ให้ลบตัวนั้นทิ้งหลังเก็บ ตอนนี้ต้องไม่มี และต้องมีคูลดาวน์ของตัวเองแทน
 assert(chick:GetAttribute("HerdAnimal") == nil, "ต้องไม่ติด HerdAnimal แล้ว (เก็บซ้ำได้)")
-assert(chick:GetAttribute("RespawnSeconds") == C.PenHarvestSeconds, "คูลดาวน์เก็บซ้ำของตัวเอง")
+-- **คูลดาวน์เป็นของรายชนิดแล้ว** (ผู้ใช้สั่ง 2026-09-23: 15-45 นาที) ไม่ใช่ค่ากลางตัวเดียว
+assert(chick:GetAttribute("RespawnSeconds") == C.PenHarvestFor("Chicken"), "คูลดาวน์เก็บซ้ำของไก่")
 assert(chick:GetAttribute("YieldMin") == C.PenYield.Chicken.min, "จำนวนที่ได้มากกว่าฝูงในแมพหลัก")
 -- ยังโตไม่พอ: ปุ่มถูกปิด
 assert(chick:GetAttribute("Spent") == true, "ตัวที่เพิ่งเกิดต้องยังเก็บไม่ได้")
@@ -81,6 +82,9 @@ table.insert(out, "โตแล้วปุ่มเก็บเปิด ✓ (�
 
 -- **เก็บจริงแล้วต้องยังอยู่ แต่เก็บซ้ำทันทีไม่ได้** — หัวใจของสิ่งที่ผู้ใช้สั่งรอบนี้
 -- เรียก `Gather` ฝั่งเซิร์ฟเวอร์ตรงๆ เพราะกด E จากเครื่องมือทำไม่ได้ (ProximityPrompt จำลองไม่ได้)
+-- ⚠️ **ล้างธงแสงก่อนวัด** — ของเรืองแสงฟ้าให้วัตถุดิบสองเท่า (ผู้ใช้สั่ง 2026-09-23) ซึ่งถูกต้อง
+-- แต่เทสข้อนี้วัด `PenYield` ไม่ได้วัดแสง · ไม่ล้างแล้วมันจะตกเป็นครั้งคราวแบบหาสาเหตุยาก
+chick:SetAttribute("Glow", nil)
 local eggBefore = A("Count", player, "Egg") or 0
 local gathered = A("Gather", player, chick)
 assert(gathered, "เก็บไข่ไม่สำเร็จ")
@@ -92,8 +96,8 @@ assert(chick:GetAttribute("Spent") == true, "เก็บแล้วต้อ�
 A("ZonesTick")
 assert(chick:GetAttribute("Spent") == true, "ZonesTick ต้องไม่ปลดคูลดาวน์ให้ (Gathering เป็นเจ้าของ)")
 A("Revoke", player, "Egg", gained) -- โปรไฟล์จริง ไม่ทิ้งของเทสไว้
-table.insert(out, ("เก็บซ้ำได้: ไข่ %d ฟอง · สัตว์ยังอยู่ · ติดคูลดาวน์ %d นาที")
-	:format(gained, C.PenHarvestSeconds / 60))
+table.insert(out, ("เก็บซ้ำได้: ไข่ %d ฟอง · สัตว์ยังอยู่ · ติดคูลดาวน์ %d นาที (ของไก่ ไม่ใช่ค่ากลาง)")
+	:format(gained, chick:GetAttribute("RespawnSeconds") / 60))
 -- ซื้อชนิดอื่นทับไม่ได้
 ok, why = A("PenBuy", player, pen, "Cow", 1); assert(not ok, "ต้องห้ามเลี้ยงสองชนิด")
 -- เพดาน PenMax: ซื้อเกินแล้วต้องได้แค่ที่ว่าง
@@ -118,8 +122,11 @@ assert(CollectionService:HasTag(rock, "WOLD_Node") and rock:GetAttribute("NodeKi
 -- เร่งรอบถัดไป
 A("SetEntry", mineUid, "nextAt", os.time() - 1)
 A("ZonesTick")
-assert(#rocks:GetChildren() >= 1 + C.MinePerRound, ("รอบถัดไปต้องเพิ่ม %d ก้อน ได้ %d"):format(C.MinePerRound, #rocks:GetChildren()))
-table.insert(out, ("โซนแร่: ก้อนแรกทันที + รอบละ %d (ตอนนี้ %d ก้อน)"):format(C.MinePerRound, #rocks:GetChildren()))
+-- **เกิดทีละ 1-2 ก้อนแบบสุ่มแล้ว** (ผู้ใช้สั่ง 2026-09-23) ของเดิมเป็นเลขตายตัว `MinePerRound`
+assert(#rocks:GetChildren() >= 1 + C.MinePerRoundMin,
+	("รอบถัดไปต้องเพิ่มอย่างน้อย %d ก้อน ได้ %d"):format(C.MinePerRoundMin, #rocks:GetChildren()))
+table.insert(out, ("โซนแร่: ก้อนแรกทันที + รอบละ %d-%d ทุก %d นาที (ตอนนี้ %d ก้อน)")
+	:format(C.MinePerRoundMin, C.MinePerRoundMax, C.MineEverySeconds / 60, #rocks:GetChildren()))
 
 ----------------------------------------------------------------- ต้นไม้
 assert(A("Grant", player, "Deco_Tree", 1), "เสกต้นไม้")

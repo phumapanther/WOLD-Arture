@@ -39,7 +39,8 @@ ShopConfig.Sells = {
 -- แปลงผักมี **สองแถว** คือสิ่งเดียวที่ซื้อได้ทั้งสองสกุล: จ่ายเพชรถูก หรือจ่ายเหรียญแพงมาก
 -- (ผู้ใช้สั่ง "ซื้อเพิ่มใช้เพชร และใช้เงินเกมหลักได้ แต่แพงมาก") — 9 แปลงแรกยังแจกฟรีในชุดเริ่มต้น
 ShopConfig.IslandSells = {
-	{ id = "Seed", price = 50 },
+	-- ราคาเมล็ดขึ้นเป็นหลักร้อย (ผู้ใช้สั่ง 2026-09-23) · เก็บผักแล้วมีโอกาสได้เมล็ดคืน 1-3 เมล็ด
+	{ id = "Seed", price = 300 },
 
 	-- แปลงผัก: แจกฟรี 9 แปลงตอนเข้าเกาะครั้งแรก · ซื้อเพิ่มได้สองทาง
 	{ id = "FarmPlot", price = 40, currency = "gems" },
@@ -98,8 +99,8 @@ ShopConfig.IslandSells = {
 	{ id = "Reactor", price = 500, currency = "gems" },
 
 	-- คอก/โซนแร่: เหรียญเกมหลัก (เป็นเครื่องมือหาของ ไม่ใช่ของตกแต่ง)
-	{ id = "AnimalPen", price = 3500 },
-	{ id = "MineZone", price = 5000 },
+	{ id = "AnimalPen", price = 35000 },
+	{ id = "MineZone", price = 50000 },
 }
 
 -- What the shopkeeper buys, and for how much of the catalog `value`. Well under 1 on purpose: the gap

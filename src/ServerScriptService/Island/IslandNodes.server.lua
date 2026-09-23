@@ -23,6 +23,8 @@ local IslandAccess = require(script.Parent.IslandAccess)
 
 local CFG = IslandConfig.NodeSpawn
 local SCAN = 56 -- เกาะกว้าง 440 = ±55 ช่อง
+-- ฝังลงดินนิดหน่อย — ผิวเทอร์เรนไม่เรียบเป๊ะ วางพอดีเป๊ะแล้วบางจุดจะดูลอย
+local SINK = 0.25
 
 local protoRoot -- ถามใหม่ทุกครั้ง (กฎเหล็ก StreamingEnabled) — เฟสอาจรันหลังเซิร์ฟบูต
 local function prototypes(kind)
@@ -94,6 +96,19 @@ local function spawnAt(kind, cx, cz)
 	local model = picks[math.random(#picks)]:Clone()
 	local wx, wz = IslandGrid.worldOf(cx, cz)
 	model:PivotTo(CFrame.new(wx, y, wz) * CFrame.Angles(0, math.random() * math.pi * 2, 0))
+
+	-- ⚠️ **วางให้ก้นโมเดลอยู่ที่ผิวดิน ไม่ใช่วางจุดหมุนไว้ที่ผิวดิน** (ผู้ใช้แจ้ง 2026-09-23: โมเดลจมดิน)
+	--
+	-- ต้นแบบใน `WOLD_IslandNodes` **ไม่มี `PrimaryPart` สักตัว** `PivotTo` จึงใช้ `WorldPivot` ซึ่งเป็น
+	-- ค่าที่ติดมาจากตอนโมเดลถูกสร้าง — วัดแล้วมั่วสิ้นดี: หินจม 19.1 สตัด · ต้นไม้ 19.9 · สมุนไพร 7.7
+	-- (ทุ่งเลยดูโล่งเหลือแต่ป้ายอีโมจิลอยอยู่ ซึ่งวัดจากกล่องครอบจึงอยู่ถูกที่)
+	--
+	-- วัด **หลังหมุนแล้ว** เพราะกล่องครอบเปลี่ยนตามการหมุน · และเชื่อ `GetBoundingBox` ไม่ใช่ตัวเลข
+	-- ในต้นแบบ (เฟส 100 เลื่อนฐานจาก `Position.Y - Size.Y/2` ซึ่งไม่ใช่ก้นจริงของชิ้นที่ถูกหมุน —
+	-- ต้นไม้จึงมีฐานอยู่ที่ -3.40 ทั้งที่เฟสตั้งใจให้เป็น 0)
+	local cf, size = model:GetBoundingBox()
+	local bottom = cf.Position.Y - size.Y / 2
+	model:PivotTo(model:GetPivot() + Vector3.new(0, y - bottom - SINK, 0))
 	model:SetAttribute("NodeKind", kind)
 	-- **เก็บแล้วหายไปเลย** (ผู้ใช้สั่ง) ต่างจากจุดในแมพหลักที่ตัวเดิมรอเกิดใหม่ที่เดิม
 	model:SetAttribute("OneShot", true)
@@ -187,7 +202,12 @@ task.spawn(function()
 		if os.clock() - scannedAt > CFG.rescanSeconds then rescanSoil() end
 		restoreSaved() -- ครั้งเดียวต่อเซิร์ฟ — คืนของที่เคยโผล่ก่อนสุ่มเพิ่ม
 		pruneBlocked()
-		if countLive() < CFG.max then spawnOne() end
+		-- ทีละ 1-3 จุดต่อรอบ (ผู้ใช้สั่ง 2026-09-23) · เช็คเพดานใหม่ทุกจุด ไม่ใช่ครั้งเดียวต่อรอบ
+		local want = math.random(CFG.perRoundMin or 1, CFG.perRoundMax or 1)
+		for _ = 1, want do
+			if countLive() >= CFG.max then break end
+			spawnOne()
+		end
 		task.wait(CFG.everySeconds)
 	end
 end)

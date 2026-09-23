@@ -137,10 +137,12 @@ A("Revoke", player, "MagicOre", A("Count", player, "MagicOre") or 0)
 ----------------------------------------------------------------- 6. แร่เรืองแสง: ของ ×2
 A("NodeClear")
 for _ = 1, 30 do A("NodeSpawnOnce") end
+-- ⚠️ **เลือกจากโฟลเดอร์ `Nodes` เท่านั้น** ไม่ใช่จากแท็กทั้งเกาะ — ของตกแต่งที่ผู้ใช้วางไว้ก็ติดแท็ก
+-- เหมือนกัน และอาจติดคูลดาวน์รายวันอยู่ ทำให้เทสฟ้องว่า "เก็บไม่สำเร็จ" โดยที่ระบบถูกต้อง
 local target
-for _, node in ipairs(CollectionService:GetTagged("WOLD_Node")) do
+for _, node in ipairs(workspace.WOLD_Island.Nodes:GetChildren()) do
 	local cfg = GatherConfig.Nodes[node:GetAttribute("NodeKind")]
-	if node:IsDescendantOf(workspace) and cfg and cfg.tool == "pickaxe" and not node:GetAttribute("BornAt") then
+	if cfg and cfg.tool == "pickaxe" and not node:GetAttribute("Spent") then
 		target = node
 		break
 	end

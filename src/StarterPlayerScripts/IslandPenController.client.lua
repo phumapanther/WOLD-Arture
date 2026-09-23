@@ -186,7 +186,11 @@ local function draw(snap)
 		if c:IsA("Frame") then c:Destroy() end
 	end
 	local growing = snap.growing or {}
-	local tail = #growing > 0 and (" · กำลังโต %d"):format(#growing) or ""
+	local waiting = 0
+	for _, g in ipairs(growing) do
+		if g.state ~= "ready" then waiting += 1 end
+	end
+	local tail = waiting > 0 and (" · รออยู่ %d"):format(waiting) or ""
 	subtitle.Text = ("ในคอก %d/%d ตัว · เก็บได้ %d%s"):format(snap.count, snap.max, snap.ready or 0, tail)
 
 	-- **แถบความคืบหน้าของตัวที่ยังโตไม่เสร็จ** (ผู้ใช้สั่ง 2026-09-22)
@@ -202,7 +206,10 @@ local function draw(snap)
 
 		local fill = Instance.new("Frame")
 		fill.Size = UDim2.new(math.clamp(g.progress or 0, 0, 1), 0, 1, 0)
-		fill.BackgroundColor3 = Color3.fromRGB(86, 132, 74)
+		-- สีบอกสถานะ: เขียวสด = เก็บได้เลย · เขียวเข้ม = กำลังโต · ฟ้าเทา = รอคูลดาวน์หลังเพิ่งเก็บ
+		fill.BackgroundColor3 = (g.state == "ready" and Color3.fromRGB(118, 176, 92))
+			or (g.state == "cool" and Color3.fromRGB(74, 106, 132))
+			or Color3.fromRGB(86, 132, 74)
 		fill.BorderSizePixel = 0
 		fill.Parent = bar
 		local fc = Instance.new("UICorner"); fc.CornerRadius = UDim.new(0, 7); fc.Parent = fill
@@ -215,8 +222,16 @@ local function draw(snap)
 		text.TextSize = 13
 		text.TextColor3 = TEXT
 		text.TextXAlignment = Enum.TextXAlignment.Left
-		local mins = math.max(1, math.ceil((g.secondsLeft or 0) / 60))
-		text.Text = ("%s · โตอีก %d นาที (%d%%)"):format(g.name or "สัตว์", mins, math.floor((g.progress or 0) * 100))
+		-- **บอกเป็นนาที:วินาที เมื่อเหลือน้อยกว่าหนึ่งนาที** ไม่งั้น "อีก 1 นาที" ค้างอยู่ตั้งนาน
+		local left = math.max(0, g.secondsLeft or 0)
+		local when = left >= 60 and ("%d นาที"):format(math.ceil(left / 60)) or ("%d วินาที"):format(left)
+		if g.state == "ready" then
+			text.Text = ("%s · เก็บได้แล้ว"):format(g.name or "สัตว์")
+		elseif g.state == "cool" then
+			text.Text = ("%s · เก็บได้อีกใน %s"):format(g.name or "สัตว์", when)
+		else
+			text.Text = ("%s · โตอีก %s (%d%%)"):format(g.name or "สัตว์", when, math.floor((g.progress or 0) * 100))
+		end
 		text.ZIndex = 2
 		text.Parent = bar
 	end
