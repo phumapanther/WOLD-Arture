@@ -35,24 +35,45 @@ local SELLS = ServerConfig.Mode == "Farming" and ShopConfig.IslandSells or ShopC
 -- Drifting prices
 --------------------------------------------------------------------------------
 
--- [itemId] = multiplier. Rerolled on a timer for the whole server at once.
+-- [itemId] = multiplier. ราคาเดินตาม **นาฬิกาจริง** ไม่ใช่สุ่มใหม่ตอนเซิร์ฟเวอร์บูต (แก้ 2026-09-23)
+--
+-- ของเดิมสุ่มครั้งเดียวตอนโมดูลโหลด แล้วเก็บไว้ในหน่วยความจำล้วน — **เกาะฟาร์มเป็นเซิร์ฟส่วนตัวที่ปิดตัว
+-- ทุกครั้งที่เจ้าของออก** ออกไปล็อบบี้แล้วเข้าใหม่จึงเท่ากับกดสุ่มราคาใหม่ฟรี กดจนได้ 1.5 เมื่อไหร่ก็ได้
+-- ซึ่งทำให้ช่วงสวิง ±50% ไม่มีความหมายอะไรเลย (รูปแบบเดียวกับจุดสุ่มบนผืนดินที่แก้ไปวันก่อน)
+--
+-- ตอนนี้ตัวคูณมาจาก "ช่องเวลาที่เท่าไหร่แล้ว" ล้วนๆ ทุกเซิร์ฟทั้งเกมจึงเห็นราคาเดียวกันจริง
+-- ไม่ใช่แค่คนในเซิร์ฟเดียวกัน — ซึ่งเป็นสิ่งที่หน้า "ราคากลาง" บนหินสื่อสารอ้างอยู่กลายๆ มาตลอด
 local Multipliers = {}
 local NextRerollAt = 0
 
-local function reroll()
+-- ไอดีทุกตัวที่ร้านรับซื้อ เรียง — **`pairs` ไม่รับประกันลำดับ** ถ้าวนด้วย `pairs` สองเซิร์ฟ
+-- จะหยิบเลขคนละตัวจากตัวสุ่มชุดเดียวกัน = ราคาต่างกันอยู่ดี และการแก้ทั้งหมดนี้จะไม่มีผล
+local function sellableIds()
+	local ids = {}
 	for id, item in pairs(ItemCatalog.Items) do
-		if ShopConfig.Buys[item.kind] then
-			local swing = ShopConfig.PriceSwing
-			Multipliers[id] = 1 + (math.random() * 2 - 1) * swing
-		end
+		if ShopConfig.Buys[item.kind] then ids[#ids + 1] = id end
 	end
-	NextRerollAt = os.time() + ShopConfig.RerollSeconds
+	table.sort(ids)
+	return ids
+end
+
+local function reroll()
+	local period = ShopConfig.RerollSeconds
+	local bucket = math.floor(os.time() / period)
+	-- คูณเลขคีย์ก่อนส่งเข้า `Random.new` เพื่อให้ช่วงที่ติดกันไม่เกาะกลุ่มกัน
+	local rng = Random.new(bucket * 1013904223 + 1664525)
+	for _, id in ipairs(sellableIds()) do
+		Multipliers[id] = 1 + (rng:NextNumber() * 2 - 1) * ShopConfig.PriceSwing
+	end
+	NextRerollAt = (bucket + 1) * period
 end
 
 reroll()
 task.spawn(function()
 	while true do
-		task.wait(ShopConfig.RerollSeconds)
+		-- นอนถึงเส้นแบ่งของช่วงถัดไป ไม่ใช่นอนครบ 30 นาทีจากตอนบูต
+		-- ไม่งั้นนาฬิกาของเซิร์ฟนี้จะค่อยๆ เยื้องออกจากของเซิร์ฟอื่น
+		task.wait(math.max(1, NextRerollAt - os.time()))
 		reroll()
 	end
 end)
