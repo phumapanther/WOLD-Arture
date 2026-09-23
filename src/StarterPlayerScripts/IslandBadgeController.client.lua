@@ -88,6 +88,69 @@ local function hide(inst)
 end
 
 --------------------------------------------------------------------------------
+-- แสงเรือง (ผู้ใช้สั่ง 2026-09-23: ทอง = EXP ×2 · ฟ้า = วัตถุดิบ ×2)
+--------------------------------------------------------------------------------
+--
+-- เซิร์ฟเวอร์ทอยแล้วเขียนไว้ที่แอตทริบิวต์ `Glow` — ตรงนี้แค่แปลงเป็นภาพ · **เป็นสถานะของโลก
+-- ไม่ใช่ของใครคนหนึ่ง** ทุกคนที่ยืนอยู่จึงเห็นก้อนเดียวกัน (ทุกเครื่องวาดจากธงเดียวกัน)
+local GLOW = IslandConfig.Glow
+local Glows = {} -- [instance] = Folder
+
+local function showGlow(inst, tone)
+	local color = GLOW.colors[tone]
+	if not color then return end
+	local holder = Glows[inst]
+	if holder then
+		if holder:GetAttribute("Tone") ~= tone then
+			holder:SetAttribute("Tone", tone)
+			holder.Light.Color = color
+			holder.Sparkle.Color = ColorSequence.new(color)
+		end
+		return
+	end
+
+	local part = anchorOf(inst)
+	if not part then return end
+	holder = Instance.new("Folder")
+	holder.Name = "WOLD_Glow"
+	holder:SetAttribute("Tone", tone)
+
+	local light = Instance.new("PointLight")
+	light.Name = "Light"
+	light.Color = color
+	light.Brightness = GLOW.brightness
+	light.Range = GLOW.range
+	light.Shadows = false -- แสงนี้มีได้หลายสิบดวงพร้อมกัน เงาคือค่าใช้จ่ายที่ไม่ได้อะไรกลับมา
+	light.Parent = holder
+
+	local sparkle = Instance.new("ParticleEmitter")
+	sparkle.Name = "Sparkle"
+	sparkle.Color = ColorSequence.new(color)
+	sparkle.LightEmission = 1
+	sparkle.LightInfluence = 0
+	sparkle.Size = NumberSequence.new({
+		NumberSequenceKeypoint.new(0, 0),
+		NumberSequenceKeypoint.new(0.4, 0.55),
+		NumberSequenceKeypoint.new(1, 0),
+	})
+	sparkle.Transparency = NumberSequence.new(0.25)
+	sparkle.Rate = 7
+	sparkle.Lifetime = NumberRange.new(1.1, 1.8)
+	sparkle.Speed = NumberRange.new(0.6, 1.4)
+	sparkle.SpreadAngle = Vector2.new(180, 180)
+	sparkle.Acceleration = Vector3.new(0, 1.5, 0) -- ลอยขึ้น ไม่ใช่ร่วงลง
+	sparkle.Parent = holder
+
+	holder.Parent = part
+	Glows[inst] = holder
+end
+
+local function hideGlow(inst)
+	local holder = Glows[inst]
+	if holder then holder:Destroy(); Glows[inst] = nil end
+end
+
+--------------------------------------------------------------------------------
 -- ใครพร้อมเก็บบ้าง
 --------------------------------------------------------------------------------
 
@@ -112,21 +175,26 @@ local function nodeEmoji(node)
 	return config and BY_TOOL[config.tool] or nil
 end
 
-local function sweepNodes(seen)
+local function sweepNodes(seen, lit)
 	for _, node in ipairs(CollectionService:GetTagged("WOLD_Node")) do
 		if node:IsDescendantOf(workspace) then
 			local emoji = nodeEmoji(node)
 			if emoji then seen[node] = emoji end
+			-- **แสงไม่ได้ผูกกับความพร้อม** สัตว์ที่ยังโตไม่เต็มวัยก็เรืองแสงรอไว้ได้ (ธงถูกทอยตอนมันเกิด)
+			local tone = node:GetAttribute("Glow")
+			if tone then lit[node] = tone end
 		end
 	end
 end
 
 -- แปลงผักสุกแล้ว — `Ripe` ถูกประกาศโดย `IslandPlots` (ไม่ได้อ่านข้อความบนปุ่ม ซึ่งเป็นคำไทยที่เปลี่ยนได้)
-local function sweepPlots(seen)
+local function sweepPlots(seen, lit)
 	local island = workspace:FindFirstChild("WOLD_Island")
 	local placed = island and island:FindFirstChild("Placed")
 	for _, model in ipairs(placed and placed:GetChildren() or {}) do
 		if model:GetAttribute("Ripe") then seen[model] = CFG.crop end
+		local tone = model:GetAttribute("Glow")
+		if tone then lit[model] = tone end
 	end
 end
 
@@ -156,19 +224,23 @@ end
 --------------------------------------------------------------------------------
 task.spawn(function()
 	while true do
-		local seen = {}
+		local seen, lit = {}, {}
 		local ok, err = pcall(function()
-			sweepNodes(seen)
-			sweepPlots(seen)
+			sweepNodes(seen, lit)
+			sweepPlots(seen, lit)
 			sweepQuestBoards(seen)
 			sweepFarms(seen)
 		end)
 		if not ok then warn("[IslandBadge] กวาดไม่สำเร็จ:", err) end
 
 		for inst, emoji in pairs(seen) do show(inst, emoji) end
-		-- เก็บกวาดป้ายของสิ่งที่ไม่พร้อมแล้ว หรือถูกเก็บไปแล้ว (โหนดหายไปเลยก็มี)
+		for inst, tone in pairs(lit) do showGlow(inst, tone) end
+		-- เก็บกวาดป้าย/แสงของสิ่งที่ไม่พร้อมแล้ว หรือถูกเก็บไปแล้ว (โหนดหายไปเลยก็มี)
 		for inst in pairs(Badges) do
 			if not seen[inst] or not inst:IsDescendantOf(workspace) then hide(inst) end
+		end
+		for inst in pairs(Glows) do
+			if not lit[inst] or not inst:IsDescendantOf(workspace) then hideGlow(inst) end
 		end
 
 		task.wait(CFG.refreshSeconds)

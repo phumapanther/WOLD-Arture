@@ -410,6 +410,14 @@ IslandAccess.Data = function() return Data end
 -- สลับเฉพาะ `IslandAccess.IsOwner` ซึ่งเป็นตัวที่ด่านของระบบอื่นถาม (ครัว ตู้ NPC บอร์ดเควส แปลงผัก)
 -- ส่วนการวาง/เก็บของในไฟล์นี้เรียก `isOwner` ตรงๆ จึงไม่ถูกหลอก — ตั้งใจ ไม่ใช่ของค้าง
 if RunService:IsStudio() then
+	-- อ่าน EXP จริงให้เทส — **`require` ใน sandbox ของ `execute_luau` คืนสำเนาใหม่ที่ States ว่าง**
+	-- (กติกาเดิมของโปรเจ็ค) เทสจึงอ่านเลขจากโมดูลตรงๆ ไม่ได้เลย ต้องถามผ่านสคริปต์เซิร์ฟเวอร์จริง
+	IslandAccess.Exp = function(player)
+		local Progression = require(game.ServerScriptService.Progression)
+		local state = Progression.Get(player)
+		return state and state.exp or 0, state and state.level or 1
+	end
+
 	IslandAccess.PretendGuest = function(on)
 		IslandAccess.IsOwner = on and function() return false end or isOwner
 		return on == true

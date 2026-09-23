@@ -499,6 +499,33 @@ proto("Crop_Herb", function(m)
 	end
 end)
 
+-- **ต้นเวทมนตร์** (ผู้ใช้สั่ง 2026-09-23: "เพิ่มโมเดลในแปลงผักสำหรับสุ่มปลูก เพื่อให้ได้กิ่งเวทมนตร์")
+--
+-- ลำต้นบิดเป็นเกลียวสามท่อน กิ่งแตกสี่ทาง ปลายกิ่งเป็นผลึกเรืองแสง (Neon) และมีผลึกลอยรอบยอด
+-- · ทุกชิ้น `cancollide = false` เหมือนพืชอื่น — ผู้เล่นต้องเดินผ่านแปลงได้
+proto("Crop_MagicBranch", function(m)
+	-- ลำต้น: สามท่อนเอียงสลับข้าง ทำให้ดูบิดโดยไม่ต้องใช้ชิ้นเยอะ
+	local segs = { { 0, 0.9, 0.34, 0.10 }, { 0.18, 2.5, 0.28, -0.14 }, { -0.10, 3.9, 0.22, 0.08 } }
+	for _, sg in ipairs(segs) do
+		K.cyl(m, K.at(sg[1], sg[2], 0) * K.roll(sg[4]), sg[3], 1.9, MAT.Wood, C.plankDark, { cancollide = false })
+	end
+	-- กิ่งสี่ทาง เอียงขึ้น 40 องศา
+	for i = 1, 4 do
+		local a = i * math.pi / 2 + 0.4
+		local x, z = math.cos(a) * 0.9, math.sin(a) * 0.9
+		K.cyl(m, K.at(x, 3.9, z) * K.yaw(-a) * K.roll(math.rad(40)), 0.15, 1.6, MAT.Wood, C.plankDark, { cancollide = false })
+		-- ผลึกที่ปลายกิ่ง
+		K.ball(m, K.at(x * 2.0, 4.7, z * 2.0), 0.85, MAT.Neon, C.lamp, { cancollide = false })
+	end
+	-- ยอด: ผลึกใหญ่กับเกล็ดลอยรอบๆ
+	K.ball(m, K.at(0, 5.2, 0), 1.3, MAT.Neon, C.lamp, { cancollide = false })
+	for i = 1, 5 do
+		local a, r = i * 1.25, 1.5
+		K.box(m, K.at(math.cos(a) * r, 5.9 + (i % 2) * 0.5, math.sin(a) * r) * K.yaw(a) * K.roll(0.6),
+			Vector3.new(0.28, 0.6, 0.28), MAT.Neon, C.lamp, { cancollide = false })
+	end
+end)
+
 
 ---------------------------------------------------------------- สัตว์เลี้ยง (ผู้ใช้สั่ง 2026-09-22)
 --

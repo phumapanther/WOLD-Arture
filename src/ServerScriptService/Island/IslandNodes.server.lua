@@ -99,6 +99,9 @@ local function spawnAt(kind, cx, cz)
 	model:SetAttribute("OneShot", true)
 	-- ไม่ให้ฟาร์มออโต้จับ: มันใช้คีย์ F ชนกับปุ่มเก็บของคืนกระเป๋าของระบบเกาะ
 	model:SetAttribute("Uid", "node:" .. IslandGrid.key(cx, cz))
+	-- ของเรืองแสง (ผู้ใช้สั่ง 2026-09-23) — จุดที่เพิ่งโผล่ไม่เคยผ่าน `Gathering.setSpent(node, false)`
+	-- จึงต้องทอยเองตรงนี้ · จุดที่คืนจากคลังตอนบูตก็ผ่านทางนี้ ได้ทอยใหม่ทุกครั้งที่เซิร์ฟเปิด
+	model:SetAttribute("Glow", IslandConfig.RollGlow())
 	model.Parent = folder
 	CollectionService:AddTag(model, "WOLD_Node")
 	Live[model] = IslandGrid.key(cx, cz)

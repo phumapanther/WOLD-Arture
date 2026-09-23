@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Inventory = require(game.ServerScriptService.Inventory)
 local IslandAccess = require(script.Parent.IslandAccess)
 local IslandConfig = require(ReplicatedStorage.IslandConfig)
+local Progression = require(game.ServerScriptService.Progression)
 local GatherConfig = require(ReplicatedStorage.GatherConfig)
 local ItemCatalog = require(ReplicatedStorage.ItemCatalog)
 local Remotes = require(ReplicatedStorage.Remotes)
@@ -112,6 +113,9 @@ local function plant(player, model)
 	if not Inventory.RemoveFromSlot(player, slot, 1) then return false, "noseed" end
 	local spec = rollCrop()
 	entry.crop, entry.at = spec.item, os.time()
+	-- **ทอยของเรืองแสงตอนหยอดเมล็ด ไม่ใช่ตอนเก็บ** (ผู้ใช้สั่ง 2026-09-23) — ผู้เล่นเห็นระหว่างที่มันโต
+	-- ว่าแปลงไหนพิเศษ · ธงอยู่บนตัวโมเดล ไคลเอนต์จึงวาดแสงได้เองโดยไม่ต้องมี remote
+	model:SetAttribute("Glow", IslandConfig.RollGlow())
 	local state = Plots[model]
 	if state then state.stage = nil end -- ให้รอบถัดไปวาดใหม่
 	local item = ItemCatalog.Get(spec.item)
@@ -131,10 +135,29 @@ local function harvest(player, model)
 	if progressOf(entry) < 1 then return false, "unripe" end
 	local spec = cropSpec(entry.crop)
 	local amount = spec and math.random(spec.min, spec.max) or 1
+
+	-- **ของเรืองแสง** (ผู้ใช้สั่ง 2026-09-23) ฟ้า = วัตถุดิบ ×2 · ทอง = EXP ×2
+	-- คูณ **ก่อน** ถามกระเป๋า เพื่อให้กระเป๋าที่ใส่ไม่ครบปฏิเสธทั้งกอง ไม่ใช่รับครึ่งเดียวเงียบๆ
+	local glow = model:GetAttribute("Glow")
+	local G = IslandConfig.Glow
+	if glow == "blue" then amount = math.floor(amount * G.yield + 0.5) end
+
 	if not Inventory.HasRoomFor(player, entry.crop, amount) then return false, "full" end
 	if not Inventory.AddItem(player, entry.crop, amount) then return false, "full" end
 	local item = ItemCatalog.Get(entry.crop)
 	Remotes.SocialNotify:FireClient(player, "info", ("เก็บเกี่ยวได้ %s x%d"):format(item and item.name or entry.crop, amount))
+
+	-- ของแถมประจำพืช (`spec.bonus`) — ตอนนี้คือแร่เวทมนตร์ที่ติดมากับต้นเวทมนตร์
+	-- แยกจากหนอนข้างล่างที่เป็นของแถมของ **ดิน** ซึ่งติดมาได้กับทุกพืช
+	if spec and spec.bonus and math.random() < (spec.bonus.chance or 0.5) then
+		local extra = math.random(spec.bonus.min or 1, spec.bonus.max or 1)
+		if glow == "blue" then extra = math.floor(extra * G.yield + 0.5) end
+		if Inventory.HasRoomFor(player, spec.bonus.item, extra) and Inventory.AddItem(player, spec.bonus.item, extra) then
+			local bi = ItemCatalog.Get(spec.bonus.item)
+			Remotes.SocialNotify:FireClient(player, "info",
+				("ติดมาด้วย %s x%d"):format(bi and bi.name or spec.bonus.item, extra))
+		end
+	end
 
 	-- หนอนติดมากับดิน (ผู้ใช้สั่ง 2026-09-22) — เกณฑ์เดียวกับสมุนไพร/นาข้าวในแมพหลัก
 	--
@@ -153,7 +176,23 @@ local function harvest(player, model)
 				("เจอ%s x%d ในดิน"):format(worm and worm.name or bonus.item, extra))
 		end
 	end
+	-- **EXP จากการเก็บเกี่ยว** — แปลงผักไม่เคยให้มาก่อน ซึ่งทำให้แสงสีทองไม่มีความหมายเลย
+	-- ตัวคูณของเกาะ (สัตว์เลี้ยง/ของตกแต่ง) ใช้ตัวเดียวกับที่ `Gathering` ถาม
+	local xp = IslandConfig.CropExp or 0
+	if glow == "gold" then xp = math.floor(xp * G.exp + 0.5) end
+	if IslandAccess.FarmExpMultiplier then
+		xp = math.floor(xp * IslandAccess.FarmExpMultiplier() + 0.5)
+	end
+	if xp > 0 then Progression.AwardExp(player, xp) end
+
+	if glow then
+		Remotes.SocialNotify:FireClient(player, "info",
+			glow == "gold" and "✨ แสงทอง: EXP สองเท่า" or "💠 แสงฟ้า: วัตถุดิบสองเท่า")
+	end
+
 	entry.crop, entry.at = nil, nil
+	model:SetAttribute("Glow", nil) -- ใช้แล้วหมด รอบหน้าทอยใหม่ตอนหยอดเมล็ด
+	model:SetAttribute("Ripe", nil)
 	local state = Plots[model]
 	if state then state.stage = nil end
 	showCrop(model, entry, 1)

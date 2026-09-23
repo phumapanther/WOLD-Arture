@@ -162,6 +162,14 @@ local function setSpent(node, spent)
 	-- own prompt hiding would fight the server over Enabled.
 	node:SetAttribute("Spent", spent or nil)
 
+	-- **ของเรืองแสงบนเกาะ** (ผู้ใช้สั่ง 2026-09-23) — ทอยตอนโหนด "เริ่มรอบใหม่" ซึ่งก็คือตรงนี้:
+	-- คูลดาวน์หมด · ตราวันใหม่ปลดให้ · `IslandZones` ปลดสัตว์ตอนเซิร์ฟบูต — ทุกทางเดินผ่าน `setSpent`
+	-- เสมอ จึงไม่ต้องไปไล่ทอยทีละที่ให้เพี้ยนกันเอง
+	if not spent and ServerConfig.IsFarm then
+		local IslandConfig = require(game.ReplicatedStorage.IslandConfig)
+		node:SetAttribute("Glow", IslandConfig.RollGlow())
+	end
+
 	-- สัตว์เลี้ยงไม่จาง: มันยังยืนอยู่ตรงนั้นจริงๆ แค่รีดนม/เก็บไข่ซ้ำไม่ได้ชั่วคราว
 	--
 	-- การทำให้จางเหมาะกับก้อนแร่ที่ "ถูกขุดไปแล้ว" แต่วัวที่โปร่งแสงครึ่งตัวจะดูเหมือนผี
@@ -326,6 +334,12 @@ local function gather(node, player)
 	if overMin and overMax then minCount, maxCount = overMin, overMax end
 
 	local count = math.random(minCount, maxCount)
+
+	-- **ของเรืองแสง** (เกาะเท่านั้น · ธงถูกทอยไว้ตั้งแต่โหนดเริ่มรอบนี้) ฟ้า = วัตถุดิบ ×2 · ทอง = EXP ×2
+	-- คูณ **ก่อน** `AddItem` เพื่อให้กระเป๋าที่ใส่ไม่ครบปฏิเสธทั้งกอง ไม่ใช่รับครึ่งเดียวเงียบๆ
+	local glow = ServerConfig.IsFarm and node:GetAttribute("Glow") or nil
+	local GlowCfg = glow and require(game.ReplicatedStorage.IslandConfig).Glow or nil
+	if glow == "blue" then count = math.floor(count * GlowCfg.yield + 0.5) end
 	-- The merchant's sharp eye. Doubled before the bag is asked, so a full bag refuses the whole doubled
 	-- amount rather than quietly handing over half of it.
 	count = ClassPerks.HarvestFor(player, count)
@@ -342,6 +356,7 @@ local function gather(node, player)
 		-- ตัวคูณอยู่กับ `IslandPets` ซึ่งเป็นเจ้าของคำถาม "ตอนนี้เกาะมีอะไรอยู่บ้าง" — ไฟล์นี้แค่ถาม
 		-- นอกเพลสเกาะ ช่องนี้เป็น nil ตัวคูณจึงเป็น 1 และเกมหลักไม่เปลี่ยนแปลงอะไรเลย
 		local xp = config.xp
+		if glow == "gold" then xp = math.floor(xp * GlowCfg.exp + 0.5) end
 		local IslandAccess = ServerConfig.IsFarm
 			and require(game.ServerScriptService.Island.IslandAccess) or nil
 		if IslandAccess and IslandAccess.FarmExpMultiplier then
@@ -364,6 +379,7 @@ local function gather(node, player)
 	local bonus = config.bonus
 	if bonus and math.random() < (bonus.chance or 0.25) then
 		local amount = ClassPerks.HarvestFor(player, math.random(bonus.min or 1, bonus.max or 1))
+		if glow == "blue" then amount = math.floor(amount * GlowCfg.yield + 0.5) end
 		if Inventory.AddItem(player, bonus.item, amount) then
 			bonusId, bonusCount = bonus.item, amount
 		end

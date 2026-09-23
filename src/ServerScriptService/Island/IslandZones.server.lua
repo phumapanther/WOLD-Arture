@@ -278,6 +278,9 @@ local function tickPen(model, entry)
 		if animal:GetAttribute("Grown") and animal:GetAttribute("Spent") and again and again <= now then
 			animal:SetAttribute("Spent", nil)
 			animal:SetAttribute("ReadyAgainAt", nil)
+			-- รอบใหม่ = ทอยของเรืองแสงใหม่ (ผู้ใช้สั่ง 2026-09-23) · ทางนี้เป็นทางของเซิร์ฟที่เพิ่งบูต
+			-- ส่วนทางปกติคือ `Gathering.setSpent(node, false)` ซึ่งทอยให้เองอยู่แล้ว
+			animal:SetAttribute("Glow", IslandConfig.RollGlow())
 			-- ต้องเปิดปุ่มเองด้วย — ปกติ `Gathering.setSpent(node, false)` เป็นคนเปิด แต่นั่นคือ
 			-- `task.delay` ที่ตายไปกับเซิร์ฟเวอร์เก่า ล้างแค่แอตทริบิวต์จะได้สัตว์ที่กดไม่ได้ตลอดไป
 			for _, d in ipairs(animal:GetDescendants()) do
@@ -288,6 +291,7 @@ local function tickPen(model, entry)
 		if not animal:GetAttribute("Grown") and readyAt <= now then
 			animal:SetAttribute("Grown", true)
 			animal:SetAttribute("Spent", nil)
+			animal:SetAttribute("Glow", IslandConfig.RollGlow()) -- โตเสร็จ = รอบแรกของมัน
 			pcall(function() animal:ScaleTo(1) end) -- โตเต็มวัย
 			for _, d in ipairs(animal:GetDescendants()) do
 				if d:IsA("ProximityPrompt") then d.Enabled = true end
