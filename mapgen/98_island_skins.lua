@@ -20,7 +20,10 @@
 -- ทุกครั้งที่เซิร์ฟเวอร์บูต ของจะหายหมด (กฎเดิมใน CLAUDE.md)
 local RS, SS = game:GetService("ReplicatedStorage"), game:GetService("ServerStorage")
 
-assert(game.PlaceId == 136992335889132 or game.PlaceId == 0, "เฟสนี้สำหรับเพลสเกาะเท่านั้น")
+-- รันได้ทั้งเพลสเกาะและเพลสหลัก: ต้นฉบับอยู่ในรีโปทั้งคู่ และเพลสหลักก็เคยทำ `WOLD_Skins` หายมาแล้ว
+-- (ตรวจ 2026-09-22: ไม่มีสักชิ้น → สกินกาชาแปดชิ้นตกไปใช้รูปทรงมาตรฐานย้อมสี)
+assert(game.PlaceId == 136992335889132 or game.PlaceId == 88774255487951 or game.PlaceId == 0,
+	"เฟสนี้สำหรับเพลสเกาะหรือเพลสหลักเท่านั้น")
 
 local function status(msg, done)
 	local f = workspace:FindFirstChild("WOLD")
@@ -57,6 +60,12 @@ local SKINS = {
 	"GoldAxe", "GoldPickaxe", "GoldShovel", "GoldFishingRod",
 }
 local KITS = { "Fashion_Knight_CrimsonKit", "Fashion_Ranger_ShadowKit", "Fashion_Royal_GoldKit" }
+
+-- **ชุดเกราะสามชุดหลัก** มาคนละทางกับของข้างบน: มันไม่มีต้นฉบับที่โรงงาน มันยืนอยู่ในแมพหลักจริงๆ
+-- จึงถูกคัดลอกออกมาเป็นตัวเลข (`assets/models-from-main/armorkits.lua` · รันด้วย `--furniture`)
+-- · ไม่มีข้อมูลก็ข้ามไปเงียบๆ เพราะเพลสหลักมีของจริงอยู่แล้วใน `workspace.Model_Item`
+local ARMOR = { "Armor_PlateKit", "Armor_LeatherKit", "Armor_ChainKit" }
+local armorBuild = _G.WOLD_MAIN_MODELS and _G.WOLD_MAIN_MODELS.armorkits
 
 local skinFolder = folder(RS, "WOLD_Skins")
 local itemFolder = folder(SS, "Model_Item")
@@ -135,6 +144,28 @@ end
 
 for _, name in ipairs(SKINS) do install(name, skinFolder) end
 for _, name in ipairs(KITS) do install(name, itemFolder) end
+
+-- ⚠️ **ชุดเกราะไม่ผ่าน `install`** มันไม่มี `Root` ให้เชื่อมแบบอาวุธ และ **ห้ามเชื่อม weld เข้า Root**
+-- ด้วย — `KitWear` แยกชิ้นไปเชื่อมกับข้อต่อ R15 ทีละชิ้นเอง · โครงสองชั้นก็ต้องอยู่ครบ
+-- ⚠️ **เพลสหลักมีของจริงอยู่ใน `workspace.Model_Item`** — ห้ามสร้างสำเนาใน ServerStorage ทับ
+-- `KitWear.Model` หา ServerStorage ก่อน สำเนาจึงชนะของจริง แล้ววันที่ผู้ใช้แก้ชุดในแมพด้วยมือ
+-- การแก้นั้นจะถูกมองข้ามเงียบๆ (กับดักแบบเดียวกับ `WOLD_Weapons` ที่ค้างใน Edit datamodel)
+local worldItems = workspace:FindFirstChild("Model_Item")
+for _, name in ipairs(ARMOR) do
+	if itemFolder:FindFirstChild(name) or (worldItems and worldItems:FindFirstChild(name)) then
+		kept += 1
+	elseif not armorBuild then
+		missing[#missing + 1] = name .. "(ต้องรันด้วย --furniture)"
+	else
+		local ok, model = pcall(armorBuild, name)
+		if ok and model then
+			model.Parent = itemFolder
+			made[#made + 1] = name
+		else
+			missing[#missing + 1] = name .. "(สร้างไม่ผ่าน)"
+		end
+	end
+end
 
 local msg = ("done: ติดตั้ง %d ชิ้น · มีอยู่แล้ว %d"):format(#made, kept)
 if #missing > 0 then msg = msg .. (" · ⚠ ขาด %d: %s"):format(#missing, table.concat(missing, ", ")) end
