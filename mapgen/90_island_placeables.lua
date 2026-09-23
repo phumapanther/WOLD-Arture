@@ -569,23 +569,50 @@ end
 -- **ไม่ปั้นใหม่ ไม่คัดลอกข้อมูลใหม่** — โมเดลชุดนี้ถูกเตรียมไว้แล้วที่ `ServerStorage.WOLD_IslandNodes`
 -- โดยเฟส 100 (ต้นไม้/หิน/พุ่มจาก Creator Store · สายแร่จาก `assets/models-from-main/ores.lua`)
 -- ตรงนี้แค่หยิบแบบแรกของแต่ละชนิดมาเป็นต้นแบบของวาง **จึงต้องรันเฟส 100 ก่อนเฟสนี้**
+-- **ขายทุกแบบ ไม่ใช่แบบเดียว** (ผู้ใช้สั่ง 2026-09-23: "โมเดลต้นไม้กับพุ่มไม้ที่สุ่มเกิดตรงผืนดิน
+-- ยังไม่มีขายใน NPC เลย") — ต้นไม้มี 11 แบบ พุ่ม 8 หิน 8 แต่ของเดิมหยิบมาแค่แบบแรกของแต่ละชนิด
+--
+-- แบบสำรองถูกเก็บเป็น `<id>__2`, `<id>__3` ... แล้ว `IslandBuild` สุ่มตอนวางและ**จำไว้ในโปรไฟล์**
+-- (ขายแยก 27 ไอเทมจะได้ร้านที่เลื่อนไม่จบ และป่าที่ทุกต้นเหมือนกันเป๊ะก็ดูเป็นแถวเสาไฟ)
+--
+-- `match` = คำที่ต้องมีในชื่อต้นแบบ · สนแยกออกมาเป็นไอเทมของตัวเองเพราะหน้าตาคนละเรื่องกับโอ๊ก
+local WILD = {
+	{ id = "Wild_Rock", kind = "Rock" },
+	{ id = "Wild_Herb", kind = "Herb" },
+	{ id = "Wild_Tree", kind = "Tree", match = "oak" },
+	{ id = "Wild_Pine", kind = "Tree", match = "pine" },
+	{ id = "Wild_Coal", kind = "Coal" },
+	{ id = "Wild_IronOre", kind = "IronOre" },
+	{ id = "Wild_SilverOre", kind = "SilverOre" },
+	{ id = "Wild_Crystal", kind = "Crystal" },
+	{ id = "Wild_GoldOre", kind = "GoldOre" },
+	{ id = "Wild_MagicOre", kind = "MagicOre" },
+	{ id = "Wild_DiamondOre", kind = "DiamondOre" },
+}
+
 local nodeProtos = game:GetService("ServerStorage"):FindFirstChild("WOLD_IslandNodes")
 if not nodeProtos then
 	status("⚠ ไม่มี WOLD_IslandNodes — รัน mapgen/100_island_nodes.lua ก่อน แล้วรันเฟสนี้ซ้ำ")
 else
-	for _, kind in ipairs({ "Rock", "Herb", "Tree", "Coal", "IronOre", "SilverOre", "Crystal", "GoldOre", "MagicOre", "DiamondOre" }) do
-		local id = "Wild_" .. kind
-		local src = nodeProtos:FindFirstChild(kind)
-		src = src and src:GetChildren()[1]
-		if keep[id] then
-			print("[Placeables] " .. id .. " แก้มือไว้ (Manual) — คงเดิม")
-		elseif not src then
-			warn("[Placeables] ไม่มีต้นแบบ WOLD_IslandNodes." .. kind)
+	for _, spec in ipairs(WILD) do
+		local folder = nodeProtos:FindFirstChild(spec.kind)
+		local picks = {}
+		for _, c in ipairs(folder and folder:GetChildren() or {}) do
+			if not spec.match or c.Name:lower():find(spec.match, 1, true) then picks[#picks + 1] = c end
+		end
+		table.sort(picks, function(a, b) return a.Name < b.Name end)
+
+		if keep[spec.id] then
+			print("[Placeables] " .. spec.id .. " แก้มือไว้ (Manual) — คงเดิม")
+		elseif #picks == 0 then
+			warn("[Placeables] ไม่มีต้นแบบ WOLD_IslandNodes." .. spec.kind .. (spec.match and (" (" .. spec.match .. ")") or ""))
 		else
-			local m = src:Clone()
-			m.Name = id
-			-- ⚠️ ต้นแบบของเฟส 100 ไม่มีชิ้น `Root` แต่ `finish` สร้างให้เอง (และตั้ง Footprint จากกล่องจริง)
-			finish(m)
+			for i, src in ipairs(picks) do
+				local m = src:Clone()
+				m.Name = i == 1 and spec.id or (spec.id .. "__" .. i)
+				-- ⚠️ ต้นแบบของเฟส 100 ไม่มีชิ้น `Root` แต่ `finish` สร้างให้เอง (และตั้ง Footprint จากกล่องจริง)
+				finish(m)
+			end
 		end
 	end
 end

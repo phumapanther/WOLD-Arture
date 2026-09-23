@@ -142,8 +142,10 @@ local rockUid = A("Data").placed[#A("Data").placed].uid
 local rock = assert(A("ModelOf", rockUid))
 assert(CollectionService:HasTag(rock, "WOLD_Node"), "ก้อนหินตกแต่งต้องติดแท็ก WOLD_Node")
 assert(rock:GetAttribute("NodeKind") == "Rock", "NodeKind ต้องเป็น Rock")
-assert(rock:GetAttribute("RespawnSeconds") == 30 * 60,
-	"คูลดาวน์ต้อง 30 นาที ได้ " .. tostring(rock:GetAttribute("RespawnSeconds")))
+-- **เปลี่ยนเป็นรายวันแล้ว** (ผู้ใช้สั่ง 2026-09-23) — คูลดาวน์ 30 นาทีเดิมอยู่ในหน่วยความจำเซิร์ฟเวอร์
+-- ออกจากเกมแล้วเข้าใหม่จึงรีเซ็ตทุกครั้ง · ตราวันอยู่ในโปรไฟล์ จึงรอดข้ามการรีสตาร์ท
+assert(rock:GetAttribute("DailyNode") == true, "ก้อนหินตกแต่งต้องเป็นจุดรายวัน")
+assert(rock:GetAttribute("RespawnSeconds") == nil, "ต้องไม่ใช้คูลดาวน์ 30 นาทีแล้ว")
 -- Gathering ใส่ปุ่มให้เอง (ลูปลงทะเบียน)
 local gPrompt
 t0 = os.clock()
@@ -155,7 +157,7 @@ while os.clock() - t0 < 10 do
 	task.wait(0.5)
 end
 assert(gPrompt, "ก้อนหินต้องมีปุ่มขุด (Gathering ใส่ให้)")
-table.insert(out, ("ก้อนหินตกแต่ง: ปุ่ม '%s' · คูลดาวน์ 30 นาที · โมเดลอยู่ที่เดิม ✓")
+table.insert(out, ("ก้อนหินตกแต่ง: ปุ่ม '%s' · เก็บได้วันละครั้ง · โมเดลอยู่ที่เดิม ✓")
 	:format(gPrompt.ActionText))
 
 -- ของตกแต่งเพิ่ม EXP

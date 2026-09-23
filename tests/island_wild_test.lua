@@ -18,17 +18,32 @@ local ID, KIND = "Wild_Rock", "Rock"
 ----------------------------------------------------------------- ของอยู่ครบสามที่: แคตตาล็อก ร้าน ต้นแบบ
 local protos = game.ReplicatedStorage:WaitForChild("WOLD_Placeables", 10)
 local missing = {}
-for _, kind in ipairs({ "Rock", "Herb", "Tree", "Coal", "IronOre", "SilverOre", "Crystal", "GoldOre", "MagicOre", "DiamondOre" }) do
-	local id = "Wild_" .. kind
+-- `Wild_Pine` เป็นต้นไม้ แต่ชื่อไม่ตรงกับ NodeKind — ต้องบอกคู่ไว้ตรงนี้ด้วย
+local WILD = {
+	Wild_Rock = "Rock", Wild_Herb = "Herb", Wild_Tree = "Tree", Wild_Pine = "Tree",
+	Wild_Coal = "Coal", Wild_IronOre = "IronOre", Wild_SilverOre = "SilverOre",
+	Wild_Crystal = "Crystal", Wild_GoldOre = "GoldOre", Wild_MagicOre = "MagicOre",
+	Wild_DiamondOre = "DiamondOre",
+}
+local variants = {}
+for id, kind in pairs(WILD) do
 	if not ItemCatalog.Get(id) then missing[#missing + 1] = id .. "(แคตตาล็อก)" end
 	if not protos:FindFirstChild(id) then missing[#missing + 1] = id .. "(ต้นแบบ)" end
 	if not GatherConfig.Nodes[kind] then missing[#missing + 1] = id .. "(NodeKind)" end
 	local sold = false
 	for _, row in ipairs(ShopConfig.IslandSells) do if row.id == id then sold = true end end
 	if not sold then missing[#missing + 1] = id .. "(ร้าน)" end
+
+	-- แบบสำรอง: `<id>__2`, `__3` ... (ผู้ใช้สั่ง 2026-09-23 ให้ขายทุกแบบที่สุ่มเกิดบนผืนดิน)
+	local n = 1
+	while protos:FindFirstChild(id .. "__" .. (n + 1)) do n += 1 end
+	variants[id] = n
 end
 assert(#missing == 0, "ขาด: " .. table.concat(missing, " "))
-table.insert(out, "ของป่า 10 ชนิดครบทั้งแคตตาล็อก ต้นแบบ NodeKind และร้าน")
+assert(variants.Wild_Tree > 1 and variants.Wild_Herb > 1 and variants.Wild_Rock > 1,
+	"ต้นไม้/พุ่ม/หิน ต้องมีหลายแบบให้สุ่ม")
+table.insert(out, ("ของป่า 11 ชนิดครบทุกที่ · หลายแบบ: ต้นโอ๊ก %d · ต้นสน %d · พุ่ม %d · หิน %d")
+	:format(variants.Wild_Tree, variants.Wild_Pine, variants.Wild_Herb, variants.Wild_Rock))
 
 ----------------------------------------------------------------- วางแล้วต้องเป็นจุดเก็บเกี่ยวรายวัน
 if (A("Count", player, ID) or 0) < 1 then A("Grant", player, ID, 1) end
@@ -91,6 +106,30 @@ table.insert(out, ("ตราเมื่อวานไม่ล็อก → �
 local canPick, why = A("Pickup", player, uid)
 assert(not canPick and why == "harvestedtoday", "ต้องห้ามย้าย ได้ " .. tostring(why))
 table.insert(out, "เก็บเกี่ยวแล้ววันนี้ → เก็บคืนกระเป๋าไม่ได้ (กันวางใหม่แล้วเก็บรัวๆ)")
+
+----------------------------------------------------------------- ของตกแต่งชุดเดิมก็รายวันแล้ว
+-- ผู้ใช้แจ้ง 2026-09-23: "หิน พุ่มไม้ ตอไม้ พอออกเชิฟเข้าใหม่ มันรีแล้วเก็บได้อีกครั้ง"
+-- เดิมใช้คูลดาวน์ 30 นาทีที่อยู่ในหน่วยความจำเซิร์ฟเวอร์ — เกาะปิดตามเจ้าของ ออกแล้วเข้าใหม่จึงรีเซ็ตเสมอ
+for _, id in ipairs({ "Deco_Rock", "Deco_Bush", "Deco_Stump" }) do
+	if (A("Count", player, id) or 0) < 1 then A("Grant", player, id, 1) end
+	local s2 = assert(A("FindSlot", player, id), "เสก " .. id .. " ไม่ได้")
+	local dx, dz
+	for x = -20, 20 do
+		for z = -20, 20 do
+			if A("CanPlaceAt", x, z, 2, 2, 0, id) then dx, dz = x, z break end
+		end
+		if dx then break end
+	end
+	assert(dx, "ไม่มีที่ว่างพอวาง " .. id)
+	assert(A("Place", player, s2, dx, dz, 0))
+	local u = A("Data").placed[#A("Data").placed].uid
+	local m = assert(A("ModelOf", u), "โมเดล " .. id)
+	assert(m:GetAttribute("DailyNode") == true, id .. " ต้องเป็นจุดรายวัน")
+	assert(m:GetAttribute("RespawnSeconds") == nil, id .. " ต้องไม่ใช้คูลดาวน์ 30 นาทีแล้ว")
+	assert(A("Pickup", player, u), "เก็บ " .. id .. " คืน")
+	A("Revoke", player, id, A("Count", player, id) or 0)
+end
+table.insert(out, "ของตกแต่งเดิม (หิน พุ่ม ตอไม้) เป็นจุดรายวันแล้ว — ตราวันอยู่ในโปรไฟล์ รอดข้ามรีสตาร์ท")
 
 ----------------------------------------------------------------- เก็บของเทสคืน
 model:SetAttribute("HarvestedDay", nil)

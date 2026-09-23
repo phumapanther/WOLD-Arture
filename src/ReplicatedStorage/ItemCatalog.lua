@@ -648,8 +648,9 @@ ItemCatalog.Items = {
 	-- (กติกาวันเดียวกับบอร์ดเควส: `QuestConfig.DayNumber()` เที่ยงคืนเวลาไทย)
 	-- ราคาสูงกว่าของตกแต่งธรรมดามาก เพราะมันคือแหล่งวัตถุดิบถาวร ไม่ใช่ของประดับ
 	Wild_Rock = { icon = "", name = "หินธรรมชาติ", kind = "placeable", weight = 2, stackSize = 10, value = 0, sellable = false, spot = "out" },
-	Wild_Herb = { icon = "", name = "พุ่มสมุนไพร", kind = "placeable", weight = 2, stackSize = 10, value = 0, sellable = false, spot = "out" },
-	Wild_Tree = { icon = "", name = "ต้นไม้ป่า", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
+	Wild_Herb = { icon = "", name = "พุ่มไม้ป่า", kind = "placeable", weight = 2, stackSize = 10, value = 0, sellable = false, spot = "out" },
+	Wild_Tree = { icon = "", name = "ต้นโอ๊ก", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
+	Wild_Pine = { icon = "", name = "ต้นสน", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
 	Wild_Coal = { icon = "", name = "สายถ่านหิน", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
 	Wild_IronOre = { icon = "", name = "สายแร่เหล็ก", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
 	Wild_SilverOre = { icon = "", name = "สายแร่เงิน", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },

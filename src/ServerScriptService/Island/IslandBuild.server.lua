@@ -33,14 +33,23 @@ local HARVESTABLE = {
 	Deco_Stump = "Tree",
 	Deco_Bush = "Herb", -- พุ่มไม้ในเกมหลักคือจุดสมุนไพร ไม่ใช่ NodeKind ชื่อ Bush (ไม่มีอยู่จริง)
 }
-local DECOR_RESPAWN = 30 * 60
 
--- **ของป่าจากเกมหลัก** (ผู้ใช้สั่ง 2026-09-23) — id คือ `Wild_<NodeKind>` ตรงตัว จึงไม่ต้องมีตาราง
--- ที่สองคอยลืมอัปเดตตอนเพิ่มแร่ชนิดใหม่ · ต่างจากของตกแต่งธรรมดาตรง "เก็บแล้วรอวันใหม่"
--- (แอตทริบิวต์ `DailyNode` ที่ `Gathering` เป็นคนบังคับใช้)
+-- ของป่าที่ **ชื่อไม่ตรงกับ NodeKind** — ต้องบอกตรงๆ ว่าอันไหนคืออะไร
+-- (`Wild_Pine` เป็นต้นไม้ ไม่ใช่ NodeKind ชื่อ "Pine" ซึ่งไม่มีอยู่จริง)
+local WILD_KIND = {
+	Wild_Pine = "Tree",
+}
+
+-- **ของตกแต่งที่เก็บเกี่ยวได้ = วันละครั้ง ทุกชิ้น** (ผู้ใช้สั่ง 2026-09-23)
+--
+-- ⚠️ เดิมของตกแต่งชุดแรก (`Deco_*`) ใช้คูลดาวน์ 30 นาทีซึ่งอยู่ใน**หน่วยความจำเซิร์ฟเวอร์**
+-- (`SpentUntil` ของ `Gathering` + `task.delay`) — เกาะปิดทุกครั้งที่เจ้าของออกจากเกม ออกแล้วเข้าใหม่
+-- จึงเก็บได้ทันทีเสมอ ซึ่งผู้ใช้เจอเอง · ตอนนี้ใช้ตราวันเดียวกับของป่า ซึ่งถูกจดลงโปรไฟล์ (`entry.day`)
+-- จึงรอดข้ามการรีสตาร์ทโดยไม่ต้องเขียนกลไกอะไรเพิ่ม
 local function harvestKindOf(id)
+	if WILD_KIND[id] then return WILD_KIND[id], true end
 	if id:sub(1, 5) == "Wild_" then return id:sub(6), true end
-	return HARVESTABLE[id], false
+	return HARVESTABLE[id], true
 end
 local Inventory = require(game.ServerScriptService.Inventory)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
@@ -121,9 +130,35 @@ local function groundAt(wx, wz)
 	return hit and hit.Position.Y or (IslandConfig.Center.Y + 17)
 end
 
+-- **หนึ่งไอเทมมีได้หลายแบบ** (ผู้ใช้สั่ง 2026-09-23: เอาต้นไม้/พุ่มที่สุ่มเกิดบนผืนดินมาขายด้วย)
+--
+-- ต้นไม้มี 11 แบบ พุ่ม 8 หิน 8 — ขายแยกเป็น 27 ไอเทมจะได้ร้านที่เลื่อนไม่จบ และป่าที่ปลูกจากไอเทม
+-- เดียวกันทุกต้นก็ดูเป็นแถวเสาไฟ · แบบสำรองถูกเก็บเป็น `<id>__2`, `<id>__3` ... แล้วสุ่มตอนวาง
+-- · เงาพรีวิวฝั่งไคลเอนต์ยังเป็นแบบแรกเสมอ (มันคือ "ขนาดเท่านี้ ตรงนี้") ต้นจริงสุ่มเอา
 local function prototypeOf(id)
 	local folder = ReplicatedStorage:FindFirstChild("WOLD_Placeables")
 	return folder and folder:FindFirstChild(id)
+end
+
+-- สุ่มแบบหนึ่งครั้ง **ตอนวาง** แล้วจำไว้ใน `entry.variant`
+--
+-- ⚠️ **ห้ามสุ่มใหม่ตอนปลูกคืนจากโปรไฟล์** สองเหตุผล: ขนาดที่ใช้ตรวจตอนวาง (footprint) ต้องเป็นขนาด
+-- ของต้นที่ได้จริง ไม่งั้นต้นใหญ่ไปลงช่องที่ตรวจด้วยต้นเล็ก · และป่าที่ผู้ใช้จัดไว้จะสับเปลี่ยนตัวเอง
+-- ทุกครั้งที่เซิร์ฟบูต
+local function pickPrototype(id)
+	local folder = ReplicatedStorage:FindFirstChild("WOLD_Placeables")
+	local base = folder and folder:FindFirstChild(id)
+	if not base then return nil end
+
+	local picks = { base }
+	local n = 2
+	while true do
+		local alt = folder:FindFirstChild(id .. "__" .. n)
+		if not alt then break end
+		picks[#picks + 1] = alt
+		n += 1
+	end
+	return picks[math.random(#picks)]
 end
 
 local function footprintOf(proto)
@@ -137,7 +172,7 @@ end
 --------------------------------------------------------------------------------
 
 local function spawnEntry(entry)
-	local proto = prototypeOf(entry.id)
+	local proto = (entry.variant and prototypeOf(entry.variant)) or prototypeOf(entry.id)
 	if not proto then
 		warn(("[Island] ไม่มีต้นแบบ %s (uid %d) ข้าม"):format(tostring(entry.id), entry.uid))
 		return nil
@@ -201,8 +236,6 @@ local function spawnEntry(entry)
 			model:GetAttributeChangedSignal("HarvestedDay"):Connect(function()
 				entry.day = model:GetAttribute("HarvestedDay")
 			end)
-		else
-			model:SetAttribute("RespawnSeconds", DECOR_RESPAWN)
 		end
 		-- ⚠️ **ต้นไม้ที่ปลูกเองไม่ติดแท็กตรงนี้** `IslandZones.tickTree` เป็นคนติดให้ตอนมันโตเต็มที่
 		-- ติดตั้งแต่วางลง = ต้นกล้าเพิ่งปลูกก็ตัดได้ทันที แล้วระยะการโตทั้งสามขั้นก็ไม่มีความหมายเลย
@@ -276,7 +309,7 @@ local function place(player, slotIndex, cx, cz, r)
 	local slot = state and state.slots[slotIndex]
 	local item = slot and ItemCatalog.Get(slot.id)
 	if not item or item.kind ~= "placeable" then return false, "noitem" end
-	local proto = prototypeOf(slot.id)
+	local proto = pickPrototype(slot.id)
 	if not proto then return false, "noproto" end
 	if #Data.placed >= IslandConfig.MaxPlaced then return false, "limit" end
 	local w, d = footprintOf(proto)
@@ -285,6 +318,8 @@ local function place(player, slotIndex, cx, cz, r)
 	if not Inventory.RemoveFromSlot(player, slotIndex, 1) then return false, "noitem" end
 
 	local entry = { uid = Data.nextUid, id = slot.id, x = cx, z = cz, r = r }
+	-- จดแบบที่สุ่มได้ เฉพาะตอนที่มันไม่ใช่แบบแรก (โปรไฟล์จะได้ไม่บวมด้วยค่าที่เดาได้อยู่แล้ว)
+	if proto.Name ~= slot.id then entry.variant = proto.Name end
 	Data.nextUid += 1
 	table.insert(Data.placed, entry)
 	spawnEntry(entry)

@@ -74,6 +74,7 @@ ShopConfig.IslandSells = {
 	{ id = "Wild_Rock", price = 25, currency = "gems" },
 	{ id = "Wild_Herb", price = 25, currency = "gems" },
 	{ id = "Wild_Tree", price = 35, currency = "gems" },
+	{ id = "Wild_Pine", price = 35, currency = "gems" },
 	{ id = "Wild_Coal", price = 45, currency = "gems" },
 	{ id = "Wild_IronOre", price = 60, currency = "gems" },
 	{ id = "Wild_SilverOre", price = 90, currency = "gems" },
