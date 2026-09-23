@@ -138,6 +138,19 @@ table.insert(out, "ต้นไม้: ต้นกล้าตัดไม่�
 
 ----------------------------------------------------------------- เก็บคืนทุกชิ้น
 local d = A("Data")
+-- ⚠️ **คอกที่ยังมีสัตว์อยู่เก็บคืนไม่ได้แล้ว** (กันทิ้งฝูงที่จ่ายเงินซื้อมา — เพิ่ม 2026-09-23)
+-- เทสจึงต้องล้างฝูงของตัวเองก่อน · ล้าง `herd` ในโปรไฟล์ด้วย ไม่งั้น tick ถัดไปคืนสัตว์กลับมาให้อีก
+for i = #d.placed, before + 1, -1 do
+	local e = d.placed[i]
+	if e.herd or e.animal then
+		A("SetEntry", e.uid, "herd", nil)
+		A("SetEntry", e.uid, "animal", nil)
+		local m = A("ModelOf", e.uid)
+		local live = m and m:FindFirstChild("Livestock")
+		for _, a in ipairs(live and live:GetChildren() or {}) do a:Destroy() end
+	end
+end
+d = A("Data")
 for i = #d.placed, before + 1, -1 do A("Pickup", player, d.placed[i].uid) end
 assert(#A("Data").placed == before, "เกาะกลับมาเท่าก่อนเทส")
 return table.concat(out, "\n")

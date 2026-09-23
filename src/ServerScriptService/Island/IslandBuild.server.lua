@@ -59,6 +59,7 @@ local REASON_TEXT = {
 	unreachable = "เดินเข้าไปไม่ได้ วางแล้วเก็บคืนไม่ได้",
 	full = "กระเป๋าเต็ม",
 	growing = "เก็บเกี่ยวก่อนแล้วค่อยเก็บแปลง",
+	livestock = "ยังมีสัตว์อยู่ในคอก เก็บคอกแล้วสัตว์หายหมด",
 	missing = "ไม่พบของชิ้นนั้นแล้ว",
 }
 
@@ -272,6 +273,11 @@ local function pickup(player, uid)
 	local entry = model and Entries[model]
 	if not entry then return false, "missing" end
 	if entry.crop then return false, "growing" end
+	-- **คอกที่ยังมีสัตว์อยู่ เก็บไม่ได้** (เพิ่ม 2026-09-23 พร้อมกับการเซฟฝูง)
+	--
+	-- เดิมสัตว์หายตอนถูกเก็บเกี่ยว คอกจึงว่างเองอยู่แล้ว — ตอนนี้มันอยู่ถาวร และการเก็บคอกคืนกระเป๋า
+	-- จะทิ้งฝูงไปทั้งฝูงแบบเงียบๆ (วัวตัวละ 1,800 เหรียญ) · ทรงเดียวกับแปลงผักที่ยังปลูกอยู่
+	if entry.herd and #entry.herd > 0 then return false, "livestock" end
 	if not Inventory.HasRoomFor(player, entry.id, 1) then return false, "full" end
 	if not Inventory.AddItem(player, entry.id, 1) then return false, "full" end
 	for i, e in ipairs(Data.placed) do
