@@ -75,6 +75,45 @@ local function shut()
 end
 close.MouseButton1Click:Connect(shut)
 
+-- ⚠️ ประกาศก่อนปุ่มปล่อยสัตว์ข้างล่าง — closure ที่อ่านมันต้องเห็น local ตัวนี้ ไม่ใช่ global ที่เป็น nil
+local currentUid = nil
+
+-- **ปุ่มปล่อยสัตว์** (ผู้ใช้สั่ง 2026-09-23) — ทางเดียวที่จะเปลี่ยนชนิดสัตว์ที่เลี้ยง เพราะสัตว์ไม่หาย
+-- ตอนถูกเก็บเกี่ยวแล้ว และคอกที่ยังมีสัตว์อยู่ก็เก็บคืนกระเป๋าไม่ได้
+-- **ต้องกดสองครั้ง** ปล่อยแล้วสัตว์หายหมดและไม่คืนเงิน — ทรงเดียวกับปุ่มยุบแคลน
+local release = Instance.new("TextButton")
+release.AnchorPoint = Vector2.new(1, 0)
+release.Position = UDim2.new(1, -50, 0, 10)
+release.Size = UDim2.new(0, 104, 0, 30)
+release.BackgroundColor3 = Color3.fromRGB(92, 70, 48)
+release.BorderSizePixel = 0
+release.Font = Enum.Font.GothamMedium
+release.TextSize = 14
+release.TextColor3 = TEXT
+release.Text = "ปล่อยสัตว์"
+release.Visible = false -- โผล่เฉพาะตอนมีสัตว์ให้ปล่อย
+release.Parent = panel
+local rc = Instance.new("UICorner"); rc.CornerRadius = UDim.new(0, 8); rc.Parent = release
+
+local armed = false
+local function disarm()
+	armed = false
+	release.Text = "ปล่อยสัตว์"
+	release.BackgroundColor3 = Color3.fromRGB(92, 70, 48)
+end
+release.MouseButton1Click:Connect(function()
+	if not currentUid then return end
+	if not armed then
+		armed = true
+		release.Text = "แน่ใจ?"
+		release.BackgroundColor3 = Color3.fromRGB(132, 62, 48)
+		task.delay(4, function() if armed then disarm() end end)
+		return
+	end
+	disarm()
+	Remotes.IslandPenRelease:FireServer(currentUid)
+end)
+
 local list = Instance.new("ScrollingFrame")
 list.Position = UDim2.new(0, 12, 0, 62)
 list.Size = UDim2.new(1, -24, 1, -74)
@@ -89,7 +128,6 @@ layout.Padding = UDim.new(0, 6)
 layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Parent = list
 
-local currentUid = nil
 
 local function row(index, animal, snap)
 	local frame = Instance.new("Frame")
@@ -182,6 +220,10 @@ local function draw(snap)
 		text.ZIndex = 2
 		text.Parent = bar
 	end
+
+	-- ปุ่มปล่อยสัตว์โผล่เฉพาะตอนมีอะไรให้ปล่อย · เปลี่ยนภาพใหม่ = ยกเลิกการยืนยันที่ค้างอยู่
+	release.Visible = (snap.count or 0) > 0
+	if not release.Visible then disarm() end
 
 	for i, animal in ipairs(snap.animals) do row(i, animal, snap) end
 	-- **ภาพที่ส่งมาอัปเดตแถบความคืบหน้าไม่มีสิทธิ์เปิดหน้าต่าง** มีแต่การกด E กับการซื้อ (`snap.open`)

@@ -167,7 +167,8 @@ local EVENTS = {
 	"IslandPlace", "IslandPickup",
 	-- คอกสัตว์บนเกาะ: เซิร์ฟเวอร์ส่งภาพรวมทั้งก้อน (IslandPenOpen) ไคลเอนต์ตอบแค่ "ซื้อชนิดนี้ n ตัว"
 	-- IslandPenClose: ไคลเอนต์บอกว่าปิดหน้าต่างแล้ว เซิร์ฟเวอร์จะได้เลิกส่งภาพใหม่ทุก 3 วิ
-	"IslandPenOpen", "IslandPenBuy", "IslandPenClose",
+	-- IslandPenRelease: ปล่อยฝูงทิ้งเพื่อเปลี่ยนชนิดสัตว์ที่เลี้ยง (คอกที่มีสัตว์อยู่เก็บคืนไม่ได้)
+	"IslandPenOpen", "IslandPenBuy", "IslandPenClose", "IslandPenRelease",
 }
 local FUNCTIONS = { "GetSpawnPosition" } -- DataStore-backed lookups can only run server-side; the client must ask
 

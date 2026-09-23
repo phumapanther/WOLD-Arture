@@ -69,6 +69,18 @@ ShopConfig.IslandSells = {
 	{ id = "Deco_Tree", price = 30, currency = "gems" },
 	{ id = "Deco_Well", price = 60, currency = "gems" },
 
+	-- ของป่าจากเกมหลัก: วางแล้วเก็บเกี่ยวได้วันละครั้ง (ราคาผมตั้งเอง ผู้ใช้ให้มาแค่กติกา)
+	{ id = "Wild_Rock", price = 25, currency = "gems" },
+	{ id = "Wild_Herb", price = 25, currency = "gems" },
+	{ id = "Wild_Tree", price = 35, currency = "gems" },
+	{ id = "Wild_Coal", price = 45, currency = "gems" },
+	{ id = "Wild_IronOre", price = 60, currency = "gems" },
+	{ id = "Wild_SilverOre", price = 90, currency = "gems" },
+	{ id = "Wild_Crystal", price = 110, currency = "gems" },
+	{ id = "Wild_GoldOre", price = 130, currency = "gems" },
+	{ id = "Wild_MagicOre", price = 180, currency = "gems" },
+	{ id = "Wild_DiamondOre", price = 250, currency = "gems" },
+
 	-- เฟอร์นิเจอร์ในบ้าน (ใช้งานได้จริง): เพชร
 	{ id = "IceBox", price = 120, currency = "gems" },
 	{ id = "ApothecaryCabinet", price = 120, currency = "gems" },

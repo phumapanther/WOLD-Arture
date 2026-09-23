@@ -534,4 +534,33 @@ for _, name in ipairs({ "Dog", "Cat" }) do
 	end
 end
 
+---------------------------------------------------------------- ของป่าจากเกมหลัก (ผู้ใช้สั่ง 2026-09-23)
+--
+-- "เอามาทำขายเป็นของตกแต่งที่วางได้และเก็บได้แบบหินและพุ่มไม้และต้นไม้แบบของอันอื่นด้วย
+--  ที่เก็บแล้วต้องรอวันใหม่ถึงจะเก็บได้อีก"
+--
+-- **ไม่ปั้นใหม่ ไม่คัดลอกข้อมูลใหม่** — โมเดลชุดนี้ถูกเตรียมไว้แล้วที่ `ServerStorage.WOLD_IslandNodes`
+-- โดยเฟส 100 (ต้นไม้/หิน/พุ่มจาก Creator Store · สายแร่จาก `assets/models-from-main/ores.lua`)
+-- ตรงนี้แค่หยิบแบบแรกของแต่ละชนิดมาเป็นต้นแบบของวาง **จึงต้องรันเฟส 100 ก่อนเฟสนี้**
+local nodeProtos = game:GetService("ServerStorage"):FindFirstChild("WOLD_IslandNodes")
+if not nodeProtos then
+	status("⚠ ไม่มี WOLD_IslandNodes — รัน mapgen/100_island_nodes.lua ก่อน แล้วรันเฟสนี้ซ้ำ")
+else
+	for _, kind in ipairs({ "Rock", "Herb", "Tree", "Coal", "IronOre", "SilverOre", "Crystal", "GoldOre", "MagicOre", "DiamondOre" }) do
+		local id = "Wild_" .. kind
+		local src = nodeProtos:FindFirstChild(kind)
+		src = src and src:GetChildren()[1]
+		if keep[id] then
+			print("[Placeables] " .. id .. " แก้มือไว้ (Manual) — คงเดิม")
+		elseif not src then
+			warn("[Placeables] ไม่มีต้นแบบ WOLD_IslandNodes." .. kind)
+		else
+			local m = src:Clone()
+			m.Name = id
+			-- ⚠️ ต้นแบบของเฟส 100 ไม่มีชิ้น `Root` แต่ `finish` สร้างให้เอง (และตั้ง Footprint จากกล่องจริง)
+			finish(m)
+		end
+	end
+end
+
 status(("done: %d ต้นแบบใน ReplicatedStorage.WOLD_Placeables"):format(#folder:GetChildren()), true)

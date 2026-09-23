@@ -161,6 +161,21 @@ local function penSnapshot(model)
 	}
 end
 
+-- ปล่อยฝูงทิ้งทั้งคอก — ทางเดียวที่จะเปลี่ยนชนิดสัตว์ที่เลี้ยง เพราะสัตว์ไม่หายตอนถูกเก็บเกี่ยวแล้ว
+-- (และคอกที่ยังมีสัตว์อยู่ก็เก็บคืนกระเป๋าไม่ได้) · **ไม่คืนเงิน** ปล่อยแล้วปล่อยเลย
+local function penRelease(player, model)
+	if not IslandAccess.IsOwner(player) then return false, "เฉพาะเจ้าของเกาะ" end
+	local entry = IslandAccess.EntryOf(model)
+	if not entry then return false, "ไม่พบคอกนี้" end
+	local live = penFolder(model):GetChildren()
+	if #live == 0 and not entry.herd then return false, "คอกนี้ว่างอยู่แล้ว" end
+	local gone = 0
+	for _, a in ipairs(live) do a:Destroy(); gone += 1 end
+	-- ล้างทั้งสองที่ ไม่งั้น tick ถัดไปคืนฝูงกลับมาให้อีก (ทางคืนสัตว์ตอนเซิร์ฟบูตใช้ `herd` เป็นตัวตัดสิน)
+	entry.herd, entry.animal = nil, nil
+	return true, gone
+end
+
 -- ⚠️ **จองชื่อไว้ก่อน** `penBuy` ข้างล่างเรียกตัวนี้ แต่ตัวจริงนิยามอยู่ถัดไปอีก — ประกาศทีหลัง
 -- ฟังก์ชันที่ใช้มันเมื่อไหร่ closure จะจับ global ที่เป็น nil แล้วพังตอนรันจริง (บทเรียนซ้ำในโปรเจ็คนี้)
 local saveHerd
@@ -479,6 +494,16 @@ task.spawn(function()
 	end
 end)
 
+Remotes.IslandPenRelease.OnServerEvent:Connect(function(player, uid)
+	local model = IslandAccess.ModelOf(tonumber(uid) or -1)
+	if not model or model:GetAttribute("ItemId") ~= IslandConfig.PenItem then return end
+	local ok, info = penRelease(player, model)
+	notify(player, ok and "info" or "error", ok and ("ปล่อยสัตว์ไปแล้ว %d ตัว"):format(info) or info)
+	local after = penSnapshot(model)
+	after.open = true
+	Remotes.IslandPenOpen:FireClient(player, after)
+end)
+
 Remotes.IslandPenBuy.OnServerEvent:Connect(function(player, uid, kind, count)
 	local model = IslandAccess.ModelOf(tonumber(uid) or -1)
 	if not model or model:GetAttribute("ItemId") ~= IslandConfig.PenItem then return end
@@ -524,5 +549,6 @@ game:GetService("Players").PlayerRemoving:Connect(function(player)
 end)
 
 IslandAccess.PenBuy = penBuy
+IslandAccess.PenRelease = penRelease
 IslandAccess.PenSnapshot = penSnapshot
 IslandAccess.ZonesTick = tick

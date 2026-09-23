@@ -643,6 +643,21 @@ ItemCatalog.Items = {
 	Deco_Signpost = { icon = "", name = "ป้ายบอกทาง", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false, spot = "out" },
 	Deco_Well = { icon = "", name = "บ่อน้ำ", kind = "placeable", weight = 2, stackSize = 3, value = 0, sellable = false, spot = "out" },
 
+	-- **ของป่าจากเกมหลัก** (ผู้ใช้สั่ง 2026-09-23) — โมเดลชุดเดียวกับที่สุ่มโผล่บนผืนดิน เอามาขายเป็น
+	-- ของตกแต่งที่ "วางได้ เก็บเกี่ยวได้" เหมือน Deco_Rock/Bush/Tree **แต่เก็บแล้วต้องรอวันใหม่**
+	-- (กติกาวันเดียวกับบอร์ดเควส: `QuestConfig.DayNumber()` เที่ยงคืนเวลาไทย)
+	-- ราคาสูงกว่าของตกแต่งธรรมดามาก เพราะมันคือแหล่งวัตถุดิบถาวร ไม่ใช่ของประดับ
+	Wild_Rock = { icon = "", name = "หินธรรมชาติ", kind = "placeable", weight = 2, stackSize = 10, value = 0, sellable = false, spot = "out" },
+	Wild_Herb = { icon = "", name = "พุ่มสมุนไพร", kind = "placeable", weight = 2, stackSize = 10, value = 0, sellable = false, spot = "out" },
+	Wild_Tree = { icon = "", name = "ต้นไม้ป่า", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
+	Wild_Coal = { icon = "", name = "สายถ่านหิน", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
+	Wild_IronOre = { icon = "", name = "สายแร่เหล็ก", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
+	Wild_SilverOre = { icon = "", name = "สายแร่เงิน", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
+	Wild_Crystal = { icon = "", name = "สายคริสตัล", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
+	Wild_GoldOre = { icon = "", name = "สายแร่ทอง", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
+	Wild_MagicOre = { icon = "", name = "สายแร่เวท", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
+	Wild_DiamondOre = { icon = "", name = "สายเพชร", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
+
 	-- เฟอร์นิเจอร์ในบ้าน — **ใช้งานได้จริง** ชื่อโมเดลตรงกับที่ CraftStations/StorageChests มองหา
 	Stove = { icon = "", name = "เตาทำอาหาร", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
 	SteamBlender = { icon = "", name = "เครื่องปั่นไอน้ำ", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },

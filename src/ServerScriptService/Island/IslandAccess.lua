@@ -4,7 +4,9 @@ local IslandAccess = {}
 
 -- ตั้งโดย IslandBuild
 IslandAccess.IsOwner = nil -- (player) -> bool
-IslandAccess.Data = nil -- () -> profile.Data.Island ของเจ้าของ หรือ nil ถ้ายังไม่โหลด
+IslandAccess.Data = nil
+-- NodeStore() -> ตารางจุดที่สุ่มโผล่ (เซฟในโปรไฟล์) · nil = โปรไฟล์ยังไม่โหลด
+IslandAccess.NodeStore = nil -- () -> profile.Data.Island ของเจ้าของ หรือ nil ถ้ายังไม่โหลด
 IslandAccess.EntryOf = nil -- (model) -> entry ในตาราง placed
 IslandAccess.ModelOf = nil -- (uid) -> model
 IslandAccess.Place = nil -- (player, slotIndex, cx, cz, r) -> ok, reason
@@ -16,6 +18,7 @@ IslandAccess.Grant = nil -- (player, itemId, count) เสกของเข้�
 
 -- ตั้งโดย IslandZones (คอก/โซนแร่/ต้นไม้)
 IslandAccess.PenBuy = nil -- (player, penModel, kind, count) -> ok, reason
+IslandAccess.PenRelease = nil -- (player, penModel) -> ok, จำนวนที่ปล่อย · ทางเดียวที่เปลี่ยนชนิดสัตว์ได้
 IslandAccess.PenSnapshot = nil -- (penModel) -> ภาพรวมของคอกสำหรับวาดหน้าจอ
 IslandAccess.ZonesTick = nil -- () รันรอบเดียวทันที (เทส)
 

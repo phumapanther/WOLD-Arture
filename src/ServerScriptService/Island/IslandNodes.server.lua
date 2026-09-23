@@ -68,18 +68,10 @@ end
 local Live = {} -- [model] = "cx,cz"
 local Taken = {} -- ["cx,cz"] = model
 
-local function countLive()
-	local n = 0
-	for model, key in pairs(Live) do
-		if model.Parent then
-			n += 1
-		else
-			-- เก็บกวาดตัวที่ถูกเก็บไปแล้ว (Gathering ลบทิ้งเพราะ OneShot)
-			Live[model] = nil
-			Taken[key] = nil
-		end
-	end
-	return n
+-- **จุดที่โผล่แล้วต้องอยู่ข้ามการรีสตาร์ท** (ผู้ใช้สั่ง 2026-09-23) — ไม่งั้นฟาร์มรีเซ็ตทุกครั้งที่ปิดเกม
+-- และคำว่า "ยิ่งนานยิ่งรก" ก็ไม่มีทางเกิดขึ้นจริง · เก็บแค่ชนิดกับช่อง ที่เหลือสร้างใหม่ได้จากต้นแบบ
+local function store()
+	return IslandAccess.NodeStore and IslandAccess.NodeStore() or nil
 end
 
 -- ช่องนี้ว่างพอให้ของโผล่ไหม — **ห้ามทับแปลงผักหรือของที่ผู้ใช้วางไว้**
@@ -90,37 +82,82 @@ local function freeCell(cx, cz)
 	return (IslandAccess.CanPlaceAt(cx, cz, 1, 1, 0, nil)) == true
 end
 
-local function spawnOne()
-	if #soilCells == 0 then return false end
-	local kind = pickKind()
-	if not kind then return false end
+-- วางจุดหนึ่งลงช่องที่ระบุ · ใช้ทั้งตอนสุ่มใหม่และตอนคืนของที่เซฟไว้
+local function spawnAt(kind, cx, cz)
 	local picks = prototypes(kind)
 	if not picks or #picks == 0 then return false end
 	local folder = liveFolder()
 	if not folder then return false end
+	local y = IslandGrid.surfaceAt(cx, cz)
+	if not y then return false end
 
+	local model = picks[math.random(#picks)]:Clone()
+	local wx, wz = IslandGrid.worldOf(cx, cz)
+	model:PivotTo(CFrame.new(wx, y, wz) * CFrame.Angles(0, math.random() * math.pi * 2, 0))
+	model:SetAttribute("NodeKind", kind)
+	-- **เก็บแล้วหายไปเลย** (ผู้ใช้สั่ง) ต่างจากจุดในแมพหลักที่ตัวเดิมรอเกิดใหม่ที่เดิม
+	model:SetAttribute("OneShot", true)
+	-- ไม่ให้ฟาร์มออโต้จับ: มันใช้คีย์ F ชนกับปุ่มเก็บของคืนกระเป๋าของระบบเกาะ
+	model:SetAttribute("Uid", "node:" .. IslandGrid.key(cx, cz))
+	model.Parent = folder
+	CollectionService:AddTag(model, "WOLD_Node")
+	Live[model] = IslandGrid.key(cx, cz)
+	Taken[IslandGrid.key(cx, cz)] = model
+	local st = store()
+	if st then st[IslandGrid.key(cx, cz)] = kind end
+	return true
+end
+
+local function drop(model, key)
+	Live[model] = nil
+	Taken[key] = nil
+	local st = store()
+	if st then st[key] = nil end
+end
+
+local function countLive()
+	local n = 0
+	for model, key in pairs(Live) do
+		if model.Parent then
+			n += 1
+		else
+			drop(model, key) -- ถูกเก็บไปแล้ว (Gathering ลบทิ้งเพราะ OneShot) บูตหน้าไม่ต้องคืนมาอีก
+		end
+	end
+	return n
+end
+
+-- คืนจุดที่เคยโผล่ไว้ ตอนเซิร์ฟบูตใหม่ · ช่องที่ถูกยึดไปแล้ว (ปลูกแปลงทับ) ทิ้งไปเลย
+local restored = false
+local function restoreSaved()
+	local st = store()
+	if restored or not st then return end
+	if not liveFolder() then return end -- เกาะยังไม่ประกอบ ลองใหม่รอบหน้า
+	restored = true
+	local back, dropped = 0, 0
+	for key, kind in pairs(st) do
+		local cx, cz = tostring(key):match("(-?%d+),(-?%d+)")
+		cx, cz = tonumber(cx), tonumber(cz)
+		if cx and freeCell(cx, cz) and spawnAt(kind, cx, cz) then
+			back += 1
+		else
+			st[key] = nil
+			dropped += 1
+		end
+	end
+	if back + dropped > 0 then
+		print(("[IslandNodes] คืนจุดเก็บเกี่ยว %d · ทิ้งที่ไม่มีที่ว่างแล้ว %d"):format(back, dropped))
+	end
+end
+
+local function spawnOne()
+	if #soilCells == 0 then return false end
+	local kind = pickKind()
+	if not kind then return false end
 	-- ลองสุ่มช่องสัก 30 ครั้ง — ดินเต็มไปด้วยแปลงผักก็เป็นไปได้ ไม่ต้องไล่ทั้งผืน
 	for _ = 1, 30 do
 		local cell = soilCells[math.random(#soilCells)]
-		local cx, cz = cell[1], cell[2]
-		if freeCell(cx, cz) then
-			local y = IslandGrid.surfaceAt(cx, cz)
-			if y then
-				local model = picks[math.random(#picks)]:Clone()
-				local wx, wz = IslandGrid.worldOf(cx, cz)
-				model:PivotTo(CFrame.new(wx, y, wz) * CFrame.Angles(0, math.random() * math.pi * 2, 0))
-				model:SetAttribute("NodeKind", kind)
-				-- **เก็บแล้วหายไปเลย** (ผู้ใช้สั่ง) ต่างจากจุดในแมพหลักที่ตัวเดิมรอเกิดใหม่ที่เดิม
-				model:SetAttribute("OneShot", true)
-				-- ไม่ให้ฟาร์มออโต้จับ: มันใช้คีย์ F ชนกับปุ่มเก็บของคืนกระเป๋าของระบบเกาะ
-				model:SetAttribute("Uid", "node:" .. IslandGrid.key(cx, cz))
-				model.Parent = folder
-				CollectionService:AddTag(model, "WOLD_Node")
-				Live[model] = IslandGrid.key(cx, cz)
-				Taken[IslandGrid.key(cx, cz)] = model
-				return true
-			end
-		end
+		if freeCell(cell[1], cell[2]) and spawnAt(kind, cell[1], cell[2]) then return true end
 	end
 	return false
 end
@@ -133,8 +170,7 @@ local function pruneBlocked()
 			cx, cz = tonumber(cx), tonumber(cz)
 			-- ตัวมันเองไม่ได้อยู่ใน Occupied ของระบบวางของ ช่องจึงยัง "ว่าง" ถ้าไม่มีใครมาวางทับ
 			if not (IslandAccess.CanPlaceAt(cx, cz, 1, 1, 0, nil)) then
-				Live[model] = nil
-				Taken[key] = nil
+				drop(model, key)
 				model:Destroy()
 			end
 		end
@@ -146,6 +182,7 @@ task.spawn(function()
 	task.wait(10)
 	while true do
 		if os.clock() - scannedAt > CFG.rescanSeconds then rescanSoil() end
+		restoreSaved() -- ครั้งเดียวต่อเซิร์ฟ — คืนของที่เคยโผล่ก่อนสุ่มเพิ่ม
 		pruneBlocked()
 		if countLive() < CFG.max then spawnOne() end
 		task.wait(CFG.everySeconds)
@@ -164,5 +201,7 @@ IslandAccess.NodeClear = function()
 		if model.Parent then model:Destroy(); n += 1 end
 	end
 	Live, Taken = {}, {}
+	local st = store()
+	if st then for k in pairs(st) do st[k] = nil end end -- ล้างคลังด้วย ไม่งั้นรอบหน้าคืนของเทสกลับมา
 	return n
 end

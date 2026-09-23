@@ -34,6 +34,14 @@ local HARVESTABLE = {
 	Deco_Bush = "Herb", -- พุ่มไม้ในเกมหลักคือจุดสมุนไพร ไม่ใช่ NodeKind ชื่อ Bush (ไม่มีอยู่จริง)
 }
 local DECOR_RESPAWN = 30 * 60
+
+-- **ของป่าจากเกมหลัก** (ผู้ใช้สั่ง 2026-09-23) — id คือ `Wild_<NodeKind>` ตรงตัว จึงไม่ต้องมีตาราง
+-- ที่สองคอยลืมอัปเดตตอนเพิ่มแร่ชนิดใหม่ · ต่างจากของตกแต่งธรรมดาตรง "เก็บแล้วรอวันใหม่"
+-- (แอตทริบิวต์ `DailyNode` ที่ `Gathering` เป็นคนบังคับใช้)
+local function harvestKindOf(id)
+	if id:sub(1, 5) == "Wild_" then return id:sub(6), true end
+	return HARVESTABLE[id], false
+end
 local Inventory = require(game.ServerScriptService.Inventory)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
@@ -41,6 +49,7 @@ local IslandAccess = require(script.Parent.IslandAccess)
 local IslandConfig = require(ReplicatedStorage.IslandConfig)
 local IslandGrid = require(ReplicatedStorage.IslandGrid)
 local ItemCatalog = require(ReplicatedStorage.ItemCatalog)
+local QuestConfig = require(ReplicatedStorage.QuestConfig)
 local Remotes = require(ReplicatedStorage.Remotes)
 
 local REASON_TEXT = {
@@ -60,6 +69,7 @@ local REASON_TEXT = {
 	full = "กระเป๋าเต็ม",
 	growing = "เก็บเกี่ยวก่อนแล้วค่อยเก็บแปลง",
 	livestock = "ยังมีสัตว์อยู่ในคอก เก็บคอกแล้วสัตว์หายหมด",
+	harvestedtoday = "เก็บเกี่ยวไปแล้ววันนี้ พรุ่งนี้ถึงจะย้ายได้",
 	missing = "ไม่พบของชิ้นนั้นแล้ว",
 }
 
@@ -176,10 +186,24 @@ local function spawnEntry(entry)
 
 	-- ของตกแต่งที่ทุบเอาของได้ — `Gathering` ของเกมหลักใส่ปุ่มและแจกของให้เอง เห็นแท็กเมื่อไหร่ก็ทำงาน
 	-- **ติดที่ตัวโมเดลนอกสุด** ต่างจากเฟอร์นิเจอร์ที่ต้องมีลูกชื่อถูก เพราะ Gathering อ่านจากแอตทริบิวต์
-	local harvest = HARVESTABLE[entry.id]
+	local harvest, daily = harvestKindOf(entry.id)
 	if harvest then
 		model:SetAttribute("NodeKind", harvest)
-		model:SetAttribute("RespawnSeconds", DECOR_RESPAWN)
+		if daily then
+			-- ไม่ต้องตั้ง RespawnSeconds: `Gathering` คิดเวลาถึงเที่ยงคืนวันใหม่ให้เองเมื่อเห็นธงนี้
+			model:SetAttribute("DailyNode", true)
+			-- ไม่จาง: มันเป็นของตกแต่งที่ผู้เล่นซื้อมาวางด้วย ต้นไม้โปร่งแสงค้างทั้งวันคือของเสีย
+			-- ปุ่ม E ที่ดับไปคือสัญญาณเดียวที่ต้องการ (เหตุผลเดียวกับสัตว์ในคอก)
+			model:SetAttribute("NoFade", true)
+			-- **วันที่เก็บไปแล้วต้องอยู่ในโปรไฟล์ ไม่ใช่บนตัวโมเดลอย่างเดียว** — เกาะปิดทุกครั้งที่
+			-- เจ้าของออกจากเกม ถ้าจำไว้แค่บนโมเดล ออก-เข้าใหม่ก็เก็บได้อีกรอบทันที
+			if entry.day then model:SetAttribute("HarvestedDay", entry.day) end
+			model:GetAttributeChangedSignal("HarvestedDay"):Connect(function()
+				entry.day = model:GetAttribute("HarvestedDay")
+			end)
+		else
+			model:SetAttribute("RespawnSeconds", DECOR_RESPAWN)
+		end
 		-- ⚠️ **ต้นไม้ที่ปลูกเองไม่ติดแท็กตรงนี้** `IslandZones.tickTree` เป็นคนติดให้ตอนมันโตเต็มที่
 		-- ติดตั้งแต่วางลง = ต้นกล้าเพิ่งปลูกก็ตัดได้ทันที แล้วระยะการโตทั้งสามขั้นก็ไม่มีความหมายเลย
 		-- (แท็กคือสิ่งเดียวที่ทำให้ `Gathering` ใส่ปุ่มให้ ส่วน NodeKind/RespawnSeconds ตั้งล่วงหน้าได้
@@ -278,6 +302,11 @@ local function pickup(player, uid)
 	-- เดิมสัตว์หายตอนถูกเก็บเกี่ยว คอกจึงว่างเองอยู่แล้ว — ตอนนี้มันอยู่ถาวร และการเก็บคอกคืนกระเป๋า
 	-- จะทิ้งฝูงไปทั้งฝูงแบบเงียบๆ (วัวตัวละ 1,800 เหรียญ) · ทรงเดียวกับแปลงผักที่ยังปลูกอยู่
 	if entry.herd and #entry.herd > 0 then return false, "livestock" end
+	-- **จุดรายวันที่เก็บไปแล้ววันนี้ ห้ามย้าย** ไม่งั้นคูลดาวน์รายวันไม่มีความหมายเลย:
+	-- เก็บ → เอาคืนกระเป๋า → วางใหม่ ได้โหนดใหม่ที่ยังไม่เคยถูกเก็บทันที (สายเพชรก็รัวได้)
+	if model:GetAttribute("HarvestedDay") == QuestConfig.DayNumber() then
+		return false, "harvestedtoday"
+	end
 	if not Inventory.HasRoomFor(player, entry.id, 1) then return false, "full" end
 	if not Inventory.AddItem(player, entry.id, 1) then return false, "full" end
 	for i, e in ipairs(Data.placed) do
@@ -376,6 +405,14 @@ end)
 
 IslandAccess.IsOwner = isOwner
 IslandAccess.Data = function() return Data end
+
+-- คลังของ `IslandNodes` — จุดเก็บเกี่ยวที่สุ่มโผล่บนผืนดินต้องอยู่ข้ามการรีสตาร์ท (ผู้ใช้สั่ง 2026-09-23
+-- "พอสปอนขึ้นมาแล้วก็อย่าให้หายไป ... ยิ่งนานยิ่งรกขึ้นเรื่อยๆ") · คืน nil ตอนโปรไฟล์ยังไม่โหลด
+IslandAccess.NodeStore = function()
+	if not Data then return nil end
+	if not Data.nodes then Data.nodes = {} end
+	return Data.nodes
+end
 IslandAccess.EntryOf = function(model) return Entries[model] end
 IslandAccess.ModelOf = function(uid) return Models[uid] end
 IslandAccess.Place = place

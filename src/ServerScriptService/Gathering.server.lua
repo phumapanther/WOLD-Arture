@@ -16,6 +16,8 @@ local ServerConfig = require(game.ServerScriptService.ServerConfig)
 if ServerConfig.IsLobby then return end
 
 local GatherConfig = require(game.ReplicatedStorage.GatherConfig)
+-- เจ้าของคำว่า "วันนี้" ของทั้งเกม (เที่ยงคืนเวลาไทย) — จุดเก็บรายวันบนเกาะใช้ตัวเดียวกับบอร์ดเควส
+local QuestConfig = require(game.ReplicatedStorage.QuestConfig)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
@@ -110,7 +112,22 @@ local function hasTool(player, needed)
 	return entry ~= nil and entry.gathers == needed
 end
 
+-- **จุดที่เก็บได้วันละครั้ง** (ผู้ใช้สั่ง 2026-09-23 สำหรับของตกแต่งชุดใหม่บนเกาะ)
+--
+-- ⚠️ **ใช้ `QuestConfig.DayNumber()` ซึ่งเป็นเจ้าของคำว่า "วันนี้" ของทั้งเกม** (เที่ยงคืนเวลาไทย)
+-- ห้ามคำนวณวันเองที่นี่ ไม่งั้นบอร์ดเควสกับของตกแต่งจะข้ามวันคนละนาที
+--
+-- เก็บเป็น **แอตทริบิวต์บนตัวโหนด** ไม่ใช่ตารางในหน่วยความจำ — มันจึงรอดข้ามการรีสตาร์ท
+-- (ต่างจากคูลดาวน์ปกติที่เป็น `task.delay` ซึ่งตายไปกับเซิร์ฟเวอร์เก่า)
+local Daily = {} -- [node] = true · เฉพาะจุดรายวัน จะได้ไม่ต้องวนโหนดสองหมื่นจุดของแมพหลัก
+local function dailyBlocked(node)
+	return node:GetAttribute("DailyNode") == true
+		and node:GetAttribute("HarvestedDay") == QuestConfig.DayNumber()
+end
+
 local function isSpent(node)
+	if dailyBlocked(node) then return true end
+
 	-- **แอตทริบิวต์ `Spent` มาก่อนเสมอ** (แก้ 2026-09-22: ซื้อสัตว์มาแล้วเก็บได้ทันทีทั้งที่ยังไม่โต)
 	--
 	-- ระบบอื่นตั้งธงนี้เพื่อบอกว่า "ยังเก็บไม่ได้" โดยไม่ผ่านคูลดาวน์ของไฟล์นี้ — `IslandZones` ตั้งให้
@@ -250,7 +267,14 @@ local function gather(node, player)
 	-- **คูลดาวน์ต่อจุดได้** แอตทริบิวต์ `RespawnSeconds` บนตัวโหนดชนะค่ากลาง — ของตกแต่งบนเกาะ
 	-- (หิน/ต้นไม้ที่ซื้อมาวาง) ใช้ 30 นาทีตามที่ผู้ใช้กำหนด ส่วนจุดในแมพหลักไม่มีแอตทริบิวต์นี้
 	-- จึงยังเป็น 60 วินาทีเท่าเดิมทุกจุด
+	-- จุดรายวัน: ปั๊มวันที่เก็บไว้บนตัวโหนด แล้วให้คูลดาวน์ยาวไปถึงเช้าวันใหม่
 	local respawn = node:GetAttribute("RespawnSeconds") or GatherConfig.RespawnSeconds
+	if node:GetAttribute("DailyNode") then
+		node:SetAttribute("HarvestedDay", QuestConfig.DayNumber())
+		local day = QuestConfig.RerollSeconds
+		local into = (os.time() + QuestConfig.TimeZoneOffsetSeconds) % day
+		respawn = day - into -- เหลือกี่วินาทีถึงวันใหม่
+	end
 	SpentUntil[node] = os.clock() + respawn
 	-- ประกาศเวลาที่เก็บได้อีกครั้งไว้บนตัวโหนด เพื่อให้ระบบอื่นเขียนป้ายนับถอยหลังได้โดยไม่ต้องรู้จัก
 	-- ตาราง `SpentUntil` ที่เป็นของไฟล์นี้คนเดียว (คอกสัตว์บนเกาะใช้อยู่) · `os.time` ไม่ใช่ `os.clock`
@@ -397,7 +421,9 @@ local function register(node)
 	-- `setSpent` เป็นตัวเดียวที่เคยปิดปุ่ม ซึ่งครอบคลุมเฉพาะโหนดที่ "เพิ่งถูกเก็บไป" — แต่สัตว์ที่
 	-- `IslandZones` เพิ่งให้เกิดติดธงมาตั้งแต่ต้นโดยไม่เคยผ่าน `setSpent` เลย ปุ่มจึงเปิดค้าง
 	-- แล้วรีดนมลูกไก่แรกเกิดได้ทันที
-	prompt.Enabled = not node:GetAttribute("Spent")
+	-- จุดรายวันที่เก็บไปแล้ววันนี้ ต้องเกิดมาพร้อมปุ่มที่ปิดอยู่ด้วย (แอตทริบิวต์รอดข้ามรีสตาร์ท)
+	if node:GetAttribute("DailyNode") then Daily[node] = true end
+	prompt.Enabled = not (node:GetAttribute("Spent") or dailyBlocked(node))
 	prompt.Parent = anchor
 	publishRequirementLater(node)
 
@@ -475,6 +501,23 @@ end)
 CollectionService:GetInstanceRemovedSignal(TAG):Connect(function(node)
 	SpentUntil[node] = nil
 	Faded[node] = nil
+	Daily[node] = nil
+end)
+
+-- **ปลดจุดรายวันเมื่อวันพลิก** — `task.delay` ที่ตั้งไว้ตอนเก็บตายไปกับเซิร์ฟเวอร์เก่า จุดที่เก็บไป
+-- เมื่อวานจึงต้องมีคนมาปลดให้ตอนบูตใหม่ · วนเฉพาะตาราง `Daily` ไม่ใช่โหนดสองหมื่นจุดของแมพหลัก
+task.spawn(function()
+	while true do
+		task.wait(60)
+		for node in pairs(Daily) do
+			if not node.Parent then
+				Daily[node] = nil
+			elseif node:GetAttribute("HarvestedDay") and not dailyBlocked(node) then
+				node:SetAttribute("HarvestedDay", nil)
+				setSpent(node, false)
+			end
+		end
+	end
 end)
 
 Players.PlayerRemoving:Connect(function(player)
