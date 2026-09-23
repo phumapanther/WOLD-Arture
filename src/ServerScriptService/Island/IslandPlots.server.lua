@@ -135,6 +135,8 @@ local function harvest(player, model)
 	if progressOf(entry) < 1 then return false, "unripe" end
 	local spec = cropSpec(entry.crop)
 	local amount = spec and math.random(spec.min, spec.max) or 1
+	-- เพดานเดียวกับที่ `Gathering` ใช้กับสัตว์/แร่ (ผู้ใช้สั่ง 2026-09-23) · หนีบก่อนคูณแสงเช่นกัน
+	if IslandConfig.YieldCap then amount = math.min(amount, IslandConfig.YieldCap) end
 
 	-- **ของเรืองแสง** (ผู้ใช้สั่ง 2026-09-23) ฟ้า = วัตถุดิบ ×2 · ทอง = EXP ×2
 	-- คูณ **ก่อน** ถามกระเป๋า เพื่อให้กระเป๋าที่ใส่ไม่ครบปฏิเสธทั้งกอง ไม่ใช่รับครึ่งเดียวเงียบๆ

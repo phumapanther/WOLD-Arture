@@ -335,6 +335,13 @@ local function gather(node, player)
 
 	local count = math.random(minCount, maxCount)
 
+	-- **เพดานของเกาะ** (ผู้ใช้สั่ง 2026-09-23) — หนีบ **ก่อน** คูณแสง เพื่อให้แสงเป็นทางเดียวที่เกิน 5 ได้
+	-- · แมพหลักไม่ถูกแตะ (ค่าที่นั่นอยู่ที่ 1-4 อยู่แล้ว แต่นี่คือเพดานที่บังคับจริง ไม่ใช่ความบังเอิญ)
+	if ServerConfig.IsFarm then
+		local cap = require(game.ReplicatedStorage.IslandConfig).YieldCap
+		if cap then count = math.min(count, cap) end
+	end
+
 	-- **ของเรืองแสง** (เกาะเท่านั้น · ธงถูกทอยไว้ตั้งแต่โหนดเริ่มรอบนี้) ฟ้า = วัตถุดิบ ×2 · ทอง = EXP ×2
 	-- คูณ **ก่อน** `AddItem` เพื่อให้กระเป๋าที่ใส่ไม่ครบปฏิเสธทั้งกอง ไม่ใช่รับครึ่งเดียวเงียบๆ
 	local glow = ServerConfig.IsFarm and node:GetAttribute("Glow") or nil
