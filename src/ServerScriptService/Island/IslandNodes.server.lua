@@ -25,6 +25,8 @@ local CFG = IslandConfig.NodeSpawn
 local SCAN = 56 -- เกาะกว้าง 440 = ±55 ช่อง
 -- ฝังลงดินนิดหน่อย — ผิวเทอร์เรนไม่เรียบเป๊ะ วางพอดีเป๊ะแล้วบางจุดจะดูลอย
 local SINK = 0.25
+-- จังหวะงานบ้าน (คนละตัวกับ `CFG.everySeconds` ที่เป็นจังหวะการเกิด)
+local TICK = 5
 
 local protoRoot -- ถามใหม่ทุกครั้ง (กฎเหล็ก StreamingEnabled) — เฟสอาจรันหลังเซิร์ฟบูต
 local function prototypes(kind)
@@ -97,6 +99,11 @@ local function cellClaimed(cx, cz)
 end
 
 -- วางจุดหนึ่งลงช่องที่ระบุ · ใช้ทั้งตอนสุ่มใหม่และตอนคืนของที่เซฟไว้
+-- ⚠️ **จองชื่อไว้ก่อน** `spawnAt` ข้างล่างเรียก `drop` ในตัวจับสัญญาณ `Destroying` แต่ `drop` ถูก
+-- ประกาศทีหลัง — ไม่จองไว้ closure จะจับ global ที่เป็น nil แล้วตัวจับสัญญาณตายเงียบทุกครั้ง
+-- (บทเรียน "ใช้ก่อนประกาศ" ครั้งที่เจ็ดของโปรเจ็คนี้ · เจอเพราะเทสเหลือค้าง 1 จุดแทนที่จะเป็น 0)
+local drop
+
 local function spawnAt(kind, cx, cz)
 	local picks = prototypes(kind)
 	if not picks or #picks == 0 then return false end
@@ -135,10 +142,27 @@ local function spawnAt(kind, cx, cz)
 	Taken[IslandGrid.key(cx, cz)] = model
 	local st = store()
 	if st then st[IslandGrid.key(cx, cz)] = kind end
+
+	-- ⚠️ **ลืมมันทันทีที่ถูกเก็บ ไม่ใช่รอรอบกวาด** (ผู้ใช้แจ้ง 2026-09-23 · พิสูจน์แล้ว)
+	--
+	-- `Gathering` ลบโมเดลทิ้งตอนเก็บ (`OneShot`) แต่ของเดิมล้างคลังใน `countLive()` ซึ่งถูกเรียก
+	-- **ในลูปที่วนทุก `everySeconds` = ชั่วโมงละครั้ง** · เก็บของจนเกลี้ยงแล้วออกจากเซิร์ฟภายใน
+	-- ชั่วโมงนั้น คลังยังจำไว้ครบ → `restoreSaved` คืนกลับมาทั้งหมดตอนเข้าใหม่
+	-- = **เก็บหมด ออก เข้าใหม่ ปั๊มได้ไม่จำกัด** (วัดแล้ว: เก็บ 6 จุด โลกเหลือ 0 คลังยังเป็น 6)
+	--
+	-- `Destroying` ยิงตอนถูกทำลายจริงๆ จึงไม่มีช่องว่างให้แทรกเลย · กันเคสเซิร์ฟปิดด้วยธง `closing`
+	model.Destroying:Connect(function()
+		if not closing then drop(model, IslandGrid.key(cx, cz)) end
+	end)
 	return true
 end
 
-local function drop(model, key)
+-- ⚠️ **ตอนเซิร์ฟกำลังปิด ห้ามลบอะไรออกจากคลัง** — เอนจินไล่ทำลายของใน workspace ตอนปิด
+-- ถ้า `Destroying` ข้างล่างยิงตอนนั้นด้วย มันจะกวาดจุดที่ยัง *ไม่ถูกเก็บ* ออกจากโปรไฟล์ทั้งหมด
+local closing = false
+game:BindToClose(function() closing = true end)
+
+function drop(model, key)
 	Live[model] = nil
 	Taken[key] = nil
 	local st = store()
@@ -215,17 +239,25 @@ end
 task.spawn(function()
 	-- รอให้เกาะประกอบเสร็จก่อน (IslandBuild ปลูกของจากโปรไฟล์ตอนบูต)
 	task.wait(10)
+	-- **งานบ้านเดินถี่ การเกิดเดินช้า** — สองจังหวะนี้คนละเรื่องกัน เอามามัดรวมไว้ที่ `everySeconds`
+	-- ไม่ได้: ชั่วโมงละครั้งคือจังหวะที่ผู้ใช้สั่งไว้ว่าของควรงอกขึ้นมาใหม่ ไม่ใช่จังหวะที่ระบบควร
+	-- ตื่นมาดูว่าโลกเปลี่ยนไปยัง (แปลงผักที่ปลูกทับจะค้างอยู่ใต้หินได้ทั้งชั่วโมง)
+	local lastSpawn = 0
 	while true do
 		if os.clock() - scannedAt > CFG.rescanSeconds then rescanSoil() end
 		restoreSaved() -- ครั้งเดียวต่อเซิร์ฟ — คืนของที่เคยโผล่ก่อนสุ่มเพิ่ม
+		countLive() -- เก็บกวาดจุดที่หายไปแล้วออกจากคลัง (ตาข่ายรองรับของ Destroying ข้างบน)
 		pruneBlocked()
-		-- ทีละ 1-3 จุดต่อรอบ (ผู้ใช้สั่ง 2026-09-23) · เช็คเพดานใหม่ทุกจุด ไม่ใช่ครั้งเดียวต่อรอบ
-		local want = math.random(CFG.perRoundMin or 1, CFG.perRoundMax or 1)
-		for _ = 1, want do
-			if countLive() >= CFG.max then break end
-			spawnOne()
+		if os.clock() - lastSpawn >= CFG.everySeconds then
+			lastSpawn = os.clock()
+			-- ทีละ 1-3 จุดต่อรอบ (ผู้ใช้สั่ง 2026-09-23) · เช็คเพดานใหม่ทุกจุด ไม่ใช่ครั้งเดียวต่อรอบ
+			local want = math.random(CFG.perRoundMin or 1, CFG.perRoundMax or 1)
+			for _ = 1, want do
+				if countLive() >= CFG.max then break end
+				spawnOne()
+			end
 		end
-		task.wait(CFG.everySeconds)
+		task.wait(TICK)
 	end
 end)
 
