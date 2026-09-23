@@ -693,6 +693,26 @@ ItemCatalog.Items = {
 	Seed = { icon = "", name = "เมล็ดพันธุ์", kind = "junk", weight = 0.05, stackSize = 99, value = 0, sellable = false, vip = true },
 }
 
+-- **สายแร่บนเกาะใช้รูปเดียวกับไอเทมแร่ที่มันให้** (ผู้ใช้สั่ง 2026-09-23)
+--
+-- เป็นข้อยกเว้นของกติกา "ยืมรูปของไอเทมอื่น = ตั้ง `icon = \"\"` แล้วโชว์ ⌛" — ที่นี่การยืมสื่อความหมาย
+-- ได้จริง เพราะสายแร่ทั้งเจ็ดหน้าตาต่างกันชัดเจนอยู่แล้วที่ตัวแร่ข้างใน ไม่ใช่ที่ก้อนหิน
+--
+-- ⚠️ **คัดลอกจากตารางเดียวกัน ไม่ใช่วางเลข id ซ้ำ** — วันที่ไอคอนแร่ถูกเปลี่ยน สายแร่ต้องตามไปเอง
+-- (`Wild_DiamondOre` ยืมของ `Diamond` ไม่ใช่ `DiamondOre` ซึ่งเป็นชื่อ NodeKind ไม่ใช่ชื่อไอเทม)
+for wild, ore in pairs({
+	Wild_Coal = "Coal",
+	Wild_IronOre = "IronOre",
+	Wild_SilverOre = "SilverOre",
+	Wild_Crystal = "Crystal",
+	Wild_GoldOre = "GoldOre",
+	Wild_MagicOre = "MagicOre",
+	Wild_DiamondOre = "Diamond",
+}) do
+	local a, b = ItemCatalog.Items[wild], ItemCatalog.Items[ore]
+	if a and b then a.icon = b.icon end
+end
+
 function ItemCatalog.Get(id)
 	return ItemCatalog.Items[id]
 end
