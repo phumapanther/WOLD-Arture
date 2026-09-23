@@ -12,6 +12,7 @@ local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
 
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
+local IslandAccess = require(game.ServerScriptService.Island.IslandAccess)
 if ServerConfig.IsLobby then return end
 
 local Inventory = require(game.ServerScriptService.Inventory)
@@ -50,7 +51,8 @@ end
 -- **บนเกาะไม่จำกัดอาชีพ** (ผู้ใช้กำหนด 2026-09-22) เหตุผลเดียวกับเตาใน `CraftStations`: เกาะเป็นเซิร์ฟ
 -- ส่วนตัวของคนที่ซื้อตู้มาเอง การกันด้วยอาชีพไม่ได้แบ่งงานกับใคร มันแค่ล็อกของที่เขาจ่ายเงินไปแล้ว
 local function mayOpen(player, model)
-	if ServerConfig.IsFarm then return true end
+	-- แขกบนเกาะของคนอื่นเปิดตู้ของเขาไม่ได้ (ผู้ใช้สั่ง 2026-09-23) — เจ้าของยังไม่ต้องมีอาชีพเหมือนเดิม
+	if ServerConfig.IsFarm then return IslandAccess.MayUseFixtures(player) end
 	local class = model:GetAttribute("StorageClass")
 	if not class then return true end
 	return Classes.Has(player, class)

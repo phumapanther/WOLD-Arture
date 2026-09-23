@@ -20,6 +20,7 @@ local CollectionService = game:GetService("CollectionService")
 local Debris = game:GetService("Debris")
 local Players = game:GetService("Players")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
+local IslandAccess = require(game.ServerScriptService.Island.IslandAccess)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 
 if ServerConfig.IsLobby then return end
@@ -249,6 +250,11 @@ local function work(node, player)
 	-- learn that the class is the reason.
 	if FarmConfig.OrClass and Classes.Has(player, FarmConfig.OrClass) then
 		return Remotes.SocialNotify:FireClient(player, "error", FarmConfig.BannedMessage)
+	end
+	-- แขกที่มาเยี่ยมเกาะแตะของผิดกฎหมายของเจ้าบ้านไม่ได้ (ผู้ใช้สั่ง 2026-09-23)
+	-- เช็คก่อนหัวนับ เพราะข้อความ "ต้องมีคนให้ครบ" ตอบผิดคำถามสำหรับแขก
+	if not IslandAccess.MayUseFixtures(player) then
+		return Remotes.SocialNotify:FireClient(player, "error", IslandAccess.FixtureDenied)
 	end
 	if not serverAllowsFarming() then
 		return Remotes.SocialNotify:FireClient(player, "error",

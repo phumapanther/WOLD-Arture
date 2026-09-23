@@ -7,6 +7,7 @@
 --   farmcode_<privateServerId> = { ownerUserId }   ← เซิร์ฟเกาะอ่านตอนบูตเพื่อรู้ว่าตัวเองเป็นเกาะของใคร
 --   farmguests_<ownerUserId>   = { [userId] = ชื่อ } ← คนที่เจ้าของชวนไว้ (ยังไม่มีระบบชวน อ่านไว้ก่อน)
 --   farminvited_<userId>       = { [ownerUserId] = ชื่อเจ้าของ } ← ดัชนีกลับ ไว้วาดแถว "เกาะที่คุณถูกชวน"
+--   farmlive_<ownerUserId>     = { at }          ← หัวใจเต้นตอนเจ้าของยืนอยู่บนเกาะตัวเอง (แขกเข้าได้เฉพาะตอนนั้น)
 --
 -- **สองฝั่งของคำเชิญต้องเขียนคู่กันเสมอ** (guests ของเจ้าของ + invited ของแขก) ฝั่งแรกใช้ตัดสินสิทธิ์
 -- ฝั่งหลังใช้วาดรายการ ถ้าเขียนแค่ฝั่งเดียว จะได้แขกที่เข้าได้แต่ไม่เห็นเกาะ หรือเห็นแต่เข้าไม่ได้
@@ -28,6 +29,7 @@ local function farmKey(ownerUserId) return "farm_" .. ownerUserId end
 local function codeKey(privateServerId) return "farmcode_" .. privateServerId end
 local function guestsKey(ownerUserId) return "farmguests_" .. ownerUserId end
 local function invitedKey(userId) return "farminvited_" .. userId end
+local function liveKey(ownerUserId) return "farmlive_" .. ownerUserId end
 
 --------------------------------------------------------------------------------
 -- เซิร์ฟของเกาะ
@@ -67,6 +69,44 @@ function FarmRegistry.GetOrCreate(ownerUserId)
 	if not revOk then warn("[FarmRegistry] เขียนทางกลับไม่ได้:", revErr) end
 	return accessCode
 end
+
+-- เกาะของคนนี้ถูกสร้างไว้แล้วหรือยัง — ใช้ตอนแขกจะเข้า **โดยไม่สร้างให้**
+-- (`GetOrCreate` จะจองเซิร์ฟให้คนที่ไม่เคยซื้อ VIP ถ้าเผลอเรียกจากทางของแขก)
+function FarmRegistry.Exists(ownerUserId)
+	local ok, data = pcall(function() return store:GetAsync(farmKey(ownerUserId)) end)
+	return ok and type(data) == "table" and data.accessCode ~= nil
+end
+
+--------------------------------------------------------------------------------
+-- เจ้าของอยู่บนเกาะตัวเองหรือเปล่า
+--------------------------------------------------------------------------------
+--
+-- **แขกเข้าได้เฉพาะตอนเจ้าของอยู่** (ผู้ใช้สั่ง 2026-09-23: "เพื่อนสามารถเข้าเชิฟเราได้")
+--
+-- ไม่ใช่กฎเพื่อความสวยงาม — ข้อมูลเกาะอยู่ในโปรไฟล์ของเจ้าของ ซึ่งเซิร์ฟนี้จะเขียนได้ก็ต่อเมื่อ
+-- เจ้าของเปิดเซสชันอยู่ตรงนี้ (ProfileStore ล็อกเซสชัน) · ถ้าปล่อยให้แขกเข้าเกาะร้าง ของที่เขาเก็บไป
+-- จะหายตอนเซิร์ฟปิด และเจ้าของจะกลับมาเจอผักที่ยังอยู่ครบ = "ขโมย" ที่ไม่มีใครเสียอะไรเลย
+local LIVE_SECONDS = 150 -- หัวใจเต้นทุก 60 วิ · เผื่อพลาดสองจังหวะก่อนถือว่าออกไปแล้ว
+
+function FarmRegistry.SetLive(ownerUserId, alive)
+	pcall(function()
+		if alive then
+			store:SetAsync(liveKey(ownerUserId), { at = os.time() })
+		else
+			store:RemoveAsync(liveKey(ownerUserId))
+		end
+	end)
+end
+
+function FarmRegistry.IsLive(ownerUserId)
+	local ok, data = pcall(function() return store:GetAsync(liveKey(ownerUserId)) end)
+	if not (ok and type(data) == "table" and tonumber(data.at)) then return false end
+	return os.time() - data.at < LIVE_SECONDS
+end
+
+--------------------------------------------------------------------------------
+-- เซิร์ฟของเกาะ (ต่อ)
+--------------------------------------------------------------------------------
 
 -- เซิร์ฟเกาะถามว่า "ฉันเป็นเกาะของใคร" ตอนบูต — คืน ownerUserId หรือ nil
 function FarmRegistry.OwnerOfServer(privateServerId)

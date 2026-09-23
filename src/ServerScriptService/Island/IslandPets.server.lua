@@ -90,7 +90,13 @@ local function setup(model)
 		carry.MaxActivationDistance = CARRY_RANGE
 		carry.RequiresLineOfSight = false
 		carry.Parent = root
-		carry.Triggered:Connect(function(player) toggleCarry(model, player) end)
+		carry.Triggered:Connect(function(player)
+			-- ลูบหัวสัตว์ของเพื่อนได้ แต่ **อุ้มไปวางที่อื่นไม่ได้** — นั่นคือการจัดของบนเกาะเขา
+			if not IslandAccess.MayUseFixtures(player) then
+				return Remotes.SocialNotify:FireClient(player, "warn", IslandAccess.FixtureDenied)
+			end
+			toggleCarry(model, player)
+		end)
 	end
 end
 

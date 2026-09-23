@@ -8,6 +8,7 @@
 local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
 
+local IslandAccess = require(game.ServerScriptService.Island.IslandAccess)
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 if ServerConfig.IsLobby then return end
 
@@ -414,6 +415,10 @@ local function wire(model)
 	prompt.Parent = anchor
 
 	prompt.Triggered:Connect(function(player)
+		-- แขกบนเกาะของคนอื่นใช้บอร์ดเควสของเจ้าบ้านไม่ได้ (ผู้ใช้สั่ง 2026-09-23)
+		if not IslandAccess.MayUseFixtures(player) then
+			return Remotes.SocialNotify:FireClient(player, "warn", IslandAccess.FixtureDenied)
+		end
 		Viewing[player] = boardId
 		Remotes.QuestUpdate:FireClient(player, snapshot(player, boardId))
 	end)

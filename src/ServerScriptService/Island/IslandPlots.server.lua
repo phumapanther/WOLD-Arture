@@ -120,7 +120,11 @@ local function plant(player, model)
 end
 
 local function harvest(player, model)
-	if not IslandAccess.IsOwner(player) then return false, "notowner" end
+	-- **แขกเก็บผักของเจ้าบ้านได้** (ผู้ใช้สั่ง 2026-09-23: "เพื่อนที่เข้ามาสามารถมาขโมยเก็บฟาร์มสัตว์
+	-- และฟาร์มผักเราได้") — ส่วนการ *ปลูก* ยังเป็นของเจ้าของคนเดียว (เมล็ดเป็นของเขา แปลงเป็นของเขา)
+	--
+	-- ไม่ต้องเช็คอะไรเลยตรงนี้: คนที่ยืนอยู่บนเกาะนี้ได้ ผ่านด่านล็อบบี้ (เพื่อนกันจริง + เจ้าของอยู่)
+	-- กับด่าน `IslandGuests` มาแล้วทั้งคู่ · ทรงเดียวกับ `Gathering` ที่ไม่เคยถามว่าใครเป็นเจ้าของที่
 	local entry = IslandAccess.EntryOf(model)
 	if not entry then return false, "missing" end
 	if not entry.crop then return false, "empty" end

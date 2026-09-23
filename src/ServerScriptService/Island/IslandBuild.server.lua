@@ -406,6 +406,16 @@ end)
 IslandAccess.IsOwner = isOwner
 IslandAccess.Data = function() return Data end
 
+-- **เทสเท่านั้น: สวมบทแขก** — Studio ไม่มีคนที่สองให้มายืนบนเกาะ และ `FarmOwnerId` เป็น nil ที่นั่น
+-- สลับเฉพาะ `IslandAccess.IsOwner` ซึ่งเป็นตัวที่ด่านของระบบอื่นถาม (ครัว ตู้ NPC บอร์ดเควส แปลงผัก)
+-- ส่วนการวาง/เก็บของในไฟล์นี้เรียก `isOwner` ตรงๆ จึงไม่ถูกหลอก — ตั้งใจ ไม่ใช่ของค้าง
+if RunService:IsStudio() then
+	IslandAccess.PretendGuest = function(on)
+		IslandAccess.IsOwner = on and function() return false end or isOwner
+		return on == true
+	end
+end
+
 -- คลังของ `IslandNodes` — จุดเก็บเกี่ยวที่สุ่มโผล่บนผืนดินต้องอยู่ข้ามการรีสตาร์ท (ผู้ใช้สั่ง 2026-09-23
 -- "พอสปอนขึ้นมาแล้วก็อย่าให้หายไป ... ยิ่งนานยิ่งรกขึ้นเรื่อยๆ") · คืน nil ตอนโปรไฟล์ยังไม่โหลด
 IslandAccess.NodeStore = function()

@@ -12,6 +12,7 @@ local Players = game:GetService("Players")
 local CollectionService = game:GetService("CollectionService")
 
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
+local IslandAccess = require(game.ServerScriptService.Island.IslandAccess)
 if ServerConfig.IsLobby then return end
 
 local Inventory = require(game.ServerScriptService.Inventory)
@@ -149,6 +150,10 @@ local function wireStation(model, spec)
 		-- กันระหว่างผู้เล่น มันแค่ทำให้ของที่ซื้อมาใช้ไม่ได้ · เมืองหลักยังเป็นของเชฟเหมือนเดิม
 		if spec.needs and not ServerConfig.IsFarm and not hasItem(player, spec.needs) then
 			return Remotes.SocialNotify:FireClient(player, "warn", "ต้องมีตะหลิวเชฟ (เฉพาะอาชีพเชฟ)")
+		end
+		-- ...แต่แขกที่มาเยี่ยมใช้เครื่องครัวของเจ้าของไม่ได้ (ผู้ใช้สั่ง 2026-09-23)
+		if not IslandAccess.MayUseFixtures(player) then
+			return Remotes.SocialNotify:FireClient(player, "warn", IslandAccess.FixtureDenied)
 		end
 		if not CraftAccess.OpenAt then
 			-- เดิมเงียบสนิทถ้า Crafting.server ยังไม่ได้เติมฟังก์ชันนี้ ซึ่งอ่านไม่ออกเลยว่าเกิดอะไรขึ้น

@@ -8,6 +8,7 @@
 -- bag slot. Neither carries a number the server did not decide.
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
+local IslandAccess = require(game.ServerScriptService.Island.IslandAccess)
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 
 if ServerConfig.IsLobby then return end
@@ -123,6 +124,9 @@ end
 --------------------------------------------------------------------------------
 
 local function nearShop(player)
+	-- แขกบนเกาะของคนอื่นคุยกับ NPC ของเจ้าบ้านไม่ได้ (ผู้ใช้สั่ง 2026-09-23)
+	-- ตอบที่นี่ที่เดียวเพราะทั้งปุ่ม E และ remote ทุกตัวถามผ่านฟังก์ชันนี้ — ปิดประตูบานเดียวพอ
+	if not IslandAccess.MayUseFixtures(player) then return false end
 	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	if not root then return false end
 	for _, npc in ipairs(CollectionService:GetTagged(TAG)) do

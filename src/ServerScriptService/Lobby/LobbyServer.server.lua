@@ -8,6 +8,7 @@ local TeleportService = game:GetService("TeleportService")
 local ChannelRegistry = require(script.Parent.ChannelRegistry)
 local FarmRegistry = require(script.Parent.FarmRegistry)
 local Vip = require(game.ServerScriptService.Vip)
+local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local FIXED_CHANNELS = { Roleplay = 5 } -- ponytail: one constant; raise the number here if you want more channels
@@ -36,6 +37,21 @@ local function nameOf(player)
 	return player.DisplayName ~= "" and player.DisplayName or player.Name
 end
 
+-- เพื่อนของคนนี้ -> { [userId] = ชื่อ } · อ่านโปรไฟล์แบบอ่านอย่างเดียว ห้ามเปิดเซสชัน (ดู ProfileAccess.PeekAsync)
+local function friendsOf(userId)
+	if not ProfileAccess.PeekAsync then return {} end
+	local data = ProfileAccess.PeekAsync(userId)
+	local out = {}
+	-- **`Data.Social.Friends`** ไม่ใช่ `Data.Friends` — `PlayerSocial` เก็บรายชื่อเพื่อน แบงก์ และกระดาน
+	-- ไว้ในก้อน `Social` ก้อนเดียว (ดู `ProfileAccess.SerializeSocial`)
+	local social = data and data.Social
+	for id, name in pairs((social and social.Friends) or {}) do
+		local n = tonumber(id)
+		if n then out[n] = name end
+	end
+	return out
+end
+
 local function farmRowsFor(player)
 	local cached = farmCache[player]
 	if cached and os.clock() - cached.at < FARM_CACHE_SECONDS then return cached.rows end
@@ -49,10 +65,25 @@ local function farmRowsFor(player)
 		mine = true,
 		locked = (not hasVip) and "vip" or nil,
 	}
+	local seen = { [player.UserId] = true }
 	for ownerId, ownerName in pairs(FarmRegistry.InvitedTo(player.UserId)) do
 		local id = tonumber(ownerId)
-		if id and id ~= player.UserId then
+		if id and not seen[id] then
+			seen[id] = true
 			rows[#rows + 1] = { ownerId = id, ownerName = tostring(ownerName), mine = false }
+		end
+	end
+
+	-- **เพื่อนในเกมได้สิทธิ์เข้าเกาะกันเองอัตโนมัติ** (ผู้ใช้สั่ง 2026-09-23: "เพื่อนสามารถเข้าเชิฟเราได้
+	-- ถ้าเพิ่มเพื่อนกันแล้ว") — ไม่ต้องชวนซ้ำอีกชั้น การเป็นเพื่อนในเกมคือการยินยอมสองฝั่งอยู่แล้ว
+	-- (ต้องขอ ต้องกดรับ) ซึ่งเป็นสิ่งเดียวกับที่คำเชิญเกาะเคยทำ
+	--
+	-- อ่านจากโปรไฟล์ **ของคนที่ยืนอยู่ตรงนี้เอง** ครั้งเดียว (`Friends.Get` ใช้ไม่ได้ในล็อบบี้ — ที่นี่
+	-- ไม่เปิดเซสชันโปรไฟล์ของใคร) · มิตรภาพเป็นสองฝั่งเสมอ รายชื่อฝั่งเราจึงพอตัดสินได้
+	for id, name in pairs(friendsOf(player.UserId)) do
+		if not seen[id] then
+			seen[id] = true
+			rows[#rows + 1] = { ownerId = id, ownerName = tostring(name), mine = false, friend = true }
 		end
 	end
 
@@ -161,8 +192,14 @@ local function joinFarm(player, ownerId)
 	if ownerId == player.UserId then
 		local hasVip = Vip.PeekAsync and select(1, Vip.PeekAsync(player.UserId)) or false
 		if not hasVip then return Remotes.JoinFailed:FireClient(player, "need_vip") end
-	elseif not FarmRegistry.IsGuest(ownerId, player.UserId) then
+	elseif not (FarmRegistry.IsGuest(ownerId, player.UserId) or friendsOf(player.UserId)[ownerId]) then
 		return Remotes.JoinFailed:FireClient(player, "not_invited")
+	elseif not FarmRegistry.Exists(ownerId) then
+		-- **ไม่เรียก GetOrCreate ให้คนอื่น** ไม่งั้นแขกจะจองเซิร์ฟเกาะให้คนที่ไม่เคยซื้อ VIP
+		return Remotes.JoinFailed:FireClient(player, "no_island")
+	elseif not FarmRegistry.IsLive(ownerId) then
+		-- เกาะร้างเขียนโปรไฟล์เจ้าของไม่ได้ ของที่แขกเก็บไปจะหายตอนเซิร์ฟปิด (ดู FarmRegistry.SetLive)
+		return Remotes.JoinFailed:FireClient(player, "owner_away")
 	end
 
 	local ok, accessCode = pcall(FarmRegistry.GetOrCreate, ownerId)
