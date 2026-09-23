@@ -10,7 +10,6 @@
     "src/ServerScriptService/TownCapture.server.lua",
     "src/ServerScriptService/TownVault.server.lua",
     "src/ServerScriptService/Transformers.server.lua",
-    "src/ServerScriptService/TreasureChests.server.lua",
     "src/ServerScriptService/VehicleMain.server.lua",
     "src/ServerScriptService/WorldBoss.server.lua",
     "src/ServerScriptService/WorldEvents.server.lua",

@@ -62,10 +62,26 @@ local function anchorOf(node)
 	if existing then return existing end
 
 	-- The base: the lowest point of the visible geometry, at the model's own centre in plan.
+	--
+	-- ⚠️ **`Position.Y - Size.Y/2` คือก้นของชิ้นที่ไม่ถูกหมุนเท่านั้น** — โมเดลต้นไม้จาก Creator Store
+	-- ทุกต้นเป็น MeshPart ที่ **นอนตะแคง** (`CFrame.UpVector.Y = 0`) ความยาวจริงในแนวดิ่งจึงอยู่ที่
+	-- `Size.Z` ไม่ใช่ `Size.Y` · วัดในเพลสแล้ว: ต้นสนสูง 35.6 สตัด ได้ปุ่มลอยอยู่ **16.4 สตัดเหนือพื้น**
+	-- ซึ่งเกินระยะกด 10 = **ตัดไม่ได้เลย** (ผู้ใช้แจ้ง 2026-09-23 "ต้นไม้บางต้นสูงเกินจนตัดไม่ได้")
+	-- ต้นโอ๊กรอดมาเพราะเตี้ยกว่า ปุ่มลอย 3.7-5.4 ซึ่งยังพอเอื้อมถึง — บังเอิญ ไม่ใช่เพราะถูก
+	--
+	-- สูตรกล่องครอบของชิ้นที่ถูกหมุน: ฉายครึ่งขนาดของทั้งสามแกนลงแกน Y แล้วรวมกัน
+	local function bottomOf(part)
+		local cf, size = part.CFrame, part.Size
+		local reach = 0.5 * (math.abs(cf.RightVector.Y) * size.X
+			+ math.abs(cf.UpVector.Y) * size.Y
+			+ math.abs(cf.LookVector.Y) * size.Z)
+		return cf.Position.Y - reach
+	end
+
 	local low, minX, maxX, minZ, maxZ = math.huge, math.huge, -math.huge, math.huge, -math.huge
 	for _, d in ipairs(node:GetDescendants()) do
 		if d:IsA("BasePart") and d.Transparency < 0.9 then
-			low = math.min(low, d.Position.Y - d.Size.Y / 2)
+			low = math.min(low, bottomOf(d))
 			minX, maxX = math.min(minX, d.Position.X), math.max(maxX, d.Position.X)
 			minZ, maxZ = math.min(minZ, d.Position.Z), math.max(maxZ, d.Position.Z)
 		end

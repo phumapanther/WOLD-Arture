@@ -76,12 +76,24 @@ local function store()
 	return IslandAccess.NodeStore and IslandAccess.NodeStore() or nil
 end
 
--- ช่องนี้ว่างพอให้ของโผล่ไหม — **ห้ามทับแปลงผักหรือของที่ผู้ใช้วางไว้**
+-- ช่องนี้ว่างพอให้ของ **ใหม่** โผล่ไหม — ห้ามทับแปลงผัก ของที่ผู้ใช้วางไว้ หรือจุดที่โผล่ไปแล้ว
 local function freeCell(cx, cz)
 	if Taken[IslandGrid.key(cx, cz)] then return false end
 	-- itemId = nil แปลว่า "ไม่สนกฎดิน" (เราคัดช่องดินมาก่อนแล้ว) แต่ยังเช็คของที่วางทับ ของตกแต่งที่ตรึงไว้
 	-- และ "เดินเข้าไปถึงไหม" ตามกติกาเดียวกับการวางของ — จุดที่เดินไม่ถึงก็เก็บไม่ได้อยู่ดี
 	return (IslandAccess.CanPlaceAt(cx, cz, 1, 1, 0, nil)) == true
+end
+
+-- ⚠️ **ช่องของจุดที่ยืนอยู่แล้ว ต้องถามคนละคำถาม** (ผู้ใช้แจ้ง 2026-09-23 "ออกเข้าใหม่แล้วมันรีเกิดใหม่หมด")
+--
+-- `CanPlaceAt` นับ**ทุกอย่างที่ชนได้และทึบ**ในช่องนั้นเป็นสิ่งกีดขวาง ซึ่งรวมหินหรือต้นไม้ที่ไฟล์นี้
+-- เพิ่งวางไว้เอง — `pruneBlocked` จึงทำลายของตัวเองทุกตัวในรอบถัดไป **แล้วล้างคลังตามไปด้วย**
+-- ลำดับในลูปคือ `restoreSaved()` แล้ว `pruneBlocked()` ทันที: ของที่เพิ่งคืนมาจึงถูกฆ่าในบรรทัดถัดไป
+-- แล้ว `spawnOne` ก็สุ่มของใหม่มาแทน = อาการ "รีแล้วสุ่มเกิดใหม่ทันที" ตรงตัว
+--
+-- คำถามที่ `pruneBlocked` ต้องการจริงๆ มีแค่ "มีใครมาวางของทับช่องนี้หรือยัง" ซึ่งคือตาราง `Occupied`
+local function cellClaimed(cx, cz)
+	return IslandAccess.CellTaken ~= nil and IslandAccess.CellTaken(cx, cz) == true
 end
 
 -- วางจุดหนึ่งลงช่องที่ระบุ · ใช้ทั้งตอนสุ่มใหม่และตอนคืนของที่เซฟไว้
@@ -146,6 +158,10 @@ local function countLive()
 end
 
 -- คืนจุดที่เคยโผล่ไว้ ตอนเซิร์ฟบูตใหม่ · ช่องที่ถูกยึดไปแล้ว (ปลูกแปลงทับ) ทิ้งไปเลย
+--
+-- ⚠️ **ถามด้วย `cellClaimed` ไม่ใช่ `freeCell`** — ของชุดนี้เคยผ่านด่านเต็มมาแล้วตอนโผล่ครั้งแรก
+-- ต้นไม้ใหญ่ที่คืนมาก่อนจะล้นไปทับช่องข้างๆ ทำให้เพื่อนบ้านสอบตก `obstructed` แล้ว**หลุดจากคลังถาวร**
+-- (ป่าจะบางลงทุกครั้งที่รีสตาร์ท ซึ่งตรงข้ามกับ "ยิ่งนานยิ่งรก" ที่ผู้ใช้สั่งไว้)
 local restored = false
 local function restoreSaved()
 	local st = store()
@@ -156,7 +172,8 @@ local function restoreSaved()
 	for key, kind in pairs(st) do
 		local cx, cz = tostring(key):match("(-?%d+),(-?%d+)")
 		cx, cz = tonumber(cx), tonumber(cz)
-		if cx and freeCell(cx, cz) and spawnAt(kind, cx, cz) then
+		if cx and not Taken[IslandGrid.key(cx, cz)] and not cellClaimed(cx, cz)
+			and spawnAt(kind, cx, cz) then
 			back += 1
 		else
 			st[key] = nil
@@ -187,7 +204,7 @@ local function pruneBlocked()
 			local cx, cz = key:match("(-?%d+),(-?%d+)")
 			cx, cz = tonumber(cx), tonumber(cz)
 			-- ตัวมันเองไม่ได้อยู่ใน Occupied ของระบบวางของ ช่องจึงยัง "ว่าง" ถ้าไม่มีใครมาวางทับ
-			if not (IslandAccess.CanPlaceAt(cx, cz, 1, 1, 0, nil)) then
+			if cellClaimed(cx, cz) then
 				drop(model, key)
 				model:Destroy()
 			end

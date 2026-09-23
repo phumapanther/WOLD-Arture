@@ -167,6 +167,32 @@ for _, name in ipairs(ARMOR) do
 	end
 end
 
+-- **หีบสมบัติ** มาทางเดียวกับชุดเกราะ (คัดลอกเป็นตัวเลขจากเพลสหลัก) — `TreasureChests.server` หาต้นแบบ
+-- จาก `ServerStorage.Treasure` ถ้าไม่เจอมันจะ `warn` แล้วไม่วางหีบเลย ซึ่งเป็นอาการที่ผู้ใช้เจอบนเกาะ
+-- (2026-09-23 "ไอเท้มหีบใช้แล้วโมเดลไม่ออกมา") · สคริปต์เพิ่งถูกถอดออกจาก denylist ของ farming
+--
+-- ⚠️ **ห้ามยกฐานขึ้น y = 0 และต้องตั้ง `WorldPivot` ไว้ที่จุดกำเนิด** — `spawnChest` วางด้วย
+-- `PivotTo(y + ความสูง/2)` ซึ่งถูกต้องก็ต่อเมื่อจุดหมุนอยู่ตรงกับของเดิม (ตัวดัมพ์เทียบจากจุดหมุนเดิม)
+local CHEST_FOLDER = "Treasure"
+local chestBuild = _G.WOLD_MAIN_MODELS and _G.WOLD_MAIN_MODELS.chests
+local ChestConfig = require(RS:WaitForChild("ChestConfig"))
+local chestFolder = folder(SS, CHEST_FOLDER)
+for _, tier in ipairs(ChestConfig.Order) do
+	if chestFolder:FindFirstChild(tier) then
+		kept += 1
+	elseif not chestBuild then
+		missing[#missing + 1] = tier .. "(ต้องรันด้วย --furniture)"
+	else
+		local ok, model = pcall(chestBuild, tier)
+		if ok and model then
+			model.Parent = chestFolder
+			made[#made + 1] = tier
+		else
+			missing[#missing + 1] = tier .. "(สร้างไม่ผ่าน)"
+		end
+	end
+end
+
 local msg = ("done: ติดตั้ง %d ชิ้น · มีอยู่แล้ว %d"):format(#made, kept)
 if #missing > 0 then msg = msg .. (" · ⚠ ขาด %d: %s"):format(#missing, table.concat(missing, ", ")) end
 status(msg, true)
