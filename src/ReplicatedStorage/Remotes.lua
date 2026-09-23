@@ -9,6 +9,11 @@ local EVENTS = {
 	-- so the button read as broken and got pressed again. Now it is a bar -- and a bar implies a window in
 	-- which something can go wrong, which is the other half: a blow, a fall or going down calls the trip off.
 	"LobbyTravelChanged",
+	-- ปาร์ตี้ของโหมด PVP ในล็อบบี้ (ผู้ใช้ส่งภาพร่างมา 2026-09-23)
+	--
+	-- **คนละตี้กับตี้ในเกม** — ตี้ในเกมอยู่ในเซิร์ฟช่อง มีหลอดเลือดและระยะ ส่วนอันนี้อยู่ในล็อบบี้
+	-- ซึ่งไม่เปิดเซสชันโปรไฟล์และไม่มี Vitals · ใช้ `Party.lua` ตัวเดียวกันเป็นสถานะ แต่คนละ remote
+	"PvpPartyUpdate", "RequestPvpParty",
 	"SetSprintIntent", "ToggleWalk", -- movement (client intent in; stamina goes out via VitalsUpdate)
 	"RequestAttack", "CombatStateChanged", -- combat (click intent in, guard/attack playback out)
 	"VitalsUpdate", "DownedStateChanged", "RequestRespawn", -- vitals (hp/hunger/stamina/armor out, downed UI, respawn in)

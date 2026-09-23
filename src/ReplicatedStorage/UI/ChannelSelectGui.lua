@@ -4,13 +4,18 @@ local ROWS, COLS = 2, 15 -- 30 avatar slots per channel, matching the reference 
 
 local Responsive = require(script.Parent.Responsive)
 
+local PvpPartyGui = require(script.Parent.PvpPartyGui)
+
 local ChannelSelectGui = {}
 ChannelSelectGui.__index = ChannelSelectGui
 
 -- โหมดที่กดได้จริง — **เปิดเมื่อเพลสปลายทางมีจริงเท่านั้น**
 -- Farming เปิดแล้ว 2026-09-20 (เพลส `WOLD Farming` = `ServerConfig.FarmingPlaceId`)
 -- PVP ยังไม่มีเพลส จึงยังปิดอยู่
-local ACTIVE_MODES = { Roleplay = true, Farming = true }
+-- PVP เปิดให้กดได้แล้ว (ผู้ใช้สั่ง 2026-09-23) **แต่ปุ่ม "เล่น" ข้างในยังพักไว้** เพราะเพลส Arena
+-- ยังไม่มี — แท็บนี้พาไปหน้าปาร์ตี้ ไม่ได้พาไปเซิร์ฟไหน จึงไม่ผิดกฎ "เปิดเมื่อเพลสปลายทางมีจริง"
+-- (`LobbyServer.JoinChannel` ไม่รู้จักโหมด PVP อยู่แล้ว กดยังไงก็ไม่มีการเทเลพอร์ต)
+local ACTIVE_MODES = { Roleplay = true, Farming = true, PVP = true }
 -- ชื่อโหมดเป็นชื่อของ "เพลสปลายทาง" ไม่ใช่ป้ายเฉยๆ (ผู้ใช้เปลี่ยน 2026-09-19: Stories → Farming,
 -- Tanding → PVP) ดูแผนของสองโหมดนี้ใน `docs/design/05-future-modes.md`
 --
@@ -372,19 +377,28 @@ function ChannelSelectGui.new()
 	self.farmRowH = ROW_H
 	self.rows.Farming = { list = farmList }
 
-	-- PVP: a single "coming soon" placeholder frame, swapped in when that tab is selected
-	for _, mode in ipairs({ "PVP" }) do
-		local soon = Instance.new("TextLabel")
-		soon.Size = UDim2.new(1, 0, 1, 0)
-		soon.BackgroundTransparency = 1
-		soon.Font = Enum.Font.SourceSansBold
-		soon.TextSize = 28
-		soon.TextColor3 = TEXT_MUTED
-		soon.Text = "เร็วๆ นี้"
-		soon.Visible = false
-		soon.Parent = root
-		self.rows[mode] = { comingSoon = soon }
-	end
+	-- PVP: หน้าปาร์ตี้ (ผู้ใช้ส่งภาพร่างมา 2026-09-23) — วางในกรอบกระจกเดียวกับรายการเซิร์ฟเวอร์
+	-- เพื่อให้สามแท็บอยู่ในกล่องเดียวกันทั้งหมด ไม่ใช่แท็บนี้ลอยอยู่คนละที่
+	local pvpPanel = Instance.new("Frame")
+	pvpPanel.Name = "PvpPanel"
+	pvpPanel.AnchorPoint = list.AnchorPoint
+	pvpPanel.Position = list.Position
+	pvpPanel.Size = list.Size
+	pvpPanel.BackgroundColor3 = Responsive.GlassColor
+	pvpPanel.BackgroundTransparency = Responsive.GlassTransparency
+	pvpPanel.BorderSizePixel = 0
+	pvpPanel.Visible = false
+	pvpPanel.Parent = root
+	corner(pvpPanel, UDim.new(0, 20))
+	glassStroke(pvpPanel, 0.8)
+	self.pvpPanel = pvpPanel
+	self.pvp = PvpPartyGui.new(pvpPanel)
+	self.pvp:SetVisible(true) -- ตัวแผงข้างนอกเป็นคนคุมการซ่อน/แสดงตามแท็บ
+	-- **หน้าต่างประกาศตัวเอง ฝั่งที่ต้องใช้ไปหยิบเอา** — `PvpPartyController` เป็นคนละ LocalScript
+	-- จึงแชร์ตารางลัวกันตรงๆ ไม่ได้ · กฎเดิมของโปรเจ็ค (บทเรียนปุ่มร้านพรีเมียมที่รอแล้วเงียบ):
+	-- อย่าให้ฝั่งที่รอเป็นคนนัดเวลา ให้ฝ่ายที่สร้างวางของไว้แล้วอีกฝ่ายวนถามเอง
+	_G.WOLD_PvpPartyGui = self.pvp
+	self.rows.PVP = {}
 
 	-- Blackout: covers the entire screen (gui itself now ignores the inset, so this reaches under Roblox's top
 	-- bar too) the instant a join is confirmed, so a second click on this screen is physically impossible
@@ -467,6 +481,7 @@ end
 function ChannelSelectGui:_selectMode(mode)
 	self.list.Visible = (mode == "Roleplay")
 	if self.farmList then self.farmList.Visible = (mode == "Farming") end
+	if self.pvpPanel then self.pvpPanel.Visible = (mode == "PVP") end
 	for _, m in ipairs(MODE_ORDER) do
 		if self.rows[m] and self.rows[m].comingSoon then
 			self.rows[m].comingSoon.Visible = (m == mode)

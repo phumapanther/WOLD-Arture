@@ -50,6 +50,19 @@ function Party.IsFull(party)
 	return #party.members >= SocialConfig.PartyMax
 end
 
+-- คำเชิญที่ยังไม่หมดอายุของคนนี้ (คืนคนที่ชวน หรือ nil) — หน้าจอปาร์ตี้ PVP ในล็อบบี้ต้องวาดกล่อง
+-- "คุณ ... ชวนเข้าปาร์ตี้" จากสถานะจริง ไม่ใช่จำเอาเองจากอีเวนต์ที่อาจมาถึงตอนหน้าจอยังไม่เปิด
+function Party.PendingFor(target)
+	local mine = Invites[target]
+	if not mine then return nil end
+	for _, invite in pairs(mine) do
+		if not expired(invite) and invite.from and invite.from:IsDescendantOf(game:GetService("Players")) then
+			return invite.from
+		end
+	end
+	return nil
+end
+
 --------------------------------------------------------------------------------
 -- ชวน / รับ / ปฏิเสธ
 --------------------------------------------------------------------------------
