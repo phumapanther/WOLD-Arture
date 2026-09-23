@@ -71,7 +71,9 @@ local function penCount(model)
 end
 
 -- ปล่อยสัตว์หนึ่งตัวลงคอก · ติดแท็กให้ Gathering ของเกมหลักต่อปุ่ม "เก็บไข่/รีดนม/ตัดขน" ให้เอง
-local function spawnAnimal(model, kind)
+--
+-- `saved` = สถานะที่เก็บไว้ในโปรไฟล์ (ตอนเซิร์ฟบูตใหม่) — ไม่ส่งมา = ตัวใหม่ที่เพิ่งซื้อ
+local function spawnAnimal(model, kind, saved)
 	local proto = prototypeOf("Animal_" .. kind)
 	if not proto then
 		warn("[IslandZones] ไม่มีต้นแบบ Animal_" .. tostring(kind))
@@ -83,7 +85,7 @@ local function spawnAnimal(model, kind)
 	animal:PivotTo(CFrame.new(x, groundAt(x, z), z) * CFrame.Angles(0, math.random() * math.pi * 2, 0))
 	animal:SetAttribute("NodeKind", kind)
 	-- **นาฬิกาของตัวมันเอง** ไม่ใช่ของคอก — ซื้อคนละเวลา โตคนละเวลา (ผู้ใช้สั่ง "คูลดาวน์ต่อตัว")
-	animal:SetAttribute("ReadyAt", os.time() + IslandConfig.PenGrowSeconds)
+	animal:SetAttribute("ReadyAt", saved and saved.r or (os.time() + IslandConfig.PenGrowSeconds))
 
 	-- **เก็บซ้ำได้ ไม่ใช่เก็บครั้งเดียวแล้วหาย** (ผู้ใช้เลือก 2026-09-22)
 	--
@@ -99,9 +101,23 @@ local function spawnAnimal(model, kind)
 	end
 	-- สัตว์ที่เพิ่งถูกเก็บไม่ต้องจางเป็นผี — มันยังยืนอยู่ตรงนั้นจริงๆ แค่รีดนมซ้ำไม่ได้ชั่วคราว
 	animal:SetAttribute("NoFade", true)
-	animal:SetAttribute("Spent", true) -- ยังโตไม่พอ: ปุ่มถูกปิดไว้จนกว่า tickPen จะปลดให้
-	animal:SetAttribute("BornAt", os.time()) -- ใช้คำนวณสเกลระหว่างโต
-	pcall(function() animal:ScaleTo(IslandConfig.PenBabyScale) end) -- เกิดมาตัวเล็ก แล้วค่อยโต
+	animal:SetAttribute("BornAt", saved and saved.b or os.time()) -- ใช้คำนวณสเกลระหว่างโต
+
+	-- ตัวที่โตแล้วกลับมาโตเหมือนเดิม · ตัวที่ยังโตไม่เสร็จนับต่อจากนาฬิกาเดิม (เวลาเดินตอนออฟไลน์ด้วย
+	-- เพราะใช้ `os.time` แบบเดียวกับแปลงผัก) · `a` = เวลาที่เก็บซ้ำได้อีกครั้ง ถ้ากำลังติดคูลดาวน์อยู่
+	if saved and saved.g then
+		animal:SetAttribute("Grown", true)
+		local again = saved.a
+		if again and again > os.time() then
+			animal:SetAttribute("Spent", true)
+			animal:SetAttribute("ReadyAgainAt", again)
+		end
+		-- ⚠️ **ตัวที่โตแล้วห้ามย่อกลับ** `tickPen` ขยายให้เฉพาะตอนข้ามเส้น "โตเสร็จ" ครั้งเดียว
+		-- ตัวที่ถูกคืนมาพร้อมธง `Grown` จะไม่ผ่านทางนั้นอีก ย่อตรงนี้ = ตัวเต็มวัยค้างที่ครึ่งตัวถาวร
+	else
+		animal:SetAttribute("Spent", true) -- ยังโตไม่พอ: ปุ่มถูกปิดไว้จนกว่า tickPen จะปลดให้
+		pcall(function() animal:ScaleTo(IslandConfig.PenBabyScale) end) -- เกิดมาตัวเล็ก แล้วค่อยโต
+	end
 	CollectionService:AddTag(animal, NODE_TAG)
 	animal.Parent = penFolder(model)
 	return true
@@ -145,6 +161,10 @@ local function penSnapshot(model)
 	}
 end
 
+-- ⚠️ **จองชื่อไว้ก่อน** `penBuy` ข้างล่างเรียกตัวนี้ แต่ตัวจริงนิยามอยู่ถัดไปอีก — ประกาศทีหลัง
+-- ฟังก์ชันที่ใช้มันเมื่อไหร่ closure จะจับ global ที่เป็น nil แล้วพังตอนรันจริง (บทเรียนซ้ำในโปรเจ็คนี้)
+local saveHerd
+
 -- ซื้อสัตว์ n ตัว: เกิดในคอกทันที หักเงินตามจำนวนที่เกิดจริง (ผู้ใช้สั่ง "ซื้อแล้วนับสัตว์ในคอกเลย")
 local function penBuy(player, model, kind, count)
 	if not IslandAccess.IsOwner(player) then return false, "เฉพาะเจ้าของเกาะ" end
@@ -176,18 +196,54 @@ local function penBuy(player, model, kind, count)
 	if born == 0 then return false, "ปล่อยสัตว์ลงคอกไม่สำเร็จ" end
 	Inventory.AddGold(player, -spec.price * born)
 	entry.animal = kind
+	saveHerd(model, entry) -- จดทันที ไม่รอรอบ tick ถัดไป (ผู้เล่นอาจออกเกมภายในวินาทีนั้น)
 	notify(player, "info", ("ซื้อ%s %d ตัว — โตพอให้เก็บใน %d นาที"):format(spec.name, born, IslandConfig.PenGrowSeconds / 60))
 	return true
 end
 
--- ปลดล็อกสัตว์ที่โตครบแล้วทีละตัว · คอกที่ว่างหมดคืนชนิดให้ว่าง (เลี้ยงชนิดใหม่ได้)
+-- **ฝูงถูกเซฟลงโปรไฟล์** (แก้ 2026-09-23: ผู้ใช้แจ้งว่าซื้อสัตว์ทิ้งไว้แล้วออกเกม กลับมาสัตว์หาย)
 --
--- **สถานะอยู่บนตัวสัตว์ ไม่ใช่ในโปรไฟล์** ตั้งใจ: สัตว์เป็นของชั่วคราวที่หายไปตอนเก็บและหายตอนเซิร์ฟปิด
--- (เหมือนสัตว์ในเกมหลักและของในหีบ) ถ้าเก็บลงโปรไฟล์ด้วย จะต้องตามซิงก์สองที่ตลอดชีวิตโปรเจ็ค
+-- ของเดิมจงใจไม่เซฟ โดยให้เหตุผลว่า "สัตว์เป็นของชั่วคราวที่หายตอนเก็บ" ซึ่งจริงตอนที่มันยังเก็บได้
+-- ครั้งเดียวแล้วหายไป — **แต่ผู้ใช้เปลี่ยนให้เก็บซ้ำได้เมื่อ 2026-09-22** วัวตัวละ 1,800 เหรียญจึงเป็น
+-- การลงทุนที่ต้องอยู่ข้ามรอบ ไม่ใช่ของใช้แล้วทิ้ง · เซฟเหมือนที่แปลงผักเซฟ `crop`/`at` มาตลอด
+--
+-- **ตัวจริงคือสัตว์ที่ยืนอยู่ในคอก โปรไฟล์เป็นแค่สำเนา** — มิเรอร์ทั้งฝูงทุกรอบ tick ที่เดียว
+-- ไม่ต้องไล่จดทีละเหตุการณ์ (เกิด/โต/ถูกเก็บ) ซึ่งเป็นที่มาของการซิงก์หลุดเสมอ
+function saveHerd(model, entry)
+	local herd = {}
+	for _, a in ipairs(penFolder(model):GetChildren()) do
+		herd[#herd + 1] = {
+			b = a:GetAttribute("BornAt"),
+			r = a:GetAttribute("ReadyAt"),
+			g = a:GetAttribute("Grown") == true or nil,
+			a = a:GetAttribute("ReadyAgainAt"),
+		}
+	end
+	entry.herd = #herd > 0 and herd or nil
+end
+
+-- ปลดล็อกสัตว์ที่โตครบแล้วทีละตัว · คอกที่ว่างหมดคืนชนิดให้ว่าง (เลี้ยงชนิดใหม่ได้)
 local function tickPen(model, entry)
 	local live = penFolder(model):GetChildren()
+
+	-- คอกว่างแต่โปรไฟล์ยังมีฝูงอยู่ = เซิร์ฟเพิ่งบูต ยังไม่มีใครปล่อยสัตว์ลงไป → คืนให้
+	-- (สัตว์ไม่ถูกลบตอนเก็บอีกแล้ว คอกว่างจึงไม่ได้แปลว่า "เก็บหมดแล้ว")
+	if #live == 0 and entry.herd and entry.animal then
+		local back = 0
+		for _, saved in ipairs(entry.herd) do
+			if spawnAnimal(model, entry.animal, saved) then back += 1 end
+		end
+		if back > 0 then
+			print(("[IslandZones] คืนสัตว์ในคอก %s %d ตัว"):format(tostring(entry.animal), back))
+			live = penFolder(model):GetChildren()
+		else
+			entry.herd = nil -- ต้นแบบหาย คืนไม่ได้ อย่าวนลองใหม่ทุกวินาที
+		end
+	end
+
 	if #live == 0 then
 		if entry.animal then entry.animal = nil end
+		entry.herd = nil
 		return
 	end
 	local now = os.time()
@@ -200,6 +256,20 @@ local function tickPen(model, entry)
 		-- ⚠️ **ปลดล็อกได้ครั้งเดียว ตอนโตเสร็จเท่านั้น** หลังจากนั้น `Spent` เป็นของ Gathering ล้วนๆ
 		-- (มันตั้งตอนเก็บ แล้วล้างเองเมื่อครบ `RespawnSeconds`) — ถ้าตรงนี้ยังล้างให้ด้วย สัตว์ที่เพิ่ง
 		-- ถูกรีดนมจะกลับมาเก็บได้ทันทีในวินาทีถัดไป คูลดาวน์จะไม่มีความหมายเลย
+		-- **คูลดาวน์ที่ข้ามการรีสตาร์ท** — `Gathering` ล้าง `Spent` ด้วย `task.delay` ซึ่งตายไปพร้อม
+		-- เซิร์ฟเวอร์เก่า สัตว์ที่ถูกคืนมาพร้อมคูลดาวน์ค้างจึงไม่มีใครมาปลดให้เลย · ตรงนี้ปลดตามเวลาจริง
+		-- (ระหว่างเซสชันปกติก็ไม่ชนกัน ทั้งสองทางทำสิ่งเดียวกันและซ้ำได้)
+		local again = animal:GetAttribute("ReadyAgainAt")
+		if animal:GetAttribute("Grown") and animal:GetAttribute("Spent") and again and again <= now then
+			animal:SetAttribute("Spent", nil)
+			animal:SetAttribute("ReadyAgainAt", nil)
+			-- ต้องเปิดปุ่มเองด้วย — ปกติ `Gathering.setSpent(node, false)` เป็นคนเปิด แต่นั่นคือ
+			-- `task.delay` ที่ตายไปกับเซิร์ฟเวอร์เก่า ล้างแค่แอตทริบิวต์จะได้สัตว์ที่กดไม่ได้ตลอดไป
+			for _, d in ipairs(animal:GetDescendants()) do
+				if d:IsA("ProximityPrompt") then d.Enabled = true end
+			end
+		end
+
 		if not animal:GetAttribute("Grown") and readyAt <= now then
 			animal:SetAttribute("Grown", true)
 			animal:SetAttribute("Spent", nil)
@@ -231,6 +301,9 @@ local function tickPen(model, entry)
 			end
 		end
 	end
+
+	-- มิเรอร์ฝูงลงโปรไฟล์ทุกรอบ — ที่เดียว ไม่ต้องไล่จดทีละเหตุการณ์ (เกิด/โต/ถูกเก็บ)
+	saveHerd(model, entry)
 end
 
 --------------------------------------------------------------------------------

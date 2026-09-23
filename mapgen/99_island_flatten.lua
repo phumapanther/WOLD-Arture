@@ -99,15 +99,40 @@ end
 --------------------------------------------------------------------------------
 local isl = workspace:FindFirstChild("WOLD_Island")
 local fixed = isl and isl:FindFirstChild("Fixed")
-local before = {}
+-- ⚠️ **ตัวละคร (โมเดลที่มี Humanoid) ต้องขยับทั้งตัว ห้ามขยับทีละชิ้น**
+--
+-- แขนขาถูกขับด้วย Motor6D ไม่ใช่ด้วย CFrame ของตัวเอง — เขียน CFrame รายชิ้นจึงไม่มีความหมาย
+-- และถ้าชิ้นส่วนไม่ได้ anchored การดันพื้นขึ้นใต้ตัวมันคือการยัดเทอร์เรนเข้าไปในร่าง ซึ่งจบได้ทั้ง
+-- "เด้งกระเด็น" และ "ทะลุเกาะร่วงลงไป" — ร่วงพ้น `FallenPartsDestroyHeight` เมื่อไหร่เอนจินลบทิ้งให้เลย
+-- (สงสัยว่านี่คือสาเหตุที่บาร์นาบีหายไปหลังรันเฟสนี้ 2026-09-22)
+local function rigOf(part)
+	local m = part:FindFirstAncestorWhichIsA("Model")
+	while m and m ~= fixed do
+		if m:FindFirstChildWhichIsA("Humanoid") then return m end
+		m = m:FindFirstAncestorWhichIsA("Model")
+	end
+	return nil
+end
+
+local before, beforeRig = {}, {}
 local fixedParts = 0
 for _, m in ipairs(fixed and fixed:GetDescendants() or {}) do
 	if m:IsA("BasePart") then
-		before[m] = groundAt(m.Position.X, m.Position.Z)
-		fixedParts += 1
+		local rig = rigOf(m)
+		if rig then
+			if beforeRig[rig] == nil then
+				local at = rig:GetPivot().Position
+				beforeRig[rig] = groundAt(at.X, at.Z) or false
+			end
+		else
+			before[m] = groundAt(m.Position.X, m.Position.Z)
+			fixedParts += 1
+		end
 	end
 end
-status(("จำพื้นใต้ของที่ตั้งไว้เอง %d ชิ้น"):format(fixedParts))
+local rigCount = 0
+for _ in pairs(beforeRig) do rigCount += 1 end
+status(("จำพื้นใต้ของที่ตั้งไว้เอง %d ชิ้น · ตัวละคร %d ตัว (ขยับทั้งตัว)"):format(fixedParts, rigCount))
 
 --------------------------------------------------------------------------------
 -- 2. รอบแรก: ดูว่าคอลัมน์ไหนแตะได้ (ยังไม่เขียนอะไร)
@@ -308,7 +333,19 @@ for part, oldY in pairs(before) do
 		end
 	end
 end
-status(("ของที่ตั้งไว้เอง: ขยับตามพื้น %d ชิ้น · อยู่ที่เดิม %d · ข้าม %d")
-	:format(moved, stayed, skipped))
+-- ตัวละคร: ขยับทีละตัวด้วย PivotTo แล้วยกให้พ้นพื้นนิดหนึ่ง เผื่อฟิสิกส์ยังไม่ทันรู้ว่าพื้นขยับ
+local rigsMoved = 0
+for rig, oldY in pairs(beforeRig) do
+	if rig.Parent and oldY then
+		local at = rig:GetPivot().Position
+		local newY = groundAt(at.X, at.Z)
+		if newY and math.abs(newY - oldY) >= 0.05 and math.abs(newY - oldY) <= WINDOW + RES then
+			pcall(function() rig:PivotTo(rig:GetPivot() + Vector3.new(0, newY - oldY + 0.5, 0)) end)
+			rigsMoved += 1
+		end
+	end
+end
+status(("ของที่ตั้งไว้เอง: ขยับตามพื้น %d ชิ้น · อยู่ที่เดิม %d · ข้าม %d · ตัวละคร %d ตัว")
+	:format(moved, stayed, skipped, rigsMoved))
 
 status(("done: พื้นหญ้า/ดินเรียบที่ y=%d · ภูเขา บ่อ และขอบเกาะไม่ถูกแตะ"):format(SURFACE), true)
