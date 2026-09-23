@@ -116,7 +116,8 @@ function ChannelSelectGui.new()
 		tabBar.AnchorPoint = Vector2.new(0.5, 0)
 		tabBar.Position = UDim2.new(0.5, 0, 0, TOP_BAR + 62)
 	else
-		tabBar.Position = UDim2.new(1, -24, 0, TOP_BAR + 24)
+		-- เว้นที่มุมขวาบนให้ปุ่มพับ UI (ผู้ใช้สั่ง 2026-09-23) — ถอยซ้ายเท่าความกว้างปุ่ม + ช่องไฟ
+		tabBar.Position = UDim2.new(1, -24 - 46 - 10, 0, TOP_BAR + 24)
 	end
 	tabBar.BackgroundTransparency = 1
 	tabBar.Parent = root
@@ -400,6 +401,58 @@ function ChannelSelectGui.new()
 	blackout.Parent = gui
 	self.blackout = blackout
 
+	--------------------------------------------------------------------------------
+	-- ปุ่มพับ UI (ผู้ใช้สั่ง 2026-09-23: "ปุ่มลูกศรลง-ลูกศรขึ้นที่มุมขวาบน ใช้ปิด-เปิด UI หน้าล็อบบี้")
+	--------------------------------------------------------------------------------
+	--
+	-- **อยู่นอก `root`** — มันคือสิ่งเดียวที่ต้องเหลืออยู่บนจอตอนทุกอย่างถูกซ่อน ถ้าเป็นลูกของ root
+	-- มันจะหายไปพร้อมกัน แล้วก็ไม่มีทางเปิดกลับ
+	local toggle = Instance.new("TextButton")
+	toggle.Name = "ToggleUi"
+	toggle.AnchorPoint = Vector2.new(1, 0)
+	toggle.Size = UDim2.fromOffset(portrait and 40 or 46, portrait and 40 or 46)
+	toggle.Position = UDim2.new(1, -24, 0, TOP_BAR + (portrait and 8 or 26))
+	toggle.BackgroundColor3 = GLASS
+	toggle.BackgroundTransparency = 0.82
+	toggle.Text = ""
+	toggle.AutoButtonColor = true
+	toggle.ZIndex = 20
+	toggle.Parent = gui
+	corner(toggle, UDim.new(1, 0))
+	glassStroke(toggle, 0.7)
+
+	-- ⚠️ **ลูกศรวาดจาก Frame หมุน ไม่ใช่ตัวอักษร** — ฟอนต์ของ Roblox วาด ▲ ▼ เป็นกล่องเปล่า
+	-- (บทเรียนเดิมจากลูกศรในมินิเกม จดไว้ใน CLAUDE.md แล้ว) · สองขีดไขว้กันเป็นเชฟรอน "⌄"
+	-- แล้วหมุนทั้งกล่อง 180° เวลาจะให้ชี้ขึ้น
+	local chevron = Instance.new("Frame")
+	chevron.Name = "Chevron"
+	chevron.AnchorPoint = Vector2.new(0.5, 0.5)
+	chevron.Position = UDim2.fromScale(0.5, 0.5)
+	chevron.Size = UDim2.fromOffset(22, 12)
+	chevron.BackgroundTransparency = 1
+	chevron.ZIndex = 21
+	chevron.Parent = toggle
+	for _, bar in ipairs({ { -5, -30 }, { 5, 30 } }) do
+		local stroke = Instance.new("Frame")
+		stroke.AnchorPoint = Vector2.new(0.5, 0.5)
+		stroke.Position = UDim2.new(0.5, bar[1], 0.5, 0)
+		stroke.Size = UDim2.fromOffset(14, 3)
+		stroke.Rotation = bar[2]
+		stroke.BackgroundColor3 = ACCENT
+		stroke.BorderSizePixel = 0
+		stroke.ZIndex = 21
+		stroke.Parent = chevron
+		corner(stroke, UDim.new(1, 0))
+	end
+
+	self.toggle = toggle
+	self.chevron = chevron
+	self.root = root
+	self._collapsed = false
+	toggle.MouseButton1Click:Connect(function()
+		self:SetCollapsed(not self._collapsed)
+	end)
+
 	self.list = list
 	self.gui = gui
 	self:_selectMode("Roleplay")
@@ -601,6 +654,17 @@ function ChannelSelectGui:Unlock()
 	for _, row in pairs(self.rows.Roleplay) do
 		row.joinButton.Active = true
 	end
+end
+
+-- พับ/กาง UI ทั้งหน้า เหลือแต่ปุ่มมุมขวาบน
+--
+-- ซ่อน `root` ตัวเดียวพอ — ทุกอย่างของหน้านี้เป็นลูกของมันหมด ยกเว้นปุ่มนี้กับจอดำตอนกด JOIN
+-- (จอดำต้องอยู่นอกการพับ ไม่งั้นพับไว้แล้วกดเข้าเกมจะไม่มีอะไรบังจอ)
+function ChannelSelectGui:SetCollapsed(collapsed)
+	self._collapsed = collapsed and true or false
+	self.root.Visible = not self._collapsed
+	-- ชี้ลง = กดเพื่อพับ · ชี้ขึ้น = กดเพื่อกาง
+	self.chevron.Rotation = self._collapsed and 180 or 0
 end
 
 function ChannelSelectGui:Show()

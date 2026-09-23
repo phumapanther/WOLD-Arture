@@ -8,6 +8,10 @@
 local Lighting = game:GetService("Lighting")
 local RunService = game:GetService("RunService")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
+-- **ล็อบบี้ไม่มีวงจรกลางวัน-กลางคืน** (2026-09-23) — มันเป็นห้องปิดลอยอยู่ที่ y=1000 ที่ผู้เล่นแวะ
+-- ไม่กี่วินาที การปล่อยให้มันมืดสนิทตอนตีสองไม่ได้ให้บรรยากาศอะไร แค่ทำให้เมนูอ่านยาก
+-- · `BuildLobbyRoom` ตั้งแสงคงที่ไว้แทน (ตั้งที่นั่นได้เพราะไม่มีใครมาเขียนทับแล้ว)
+if ServerConfig.IsLobby then return end
 local DayNightConfig = require(game.ReplicatedStorage.DayNightConfig)
 local DayNightAccess = require(game.ServerScriptService.DayNightAccess)
 local WeatherConfig = require(game.ReplicatedStorage.WeatherConfig)
