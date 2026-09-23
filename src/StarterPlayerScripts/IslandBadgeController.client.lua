@@ -57,7 +57,9 @@ local function show(inst, emoji)
 		if not part then return end
 		gui = Instance.new("BillboardGui")
 		gui.Name = "WOLD_Badge"
-		gui.Size = UDim2.fromOffset(CFG.size, CFG.size)
+		-- **Scale ของ BillboardGui มีหน่วยเป็นสตัด** (Offset ถึงจะเป็นพิกเซล) — ป้ายจึงเล็กลง
+		-- ตามระยะเหมือนของในโลก ไม่ใช่ป้ายขนาดเท่ากันหมดที่ต้องตัดระยะทิ้งถึงจะไม่รก
+		gui.Size = UDim2.fromScale(CFG.sizeStuds, CFG.sizeStuds)
 		gui.StudsOffsetWorldSpace = Vector3.new(0, lift + CFG.lift, 0)
 		gui.MaxDistance = CFG.maxDistance
 
