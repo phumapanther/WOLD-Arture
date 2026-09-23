@@ -322,9 +322,17 @@ ItemCatalog.Items = {
 	MagicOre = { icon = "rbxassetid://83959186215687", name = "แร่เวทมนตร์", kind = "junk", weight = 2, stackSize = 99, value = 90 }, -- decal 120727145622733
 	Diamond = { icon = "rbxassetid://88276561126599", name = "เพชร", kind = "junk", weight = 1, stackSize = 99, value = 150 }, -- decal 80982434115389
 
-	-- จากไร่นา
-	Vegetable = { icon = "rbxassetid://97077438082748", name = "ผักรวม", kind = "junk", weight = 1, stackSize = 99, value = 5 }, -- decal 97957712627842
-	Wheat = { icon = "rbxassetid://138650681258991", name = "ข้าว", kind = "junk", weight = 1, stackSize = 99, value = 6 }, -- decal 77562812947089
+	-- จากไร่นา — **ขึ้นราคา 4 เท่า 2026-09-23** (ผู้ใช้สั่ง: 5/6/4 -> 20/24/16)
+	--
+	-- เมล็ดพันธุ์บนเกาะขึ้นราคา 50 -> 300 (6 เท่า) โดยที่ผลผลิตไม่ขยับตาม แปลงผักจึงขาดทุนจริง:
+	-- เมล็ด 9 เม็ด = 2,700 เหรียญ ปลูกจนเมล็ดหมด (56 ครั้ง เพราะคืน 0.84 เม็ด/ครั้ง) ขายได้ 891 = คืนแค่ 33%
+	-- ที่ 4 เท่า: ขายได้ 2,737 = เสมอตัวพอดี · กำไรจริงของแปลงคือ EXP กับของป้อนครัว/ยา
+	--
+	-- ⚠️ **กระทบเกมหลักด้วย** นาข้าว/แปลงผัก/สมุนไพรทั้งแมพได้เงินขึ้น 4 เท่าตาม — `value`
+	-- เป็นของทั้งเกม แยกราคาเฉพาะเกาะไม่ได้ · ถ้าวันไหนเกมหลักเฟ้อ ทางที่ถูกคือลดราคาเมล็ดกลับ
+	-- (เสมอตัวที่ 99) ไม่ใช่ขึ้นราคาผักต่อ
+	Vegetable = { icon = "rbxassetid://97077438082748", name = "ผักรวม", kind = "junk", weight = 1, stackSize = 99, value = 20 }, -- decal 97957712627842
+	Wheat = { icon = "rbxassetid://138650681258991", name = "ข้าว", kind = "junk", weight = 1, stackSize = 99, value = 24 }, -- decal 77562812947089
 	MagicBranch = { icon = "rbxassetid://122305408113810", name = "กิ่งเวทมนตร์", kind = "junk", weight = 0.8, stackSize = 99, value = 25 }, -- decal 105616416463980
 
 	-- Gathered materials. Priced and weighted by where they come from: fibre is picked off a bush
@@ -333,7 +341,7 @@ ItemCatalog.Items = {
 	-- entries exist before the system that drops them rather than after.
 	IronOre = { icon = "rbxassetid://85652195246479", name = "แร่เหล็ก", kind = "junk", weight = 3, stackSize = 99, value = 6 }, -- assets/item-icons/IronOre.png
 	Fiber = { icon = "rbxassetid://89290089367939", name = "เส้นใย", kind = "junk", weight = 0.3, stackSize = 99, value = 2 }, -- assets/item-icons/Fiber.png
-	Herb = { icon = "rbxassetid://87753072302137", name = "สมุนไพร", kind = "junk", weight = 0.4, stackSize = 99, value = 4 }, -- assets/item-icons/Herb.png
+	Herb = { icon = "rbxassetid://87753072302137", name = "สมุนไพร", kind = "junk", weight = 0.4, stackSize = 99, value = 16 }, -- assets/item-icons/Herb.png
 	Crystal = { icon = "rbxassetid://76877650996022", name = "คริสตัล", kind = "junk", weight = 1.2, stackSize = 99, value = 15 }, -- assets/item-icons/Crystal.png
 
 	--------------------------------------------------------------------------
