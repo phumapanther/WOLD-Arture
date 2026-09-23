@@ -454,6 +454,11 @@ ItemCatalog.Items = {
 		-- Chest_Gold (ภาพจริงใน decal 134759403444063)
 		kind = "consumable", weight = 10, stackSize = 8, value = 0, sellable = false,
 		use = { stat = "chest", amount = 1, tier = "Chest_Gold" } },
+	-- ⌛ ยังไม่มีรูปของตัวเอง — ยืมรูปหีบทองไปก่อน (เพิ่ม 2026-09-23 พร้อมรางวัลจบแมตช์ PVP)
+	-- อัปโหลดรูปหีบเวทมนตร์เมื่อไหร่ ใส่ id กลับมาที่ `icon` ตรงนี้ที่เดียว แล้วนาฬิกาทรายหายเอง
+	Chest_Magic = { icon = "", name = "หีบเวทมนตร์",
+		kind = "consumable", weight = 10, stackSize = 8, value = 0, sellable = false,
+		use = { stat = "chest", amount = 1, tier = "Chest_Magic" } },
 
 	--------------------------------------------------------------------------
 	-- Vehicle keys. One key is one vehicle: each carries its own plate in the

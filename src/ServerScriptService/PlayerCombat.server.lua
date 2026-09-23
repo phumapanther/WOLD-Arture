@@ -14,6 +14,7 @@ local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
 local CollectionService = game:GetService("CollectionService")
 local MobAccess = require(game.ServerScriptService.MobAccess)
+local ArenaAccess = require(game.ServerScriptService.ArenaAccess)
 local FishingAccess = require(game.ServerScriptService.FishingAccess)
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
@@ -111,6 +112,11 @@ end
 -- upset is worth several ordinary kills, while farming someone far below is worth a fraction. Only the
 -- finishing hit calls this, so the reward goes to whoever actually took them down.
 local function awardKill(killer, victim)
+	-- ในสนาม PVP การฆ่าไม่ให้ EXP และไม่ทำให้หัวแดง — มันคือคะแนนของรอบนั้น และระบบแมตช์เป็นคนนับ
+	if ArenaAccess.OnKill then
+		ArenaAccess.OnKill(killer, victim)
+		return
+	end
 	local multiplier = ProgressionConfig.KillMultiplier(
 		Progression.GetLevel(killer), Progression.GetLevel(victim))
 	Progression.AwardExp(killer, math.floor(ProgressionConfig.ExpPerPlayerKill * multiplier + 0.5))
@@ -306,12 +312,15 @@ local function fireProjectile(player, attack, aim)
 		for _, other in ipairs(Players:GetPlayers()) do
 			-- คนในตี้เดียวกันไม่ใช่เป้า: ลูกธนูทะลุผ่านไปเหมือนไม่มีใครยืนอยู่ตรงนั้น ไม่ใช่ "โดนแต่ 0 ดาเมจ"
 			-- ด่านอยู่ตรงนี้ ไม่ใช่ใน ApplyDamage เพราะ Vitals ไม่รู้ว่าใครเป็นคนตี — มันเห็นแค่คนที่ถูกตี
-			if other ~= player and not Party.SameParty(player, other) then
+			-- ในสนาม PVP ตี้ของล็อบบี้ไม่ได้เดินทางมาด้วย — ทีมของแมตช์คือด่านเดียวที่มีผลที่นั่น
+			if other ~= player and not Party.SameParty(player, other)
+				and not (ArenaAccess.Friendly and ArenaAccess.Friendly(player, other)) then
 				local otherChar = other.Character
 				if otherChar and distanceToBody(position, otherChar) <= CombatConfig.ProjectileHitRadius
 					and not Vitals.IsInvulnerable(other) then
 					local wasDowned = Vitals.IsDowned(other)
-					Vitals.ApplyDamage(other, dealt, "combat")
+					local landed = Vitals.ApplyDamage(other, dealt, "combat")
+					if landed and ArenaAccess.OnHit then ArenaAccess.OnHit(player, other, dealt) end
 					reportHit(player, other)
 					applyEffect(attack, other)
 					playHitSound(otherChar, player)
@@ -429,7 +438,8 @@ local function resolveHit(player, state, attack)
 	for _, other in ipairs(Players:GetPlayers()) do
 		-- เพื่อนร่วมตี้ไม่ถูกทำเครื่องหมาย `hitThisSwing` ด้วย: การเหวี่ยงผ่านตัวเพื่อนไม่ควร "ใช้สิทธิ์"
 		-- การโดนของหมัดนั้นไป คนที่ยืนถัดไปข้างหลังจึงยังโดนอยู่
-		if other ~= player and not state.hitThisSwing[other] and not Party.SameParty(player, other) then
+		if other ~= player and not state.hitThisSwing[other] and not Party.SameParty(player, other)
+			and not (ArenaAccess.Friendly and ArenaAccess.Friendly(player, other)) then
 			local otherChar = other.Character
 			if otherChar and distanceToBody(origin, otherChar) <= attack.range then
 				state.hitThisSwing[other] = true
@@ -437,7 +447,8 @@ local function resolveHit(player, state, attack)
 				-- players take nothing, and HP reaching 0 downs them rather than killing.
 				if not Vitals.IsInvulnerable(other) then
 					local wasDowned = Vitals.IsDowned(other)
-					Vitals.ApplyDamage(other, dealt, "combat")
+					local landed = Vitals.ApplyDamage(other, dealt, "combat")
+					if landed and ArenaAccess.OnHit then ArenaAccess.OnHit(player, other, dealt) end
 					reportHit(player, other)
 					applyEffect(attack, other)
 					playHitSound(otherChar, player)

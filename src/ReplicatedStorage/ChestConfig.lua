@@ -101,6 +101,16 @@ ChestConfig.Chests = {
 		-- charm sits at the weapon's weight, per the user: as likely as pulling a weapon, and only here.
 		weights = { legal = 50, illegal = 30, usable = 15, ammo = 3, weapon = 2, key = 2, charm = 2 },
 	},
+	-- หีบเวทมนตร์ — ระดับที่ห้า เพิ่ม 2026-09-23 ตามตารางรางวัลจบแมตช์ PVP ที่ผู้ใช้ออกแบบ
+	-- (อันดับ 1 ของแมตช์ได้ใบนี้) **ยังไม่มีทางได้มันในเกมหลักนอกจากแอดมินแจก** — โหมด PVP เป็นทางแรก
+	--
+	-- ของถูกๆ ถูกตัดทิ้งทั้งหมด ไม่ใช่แค่ลดน้ำหนัก: หีบที่เปิดมาแล้วได้เศษไม้ยี่สิบชิ้นคือหีบทองที่
+	-- โชคร้าย ส่วนใบนี้ต้องคุ้มทุกใบ ไม่งั้นการไต่ไปอันดับหนึ่งก็ไม่ได้แปลว่าอะไร
+	Chest_Magic = {
+		name = "หีบเวทมนตร์",
+		colour = Color3.fromRGB(150, 116, 226),
+		weights = { illegal = 34, usable = 16, ammo = 10, weapon = 20, key = 10, charm = 10 },
+	},
 }
 
 -- Which categories count as "rare" -- the things a chest is actually opened hoping for. A chest bought with
@@ -115,6 +125,6 @@ ChestConfig.RareCategories = {
 }
 
 -- Every grade, in the order they should be offered. Used by the admin command's argument list.
-ChestConfig.Order = { "Chest_Wood", "Chest_Ironbound", "Chest_Silver", "Chest_Gold" }
+ChestConfig.Order = { "Chest_Wood", "Chest_Ironbound", "Chest_Silver", "Chest_Gold", "Chest_Magic" }
 
 return ChestConfig

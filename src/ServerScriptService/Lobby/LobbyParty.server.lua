@@ -14,13 +14,12 @@ local Party = require(game.ServerScriptService.Party)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local SocialConfig = require(game.ReplicatedStorage.SocialConfig)
+local ArenaConfig = require(game.ReplicatedStorage.ArenaConfig)
+local ArenaQueue = require(script.Parent.ArenaQueue)
+local AdminRoster = require(game.ServerScriptService.AdminRoster)
 
 local MAX = SocialConfig.PvpPartyMax or 3
 local FRIEND_CACHE_SECONDS = 30
-
--- **ยังไม่มีเพลส Arena** (ผู้ใช้เลือก 2026-09-23: "ทำ UI ก่อน ปุ่มเล่นพักไว้") — กดเล่นแล้วเข้าสถานะ
--- ค้นหาห้องจริงๆ เพื่อให้เห็นหน้าตา แต่พอครบเวลานี้จะบอกตรงๆ ว่าโหมดยังไม่เปิด ไม่ใช่หมุนค้างหลอกกันเล่น
-local PLACEHOLDER_SECONDS = 12
 
 local function nameOf(player)
 	return player.DisplayName ~= "" and player.DisplayName or player.Name
@@ -54,7 +53,8 @@ end
 --------------------------------------------------------------------------------
 -- สถานะการค้นหาห้อง
 --------------------------------------------------------------------------------
-local Searching = {} -- [player] = os.clock() ที่เริ่มกด
+-- **คิวอยู่ที่ `ArenaQueue` ไม่ใช่ที่นี่** — ไฟล์นี้เป็นเจ้าของ "ปาร์ตี้" กับ "หน้าจอ" เท่านั้น
+-- ส่วนการจับคู่ เติมบอท และเทเลพอร์ต เป็นเรื่องของโมดูลนั้น (ดูเหตุผลที่หัวไฟล์มัน)
 
 --------------------------------------------------------------------------------
 -- ภาพที่ส่งให้หน้าจอ
@@ -73,15 +73,25 @@ local function snapshotFor(player)
 	local from = Party.PendingFor(player)
 	local invite = from and { userId = from.UserId, name = nameOf(from) } or nil
 
-	local searchedFor = Searching[player] and (os.clock() - Searching[player]) or nil
+	local searchedFor = ArenaQueue.SecondsWaiting(player)
+	local launching = ArenaQueue.IsLaunching(player)
 	return {
 		max = MAX,
 		members = members,
 		invite = invite,
-		searching = searchedFor ~= nil,
+		searching = (searchedFor ~= nil) or launching,
 		searchSeconds = searchedFor and math.floor(searchedFor) or nil,
-		-- โหมดยังไม่เปิดจริง: บอกหน้าจอให้ขึ้นข้อความหลังหมุนไปสักพัก
-		notReady = (searchedFor ~= nil) and (searchedFor >= PLACEHOLDER_SECONDS) or false,
+		-- กำลังย้ายเข้าสนามอยู่ — หน้าจอต้องค้างที่ "เจอห้องแล้ว" ไม่ใช่เด้งกลับเป็นปุ่มเล่น
+		launching = launching,
+		-- คนในคิวตอนนี้ / ที่ต้องการ · ทำให้การรอมีรูปร่าง ไม่ใช่นาฬิกาเปล่าๆ
+		queued = ArenaQueue.Waiting(),
+		needed = ArenaConfig.MatchPlayers,
+		-- อีกกี่วินาทีจะเติมบอทให้ (ผู้ใช้กำหนด: หาไม่ครบใน 3 นาที → บอทมาเติม)
+		botsIn = searchedFor and math.max(0, math.ceil(ArenaConfig.Bots.searchSeconds - searchedFor)) or nil,
+		-- **เพลสสนามยังไม่มี = บอกตรงๆ ตั้งแต่ก่อนกด** ไม่ใช่ปล่อยให้หมุนแล้วค่อยเฉลย
+		notReady = ServerConfig.ArenaPlaceId == 0,
+		-- ปุ่ม "เริ่มเลย" ของแอดมิน (ข้ามคิว เล่นคนเดียวกับบอทได้)
+		admin = AdminRoster.IsAdmin(player),
 	}
 end
 
@@ -174,20 +184,30 @@ ACTIONS.leave = function(player)
 end
 
 ACTIONS.play = function(player)
-	-- ทั้งตี้เข้าคิวพร้อมกัน — คนที่กดคือคนที่พาไป
-	for _, member in ipairs(Party.Members(player)) do
-		Searching[member] = os.clock()
-		push(member)
+	if ServerConfig.ArenaPlaceId == 0 then
+		return notify(player, "สนาม PVP ยังไม่เปิด (ยังไม่ได้สร้างเพลส)")
 	end
+	-- ทั้งตี้เข้าคิวพร้อมกัน — **คนที่กดคือคนที่พาไป** ปาร์ตี้ถูกจับเป็นก้อนเดียวเสมอ ไม่ถูกหั่นข้ามทีม
+	local members = Party.Members(player)
+	local ok, reason = ArenaQueue.Join(members, player)
+	if not ok then return notify(player, reason or "เข้าคิวไม่สำเร็จ") end
+	for _, member in ipairs(members) do push(member) end
 end
 
 ACTIONS.cancel = function(player)
-	for _, member in ipairs(Party.Members(player)) do
-		Searching[member] = nil
-		push(member)
-	end
-	Searching[player] = nil
+	local members = ArenaQueue.Leave(player)
 	push(player)
+	for _, member in ipairs(members) do
+		if member ~= player then push(member) end
+	end
+end
+
+-- แอดมินกดเริ่มเองโดยไม่ต้องรอใคร — ที่ว่างที่เหลือเป็นบอททั้งสองฝั่ง
+ACTIONS.solo = function(player)
+	local members = Party.Members(player)
+	local ok, reason = ArenaQueue.StartSolo(player, members)
+	if not ok then return notify(player, reason or "เริ่มแมตช์ไม่สำเร็จ") end
+	for _, member in ipairs(members) do push(member) end
 end
 
 Remotes.RequestPvpParty.OnServerEvent:Connect(function(player, action, arg)
@@ -200,13 +220,9 @@ end)
 --------------------------------------------------------------------------------
 -- ส่งภาพใหม่ทุกวินาทีให้คนที่กำลังค้นหาห้องอยู่ เพื่อให้ตัวเลขเดินจริง
 -- (ทรงเดียวกับหน้าต่างคอกสัตว์บนเกาะ: ภาพที่ส่งมาอัปเดตไม่มีสิทธิ์เปิดหน้าต่าง มันแค่วาดทับของที่เปิดอยู่)
-task.spawn(function()
-	while true do
-		task.wait(1)
-		for player in pairs(Searching) do
-			push(player)
-		end
-	end
+-- คิวเป็นคนบอกว่าใครต้องวาดใหม่ (ตัวเลขเดิน เจอห้อง เติมบอท ฯลฯ) — ไฟล์นี้แค่วาดตาม
+ArenaQueue.Start(function(players)
+	for _, player in ipairs(players) do push(player) end
 end)
 
 Players.PlayerAdded:Connect(function(player)
@@ -215,7 +231,7 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	local mates = Party.Members(player)
-	Searching[player] = nil
+	ArenaQueue.RemovePlayer(player)
 	friendCache[player] = nil
 	Party.Remove(player)
 	for _, other in ipairs(mates) do

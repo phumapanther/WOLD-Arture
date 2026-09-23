@@ -14,6 +14,7 @@
     "src/ServerScriptService/VehicleMain.server.lua",
     "src/ServerScriptService/WorldBoss.server.lua",
     "src/ServerScriptService/WorldEvents.server.lua",
+    "src/ServerScriptService/Arena/ArenaMatch.server.lua",
     "src/ServerScriptService/Lobby/BuildLobbyRoom.server.lua",
     "src/ServerScriptService/Lobby/LobbyServer.server.lua",
     "src/ServerScriptService/Lobby/ChannelServer.server.lua",

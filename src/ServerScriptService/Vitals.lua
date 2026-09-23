@@ -41,6 +41,9 @@ local UPRIGHT_C0 = {}
 -- bars), so requiring it here as well would be a cycle. When it is absent — the lobby, or before startup
 -- finishes — the maximums fall back to the flat level-1 values.
 local Progression = nil
+-- ตั้งเป็น true โดย `Arena/ArenaMatch.server` เท่านั้น — ดูที่ `ApplyDamage` ว่ามันเปลี่ยนอะไร
+Vitals.NoDownedMode = false
+
 function Vitals.BindProgression(progression)
 	Progression = progression
 end
@@ -402,7 +405,10 @@ function Vitals.ApplyDamage(player, amount, kind)
 	state.lastHurtAt, state.lastHurtKind = os.clock(), kind
 	if state.hp > 0 then return true end
 
-	if kind == "drown" or kind == "void" then
+	-- ⚠️ ในสนาม PVP **เลือดหมด = ตายทันที** ไม่มีท่าคลาน ไม่มีใครมาอุ้ม (ผู้ใช้เลือก 2026-09-23:
+	-- "ตายแล้วออกยาว รอรอบหน้า" แบบ Valorant) — ธงนี้ตั้งโดย `Arena/ArenaMatch.server` ที่เดียว
+	-- และเซิร์ฟที่ไม่ใช่สนามไม่เคยแตะมัน ท่าล้ม/อุ้ม/ชุบในเกมหลักจึงเหมือนเดิมทุกประการ
+	if kind == "drown" or kind == "void" or Vitals.NoDownedMode then
 		Vitals.Kill(player)
 	else
 		Vitals.EnterDowned(player)

@@ -7,6 +7,9 @@ while workspace:GetAttribute("IsLobby") == nil do
 	task.wait()
 end
 if workspace:GetAttribute("IsLobby") then return end
+-- ⚠️ **กระเป๋าใช้ไม่ได้ในสนาม PVP** (ผู้ใช้สั่ง) — ของที่ซื้อในสนามถูกสวมให้เลยจากหน้าร้าน
+-- และปุ่ม B ในสนามเป็นของ "หน้าร้าน" ไม่ใช่ของกระเป๋า (`ArenaController`)
+if workspace:GetAttribute("ArenaMode") == true then return end
 
 local Players = game:GetService("Players")
 local ContextActionService = game:GetService("ContextActionService")

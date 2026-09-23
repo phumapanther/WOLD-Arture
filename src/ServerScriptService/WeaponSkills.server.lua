@@ -14,6 +14,7 @@ local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Vitals = require(game.ServerScriptService.Vitals)
 local Party = require(game.ServerScriptService.Party)
+local ArenaAccess = require(game.ServerScriptService.ArenaAccess)
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local Consuming = require(game.ServerScriptService.Consuming)
 local StatusEffects = require(game.ServerScriptService.StatusEffects)
@@ -54,8 +55,11 @@ local function damageAndScore(caster, victim, amount)
 	if Vitals.IsInvulnerable(victim) then return end
 	-- สกิลก็คือการตีอย่างหนึ่ง เพื่อนร่วมตี้จึงไม่โดนเหมือนกัน (ท่าฮีลหมู่ไม่ผ่านทางนี้ มันรักษา ไม่ได้ตี)
 	if Party.SameParty(caster, victim) then return end
+	-- ในสนาม PVP ตี้ของล็อบบี้ไม่ได้เดินทางมาด้วย — ทีมของแมตช์คือด่าน "ตีกันเองไม่ได้" ที่นั่น
+	if ArenaAccess.Friendly and ArenaAccess.Friendly(caster, victim) then return end
 	local wasDowned = Vitals.IsDowned(victim)
-	Vitals.ApplyDamage(victim, amount, "combat")
+	local landed = Vitals.ApplyDamage(victim, amount, "combat")
+	if landed and ArenaAccess.OnHit then ArenaAccess.OnHit(caster, victim, amount) end
 	-- A skill landing is a blow like any other, so the music hears about it the same way.
 	Remotes.CombatHit:FireClient(caster)
 	if victim ~= caster then Remotes.CombatHit:FireClient(victim) end
@@ -66,10 +70,27 @@ local function damageAndScore(caster, victim, amount)
 		if victimCharacter and CombatConfig.PlayWeaponHitSound then
 		CombatConfig.PlayWeaponHitSound(victimCharacter, caster)
 	end
-	if not wasDowned and Vitals.IsDowned(victim) then
+	-- ในสนามไม่มี EXP (ไม่เอาเลเวลมาเกี่ยว เพื่อความเท่าเทียม) และคิลถูกนับตอนร่างตายจริง ไม่ใช่ตอนล้ม
+	if not wasDowned and Vitals.IsDowned(victim) and not ArenaAccess.OnKill then
 		local multiplier = ProgressionConfig.KillMultiplier(
 			Progression.GetLevel(caster), Progression.GetLevel(victim))
 		Progression.AwardExp(caster, math.floor(ProgressionConfig.ExpPerPlayerKill * multiplier + 0.5))
+	end
+end
+
+-- สกิล Q ในเกมหลัก **ไม่เคยทำดาเมจใส่มอนเลย** (มันวนแต่ `playersNear`) ซึ่งไม่เป็นไรในเมือง
+-- แต่ในสนาม PVP ครึ่งทีมอาจเป็นบอท — สกิลที่ฟันทะลุบอทไปเฉยๆ คืออาวุธราคา 1,000 ที่ใช้ไม่ได้ครึ่งหนึ่ง
+--
+-- ทำงานเฉพาะในสนาม (`ArenaAccess.OnHit` ถูกตั้งที่นั่นที่เดียว) เพลสหลักจึงไม่มีอะไรเปลี่ยน
+local function alsoHitBots(caster, origin, radius, amount)
+	if not ArenaAccess.OnHit then return end
+	local MobAccess = require(game.ServerScriptService.MobAccess)
+	if not MobAccess.Damage then return end
+	for _, mob in ipairs(game:GetService("CollectionService"):GetTagged("WOLD_Mob")) do
+		local root = mob.PrimaryPart or mob:FindFirstChild("HumanoidRootPart")
+		if root and (root.Position - origin).Magnitude <= radius then
+			MobAccess.Damage(mob, amount, caster)
+		end
 	end
 end
 
@@ -131,6 +152,7 @@ function Skills.LungeSlash(player)
 		for _, victim in ipairs(playersNear(origin, 9, player)) do
 			damageAndScore(player, victim, 32)
 		end
+		alsoHitBots(player, origin, 9, 32)
 	end)
 	return true
 end
@@ -259,6 +281,9 @@ function Skills.ScatterShot(player)
 						hitAlready[victim] = true
 						damageAndScore(player, victim, 14)
 						StatusEffects.Knockdown(victim, 3)
+					else
+						-- ลูกธนูของสกิลพุ่งชนบอท: ทำดาเมจแล้วหยุดที่นั่นเหมือนชนคน
+						alsoHitBots(player, arrow.Position, 6, 14)
 					end
 					arrow:Destroy()
 					return
@@ -322,7 +347,12 @@ function Skills.GroupHeal(player)
 	-- คนเลเวลสูงที่มาช่วยจึงได้ฮีลที่คุ้มกับตัวเขาเอง
 	Vitals.HealFraction(player, HEAL_FRACTION)
 	for _, ally in ipairs(playersNear(hrp.Position, RADIUS, player)) do
-		Vitals.HealFraction(ally, HEAL_FRACTION)
+		-- ⚠️ ในเกมหลัก "พวกเดียวกัน" ไม่มีความหมาย ท่านี้จึงฮีลทุกคนที่ยืนอยู่ใกล้ — **ในสนาม 3v3
+		-- นั่นแปลว่าคทารักษาคนที่กำลังจะฆ่าเรา** · ที่นี่จึงฮีลเฉพาะทีมเดียวกัน (นอกสนาม `Friendly`
+		-- เป็น nil เงื่อนไขนี้จึงเป็นจริงเสมอ และท่าฮีลหมู่ในเมืองก็เหมือนเดิมทุกประการ)
+		if not ArenaAccess.Friendly or ArenaAccess.Friendly(player, ally) then
+			Vitals.HealFraction(ally, HEAL_FRACTION)
+		end
 	end
 	return true
 end
@@ -369,6 +399,7 @@ function Skills.Fireball(player)
 				for _, victim in ipairs(playersNear(result.Position, 12, player)) do
 					damageAndScore(player, victim, 26)
 				end
+				alsoHitBots(player, result.Position, 12, 26)
 				ball:Destroy()
 				return
 			end

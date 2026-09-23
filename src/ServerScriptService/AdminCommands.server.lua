@@ -466,6 +466,7 @@ Commands.chest = function(admin, args)
 		["เหล็ก"] = "Chest_Ironbound", iron = "Chest_Ironbound",
 		["เงิน"] = "Chest_Silver", silver = "Chest_Silver",
 		["ทอง"] = "Chest_Gold", gold = "Chest_Gold",
+		["เวท"] = "Chest_Magic", ["เวทมนตร์"] = "Chest_Magic", magic = "Chest_Magic",
 	}
 	local word = (args[1] or ""):lower()
 	local tier = WORDS[word]
@@ -475,7 +476,7 @@ Commands.chest = function(admin, args)
 		tier = ChestConfig.Order[math.random(#ChestConfig.Order)]
 	end
 	if not tier then
-		return reply(admin, "ใช้: /chest [ไม้|เหล็ก|เงิน|ทอง]")
+		return reply(admin, "ใช้: /chest [ไม้|เหล็ก|เงิน|ทอง|เวท]")
 	end
 
 	local spec = ChestConfig.Chests[tier]

@@ -14,6 +14,12 @@ local EVENTS = {
 	-- **คนละตี้กับตี้ในเกม** — ตี้ในเกมอยู่ในเซิร์ฟช่อง มีหลอดเลือดและระยะ ส่วนอันนี้อยู่ในล็อบบี้
 	-- ซึ่งไม่เปิดเซสชันโปรไฟล์และไม่มี Vitals · ใช้ `Party.lua` ตัวเดียวกันเป็นสถานะ แต่คนละ remote
 	"PvpPartyUpdate", "RequestPvpParty",
+	-- โหมด PVP ในสนาม (เพลส Arena) — คนละชุดกับหน้าปาร์ตี้ในล็อบบี้ข้างบน
+	--
+	-- `ArenaState` คือภาพเดียวที่หน้าจอทุกชิ้นในสนามวาดตาม (รอบ ตัวนับเวลา ซิลเวอร์ ของที่ถืออยู่ ใครยังยืน)
+	-- ส่งทั้งก้อนทุกครั้งแทนที่จะส่งทีละสนาม: แมตช์ยาวสิบกว่านาที ส่งวินาทีละครั้งให้หกคนยังเบามาก
+	-- และหน้าจอที่ประกอบจากอีเวนต์หลายตัวคือหน้าจอที่ค้างผิดสถานะเมื่อมีอีเวนต์ไหนมาไม่ถึง
+	"ArenaState", "RequestArenaBuy", "ArenaMatchEnd", "ArenaNotice",
 	"SetSprintIntent", "ToggleWalk", -- movement (client intent in; stamina goes out via VitalsUpdate)
 	"RequestAttack", "CombatStateChanged", -- combat (click intent in, guard/attack playback out)
 	"VitalsUpdate", "DownedStateChanged", "RequestRespawn", -- vitals (hp/hunger/stamina/armor out, downed UI, respawn in)

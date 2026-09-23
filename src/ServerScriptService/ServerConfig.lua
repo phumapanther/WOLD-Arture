@@ -20,17 +20,34 @@ ServerConfig.FarmingPlaceId = 136992335889132
 -- **มันส่งกลับมาที่เกาะเดิม** (ผู้ใช้แจ้ง 2026-09-22: กดกลับล็อบบี้แล้วยังอยู่เซิร์ฟฟาร์ม)
 ServerConfig.MainPlaceId = 88774255487951
 
+-- **เพลสสนาม PVP** (universe เดียวกับเกมหลัก ข้อมูลจึงเป็นก้อนเดียวกันโดยไม่ต้องทำสะพานอะไรเลย)
+-- ตั้งชื่อ "WOLD Arena" บนเว็บ · 0 = ยังไม่มีเพลส (แท็บ PVP จะบอกตรงๆ ว่าสนามยังไม่เปิด แทนที่จะหมุนค้าง)
+--
+-- ⚠️ เซิร์ฟของเพลสนี้ **มีสองแบบ**: เซิร์ฟที่ถูกจองไว้ให้แมตช์หนึ่งแมตช์ (มีบันทึกใน `ArenaRegistry`)
+-- กับเซิร์ฟสาธารณะที่คนกดเข้ามาเองจากหน้าเกม ซึ่งไม่มีแมตช์อยู่เลย — `Arena/ArenaServer` แยกสองอย่างนี้
+ServerConfig.ArenaPlaceId = 0
+
 local FarmRegistry = require(script.Parent.Lobby.FarmRegistry)
+local ArenaRegistry = require(script.Parent.Lobby.ArenaRegistry)
 
 -- เพลสเกาะฟาร์มรู้ตัวจาก PlaceId ไม่ใช่จาก PrivateServerId: Studio Play ในเพลสนี้จึงเป็นเกาะเสมอโดยไม่ต้องพึ่ง
 -- FORCE flag และเซิร์ฟสาธารณะของเพลสนี้ (ถ้ามีใครหลงเข้ามา) ก็ไม่กลายเป็นล็อบบี้
 ServerConfig.IsFarm = game.PlaceId == ServerConfig.FarmingPlaceId
 
-ServerConfig.IsLobby = game.PrivateServerId == "" and not ServerConfig.IsFarm
+-- เพลสสนามรู้ตัวจาก PlaceId เหมือนเกาะ — Studio Play ในเพลสนั้นจึงเป็นสนามเสมอโดยไม่ต้องพึ่ง FORCE flag
+-- (ArenaPlaceId = 0 แปลว่ายังไม่มีเพลส `game.PlaceId` ไม่มีทางเป็น 0 เงื่อนไขนี้จึงเป็นเท็จเสมอ)
+ServerConfig.IsArena = ServerConfig.ArenaPlaceId ~= 0 and game.PlaceId == ServerConfig.ArenaPlaceId
+
+ServerConfig.IsLobby = game.PrivateServerId == "" and not ServerConfig.IsFarm and not ServerConfig.IsArena
 if FORCE_CHANNEL_IN_STUDIO_FOR_TESTING and game:GetService("RunService"):IsStudio() then
 	ServerConfig.IsLobby = false
 end
-if ServerConfig.IsFarm then
+if ServerConfig.IsArena then
+	ServerConfig.Mode = "PVP"
+	-- nil = เซิร์ฟสาธารณะของเพลสสนาม (ไม่ได้มาจากล็อบบี้) → `Arena/ArenaServer` จะเด้งทุกคนกลับล็อบบี้
+	ServerConfig.ArenaMatch = ArenaRegistry.MatchOfServer(game.PrivateServerId)
+	ServerConfig.Channel = 0
+elseif ServerConfig.IsFarm then
 	ServerConfig.Mode = "Farming"
 	-- nil ใน Studio (ไม่มี Reserved Server) → IslandBuild ให้คนแรกที่เข้าเป็นเจ้าของ · nil ในเซิร์ฟจริง = ไม่ได้มาจากล็อบบี้
 	ServerConfig.FarmOwnerId = FarmRegistry.OwnerOfServer(game.PrivateServerId)
@@ -48,6 +65,8 @@ end
 -- ไคลเอนต์อ่านสองบิตนี้จาก Workspace (PrivateServerId/PlaceId ฝั่งไคลเอนต์เชื่อไม่ได้) — IslandMode ต้องมาก่อน IsLobby
 -- เพราะทุก LocalScript รอ IsLobby แล้วอ่าน IslandMode ทันที ถ้ากลับลำดับจะได้ nil ชั่วขณะ
 workspace:SetAttribute("IslandMode", ServerConfig.IsFarm)
+-- ArenaMode ต้องมาก่อน IsLobby ด้วยเหตุผลเดียวกับ IslandMode: ทุก LocalScript รอ IsLobby แล้วอ่านตัวอื่นทันที
+workspace:SetAttribute("ArenaMode", ServerConfig.IsArena)
 workspace:SetAttribute("IsLobby", ServerConfig.IsLobby)
 
 -- Printed once, from the module every server script requires before anything else, so the first line in a
@@ -57,6 +76,8 @@ workspace:SetAttribute("IsLobby", ServerConfig.IsLobby)
 local GameVersion = require(game.ReplicatedStorage.GameVersion)
 ServerConfig.Version = GameVersion.Number
 print(("[WOLD] %s (%s) -- %s"):format(GameVersion.Label(), GameVersion.Number,
-	ServerConfig.IsLobby and "ล็อบบี้" or ("ช่อง " .. tostring(ServerConfig.Channel))))
+	ServerConfig.IsLobby and "ล็อบบี้"
+		or ServerConfig.IsArena and ("สนาม PVP " .. (ServerConfig.ArenaMatch and "(แมตช์)" or "(เซิร์ฟสาธารณะ)"))
+		or ("ช่อง " .. tostring(ServerConfig.Channel))))
 
 return ServerConfig

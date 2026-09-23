@@ -192,6 +192,18 @@ function PvpPartyGui.new(parent)
 	corner(cancelButton, UDim.new(1, 0))
 	self.cancelButton = cancelButton
 
+	-- **ปุ่มของแอดมิน: เริ่มแมตช์คนเดียวได้เลย ที่เหลือเป็นบอท** (ผู้ใช้สั่ง)
+	-- นั่งข้างปุ่มเล่น ไม่ใช่แทนที่มัน — แอดมินต้องเทสทางปกติได้ด้วยโดยไม่ต้องถอดสิทธิ์ตัวเอง
+	local soloButton = pill(panel, "เริ่มเลย (แอดมิน)", Color3.fromRGB(86, 96, 130), 170)
+	soloButton.Name = "SoloButton"
+	soloButton.AnchorPoint = Vector2.new(0, 1)
+	soloButton.Position = UDim2.new(0.5, 100, 1, -34)
+	soloButton.Size = UDim2.fromOffset(170, 52)
+	soloButton.TextSize = 18
+	soloButton.Visible = false
+	corner(soloButton, UDim.new(1, 0))
+	self.soloButton = soloButton
+
 	--------------------------------------------------------------------------------
 	-- กล่องคำเชิญ (ลอยเหนือช่องที่สอง ตามภาพ)
 	--------------------------------------------------------------------------------
@@ -299,6 +311,7 @@ function PvpPartyGui.new(parent)
 	end
 	playButton.MouseButton1Click:Connect(function() fire("play") end)
 	cancelButton.MouseButton1Click:Connect(function() fire("cancel") end)
+	soloButton.MouseButton1Click:Connect(function() fire("solo") end)
 	accept.MouseButton1Click:Connect(function()
 		if self._inviteFrom then fire("accept", self._inviteFrom) end
 	end)
@@ -362,16 +375,34 @@ function PvpPartyGui:Render(snap)
 	-- ค้นหาห้อง
 	local searching = snap.searching == true
 	self.playButton.Visible = not searching
-	self.cancelButton.Visible = searching
-	self.searchLabel.Visible = searching
-	if searching then
+	self.cancelButton.Visible = searching and not snap.launching
+	self.searchLabel.Visible = searching or snap.notReady == true
+	-- ปุ่มแอดมินโผล่เฉพาะตอนยังไม่ได้เข้าคิว และเฉพาะกับแอดมินจริงๆ (เซิร์ฟเวอร์เป็นคนบอก)
+	if self.soloButton then
+		self.soloButton.Visible = (snap.admin == true) and not searching and snap.notReady ~= true
+		-- ปุ่มเล่นถอยไปทางซ้ายเมื่อมีปุ่มแอดมินอยู่ข้างๆ ไม่งั้นสองปุ่มทับกันกลางจอ
+		self.playButton.Position = self.soloButton.Visible
+			and UDim2.new(0.5, -100, 1, -34) or UDim2.new(0.5, 0, 1, -34)
+		self.playButton.AnchorPoint = self.soloButton.Visible and Vector2.new(1, 1) or Vector2.new(0.5, 1)
+	end
+
+	if snap.notReady == true and not searching then
+		-- **บอกความจริงตั้งแต่ก่อนกด** ไม่ใช่ให้หมุนแล้วค่อยเฉลยตอนหมดเวลา
+		self.searchLabel.Text = "สนาม PVP ยังไม่เปิด — ยังไม่ได้สร้างเพลสสนาม"
+		self.searchLabel.TextColor3 = ACCENT
+	elseif searching then
 		local secs = snap.searchSeconds or 0
-		if snap.notReady then
-			-- **บอกความจริง** โหมดยังไม่เปิด — ไม่ใช่ปล่อยให้นาฬิกาหมุนค้างไปเรื่อยๆ
-			self.searchLabel.Text = "โหมด PVP ยังไม่เปิด — สนามยังสร้างไม่เสร็จ (หน้าจอนี้ไว้ดูหน้าตาก่อน)"
-			self.searchLabel.TextColor3 = ACCENT
+		if snap.launching then
+			self.searchLabel.Text = "เจอห้องแล้ว — กำลังพาเข้าสนาม…"
+			self.searchLabel.TextColor3 = GREEN
 		else
-			self.searchLabel.Text = ("กำลังค้นหาห้อง  %d:%02d"):format(math.floor(secs / 60), secs % 60)
+			local line = ("กำลังค้นหาห้อง  %d:%02d   (%d/%d คน)")
+				:format(math.floor(secs / 60), secs % 60, snap.queued or 1, snap.needed or 6)
+			-- นับถอยหลังบอทเติม: การรอที่บอกว่าจะจบเมื่อไหร่ ต่างจากการรอที่ไม่บอกอะไรเลย
+			if snap.botsIn and snap.botsIn > 0 then
+				line ..= ("   · บอทมาเติมใน %d:%02d"):format(math.floor(snap.botsIn / 60), snap.botsIn % 60)
+			end
+			self.searchLabel.Text = line
 			self.searchLabel.TextColor3 = TEXT_MUTED
 		end
 	end

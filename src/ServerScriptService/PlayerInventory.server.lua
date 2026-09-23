@@ -65,6 +65,18 @@ local TEST_GRANT = {
 }
 
 PlayerJoin.Each(function(player)
+	-- ⚠️ **ในสนาม PVP ไม่มีโปรไฟล์ให้รอ** — เซิร์ฟแมตช์ไม่เปิดเซสชันของใครเลย (ถ้าเปิดแล้วเซฟตอนจบ
+	-- กระเป๋าจริงของคนเล่นจะถูกทับด้วยของที่ซื้อในแมตช์ ซึ่ง `06-modes-build-plan.md` §4.3 เตือนไว้)
+	--
+	-- กระเป๋าในสนามจึงเป็น **ใบเปล่าที่เกิดใหม่ทุกแมตช์** ไม่มีของเปิดตัว ไม่มีของแจก ไม่มีการเซฟ
+	-- ของทุกชิ้นในนั้นมาจากร้านในสนามอย่างเดียว ซึ่งคือข้อ "ทุกคนเท่าเทียมกันเวลาสู้" ที่ผู้ใช้สั่ง
+	if ServerConfig.IsArena then
+		Inventory.Add(player, nil)
+		Inventory.Send(player)
+		Vitals.SyncArmorFromEquipment(player)
+		return
+	end
+
 	-- Wait for the profile the same way PlayerProgression does, so a returning player gets their own bag back
 	-- rather than a fresh starter kit. No deadline -- this is the worst place of all to give up early: the
 	-- starter kit handed out when the read was merely slow is what the next autosave writes over the real bag.

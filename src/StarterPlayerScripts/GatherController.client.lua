@@ -21,6 +21,9 @@ while workspace:GetAttribute("IsLobby") == nil do
 	task.wait()
 end
 if workspace:GetAttribute("IsLobby") then return end
+-- ในสนาม PVP ไม่มีจุดเก็บเกี่ยวสักจุด และ **ปุ่ม F ที่นั่นเป็นของ "ใช้ยา"** — ปล่อยให้สคริปต์นี้
+-- จองปุ่มไว้ จะกลายเป็นยาที่กดแล้วไม่กิน
+if workspace:GetAttribute("ArenaMode") == true then return end
 
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local GatherConfig = require(game.ReplicatedStorage.GatherConfig)

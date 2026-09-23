@@ -12,6 +12,8 @@ while workspace:GetAttribute("IsLobby") == nil do
 	task.wait()
 end
 if workspace:GetAttribute("IsLobby") then return end
+-- ในสนาม PVP ไม่มีฟาร์ม · เอกสารออกแบบเตือนไว้ตรงๆ ว่าปุ่ม F ของฟาร์มออโต้จะถูกลากมาด้วยโดยไม่ตั้งใจ
+if workspace:GetAttribute("ArenaMode") == true then return end
 
 local TAG = "WOLD_Farm"
 local SHOW_DISTANCE = 60

@@ -7,6 +7,8 @@ while workspace:GetAttribute("IsLobby") == nil do
 	task.wait()
 end
 if workspace:GetAttribute("IsLobby") then return end
+-- ในสนาม PVP ไม่มีสถานะล้มให้ช่วย (เลือดหมด = ตายทันที) และปุ่ม F ที่นั่นเป็นของ "ใช้ยา"
+if workspace:GetAttribute("ArenaMode") == true then return end
 
 local Players = game:GetService("Players")
 local ActionConfig = require(game.ReplicatedStorage.ActionConfig)
