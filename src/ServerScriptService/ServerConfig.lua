@@ -24,8 +24,8 @@ ServerConfig.MainPlaceId = 88774255487951
 -- ตั้งชื่อ "WOLD Arena" บนเว็บ · 0 = ยังไม่มีเพลส (แท็บ PVP จะบอกตรงๆ ว่าสนามยังไม่เปิด แทนที่จะหมุนค้าง)
 --
 -- ⚠️ เซิร์ฟของเพลสนี้ **มีสองแบบ**: เซิร์ฟที่ถูกจองไว้ให้แมตช์หนึ่งแมตช์ (มีบันทึกใน `ArenaRegistry`)
--- กับเซิร์ฟสาธารณะที่คนกดเข้ามาเองจากหน้าเกม ซึ่งไม่มีแมตช์อยู่เลย — `Arena/ArenaServer` แยกสองอย่างนี้
-ServerConfig.ArenaPlaceId = 0
+-- กับเซิร์ฟสาธารณะที่คนกดเข้ามาเองจากหน้าเกม ซึ่งไม่มีแมตช์อยู่เลย — `Arena/ArenaMatch` แยกสองอย่างนี้
+ServerConfig.ArenaPlaceId = 134798670267276
 
 local FarmRegistry = require(script.Parent.Lobby.FarmRegistry)
 local ArenaRegistry = require(script.Parent.Lobby.ArenaRegistry)
