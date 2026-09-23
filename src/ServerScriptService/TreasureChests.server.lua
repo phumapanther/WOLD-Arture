@@ -124,12 +124,20 @@ end
 
 -- Ground under (x, z), ignoring the chests themselves and the water surface -- a chest dropped on a river
 -- should sit on the riverbed, not float on it.
-local function groundAt(x, z)
+-- ⚠️ **ยิงเรย์จากความสูงของคนที่ขอ ไม่ใช่จากเลขคงที่** (แก้ 2026-09-23)
+--
+-- ของเดิมเริ่มที่ y = 800 เสมอ ซึ่งสูงพ้นทุกอย่างในแมพหลัก (ผิวดิน 0-60 ยอดเขาราว 400) — แต่
+-- **ผิวเกาะลอยฟ้าอยู่ที่ y = 812** เรย์จึงเริ่ม *ใต้* เกาะแล้วพุ่งลงเหว ไม่โดนอะไรเลยทั้งสิบครั้งที่ลอง
+-- ผลคือกดใช้ไอเทมหีบบนเกาะแล้ว **ของหายไปเฉยๆ ไม่มีหีบโผล่** (ผู้ใช้แจ้ง 2026-09-23)
+--
+-- เริ่มจาก `fromY + 30` แทน: พ้นเนินและขอบบันไดรอบตัวผู้เล่น แต่ไม่สูงจนไปโดนหลังคาบ้าน
+-- และใช้ได้กับทุกระดับความสูงโดยไม่ต้องรู้ว่าเพลสไหนอยู่ที่ y เท่าไหร่
+local function groundAt(x, z, fromY)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = { folder }
 	params.IgnoreWater = true
-	local hit = workspace:Raycast(Vector3.new(x, 800, z), Vector3.new(0, -2000, 0), params)
+	local hit = workspace:Raycast(Vector3.new(x, fromY + 30, z), Vector3.new(0, -400, 0), params)
 	return hit and hit.Position.Y or nil
 end
 
@@ -148,7 +156,7 @@ local function spawnChest(tier, position, lucky)
 		local distance = 6 + attempt * 2
 		local x = position.X + math.cos(angle) * distance
 		local z = position.Z + math.sin(angle) * distance
-		local y = groundAt(x, z)
+		local y = groundAt(x, z, position.Y)
 		if y then
 			local model = prototype:Clone()
 			-- The prototypes are display models: they may carry the kit's own prompts and tags, which would

@@ -375,7 +375,19 @@ local function doUseItem(player, index)
 			Remotes.ConsumeStateChanged:FireAllClients(player, "cancel", itemId)
 			return
 		end
-		applyUse(player, item)
+		-- ⚠️ **คืนของเมื่อใช้ไม่สำเร็จ** — ของถูกหักไปตั้งแต่ตอนเริ่ม (กันกดซ้ำระหว่างท่า) แต่
+		-- `applyUse` บอกว่าทำไม่ได้ได้ด้วย: หีบที่หาพื้นวางไม่เจอ · ค้อนที่ไม่มีอะไรให้ซ่อม
+		-- คอมเมนต์ใน `applyUse` เขียนไว้ตั้งแต่แรกว่า "ของต้องอยู่ในกระเป๋าต่อ" ซึ่งเป็นจริงแค่ใน
+		-- สาขา `repair` ที่หักของทีหลัง — ทางนี้กลืนคำตอบทิ้งมาตลอด
+		--
+		-- เทียบกับ `false` ตรงๆ ไม่ใช่ `not ok`: สาขาอื่นคืน nil ซึ่ง falsy เหมือนกัน แต่แปลว่า "สำเร็จ"
+		if applyUse(player, item) == false then
+			Inventory.AddItem(player, itemId, 1)
+			Inventory.Send(player)
+			flush(player)
+			Remotes.ConsumeStateChanged:FireAllClients(player, "cancel", itemId)
+			return
+		end
 		Remotes.ConsumeStateChanged:FireAllClients(player, "finish", itemId)
 	end)
 end
