@@ -356,6 +356,14 @@ end
 function Vitals.Send(player, force)
 	local state = States[player]
 	if not state then return end
+	-- เลือดเป็นสัดส่วนบนตัวละคร ให้ **คนอื่น** เห็นได้ (หลอดเลือดบนหัวในสนาม PVP · 2026-09-24)
+	-- VitalsUpdate ไปถึงเจ้าของคนเดียว และ Humanoid.Health ของผู้เล่นไม่ได้ขยับตามเลือดจริงของเกม
+	-- ตั้งก่อนด่านจำกัดความถี่ แต่เขียนเฉพาะตอนค่าเปลี่ยนจริง (แอตทริบิวต์ส่งเมื่อเปลี่ยนเท่านั้น)
+	local character = player.Character
+	if character then
+		local frac = math.floor(state.hp / maxHP(player) * 100 + 0.5) / 100
+		if character:GetAttribute("WOLD_Hp") ~= frac then character:SetAttribute("WOLD_Hp", frac) end
+	end
 	local now = os.clock()
 	if not force and now - state.lastSentAt < VitalsConfig.SendInterval then return end
 	state.lastSentAt = now

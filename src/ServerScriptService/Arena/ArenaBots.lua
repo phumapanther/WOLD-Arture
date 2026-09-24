@@ -273,7 +273,8 @@ function ArenaBots.Spawn(side, name, cframe, home)
 	humanoid.DisplayName = name
 	-- ป้ายชื่อมองเห็นได้ไกลเท่าที่สนามกว้าง: คนต้องแยกออกว่าคนที่วิ่งมาคือบอทหรือเพื่อนร่วมทีม
 	humanoid.NameDisplayDistance = 250
-	humanoid.HealthDisplayDistance = 250
+	-- หลอดเลือดของ Roblox เองปิดไว้ — สนามวาดหลอดแดง/เขียวตามทีมให้เองฝั่งไคลเอนต์ (ArenaController)
+	humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
 	humanoid.BreakJointsOnDeath = false
 
 	model.Parent = workspace

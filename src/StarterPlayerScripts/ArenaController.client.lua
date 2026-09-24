@@ -104,10 +104,10 @@ ContextActionService:SetTitle("ArenaShop", "ร้าน")
 -- มุมบุคคลที่หนึ่ง: เห็นแขน มือ และอาวุธของตัวเอง (ผู้ใช้สั่ง 2026-09-24)
 --------------------------------------------------------------------------------
 -- สคริปต์กล้องของ Roblox ตั้ง LocalTransparencyModifier = 1 ให้ทุกชิ้นของตัวละครทุกเฟรมตอนซูมสุด
--- → เขียนกลับเป็น 0 ให้แขน/มือ และทุกชิ้นของโมเดลอาวุธ (Model ลูกของตัวละครที่ไม่ใช่ Accessory)
--- **หลังกล้องทุกเฟรม** (priority Camera+1) ไม่งั้นกล้องเขียนทับ · หัว ลำตัว ผม หมวก ยังซ่อนอยู่ ไม่บังจอ
-local ARM = { LeftUpperArm = true, LeftLowerArm = true, LeftHand = true,
-	RightUpperArm = true, RightLowerArm = true, RightHand = true }
+-- → เขียนกลับเป็น 0 **เฉพาะแขน/มือ และโมเดลอาวุธ (`EquippedWeapon` ของ WeaponVisuals)**
+-- **หลังกล้องทุกเฟรม** (priority Camera+1) ไม่งั้นกล้องเขียนทับ
+-- ⚠️ ชุดเกราะ (โฟลเดอร์ของ KitWear) ต้อง **ซ่อนอยู่** — รอบแรกเปิดทุก Model บนตัว หมวก/เกราะอกเลยบังจอ
+-- (ผู้ใช้แจ้ง 2026-09-24) · LocalTransparencyModifier มีผลแค่เครื่องเรา คนอื่นยังเห็นชุดเกราะปกติ
 RunService:BindToRenderStep("ArenaViewmodel", Enum.RenderPriority.Camera.Value + 1, function()
 	if shop:IsVisible() or board.gui.Enabled then
 		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
@@ -115,10 +115,14 @@ RunService:BindToRenderStep("ArenaViewmodel", Enum.RenderPriority.Camera.Value +
 	end
 	local character = player.Character
 	if not character or player.CameraMode ~= Enum.CameraMode.LockFirstPerson then return end
-	for _, part in ipairs(character:GetDescendants()) do
-		if part:IsA("BasePart") and (ARM[part.Name]
-			or (part:FindFirstAncestorWhichIsA("Model") ~= character and not part:FindFirstAncestorWhichIsA("Accessory"))) then
-			part.LocalTransparencyModifier = 0
+	for _, name in pairs({ "LeftUpperArm", "LeftLowerArm", "LeftHand", "RightUpperArm", "RightLowerArm", "RightHand" }) do
+		local part = character:FindFirstChild(name)
+		if part then part.LocalTransparencyModifier = 0 end
+	end
+	local weapon = character:FindFirstChild("EquippedWeapon")
+	if weapon then
+		for _, part in ipairs(weapon:GetDescendants()) do
+			if part:IsA("BasePart") then part.LocalTransparencyModifier = 0 end
 		end
 	end
 end)
@@ -191,6 +195,77 @@ ContextActionService:BindAction("ArenaSpectate", function(_, state, input)
 	stepSpectate(back and -1 or 1)
 	return Enum.ContextActionResult.Sink
 end, false, Enum.KeyCode.Q, Enum.KeyCode.E, Enum.KeyCode.Left, Enum.KeyCode.Right)
+
+--------------------------------------------------------------------------------
+-- หลอดเลือดบนหัวทุกคนยกเว้นเรา · ศัตรูแดง เพื่อนเขียว (ผู้ใช้สั่ง 2026-09-24)
+--------------------------------------------------------------------------------
+-- วาดฝั่งไคลเอนต์ล้วน (BillboardGui ที่เครื่องเราสร้างเห็นแค่เรา สีจึงเป็น "เรา/เขา" ของแต่ละเครื่องเอง)
+-- เลือด: คน = แอตทริบิวต์ `WOLD_Hp` บนตัวละคร (Vitals.Send ตั้งให้) · บอท = Humanoid.Health ของมันเอง
+-- **AlwaysOnTop = false** — หลอดโดนกำแพงบังเหมือนตัวคน ไม่งั้นมันคือ wallhack บอกตำแหน่งศัตรูหลังกำแพง
+local ENEMY_BAR, FRIEND_BAR = Color3.fromRGB(226, 62, 54), Color3.fromRGB(72, 208, 100)
+local hpBars = {} -- [model] = { gui, fill }
+
+local function hpBarFor(body)
+	local bar = hpBars[body]
+	if bar and bar.gui.Parent then return bar end
+	local head = body:FindFirstChild("Head")
+	if not head then return nil end
+	local gui = Instance.new("BillboardGui")
+	gui.Name = "ArenaHpBar"
+	gui.Adornee = head
+	gui.Size = UDim2.fromScale(3.6, 0.42) -- หน่วยเป็นสตัด: ไกลแล้วเล็กลงตามจริง
+	gui.StudsOffset = Vector3.new(0, 2.6, 0)
+	gui.AlwaysOnTop = false
+	gui.MaxDistance = 180
+	gui.LightInfluence = 0
+	gui.Parent = head
+	local track = Instance.new("Frame")
+	track.Size = UDim2.fromScale(1, 1)
+	track.BackgroundColor3 = Color3.fromRGB(20, 20, 22)
+	track.BackgroundTransparency = 0.25
+	track.BorderSizePixel = 0
+	track.Parent = gui
+	local round = Instance.new("UICorner")
+	round.CornerRadius = UDim.new(0.5, 0)
+	round.Parent = track
+	local fill = Instance.new("Frame")
+	fill.Size = UDim2.fromScale(1, 1)
+	fill.BorderSizePixel = 0
+	fill.Parent = track
+	round:Clone().Parent = fill
+	bar = { gui = gui, fill = fill }
+	hpBars[body] = bar
+	return bar
+end
+
+task.spawn(function()
+	while true do
+		task.wait(0.15)
+		local keep = {}
+		if snapshot and snapshot.phase ~= "matchEnd" then
+			for _, member in ipairs(snapshot.roster or {}) do
+				local body = not member.me and member.alive and bodyOf(member)
+				local humanoid = body and body:FindFirstChildOfClass("Humanoid")
+				if humanoid and humanoid.Health > 0 then
+					local bar = hpBarFor(body)
+					if bar then
+						keep[body] = true
+						local frac = member.userId and (body:GetAttribute("WOLD_Hp") or 1)
+							or humanoid.Health / math.max(1, humanoid.MaxHealth)
+						bar.fill.Size = UDim2.fromScale(math.clamp(frac, 0, 1), 1)
+						bar.fill.BackgroundColor3 = member.side == snapshot.mySide and FRIEND_BAR or ENEMY_BAR
+					end
+				end
+			end
+		end
+		for body, bar in pairs(hpBars) do
+			if not keep[body] then
+				bar.gui:Destroy()
+				hpBars[body] = nil
+			end
+		end
+	end
+end)
 
 --------------------------------------------------------------------------------
 -- กล้องของคนที่ยังไม่มีร่าง
