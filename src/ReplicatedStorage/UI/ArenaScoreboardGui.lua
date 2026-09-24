@@ -8,6 +8,7 @@
 -- ⚠️ ช่อง "เงินรางวัล" คือ **เงินในเกมหลัก** ที่ได้ติดตัวกลับไป ไม่ใช่ซิลเวอร์ของแมตช์ (ซึ่งหายไป
 -- พร้อมเซิร์ฟ) — สองอย่างนี้ใช้ไอคอนคล้ายกันและอยู่หน้าจอเดียวกัน จึงต้องเขียนหัวคอลัมน์ให้ต่างกันชัด
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
+local ItemIcon = require(script.Parent.ItemIcon)
 
 local ArenaScoreboardGui = {}
 ArenaScoreboardGui.__index = ArenaScoreboardGui
@@ -225,15 +226,28 @@ function ArenaScoreboardGui:Render(result)
 					kda = ("%d/%d/%d"):format(row.kills or 0, row.deaths or 0, row.assists or 0),
 					damage = tostring(row.damage or 0),
 					score = tostring(math.floor((row.score or 0) + 0.5)),
-					chest = row.bot and "—" or (chestItem and chestItem.name or row.chest or "—"),
-					gold = row.bot and "—" or tostring(row.gold or 0),
-					exp = row.bot and "—" or tostring(row.exp or 0),
+					-- หีบขึ้นเป็นรูปอย่างเดียว (ผู้ใช้สั่ง 2026-09-24) — ตัวอักษรว่าง รูปวาดทับข้างล่าง
+					chest = row.bot and "—" or "",
+					gold = row.bot and "—" or ("💰 %d"):format(row.gold or 0),
+					exp = row.bot and "—" or ("✨ %d"):format(row.exp or 0),
 				}
 				for _, column in ipairs(COLUMNS) do
 					local text = (self.live and REWARD_KEYS[column.key]) and "" or (values[column.key] or "")
 					local label = cell(frame, column, text, 17, column.key == "rank")
 					if row.me then label.Font = Enum.Font.SourceSansBold end
 					if row.alive == false and self.live then label.TextTransparency = 0.45 end
+				end
+				if chestItem and not row.bot and not self.live then
+					local chestColumn
+					for _, column in ipairs(COLUMNS) do if column.key == "chest" then chestColumn = column end end
+					local image = Instance.new("ImageLabel")
+					image.AnchorPoint = Vector2.new(1, 0.5)
+					image.Position = UDim2.new(0, chestColumn.x + chestColumn.w, 0.5, 0)
+					image.Size = UDim2.fromOffset(24, 24)
+					image.BackgroundTransparency = 1
+					image.ScaleType = Enum.ScaleType.Fit
+					image.Parent = frame
+					ItemIcon.Apply(image, chestItem.icon) -- ไม่มีรูปก็ขึ้น ⌛ ตามกติกาเดิม
 				end
 			end
 		end
