@@ -39,7 +39,7 @@
 ## องค์ประกอบ
 
 ### `ReplicatedStorage/EnhanceConfig.lua` (ใหม่ · ข้อมูลล้วน)
-- `Weapons = { Sword = true, ... }` · `MaxLevel = 10` · `FailDurabilityFraction = 0.10`
+- `Weapons = { Sword = true, ... }` · `MaxLevel = 10` · `FailDurabilityFraction = 0.10` · `Seconds = 4` (ความยาวแถบ ผมตั้งเอง ปรับได้)
 - `Levels[n] = { chance, bonus, cost = { [itemId] = n } }` — `bonus` = ดาเมจรวมที่ขั้นนั้น (0.03, 0.06 … 0.15, 0.23 … 0.55)
 - `EnhanceConfig.Bonus(level) -> number` · `EnhanceConfig.LevelOf(meta) -> 0..10`
 
@@ -57,11 +57,13 @@
 - snapshot เพิ่ม `enhance = { fee..., rows = { { slot, id, name, level, next = { chance, cost[], affordable } } } }` เฉพาะตอนยืนที่ช่างตีเหล็ก (ไม่ใช่สถานีครัว)
   รายการ = อาวุธต่อสู้ในกระเป๋า **และอาวุธที่ถืออยู่** (ช่อง `slot = "equipped"`)
 - remote ใหม่ `RequestEnhance(slot)`:
-  1. อยู่ใกล้ช่างตีเหล็ก · ช่องนั้นมีอาวุธใน `EnhanceConfig.Weapons` · ขั้น < 10
+  1. อยู่ใกล้ช่างตีเหล็ก · ช่องนั้นมีอาวุธใน `EnhanceConfig.Weapons` · ขั้น < 10 · ช่างตีเหล็กว่าง (ล็อก `Busy` ตัวเดียวกับคราฟ)
   2. มีวัสดุครบ (รวม Silver) → หักทั้งหมด
-  3. ทอย `chance` → สำเร็จ: `meta.enhance += 1` · แตก: ความคงทน `-= ceil(max × 10%)` ต่ำสุด 1
-  4. แจ้งผล + ส่ง snapshot ใหม่ · `ProfileAccess.Flush`
-- ไม่มีเวลารอ (คราฟมีแถบเวลา ตีบวกไม่มี) — กดแล้วได้ผลทันที
+  3. **ยื่นอาวุธให้ช่าง**: เอาอาวุธออกจากกระเป๋า/มือ ไปอยู่ในงานที่ค้าง · แถบเวลาเดินเหมือนคราฟ (**ผู้ใช้สั่ง: ตีแล้วรอรู้ผล เหมือนการคราฟ**) `EnhanceConfig.Seconds`
+  4. ครบเวลา ทอย `chance` → สำเร็จ: `meta.enhance += 1` · แตก: ความคงทน `-= ceil(max × 10%)` ต่ำสุด 1
+  5. **คืนอาวุธ**: ใส่กระเป๋า → ไม่มีที่ก็ล้นเข้าคลังตามกติกาเดิม → ยังไม่ได้ (หรือผู้เล่นออกเกมไปแล้ว) ส่ง `Mail.Send` ถึงตัวเอง — อาวุธไม่มีทางหาย
+  6. แจ้งผล + ส่ง snapshot ใหม่ · `ProfileAccess.Flush`
+- ทำไมต้องเอาอาวุธออกจากกระเป๋าระหว่างรอ: ถ้าปล่อยไว้ ผู้เล่นย้าย/ทิ้ง/เทรดได้ระหว่างแถบเดิน แล้วตอนจบจะไม่รู้ว่าต้องบวกชิ้นไหน
 
 ### UI — `CraftGui` + `CraftController`
 - `CraftConfig.Tabs` เพิ่ม `{ id = "enhance", name = "ตีบวก" }` (ไม่มี station = โชว์เฉพาะช่างตีเหล็ก)
