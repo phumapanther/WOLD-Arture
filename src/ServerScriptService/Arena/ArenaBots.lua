@@ -7,6 +7,7 @@
 -- ⚠️ แท็ก `WOLD_Mob` ในเซิร์ฟแมตช์ **ไม่มีใครอื่นอ่าน** เพราะ `Mobs.server` ไม่ได้ถูกส่งมาเพลสนี้
 -- (ดู `arena.project.json`) — ถ้าวันหนึ่งมีระบบใหม่ในสนามที่อ่านแท็กนี้ ต้องรู้ว่ามันจะเจอบอทด้วย
 local CollectionService = game:GetService("CollectionService")
+local PathfindingService = game:GetService("PathfindingService")
 local Players = game:GetService("Players")
 
 local ArenaConfig = require(game.ReplicatedStorage.ArenaConfig)
@@ -102,6 +103,72 @@ local function swingAt(state, targetRoot)
 end
 
 --------------------------------------------------------------------------------
+-- เดินหาทาง (2026-09-24: แมพปราสาทมีกำแพง ประตูป้อม หอกลาง — เดินเส้นตรงแล้วติดกำแพงทุกตัว)
+--------------------------------------------------------------------------------
+local AGENT = { AgentRadius = 2.5, AgentHeight = 5.5, AgentCanJump = true, WaypointSpacing = 6 }
+local REPATH_SECONDS = 1.5  -- เป้าเดินอยู่ตลอด ทางเก่าหมดอายุเร็ว
+local DIRECT_RANGE = 14     -- ใกล้ขนาดนี้และไม่มีอะไรบัง เดินตรงไปเลย ไม่ต้องคำนวณทาง
+
+local function clearLine(state, goal)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { state.model }
+	local from = state.root.Position
+	local hit = workspace:Raycast(from, goal - from, params)
+	return hit == nil or (hit.Position - goal).Magnitude < 3
+end
+
+-- เดินไปหา `goal` ทีละก้าวตามทางที่ PathfindingService คิดให้ · เรียกทุกรอบของ think
+local function walkTo(state, goal)
+	local now = os.clock()
+	local d = (goal - state.root.Position).Magnitude
+	if d <= DIRECT_RANGE and clearLine(state, goal) then
+		state.waypoints = nil
+		state.humanoid:MoveTo(goal)
+		return
+	end
+
+	-- ติด: ขยับได้ไม่ถึง 1 สตัดในหนึ่งวินาที → กระโดดแล้วคิดทางใหม่
+	if now - (state.stuckAt or 0) > 1 then
+		if state.lastPos and (state.root.Position - state.lastPos).Magnitude < 1 then
+			state.humanoid.Jump = true
+			state.waypoints = nil
+		end
+		state.lastPos, state.stuckAt = state.root.Position, now
+	end
+
+	local stale = not state.waypoints or now - state.pathAt > REPATH_SECONDS
+		or (state.pathGoal and (state.pathGoal - goal).Magnitude > 8)
+	if stale then
+		local path = PathfindingService:CreatePath(AGENT)
+		local ok = pcall(function() path:ComputeAsync(state.root.Position, goal) end)
+		state.pathAt, state.pathGoal = now, goal
+		if ok and path.Status == Enum.PathStatus.Success then
+			state.waypoints, state.wp = path:GetWaypoints(), 2
+		else
+			-- ไม่มีทาง (เช่นเป้ายืนบนหลังคา) → เดินตรงไปเท่าที่ไปได้ ดีกว่ายืนนิ่ง
+			state.waypoints = nil
+			state.humanoid:MoveTo(goal)
+			return
+		end
+	end
+
+	local waypoints = state.waypoints
+	local w = waypoints[state.wp]
+	while w and (Vector3.new(w.Position.X, 0, w.Position.Z)
+		- Vector3.new(state.root.Position.X, 0, state.root.Position.Z)).Magnitude < 3 do
+		state.wp += 1
+		w = waypoints[state.wp]
+	end
+	if not w then
+		state.waypoints = nil
+		return
+	end
+	if w.Action == Enum.PathWaypointAction.Jump then state.humanoid.Jump = true end
+	state.humanoid:MoveTo(w.Position)
+end
+
+--------------------------------------------------------------------------------
 -- สมอง (หนึ่งเธรดต่อหนึ่งตัว)
 --------------------------------------------------------------------------------
 local function think(state)
@@ -113,16 +180,21 @@ local function think(state)
 		else
 			local targetRoot, distance = nearestEnemy(state)
 			if targetRoot then
-				state.humanoid:MoveTo(targetRoot.Position)
-				-- หันหน้าเข้าหาเป้าเสมอ ไม่งั้นบอทที่เดินเฉียดจะฟันไปทางที่มันเดิน ไม่ใช่ทางที่ศัตรูอยู่
-				local look = Vector3.new(targetRoot.Position.X, state.root.Position.Y, targetRoot.Position.Z)
-				if (look - state.root.Position).Magnitude > 0.5 then
-					state.root.CFrame = CFrame.lookAt(state.root.Position, look)
+				walkTo(state, targetRoot.Position)
+				-- หันหน้าเข้าหาเป้า **เฉพาะตอนอยู่ในระยะฟัน** ไม่งั้นบอทที่เดินเฉียดจะฟันไปทางที่มันเดิน
+				-- ⚠️ ห้ามหันทุกรอบตอนเดิน: เขียน CFrame ของ root ทับทุก 0.35 วิ ฆ่าแรงเดินของ MoveTo
+				-- ทันทีที่ทางเดินพาอ้อม (เช่นอ้อมหอนาฬิกา) บอทหยุดนิ่งทั้งที่มีทางอยู่ (เจอจริง 2026-09-24)
+				if distance <= CFG.reach + 2 then
+					local look = Vector3.new(targetRoot.Position.X, state.root.Position.Y, targetRoot.Position.Z)
+					if (look - state.root.Position).Magnitude > 0.5 then
+						state.root.CFrame = CFrame.lookAt(state.root.Position, look)
+					end
 				end
 				if distance <= CFG.reach then swingAt(state, targetRoot) end
 			elseif state.home then
-				-- ไม่เห็นใคร: เดินไปกลางแมพ ซึ่งเป็นที่ที่การปะทะเกิดขึ้น — บอทที่ยืนเฝ้าฐานคือรอบที่ไม่มีวันจบ
-				state.humanoid:MoveTo(state.home)
+				-- ไม่เห็นใคร: เดินไปแถวกลางแมพ ซึ่งเป็นที่ที่การปะทะเกิดขึ้น — บอทที่ยืนเฝ้าฐานคือรอบที่ไม่มีวันจบ
+				-- ⚠️ ห้ามเดินไปจุดกลางเป๊ะ แมพอาจมีของตั้งอยู่ตรงนั้น (ปราสาทมีหอนาฬิกา) — สุ่มจุดรอบๆ ต่อตัว
+				walkTo(state, state.home)
 			end
 		end
 	end
@@ -212,7 +284,9 @@ function ArenaBots.Spawn(side, name, cframe, home)
 	local state = {
 		model = model, humanoid = humanoid, root = root,
 		side = side, hp = CFG.hp, alive = true, free = false,
-		home = home, nextSwing = 0,
+		-- สุ่มจุดรอบกลางแมพ รัศมี 25-45 ต่อบอทหนึ่งตัว (คนละจุดกัน ไม่เดินไปกองรวมที่เดียว)
+		home = home and (home + CFrame.Angles(0, math.random() * math.pi * 2, 0).LookVector * (25 + math.random() * 20)),
+		nextSwing = 0,
 	}
 	Live[model] = state
 	task.spawn(think, state)
