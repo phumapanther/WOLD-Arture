@@ -2021,6 +2021,20 @@ LocalUserSecurity เหมือนกันหมด
 - **`tools/bridge.js` ใหม่ (ยัง untracked)** ค้าง proxy ไว้ตัวเดียวทั้งเซสชัน เลิกแข่ง backoff กับ Studio
   รันทิ้งไว้ background · `tools/lua.js` retry 10 ครั้ง/4 วิ และรู้จัก error `Target is not reachable` เพิ่ม
 
+## ระบบเมล (2026-09-24) — กล่องจดหมายในหินเวท
+สเปก `docs/superpowers/specs/2026-09-24-mail-design.md` · แผน `docs/superpowers/plans/2026-09-24-mail.md`
+ระบบที่ 1 จาก 4 (ต่อไป: แชท/ประกาศข้ามเซิร์ฟ → ตีบวกที่ช่างตีเหล็ก → ความสำเร็จ/ฉายาในเมนูสมุดสะสม + ฉายาเรืองแสงเหนือหัว + VIP ได้ฉายา)
+- เมลเดินทางด้วย `ProfileStore:MessageAsync` เข้า `profile.Data.Mail` ของผู้รับ — ถึงคนออฟไลน์/อีกเซิร์ฟได้ ของไม่หายไม่ซ้ำ
+  · `Mail.lua` (ส่ง/รับเข้ากล่อง/คิว) · `PlayerMail.server.lua` (กฎผู้เล่น + remote `RequestMail`/`MailUpdate`) · UI หน้า `mail`/`mailCompose` ใน `SocialGui`
+- ผู้เล่นส่งหาสหายเท่านั้น 500 ซิลเวอร์ต่อฉบับ ของ 1 ช่อง ห้ามเงิน · **ส่งได้ไหมถาม `ItemCatalog.IsMailable` ที่เดียว**
+- กล่อง 50 ฉบับ ไม่หมดอายุ · ⚠️ **เต็มแล้วห้าม `processed()`** — Mail จำ callback ไว้ใน `Held` แล้วดึงเข้าตอนมีช่อง (ProfileStore เรียกตัวรับแค่ครั้งเดียวต่อเซสชัน)
+- **ทุกระบบที่อยากส่งของถึงคนที่อาจไม่อยู่ในเซิร์ฟ ให้ใช้ `Mail.Send(userId, {fromName, subject, body, items, gold, exp})`** ตอนนี้ใช้ที่บอสโลก · สนาม PVP · `/mail`
+- เซิร์ฟสนามไม่มี `ProfileAccess.MessageAsync` → `Mail.Transport` เปิด store ชื่อเดียวกันเองไว้ส่งอย่างเดียว · `PlayerMail.server` อยู่ใน denylist ของ `arena.project.json`
+- คิว `arenareward_` เก่า: `PvpRewards.server` ยังอ่านจนว่าง ไม่มีใครเขียนเพิ่มแล้ว (ยกเว้นตัวมันเองตอนกระเป๋าเต็ม) · ลบทิ้งได้หลังทุกคนเข้าเกมครบรอบ
+- ข้อความจากผู้เล่นผ่าน `TextService` (Broadcast) ก่อนเก็บ — ข้อความแรกของเกมที่กรองจริง (นกพิราบยังไม่กรอง)
+- เทส: `tests/mail_config_test.lua` + `tests/mail_core_test.lua` (Edit) · `tests/mail_test.lua` (Play ผ่าน `ServerStorage.MailTest`)
+- **ยังไม่ได้เทส:** `/mail` กับ `/worldboss` พิมพ์ในแชท (ต้องให้ผู้ใช้พิมพ์เอง) · ส่งถึงคนออฟไลน์จริง · ส่งข้ามเซิร์ฟ · รางวัลสนามจริง (ต้อง publish)
+
 ## เครื่องมือที่พร้อมใช้
 - **Studio MCP** (MCP server ในตัว Roblox Studio) ลงทะเบียน user-scope ชื่อ `Roblox_Studio` → เครื่องมือ `mcp__Roblox_Studio__*`
   ต้องเปิด Studio + place ก่อน และเปิดสวิตช์ที่ Assistant → … → Manage MCP Servers → Enable Studio as MCP server
