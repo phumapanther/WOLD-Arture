@@ -502,8 +502,9 @@ Remotes.RequestArenaBuy.OnServerEvent:Connect(function(player, id)
 	if previous and not wearable then removeAll(player, previous) end
 	f.loadout[entry.slot] = id
 
-	-- อาวุธใส่สกินจากเกมหลักให้เอง (meta.skin ทางเดียวกับที่ `Skins.server` ติดตั้ง)
-	local skin = entry.slot == "weapon" and f.skins[id]
+	-- อาวุธและเกราะใส่สกินจากเกมหลักให้เอง (meta.skin ทางเดียวกับที่ `Skins.server` ติดตั้ง
+	-- เกราะใช้ชุดแฟชั่น `Fashion_*Kit` ใน `ServerStorage.Model_Item` ของเพลสนี้)
+	local skin = wearable and f.skins[id]
 	Inventory.AddItem(player, id, 1, nil, skin and { skin = skin } or nil)
 	-- ปืนมากับกระสุน 16 นัด แล้วจบ (ผู้ใช้กำหนด) — ยิงหมดต้องซื้อปืนใหม่ ไม่มีกระสุนขายแยก
 	if entry.ammo then

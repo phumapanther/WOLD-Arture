@@ -22,8 +22,9 @@ local RS, SS = game:GetService("ReplicatedStorage"), game:GetService("ServerStor
 
 -- รันได้ทั้งเพลสเกาะและเพลสหลัก: ต้นฉบับอยู่ในรีโปทั้งคู่ และเพลสหลักก็เคยทำ `WOLD_Skins` หายมาแล้ว
 -- (ตรวจ 2026-09-22: ไม่มีสักชิ้น → สกินกาชาแปดชิ้นตกไปใช้รูปทรงมาตรฐานย้อมสี)
-assert(game.PlaceId == 136992335889132 or game.PlaceId == 88774255487951 or game.PlaceId == 0,
-	"เฟสนี้สำหรับเพลสเกาะหรือเพลสหลักเท่านั้น")
+-- เพลสสนาม PVP ก็ต้องใช้ (2026-09-24): อาวุธ/เกราะในสนามใส่สกินจากเกมหลักให้เอง
+assert(game.PlaceId == 136992335889132 or game.PlaceId == 88774255487951 or game.PlaceId == 134798670267276
+	or game.PlaceId == 0, "เฟสนี้สำหรับเพลสเกาะ เพลสหลัก หรือเพลสสนามเท่านั้น")
 
 local function status(msg, done)
 	local f = workspace:FindFirstChild("WOLD")
