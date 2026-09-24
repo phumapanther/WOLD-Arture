@@ -30,7 +30,10 @@ for _, id in ipairs({ "Stone", "IronOre", "Coal", "Herb", "Axe" }) do
 	check(ItemCatalog.IsMailable(id) == true, id .. " ส่งได้")
 end
 for _, id in ipairs({ "HealthPotion", "Bread", "Chest_Gold", "Greatsword", "Sword", "Chemical", "GearSpare",
-	"Blueprint", "Silver", "Insignia", "CarKey", "Spatula", "ClanRing", "ไม่มีจริง" }) do
+	"Blueprint", "Silver", "Insignia", "CarKey", "Spatula", "ClanRing", "ไม่มีจริง",
+	-- ของที่ได้จากเพชร/กาชา (ผู้ใช้กำหนด 2026-09-24): สกิน ออร่า ชุดแฟชั่น เครื่องมือทอง ของเกาะที่ซื้อด้วยเพชร
+	"Skin_Sword_Ember", "Aura_Ember", "Fashion_Knight_Crimson", "GoldAxe", "GoldFishingRod",
+	"Pet_Cat", "Deco_Fence", "FarmPlot" }) do
 	check(ItemCatalog.IsMailable(id) == false, id .. " ส่งไม่ได้")
 end
 

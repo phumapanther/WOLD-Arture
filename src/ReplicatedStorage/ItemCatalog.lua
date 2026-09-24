@@ -19,6 +19,7 @@
 local CraftConfig = require(script.Parent.CraftConfig)
 local ShopConfig = require(script.Parent.ShopConfig)
 local MailConfig = require(script.Parent.MailConfig)
+local PremiumConfig = require(script.Parent.PremiumConfig) -- ข้อมูลล้วนเหมือนกัน ห้าม require ไฟล์นี้กลับ
 
 local ItemCatalog = {}
 
@@ -855,12 +856,25 @@ end
 --
 -- ที่เหลือให้ส่งคือวัตถุดิบ: ของที่กดใช้ได้ ของที่คราฟได้ และของต้องห้ามใน MailConfig ทำให้ร้าน/โรงตีเหล็ก/
 -- ฟาร์มเถื่อนยังเป็นทางเดียวที่ของพวกนั้นเข้าเกม · เมลจากระบบ/แอดมินไม่ผ่านด่านนี้
+-- ของที่ได้จากเพชร ส่งหากันไม่ได้ (ผู้ใช้กำหนด 2026-09-24): ร้านเพชร + ของเกาะที่ขายเป็นเพชร อ่านจากรายการร้านเอง
+-- เหมือน CraftableOutput — ของใหม่ที่เพิ่มเข้าร้านเพชรถูกกันให้เองโดยไม่ต้องแก้ที่นี่
+local GemBought = {}
+for _, row in ipairs(PremiumConfig.Shop) do
+	if row.item then GemBought[row.item] = true end
+end
+for _, row in ipairs(ShopConfig.IslandSells or {}) do
+	if row.currency == "gems" then GemBought[row.id] = true end
+end
+-- สกิน ออร่า ชุดแฟชั่น ได้จากกาชา/พาส (จ่ายเพชร) จึงกันด้วยชนิด
+local GemKinds = { skin = true, aura = true, fashion = true }
+
 function ItemCatalog.IsMailable(id)
 	local item = ItemCatalog.Items[id]
 	if not item then return false end
 	if item.bound or item.kind == "key" then return false end
 	if item.use then return false end
 	if CraftableOutput[id] then return false end
+	if GemBought[id] or GemKinds[item.kind] then return false end
 	return not MailConfig.Contraband[id]
 end
 
