@@ -171,9 +171,40 @@ end
 --------------------------------------------------------------------------------
 -- สมอง (หนึ่งเธรดต่อหนึ่งตัว)
 --------------------------------------------------------------------------------
+-- ท่าเดิน/ยืนของ Roblox มาตรฐาน (ชุดเดียวกับ NPC ในโรงงาน `R.ANIM`) — บอทเป็นโมเดลบนเซิร์ฟ ไม่มีสคริปต์
+-- Animate ของผู้เล่นมาขยับให้ เล่นจากเซิร์ฟแล้ว replicate ไปทุกเครื่องเอง
+local WALK_ANIM, IDLE_ANIM = "rbxassetid://507777826", "rbxassetid://507766388"
+
+local function loadTracks(state)
+	local animator = state.humanoid:FindFirstChildOfClass("Animator")
+	if not animator then
+		animator = Instance.new("Animator")
+		animator.Parent = state.humanoid
+	end
+	local function track(id)
+		local a = Instance.new("Animation")
+		a.AnimationId = id
+		local ok, t = pcall(function() return animator:LoadAnimation(a) end)
+		if ok then t.Looped = true end
+		return ok and t or nil
+	end
+	state.walkTrack, state.idleTrack = track(WALK_ANIM), track(IDLE_ANIM)
+end
+
+local function animate(state)
+	local v = state.root.AssemblyLinearVelocity
+	local moving = Vector3.new(v.X, 0, v.Z).Magnitude > 1.5
+	local on, off = state.walkTrack, state.idleTrack
+	if not moving then on, off = off, on end
+	if off and off.IsPlaying then off:Stop(0.2) end
+	if on and not on.IsPlaying then on:Play(0.2) end
+end
+
 local function think(state)
+	loadTracks(state)
 	while state.alive and state.model.Parent do
 		task.wait(0.35)
+		animate(state)
 		if not state.free then
 			-- ช่วงซื้อของ: ยืนนิ่งอยู่ในฐานเหมือนคนอื่น
 			state.humanoid:Move(Vector3.zero)
@@ -273,6 +304,8 @@ function ArenaBots.Spawn(side, name, cframe, home)
 	humanoid.DisplayName = name
 	-- ป้ายชื่อมองเห็นได้ไกลเท่าที่สนามกว้าง: คนต้องแยกออกว่าคนที่วิ่งมาคือบอทหรือเพื่อนร่วมทีม
 	humanoid.NameDisplayDistance = 250
+	-- ร่าง NPC จากโรงงานปิดป้ายชื่อไว้ (DisplayDistanceType None) — บอทต้องมีชื่อให้เห็นว่าเป็นบอท
+	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.Viewer
 	-- หลอดเลือดของ Roblox เองปิดไว้ — สนามวาดหลอดแดง/เขียวตามทีมให้เองฝั่งไคลเอนต์ (ArenaController)
 	humanoid.HealthDisplayType = Enum.HumanoidHealthDisplayType.AlwaysOff
 	humanoid.BreakJointsOnDeath = false
