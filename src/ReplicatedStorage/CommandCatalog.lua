@@ -21,6 +21,7 @@ CommandCatalog.Commands = {
 	{ name = "town", args = "[claim|free <เมือง>]", desc = "ดู/แก้เจ้าของเมือง", scope = "admin" },
 	{ name = "vip", args = "<วัน> [คน]", desc = "ให้/ต่อ VIP (ติดลบ = ตัด)", scope = "admin" },
 	{ name = "givevip", args = "<ชื่อ|all> [วัน]", desc = "แจก VIP (ออฟไลน์ก็ได้ · มีอยู่แล้วข้าม)", scope = "admin" },
+	{ name = "mail", args = "<ชื่อ> <ไอเทม> [จำนวน]", desc = "ส่งของเข้ากล่องจดหมาย (ออฟไลน์ก็ได้)", scope = "admin" },
 	{ name = "boss", args = "[ระยะ]", desc = "เสกบอสฟอร์จวอร์เดน", scope = "admin" },
 	{ name = "worldboss", args = "[off|rank]", desc = "บอสโลก: เริ่ม/จบ/ดูตารางดาเมจ", scope = "admin" },
 	{ name = "tpto", args = "<คน>", desc = "วาปไปหา", scope = "admin" },

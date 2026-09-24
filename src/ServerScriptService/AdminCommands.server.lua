@@ -31,6 +31,7 @@ local EventState = require(game.ServerScriptService.EventState)
 local TownAccess = require(game.ServerScriptService.TownAccess)
 local ClanAccess = require(game.ServerScriptService.ClanAccess)
 local Vip = require(game.ServerScriptService.Vip)
+local Mail = require(game.ServerScriptService.Mail)
 local PremiumConfig = require(game.ReplicatedStorage.PremiumConfig)
 local MobAccess = require(game.ServerScriptService.MobAccess)
 local GatherConfig = require(game.ReplicatedStorage.GatherConfig)
@@ -285,6 +286,31 @@ Commands.givevip = function(admin, args)
 	if #given > 0 then parts[#parts + 1] = ("แจก VIP %d วัน -> %s"):format(days, table.concat(given, ", ")) end
 	if #skipped > 0 then parts[#parts + 1] = ("ข้าม (มี VIP อยู่แล้ว): %s"):format(table.concat(skipped, ", ")) end
 	reply(admin, #parts > 0 and table.concat(parts, " · ") or "ไม่มีใครให้แจก")
+end
+
+-- /mail <ชื่อ> <ไอเทม> [จำนวน] -- ส่งของเข้ากล่องจดหมาย ถึงคนออฟไลน์/อีกเซิร์ฟได้ (ไว้ชดเชยของ)
+-- ไม่ติดข้อห้ามของผู้เล่น (ItemCatalog.IsMailable) — แอดมินส่งหีบ ยา อาวุธได้
+Commands.mail = function(admin, args)
+	local name, id = args[1], args[2]
+	local count = math.max(1, math.floor(tonumber(args[3]) or 1))
+	if not name or not id then return reply(admin, "ใช้: /mail <ชื่อ> <ไอเทม> [จำนวน]   (/items = รายชื่อ)") end
+	if not ItemCatalog.Exists(id) then return reply(admin, ("ไม่มีไอเทม %s (/items = รายชื่อ)"):format(id)) end
+
+	local found = findPlayer(name)
+	if found == false then return reply(admin, ("ชื่อ %s ตรงกับหลายคน"):format(name)) end
+	local userId = found and found.UserId
+	if not userId then
+		local ok, result = pcall(function() return Players:GetUserIdFromNameAsync(name) end)
+		if not ok or not result then return reply(admin, ("ไม่เจอผู้เล่นชื่อ %s"):format(name)) end
+		userId = result
+	end
+
+	local sent = Mail.Send(userId, {
+		from = 0, fromName = "แอดมิน", subject = "ของชดเชย", body = "",
+		items = { { id = id, count = count } },
+	})
+	reply(admin, sent and ("ส่ง %s x%d เข้ากล่องจดหมายของ %s แล้ว"):format(id, count, name)
+		or "ส่งไม่สำเร็จ (DataStore ไม่ตอบ) ลองใหม่อีกครั้ง")
 end
 
 -- /passxp <amount> [player] -- เติม XP แบทเทิลพาสตรงๆ ไว้เทสรับของ

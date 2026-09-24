@@ -19,11 +19,9 @@ if ServerConfig.IsLobby then return end
 
 local EventConfig = require(game.ReplicatedStorage.EventConfig)
 local GatherConfig = require(game.ReplicatedStorage.GatherConfig)
-local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local EventState = require(game.ServerScriptService.EventState)
 local MobAccess = require(game.ServerScriptService.MobAccess)
-local Inventory = require(game.ServerScriptService.Inventory)
-local Progression = require(game.ServerScriptService.Progression)
+local Mail = require(game.ServerScriptService.Mail)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local ID = "worldboss"
@@ -116,36 +114,20 @@ local function bracketFor(rank)
 	return nil
 end
 
--- จ่ายของหนึ่งชุดให้คนหนึ่งคน คืนข้อความสรุปสั้นๆ ที่จะส่งกลับไปให้เจ้าตัว
-local function payTo(player, bracket, extraItems)
-	local parts = {}
-
-	if bracket.gold and bracket.gold > 0 then
-		Inventory.AddGold(player, bracket.gold)
-		table.insert(parts, ("%d เหรียญ"):format(bracket.gold))
-	end
-	if bracket.xp and bracket.xp > 0 then
-		-- ไม่แชร์เข้าตี้: การแชร์ผูกกับ "ฆ่ามอนหนึ่งตัว" (`AwardExpParty`) ส่วนนี่คือรางวัลอีเวนต์ที่
-		-- คนในตี้ทุกคนได้ของตัวเองตามดาเมจของตัวเองอยู่แล้ว แชร์ซ้ำอีกชั้นคือการจ่ายสองรอบ
-		Progression.AwardExp(player, bracket.xp)
-	end
-
+-- รางวัลหนึ่งคน = จดหมายหนึ่งฉบับ ส่งถึงทุกคนในอันดับ **รวมคนที่ออกเกมไปแล้ว** และกระเป๋าเต็มก็ไม่หาย
+-- (เดิมจ่ายตรงเข้ากระเป๋า ข้ามคนออฟไลน์ และทิ้งของเมื่อกระเป๋าเต็ม)
+-- EXP ในจดหมายไม่แชร์เข้าตี้: การแชร์ผูกกับ "ฆ่ามอนหนึ่งตัว" (`AwardExpParty`) ส่วนนี่คือรางวัลอีเวนต์ที่
+-- คนในตี้ทุกคนได้ของตัวเองตามดาเมจของตัวเองอยู่แล้ว
+local function letterFor(rank, row, bracket, extraItems)
 	local items = {}
-	for _, item in ipairs(bracket.items or {}) do table.insert(items, item) end
-	for _, item in ipairs(extraItems or {}) do table.insert(items, item) end
-
-	for _, item in ipairs(items) do
-		local name = (ItemCatalog.Get(item.id) or {}).name or item.id
-		if Inventory.AddItem(player, item.id, item.count or 1) then
-			table.insert(parts, ("%s x%d"):format(name, item.count or 1))
-		else
-			-- ของหายเงียบๆ ไม่ได้ — คนที่สู้มาชั่วโมงหนึ่งต้องรู้ว่าทำไมไม่มีของเข้ากระเป๋า
-			Remotes.SocialNotify:FireClient(player, "error",
-				("กระเป๋าเต็ม ไม่ได้รับ %s x%d"):format(name, item.count or 1))
-		end
-	end
-
-	return table.concat(parts, " · ")
+	for _, item in ipairs(bracket.items or {}) do items[#items + 1] = { id = item.id, count = item.count or 1 } end
+	for _, item in ipairs(extraItems or {}) do items[#items + 1] = { id = item.id, count = item.count or 1 } end
+	return {
+		from = 0, fromName = "สมาคมนักล่า",
+		subject = ("รางวัลบอสโลก — %s"):format(bracket.label or ("อันดับ " .. rank)),
+		body = ("ดาเมจ %d"):format(math.floor(row.damage)),
+		items = items, gold = bracket.gold, exp = bracket.xp,
+	}
 end
 
 local function payout()
@@ -169,20 +151,26 @@ local function payout()
 
 	for rank, row in ipairs(ranked) do
 		local bracket = bracketFor(rank)
-		local player = Players:GetPlayerByUserId(row.userId)
-		-- คนที่ออกจากเกมไปแล้วข้ามไป: `Inventory` ไม่มีที่ให้ของลง และการเก็บรางวัลไว้รับทีหลังคือระบบเมล
-		-- ซึ่งเกมยังไม่มี (วันไหนมี ให้เติมตรงนี้ที่เดียว)
-		if bracket and player then
+		if bracket then
 			local extra = nil
 			if Killed and LastHitUserId == row.userId and WB.LastHit then
 				extra = { { id = WB.LastHit.item, count = WB.LastHit.count or 1 } }
 			end
-			local summary = payTo(player, bracket, extra)
-			Remotes.SocialNotify:FireClient(player, "info",
-				("%s (ดาเมจ %d) ได้รับ %s"):format(bracket.label or ("อันดับ " .. rank),
-					math.floor(row.damage), summary ~= "" and summary or "-"))
-			if extra then
-				Remotes.SocialNotify:FireClient(player, "info", "ไม้สุดท้ายเป็นของคุณ! ได้กล่องเวทมนตร์เพิ่ม")
+			local letter = letterFor(rank, row, bracket, extra)
+			-- ส่งแยกเธรด: MessageAsync ค้างได้หลายวินาทีต่อคน ไม่ให้ถ่วง stop hook ที่ต้องเก็บบอสออก
+			task.spawn(function()
+				if not Mail.Send(row.userId, letter) then
+					warn(("[WorldBoss] ส่งรางวัลถึง %s (%d) ไม่สำเร็จ:"):format(row.name, row.userId), letter.subject)
+				end
+			end)
+			local player = Players:GetPlayerByUserId(row.userId)
+			if player then
+				Remotes.SocialNotify:FireClient(player, "info",
+					("%s (ดาเมจ %d) — รางวัลส่งเข้ากล่องจดหมายแล้ว (P → กล่องจดหมาย)")
+						:format(bracket.label or ("อันดับ " .. rank), math.floor(row.damage)))
+				if extra then
+					Remotes.SocialNotify:FireClient(player, "info", "ไม้สุดท้ายเป็นของคุณ! กล่องเวทมนตร์อยู่ในจดหมายฉบับเดียวกัน")
+				end
 			end
 		end
 	end
