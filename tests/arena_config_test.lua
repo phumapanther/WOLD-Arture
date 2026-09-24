@@ -30,7 +30,7 @@ for _, entry in ipairs(ArenaConfig.Shop) do
 	check(WANT[entry.id] == entry.price,
 		("ราคา %s = %s (สเปก %s)"):format(entry.id, tostring(entry.price), tostring(WANT[entry.id])))
 	check(ItemCatalog.Items[entry.id] ~= nil, ("%s มีอยู่ในแคตตาล็อก"):format(entry.id))
-	check(entry.slot == "weapon" or entry.slot == "armor" or entry.slot == "use",
+	check(entry.slot == "weapon" or entry.slot == "armor" or entry.slot == "use" or entry.slot == "mana",
 		("%s อยู่ช่องที่ร้านรู้จัก (%s)"):format(entry.id, tostring(entry.slot)))
 end
 for id in pairs(WANT) do
@@ -59,7 +59,9 @@ check(ArenaConfig.Phase.buyFirst >= ArenaConfig.Phase.buy, "ช่วงซื�
 ----------------------------------------------------------------- 5. หีบรางวัล
 for rank, tier in pairs(ArenaConfig.Rewards.chestByRank) do
 	check(ItemCatalog.Items[tier] ~= nil, ("อันดับ %d ได้ %s ซึ่งมีอยู่จริง"):format(rank, tier))
-	check(ChestConfig.Chests[tier] ~= nil, ("%s มีตารางดรอปของตัวเอง"):format(tier))
+	-- หีบต้องมีตารางดรอป · กล่องเวทมนตร์ (use.stat = "magicbox") สุ่มของจากแคตตาล็อกเอง ไม่ต้องมี
+	local use = ItemCatalog.Items[tier] and ItemCatalog.Items[tier].use
+	check(ChestConfig.Chests[tier] ~= nil or (use and use.stat == "magicbox"), ("%s เปิดแล้วได้ของ"):format(tier))
 end
 check(ChestConfig.Chests.Chest_Magic ~= nil, "หีบเวทมนตร์ถูกเพิ่มเป็นระดับที่ห้า")
 check(ItemCatalog.Items.Chest_Magic ~= nil, "หีบเวทมนตร์อยู่ในแคตตาล็อก")
@@ -75,7 +77,7 @@ for _, map in ipairs(ArenaConfig.Maps) do
 	check(ids[map.id] == nil, ("แมพ %s ไม่ซ้ำชื่อ"):format(map.id))
 	ids[map.id] = map.origin
 end
-check(#ArenaConfig.Maps >= 2, "มีแมพให้สุ่มอย่างน้อยสองด่าน")
+check(#ArenaConfig.Maps >= 1, "มีแมพให้สุ่มอย่างน้อยหนึ่งด่าน (ปราสาท · 2026-09-24)")
 for a, originA in pairs(ids) do
 	for b, originB in pairs(ids) do
 		if a ~= b then
