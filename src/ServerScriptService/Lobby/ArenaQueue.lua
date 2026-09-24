@@ -5,7 +5,7 @@
 -- ตัวนี้จึงถือแค่ "ใครอยู่ในคิว นานแค่ไหน และเมื่อไหร่จะได้ไป" แล้วบอก `LobbyParty` ให้วาดใหม่
 --
 -- ⚠️ **คิวอยู่ในหน่วยความจำของล็อบบี้เซิร์ฟนี้ตัวเดียว** — ล็อบบี้สองเซิร์ฟไม่เห็นคิวของกัน
--- ที่ขนาดผู้เล่นตอนนี้ (ล็อบบี้เดียว) มันตรงกับความจริงทุกประการ และการเติมบอทเมื่อครบ 3 นาที
+-- ที่ขนาดผู้เล่นตอนนี้ (ล็อบบี้เดียว) มันตรงกับความจริงทุกประการ และการเติมบอทเมื่อครบเวลา (1:30)
 -- แปลว่า **ไม่มีใครติดค้างในคิวตลอดกาล** ต่อให้ทั้งเซิร์ฟมีคนเดียว · ถ้าวันหนึ่งล็อบบี้มีหลายเซิร์ฟจริง
 -- ทางแก้คือ MessagingService ประกาศคิวข้ามเซิร์ฟ (ทรงเดียวกับ heartbeat ของช่อง) ไม่ใช่รื้อไฟล์นี้
 local Players = game:GetService("Players")
@@ -105,24 +105,45 @@ end
 --------------------------------------------------------------------------------
 -- จัดทีม
 --------------------------------------------------------------------------------
--- ปาร์ตี้ใหญ่ลงก่อน แล้วปาร์ตี้ที่เหลือไปฝั่งที่ว่างกว่า — วิธีเดียวที่ปาร์ตี้ 3 คนจะได้อยู่ด้วยกัน
--- เสมอโดยไม่ต้องคิดอะไรซับซ้อนกว่านี้ (ปาร์ตี้ใหญ่สุดคือ 3 = หนึ่งทีมพอดี)
-local function splitIntoTeams(entries)
-	table.sort(entries, function(a, b) return #a.members > #b.members end)
+-- **เรียงตามลำดับที่เข้าคิว แล้วสลับฝั่ง** (ผู้ใช้กำหนด 2026-09-24): ปาร์ตี้ที่รอนานที่สุด = "ฝั่งเรา" (A)
+-- คนที่เจอถัดมาไปฝั่งตรงข้าม (B) ก่อน แล้วสลับ A, B, A... ไปเรื่อยๆ ช่องที่เหลือค่อยเป็นบอท
+-- ปาร์ตี้ไม่ถูกหั่นข้ามทีม: ฝั่งที่ถึงคิวใส่ไม่พอ ย้ายไปอีกฝั่ง · ใส่ไม่ลงทั้งสองฝั่ง = ยังไม่ส่ง
+-- ทางสำรอง (วิธีเดิม): ปาร์ตี้ใหญ่ลงก่อน ไปฝั่งที่ว่างกว่า — ใช้เมื่อสลับฝั่งแล้วใส่ไม่ลง
+-- (เช่นคนเดี่ยว 3 คนตามด้วยปาร์ตี้ 3 คน: สลับได้ A,B,A แล้วปาร์ตี้ 3 คนไม่มีฝั่งไหนว่างพอ)
+local function splitBySize(entries)
+	local sorted = table.clone(entries)
+	table.sort(sorted, function(a, b) return #a.members > #b.members end)
 	local teams = { A = {}, B = {} }
-	for _, entry in ipairs(entries) do
+	for _, entry in ipairs(sorted) do
 		local target = (#teams.A <= #teams.B) and "A" or "B"
-		-- ฝั่งที่ว่างกว่ายังใส่ไม่พอ ลองอีกฝั่ง (เกิดได้เมื่อ 3+2+1)
+		if #teams[target] + #entry.members > TEAM_SIZE then target = (target == "A") and "B" or "A" end
+		if #teams[target] + #entry.members > TEAM_SIZE then return nil end
+		for _, member in ipairs(entry.members) do table.insert(teams[target], member) end
+	end
+	return teams
+end
+
+local function splitAlternating(entries)
+	entries = table.clone(entries)
+	table.sort(entries, function(a, b) return a.at < b.at end)
+	local teams = { A = {}, B = {} }
+	local nextSide = "A"
+	for _, entry in ipairs(entries) do
+		local target = nextSide
 		if #teams[target] + #entry.members > TEAM_SIZE then
 			target = (target == "A") and "B" or "A"
 		end
-		if #teams[target] + #entry.members <= TEAM_SIZE then
-			for _, member in ipairs(entry.members) do table.insert(teams[target], member) end
-		else
-			return nil -- ใส่ไม่ลงจริงๆ — ปล่อยให้รอบถัดไปลองด้วยชุดอื่น
+		if #teams[target] + #entry.members > TEAM_SIZE then
+			return nil
 		end
+		for _, member in ipairs(entry.members) do table.insert(teams[target], member) end
+		nextSide = (target == "A") and "B" or "A"
 	end
 	return teams
+end
+
+local function splitIntoTeams(entries)
+	return splitAlternating(entries) or splitBySize(entries)
 end
 
 --------------------------------------------------------------------------------
@@ -213,7 +234,7 @@ function ArenaQueue.Start(notify)
 				if count == FULL then
 					launch(picked)
 				else
-					-- 2) **ครบ 3 นาทีแล้วยังไม่ครบหกคน → เติมบอท** (ผู้ใช้กำหนด)
+					-- 2) **ครบเวลา (ArenaConfig.Bots.searchSeconds) แล้วยังไม่ครบหกคน → เติมบอท** (ผู้ใช้กำหนด)
 					-- ตัดสินจากปาร์ตี้ที่รอนานที่สุด แล้วพาทุกคนที่รออยู่ตอนนี้ไปด้วยกัน
 					local oldest = Queue[1]
 					for _, entry in ipairs(Queue) do
