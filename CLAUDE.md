@@ -2028,6 +2028,7 @@ LocalUserSecurity เหมือนกันหมด
   ถ้าได้ข้อความ "Unable to reach Roblox Studio" ทั้งที่ Studio เปิดอยู่ = proxy ยังต่อไม่เสร็จ ให้เรียกซ้ำ
 - **`tools/mcp-call.js`** เรียก Studio MCP จาก shell ได้โดยไม่ต้องรีสตาร์ท Claude Code:
   `node tools/mcp-call.js list` / `node tools/mcp-call.js execute_luau '{"datamodel_type":"Edit","code":"..."}'`
+- **ทางลัดเดสก์ท็อป `Rojo - WOLD Arture` = `serve-background.bat` เปิด Rojo ครบสามเพลสพร้อมกัน** (2026-09-24) หลัก 34872 · Farming 34873 · Arena 34874 — พอร์ตที่รันอยู่แล้วถูกข้าม · ในแต่ละหน้าต่าง Studio ตั้งพอร์ตในปลั๊กอิน Rojo ให้ตรงเพลสก่อนกด Connect
 - **Rojo 7.7.0** portable ที่ `%USERPROFILE%\tools\rojo\rojo.exe` → **`serve-background.bat`** แล้วกด Connect ที่ปลั๊กอิน Rojo ใน Studio
   - **สาเหตุที่ Rojo หลุดบ่อย:** `serve.bat` รันแบบ foreground พอหน้าต่างเทอร์มินัลปิด process ก็ตายเงียบๆ → `serve-background.bat` แยกหน้าต่างและรีสตาร์ทใหม่เองถ้าตาย
   - เช็คว่ารันอยู่ไหม: `tasklist | grep -i rojo` หรือเรียก `http://localhost:34872/api/rojo`
