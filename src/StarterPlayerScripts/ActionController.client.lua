@@ -47,6 +47,14 @@ end
 
 local function onCharacterAdded(character)
 	loadTracks(character)
+	-- **ไม่ล้มเพราะฟิสิกส์ชน** (ผู้ใช้แจ้ง 2026-09-24: สไลด์ชนของแล้วกระเด็นล้ม ลุกมาร่วงทะลุโลก)
+	-- ท่าล้มของเกมทุกแบบ (โดนยิง/คลาน) ทำผ่าน PlatformStand ของเราเอง ไม่ได้พึ่งสถานะ FallingDown/Ragdoll
+	-- ของ Roblox · ต้องตั้งที่ไคลเอนต์ เพราะเจ้าของร่าง (เครื่องผู้เล่น) เป็นคนจำลองฟิสิกส์ของตัวเอง
+	local humanoid = character:WaitForChild("Humanoid", 10)
+	if humanoid then
+		humanoid:SetStateEnabled(Enum.HumanoidStateType.FallingDown, false)
+		humanoid:SetStateEnabled(Enum.HumanoidStateType.Ragdoll, false)
+	end
 end
 player.CharacterAdded:Connect(onCharacterAdded)
 if player.Character then onCharacterAdded(player.Character) end

@@ -32,10 +32,16 @@ local function startMover(character, direction, speed)
 	attachment.Parent = hrp
 	local mover = Instance.new("LinearVelocity")
 	mover.Attachment0 = attachment
-	mover.MaxForce = math.huge
 	mover.RelativeTo = Enum.ActuatorRelativeTo.World
-	-- Vertical velocity is left to gravity: forcing Y would make the player float over dips and stick to slopes.
-	mover.VectorVelocity = direction * speed
+	-- **คุมเฉพาะแนวราบ ปล่อยแนวตั้งให้แรงโน้มถ่วง** (แก้ 2026-09-24) — โหมด Vector เดิมล็อกความเร็วแกน Y
+	-- ไว้ด้วย ทั้งที่คอมเมนต์เดิมบอกว่าปล่อยให้แรงโน้มถ่วง · และ MaxForce = ไม่จำกัด ทำให้สไลด์ชนของแล้ว
+	-- **ดันร่างทะลุเข้าไปในของ/พื้น** → ล้มกระเด็น แล้วลุกขึ้นมาร่วงทะลุโลกตาย (ผู้ใช้แจ้ง)
+	-- แรงจำกัดที่มวลตัว x 1500 ยังพุ่งได้ทันใจ แต่ชนแล้วไม่ดันทะลุ
+	mover.VelocityConstraintMode = Enum.VelocityConstraintMode.Plane
+	mover.PrimaryTangentAxis = Vector3.xAxis
+	mover.SecondaryTangentAxis = Vector3.zAxis
+	mover.PlaneVelocity = Vector2.new(direction.X, direction.Z) * speed
+	mover.MaxForce = hrp.AssemblyMass * 1500
 	mover.Parent = hrp
 	return mover, attachment
 end
@@ -213,6 +219,25 @@ Players.PlayerRemoving:Connect(function(player)
 	JumpBefore[player] = nil
 end)
 
+-- มีของแข็งขวางอยู่ข้างหน้าในระยะ 2.5 สตัดไหม (ยิงสองระดับ: ข้อเท้ากับเอว — สไลด์ตัวต่ำ ชนของเตี้ยได้)
+local function blockedAhead(player, state)
+	local character = player.Character
+	local hrp = character and character:FindFirstChild("HumanoidRootPart")
+	local v = state.mover and state.mover.PlaneVelocity
+	if not hrp or not v or v.Magnitude < 0.5 then return false end
+	local dir = Vector3.new(v.X, 0, v.Y).Unit * 2.5
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character }
+	params.RespectCanCollide = true
+	for _, dy in ipairs({ -1.8, 0 }) do
+		local hit = workspace:Raycast(hrp.Position + Vector3.new(0, dy, 0), dir, params)
+		-- ผนัง/ของที่ตั้งฉากพอ (ไม่ใช่ทางลาดที่ไถลขึ้นได้)
+		if hit and math.abs(hit.Normal.Y) < 0.6 then return true end
+	end
+	return false
+end
+
 RunService.Heartbeat:Connect(function(dt)
 	local now = os.clock()
 	for player, state in pairs(States) do
@@ -222,10 +247,14 @@ RunService.Heartbeat:Connect(function(dt)
 			elseif state.action == "slide" and state.mover then
 				-- Decelerate so the slide eases out instead of stopping dead at the timer.
 				state.speed *= ActionConfig.Slide.friction ^ dt
-				local dir = state.mover.VectorVelocity
+				local dir = state.mover.PlaneVelocity
 				if dir.Magnitude > 0.01 then
-					state.mover.VectorVelocity = dir.Unit * state.speed
+					state.mover.PlaneVelocity = dir.Unit * state.speed
 				end
+			end
+			-- **เจอสิ่งกีดขวางข้างหน้า = หยุดทันที** แทนการพุ่งชน (ทั้งกลิ้งและสไลด์)
+			if state.action and state.mover and blockedAhead(player, state) then
+				stopAction(player, state)
 			end
 		end
 	end

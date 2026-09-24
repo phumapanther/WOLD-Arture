@@ -40,7 +40,9 @@ local function launch(hrp, direction, speed, lift)
 	attachment.Parent = hrp
 	local mover = Instance.new("LinearVelocity")
 	mover.Attachment0 = attachment
-	mover.MaxForce = math.huge
+	-- แรงจำกัด ไม่ใช่ไม่จำกัด (2026-09-24): แรงไม่จำกัดพุ่งชนกำแพงแล้วดันร่างทะลุเข้าไปในของ/พื้น
+	-- (บั๊กเดียวกับสไลด์ใน PlayerActions) · มวล x 3000 ยังออกตัวได้ในเฟรมเดียว
+	mover.MaxForce = hrp.AssemblyMass * 3000
 	mover.RelativeTo = Enum.ActuatorRelativeTo.World
 	mover.VectorVelocity = direction * speed + Vector3.new(0, lift or 0, 0)
 	mover.Parent = hrp
