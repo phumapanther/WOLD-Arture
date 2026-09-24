@@ -24,6 +24,7 @@
     "src/ServerScriptService/Mobs.server.lua",
     "src/ServerScriptService/Monowheel.server.lua",
     "src/ServerScriptService/PlayerClasses.server.lua",
+    "src/ServerScriptService/PlayerMail.server.lua",
     "src/ServerScriptService/PlayerParty.server.lua",
     "src/ServerScriptService/PlayerProfile.server.lua",
     "src/ServerScriptService/PlayerProgression.server.lua",
