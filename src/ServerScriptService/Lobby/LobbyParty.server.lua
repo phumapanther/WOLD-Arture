@@ -58,6 +58,7 @@ end
 local levelCache = {} -- [userId] = level | false (กำลังดึง)
 local pushParty -- ประกาศข้างล่าง
 
+-- คืน { level, class } · class = อาชีพขั้นสูงสุดที่ถืออยู่ (elite > advanced > basic) ใช้ทาสีกรอบการ์ด
 local function levelOf(player)
 	local cached = levelCache[player.UserId]
 	if cached ~= nil then return cached or nil end
@@ -65,7 +66,11 @@ local function levelOf(player)
 	task.spawn(function()
 		local data = ProfileAccess.PeekAsync and ProfileAccess.PeekAsync(player.UserId)
 		local progression = data and data.Progression
-		levelCache[player.UserId] = (progression and progression.Level) or 1
+		local role = data and data.Role
+		levelCache[player.UserId] = {
+			level = (progression and progression.Level) or 1,
+			class = role and (role.Elite or role.Advanced or role.Basic) or nil,
+		}
 		if player.Parent and pushParty then pushParty(player) end
 	end)
 	return nil
@@ -83,11 +88,14 @@ end
 -- **หนึ่งภาพต่อคน ไม่ใช่ภาพกลาง** — แต่ละคนเห็นคำเชิญของตัวเองและช่องของตัวเองเป็นช่องแรกเสมอ
 local function snapshotFor(player)
 	local members = {}
-	members[#members + 1] = { userId = player.UserId, name = nameOf(player), me = true, level = levelOf(player) }
+	local function member(p, me)
+		local info = levelOf(p)
+		return { userId = p.UserId, name = nameOf(p), me = me or nil,
+			level = info and info.level or nil, class = info and info.class or nil }
+	end
+	members[#members + 1] = member(player, true)
 	for _, other in ipairs(Party.Members(player)) do
-		if other ~= player then
-			members[#members + 1] = { userId = other.UserId, name = nameOf(other), level = levelOf(other) }
-		end
+		if other ~= player then members[#members + 1] = member(other) end
 	end
 
 	-- คำเชิญที่ค้างอยู่: `Party` เก็บไว้ในตารางของมัน ถามผ่าน `Party.PendingFor` ถ้ามี

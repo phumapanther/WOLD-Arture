@@ -14,6 +14,7 @@ PvpPartyGui.__index = PvpPartyGui
 
 local ACCENT = Color3.fromRGB(216, 172, 84)
 local TEXT_LIGHT = Color3.fromRGB(240, 240, 245)
+local ClassConfig = require(script.Parent.Parent.ClassConfig)
 local TEXT_MUTED = Color3.fromRGB(180, 180, 195)
 local GLASS = Color3.fromRGB(255, 255, 255)
 local SLOT_BG = Color3.fromRGB(78, 78, 82)
@@ -90,6 +91,29 @@ function PvpPartyGui.new(parent)
 	panel.Parent = parent
 	self.panel = panel
 
+	-- **ย่อ/ขยายทั้งหน้าตามขนาดจอ** (ผู้ใช้แจ้ง 2026-09-24 "ขยายจอแล้ว UI ไม่ปรับ") — ของทุกชิ้นในหน้านี้
+	-- วางด้วยพิกเซลเทียบขนาดออกแบบ 800x480 แล้วให้ UIScale ตัวเดียวขยายทั้งก้อน · กล่อง content หดด้วย 1/s
+	-- เพื่อให้หลังขยายแล้วเต็มแผงพอดี ตำแหน่งที่ยึดขอบล่าง/กลางจึงยังอยู่ที่เดิม
+	local content = Instance.new("Frame")
+	content.Name = "Content"
+	content.AnchorPoint = Vector2.new(0.5, 0.5)
+	content.Position = UDim2.fromScale(0.5, 0.5)
+	content.Size = UDim2.fromScale(1, 1) -- ก่อนวัดขนาดได้ (หน้ายังซ่อนอยู่) ให้เต็มแผงไว้ก่อน
+	content.BackgroundTransparency = 1
+	content.Parent = panel
+	local uiScale = Instance.new("UIScale")
+	uiScale.Parent = content
+	local function rescale()
+		local size = panel.AbsoluteSize
+		if size.X < 1 or size.Y < 1 then return end
+		local s = math.clamp(math.min(size.X / 800, size.Y / 480), 0.6, 1.8)
+		uiScale.Scale = s
+		content.Size = UDim2.fromScale(1 / s, 1 / s)
+	end
+	panel:GetPropertyChangedSignal("AbsoluteSize"):Connect(rescale)
+	rescale()
+	panel = content -- ของทุกชิ้นข้างล่างไปอยู่ในกล่องที่ขยายได้
+
 	local title = Instance.new("TextLabel")
 	title.Size = UDim2.new(0, 260, 0, 40)
 	title.Position = UDim2.new(0, 26, 0, 18)
@@ -126,7 +150,7 @@ function PvpPartyGui.new(parent)
 		card.AutoButtonColor = false
 		card.Parent = row
 		corner(card, UDim.new(0, 16))
-		stroke(card, 0.85)
+		local cardStroke = stroke(card, 0.85)
 
 		local avatar = Instance.new("ImageLabel")
 		avatar.Name = "Avatar"
@@ -135,7 +159,7 @@ function PvpPartyGui.new(parent)
 		-- รูปเต็มตัวของ Roblox เป็นสี่เหลี่ยมจัตุรัสที่ตัวอยู่กลาง ขอบซ้ายขวาว่าง → Crop ตัดขอบว่างทิ้ง
 		-- ให้ตัวสูงเต็มการ์ดตั้งแต่หัวถึงเท้า เหลือที่ให้ชื่อด้านล่าง
 		avatar.Position = UDim2.new(0.5, 0, 0, 10)
-		avatar.Size = UDim2.fromOffset(SLOT_W - 12, SLOT_H - 58)
+		avatar.Size = UDim2.fromOffset(SLOT_W - 12, SLOT_H - 86)
 		avatar.ScaleType = Enum.ScaleType.Crop
 		avatar.BackgroundTransparency = 1
 		avatar.Image = ""
@@ -156,11 +180,12 @@ function PvpPartyGui.new(parent)
 		name.Visible = false
 		name.Parent = card
 
-		-- เลเวลแยกเป็นป้ายมุมซ้ายบนของการ์ด (เดิมต่อท้ายชื่อ แล้วชื่อยาวโดนตัดจนไม่เห็นเลเวล)
+		-- เลเวลเป็นป้ายทองอยู่ **เหนือชื่อ** (ผู้ใช้สั่ง 2026-09-24 "ไว้อวด") — เดิมต่อท้ายชื่อแล้วโดนตัดหาย
 		local level = Instance.new("TextLabel")
 		level.Name = "Level"
-		level.Position = UDim2.fromOffset(10, 10)
-		level.Size = UDim2.fromOffset(62, 24)
+		level.AnchorPoint = Vector2.new(0.5, 1)
+		level.Position = UDim2.new(0.5, 0, 1, -44)
+		level.Size = UDim2.fromOffset(70, 24)
 		level.BackgroundColor3 = Color3.fromRGB(226, 184, 78)
 		level.Font = Enum.Font.GothamBold
 		level.TextSize = 14
@@ -174,7 +199,7 @@ function PvpPartyGui.new(parent)
 		levelCorner.Parent = level
 
 		local plus = plusSign(card)
-		self.slots[i] = { card = card, avatar = avatar, name = name, plus = plus, level = level }
+		self.slots[i] = { card = card, avatar = avatar, name = name, plus = plus, level = level, stroke = cardStroke }
 	end
 
 	--------------------------------------------------------------------------------
@@ -381,9 +406,15 @@ function PvpPartyGui:Render(snap)
 			slot.name.Text = member.name .. (member.me and " (คุณ)" or "")
 			slot.level.Text = member.level and ("Lv. %d"):format(member.level) or ""
 			slot.level.Visible = member.level ~= nil
+			-- กรอบการ์ดเป็นสีอาชีพ (ถ้ามีอาชีพ) ไม่มีอาชีพ = กรอบกระจกจางเหมือนเดิม
+			local class = member.class and ClassConfig.Classes[member.class]
+			slot.stroke.Color = class and class.color or GLASS
+			slot.stroke.Transparency = class and 0 or 0.85
+			slot.stroke.Thickness = class and 3 or 1
 		else
 			slot.name.Text = ""
 			slot.level.Visible = false
+			slot.stroke.Color, slot.stroke.Transparency, slot.stroke.Thickness = GLASS, 0.85, 1
 			slot.avatar.Visible = false
 			slot.avatar.Image = ""
 		end
