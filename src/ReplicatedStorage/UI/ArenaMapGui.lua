@@ -82,7 +82,10 @@ function ArenaMapGui:Build(mapId, mapName)
 	if not model then return false end
 	local parts = {}
 	for _, p in ipairs(model:GetDescendants()) do
-		if p:IsA("BasePart") and p.Transparency < 0.9 then table.insert(parts, p) end
+		-- ชิ้นเล็กกว่า 2 สตัด (หมุด ใบเฟือง โซ่) ไม่ช่วยอ่านผัง แค่เพิ่ม Frame เป็นพันๆ
+		if p:IsA("BasePart") and p.Transparency < 0.9 and math.max(p.Size.X, p.Size.Y, p.Size.Z) >= 2 then
+			table.insert(parts, p)
+		end
 	end
 	-- ⚠️ StreamingEnabled: ชิ้นที่ยังไม่มาถึงไคลเอนต์จะหายจากแผนที่ — วาดใหม่ถ้าจำนวนชิ้นเปลี่ยน
 	if self.builtFor == mapId and self.builtCount == #parts then return true end

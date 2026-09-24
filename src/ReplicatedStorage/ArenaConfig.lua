@@ -138,9 +138,10 @@ ArenaConfig.CombatOverrides = {
 --
 -- `origin` คือจุดกึ่งกลางแมพในโลก — ห่างกันพอที่เสียง/ระเบิดของแมพหนึ่งจะไม่ไปถึงอีกแมพ
 ArenaConfig.MapFolder = "WOLD_Arena"
+-- แมพแรก = ปราสาท (`mapgen/101_arena_castle.lua`, 2026-09-24) · แมพบล็อกเอาต์ Foundry/Cistern ของ
+-- `100_arena_maps.lua` ถูกถอดออกจากการสุ่มแล้ว (ยังไม่เคยอบลงเพลส) — เพิ่มแมพใหม่ต่อท้ายตารางนี้
 ArenaConfig.Maps = {
-	{ id = "Foundry", name = "โรงหล่อ",  origin = Vector3.new(0, 500, 0) },
-	{ id = "Cistern", name = "บ่อพักน้ำ", origin = Vector3.new(4000, 500, 0) },
+	{ id = "Castle", name = "ปราสาทเฟืองทอง", origin = Vector3.new(0, 500, 0) },
 }
 
 function ArenaConfig.MapById(id)
