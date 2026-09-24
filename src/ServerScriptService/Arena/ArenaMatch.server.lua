@@ -568,6 +568,7 @@ local function payRound(winner)
 		-- **คนฆ่าได้เยอะสุดของรอบได้เพิ่ม** — เสมอกันได้ทุกคนที่เสมอ (การหักส่วนแบ่งของคนที่ทำได้
 		-- เท่ากันเป๊ะ ไม่มีเหตุผลอะไรรองรับนอกจาก "ต้องมีคนเดียว")
 		if best > 0 and f.stats.roundKills == best then pay += E.roundTopFragger end
+		pay = math.clamp(pay, E.roundMin or 0, E.roundMax or math.huge)
 		f.silver = math.min(E.cap, f.silver + pay)
 		f.stats.roundKills = 0
 	end
