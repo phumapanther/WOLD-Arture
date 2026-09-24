@@ -776,6 +776,14 @@ end
 PlayerJoin.Each(function(player)
 	local side = sideOfUserId(player.UserId)
 
+	-- กลับเข้ามาหลังหลุด: ถอดบอทที่ส่งมาแทนเขาออก (มีผลรอบถัดไป ร่างบอทรอบนี้เล่นต่อจนจบรอบ)
+	for i, entry in ipairs(BotRoster) do
+		if entry.replaces == player.UserId then
+			table.remove(BotRoster, i)
+			break
+		end
+	end
+
 	if not side and (record.studio or AdminRoster.IsAdmin(player)) then
 		-- แอดมินเข้าดู/เทสแมตช์ไหนก็ได้ — ลงฝั่งที่คนน้อยกว่า
 		side = countIn("A") <= countIn("B") and "A" or "B"
@@ -816,6 +824,23 @@ Players.PlayerRemoving:Connect(function(player)
 		-- ตามผลงานที่ทำไปแล้ว (`ArenaRewards` ฝากกับ userId ไม่ได้ยื่นให้ถึงมือตอนนั้น)
 		f.alive = false
 		f.left = true
+		-- **คนออกกลางแมตช์ = ส่งบอทมาแทน** (ผู้ใช้สั่ง 2026-09-24) · เข้าตั้งแต่รอบถัดไป (รอบนี้นับว่าคนนั้นตายแล้ว)
+		-- ทีมที่เหลือสองคนสู้สามต่อทั้งแมตช์คือแมตช์ที่แพ้ตั้งแต่ตอนนั้น · กลับเข้ามาใหม่ = บอทตัวนี้ถูกถอด
+		if not State.over and f.kind == "player" then
+			local used = {}
+			for _, entry in ipairs(BotRoster) do used[entry.name] = true end
+			local name = nil
+			for _, candidate in ipairs(ArenaConfig.Bots.names) do
+				if not used[candidate] then name = candidate break end
+			end
+			table.insert(BotRoster, {
+				side = f.side,
+				name = name or ("หุ่นไอน้ำ-%02d"):format(#BotRoster + 1),
+				stats = newStats(),
+				replaces = player.UserId,
+			})
+			print(("[Arena] %s ออกจากเกม — บอทเข้าแทนในทีม %s ตั้งแต่รอบหน้า"):format(player.Name, f.side))
+		end
 	end
 	Anchored[player] = nil
 end)
