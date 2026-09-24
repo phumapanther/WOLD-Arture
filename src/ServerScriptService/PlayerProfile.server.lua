@@ -17,6 +17,7 @@ local Remotes = require(game.ReplicatedStorage.Remotes)
 local SpawnSelector = require(game.ReplicatedStorage.SpawnSelector)
 local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 local Vip = require(game.ServerScriptService.Vip)
+local Mail = require(game.ServerScriptService.Mail)
 
 local ProfileTemplate = {
 	Position = nil, -- {x, y, z} | nil (nil = never saved yet)
@@ -86,6 +87,9 @@ local ProfileTemplate = {
 	TestGrant = 0,
 	-- Which garage wipe this profile has already had. See GARAGE_RESET below.
 	GarageReset = 0,
+	-- กล่องจดหมายในหินเวท { {id, at, from, fromName, subject, body, items, gold, exp, claimed, read}, ... }
+	-- | nil = ยังไม่เคยได้เมล · Mail.lua เขียนตรงเข้าตาราง (ไม่มี serializer เหมือน Vehicles)
+	Mail = nil,
 }
 
 --------------------------------------------------------------------------------
@@ -280,13 +284,18 @@ if not ServerConfig.IsLobby then
 		profile:AddUserId(player.UserId)
 		profile:Reconcile()
 
-		-- ข้อความที่ฝากไว้ตอนเขาไม่ได้อยู่ในเซิร์ฟไหนเลย (ตอนนี้มีแต่การแจก VIP ผ่าน `/givevip`)
+		-- ข้อความที่ฝากไว้ตอนเขาไม่ได้อยู่ในเซิร์ฟไหนเลย (การแจก VIP ผ่าน `/givevip` และเมลจาก Mail.lua)
 		-- ProfileStore เก็บไว้ในเรคอร์ดของเขาเองและส่งให้ตรงนี้ **ต้องเรียก `processed()` เสมอ**
 		-- ไม่งั้นข้อความค้างอยู่ในคิว แล้วถูกส่งซ้ำทุกครั้งที่เขาเข้าเกม = แจกซ้ำไม่รู้จบ
 		--
 		-- ผูกก่อน `ProfileAccess.Set` ได้ เพราะมันเขียนลง `profile.Data` ซึ่งเป็นตารางเดียวกับที่ Set
 		-- จะส่งต่อไปอยู่แล้ว · ส่วนการประกาศ/แจ้งเตือนรอถึงหลังจากนั้นด้วย `task.defer`
 		profile:MessageHandler(function(message, processed)
+			-- เมล: Mail เป็นคนตัดสินว่าจะ processed เลยหรือรอคิว (กล่องเต็ม) — ห้าม processed แทนมันตรงนี้
+			if type(message) == "table" and message.kind == "mail" then
+				Mail.Deliver(player, profile.Data, message, processed)
+				return
+			end
 			local until_ = nil
 			if type(message) == "table" and message.kind == "vip" then
 				until_ = Vip.GrantData(profile.Data, message.days, message.onlyIfNone)
