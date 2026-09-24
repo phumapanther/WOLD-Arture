@@ -14,6 +14,8 @@ local function check(ok, text)
 	if not ok then fails += 1 end
 end
 
+M("ClearBox", player)
+M("Revoke", player, "Silver", M("Count", player, "Silver"))
 M("Grant", player, "Stone", 5)
 M("Grant", player, "Silver", 1500)
 local stone0, silver0 = M("Count", player, "Stone"), M("Count", player, "Silver")
@@ -70,7 +72,20 @@ local full = M("FullBox", player)
 check(full.heldBefore == 1 and full.processedBefore == false, "กล่องเต็ม: รอคิว ไม่ processed")
 check(full.processedAfter == true and full.inBoxAfter == true, "ลบหนึ่งฉบับ: ดึงเข้ากล่อง")
 
+-- 10. จำนวนเป็น NaN (ไคลเอนต์โกงส่ง 0/0 มาได้) — ต้องถูกปฏิเสธ ไม่งั้นช่องกลายเป็น NaN ที่ผ่านทุกด่าน = ปั๊มของ
+M("Grant", player, "Silver", 1000)
+local stone3 = M("Count", player, "Stone")
+ok, msg = M("Send", player, FRIEND, M("SlotOf", player, "Stone"), 0 / 0, "", { friend = true, transport = "ok" })
+check(ok == false and M("Count", player, "Stone") == stone3, "จำนวน NaN ถูกปฏิเสธ: " .. tostring(msg))
+
+-- 11. ข้อความไทยยาวเกิน: ตัดที่ขอบตัวอักษร ไม่ใช่กลางไบต์ (ไทย 3 ไบต์ต่อตัว)
+local long = string.rep("ก", 250)
+ok, msg, letter = M("Send", player, FRIEND, M("SlotOf", player, "Stone"), 1, long, { friend = true, transport = "ok" })
+check(ok == true and letter and utf8.len(letter.body) ~= nil, "ข้อความไทยยาวยังเป็น UTF-8 ที่ถูกต้อง: " .. tostring(msg))
+check(letter and utf8.len(letter.body) <= 200, "ตัดเหลือไม่เกิน 200 ตัวอักษร")
+
 -- เก็บกวาด
+M("Revoke", player, "Silver", M("Count", player, "Silver"))
 M("Put", player, nil, big) -- nil letter + id = ลบทิ้งแบบบังคับ
 M("Revoke", player, "Stone", math.max(0, M("Count", player, "Stone") - (stone0 - 5)))
 

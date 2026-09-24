@@ -7,6 +7,7 @@ if ServerConfig.IsLobby or ServerConfig.IsArena then return end
 
 local Players = game:GetService("Players")
 local TextService = game:GetService("TextService")
+local HttpService = game:GetService("HttpService")
 local Mail = require(game.ServerScriptService.Mail)
 local MailConfig = require(game.ReplicatedStorage.MailConfig)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
@@ -48,6 +49,16 @@ local function filtered(player, text)
 	return ok and result or nil
 end
 
+-- ตัดข้อความที่ขอบตัวอักษร ไม่ใช่ที่ไบต์ — ไทย 3 ไบต์ต่อตัว `:sub(1, 200)` จะผ่ากลางตัวอักษรแล้วได้ UTF-8
+-- เสีย ซึ่งทั้งตัวกรองและ DataStore ปฏิเสธ · คืน nil = ข้อความไม่ใช่ UTF-8 ตั้งแต่แรก
+local function clip(text)
+	if type(text) ~= "string" then return "" end
+	if utf8.len(text) == nil then return nil end
+	text = text:gsub("[\r\n\t]", " ")
+	local cut = utf8.offset(text, MailConfig.BodyMaxLength + 1)
+	return cut and text:sub(1, cut - 1) or text
+end
+
 local function send(player, toUserId, slotIndex, count, body)
 	if Sending[player] then return false, "กำลังส่งฉบับก่อนหน้า รอสักครู่" end
 	toUserId, slotIndex = tonumber(toUserId), tonumber(slotIndex)
@@ -60,31 +71,38 @@ local function send(player, toUserId, slotIndex, count, body)
 	local slot = state and slotIndex and state.slots[slotIndex]
 	if not slot then return false, "ไม่มีของในช่องนั้น" end
 	if not ItemCatalog.IsMailable(slot.id) then return false, "ของชิ้นนี้ส่งทางเมลไม่ได้ (ส่งได้เฉพาะวัตถุดิบ)" end
-	if count < 1 or count > (slot.count or 1) then return false, "จำนวนไม่ถูกต้อง" end
+	-- เขียนเป็น "ต้องอยู่ในช่วง" ไม่ใช่ "ห้ามออกนอกช่วง": ไคลเอนต์ส่ง NaN (0/0) มาได้ และ NaN ตอบ false กับทุกการ
+	-- เปรียบเทียบ — แบบเดิมจึงปล่อยผ่าน แล้วช่องกลายเป็น NaN ที่ผ่านทุกด่านตลอดไป = ปั๊มของ
+	if not (count >= 1 and count <= (slot.count or 1)) then return false, "จำนวนไม่ถูกต้อง" end
 	if Inventory.CountOf(player, MailConfig.FeeItem) < MailConfig.Fee then
 		return false, ("ค่าส่ง %d ซิลเวอร์ — ซิลเวอร์ไม่พอ"):format(MailConfig.Fee)
 	end
 
 	Sending[player] = true
 	local ok, result = pcall(function()
-		body = type(body) == "string" and body:gsub("[\r\n\t]", " "):sub(1, MailConfig.BodyMaxLength) or ""
+		body = clip(body)
+		if not body then return { false, "ข้อความมีตัวอักษรที่อ่านไม่ได้" } end
 		local clean = filtered(player, body)
 		if not clean then return { false, "กรองข้อความไม่สำเร็จ ลองใหม่อีกครั้ง" } end
 
 		-- ตัวกรอง yield → ของในช่องอาจเปลี่ยนไปแล้ว (ใช้ ทิ้ง ย้าย) ตรวจใหม่ก่อนหัก
 		slot = state.slots[slotIndex]
-		if not slot or not ItemCatalog.IsMailable(slot.id) or count > (slot.count or 1) then
+		if not slot or not ItemCatalog.IsMailable(slot.id) or not (count <= (slot.count or 1)) then
 			return { false, "ของในช่องเปลี่ยนไประหว่างส่ง" }
+		end
+		local item = { id = slot.id, count = count, durability = slot.durability, meta = slot.meta }
+		local letter = { from = player.UserId, fromName = player.DisplayName, subject = "", body = clean, items = { item } }
+		-- ProfileStore:MessageAsync วนลองใหม่ไม่รู้จบเมื่อเขียนไม่ได้ — จดหมายที่แปลงเป็น JSON ไม่ได้จะค้างปุ่มส่ง
+		-- ทั้งเซสชันหลังหักของไปแล้ว จึงตรวจก่อนแตะกระเป๋า
+		if not pcall(HttpService.JSONEncode, HttpService, letter) then
+			return { false, "ส่งของชิ้นนี้ไม่ได้ (ข้อมูลของเสีย)" }
 		end
 		if not Inventory.RemoveById(player, MailConfig.FeeItem, MailConfig.Fee) then
 			return { false, "ซิลเวอร์ไม่พอ" }
 		end
-		local item = { id = slot.id, count = count, durability = slot.durability, meta = slot.meta }
 		Inventory.RemoveFromSlot(player, slotIndex, count)
 
-		local sent = Mail.Send(toUserId, {
-			from = player.UserId, fromName = player.DisplayName, subject = "", body = clean, items = { item },
-		})
+		local sent = Mail.Send(toUserId, letter)
 		if not sent then
 			-- ponytail: คืนเข้ากระเป๋าตรงๆ ช่องที่เพิ่งว่างถูกเติมเต็มระหว่าง yield ได้ในทางทฤษฎี (ของหาย)
 			-- ถ้าเจอจริง ให้ส่งคืนเป็นเมลถึงตัวเองแทน
@@ -263,6 +281,12 @@ if game:GetService("RunService"):IsStudio() then
 			letter.id = "test-" .. math.random(1, 1e9)
 			Mail.Deliver(player, data, letter, function() end)
 			return letter.id
+		end
+		-- เทสที่ล้มกลางทางทิ้งจดหมายค้าง รันซ้ำไม่กี่รอบกล่องก็เต็ม 50 — เทสล้างกล่องก่อนเริ่มเสมอ
+		if op == "ClearBox" then
+			data.Mail = {}
+			Mail.Forget(player)
+			return true
 		end
 		if op == "Claim" then return claim(player, args[1]) end
 		if op == "Remove" then return (remove(player, args[1])) end
