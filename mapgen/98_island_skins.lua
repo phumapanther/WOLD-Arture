@@ -177,9 +177,19 @@ end
 local CHEST_FOLDER = "Treasure"
 local chestBuild = _G.WOLD_MAIN_MODELS and _G.WOLD_MAIN_MODELS.chests
 local ChestConfig = require(RS:WaitForChild("ChestConfig"))
-local chestFolder = folder(SS, CHEST_FOLDER)
+-- ⚠️ เพลสหลักเก็บหีบของจริงไว้ในโฟลเดอร์ชื่อ `"Treasure "` (มีวรรคท้าย) — ถามทุกชื่อใน
+-- `ChestConfig.FolderNames` ก่อน ไม่งั้นได้สำเนาซ้อนอีกโฟลเดอร์ (เจอจริง 2026-09-24)
+local function hasChest(tier)
+	for _, name in ipairs(ChestConfig.FolderNames) do
+		local f = SS:FindFirstChild(name)
+		if f and f:FindFirstChild(tier) then return true end
+	end
+	return false
+end
+local chestFolder = nil
 for _, tier in ipairs(ChestConfig.Order) do
-	if chestFolder:FindFirstChild(tier) then
+	if not hasChest(tier) and not chestFolder then chestFolder = folder(SS, CHEST_FOLDER) end
+	if hasChest(tier) then
 		kept += 1
 	elseif not chestBuild then
 		missing[#missing + 1] = tier .. "(ต้องรันด้วย --furniture)"
