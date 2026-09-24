@@ -1,5 +1,6 @@
 {
   "name": "WOLD Arture",
+  "servePlaceIds": [88774255487951],
   "tree": {
     "$className": "DataModel",
     "ServerScriptService": { "$path": "src/ServerScriptService" },
