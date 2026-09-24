@@ -131,8 +131,12 @@ function PvpPartyGui.new(parent)
 		local avatar = Instance.new("ImageLabel")
 		avatar.Name = "Avatar"
 		avatar.AnchorPoint = Vector2.new(0.5, 0)
-		avatar.Position = UDim2.new(0.5, 0, 0, 22)
-		avatar.Size = UDim2.fromOffset(120, 120)
+		-- **รูปเต็มตัว** (ผู้ใช้แจ้ง 2026-09-24 "รูปโปรไฟล์มาไม่ครบ ตัวขาด") — เดิมเป็นรูปหัว 120x120
+		-- รูปเต็มตัวของ Roblox เป็นสี่เหลี่ยมจัตุรัสที่ตัวอยู่กลาง ขอบซ้ายขวาว่าง → Crop ตัดขอบว่างทิ้ง
+		-- ให้ตัวสูงเต็มการ์ดตั้งแต่หัวถึงเท้า เหลือที่ให้ชื่อด้านล่าง
+		avatar.Position = UDim2.new(0.5, 0, 0, 10)
+		avatar.Size = UDim2.fromOffset(SLOT_W - 12, SLOT_H - 58)
+		avatar.ScaleType = Enum.ScaleType.Crop
 		avatar.BackgroundTransparency = 1
 		avatar.Image = ""
 		avatar.Visible = false

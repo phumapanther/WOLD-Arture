@@ -8,6 +8,10 @@ while workspace:GetAttribute("IsLobby") == nil do
 	task.wait()
 end
 if workspace:GetAttribute("IsLobby") and not FORCE_SHOW_IN_STUDIO_FOR_TESTING then return end
+-- สนาม PVP ไม่ใช้จอโหลดนี้ (ผู้ใช้แจ้ง 2026-09-24: "เกมเริ่มแล้วแต่จอมีแต่รูปโหลดค้าง 43%")
+-- ขั้น streaming ถาม `GetSpawnPosition` ซึ่งไม่มีใครตอบในสนาม (ArenaMatch วางจุดเกิดเอง) → InvokeServer
+-- รอตลอดไป · และคนที่มาสายกลางรอบไม่มีร่าง ขั้น character ก็รอตลอดไปเหมือนกัน
+if workspace:GetAttribute("ArenaMode") == true then return end
 
 local Players = game:GetService("Players")
 local ContentProvider = game:GetService("ContentProvider")

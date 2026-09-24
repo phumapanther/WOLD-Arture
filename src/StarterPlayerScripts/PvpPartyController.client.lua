@@ -36,7 +36,7 @@ local function avatarFor(userId)
 	avatarCache[userId] = false -- กันขอซ้ำระหว่างรอ
 	task.spawn(function()
 		local ok, content = pcall(function()
-			return Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.HeadShot, Enum.ThumbnailSize.Size150x150)
+			return Players:GetUserThumbnailAsync(userId, Enum.ThumbnailType.AvatarThumbnail, Enum.ThumbnailSize.Size420x420)
 		end)
 		avatarCache[userId] = ok and content or false
 	end)
