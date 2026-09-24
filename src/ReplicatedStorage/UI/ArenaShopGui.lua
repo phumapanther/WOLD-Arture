@@ -223,7 +223,11 @@ function ArenaShopGui:Render(snap)
 	for id, row in pairs(self.cards) do
 		local slot = row.entry.slot
 		local owned = snap.loadout and snap.loadout[slot] == id
-		local slotUsed = snap.bought and snap.bought[slot] ~= nil
+		-- `bought[slot]` = ซื้อไปกี่ชิ้นแล้วรอบนี้ · ขวดน้ำซื้อได้หลายขวด (`perRound`)
+		local count = (snap.bought and snap.bought[slot]) or 0
+		local limit = ArenaConfig.PerRound(row.entry)
+		local slotUsed = count >= limit
+		row.price.Text = limit > 1 and ("%d  (%d/%d)"):format(row.entry.price, count, limit) or tostring(row.entry.price)
 		local afford = (snap.silver or 0) >= row.entry.price
 
 		local colour = CARD

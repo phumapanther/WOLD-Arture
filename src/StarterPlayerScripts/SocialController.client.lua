@@ -6,6 +6,8 @@ while workspace:GetAttribute("IsLobby") == nil do
 	task.wait()
 end
 if workspace:GetAttribute("IsLobby") then return end
+-- สนาม PVP ไม่มี PlayerSocial ฝั่งเซิร์ฟ และปุ่ม M ในสนามคือแผนที่สนาม (ArenaController)
+if workspace:GetAttribute("ArenaMode") == true then return end
 
 local Players = game:GetService("Players")
 local ContextActionService = game:GetService("ContextActionService")

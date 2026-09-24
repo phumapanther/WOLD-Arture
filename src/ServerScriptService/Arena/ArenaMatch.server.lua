@@ -284,6 +284,7 @@ local function snapshotFor(player)
 		wins = State.wins,
 		roundsToWin = ArenaConfig.RoundsToWin,
 		mapName = MAP.name,
+		mapId = MAP.id, -- แผนที่ M วาดจากโมเดลแมพตัวนี้
 		-- ให้กล้องของคนที่ยังไม่มีร่าง (รอรอบหน้า / เพิ่งเข้ามา) มีอะไรให้มอง — เซิร์ฟเวอร์ตั้งกล้อง
 		-- ของไคลเอนต์อื่นไม่ได้ มันจึงต้องรู้ว่ากลางสนามอยู่ตรงไหน
 		centre = MAP.origin,

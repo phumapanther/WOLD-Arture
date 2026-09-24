@@ -153,7 +153,150 @@ function ArenaHudGui.new()
 	banner.Parent = gui
 	self.banner = banner
 
+	--------------------------------------------------------------------------
+	-- ตอนตายแล้วดูเพื่อน (ผู้ใช้สั่ง 2026-09-24)
+	--------------------------------------------------------------------------
+	-- แถบล่างกลาง: กำลังดูใคร + ปุ่มสลับ (ปุ่มกดได้ด้วย มือถือไม่มีคีย์ Q/E)
+	-- ลูกศรใช้ "<" ">" ตัวอักษร ASCII ธรรมดา — ฟอนต์ Roblox วาดได้ (ที่วาดไม่ได้คือสัญลักษณ์อย่าง ◀ ▶)
+	local spec = Instance.new("Frame")
+	spec.Name = "Spectate"
+	spec.AnchorPoint = Vector2.new(0.5, 1)
+	spec.Position = UDim2.new(0.5, 0, 1, -110)
+	spec.Size = UDim2.fromOffset(420, 46)
+	spec.BackgroundColor3 = DIM
+	spec.BackgroundTransparency = 0.2
+	spec.BorderSizePixel = 0
+	spec.Visible = false
+	spec.Parent = gui
+	corner(spec, UDim.new(0, 10))
+	self.spectate = spec
+
+	local function arrow(text, anchorX, x)
+		local b = Instance.new("TextButton")
+		b.AnchorPoint = Vector2.new(anchorX, 0.5)
+		b.Position = UDim2.new(anchorX, x, 0.5, 0)
+		b.Size = UDim2.fromOffset(40, 36)
+		b.BackgroundColor3 = Color3.fromRGB(60, 60, 66)
+		b.BorderSizePixel = 0
+		b.Font = Enum.Font.GothamBold
+		b.TextSize = 24
+		b.TextColor3 = TEXT
+		b.Text = text
+		b.Parent = spec
+		corner(b, UDim.new(0, 8))
+		return b
+	end
+	self.specPrev = arrow("<", 0, 5)
+	self.specNext = arrow(">", 1, -5)
+
+	local who = Instance.new("TextLabel")
+	who.AnchorPoint = Vector2.new(0.5, 0.5)
+	who.Position = UDim2.fromScale(0.5, 0.5)
+	who.Size = UDim2.new(1, -110, 1, 0)
+	who.BackgroundTransparency = 1
+	who.Font = Enum.Font.SourceSansBold
+	who.TextSize = 20
+	who.TextColor3 = TEXT
+	who.TextTruncate = Enum.TextTruncate.AtEnd
+	who.Parent = spec
+	self.specName = who
+
+	-- การ์ดขวาจอ: ดาเมจที่เราทำใส่ศัตรูแต่ละคนในรอบนี้
+	local cards = Instance.new("Frame")
+	cards.Name = "DamageCards"
+	cards.AnchorPoint = Vector2.new(1, 0.5)
+	cards.Position = UDim2.new(1, -16, 0.5, 0)
+	cards.Size = UDim2.fromOffset(230, 260)
+	cards.BackgroundTransparency = 1
+	cards.Visible = false
+	cards.Parent = gui
+	local list = Instance.new("UIListLayout")
+	list.Padding = UDim.new(0, 6)
+	list.VerticalAlignment = Enum.VerticalAlignment.Center
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Parent = cards
+	self.cards = cards
+
 	return self
+end
+
+function ArenaHudGui:OnSpectateStep(callback)
+	self.specPrev.MouseButton1Click:Connect(function() callback(-1) end)
+	self.specNext.MouseButton1Click:Connect(function() callback(1) end)
+end
+
+-- name = nil → ซ่อนแถบ
+function ArenaHudGui:SetSpectating(name, count)
+	self.spectate.Visible = name ~= nil
+	if name then
+		self.specName.Text = ("กำลังดู: %s"):format(name)
+		self.specPrev.Visible = (count or 0) > 1
+		self.specNext.Visible = (count or 0) > 1
+	end
+end
+
+-- `dealt` = { { name, damage, alive } } จาก snapshot · nil = ซ่อน
+function ArenaHudGui:SetDamageCards(dealt)
+	for _, child in ipairs(self.cards:GetChildren()) do
+		if child:IsA("Frame") then child:Destroy() end
+	end
+	self.cards.Visible = dealt ~= nil
+	if not dealt then return end
+
+	local header = Instance.new("Frame")
+	header.LayoutOrder = 0
+	header.Size = UDim2.new(1, 0, 0, 26)
+	header.BackgroundTransparency = 1
+	header.Parent = self.cards
+	local h = Instance.new("TextLabel")
+	h.Size = UDim2.fromScale(1, 1)
+	h.BackgroundTransparency = 1
+	h.Font = Enum.Font.GothamBold
+	h.TextSize = 16
+	h.TextColor3 = MUTED
+	h.TextXAlignment = Enum.TextXAlignment.Right
+	h.Text = "ดาเมจของคุณรอบนี้"
+	h.Parent = header
+
+	for i, row in ipairs(dealt) do
+		local card = Instance.new("Frame")
+		card.LayoutOrder = i
+		card.Size = UDim2.new(1, 0, 0, 52)
+		card.BackgroundColor3 = DIM
+		card.BackgroundTransparency = row.alive and 0.2 or 0.5
+		card.BorderSizePixel = 0
+		card.Parent = self.cards
+		corner(card, UDim.new(0, 8))
+		-- แถบสีซ้าย = ทำดาเมจใส่คนนี้ไปแล้วหรือยัง
+		local stripe = Instance.new("Frame")
+		stripe.Size = UDim2.new(0, 5, 1, 0)
+		stripe.BackgroundColor3 = row.damage > 0 and Color3.fromRGB(230, 120, 112) or Color3.fromRGB(90, 90, 96)
+		stripe.BorderSizePixel = 0
+		stripe.Parent = card
+
+		local name = Instance.new("TextLabel")
+		name.Position = UDim2.fromOffset(14, 4)
+		name.Size = UDim2.new(1, -24, 0, 22)
+		name.BackgroundTransparency = 1
+		name.Font = Enum.Font.SourceSansBold
+		name.TextSize = 18
+		name.TextColor3 = row.alive and TEXT or MUTED
+		name.TextXAlignment = Enum.TextXAlignment.Left
+		name.TextTruncate = Enum.TextTruncate.AtEnd
+		name.Text = row.name .. (row.alive and "" or "  · ตายแล้ว")
+		name.Parent = card
+
+		local amount = Instance.new("TextLabel")
+		amount.Position = UDim2.fromOffset(14, 26)
+		amount.Size = UDim2.new(1, -24, 0, 22)
+		amount.BackgroundTransparency = 1
+		amount.Font = Enum.Font.GothamBold
+		amount.TextSize = 18
+		amount.TextColor3 = row.damage > 0 and Color3.fromRGB(240, 150, 140) or MUTED
+		amount.TextXAlignment = Enum.TextXAlignment.Left
+		amount.Text = ("ดาเมจ %d"):format(row.damage)
+		amount.Parent = card
+	end
 end
 
 function ArenaHudGui:SetVisible(visible)
