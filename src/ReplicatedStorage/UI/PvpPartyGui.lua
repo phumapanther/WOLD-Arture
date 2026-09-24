@@ -156,8 +156,25 @@ function PvpPartyGui.new(parent)
 		name.Visible = false
 		name.Parent = card
 
+		-- เลเวลแยกเป็นป้ายมุมซ้ายบนของการ์ด (เดิมต่อท้ายชื่อ แล้วชื่อยาวโดนตัดจนไม่เห็นเลเวล)
+		local level = Instance.new("TextLabel")
+		level.Name = "Level"
+		level.Position = UDim2.fromOffset(10, 10)
+		level.Size = UDim2.fromOffset(62, 24)
+		level.BackgroundColor3 = Color3.fromRGB(226, 184, 78)
+		level.Font = Enum.Font.GothamBold
+		level.TextSize = 14
+		level.TextColor3 = Color3.fromRGB(28, 24, 16)
+		level.Text = ""
+		level.Visible = false
+		level.ZIndex = 3
+		level.Parent = card
+		local levelCorner = Instance.new("UICorner")
+		levelCorner.CornerRadius = UDim.new(0, 12)
+		levelCorner.Parent = level
+
 		local plus = plusSign(card)
-		self.slots[i] = { card = card, avatar = avatar, name = name, plus = plus }
+		self.slots[i] = { card = card, avatar = avatar, name = name, plus = plus, level = level }
 	end
 
 	--------------------------------------------------------------------------------
@@ -362,9 +379,11 @@ function PvpPartyGui:Render(snap)
 		slot.card.BackgroundColor3 = member and SLOT_BG or SLOT_EMPTY
 		if member then
 			slot.name.Text = member.name .. (member.me and " (คุณ)" or "")
-				.. (member.level and ("  Lv.%d"):format(member.level) or "")
+			slot.level.Text = member.level and ("Lv. %d"):format(member.level) or ""
+			slot.level.Visible = member.level ~= nil
 		else
 			slot.name.Text = ""
+			slot.level.Visible = false
 			slot.avatar.Visible = false
 			slot.avatar.Image = ""
 		end
