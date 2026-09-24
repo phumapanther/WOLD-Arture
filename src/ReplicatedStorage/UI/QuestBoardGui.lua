@@ -125,6 +125,27 @@ function QuestBoardGui.new()
 		self:Hide()
 	end)
 
+	-- **ปุ่มรีบอร์ดด้วยเพชร** (ผู้ใช้สั่ง 2026-09-24) — ซ้ายมือปุ่มปิด แถวเดียวกัน
+	-- ซ่อนไว้จนกว่าสแนปช็อตจะบอกราคามา เซิร์ฟเวอร์เก่าที่ยังไม่มีฟีเจอร์นี้จึงไม่ขึ้นปุ่มที่กดแล้วเงียบ
+	local rerollBtn = Instance.new("TextButton")
+	rerollBtn.AnchorPoint = Vector2.new(1, 0)
+	rerollBtn.Position = UDim2.new(1, -50, 0, 12)
+	rerollBtn.Size = UDim2.fromOffset(104, 30)
+	rerollBtn.BackgroundColor3 = Color3.fromRGB(74, 62, 96)
+	rerollBtn.BorderSizePixel = 0
+	rerollBtn.Font = Enum.Font.GothamBold
+	rerollBtn.TextSize = 13
+	rerollBtn.TextColor3 = TEXT_LIGHT
+	rerollBtn.Text = ""
+	rerollBtn.Visible = false
+	rerollBtn.Parent = panel
+	corner(rerollBtn, UDim.new(0, 8))
+	rerollBtn.Activated:Connect(function()
+		UiSound.Play("Click")
+		self:fire("reroll")
+	end)
+	self.rerollBtn = rerollBtn
+
 	-- ที่วางใบประกาศ
 	local board = Instance.new("ScrollingFrame")
 	board.Position = UDim2.new(0, 12, 0, 56)
@@ -345,12 +366,20 @@ function QuestBoardGui:Render(data)
 	if not data then
 		self.title.Text = "กระดานงาน"
 		self.blurb.Text = "กำลังอ่านใบประกาศ..."
+		self.rerollBtn.Visible = false
 		return
 	end
 
 	self.title.Text = ("กระดานงาน — %s"):format(data.boardName or "")
-	self.blurb.Text = ("%s · รับได้ %d/%d งาน"):format(
-		data.blurb or "", #(data.active or {}), data.maxActive or 3)
+	if data.rerollPrice and data.rerollPrice > 0 then
+		self.rerollBtn.Visible = true
+		self.rerollBtn.Text = ("🔄 💎%d"):format(data.rerollPrice)
+	else
+		self.rerollBtn.Visible = false
+	end
+	self.blurb.Text = ("%s · รับได้ %d/%d งาน%s"):format(
+		data.blurb or "", #(data.active or {}), data.maxActive or 3,
+		(data.rerolls or 0) > 0 and (" · สุ่มใหม่ไปแล้ว %d ครั้ง"):format(data.rerolls) or "")
 
 	local order = 0
 

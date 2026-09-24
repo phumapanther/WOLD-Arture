@@ -20,6 +20,7 @@ local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local QuestAccess = require(game.ServerScriptService.QuestAccess)
 local TownAccess = require(game.ServerScriptService.TownAccess)
 local ClanConfig = require(game.ReplicatedStorage.ClanConfig)
+local PremiumAccess = require(game.ServerScriptService.PremiumAccess)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local BOARD_TAG = "WOLD_QuestBoard"
@@ -32,7 +33,8 @@ local PROMPT_DISTANCE = 12
 -- [boardId] = { quests = {...}, day = เลขวันที่สุ่มไว้ }
 local Posted = {}
 
-local function rollBoard(board, day)
+-- `extra` = จำนวนครั้งที่ **คนคนนั้น** รีบอร์ดด้วยเพชรวันนี้ (0 = ชุดประจำวันที่ทุกคนเห็นเหมือนกัน)
+local function rollBoard(board, day, extra)
 	-- สุ่มหยิบจากคลังโดยไม่ซ้ำ: คัดลอกคลังแล้วหยิบออกทีละอัน
 	local pool = {}
 	for _, spec in ipairs(board.pool) do pool[#pool + 1] = spec end
@@ -41,8 +43,12 @@ local function rollBoard(board, day)
 	--
 	-- ทุกเซิร์ฟเวอร์ต้องเห็นบอร์ดชุดเดียวกันในวันเดียวกัน ไม่งั้นย้ายช่องแล้วงานเปลี่ยน และรีสตาร์ทเซิร์ฟ
 	-- จะกลายเป็นปุ่มสุ่มงานใหม่ — เมล็ดที่คำนวณได้จากวันที่ทำให้ทุกเซิร์ฟเวอร์ได้ผลเดียวกันโดยไม่ต้องคุยกัน
+	--
+	-- **การรีด้วยเพชรบวกเข้าไปในเมล็ด ไม่ได้สุ่มลอยๆ** (ผู้ใช้สั่ง 2026-09-24) — ชุดที่ N ของคนคนหนึ่ง
+	-- จึงคำนวณซ้ำได้เสมอ เซิร์ฟรีสตาร์ทกลางคันก็ยังเห็นชุดเดิม ไม่ใช่ชุดที่สี่ที่เขาไม่ได้จ่าย
 	local seed = day
 	for i = 1, #board.id do seed += board.id:byte(i) * i end
+	seed += (extra or 0) * 7919
 	local rng = Random.new(seed)
 
 	local quests = {}
@@ -60,7 +66,7 @@ local function rollBoard(board, day)
 			board = board.id,
 		}
 	end
-	Posted[board.id] = { quests = quests, day = day }
+	Posted[board.id .. "#" .. tostring(extra or 0)] = { quests = quests, day = day }
 	return quests
 end
 
@@ -71,13 +77,13 @@ local function boardById(id)
 	return nil
 end
 
-local function questsOf(boardId)
+local function questsOf(boardId, extra)
 	local day = QuestConfig.DayNumber()
-	local entry = Posted[boardId]
+	local entry = Posted[boardId .. "#" .. tostring(extra or 0)]
 	if not entry or entry.day ~= day then
 		local board = boardById(boardId)
 		if not board then return {} end
-		return rollBoard(board, day)
+		return rollBoard(board, day, extra)
 	end
 	return entry.quests
 end
@@ -160,14 +166,33 @@ end
 -- งานทั้งหมดของทุกบอร์ดในวันนี้ พร้อมชื่อเมืองติดมาด้วย
 --
 -- เรียกใช้ questsOf ของแต่ละบอร์ดตามปกติ จึงได้งานชุดเดียวกับที่คนยืนอยู่หน้าบอร์ดนั้นเห็น
-local function allQuests()
+local function allQuests(extra)
 	local everything = {}
 	for _, board in ipairs(QuestConfig.Boards) do
-		for _, q in ipairs(questsOf(board.id)) do
+		for _, q in ipairs(questsOf(board.id, extra)) do
 			everything[#everything + 1] = q
 		end
 	end
 	return everything
+end
+
+-- จำนวนครั้งที่คนนี้รีบอร์ดนี้ด้วยเพชร **วันนี้** — ล้างตัวเองเมื่อเลขวันเปลี่ยน ทรงเดียวกับ `QuestsDone`
+-- (จ่ายเพชรแล้วได้ชุดใหม่ถึงเที่ยงคืน ไม่ใช่ได้สิทธิ์รีถาวร)
+local function rerollTable(player)
+	local data = ProfileAccess.Get(player)
+	if not data then return nil end
+	local day = QuestConfig.DayNumber()
+	local t = data.QuestReroll
+	if type(t) ~= "table" or t.day ~= day then
+		t = { day = day }
+		data.QuestReroll = t
+	end
+	return t
+end
+
+local function rerollOf(player, boardId)
+	local t = rerollTable(player)
+	return t and tonumber(t[boardId]) or 0
 end
 
 -- ใบที่ "คนนี้ยังรับได้จริง" ที่บอร์ดนี้ — **ที่เดียว** ใช้ทั้งตอนวาดหน้าจอและตอนกดรับ
@@ -180,7 +205,8 @@ end
 local function offeredFor(player, boardId)
 	local held = activeOf(player) or {}
 	local done = doneOf(player) or {}
-	local source = (boardId == QuestConfig.MainBoardId) and allQuests() or questsOf(boardId)
+	local extra = rerollOf(player, boardId)
+	local source = (boardId == QuestConfig.MainBoardId) and allQuests(extra) or questsOf(boardId, extra)
 
 	local offered, finished = {}, 0
 	for _, q in ipairs(source) do
@@ -242,6 +268,9 @@ local function snapshot(player, boardId)
 	return {
 		-- ส่งครบแล้วกี่ใบวันนี้ หน้าจอใช้แยก "บอร์ดว่าง" ออกจาก "ทำครบแล้ว รอพรุ่งนี้"
 		finishedToday = finished,
+		-- ปุ่มรีบอร์ดต้องรู้สองอย่าง: ราคา กับจำนวนครั้งที่คนนี้รีไปแล้ววันนี้
+		rerollPrice = QuestConfig.RerollPrice,
+		rerolls = rerollOf(player, boardId),
 		boardId = boardId,
 		boardName = isMain and QuestConfig.MainBoardName or board.name,
 		blurb = isMain and QuestConfig.MainBoardBlurb or board.blurb,
@@ -424,9 +453,31 @@ local function wire(model)
 	end)
 end
 
+-- จ่ายเพชรแล้วสุ่มบอร์ดใหม่ให้ **เฉพาะคนนี้** — บอร์ดของเซิร์ฟเวอร์ไม่ขยับ คนอื่นยังเห็นชุดเดิม
+--
+-- **ไม่ล้าง `QuestsDone`** งานที่ส่งไปแล้ววันนี้ยังถูกกรองออกเหมือนเดิม จ่ายเพชรจึงได้ "งานใหม่"
+-- ไม่ใช่ "ทำงานเดิมซ้ำเพื่อเอารางวัลอีกรอบ" ซึ่งเป็นคนละเรื่องกันและเป็นช่องโหว่
+local function reroll(player, boardId)
+	local price = QuestConfig.RerollPrice or 0
+	local t = rerollTable(player)
+	if not t then return end
+	if price > 0 and not (PremiumAccess.SpendGems and PremiumAccess.SpendGems(player, price)) then
+		return Remotes.SocialNotify:FireClient(player, "error",
+			("เพชรไม่พอ (ต้องใช้ %d)"):format(price))
+	end
+	t[boardId] = (tonumber(t[boardId]) or 0) + 1
+	if ProfileAccess.Flush then ProfileAccess.Flush(player) end
+	local offered = offeredFor(player, boardId)
+	Remotes.SocialNotify:FireClient(player, "info",
+		("สุ่มงานใหม่แล้ว %d ใบ (-%d เพชร)"):format(#offered, price))
+	Remotes.QuestUpdate:FireClient(player, snapshot(player, boardId))
+end
+
 Remotes.RequestQuestAction.OnServerEvent:Connect(function(player, action, index)
 	local boardId = Viewing[player]
 	if not boardId then return end
+	-- รีบอร์ดไม่ได้ชี้ไปที่ใบไหน จึงต้องอยู่ก่อนด่าน index
+	if action == "reroll" then return reroll(player, boardId) end
 	index = math.floor(tonumber(index) or 0)
 	if index < 1 then return end
 
@@ -502,6 +553,9 @@ if game:GetService("RunService"):IsStudio() then
 		if op == "Snapshot" then return snapshot(...) end
 		if op == "Offered" then return (offeredFor(...)) end
 		if op == "Key" then return questKey(...) end
+		-- รีบอร์ด: ปกติเรียกผ่าน remote ซึ่งต้องยืนอยู่หน้าบอร์ดจริง (`Viewing`) เทสจึงเรียกตรงนี้
+		if op == "Reroll" then reroll(...) return true end
+		if op == "Rerolls" then return rerollOf(...) end
 		-- โปรไฟล์: sandbox require ProfileAccess ได้สำเนาว่าง จึงต้องผ่านทางนี้เหมือนกัน
 		if op == "Held" then return activeOf(...) end
 		if op == "AddHeld" then

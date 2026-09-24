@@ -23,6 +23,10 @@ gui:On("abandon", function(index)
 	Remotes.RequestQuestAction:FireServer("abandon", index)
 end)
 
+gui:On("reroll", function()
+	Remotes.RequestQuestAction:FireServer("reroll", 1)
+end)
+
 gui:On("close", function()
 	Remotes.RequestQuestAction:FireServer("close", 1)
 end)

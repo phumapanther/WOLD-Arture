@@ -183,6 +183,9 @@ local function snapshot(player)
 				name = item.name .. (SPOT_TAG[item.spot] or ""),
 				icon = item.icon, price = entry.price,
 				currency = entry.currency, -- nil = เหรียญ · "gems" = เพชร
+				-- **จำนวนที่ได้ต่อหนึ่งครั้งที่กด** (ผู้ใช้สั่ง 2026-09-24: เมล็ด 250 ได้ 3 เม็ด)
+				-- nil/1 = ทีละชิ้นเหมือนเดิม จึงไม่ต้องแตะแถวอื่นในคอนฟิกเลย
+				count = (entry.count or 1) > 1 and entry.count or nil,
 			})
 		end
 	end
@@ -269,9 +272,18 @@ Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, 
 		-- Given one at a time BEFORE the gold is taken, so a full bag cannot charge for nothing. Stopping
 		-- at the first refusal and paying only for what landed is what makes a part-filled bag buy what
 		-- fits instead of failing outright.
-		local bought = 0
+		-- **หนึ่งครั้งที่กดอาจได้หลายชิ้น** (`entry.count`) — ยังใส่ทีละชิ้นเหมือนเดิม เพื่อให้กระเป๋า
+		-- ที่เหลือที่ไม่พอทั้งชุดยังรับเท่าที่ได้ แล้วจ่ายตามชุดที่ครบจริง ไม่ใช่ตามชิ้นที่หลุดเข้าไป
+		local per = math.max(1, math.floor(entry.count or 1))
+		local bought, got = 0, 0
 		for _ = 1, count do
-			if not Inventory.AddItem(player, entry.id, 1) then break end
+			local landed = 0
+			for _ = 1, per do
+				if not Inventory.AddItem(player, entry.id, 1) then break end
+				landed += 1
+			end
+			got += landed
+			if landed < per then break end -- กระเป๋าเต็มกลางชุด ชุดนี้ไม่คิดเงิน
 			bought += 1
 		end
 		if bought == 0 then
@@ -289,10 +301,10 @@ Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, 
 		local unit = gems and " เพชร" or ""
 		if bought < want then
 			Remotes.SocialNotify:FireClient(player, "info",
-				("ซื้อ %s x%d ราคา %d%s (ได้ไม่ครบ %d)"):format(name, bought, entry.price * bought, unit, want))
+				("ซื้อ %s x%d ราคา %d%s (ได้ไม่ครบ %d)"):format(name, got, entry.price * bought, unit, want * per))
 		else
 			Remotes.SocialNotify:FireClient(player, "info",
-				("ซื้อ %s x%d ราคา %d%s"):format(name, bought, entry.price * bought, unit))
+				("ซื้อ %s x%d ราคา %d%s"):format(name, got, entry.price * bought, unit))
 		end
 
 	elseif action == "sell" then

@@ -318,7 +318,9 @@ function ShopGui:Show(snapshot)
 		-- The quantity lives in the closure rather than being read off the box at press time, so the row
 		-- keeps working the same way whether the number was typed or left alone.
 		local want = nil
-		local frame = row(self.sellList, entry.index, entry.icon, entry.name,
+		-- แถวที่ได้หลายชิ้นต่อการกดหนึ่งครั้งต้องบอกไว้ในชื่อ ไม่งั้น "เมล็ดพันธุ์ 250" อ่านเหมือนแพงขึ้น
+		local label = entry.count and ("%s x%d"):format(entry.name, entry.count) or entry.name
+		local frame = row(self.sellList, entry.index, entry.icon, label,
 			-- เพชรกับเหรียญต้องอ่านต่างกันทันที ไม่งั้น "ราคา 250" ของสัตว์เลี้ยงดูถูกกว่าบ้าน 20,000
 			-- ทั้งที่แพงกว่ามาก (ร้านบนเกาะขายสองสกุล ดู ShopConfig.IslandSells)
 			(entry.currency == "gems" and ("💎 %d"):format(entry.price) or ("ราคา %d"):format(entry.price)),

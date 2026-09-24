@@ -171,6 +171,23 @@ end
 local function buy(player, shopId)
 	local row = PremiumConfig.ShopById(shopId)
 	if not row then return end
+
+	-- **แถวที่จ่ายเป็นเงินในเกม** (ผู้ใช้สั่ง 2026-09-24) — ไม่กินช่องกระเป๋า จึงข้ามด่าน HasRoomFor
+	-- ที่เหลือเดินทางเดียวกับของทั่วไปเป๊ะ: หักเพชรก่อน จ่ายทีหลัง จ่ายไม่ได้คืนเพชร
+	if row.gold then
+		if not spendGems(player, row.price) then
+			return Remotes.SocialNotify:FireClient(player, "error", ("เพชรไม่พอ (ต้องใช้ %d)"):format(row.price))
+		end
+		if not Inventory.AddGold(player, row.gold) then
+			addGems(player, row.price)
+			return Remotes.SocialNotify:FireClient(player, "error", "แลกไม่สำเร็จ คืนเพชรแล้ว")
+		end
+		if ProfileAccess.Flush then ProfileAccess.Flush(player) end
+		Remotes.SocialNotify:FireClient(player, "info",
+			("ได้รับ %d เหรียญ (-%d เพชร)"):format(row.gold, row.price))
+		return push(player)
+	end
+
 	if not Inventory.HasRoomFor(player, row.item, row.count) then
 		return Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม")
 	end

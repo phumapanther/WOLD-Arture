@@ -236,27 +236,53 @@ local function pruneBlocked()
 	end
 end
 
+-- ถึงรอบเกิดหรือยัง — นับจาก `os.time` ที่เก็บไว้ในโปรไฟล์ นาฬิกาจึงข้ามการรีสตาร์ทได้
+--
+-- รอบที่ค้างตอนออฟไลน์จ่ายชดตอนเข้าเกม — หายสามวันกลับมาเจอฟาร์มรกขึ้น นี่คือ "ยิ่งนานยิ่งรก"
+-- ตามตัวอักร · เพดาน `CFG.max` คุมปริมาณงานไว้อยู่แล้ว หายไปสิบวันก็ไม่ได้เกินนั้น
+local function spawnDue()
+	local clock = IslandAccess.NodeClock
+	if not clock then return end
+	local last = tonumber(clock())
+	local period = CFG.everySeconds
+	if last == nil then
+		-- โปรไฟล์ยังไม่โหลด = รอรอบหน้า · เกาะใหม่ที่ยังไม่เคยมีนาฬิกา = ให้ครบรอบพอดี
+		-- (ไม่งั้นเกาะใหม่จะว่างเปล่า 30 นาทีแรก ซึ่งเป็นอาการเดียวกันกับบั๊กที่เพิ่งแก้)
+		if not IslandAccess.NodeStore or not IslandAccess.NodeStore() then return end
+		last = os.time() - period
+	end
+	local rounds = math.floor((os.time() - last) / period)
+	if rounds < 1 then return end
+	-- เดินเป็นช่องๆ ไม่เท่ากับ `os.time()` เปล่าๆ — ไม่งั้นเศษเวลาทุกรอบจะหายไป
+	clock(last + rounds * period)
+	local per = math.random(CFG.perRoundMin or 1, CFG.perRoundMax or 1)
+	local made = 0
+	for _ = 1, rounds * per do
+		if countLive() >= CFG.max then break end
+		if spawnOne() then made += 1 end
+	end
+	if made > 0 then
+		print(("[IslandNodes] เกิดใหม่ %d จุด (ค้างอยู่ %d รอบ) · รวมทั้งหมด %d")
+			:format(made, rounds, countLive()))
+	end
+end
+
 task.spawn(function()
 	-- รอให้เกาะประกอบเสร็จก่อน (IslandBuild ปลูกของจากโปรไฟล์ตอนบูต)
 	task.wait(10)
 	-- **งานบ้านเดินถี่ การเกิดเดินช้า** — สองจังหวะนี้คนละเรื่องกัน เอามามัดรวมไว้ที่ `everySeconds`
 	-- ไม่ได้: ชั่วโมงละครั้งคือจังหวะที่ผู้ใช้สั่งไว้ว่าของควรงอกขึ้นมาใหม่ ไม่ใช่จังหวะที่ระบบควร
 	-- ตื่นมาดูว่าโลกเปลี่ยนไปยัง (แปลงผักที่ปลูกทับจะค้างอยู่ใต้หินได้ทั้งชั่วโมง)
-	local lastSpawn = 0
+	-- ⚠️ **นาฬิการอบเกิดอยู่ในโปรไฟล์ ไม่ใช่ `os.clock()` อีกแล้ว** (แก้ 2026-09-24)
+	-- ของเดิมนับจากตอนเซิร์ฟบูต แต่เกาะเป็นเซิร์ฟส่วนตัวที่ปิดทุกครั้งที่เจ้าของออก นาฬิกาจึง
+	-- เริ่มนับหนึ่งใหม่ทุกครั้ง — คนที่เล่นรอบละครึ่งชั่วโมง **จึงไม่เคยเห็นอะไรเกิดเลยสักครั้ง**
+	-- (ผู้ใช้แจ้ง 2026-09-24 "ครบ ชม.แล้วเกินแล้วด้วยซ้ำ ไม่มีอะไรเกิดเลย")
 	while true do
 		if os.clock() - scannedAt > CFG.rescanSeconds then rescanSoil() end
 		restoreSaved() -- ครั้งเดียวต่อเซิร์ฟ — คืนของที่เคยโผล่ก่อนสุ่มเพิ่ม
 		countLive() -- เก็บกวาดจุดที่หายไปแล้วออกจากคลัง (ตาข่ายรองรับของ Destroying ข้างบน)
 		pruneBlocked()
-		if os.clock() - lastSpawn >= CFG.everySeconds then
-			lastSpawn = os.clock()
-			-- ทีละ 1-3 จุดต่อรอบ (ผู้ใช้สั่ง 2026-09-23) · เช็คเพดานใหม่ทุกจุด ไม่ใช่ครั้งเดียวต่อรอบ
-			local want = math.random(CFG.perRoundMin or 1, CFG.perRoundMax or 1)
-			for _ = 1, want do
-				if countLive() >= CFG.max then break end
-				spawnOne()
-			end
-		end
+		spawnDue()
 		task.wait(TICK)
 	end
 end)

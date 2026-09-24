@@ -466,12 +466,29 @@ IslandAccess.NodeStore = function()
 	if not Data.nodes then Data.nodes = {} end
 	return Data.nodes
 end
+-- นาฬิการอบเกิดของ `IslandNodes` — **ต้องอยู่ในโปรไฟล์ ไม่ใช่ตัวนับในหน่วยความจำ**
+--
+-- เกาะเป็นเซิร์ฟส่วนตัวที่ปิดทุกครั้งที่เจ้าของออก นาฬิกาที่เก็บในหน่วยความจำจึงเริ่มนับหนึ่งใหม่ทุกครั้งที่
+-- เข้าเกม — คนที่เล่นรอบละครึ่งชั่วโมงจึงไม่เคยเห็นของงอกสักจุด (ผู้ใช้แจ้ง 2026-09-24)
+--
+-- เก็บเป็นฟิลด์ของตัวเอง ไม่ใช่คีย์ใน `Data.nodes` — คีย์ที่นั่นถูกอ่านเป็น "cx,cz" ทุกตัว
+IslandAccess.NodeClock = function(set)
+	if not Data then return nil end
+	if set ~= nil then Data.nodeAt = set end
+	return Data.nodeAt
+end
+
 IslandAccess.EntryOf = function(model) return Entries[model] end
 IslandAccess.ModelOf = function(uid) return Models[uid] end
 IslandAccess.Place = place
 IslandAccess.Pickup = pickup
 IslandAccess.FindSlot = Inventory.FindSlotById
 IslandAccess.Count = Inventory.CountOf
+-- เงินในกระเป๋า (เทสเท่านั้น) — `require(Inventory)` ใน sandbox คืนสำเนาว่าง เลขจึงเป็นศูนย์เสมอ
+IslandAccess.Gold = function(player)
+	local state = Inventory.Get(player)
+	return state and state.gold or 0
+end
 -- เสกของเข้ากระเป๋าสำหรับเทส (ของบางชิ้นยังไม่มีในชุดเริ่มต้น เช่นคอก/โซนแร่)
 -- ลองดูว่าวางตรงนี้ได้ไหมโดยไม่วางจริง (เทสใช้หาช่องว่าง) — nil itemId = ไม่สนใจกฎดิน
 IslandAccess.CanPlaceAt = function(cx, cz, w, d, r, itemId)

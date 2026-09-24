@@ -505,11 +505,15 @@ end
 -- Gold and replication
 --------------------------------------------------------------------------------
 
+-- คืน true เมื่อเงินถูกเขียนจริง · false = โปรไฟล์ยังไม่โหลด/ออกเกมไปแล้ว
+-- (ผู้เรียกเดิมทิ้งค่าที่คืนอยู่แล้ว การเพิ่มค่าคืนจึงไม่กระทบใคร แต่ทางที่ต้องคืนเพชรถ้าจ่ายไม่สำเร็จ
+--  อย่างร้านแคชจำเป็นต้องรู้ ไม่งั้นมันคืนเพชรทุกครั้งทั้งที่จ่ายเงินสำเร็จ)
 function Inventory.AddGold(player, amount)
 	local state = States[player]
-	if not state then return end
+	if not state then return false end
 	state.gold = math.max(0, state.gold + amount)
 	Inventory.Send(player)
+	return true
 end
 
 -- Puts an item id in a hotbar slot, or clears it when id is nil. Assigning something that is already in

@@ -279,12 +279,15 @@ function PremiumGui:renderShop()
 			art.Position = UDim2.new(0, 8, 0.5, -20)
 			art.Size = UDim2.fromOffset(40, 40)
 			art.BackgroundTransparency = 1
-			ItemIcon.Apply(art, item and item.icon)
+			ItemIcon.Apply(art, row.icon or (item and item.icon))
 			art.ScaleType = Enum.ScaleType.Fit
 			art.Parent = frame
 		end
 
-		local name = label(frame, ("%s%s"):format(item and item.name or row.item, row.count > 1 and (" x" .. row.count) or ""), 13)
+		-- แถวที่ไม่ใช่ไอเทม (เงินในเกม) ไม่มีชื่อให้หยิบจากแคตตาล็อก จึงพกชื่อ/รูปมาเองในคอนฟิก
+		local title = row.name
+			or ("%s%s"):format(item and item.name or row.item, (row.count or 1) > 1 and (" x" .. row.count) or "")
+		local name = label(frame, title, 13)
 		name.Position = UDim2.new(0, 56, 0, 6)
 		name.Size = UDim2.new(1, -190, 0, 18)
 		local blurb = label(frame, row.blurb or "", 11, TEXT_MUTED)
