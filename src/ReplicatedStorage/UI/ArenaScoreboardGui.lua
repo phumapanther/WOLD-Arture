@@ -25,9 +25,10 @@ local COLUMNS = {
 	{ key = "name",   title = "ชื่อ",    x = 74,  w = 190, align = Enum.TextXAlignment.Left },
 	{ key = "kda",    title = "k/d/a",  x = 268, w = 90,  align = Enum.TextXAlignment.Center },
 	{ key = "damage", title = "damage", x = 362, w = 90,  align = Enum.TextXAlignment.Center },
-	{ key = "score",  title = "คะแนน",  x = 456, w = 90,  align = Enum.TextXAlignment.Center },
-	{ key = "chest",  title = "รางวัล",  x = 556, w = 140, align = Enum.TextXAlignment.Right },
-	{ key = "gold",   title = "เงินรางวัล", x = 702, w = 90, align = Enum.TextXAlignment.Right },
+	{ key = "score",  title = "คะแนน",  x = 456, w = 70,  align = Enum.TextXAlignment.Center },
+	{ key = "exp",    title = "EXP",    x = 530, w = 66,  align = Enum.TextXAlignment.Center },
+	{ key = "chest",  title = "รางวัล",  x = 600, w = 110, align = Enum.TextXAlignment.Right },
+	{ key = "gold",   title = "เงินรางวัล", x = 714, w = 78, align = Enum.TextXAlignment.Right },
 }
 
 local function corner(parent, radius)
@@ -83,6 +84,7 @@ function ArenaScoreboardGui.new()
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Text = "จบเกม"
 	title.Parent = panel
+	self.title = title
 
 	local subtitle = Instance.new("TextLabel")
 	subtitle.AnchorPoint = Vector2.new(0.5, 0)
@@ -115,8 +117,9 @@ function ArenaScoreboardGui.new()
 	header.Size = UDim2.fromOffset(796, 26)
 	header.BackgroundTransparency = 1
 	header.Parent = panel
+	self.headerCells = {}
 	for _, column in ipairs(COLUMNS) do
-		cell(header, column, column.title, 16, true)
+		self.headerCells[column.key] = cell(header, column, column.title, 16, true)
 	end
 
 	local rows = Instance.new("Frame")
@@ -137,7 +140,7 @@ function ArenaScoreboardGui.new()
 	note.Font = Enum.Font.SourceSans
 	note.TextSize = 17
 	note.TextColor3 = Color3.fromRGB(46, 46, 50)
-	note.Text = "หีบกับเงินรางวัลจะอยู่ในกระเป๋าของคุณเมื่อกลับเข้าเกมหลัก"
+	note.Text = "หีบ เงิน และ EXP จะเข้าตัวละครของคุณเมื่อกลับเข้าเกมหลัก"
 	note.Parent = panel
 	self.note = note
 
@@ -146,6 +149,31 @@ end
 
 function ArenaScoreboardGui:OnBack(callback)
 	self.backButton.MouseButton1Click:Connect(callback)
+end
+
+-- REWARD_KEYS: คอลัมน์ที่มีความหมายเฉพาะตอนจบแมตช์ — ตาราง Tab ระหว่างเล่นซ่อนไว้
+local REWARD_KEYS = { exp = true, chest = true, gold = true }
+
+-- โหมด "ตาราง Tab" (ผู้ใช้สั่ง 2026-09-24): ใช้หน้าตาเดียวกับตารางจบเกม แต่ไม่มีปุ่มกลับ/รางวัล
+function ArenaScoreboardGui:SetLive(live)
+	self.live = live
+	self.backButton.Visible = not live
+	self.note.Visible = not live
+	self.title.Text = live and "สถิติ" or "จบเกม"
+	for key in pairs(REWARD_KEYS) do self.headerCells[key].Visible = not live end
+end
+
+-- `snap` = ภาพแมตช์จาก ArenaState · อันดับเรียงตามคะแนนผลงาน ตัวเดียวกับตารางจบเกม
+function ArenaScoreboardGui:RenderLive(snap)
+	local rows = {}
+	for _, member in ipairs(snap.roster or {}) do
+		local row = table.clone(member)
+		row.won = member.side == snap.mySide -- "ก้อนบน" = ทีมเรา
+		table.insert(rows, row)
+	end
+	table.sort(rows, function(a, b) return (a.score or 0) > (b.score or 0) end)
+	for rank, row in ipairs(rows) do row.rank = rank end
+	self:Render({ rows = rows, titles = { "ทีมเรา", "ทีมศัตรู" } })
 end
 
 function ArenaScoreboardGui:SetVisible(visible)
@@ -191,6 +219,7 @@ function ArenaScoreboardGui:Render(result)
 
 				local chestItem = row.chest and ItemCatalog.Items[row.chest]
 				local values = {
+					-- (ตาราง Tab ระหว่างเล่นไม่มีรางวัล — คอลัมน์ว่าง)
 					rank = tostring(row.rank or "-"),
 					name = row.name .. (row.bot and "  (บอท)" or ""),
 					kda = ("%d/%d/%d"):format(row.kills or 0, row.deaths or 0, row.assists or 0),
@@ -198,16 +227,21 @@ function ArenaScoreboardGui:Render(result)
 					score = tostring(math.floor((row.score or 0) + 0.5)),
 					chest = row.bot and "—" or (chestItem and chestItem.name or row.chest or "—"),
 					gold = row.bot and "—" or tostring(row.gold or 0),
+					exp = row.bot and "—" or tostring(row.exp or 0),
 				}
 				for _, column in ipairs(COLUMNS) do
-					cell(frame, column, values[column.key] or "", 17, column.key == "rank")
+					local text = (self.live and REWARD_KEYS[column.key]) and "" or (values[column.key] or "")
+					local label = cell(frame, column, text, 17, column.key == "rank")
+					if row.me then label.Font = Enum.Font.SourceSansBold end
+					if row.alive == false and self.live then label.TextTransparency = 0.45 end
 				end
 			end
 		end
 	end
 
-	section("ทีมชนะ", WIN_HEAD, WIN_ROW, function(row) return row.won end)
-	section("ทีมแพ้", LOSE_HEAD, LOSE_ROW, function(row) return not row.won end)
+	local titles = result.titles or { "ทีมชนะ", "ทีมแพ้" }
+	section(titles[1], WIN_HEAD, WIN_ROW, function(row) return row.won end)
+	section(titles[2], LOSE_HEAD, LOSE_ROW, function(row) return not row.won end)
 end
 
 return ArenaScoreboardGui

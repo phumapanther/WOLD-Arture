@@ -23,14 +23,19 @@ local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local Inventory = require(game.ServerScriptService.Inventory)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
+local ProfileStore = require(game.ServerScriptService.ProfileStore)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local Vitals = require(game.ServerScriptService.Vitals)
+local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 
 --------------------------------------------------------------------------------
 -- ตั้งกติกาที่ต่างจากเกมหลัก (ทำครั้งเดียวตอนบูต)
 --------------------------------------------------------------------------------
 -- **เลือดหมด = ตายทันที** ไม่มีท่าคลาน ไม่มีใครมาอุ้ม (ผู้ใช้เลือก: "ตายแล้วออกยาว รอรอบหน้า")
 Vitals.NoDownedMode = true
+
+-- **มานาเริ่ม 0 ไม่ฟื้นเอง ได้จากขวดน้ำในร้านเท่านั้น** (ผู้ใช้สั่ง 2026-09-24) ดู `Vitals.ArenaManaMode`
+Vitals.ArenaManaMode = true
 
 -- **เราเป็นคนตัดสินว่าใครเกิดเมื่อไหร่** ไม่ใช่ Roblox — คนที่ตายกลางรอบต้องอยู่ในสถานะดูอย่างเดียว
 -- จนกว่ารอบใหม่จะเริ่ม ซึ่งเป็นไปไม่ได้เลยถ้าเอนจินเกิดให้เองทุกห้าวินาที
@@ -74,6 +79,31 @@ if not record then
 end
 
 local MAP = ArenaConfig.MapById(record.mapId) or ArenaConfig.Maps[1]
+
+--------------------------------------------------------------------------------
+-- สกินอาวุธจากเกมหลัก (ผู้ใช้สั่ง 2026-09-24: "สวมสกินอะไรอยู่ อาวุธในแมพ PVP ก็สวมสกินนั้นให้ออโต้")
+--------------------------------------------------------------------------------
+-- อ่านโปรไฟล์ **แบบอ่านอย่างเดียว** (`GetAsync` ไม่ล็อกเซสชัน) — เซิร์ฟนี้ห้ามเปิดเซสชันใคร (ดูหัวไฟล์)
+-- ⚠️ ชื่อ store กับรูปคีย์ต้องตรงกับ `PlayerProfile.server.lua` เป๊ะ
+-- ⚠️ โมเดลสกินต้องอยู่ใน `ReplicatedStorage.WOLD_Skins` ของเพลสนี้ด้วย (`98_island_skins.lua --skins`)
+-- ไม่งั้น `WeaponVisuals` ตกไปใช้รูปทรงมาตรฐานเงียบๆ
+local ProfileView = ProfileStore.New("WOLD_PlayerProfile_v1")
+
+-- คืน { [weaponId] = skinId } · อาวุธที่ถืออยู่ในเกมหลักชนะชิ้นที่นอนอยู่ในกระเป๋า
+local function mainGameSkins(userId)
+	local skins = {}
+	local ok, view = pcall(function() return ProfileView:GetAsync("Player_" .. userId) end)
+	local inv = ok and view and view.Data and view.Data.Inventory
+	if not inv then return skins end
+	local function take(entry)
+		if type(entry) == "table" and entry.id and type(entry.meta) == "table" and entry.meta.skin then
+			skins[entry.id] = skins[entry.id] or entry.meta.skin
+		end
+	end
+	for _, entry in pairs(inv.Equipped or {}) do take(entry) end
+	for _, entry in pairs(inv.Slots or {}) do take(entry) end
+	return skins
+end
 
 --------------------------------------------------------------------------------
 -- สนาม
@@ -215,7 +245,9 @@ local function snapshotFor(player)
 	if not me then return nil end
 
 	local roster = {}
-	for _, f in pairs(Fighters) do
+	-- ดาเมจที่ "เรา" ทำใส่ศัตรูแต่ละคนในรอบนี้ — การ์ดขวาจอตอนตายแล้วดูเพื่อน (ผู้ใช้สั่ง 2026-09-24)
+	local dealt = {}
+	for key, f in pairs(Fighters) do
 		table.insert(roster, {
 			name = f.name,
 			side = f.side,
@@ -224,8 +256,22 @@ local function snapshotFor(player)
 			me = f.player == player,
 			kills = f.stats.kills,
 			deaths = f.stats.deaths,
+			assists = f.stats.assists,
+			damage = math.floor(f.stats.damage + 0.5),
+			score = math.floor(ArenaConfig.Score(f.stats) + 0.5),
+			-- ให้กล้องของคนที่ตายแล้วหาร่างเพื่อนเจอ: คน = userId · บอท = ตัวโมเดลเลย
+			userId = f.kind == "player" and f.player.UserId or nil,
+			model = f.kind == "bot" and f.model or nil,
 		})
+		if f.side ~= me.side then
+			table.insert(dealt, {
+				name = f.name,
+				damage = math.floor((me.roundDamage[key] or 0) + 0.5),
+				alive = f.alive,
+			})
+		end
 	end
+	table.sort(dealt, function(a, b) return a.damage > b.damage end)
 	table.sort(roster, function(a, b)
 		if a.side ~= b.side then return a.side < b.side end
 		return a.name < b.name
@@ -246,8 +292,10 @@ local function snapshotFor(player)
 		alive = me.alive,
 		loadout = me.loadout,
 		-- ซื้อไปแล้วช่องไหนในรอบนี้ — หน้าร้านทำปุ่มเป็นสีเทาโดยไม่ต้องเดาเอง
-		bought = me.boughtThisRound,
+		bought = me.boughtThisRound, -- [slot] = ซื้อไปแล้วกี่ชิ้นในรอบนี้
+		mana = Vitals.ManaOf(player),
 		roster = roster,
+		dealt = dealt,
 		lastWinner = State.lastRoundWinner,
 	}
 end
@@ -271,6 +319,25 @@ end
 local function equipById(player, id)
 	local index = Inventory.FindSlotById(player, id)
 	if index then Inventory.Equip(player, index) end
+end
+
+-- ⚠️ `Inventory.RemoveById` เป็น **ทั้งหมดหรือไม่เอาเลย** — สั่งลบ 99 ตอนมีชิ้นเดียว = ไม่ลบอะไรเลย
+local function removeAll(player, id)
+	local n = Inventory.CountOf(player, id)
+	if n > 0 then Inventory.RemoveById(player, id, n) end
+end
+
+-- ตายในรอบไหน = ของที่ซื้อไว้หายหมด รอบหน้าต้องซื้อใหม่ รวมมานา (ผู้ใช้สั่ง 2026-09-24)
+local function wipeLoadout(f)
+	local player = f.player
+	for _, held in pairs(f.loadout) do removeAll(player, held) end
+	Inventory.BreakEquipped(player, "weapon")
+	Inventory.BreakEquipped(player, "armor")
+	removeAll(player, "Bullet")
+	f.loadout = {}
+	Vitals.SetMana(player, 0)
+	Vitals.SyncArmorFromEquipment(player)
+	Inventory.Send(player)
 end
 
 -- ใส่ของที่ซื้อไว้กลับให้ใหม่หลังเกิด — กระเป๋ารอดข้ามการตาย (มันผูกกับคน ไม่ใช่กับร่าง) แต่ของที่
@@ -329,6 +396,7 @@ end
 local function markDead(f)
 	if not f.alive then return end
 	f.alive = false
+	f.diedThisRound = true
 	f.stats.deaths += 1
 	killCredit(f)
 	pushAll()
@@ -366,6 +434,7 @@ local function registerHit(attackerKey, victimKey, amount)
 	if not victim then return end
 	if attacker then
 		attacker.stats.damage += amount
+		attacker.roundDamage[victimKey] = (attacker.roundDamage[victimKey] or 0) + amount
 		victim.lastHitBy, victim.lastHitAt = attackerKey, os.clock()
 		victim.recentHits = victim.recentHits or {}
 		victim.recentHits[attackerKey] = os.clock()
@@ -403,33 +472,49 @@ Remotes.RequestArenaBuy.OnServerEvent:Connect(function(player, id)
 
 	local entry = ArenaConfig.ShopEntry(id)
 	if not entry then return end
-	if f.boughtThisRound[entry.slot] then
-		return notify(player, ("รอบนี้ซื้อ%sไปแล้ว"):format(ArenaConfig.SlotLabel[entry.slot] or "ของ"), "warn")
+	local count = f.boughtThisRound[entry.slot] or 0
+	if count >= ArenaConfig.PerRound(entry) then
+		return notify(player, ("รอบนี้ซื้อ%sครบแล้ว"):format(ArenaConfig.SlotLabel[entry.slot] or "ของ"), "warn")
 	end
 	if f.silver < entry.price then
 		return notify(player, "ซิลเวอร์ไม่พอ", "warn")
 	end
+	if entry.mana and Vitals.ManaOf(player) >= VitalsConfig.MaxMana then
+		return notify(player, "มานาเต็มแล้ว", "warn")
+	end
 
 	f.silver -= entry.price
-	f.boughtThisRound[entry.slot] = id
+	f.boughtThisRound[entry.slot] = count + 1
 
-	-- **ซื้อชิ้นใหม่ = ทับของเก่าทิ้ง** (ผู้ใช้สั่ง) — ของเก่าถูกลบออกจากกระเป๋าจริงๆ ไม่ได้กองอยู่
-	local previous = f.loadout[entry.slot]
-	if previous and previous ~= id then
-		Inventory.RemoveById(player, previous, 99)
+	-- ขวดน้ำ: ไม่เข้ากระเป๋า เติมมานาทันที
+	if entry.mana then
+		Vitals.AddMana(player, entry.mana)
+		notify(player, ("มานา %d/%d"):format(Vitals.ManaOf(player), VitalsConfig.MaxMana))
+		pushTo(player)
+		return
 	end
+
+	-- **ซื้อชิ้นใหม่ = ทับของเก่าทิ้ง** (ผู้ใช้สั่ง)
+	local previous = f.loadout[entry.slot]
+	local wearable = entry.slot == "weapon" or entry.slot == "armor"
+	-- ยาเก่าลบ *ก่อน* ใส่ขวดใหม่ (ชนิดเดียวกันกองรวมกัน ลบทีหลังจะลบขวดใหม่ไปด้วย)
+	if previous and not wearable then removeAll(player, previous) end
 	f.loadout[entry.slot] = id
 
-	Inventory.AddItem(player, id, 1)
+	-- อาวุธใส่สกินจากเกมหลักให้เอง (meta.skin ทางเดียวกับที่ `Skins.server` ติดตั้ง)
+	local skin = entry.slot == "weapon" and f.skins[id]
+	Inventory.AddItem(player, id, 1, nil, skin and { skin = skin } or nil)
 	-- ปืนมากับกระสุน 16 นัด แล้วจบ (ผู้ใช้กำหนด) — ยิงหมดต้องซื้อปืนใหม่ ไม่มีกระสุนขายแยก
 	if entry.ammo then
-		Inventory.RemoveById(player, "Bullet", 999)
+		removeAll(player, "Bullet")
 		Inventory.AddItem(player, "Bullet", entry.ammo)
 	end
 
 	-- **ซื้อแล้วสวมให้เลย** ไม่ต้องเปิดกระเป๋า (กระเป๋าในสนามใช้ไม่ได้อยู่แล้ว)
-	if entry.slot == "weapon" or entry.slot == "armor" then
+	if wearable then
 		equipById(player, id)
+		-- ⚠️ ลบของเก่า **หลัง** สวมชิ้นใหม่: `Equip` คืนชิ้นที่ถอดลงกระเป๋า ลบก่อนแล้วมันเด้งกลับมากอง
+		if previous then removeAll(player, previous) end
 		Vitals.SyncArmorFromEquipment(player)
 	end
 	Inventory.Send(player)
@@ -489,17 +574,19 @@ local function startRound()
 	State.round += 1
 	State.lastRoundWinner = nil
 
-	-- ของใช้ (ยา) หมดอายุทุกจบรอบ — อาวุธกับเกราะอยู่ยาวจนกว่าจะซื้อชิ้นใหม่มาทับ
+	-- **รอดรอบที่แล้ว = ของที่ซื้อไว้ติดตัวต่อ (รวมยาและมานา) · ตาย = หายหมด ซื้อใหม่** (ผู้ใช้สั่ง 2026-09-24)
 	for _, f in pairs(Fighters) do
-		f.boughtThisRound = {}
-		f.stats.roundKills = 0
-		for slot in pairs(ArenaConfig.SlotExpiresEachRound) do
-			local held = f.loadout[slot]
-			if held then
-				if f.kind == "player" then Inventory.RemoveById(f.player, held, 99) end
-				f.loadout[slot] = nil
+		if f.kind == "player" and not f.left then
+			if State.round == 1 or f.diedThisRound then
+				wipeLoadout(f)
+			elseif f.loadout.use and Inventory.CountOf(f.player, f.loadout.use) == 0 then
+				f.loadout.use = nil -- ใช้ยาไปแล้วในรอบก่อน
 			end
 		end
+		f.diedThisRound = false
+		f.boughtThisRound = {}
+		f.stats.roundKills = 0
+		f.roundDamage = {}
 	end
 
 	-- เกิดใหม่ทุกคนทั้งสองฝั่ง รวมคนที่ตายไปเมื่อรอบที่แล้ว
@@ -525,7 +612,7 @@ local function startRound()
 				kind = "bot", model = model, side = entry.side, name = entry.name,
 				silver = 0, alive = true, loadout = {}, boughtThisRound = {},
 				stats = entry.stats, -- **ตารางเดียวกับรอบก่อน** คะแนนจึงสะสมต่อ
-				recentHits = {},
+				recentHits = {}, roundDamage = {},
 			}
 		end
 	end
@@ -677,7 +764,11 @@ PlayerJoin.Each(function(player)
 		boughtThisRound = {},
 		stats = newStats(),
 		recentHits = {},
+		roundDamage = {},
+		skins = {},
 	}
+	local f = Fighters[player]
+	task.spawn(function() f.skins = mainGameSkins(player.UserId) end)
 
 	-- **เกิดทันทีถ้ารอบยังไม่เริ่ม** — `CharacterAutoLoads` ถูกปิดไว้ คนที่ไม่มีร่างคือคนที่มองเห็น
 	-- แต่จอดำ · ระหว่างรออีกห้าคนนั่นคือหน้าจอแรกที่เขาเห็นในโหมดนี้

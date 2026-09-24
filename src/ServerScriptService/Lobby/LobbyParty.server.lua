@@ -51,6 +51,27 @@ local function friendsOf(player)
 end
 
 --------------------------------------------------------------------------------
+-- เลเวลตัวละครในเกมหลัก (ผู้ใช้สั่ง 2026-09-24: "หน้าล็อบบี้โชว์เลเวลตัวละครจากเกมหลัก")
+--------------------------------------------------------------------------------
+-- อ่านผ่าน PeekAsync (อ่านอย่างเดียว) ครั้งเดียวต่อคนต่อเซิร์ฟล็อบบี้ — เลเวลไม่ขยับระหว่างยืนในล็อบบี้
+-- `snapshotFor` ห้าม yield จึงคืน nil ไปก่อน แล้วดึงเบื้องหลัง เสร็จเมื่อไหร่ค่อยส่งภาพใหม่ให้ทั้งตี้
+local levelCache = {} -- [userId] = level | false (กำลังดึง)
+local pushParty -- ประกาศข้างล่าง
+
+local function levelOf(player)
+	local cached = levelCache[player.UserId]
+	if cached ~= nil then return cached or nil end
+	levelCache[player.UserId] = false
+	task.spawn(function()
+		local data = ProfileAccess.PeekAsync and ProfileAccess.PeekAsync(player.UserId)
+		local progression = data and data.Progression
+		levelCache[player.UserId] = (progression and progression.Level) or 1
+		if player.Parent and pushParty then pushParty(player) end
+	end)
+	return nil
+end
+
+--------------------------------------------------------------------------------
 -- สถานะการค้นหาห้อง
 --------------------------------------------------------------------------------
 -- **คิวอยู่ที่ `ArenaQueue` ไม่ใช่ที่นี่** — ไฟล์นี้เป็นเจ้าของ "ปาร์ตี้" กับ "หน้าจอ" เท่านั้น
@@ -62,10 +83,10 @@ end
 -- **หนึ่งภาพต่อคน ไม่ใช่ภาพกลาง** — แต่ละคนเห็นคำเชิญของตัวเองและช่องของตัวเองเป็นช่องแรกเสมอ
 local function snapshotFor(player)
 	local members = {}
-	members[#members + 1] = { userId = player.UserId, name = nameOf(player), me = true }
+	members[#members + 1] = { userId = player.UserId, name = nameOf(player), me = true, level = levelOf(player) }
 	for _, other in ipairs(Party.Members(player)) do
 		if other ~= player then
-			members[#members + 1] = { userId = other.UserId, name = nameOf(other) }
+			members[#members + 1] = { userId = other.UserId, name = nameOf(other), level = levelOf(other) }
 		end
 	end
 
@@ -102,7 +123,7 @@ local function push(player)
 end
 
 -- ส่งให้ทั้งตี้ — ใครเข้าออกตี้ ทุกคนในนั้นต้องเห็นพร้อมกัน
-local function pushParty(player)
+function pushParty(player)
 	push(player)
 	for _, other in ipairs(Party.Members(player)) do
 		if other ~= player then push(other) end
@@ -233,6 +254,7 @@ Players.PlayerRemoving:Connect(function(player)
 	local mates = Party.Members(player)
 	ArenaQueue.RemovePlayer(player)
 	friendCache[player] = nil
+	levelCache[player.UserId] = nil
 	Party.Remove(player)
 	for _, other in ipairs(mates) do
 		if other ~= player then push(other) end

@@ -14,6 +14,7 @@ local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Inventory = require(game.ServerScriptService.Inventory)
 local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
+local Progression = require(game.ServerScriptService.Progression)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 PlayerJoin.Each(function(player)
@@ -24,15 +25,23 @@ PlayerJoin.Each(function(player)
 	local rewards = ArenaRegistry.ClaimRewards(player.UserId)
 	if not rewards or #rewards == 0 then return end
 
-	local gold, chests = 0, {}
+	local gold, exp, chests = 0, 0, {}
 	for _, reward in ipairs(rewards) do
 		gold += tonumber(reward.gold) or 0
+		exp += tonumber(reward.exp) or 0
 		if reward.chest and ItemCatalog.Items[reward.chest] then
 			chests[reward.chest] = (chests[reward.chest] or 0) + 1
 		end
 	end
 
 	if gold > 0 then Inventory.AddGold(player, gold) end
+	-- EXP (ผู้ใช้สั่ง 2026-09-24) · `Progression` ถูกเติมโดย PlayerProgression หลังโปรไฟล์มาถึง ซึ่งอาจช้ากว่า
+	-- `ProfileAccess.Wait` นิดหนึ่ง — `AwardExp` เงียบเมื่อยังไม่มีสถานะ จึงต้องรอให้มีก่อน
+	if exp > 0 then
+		local deadline = os.clock() + 15
+		while not Progression.Get(player) and os.clock() < deadline and player.Parent do task.wait(0.25) end
+		Progression.AwardExp(player, exp)
+	end
 
 	local given, heldBack = {}, 0
 	for id, count in pairs(chests) do
@@ -50,7 +59,7 @@ PlayerJoin.Each(function(player)
 
 	Inventory.Send(player)
 
-	local line = ("รางวัลจากสนาม PVP: %d เหรียญ"):format(gold)
+	local line = ("รางวัลจากสนาม PVP: %d เหรียญ · %d EXP"):format(gold, exp)
 	if #given > 0 then line ..= " · " .. table.concat(given, ", ") end
 	Remotes.SocialNotify:FireClient(player, "info", line)
 	if heldBack > 0 then

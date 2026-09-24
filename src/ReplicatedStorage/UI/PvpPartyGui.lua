@@ -358,6 +358,7 @@ function PvpPartyGui:Render(snap)
 		slot.card.BackgroundColor3 = member and SLOT_BG or SLOT_EMPTY
 		if member then
 			slot.name.Text = member.name .. (member.me and " (คุณ)" or "")
+				.. (member.level and ("  Lv.%d"):format(member.level) or "")
 		else
 			slot.name.Text = ""
 			slot.avatar.Visible = false

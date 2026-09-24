@@ -20,12 +20,13 @@ function ArenaRewards.Grant(rows)
 	local R = ArenaConfig.Rewards
 	for rank, row in ipairs(rows) do
 		local gold = (row.won and R.goldWin or R.goldLoss) + (row.kills or 0) * R.goldPerKill
+		local exp = (row.won and R.expWin or R.expLoss) + (row.kills or 0) * R.expPerKill
 		local chest = R.chestByRank[rank] or R.chestFallback
-		row.gold, row.chest, row.rank = gold, chest, rank
+		row.gold, row.exp, row.chest, row.rank = gold, exp, chest, rank
 
 		-- บอทไม่มี userId จึงไม่มีอะไรให้ฝาก — มันอยู่ในตารางเพื่อให้คนอ่านเห็นว่าใครทำอะไรไว้เท่านั้น
 		if row.userId then
-			ArenaRegistry.QueueReward(row.userId, { gold = gold, chest = chest, rank = rank })
+			ArenaRegistry.QueueReward(row.userId, { gold = gold, exp = exp, chest = chest, rank = rank })
 		end
 	end
 	return rows

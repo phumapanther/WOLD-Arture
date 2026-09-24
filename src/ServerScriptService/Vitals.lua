@@ -43,6 +43,9 @@ local UPRIGHT_C0 = {}
 local Progression = nil
 -- ตั้งเป็น true โดย `Arena/ArenaMatch.server` เท่านั้น — ดูที่ `ApplyDamage` ว่ามันเปลี่ยนอะไร
 Vitals.NoDownedMode = false
+-- ตั้งเป็น true โดย ArenaMatch เท่านั้น: มานาเริ่มที่ 0 · ไม่ฟื้นเอง · เกิดใหม่ไม่เติมให้ (ผู้ใช้สั่ง 2026-09-24
+-- "มานาได้จากการซื้อขวดน้ำเท่านั้น") — สนามเป็นคนตั้งค่ามานาเองผ่าน SetMana
+Vitals.ArenaManaMode = false
 
 function Vitals.BindProgression(progression)
 	Progression = progression
@@ -76,7 +79,7 @@ function Vitals.Add(player)
 		hp = maxHP(player),
 		hunger = maxHunger(player),
 		stamina = VitalsConfig.MaxStamina,
-		mana = VitalsConfig.MaxMana,
+		mana = Vitals.ArenaManaMode and 0 or VitalsConfig.MaxMana,
 		manaTimer = 0, -- seconds accumulated toward the next pip
 		-- Everyone starts in the "bare" armor: it halves incoming combat damage but has so little capacity
 		-- that roughly five punches destroy it. Better armor is a later sub-project.
@@ -219,6 +222,18 @@ function Vitals.TrySpendMana(player, cost)
 	end
 	Vitals.Send(player, true)
 	return true
+end
+
+function Vitals.SetMana(player, amount)
+	local state = States[player]
+	if not state then return end
+	state.mana = math.clamp(amount, 0, VitalsConfig.MaxMana)
+	Vitals.Send(player, true)
+end
+
+function Vitals.ManaOf(player)
+	local state = States[player]
+	return state and state.mana or 0
 end
 
 function Vitals.AddMana(player, amount)
@@ -665,7 +680,7 @@ function Vitals.ResetForRespawn(player)
 	state.hp = maxHP(player)
 	state.hunger = maxHunger(player)
 	state.stamina = VitalsConfig.MaxStamina
-	state.mana = VitalsConfig.MaxMana
+	if not Vitals.ArenaManaMode then state.mana = VitalsConfig.MaxMana end
 	local wasDowned = state.downed
 	state.downed = false
 	-- Clear the replicated flag too, or other clients keep showing revive/carry prompts on a player who has
@@ -720,7 +735,7 @@ function Vitals.Tick(player, state, dt)
 
 	-- Hunger drains continuously, and starves HP once empty.
 	-- Mana trickles back a whole pip at a time.
-	if state.mana < VitalsConfig.MaxMana then
+	if state.mana < VitalsConfig.MaxMana and not Vitals.ArenaManaMode then
 		state.manaTimer += dt
 		if state.manaTimer >= VitalsConfig.ManaRegenSeconds then
 			state.manaTimer = 0

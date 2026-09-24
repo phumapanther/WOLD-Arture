@@ -17,10 +17,11 @@ local ArenaConfig = {}
 --------------------------------------------------------------------------------
 ArenaConfig.TeamSize = 3        -- ฝั่งละ 3 คน
 ArenaConfig.MatchPlayers = 6    -- รวมสองฝั่ง = ห้องเต็ม
-ArenaConfig.RoundsToWin = 3     -- **ชนะ 3 รอบก่อน = ชนะแมตช์ ไม่จำกัดจำนวนรอบ** (ผู้ใช้สั่ง)
+ArenaConfig.RoundsToWin = 3     -- **ชนะ 3 รอบก่อน = ชนะแมตช์** (ผู้ใช้สั่ง)
 
--- กันแมตช์ที่ไม่มีวันจบเพราะสองฝ่ายผลัดกันชนะไปเรื่อยๆ — ถึงเพดานนี้แล้วใครนำอยู่ชนะ เสมอ = เสมอ
-ArenaConfig.MaxRounds = 9
+-- **เล่นไม่เกิน 5 รอบ** (ผู้ใช้สั่ง 2026-09-24) — ครบ 5 รอบแล้วยังไม่มีใครถึง 3 (มีรอบเสมอ)
+-- ใครนำอยู่ชนะ เท่ากัน = เสมอ
+ArenaConfig.MaxRounds = 5
 
 ArenaConfig.Teams = {
 	A = { name = "ทีมทอง",  colour = Color3.fromRGB(226, 184, 78) },
@@ -84,15 +85,21 @@ ArenaConfig.Shop = {
 	{ id = "HealthPotion",   price = 200,  slot = "use", row = "use", col = 1 },
 	{ id = "GreatPotion",    price = 500,  slot = "use", row = "use", col = 2 },
 	{ id = "FirstAidKit",    price = 1000, slot = "use", row = "use", col = 3 },
-	{ id = "Water",          price = 50,   slot = "use", row = "use", col = 4 },
+	-- **ขวดน้ำ = มานา 1 เม็ด ซื้อได้ 3 ขวดต่อรอบ** (ผู้ใช้สั่ง 2026-09-24) ไม่เข้ากระเป๋า เติมมานาทันที
+	-- ในสนามมานาเริ่มที่ 0 และไม่ฟื้นเอง (`Vitals.ArenaManaMode`) นี่คือทางเดียวที่ได้มานามา
+	{ id = "Water",          price = 50,   slot = "mana", row = "use", col = 4, perRound = 3, mana = 1 },
 }
 
--- ช่องที่ร้านรู้จัก · **ซื้อได้ช่องละหนึ่งชิ้นต่อรอบ** (ผู้ใช้สั่ง "ไม่ใช่กวาดทั้งร้าน")
-ArenaConfig.SlotOrder = { "weapon", "armor", "use" }
-ArenaConfig.SlotLabel = { weapon = "อาวุธ", armor = "เกราะ", use = "ของใช้" }
+-- ช่องที่ร้านรู้จัก · **ซื้อได้ช่องละหนึ่งชิ้นต่อรอบ** (ผู้ใช้สั่ง "ไม่ใช่กวาดทั้งร้าน") ยกเว้นของที่มี `perRound`
+ArenaConfig.SlotOrder = { "weapon", "armor", "use", "mana" }
+ArenaConfig.SlotLabel = { weapon = "อาวุธ", armor = "เกราะ", use = "ของใช้", mana = "น้ำ" }
 
--- ของที่ซื้อ **อยู่ข้ามรอบจนกว่าจะซื้อชิ้นใหม่มาทับ** — ยกเว้นช่องที่อยู่ในตารางนี้ ซึ่งหายทุกจบรอบ
-ArenaConfig.SlotExpiresEachRound = { use = true }
+-- **ของที่ซื้อไว้อยู่ข้ามรอบถ้าไม่ตาย · ตายในรอบไหน ของหายหมด (รวมมานา) ต้องซื้อใหม่** (ผู้ใช้สั่ง 2026-09-24)
+-- คนตัดสินคือ `ArenaMatch.startRound`
+
+function ArenaConfig.PerRound(entry)
+	return entry.perRound or 1
+end
 
 function ArenaConfig.ShopEntry(id)
 	for _, entry in ipairs(ArenaConfig.Shop) do
@@ -172,6 +179,10 @@ ArenaConfig.Rewards = {
 	goldWin = 120,
 	goldLoss = 50,
 	goldPerKill = 8,
+	-- **EXP ของเกมหลัก** (ผู้ใช้สั่ง 2026-09-24) ฝากกลับทางเดียวกับเงิน/หีบ · ตัวเลขผมตั้งเอง ผู้ใช้ยังไม่ได้กำหนด
+	expWin = 300,
+	expLoss = 150,
+	expPerKill = 25,
 	-- หีบตามอันดับในตารางจบเกม (1 = อันดับหนึ่งของทั้งหกคน)
 	-- ภาพม็อกอัพของผู้ใช้: อันดับ 1 หีบเวทมนตร์ · กลางๆ หีบทอง/หีบเหล็ก · ท้ายตาราง หีบไม้
 	chestByRank = {

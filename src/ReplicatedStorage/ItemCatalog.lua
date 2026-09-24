@@ -633,37 +633,37 @@ ItemCatalog.Items = {
 	-- ขนาดเป็นช่อง (Footprint) อยู่บนต้นแบบใน ReplicatedStorage.WOLD_Placeables ไม่ใช่ที่นี่ (คำนวณจากกล่องจริง
 	-- ตอนสร้าง — mapgen/90_island_placeables.lua) · icon = "" = ⌛ จนกว่าจะมีรูปจริง · ขายคืนไม่ได้ ·
 	-- `plot = true` = แปลงปลูก (Island/IslandPlots ต่อปุ่มให้) · ราคาอยู่ที่ ShopConfig.IslandSells
-	FarmPlot = { icon = "", name = "แปลงดิน", kind = "placeable", weight = 2, stackSize = 10, value = 0, sellable = false, plot = true },
-	Deco_Fence = { icon = "", name = "รั้วไม้", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false },
-	Deco_Lamp = { icon = "", name = "โคมไฟไอน้ำ", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false },
-	Deco_Bench = { icon = "", name = "ม้านั่ง", kind = "placeable", weight = 1, stackSize = 5, value = 0, sellable = false },
-	Deco_FlowerPot = { icon = "", name = "กระถางดอกไม้", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false },
-	Deco_Tree = { icon = "", name = "ต้นไม้", kind = "placeable", weight = 2, stackSize = 5, value = 0, sellable = false },
-	Deco_Crate = { icon = "", name = "ลังไม้", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false },
-	Deco_Barrel = { icon = "", name = "ถังไม้", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false },
-	Deco_PathTile = { icon = "", name = "แผ่นทางเดินหิน", kind = "placeable", weight = 0.5, stackSize = 50, value = 0, sellable = false },
+	FarmPlot = { icon = "rbxassetid://135337081423952", name = "แปลงดิน", kind = "placeable", weight = 2, stackSize = 10, value = 0, sellable = false, plot = true },
+	Deco_Fence = { icon = "rbxassetid://138665904218308", name = "รั้วไม้", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false },
+	Deco_Lamp = { icon = "rbxassetid://99123494309102", name = "โคมไฟไอน้ำ", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false },
+	Deco_Bench = { icon = "rbxassetid://100185090469444", name = "ม้านั่ง", kind = "placeable", weight = 1, stackSize = 5, value = 0, sellable = false },
+	Deco_FlowerPot = { icon = "rbxassetid://111468730305281", name = "กระถางดอกไม้", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false },
+	Deco_Tree = { icon = "rbxassetid://118470948133784", name = "ต้นไม้", kind = "placeable", weight = 2, stackSize = 5, value = 0, sellable = false },
+	Deco_Crate = { icon = "rbxassetid://111468730305281", name = "ลังไม้", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false },
+	Deco_Barrel = { icon = "rbxassetid://83635511136141", name = "ถังไม้", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false },
+	Deco_PathTile = { icon = "rbxassetid://121502177698017", name = "แผ่นทางเดินหิน", kind = "placeable", weight = 0.5, stackSize = 50, value = 0, sellable = false },
 
 	-- ของตกแต่งชิ้นเล็ก (ผู้ใช้สั่ง 2026-09-22) — สแตคเยอะ ราคาถูก ตั้งใจให้ซื้อทีละหลายชิ้นมาโรย
 	--
 	-- **`spot` บอกว่าเหมาะกับที่ไหน** ("out" นอกบ้าน · "in" ในบ้าน · "both" ได้ทั้งคู่) ร้านเอาไปโชว์เป็นป้าย
 	-- กำกับเฉยๆ **ไม่ได้บังคับ** — ระบบวางของตัดสินจากพื้นที่จริง ไม่ได้รู้ว่าตรงไหนคือ "ในบ้าน"
 	-- และการห้ามวางเก้าอี้กลางแจ้งก็ไม่ใช่กฎที่ผู้เล่นจะขอบคุณ
-	Deco_Rock = { icon = "", name = "ก้อนหิน", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false, spot = "out" },
-	Deco_RockBig = { icon = "", name = "หินก้อนใหญ่", kind = "placeable", weight = 2, stackSize = 10, value = 0, sellable = false, spot = "out" },
-	Deco_Bush = { icon = "", name = "พุ่มไม้", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false, spot = "out" },
+	Deco_Rock = { icon = "rbxassetid://99457876178070", name = "ก้อนหิน", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false, spot = "out" },
+	Deco_RockBig = { icon = "rbxassetid://118264610759663", name = "หินก้อนใหญ่", kind = "placeable", weight = 2, stackSize = 10, value = 0, sellable = false, spot = "out" },
+	Deco_Bush = { icon = "rbxassetid://91305648023477", name = "พุ่มไม้", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false, spot = "out" },
 	Deco_Stump = { icon = "", name = "ตอไม้", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false, spot = "out" },
-	Deco_Lantern = { icon = "", name = "โคมตั้งพื้น", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false, spot = "both" },
-	Deco_Signpost = { icon = "", name = "ป้ายบอกทาง", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false, spot = "out" },
-	Deco_Well = { icon = "", name = "บ่อน้ำ", kind = "placeable", weight = 2, stackSize = 3, value = 0, sellable = false, spot = "out" },
+	Deco_Lantern = { icon = "rbxassetid://76303096141550", name = "โคมตั้งพื้น", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false, spot = "both" },
+	Deco_Signpost = { icon = "rbxassetid://140181481501106", name = "ป้ายบอกทาง", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false, spot = "out" },
+	Deco_Well = { icon = "rbxassetid://123128696064815", name = "บ่อน้ำ", kind = "placeable", weight = 2, stackSize = 3, value = 0, sellable = false, spot = "out" },
 
 	-- **ของป่าจากเกมหลัก** (ผู้ใช้สั่ง 2026-09-23) — โมเดลชุดเดียวกับที่สุ่มโผล่บนผืนดิน เอามาขายเป็น
 	-- ของตกแต่งที่ "วางได้ เก็บเกี่ยวได้" เหมือน Deco_Rock/Bush/Tree **แต่เก็บแล้วต้องรอวันใหม่**
 	-- (กติกาวันเดียวกับบอร์ดเควส: `QuestConfig.DayNumber()` เที่ยงคืนเวลาไทย)
 	-- ราคาสูงกว่าของตกแต่งธรรมดามาก เพราะมันคือแหล่งวัตถุดิบถาวร ไม่ใช่ของประดับ
-	Wild_Rock = { icon = "", name = "หินธรรมชาติ", kind = "placeable", weight = 2, stackSize = 10, value = 0, sellable = false, spot = "out" },
-	Wild_Herb = { icon = "", name = "พุ่มไม้ป่า", kind = "placeable", weight = 2, stackSize = 10, value = 0, sellable = false, spot = "out" },
-	Wild_Tree = { icon = "", name = "ต้นโอ๊ก", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
-	Wild_Pine = { icon = "", name = "ต้นสน", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
+	Wild_Rock = { icon = "rbxassetid://73024777153946", name = "หินธรรมชาติ", kind = "placeable", weight = 2, stackSize = 10, value = 0, sellable = false, spot = "out" },
+	Wild_Herb = { icon = "rbxassetid://107163967815077", name = "พุ่มไม้ป่า", kind = "placeable", weight = 2, stackSize = 10, value = 0, sellable = false, spot = "out" },
+	Wild_Tree = { icon = "rbxassetid://90585042806965", name = "ต้นโอ๊ก", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
+	Wild_Pine = { icon = "rbxassetid://130965287265276", name = "ต้นสน", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
 	Wild_Coal = { icon = "", name = "สายถ่านหิน", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
 	Wild_IronOre = { icon = "", name = "สายแร่เหล็ก", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
 	Wild_SilverOre = { icon = "", name = "สายแร่เงิน", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
@@ -673,32 +673,32 @@ ItemCatalog.Items = {
 	Wild_DiamondOre = { icon = "", name = "สายเพชร", kind = "placeable", weight = 3, stackSize = 10, value = 0, sellable = false, spot = "out" },
 
 	-- เฟอร์นิเจอร์ในบ้าน — **ใช้งานได้จริง** ชื่อโมเดลตรงกับที่ CraftStations/StorageChests มองหา
-	Stove = { icon = "", name = "เตาทำอาหาร", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
-	SteamBlender = { icon = "", name = "เครื่องปั่นไอน้ำ", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
-	AlchemyStill = { icon = "", name = "เครื่องต้มยา", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
-	IceBox = { icon = "", name = "ตู้เย็น", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
-	ApothecaryCabinet = { icon = "", name = "ตู้ยา", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
+	Stove = { icon = "rbxassetid://108749346860365", name = "เตาทำอาหาร", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
+	SteamBlender = { icon = "rbxassetid://116376708091790", name = "เครื่องปั่นไอน้ำ", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
+	AlchemyStill = { icon = "rbxassetid://103913051779259", name = "เครื่องต้มยา", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
+	IceBox = { icon = "rbxassetid://131979279106619", name = "ตู้เย็น", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
+	ApothecaryCabinet = { icon = "rbxassetid://80776583408212", name = "ตู้ยา", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
 
 	-- สัตว์เลี้ยง (ไม่ใช่สัตว์ฟาร์ม) — rig เดินได้จริง ลูบหัว/อุ้มได้ ให้บัพทั้งฟาร์ม
 	-- `stackSize = 1` เพราะแต่ละตัวเป็นตัวของมันเอง ไม่ใช่ของที่กองรวมกันได้
-	Pet_Cat = { icon = "", name = "แมว", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_Dog = { icon = "", name = "สุนัข", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Cat = { icon = "rbxassetid://99681747716275", name = "แมว", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Dog = { icon = "rbxassetid://125840282304682", name = "สุนัข", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
 
 	-- ฟาร์มผิดกฎหมาย — วางในบ้านแล้วเป็นจุดฟาร์มจริง (กฎของ IllegalFarm ยังใช้ครบ)
-	DistillSet = { icon = "", name = "ชุดกลั่น", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
-	Reactor = { icon = "", name = "เตาปฏิกรณ์", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
-	Boxs = { icon = "", name = "กองลังของเถื่อน", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
-	House_StoneCottage = { icon = "", name = "กระท่อมหิน", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false },
-	House_Roundhouse = { icon = "", name = "บ้านทรงกลม", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false },
-	House_Longhouse = { icon = "", name = "บ้านยาว", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false },
-	House_PipeWorker = { icon = "", name = "บ้านช่างท่อ", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false },
-	House_Townhouse = { icon = "", name = "ทาวน์เฮาส์", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false },
+	DistillSet = { icon = "rbxassetid://109416282689187", name = "ชุดกลั่น", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
+	Reactor = { icon = "rbxassetid://119765735693171", name = "เตาปฏิกรณ์", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
+	Boxs = { icon = "rbxassetid://106613754863320", name = "กองลังของเถื่อน", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
+	House_StoneCottage = { icon = "rbxassetid://93632640964050", name = "กระท่อมหิน", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false },
+	House_Roundhouse = { icon = "rbxassetid://93997287568589", name = "บ้านทรงกลม", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false },
+	House_Longhouse = { icon = "rbxassetid://106117342921842", name = "บ้านยาว", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false },
+	House_PipeWorker = { icon = "rbxassetid://75083203720634", name = "บ้านช่างท่อ", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false },
+	House_Townhouse = { icon = "rbxassetid://73665442223448", name = "ทาวน์เฮาส์", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false },
 	-- คอกสัตว์: วางแล้วกด E เลือกสัตว์ สัตว์เกิดในคอกสูงสุด 10 ตัว (IslandConfig.PenAnimals)
-	AnimalPen = { icon = "", name = "คอกสัตว์", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false },
+	AnimalPen = { icon = "rbxassetid://77729553650023", name = "คอกสัตว์", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false },
 	-- โซนแร่: วางแล้วทุก 10 นาทีสุ่มก้อนแร่โผล่ให้ขุด · ย้ายได้ด้วยการเก็บแล้ววางใหม่
-	MineZone = { icon = "", name = "โซนแร่", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false },
+	MineZone = { icon = "rbxassetid://95784879090358", name = "โซนแร่", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false },
 	-- เมล็ดพันธุ์ชนิดเดียว หยอดแล้วค่อยรู้ว่าเป็นอะไร (IslandConfig.Crops) — ไม่ใช่ placeable
-	Seed = { icon = "", name = "เมล็ดพันธุ์", kind = "junk", weight = 0.05, stackSize = 99, value = 0, sellable = false, vip = true },
+	Seed = { icon = "rbxassetid://121667533959320", name = "เมล็ดพันธุ์", kind = "junk", weight = 0.05, stackSize = 99, value = 0, sellable = false, vip = true },
 }
 
 -- **สายแร่บนเกาะใช้รูปเดียวกับไอเทมแร่ที่มันให้** (ผู้ใช้สั่ง 2026-09-23)
