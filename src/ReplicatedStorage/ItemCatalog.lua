@@ -634,7 +634,7 @@ ItemCatalog.Items = {
 	-- ตอนสร้าง — mapgen/90_island_placeables.lua) · icon = "" = ⌛ จนกว่าจะมีรูปจริง · ขายคืนไม่ได้ ·
 	-- `plot = true` = แปลงปลูก (Island/IslandPlots ต่อปุ่มให้) · ราคาอยู่ที่ ShopConfig.IslandSells
 	FarmPlot = { icon = "rbxassetid://135337081423952", name = "แปลงดิน", kind = "placeable", weight = 2, stackSize = 10, value = 0, sellable = false, plot = true },
-	Deco_Fence = { icon = "rbxassetid://138665904218308", name = "รั้วไม้", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false },
+	Deco_Fence = { icon = "rbxassetid://85772455316409", name = "รั้วไม้", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false },
 	Deco_Lamp = { icon = "rbxassetid://99123494309102", name = "โคมไฟไอน้ำ", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false },
 	Deco_Bench = { icon = "rbxassetid://100185090469444", name = "ม้านั่ง", kind = "placeable", weight = 1, stackSize = 5, value = 0, sellable = false },
 	Deco_FlowerPot = { icon = "rbxassetid://111468730305281", name = "กระถางดอกไม้", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false },
@@ -651,7 +651,7 @@ ItemCatalog.Items = {
 	Deco_Rock = { icon = "rbxassetid://99457876178070", name = "ก้อนหิน", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false, spot = "out" },
 	Deco_RockBig = { icon = "rbxassetid://118264610759663", name = "หินก้อนใหญ่", kind = "placeable", weight = 2, stackSize = 10, value = 0, sellable = false, spot = "out" },
 	Deco_Bush = { icon = "rbxassetid://91305648023477", name = "พุ่มไม้", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false, spot = "out" },
-	Deco_Stump = { icon = "", name = "ตอไม้", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false, spot = "out" },
+	Deco_Stump = { icon = "rbxassetid://138665904218308", name = "ตอไม้", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false, spot = "out" },
 	Deco_Lantern = { icon = "rbxassetid://76303096141550", name = "โคมตั้งพื้น", kind = "placeable", weight = 1, stackSize = 20, value = 0, sellable = false, spot = "both" },
 	Deco_Signpost = { icon = "rbxassetid://140181481501106", name = "ป้ายบอกทาง", kind = "placeable", weight = 1, stackSize = 10, value = 0, sellable = false, spot = "out" },
 	Deco_Well = { icon = "rbxassetid://123128696064815", name = "บ่อน้ำ", kind = "placeable", weight = 2, stackSize = 3, value = 0, sellable = false, spot = "out" },
