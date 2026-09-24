@@ -234,13 +234,17 @@ Remotes.SocialNotify.OnClientEvent:Connect(function(kind, message)
 	end
 	-- A message that arrives with the stone closed still deserves to be seen, so it goes on the feed --
 	-- unless the player has muted chat notices, which is the whole point of that switch.
-	if settings.muteChat and (kind == "pigeon" or kind == "friendRequest") then return end
+	-- ส่งของสำเร็จ: กลับไปหน้ารายชื่อสหาย หน้าส่งของทำหน้าที่เสร็จแล้ว
+	if kind == "info" and gui.current == "mailCompose" and message:find("^ส่ง ") then
+		gui:ShowScreen("friends")
+	end
+	if settings.muteChat and (kind == "pigeon" or kind == "friendRequest" or kind == "mail") then return end
 	-- A friend request is a notice worth hearing. Messages chime where they arrive instead, since only that
 	-- path knows who sent them and can skip the ones you sent yourself.
-	if kind == "friendRequest" then
+	if kind == "friendRequest" or kind == "mail" then
 		UiSound.Play("Notification")
 	end
-	if not gui:IsOpen() and (kind == "pigeon" or kind == "friendRequest") then
+	if not gui:IsOpen() and (kind == "pigeon" or kind == "friendRequest" or kind == "mail") then
 		feed:Add({ id = os.clock(), userId = player.UserId, name = "หินเวท", text = message })
 	end
 end)
@@ -340,6 +344,20 @@ gui:On("call", function(userId)
 	Remotes.RequestCall:FireServer("start", userId)
 end)
 
+gui:On("mail", function(op, ...)
+	Remotes.RequestMail:FireServer(op, ...)
+end)
+
+Remotes.MailUpdate.OnClientEvent:Connect(function(box)
+	gui:RenderMail(box)
+	gui:SetMailBadge(box.unread or 0)
+end)
+
+-- หน้าส่งของต้องรู้ว่าในกระเป๋ามีอะไร — ฟัง remote ตัวเดียวกับหน้ากระเป๋า (ฟังหลายที่ได้ ไม่แย่งกัน)
+Remotes.InventoryUpdate.OnClientEvent:Connect(function(data)
+	gui:SetBag(data.slots)
+end)
+
 gui:On("partyInvite", function(userId)
 	Remotes.RequestPartyAction:FireServer("invite", userId)
 end)
@@ -365,6 +383,8 @@ gui:On("screenChanged", function(screen)
 		Remotes.RequestCollection:FireServer()
 	elseif screen == "ranking" then
 		Remotes.RequestLeaderboards:FireServer()
+	elseif screen == "mail" then
+		Remotes.RequestMail:FireServer("read")
 	end
 end)
 

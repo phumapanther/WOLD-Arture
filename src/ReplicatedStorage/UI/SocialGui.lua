@@ -12,6 +12,8 @@ local Responsive = require(script.Parent.Responsive)
 local ClassConfig = require(script.Parent.Parent.ClassConfig)
 local UiSound = require(script.Parent.UiSound)
 local ItemIcon = require(script.Parent.ItemIcon)
+local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
+local MailConfig = require(script.Parent.Parent.MailConfig)
 
 local SocialGui = {}
 SocialGui.__index = SocialGui
@@ -265,6 +267,8 @@ function SocialGui.new()
 	self:buildBoard()
 	self:buildFriends()
 	self:buildBank()
+	self:buildMail()
+	self:buildMailCompose()
 	self:buildMarket()
 	self:buildCollection()
 	self:buildRanking()
@@ -670,6 +674,8 @@ function SocialGui:buildHome()
 		tile.BorderSizePixel = 0
 		tile.Text = ""
 		tile.Parent = page
+		self.tiles = self.tiles or {}
+		self.tiles[screen.id] = tile
 		corner(tile, UDim.new(0, 12))
 		-- Buttons that do not work yet are dimmer, so the difference is visible before tapping.
 		stroke(tile, screen.ready and RUNE or TEXT_MUTED, screen.ready and 0.55 or 0.8, 1)
@@ -982,8 +988,8 @@ function SocialGui:RenderFriends(friends, pending)
 
 		local name = label(f, friend.name, 13, TEXT_LIGHT)
 		name.Position = UDim2.new(0, 28, 0, 0)
-		-- แคบลงจาก -230 เพราะแถวนี้มีสี่ปุ่มแล้ว (ชวนตี้ · คุย · โทร · ลบ) ชื่อยาวถูกตัดด้วย … ตามเดิม
-		name.Size = UDim2.new(1, -286, 1, 0)
+		-- แคบลงเพราะแถวนี้มีห้าปุ่มแล้ว (ส่งของ · ชวนตี้ · คุย · โทร · ลบ) ชื่อยาวถูกตัดด้วย … ตามเดิม
+		name.Size = UDim2.new(1, -346, 1, 0)
 		name.TextTruncate = Enum.TextTruncate.AtEnd
 
 		-- Only an online friend can be messaged, and the button says so rather than failing on tap.
@@ -1006,6 +1012,15 @@ function SocialGui:RenderFriends(friends, pending)
 				return
 			end
 			if self.callbacks.partyInvite then self.callbacks.partyInvite(friend.userId) end
+		end)
+
+		-- ส่งของทางเมล — ใช้ได้แม้เพื่อนออฟไลน์ (นั่นคือเหตุผลที่มีเมล) ปุ่มจึงไม่หรี่ตามสถานะออนไลน์
+		local post = button(f, "ส่งของ", 12, Color3.fromRGB(96, 78, 44))
+		post.AnchorPoint = Vector2.new(1, 0.5)
+		post.Position = UDim2.new(1, -254, 0.5, 0)
+		post.Size = UDim2.fromOffset(56, 26)
+		post.Activated:Connect(function()
+			self:OpenCompose(friend.userId, friend.name)
 		end)
 
 		-- Telepathy sits next to the chat button because it is the same act aimed at the same person.
@@ -1662,6 +1677,254 @@ end
 -- Screen switching and state
 --------------------------------------------------------------------------------
 
+--------------------------------------------------------------------------------
+-- กล่องจดหมาย
+--------------------------------------------------------------------------------
+
+-- รายการเดียว ใหม่สุดอยู่บน · อ่านได้จากการ์ดเลย ไม่มีหน้าเปิดอ่านแยก (ข้อความสั้นไม่เกิน 200 ตัว)
+function SocialGui:buildMail()
+	local page = Instance.new("Frame")
+	page.Name = "mail"
+	page.Size = UDim2.fromScale(1, 1)
+	page.BackgroundTransparency = 1
+	page.Visible = false
+	page.Parent = self.body
+	self.screens.mail = page
+
+	local count = label(page, "", 12, TEXT_MUTED)
+	count.Size = UDim2.new(1, -130, 0, 26)
+	self.mailCount = count
+
+	local clean = button(page, "ล้างที่รับแล้ว", 12, Color3.fromRGB(96, 56, 52))
+	clean.AnchorPoint = Vector2.new(1, 0)
+	clean.Position = UDim2.new(1, 0, 0, 0)
+	clean.Size = UDim2.fromOffset(120, 26)
+	clean.Activated:Connect(function()
+		if self.callbacks.mail then self.callbacks.mail("clean") end
+	end)
+
+	local list = scrollList(page, 6)
+	list.Position = UDim2.new(0, 0, 0, 32)
+	list.Size = UDim2.new(1, 0, 1, -32)
+	self.mailList = list
+end
+
+local function attachmentText(letter)
+	local parts = {}
+	for _, it in ipairs(letter.items or {}) do
+		parts[#parts + 1] = ("%s x%d"):format(ItemCatalog.DisplayName(it.id, it.meta), it.count or 1)
+	end
+	if (letter.gold or 0) > 0 then parts[#parts + 1] = ("%d เหรียญ"):format(letter.gold) end
+	if (letter.exp or 0) > 0 then parts[#parts + 1] = ("%d EXP"):format(letter.exp) end
+	return table.concat(parts, " · ")
+end
+
+function SocialGui:RenderMail(box)
+	self.mailData = box
+	if not self.mailList then return end
+	for _, child in ipairs(self.mailList:GetChildren()) do
+		if child:IsA("Frame") then child:Destroy() end
+	end
+	local letters = box and box.letters or {}
+	self.mailCount.Text = ("จดหมาย %d/%d"):format(#letters, box and box.cap or MailConfig.BoxSize)
+
+	for i = #letters, 1, -1 do
+		local letter = letters[i]
+		local attached = attachmentText(letter)
+		local card = Instance.new("Frame")
+		card.LayoutOrder = #letters - i
+		card.Size = UDim2.new(1, -6, 0, attached ~= "" and 84 or 62)
+		card.BackgroundColor3 = STONE_DEEP
+		card.BackgroundTransparency = 0.3
+		card.BorderSizePixel = 0
+		card.Parent = self.mailList
+		corner(card, UDim.new(0, 10))
+
+		local head = label(card, ("%s · %s"):format(letter.fromName or "ระบบ", os.date("%d/%m %H:%M", letter.at or 0)),
+			12, letter.read and TEXT_MUTED or ACCENT)
+		head.Position = UDim2.new(0, 10, 0, 6)
+		head.Size = UDim2.new(1, -80, 0, 16)
+
+		local subject, body = letter.subject or "", letter.body or ""
+		local text = (subject ~= "" and (subject .. (body ~= "" and " — " or "")) or "") .. body
+		local bodyLabel = label(card, text, 12, TEXT_LIGHT)
+		bodyLabel.Position = UDim2.new(0, 10, 0, 24)
+		bodyLabel.Size = UDim2.new(1, -80, 0, 32)
+		bodyLabel.TextWrapped = true
+		bodyLabel.TextYAlignment = Enum.TextYAlignment.Top
+
+		local canDelete = letter.claimed or attached == ""
+		local drop = button(card, "ลบ", 12, canDelete and Color3.fromRGB(96, 56, 52) or Color3.fromRGB(46, 48, 58))
+		drop.AnchorPoint = Vector2.new(1, 0)
+		drop.Position = UDim2.new(1, -8, 0, 8)
+		drop.Size = UDim2.fromOffset(56, 24)
+		drop.Activated:Connect(function()
+			if not canDelete then return self:SetStatus("รับของก่อนแล้วค่อยลบ", "error") end
+			if self.callbacks.mail then self.callbacks.mail("delete", letter.id) end
+		end)
+
+		if attached ~= "" then
+			local first = letter.items and letter.items[1]
+			local icon = Instance.new("ImageLabel")
+			icon.BackgroundTransparency = 1
+			icon.Position = UDim2.new(0, 10, 0, 56)
+			icon.Size = UDim2.fromOffset(22, 22)
+			icon.Parent = card
+			local item = first and ItemCatalog.Get(first.id)
+			ItemIcon.Apply(icon, item and item.icon or "")
+
+			local what = label(card, attached, 12, letter.claimed and TEXT_MUTED or OK_GREEN)
+			what.Position = UDim2.new(0, 38, 0, 58)
+			what.Size = UDim2.new(1, -120, 0, 18)
+			what.TextTruncate = Enum.TextTruncate.AtEnd
+
+			local take = button(card, letter.claimed and "รับแล้ว" or "รับ", 12,
+				letter.claimed and Color3.fromRGB(46, 48, 58) or Color3.fromRGB(64, 86, 62))
+			take.AnchorPoint = Vector2.new(1, 0)
+			take.Position = UDim2.new(1, -8, 0, 54)
+			take.Size = UDim2.fromOffset(56, 24)
+			take.Activated:Connect(function()
+				if letter.claimed then return end
+				if self.callbacks.mail then self.callbacks.mail("claim", letter.id) end
+			end)
+		end
+	end
+end
+
+-- ตัวเลขแดงบนไทล์กล่องจดหมาย = จำนวนฉบับที่ยังไม่อ่าน
+function SocialGui:SetMailBadge(n)
+	local tile = self.tiles and self.tiles.mail
+	if not tile then return end
+	local badge = tile:FindFirstChild("Badge")
+	if not badge then
+		badge = Instance.new("TextLabel")
+		badge.Name = "Badge"
+		badge.AnchorPoint = Vector2.new(1, 0)
+		badge.Position = UDim2.new(1, -6, 0, 6)
+		badge.Size = UDim2.fromOffset(22, 22)
+		badge.BackgroundColor3 = BAD_RED
+		badge.BorderSizePixel = 0
+		badge.Font = Enum.Font.GothamBold
+		badge.TextSize = 12
+		badge.TextColor3 = TEXT_LIGHT
+		badge.Parent = tile
+		corner(badge, UDim.new(1, 0))
+	end
+	badge.Visible = (n or 0) > 0
+	badge.Text = (n or 0) > 99 and "99+" or tostring(n or 0)
+end
+
+--------------------------------------------------------------------------------
+-- ส่งของถึงสหาย
+--------------------------------------------------------------------------------
+
+-- เลือกของหนึ่งช่องจากกริด (โชว์เฉพาะของที่ IsMailable) ใส่จำนวน ข้อความ แล้วส่ง
+function SocialGui:buildMailCompose()
+	local page = Instance.new("Frame")
+	page.Name = "mailCompose"
+	page.Size = UDim2.fromScale(1, 1)
+	page.BackgroundTransparency = 1
+	page.Visible = false
+	page.Parent = self.body
+	self.screens.mailCompose = page
+
+	local grid = Instance.new("ScrollingFrame")
+	grid.BackgroundTransparency = 1
+	grid.BorderSizePixel = 0
+	grid.ScrollBarThickness = 4
+	grid.ScrollBarImageColor3 = RUNE
+	grid.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	grid.CanvasSize = UDim2.new()
+	grid.Size = UDim2.new(1, 0, 1, -128)
+	grid.Parent = page
+	local layout = Instance.new("UIGridLayout")
+	layout.CellSize = UDim2.fromOffset(56, 56)
+	layout.CellPadding = UDim2.fromOffset(6, 6)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
+	layout.Parent = grid
+	self.composeGrid = grid
+
+	local picked = label(page, "", 12, TEXT_MUTED)
+	picked.Position = UDim2.new(0, 0, 1, -122)
+	picked.Size = UDim2.new(1, 0, 0, 18)
+	picked.TextTruncate = Enum.TextTruncate.AtEnd
+	self.composePicked = picked
+
+	local count = textBox(page, "จำนวน")
+	count.Position = UDim2.new(0, 0, 1, -98)
+	count.Size = UDim2.new(0.3, -4, 0, 30)
+	self.composeCount = count
+
+	local body = textBox(page, "ข้อความ (ไม่ใส่ก็ได้)")
+	body.Position = UDim2.new(0.3, 4, 1, -98)
+	body.Size = UDim2.new(0.7, -4, 0, 30)
+	self.composeBody = body
+
+	local send = button(page, ("ส่ง (ค่าส่ง %d ซิลเวอร์)"):format(MailConfig.Fee), 13, Color3.fromRGB(64, 86, 62))
+	send.Position = UDim2.new(0, 0, 1, -60)
+	send.Size = UDim2.new(1, 0, 0, 34)
+	send.Activated:Connect(function()
+		if not self.composeSlot then return self:SetStatus("เลือกของที่จะส่งก่อน", "error") end
+		if self.callbacks.mail then
+			self.callbacks.mail("send", self.composeUserId, self.composeSlot, tonumber(count.Text) or 0, body.Text)
+		end
+	end)
+
+	local hint = label(page, "ส่งได้เฉพาะวัตถุดิบ · 1 ช่องต่อฉบับ · เพื่อนออฟไลน์ก็ได้รับ", 11, TEXT_MUTED,
+		Enum.TextXAlignment.Center)
+	hint.Position = UDim2.new(0, 0, 1, -22)
+	hint.Size = UDim2.new(1, 0, 0, 18)
+end
+
+function SocialGui:SetBag(slots)
+	self.bagSlots = slots
+	if self.current == "mailCompose" then self:RenderCompose() end
+end
+
+function SocialGui:OpenCompose(userId, name)
+	self.composeUserId = userId
+	self.composeSlot = nil
+	self.composeCount.Text = ""
+	self.composeBody.Text = ""
+	self:ShowScreen("mailCompose", "ส่งของถึง " .. tostring(name))
+	self:RenderCompose()
+end
+
+function SocialGui:RenderCompose()
+	for _, child in ipairs(self.composeGrid:GetChildren()) do
+		if child:IsA("GuiButton") then child:Destroy() end
+	end
+	local any = false
+	for index, slot in ipairs(self.bagSlots or {}) do
+		if slot and ItemCatalog.IsMailable(slot.id) then
+			any = true
+			local cell = Instance.new("ImageButton")
+			cell.LayoutOrder = index
+			cell.BackgroundColor3 = STONE_DEEP
+			cell.BackgroundTransparency = (index == self.composeSlot) and 0 or 0.35
+			cell.BorderSizePixel = 0
+			cell.Parent = self.composeGrid
+			corner(cell, UDim.new(0, 8))
+			if index == self.composeSlot then stroke(cell, ACCENT, 0, 2) end
+			local item = ItemCatalog.Get(slot.id)
+			ItemIcon.Apply(cell, item and item.icon or "")
+			local n = label(cell, tostring(slot.count or 1), 11, TEXT_LIGHT, Enum.TextXAlignment.Right)
+			n.AnchorPoint = Vector2.new(1, 1)
+			n.Position = UDim2.new(1, -4, 1, -2)
+			n.Size = UDim2.fromOffset(40, 14)
+			cell.Activated:Connect(function()
+				self.composeSlot = index
+				self.composeCount.Text = tostring(slot.count or 1)
+				self.composePicked.Text = ("%s x%d"):format(ItemCatalog.DisplayName(slot.id, slot.meta), slot.count or 1)
+				self:RenderCompose()
+			end)
+		end
+	end
+	if not self.composeSlot then
+		self.composePicked.Text = any and "เลือกของหนึ่งช่อง" or "ไม่มีของที่ส่งได้ในกระเป๋า (ส่งได้เฉพาะวัตถุดิบ)"
+	end
+end
+
 local TITLES = {
 	home = "หินเวทสื่อสาร",
 	settings = "ตั้งค่า",
@@ -1670,6 +1933,8 @@ local TITLES = {
 	bank = "ธนาคาร",
 	market = "ราคากลาง",
 	profile = "โปรไฟล์",
+	mail = "กล่องจดหมาย",
+	mailCompose = "ส่งของ",
 }
 
 function SocialGui:ShowScreen(id, titleOverride)

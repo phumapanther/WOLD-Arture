@@ -111,6 +111,8 @@ end
 SocialConfig.Screens = {
 	{ id = "board", name = "บอร์ดกิลด์", glyph = "\240\159\147\156", ready = true },
 	{ id = "friends", name = "รายชื่อสหาย", glyph = "\240\159\145\165", ready = true },
+	-- กล่องจดหมาย: รางวัลบอส/PVP ของชดเชยจากแอดมิน และของที่สหายส่งมา (docs/superpowers/specs/2026-09-24-mail-design.md)
+	{ id = "mail", name = "กล่องจดหมาย", glyph = "📬", ready = true },
 	{ id = "bank", name = "ธนาคาร", glyph = "\240\159\146\176", ready = true },
 	{ id = "profile", name = "โปรไฟล์", glyph = "\240\159\145\164", ready = true },
 	-- Opens the world map, which is its own screen rather than a page inside the stone: it wants the whole
