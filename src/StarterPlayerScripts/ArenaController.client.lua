@@ -108,23 +108,40 @@ ContextActionService:SetTitle("ArenaShop", "ร้าน")
 -- **หลังกล้องทุกเฟรม** (priority Camera+1) ไม่งั้นกล้องเขียนทับ
 -- ⚠️ ชุดเกราะ (โฟลเดอร์ของ KitWear) ต้อง **ซ่อนอยู่** — รอบแรกเปิดทุก Model บนตัว หมวก/เกราะอกเลยบังจอ
 -- (ผู้ใช้แจ้ง 2026-09-24) · LocalTransparencyModifier มีผลแค่เครื่องเรา คนอื่นยังเห็นชุดเกราะปกติ
+local ARM = { LeftUpperArm = true, LeftLowerArm = true, LeftHand = true,
+	RightUpperArm = true, RightLowerArm = true, RightHand = true }
+local hiddenSelf = false
 RunService:BindToRenderStep("ArenaViewmodel", Enum.RenderPriority.Camera.Value + 1, function()
 	if shop:IsVisible() or board.gui.Enabled then
 		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
 		UserInputService.MouseIconEnabled = true
 	end
 	local character = player.Character
-	if not character or player.CameraMode ~= Enum.CameraMode.LockFirstPerson then return end
-	for _, name in pairs({ "LeftUpperArm", "LeftLowerArm", "LeftHand", "RightUpperArm", "RightLowerArm", "RightHand" }) do
-		local part = character:FindFirstChild(name)
-		if part then part.LocalTransparencyModifier = 0 end
+	if not character then return end
+	if player.CameraMode ~= Enum.CameraMode.LockFirstPerson then
+		-- ออกจากมุมบุคคลที่หนึ่ง (ร้าน/ดูเพื่อน/จบแมตช์) → คืนให้ตัวเองมองเห็นได้ครั้งเดียว ไม่งั้นค้างล่องหน
+		if hiddenSelf then
+			for _, part in ipairs(character:GetDescendants()) do
+				if part:IsA("BasePart") or part:IsA("Decal") then part.LocalTransparencyModifier = 0 end
+			end
+			hiddenSelf = false
+		end
+		return
 	end
+	hiddenSelf = true
+	-- **ตัดสินเองทุกชิ้น ไม่พึ่งกล้องของ Roblox**: แขน/มือ/อาวุธ = เห็น · อย่างอื่นทั้งหมด (หัว หน้า ผม หมวก
+	-- เกราะ) = ซ่อน (ผู้ใช้แจ้ง 2026-09-24 "หัวบังจอ" — หลังยกกล้องขึ้นระดับตา กล้องอยู่ในหัว/ผม
+	-- และตัวซ่อนของ Roblox วัดจากระยะกล้องจึงไม่ซ่อนให้ทุกชิ้น)
 	local weapon = character:FindFirstChild("EquippedWeapon")
-	if weapon then
-		for _, part in ipairs(weapon:GetDescendants()) do
-			if part:IsA("BasePart") then part.LocalTransparencyModifier = 0 end
+	for _, part in ipairs(character:GetDescendants()) do
+		if part:IsA("BasePart") then
+			local show = ARM[part.Name] and part.Parent == character or (weapon and part:IsDescendantOf(weapon))
+			part.LocalTransparencyModifier = show and 0 or 1
 		end
 	end
+	-- หน้า (Decal บนหัว) ไม่ใช่ BasePart — ซ่อนด้วย Transparency ของมันเองในเครื่องเรา
+	local face = character:FindFirstChild("Head") and character.Head:FindFirstChildOfClass("Decal")
+	if face then face.LocalTransparencyModifier = 1 end
 end)
 
 --------------------------------------------------------------------------------
