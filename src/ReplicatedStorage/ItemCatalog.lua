@@ -14,10 +14,11 @@
 -- ICON IDS: an ImageLabel needs the IMAGE asset id, not the DECAL id. Uploading a picture through the
 -- Creator Dashboard gives you a Decal id, and pasting that here shows a blank square with no error at all.
 -- To find the real one: InsertService:LoadAsset(decalId) in Studio, then read the Decal's Texture property.
--- Both pure data, and the only things this file requires. See ItemCatalog.IsSellable for what they are read
+-- All three pure data, and the only things this file requires. See ItemCatalog.IsSellable for what they are read
 -- for and why the direction of the dependency matters.
 local CraftConfig = require(script.Parent.CraftConfig)
 local ShopConfig = require(script.Parent.ShopConfig)
+local MailConfig = require(script.Parent.MailConfig)
 
 local ItemCatalog = {}
 
@@ -848,6 +849,19 @@ function ItemCatalog.IsStorable(id)
 	-- ท้ายรถก็เก็บได้ด้วย และปลอดภัย: ท้ายรถเก็บเป็นจำนวนล้วน (`trunk[id] = n`) ไม่มีที่เก็บ meta
 	-- ซึ่งเป็นปัญหาสำหรับกุญแจที่มีทะเบียนติดมา แต่จักรยานไม่มี meta จึงไม่มีอะไรให้หาย
 	return item.kind ~= "key"
+end
+
+-- ผู้เล่นส่งของชิ้นนี้ทางเมลได้ไหม (ผู้ใช้กำหนด 2026-09-24) — ด่านเดียว ทั้งปุ่มฝั่งไคลเอนต์และเซิร์ฟเวอร์ถามตัวนี้
+--
+-- ที่เหลือให้ส่งคือวัตถุดิบ: ของที่กดใช้ได้ ของที่คราฟได้ และของต้องห้ามใน MailConfig ทำให้ร้าน/โรงตีเหล็ก/
+-- ฟาร์มเถื่อนยังเป็นทางเดียวที่ของพวกนั้นเข้าเกม · เมลจากระบบ/แอดมินไม่ผ่านด่านนี้
+function ItemCatalog.IsMailable(id)
+	local item = ItemCatalog.Items[id]
+	if not item then return false end
+	if item.bound or item.kind == "key" then return false end
+	if item.use then return false end
+	if CraftableOutput[id] then return false end
+	return not MailConfig.Contraband[id]
 end
 
 -- **เพดานจำนวนที่พกติดตัวได้** (ผู้ใช้สั่ง 2026-09-20) — `bagStacks` = จำนวน "กอง" ที่กระเป๋าถือได้
