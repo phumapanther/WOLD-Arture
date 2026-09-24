@@ -111,6 +111,8 @@ ContextActionService:SetTitle("ArenaShop", "ร้าน")
 local ARM = { LeftUpperArm = true, LeftLowerArm = true, LeftHand = true,
 	RightUpperArm = true, RightLowerArm = true, RightHand = true }
 local hiddenSelf = false
+-- อาวุธที่ไม่โชว์ในมุมบุคคลที่หนึ่งของตัวเอง (ชิ้นใหญ่ ยกขึ้นกลางจอตอนร่าย) · เพิ่มได้ที่นี่
+local HIDE_IN_FIRST_PERSON = { Staff = true, Spellbook = true }
 RunService:BindToRenderStep("ArenaViewmodel", Enum.RenderPriority.Camera.Value + 1, function()
 	if shop:IsVisible() or board.gui.Enabled then
 		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
@@ -133,6 +135,9 @@ RunService:BindToRenderStep("ArenaViewmodel", Enum.RenderPriority.Camera.Value +
 	-- เกราะ) = ซ่อน (ผู้ใช้แจ้ง 2026-09-24 "หัวบังจอ" — หลังยกกล้องขึ้นระดับตา กล้องอยู่ในหัว/ผม
 	-- และตัวซ่อนของ Roblox วัดจากระยะกล้องจึงไม่ซ่อนให้ทุกชิ้น)
 	local weapon = character:FindFirstChild("EquippedWeapon")
+	-- คทากับสมุดเวทบังจอตอนร่าย (ผู้ใช้แจ้ง 2026-09-24) → ซ่อนเฉพาะในจอเรา คนอื่นยังเห็นปกติ
+	local held = snapshot and snapshot.loadout and snapshot.loadout.weapon
+	if HIDE_IN_FIRST_PERSON[held] then weapon = nil end
 	for _, part in ipairs(character:GetDescendants()) do
 		if part:IsA("BasePart") then
 			local show = ARM[part.Name] and part.Parent == character or (weapon and part:IsDescendantOf(weapon))
