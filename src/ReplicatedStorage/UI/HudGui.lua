@@ -293,6 +293,7 @@ function HudGui.new()
 	hotbar.BackgroundTransparency = 1
 	hotbar.Parent = gui
 	responsiveScale(hotbar)
+	self.hotbarFrame = hotbar
 	local hotbarLayout = Instance.new("UIListLayout")
 	hotbarLayout.FillDirection = Enum.FillDirection.Horizontal
 	hotbarLayout.Padding = UDim.new(0, 8)
@@ -573,6 +574,7 @@ end
 -- แล้วเลื่อนหลอดเลือดขึ้นมากลางช่องว่าง ไม่ให้เหลือรูโหว่ตรงกลางกลุ่มหลอด
 function HudGui:SetArenaMode()
 	self.expGroup.Visible = false
+	self.hotbarFrame.Visible = false -- ช่องของใช้ 1-6 ก็ไม่มีในสนาม (ผู้ใช้สั่ง) ยาใช้ปุ่ม F
 	local hunger, hp = self.barRows.hunger, self.barRows.hp
 	if hunger then hunger.Visible = false end
 	if hp then hp.Position = UDim2.new(0, 0, 0.475, 0) end

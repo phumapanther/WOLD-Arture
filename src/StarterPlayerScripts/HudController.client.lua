@@ -98,6 +98,7 @@ local NUMBER_KEYS = {
 }
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end
+	if workspace:GetAttribute("ArenaMode") == true then return end -- สนามไม่มีช่องของใช้ 1-6
 	local index = NUMBER_KEYS[input.KeyCode]
 	if index then useHotbar(index) end
 end)
