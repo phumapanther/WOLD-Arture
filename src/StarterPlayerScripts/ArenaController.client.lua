@@ -60,9 +60,18 @@ end)
 --------------------------------------------------------------------------------
 -- หน้าร้าน
 --------------------------------------------------------------------------------
+-- ร้านเปิด = **ล็อกมุมกล้องไว้ + ปล่อยเมาส์** (ผู้ใช้สั่ง 2026-09-24: "ร้านเปิดต้องเลื่อนเมาส์ได้")
+-- ModalEnabled อย่างเดียวไม่พอในมุมบุคคลที่หนึ่ง: สคริปต์กล้องของ Roblox ล็อกเมาส์ไว้กลางจอทุกเฟรม
+-- จึงต้องหยุดกล้อง (Scriptable) และเขียน MouseBehavior ทับหลังกล้องทุกเฟรม (ดู ArenaViewmodel ข้างล่าง)
 local function setShopOpen(open)
 	shop:SetVisible(open)
 	UserInputService.ModalEnabled = open
+	local camera = workspace.CurrentCamera
+	if camera and not spectating then
+		camera.CameraType = open and Enum.CameraType.Scriptable or Enum.CameraType.Custom
+	end
+	-- ปิดร้าน = กลับมุมบุคคลที่หนึ่ง (เดิมกลับเฉพาะตอนเกิดใหม่ ปิดร้านช่วงเตรียมตัวแล้วค้างมุมบุคคลที่สาม)
+	setFirstPerson(not open)
 	if snapshot then shop:Render(snapshot) end
 end
 
@@ -83,11 +92,36 @@ local function onPhaseChanged(phase)
 	lastPhase = phase
 end
 
+-- B = เปิด/ปิดร้าน · เปิดได้ช่วงเตรียมตัว หรือระหว่างสู้ตอนยืนอยู่ในฐานตัวเอง (`snapshot.canShop` จากเซิร์ฟ)
 ContextActionService:BindAction("ArenaShop", function(_, state)
 	if state ~= Enum.UserInputState.Begin then return end
-	if not snapshot or snapshot.phase ~= "buy" then return end
+	if not snapshot or not (snapshot.canShop or shop:IsVisible()) then return end
 	setShopOpen(not shop:IsVisible())
-end, false, Enum.KeyCode.B)
+end, true, Enum.KeyCode.B)
+ContextActionService:SetTitle("ArenaShop", "ร้าน")
+
+--------------------------------------------------------------------------------
+-- มุมบุคคลที่หนึ่ง: เห็นแขน มือ และอาวุธของตัวเอง (ผู้ใช้สั่ง 2026-09-24)
+--------------------------------------------------------------------------------
+-- สคริปต์กล้องของ Roblox ตั้ง LocalTransparencyModifier = 1 ให้ทุกชิ้นของตัวละครทุกเฟรมตอนซูมสุด
+-- → เขียนกลับเป็น 0 ให้แขน/มือ และทุกชิ้นของโมเดลอาวุธ (Model ลูกของตัวละครที่ไม่ใช่ Accessory)
+-- **หลังกล้องทุกเฟรม** (priority Camera+1) ไม่งั้นกล้องเขียนทับ · หัว ลำตัว ผม หมวก ยังซ่อนอยู่ ไม่บังจอ
+local ARM = { LeftUpperArm = true, LeftLowerArm = true, LeftHand = true,
+	RightUpperArm = true, RightLowerArm = true, RightHand = true }
+RunService:BindToRenderStep("ArenaViewmodel", Enum.RenderPriority.Camera.Value + 1, function()
+	if shop:IsVisible() or board.gui.Enabled then
+		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
+		UserInputService.MouseIconEnabled = true
+	end
+	local character = player.Character
+	if not character or player.CameraMode ~= Enum.CameraMode.LockFirstPerson then return end
+	for _, part in ipairs(character:GetDescendants()) do
+		if part:IsA("BasePart") and (ARM[part.Name]
+			or (part:FindFirstAncestorWhichIsA("Model") ~= character and not part:FindFirstAncestorWhichIsA("Accessory"))) then
+			part.LocalTransparencyModifier = 0
+		end
+	end
+end)
 
 --------------------------------------------------------------------------------
 -- ปุ่ม F = ใช้ยาที่ซื้อไว้
@@ -192,7 +226,7 @@ function updateSpectator(snap)
 
 	local hasBody = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	if hasBody or not snap.centre then
-		if camera.CameraType == Enum.CameraType.Scriptable then
+		if camera.CameraType == Enum.CameraType.Scriptable and not shop:IsVisible() then -- ร้านเปิดอยู่ = ล็อกกล้องไว้โดยตั้งใจ
 			camera.CameraType = Enum.CameraType.Custom
 		end
 		return
@@ -225,7 +259,10 @@ Remotes.ArenaState.OnClientEvent:Connect(function(snap)
 	hud:Render(snap)
 	updateSpectator(snap)
 	if snap.phase ~= lastPhase then onPhaseChanged(snap.phase) end
+	-- เดินออกจากฐานระหว่างสู้ = ร้านปิดเอง
+	if shop:IsVisible() and not snap.canShop then setShopOpen(false) end
 	if shop:IsVisible() then shop:Render(snap) end
+	hud:SetShopHint(snap.phase == "live" and snap.canShop and not shop:IsVisible())
 	local text, colour = bannerFor(snap)
 	hud:SetBanner(text, colour)
 	if tabBoard.gui.Enabled then tabBoard:RenderLive(snap) end

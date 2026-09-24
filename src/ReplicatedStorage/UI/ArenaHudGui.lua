@@ -220,6 +220,27 @@ function ArenaHudGui.new()
 	return self
 end
 
+-- ป้าย "กด B เปิดร้าน" ตอนยืนในฐานตัวเองระหว่างสู้
+function ArenaHudGui:SetShopHint(on)
+	if not self.shopHint then
+		local hint = Instance.new("TextLabel")
+		hint.Name = "ShopHint"
+		hint.AnchorPoint = Vector2.new(0.5, 1)
+		hint.Position = UDim2.new(0.5, 0, 1, -170)
+		hint.Size = UDim2.fromOffset(260, 34)
+		hint.BackgroundColor3 = DIM
+		hint.BackgroundTransparency = 0.25
+		hint.Font = Enum.Font.GothamBold
+		hint.TextSize = 16
+		hint.TextColor3 = Color3.fromRGB(232, 190, 90)
+		hint.Text = "อยู่ในฐาน — กด B เปิดร้าน"
+		hint.Parent = self.gui
+		corner(hint, UDim.new(0, 17))
+		self.shopHint = hint
+	end
+	self.shopHint.Visible = on and true or false
+end
+
 function ArenaHudGui:OnSpectateStep(callback)
 	self.specPrev.MouseButton1Click:Connect(function() callback(-1) end)
 	self.specNext.MouseButton1Click:Connect(function() callback(1) end)

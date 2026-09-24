@@ -180,6 +180,7 @@ function HudGui.new()
 	-- black background, fully pill-rounded, gradient fill. Badge is a circle positioned absolutely at the row's
 	-- left edge (overlapping the track, which is indented by the badge's own radius), white border, drop shadow.
 	self.bars = {}
+	self.barRows = {}
 	for i, def in ipairs(PILL_BARS) do
 		local row = Instance.new("Frame")
 		row.Size = UDim2.new(1, 0, 0.35, 0)
@@ -230,6 +231,7 @@ function HudGui.new()
 		badgeIcon.Parent = badge
 
 		self.bars[def.key] = fill
+		self.barRows[def.key] = row
 	end
 
 	-- 3-dot menu, flush to the very top-right corner of the screen (past Roblox's own top bar on purpose — the
@@ -373,6 +375,7 @@ function HudGui.new()
 	expGroup.BackgroundTransparency = 1
 	expGroup.Parent = gui
 	responsiveScale(expGroup)
+	self.expGroup = expGroup
 
 	local expTrack = Instance.new("Frame")
 	expTrack.Size = UDim2.fromScale(1, 1)
@@ -564,6 +567,15 @@ function HudGui:SetBuffs(buffs)
 			self.buffButtons[name] = nil
 		end
 	end
+end
+
+-- สนาม PVP (ผู้ใช้สั่ง 2026-09-24): ไม่มีเลเวลกับความหิวให้ดู — ซ่อนแถบ EXP กับหลอดหิว
+-- แล้วเลื่อนหลอดเลือดขึ้นมากลางช่องว่าง ไม่ให้เหลือรูโหว่ตรงกลางกลุ่มหลอด
+function HudGui:SetArenaMode()
+	self.expGroup.Visible = false
+	local hunger, hp = self.barRows.hunger, self.barRows.hp
+	if hunger then hunger.Visible = false end
+	if hp then hp.Position = UDim2.new(0, 0, 0.475, 0) end
 end
 
 function HudGui:SetExp(level, fraction)

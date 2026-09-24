@@ -23,6 +23,7 @@ gui.gui.Parent = player:WaitForChild("PlayerGui")
 -- Published so the bag can find the hotbar to drop onto, without either screen requiring the other.
 HudAccess.Set(gui)
 gui:Show()
+if workspace:GetAttribute("ArenaMode") == true then gui:SetArenaMode() end
 
 -- HP, hunger, stamina and armor are all real now, driven by Vitals.lua on the server. Mana is still static
 -- (no mana system exists yet).

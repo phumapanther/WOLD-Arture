@@ -178,6 +178,12 @@ local function half(side, base)
 		K.crate(g, at(base, x, 0, -204 + (i % 2) * 4), 5)
 	end
 
+	-- เขตฐาน: ยืนในกล่องนี้ระหว่างสู้แล้วกด B ซื้อของได้ (ArenaMatch.inOwnBase) · ครอบลานเกิดหลังประตูป้อม
+	-- ล่องหน ไม่ชน ไม่ถูกเรย์ (ไม่งั้นกระสุน/การหาทางของบอทชนมัน)
+	local zone = K.box(map, at(base, 0, 20, -192), Vector3.new(IW * 2, 40, 40), MAT.SmoothPlastic, colour,
+		{ name = "BaseZone" .. side, cancollide = false, transparency = 1 })
+	zone.CanQuery, zone.CanTouch = false, false
+
 	-- ประตูป้อมของทีม: หน้าประตู (ช่องลูกกรง) หันเข้ากลางแมพ
 	local gate = K.place("Castle_WallGate", g, at(base, 0, 0, -150, math.pi))
 	-- ⚠️ ฐานหิน (Batter) ของประตูป้อมเป็นก้อนเดียวสูง 6 สตัดพาดขวางทางลอดทั้งช่อง — ในโรงงานมันเป็นแค่

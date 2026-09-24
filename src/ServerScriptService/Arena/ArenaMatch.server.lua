@@ -236,6 +236,31 @@ local function phaseSecondsLeft()
 	return math.max(0, math.ceil(State.phaseEndsAt - os.clock()))
 end
 
+-- **ซื้อของได้ตอนอยู่ในฐานตัวเอง** (ผู้ใช้สั่ง 2026-09-24: "อยู่โซนฐานตัวเองกด B เพื่อซื้อของได้")
+-- ฐาน = กล่องล่องหน `BaseZone<ทีม>` ในโมเดลแมพ (เฟส 101 สร้างให้) · แมพที่ไม่มีกล่อง = รัศมี 45 จากแท่นเกิด
+local BASE_RADIUS = 45
+local function inOwnBase(f)
+	if f.kind ~= "player" or not f.alive then return false end
+	local root = f.player.Character and f.player.Character:FindFirstChild("HumanoidRootPart")
+	if not root then return false end
+	local zone = Map:FindFirstChild("BaseZone" .. f.side, true)
+	if zone then
+		local p = zone.CFrame:PointToObjectSpace(root.Position)
+		local h = zone.Size / 2
+		return math.abs(p.X) <= h.X and math.abs(p.Y) <= h.Y and math.abs(p.Z) <= h.Z
+	end
+	local pads = spawnPads(f.side)
+	if #pads == 0 then return false end
+	local centre = Vector3.zero
+	for _, pad in ipairs(pads) do centre += pad.Position end
+	return (root.Position - centre / #pads).Magnitude <= BASE_RADIUS
+end
+
+-- ช่วงเตรียมตัว: ซื้อได้ทุกคน · ระหว่างสู้: เฉพาะคนที่ยังยืนอยู่ในฐานตัวเอง
+local function canShop(f)
+	return State.phase == "buy" or (State.phase == "live" and inOwnBase(f))
+end
+
 --------------------------------------------------------------------------------
 -- ภาพที่ส่งให้หน้าจอ
 --------------------------------------------------------------------------------
@@ -295,6 +320,7 @@ local function snapshotFor(player)
 		-- ซื้อไปแล้วช่องไหนในรอบนี้ — หน้าร้านทำปุ่มเป็นสีเทาโดยไม่ต้องเดาเอง
 		bought = me.boughtThisRound, -- [slot] = ซื้อไปแล้วกี่ชิ้นในรอบนี้
 		mana = Vitals.ManaOf(player),
+		canShop = canShop(me), -- หน้าจอเปิดร้าน/โชว์ป้าย "กด B" ตามค่านี้ · เซิร์ฟตัดสินซ้ำตอนซื้อทุกครั้ง
 		roster = roster,
 		dealt = dealt,
 		lastWinner = State.lastRoundWinner,
@@ -469,7 +495,7 @@ ArenaBots.Bind({
 Remotes.RequestArenaBuy.OnServerEvent:Connect(function(player, id)
 	local f = Fighters[player]
 	if not f then return end
-	if State.phase ~= "buy" then return notify(player, "ซื้อได้เฉพาะช่วงเตรียมตัวก่อนเริ่มรอบ", "warn") end
+	if not canShop(f) then return notify(player, "ซื้อได้ช่วงเตรียมตัว หรือตอนยืนอยู่ในฐานตัวเอง", "warn") end
 
 	local entry = ArenaConfig.ShopEntry(id)
 	if not entry then return end
