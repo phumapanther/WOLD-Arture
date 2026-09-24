@@ -10,9 +10,15 @@ local CollectionService = game:GetService("CollectionService")
 local PathfindingService = game:GetService("PathfindingService")
 local Players = game:GetService("Players")
 
+local Debris = game:GetService("Debris")
+
 local ArenaConfig = require(game.ReplicatedStorage.ArenaConfig)
+local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
+local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
+local KitWear = require(game.ServerScriptService.KitWear)
 local MobAccess = require(game.ServerScriptService.MobAccess)
 local Vitals = require(game.ServerScriptService.Vitals)
+local WeaponVisualsAccess = require(game.ServerScriptService.WeaponVisualsAccess)
 
 local ArenaBots = {}
 
@@ -82,25 +88,7 @@ end
 --------------------------------------------------------------------------------
 -- ตีคน
 --------------------------------------------------------------------------------
-local function swingAt(state, targetRoot)
-	local now = os.clock()
-	if now < state.nextSwing then return end
-	state.nextSwing = now + CFG.attackSeconds
 
-	-- หาว่าปลายทางเป็นผู้เล่นหรือบอทอีกตัว แล้วใช้ทางทำดาเมจของฝั่งนั้น
-	local character = targetRoot.Parent
-	local player = character and Players:GetPlayerFromCharacter(character)
-	if player then
-		if Vitals.ApplyDamage(player, CFG.damage, "combat") and hooks.onBotHitPlayer then
-			hooks.onBotHitPlayer(state.model, player, CFG.damage)
-		end
-		return
-	end
-	local other = character and Live[character]
-	if other and other.alive then
-		ArenaBots.Damage(other.model, CFG.damage, nil)
-	end
-end
 
 --------------------------------------------------------------------------------
 -- เดินหาทาง (2026-09-24: แมพปราสาทมีกำแพง ประตูป้อม หอกลาง — เดินเส้นตรงแล้วติดกำแพงทุกตัว)
@@ -169,6 +157,244 @@ local function walkTo(state, goal)
 end
 
 --------------------------------------------------------------------------------
+-- สู้เหมือนคน (ผู้ใช้สั่ง 2026-09-24): อาวุธ/ดาเมจ/ระยะ/ท่า/เสียง จาก CombatConfig ชุดเดียวกับผู้เล่น
+-- + ใช้ยาตอนเลือดน้อย + สกิล Q ห้าท่าด้วยเลขเดียวกับ WeaponSkills (พุ่งฟัน 32 · ยิงกระจาย 14x3 ·
+-- ลูกไฟ 26 วงกว้าง · ฮีลหมู่ 25% · คำท้าทองคำ เลือดไม่ลด 5 วิ)
+--------------------------------------------------------------------------------
+local ARMOR_KITS = { LeatherArmor = "Armor_LeatherKit", ChainmailArmor = "Armor_ChainKit", PlateArmor = "Armor_PlateKit" }
+local ARMOR_FOLDER = "WOLD_ArmorOn" -- ชื่อเดียวกับ ArmorVisuals
+local RANGED_ACCURACY = 0.7 -- บอทยิงไกลโดนกี่ครั้งในร้อย (คนเล็งพลาดได้ บอทก็ต้องพลาดได้)
+
+local function sound(parent, id, volume, seconds)
+	if not id or id == "" or not parent then return end
+	local s = Instance.new("Sound")
+	s.SoundId = id
+	s.Volume = volume or 0.25
+	s.RollOffMaxDistance = 100
+	s.Parent = parent
+	s:Play()
+	Debris:AddItem(s, seconds or 2)
+end
+
+-- โหลดท่าครั้งเดียวต่อบอทต่อ id
+local function track(state, id)
+	if not id or id == "" or not state.animator then return nil end
+	state.tracks = state.tracks or {}
+	local t = state.tracks[id]
+	if t == nil then
+		local a = Instance.new("Animation")
+		a.AnimationId = id
+		local ok, loaded = pcall(function() return state.animator:LoadAnimation(a) end)
+		t = ok and loaded or false
+		if t then t.Priority = Enum.AnimationPriority.Action end
+		state.tracks[id] = t
+	end
+	return t or nil
+end
+
+local function playAnim(state, id)
+	local t = track(state, id)
+	if t then t:Play(0.05) end
+end
+
+-- เส้นกระสุน/ลูกธนู/ลำแสงให้เห็นว่ายิงจากไหนไปไหน
+local function tracer(from, to, colour, width)
+	local d = (to - from).Magnitude
+	if d < 0.5 then return end
+	local p = Instance.new("Part")
+	p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
+	p.Material = Enum.Material.Neon
+	p.Color = colour
+	p.Size = Vector3.new(width or 0.25, width or 0.25, d)
+	p.CFrame = CFrame.lookAt((from + to) / 2, to)
+	p.Parent = workspace
+	Debris:AddItem(p, 0.15)
+end
+
+local function flash(position, colour, size, seconds)
+	local p = Instance.new("Part")
+	p.Shape = Enum.PartType.Ball
+	p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
+	p.Material = Enum.Material.Neon
+	p.Color = colour
+	p.Transparency = 0.35
+	p.Size = Vector3.one * size
+	p.Position = position
+	p.Parent = workspace
+	Debris:AddItem(p, seconds or 0.3)
+end
+
+-- อาวุธที่ใช้ได้ตอนนี้ + ท่าถัดไปในชุด · ปืนกระสุนหมด = กลับไปต่อย
+local function weaponSpec(state)
+	local id = state.weapon
+	if id == "Pistol" and (state.ammo or 0) <= 0 then id = nil end
+	id = id or "Fists"
+	local spec = CombatConfig.Weapons[id] or CombatConfig.Weapons.Fists
+	local attacks = spec.attacks
+	local a = attacks[((state.combo or 0) % #attacks) + 1]
+	local p = a.projectile
+	local range = p and math.min(60, p.length or (p.speed or 0) * (p.life or 0)) or math.max(a.range or 0, 5)
+	local damage = a.damage
+	if not damage or damage <= 0 then damage = (ItemCatalog.Items[id] or {}).damage or CFG.damage end
+	return {
+		id = id, attack = a, ranged = p ~= nil, range = range, damage = damage,
+		period = (a.windup or 0.2) + (a.active or 0.1) + (a.recovery or 0.3) + 0.25,
+	}
+end
+
+-- ทำดาเมจใส่เป้า (คนหรือบอท) แล้วแจ้งสนามว่าใครตีใคร (นับคิล/แอสซิส/ดาเมจ)
+local function hitTarget(state, targetRoot, amount)
+	local character = targetRoot and targetRoot.Parent
+	local player = character and Players:GetPlayerFromCharacter(character)
+	if player then
+		if Vitals.ApplyDamage(player, amount, "combat") and hooks.onBotHitPlayer then
+			hooks.onBotHitPlayer(state.model, player, amount)
+		end
+		return true
+	end
+	local other = character and Live[character]
+	if other and other.alive and other.side ~= state.side then
+		ArenaBots.Damage(other.model, amount, nil)
+		if hooks.onBotHitBot then hooks.onBotHitBot(state.model, other.model, amount) end
+		return true
+	end
+	return false
+end
+
+-- ศัตรู/เพื่อนรอบจุดหนึ่ง: { root, player?, bot? }
+local function near(state, position, radius, enemies)
+	local list = {}
+	for _, player in ipairs(Players:GetPlayers()) do
+		local side = hooks.sideOfPlayer and hooks.sideOfPlayer(player)
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+		if side and root and humanoid and humanoid.Health > 0 and (side ~= state.side) == enemies
+			and (root.Position - position).Magnitude <= radius then
+			list[#list + 1] = { root = root, player = player }
+		end
+	end
+	for _, other in pairs(Live) do
+		if other.alive and (other.side ~= state.side) == enemies and (other.root.Position - position).Magnitude <= radius then
+			list[#list + 1] = { root = other.root, bot = other }
+		end
+	end
+	return list
+end
+
+local function attack(state, targetRoot, spec)
+	local now = os.clock()
+	if now < state.nextSwing then return end
+	state.nextSwing = now + spec.period
+	state.combo = (state.combo or 0) + 1
+	playAnim(state, spec.attack.animation)
+	local sounds = CombatConfig.Sounds[spec.id] or {}
+	sound(state.root, sounds.cast, CombatConfig.AttackSoundVolume)
+	if spec.id == "Pistol" then state.ammo = (state.ammo or 0) - 1 end
+
+	task.delay(spec.attack.windup or 0.2, function()
+		if not state.alive or not targetRoot.Parent then return end
+		local d = (targetRoot.Position - state.root.Position).Magnitude
+		if d > spec.range + 2 then return end
+		if spec.ranged then
+			local hand = state.model:FindFirstChild("RightHand") or state.root
+			tracer(hand.Position, targetRoot.Position, spec.id == "Pistol" and Color3.fromRGB(255, 220, 120)
+				or spec.id == "Bow" and Color3.fromRGB(200, 170, 120) or Color3.fromRGB(140, 190, 255), 0.25)
+			if math.random() > RANGED_ACCURACY then return end
+		end
+		if hitTarget(state, targetRoot, spec.damage) then
+			sound(targetRoot, sounds.hit, sounds.hitVolume, sounds.hitSeconds)
+		end
+	end)
+end
+
+-- ยา: เลือดต่ำกว่า 40% แล้วมียาติดตัว
+local function tryPotion(state)
+	if not state.potion or state.hp > CFG.hp * 0.4 then return end
+	local use = (ItemCatalog.Items[state.potion] or {}).use or {}
+	local heal = (use.stat == "healfull" and CFG.hp) or (use.stat == "hp" and (use.amount or 40)) or 50
+	state.hp = math.min(CFG.hp, state.hp + heal)
+	state.humanoid.Health = state.hp
+	if use.stat == "firstaid" then state.invulnUntil = os.clock() + (use.seconds or 10) end
+	state.potion = nil
+	flash(state.root.Position, Color3.fromRGB(110, 230, 140), 5, 0.4)
+end
+
+local function trySkill(state, targetRoot, distance, spec)
+	local item = ItemCatalog.Items[state.weapon or ""]
+	local skill = item and item.skill
+	if not skill or (state.mana or 0) < (skill.manaCost or 1) or os.clock() < (state.skillReadyAt or 0) then return false end
+	local id = skill.id
+	if id == "GroupHeal" and state.hp > CFG.hp * 0.6 then return false end
+	if id == "Bulwark" and state.hp > CFG.hp * 0.5 then return false end
+	if id == "LungeSlash" and distance > 18 then return false end
+	if (id == "ScatterShot" or id == "Fireball") and (distance > spec.range or not clearLine(state, targetRoot.Position)) then
+		return false
+	end
+
+	state.mana -= skill.manaCost or 1
+	state.skillReadyAt = os.clock() + (skill.cooldown or 6)
+	state.nextSwing = os.clock() + 1.2
+	playAnim(state, CombatConfig.SkillAnimations[id] or spec.attack.animation)
+	sound(state.root, CombatConfig.SkillSounds[id], CombatConfig.SkillSoundVolumes[id] or CombatConfig.SkillSoundVolume,
+		CombatConfig.SkillSoundMaxSeconds)
+
+	if id == "LungeSlash" then
+		local dir = (targetRoot.Position - state.root.Position) * Vector3.new(1, 0, 1)
+		if dir.Magnitude > 0.1 then state.root.AssemblyLinearVelocity = dir.Unit * 55 + Vector3.new(0, 18, 0) end
+		task.delay(0.6, function()
+			if state.alive and targetRoot.Parent and (targetRoot.Position - state.root.Position).Magnitude <= spec.range + 5 then
+				hitTarget(state, targetRoot, 32)
+			end
+		end)
+	elseif id == "ScatterShot" then
+		for i = 1, 3 do
+			task.delay(0.35 + i * 0.08, function()
+				if not state.alive or not targetRoot.Parent then return end
+				local spread = Vector3.new(math.random(-3, 3), math.random(-1, 1), math.random(-3, 3))
+				tracer(state.root.Position, targetRoot.Position + spread, Color3.fromRGB(200, 170, 120), 0.2)
+				if math.random() <= RANGED_ACCURACY then hitTarget(state, targetRoot, 14) end
+			end)
+		end
+	elseif id == "Fireball" then
+		task.delay(0.3, function()
+			if not state.alive or not targetRoot.Parent then return end
+			local at = targetRoot.Position
+			tracer(state.root.Position, at, Color3.fromRGB(255, 130, 50), 1.2)
+			flash(at, Color3.fromRGB(255, 120, 40), 12, 0.4)
+			for _, e in ipairs(near(state, at, 8, true)) do hitTarget(state, e.root, 26) end
+		end)
+	elseif id == "GroupHeal" then
+		flash(state.root.Position, Color3.fromRGB(120, 240, 160), 24, 0.6)
+		state.hp = math.min(CFG.hp, state.hp + CFG.hp * 0.25)
+		state.humanoid.Health = state.hp
+		for _, a in ipairs(near(state, state.root.Position, 24, false)) do
+			if a.player then
+				Vitals.HealFraction(a.player, 0.25)
+			elseif a.bot and a.bot ~= state then
+				a.bot.hp = math.min(CFG.hp, a.bot.hp + CFG.hp * 0.25)
+				a.bot.humanoid.Health = a.bot.hp
+			end
+		end
+	elseif id == "Bulwark" then
+		state.invulnUntil = os.clock() + 5
+		local aura = Instance.new("Part")
+		aura.Shape = Enum.PartType.Ball
+		aura.Size = Vector3.one * 9
+		aura.Material = Enum.Material.Neon
+		aura.Color = Color3.fromRGB(255, 205, 90)
+		aura.Transparency = 0.7
+		aura.CanCollide, aura.CanQuery, aura.CanTouch, aura.Massless = false, false, false, true
+		aura.CFrame = state.root.CFrame
+		local weld = Instance.new("WeldConstraint")
+		weld.Part0, weld.Part1 = aura, state.root
+		weld.Parent = aura
+		aura.Parent = state.model
+		Debris:AddItem(aura, 5)
+	end
+	return true
+end
+
+--------------------------------------------------------------------------------
 -- สมอง (หนึ่งเธรดต่อหนึ่งตัว)
 --------------------------------------------------------------------------------
 -- ท่าเดิน/ยืนของ Roblox มาตรฐาน (ชุดเดียวกับ NPC ในโรงงาน `R.ANIM`) — บอทเป็นโมเดลบนเซิร์ฟ ไม่มีสคริปต์
@@ -189,6 +415,7 @@ local function loadTracks(state)
 		return ok and t or nil
 	end
 	state.walkTrack, state.idleTrack = track(WALK_ANIM), track(IDLE_ANIM)
+	state.animator = animator
 end
 
 local function animate(state)
@@ -209,19 +436,27 @@ local function think(state)
 			-- ช่วงซื้อของ: ยืนนิ่งอยู่ในฐานเหมือนคนอื่น
 			state.humanoid:Move(Vector3.zero)
 		else
+			tryPotion(state)
 			local targetRoot, distance = nearestEnemy(state)
 			if targetRoot then
-				walkTo(state, targetRoot.Position)
-				-- หันหน้าเข้าหาเป้า **เฉพาะตอนอยู่ในระยะฟัน** ไม่งั้นบอทที่เดินเฉียดจะฟันไปทางที่มันเดิน
+				local spec = weaponSpec(state)
+				local inRange = distance <= spec.range and (not spec.ranged or clearLine(state, targetRoot.Position))
+				-- อาวุธยิงไกล: ยืนยิงเมื่อเห็นเป้าในระยะ ไม่เดินเข้าไปชิดเหมือนดาบ
+				if spec.ranged and inRange and distance <= spec.range * 0.8 then
+					state.humanoid:MoveTo(state.root.Position)
+				else
+					walkTo(state, targetRoot.Position)
+				end
+				-- หันหน้าเข้าหาเป้า **เฉพาะตอนอยู่ในระยะโจมตี**
 				-- ⚠️ ห้ามหันทุกรอบตอนเดิน: เขียน CFrame ของ root ทับทุก 0.35 วิ ฆ่าแรงเดินของ MoveTo
 				-- ทันทีที่ทางเดินพาอ้อม (เช่นอ้อมหอนาฬิกา) บอทหยุดนิ่งทั้งที่มีทางอยู่ (เจอจริง 2026-09-24)
-				if distance <= CFG.reach + 2 then
+				if inRange or distance <= spec.range + 2 then
 					local look = Vector3.new(targetRoot.Position.X, state.root.Position.Y, targetRoot.Position.Z)
 					if (look - state.root.Position).Magnitude > 0.5 then
 						state.root.CFrame = CFrame.lookAt(state.root.Position, look)
 					end
 				end
-				if distance <= CFG.reach then swingAt(state, targetRoot) end
+				if not trySkill(state, targetRoot, distance, spec) and inRange then attack(state, targetRoot, spec) end
 			elseif state.home then
 				-- ไม่เห็นใคร: เดินไปแถวกลางแมพ ซึ่งเป็นที่ที่การปะทะเกิดขึ้น — บอทที่ยืนเฝ้าฐานคือรอบที่ไม่มีวันจบ
 				-- ⚠️ ห้ามเดินไปจุดกลางเป๊ะ แมพอาจมีของตั้งอยู่ตรงนั้น (ปราสาทมีหอนาฬิกา) — สุ่มจุดรอบๆ ต่อตัว
@@ -238,6 +473,13 @@ end
 function ArenaBots.Damage(model, amount, attacker)
 	local state = Live[model]
 	if not state or not state.alive or amount <= 0 then return false end
+	if os.clock() < (state.invulnUntil or 0) then return true end -- คำท้าทองคำ / กล่องปฐมพยาบาล
+	-- เกราะ: กันดาเมจตามสัดส่วนของชุด จนกว่าแต้มเกราะจะหมด (ทรงเดียวกับเกราะของผู้เล่น)
+	if (state.armorPool or 0) > 0 and (state.absorb or 0) > 0 then
+		local blocked = math.min(state.armorPool, amount * state.absorb)
+		state.armorPool -= blocked
+		amount -= blocked
+	end
 
 	state.hp = math.max(0, state.hp - amount)
 	state.humanoid.Health = state.hp
@@ -325,6 +567,31 @@ function ArenaBots.Spawn(side, name, cframe, home)
 	Live[model] = state
 	task.spawn(think, state)
 	return model
+end
+
+-- ใส่ของที่ "ซื้อ" ให้บอท: อาวุธในมือ (ผ่าน WeaponVisuals ตัวเดียวกับคน) ชุดเกราะ ยา มานา กระสุน
+-- `loadout` = { weapon, armor, armorPool?, use, mana, ammo }
+function ArenaBots.Equip(model, loadout)
+	local state = Live[model]
+	if not state then return end
+	loadout = loadout or {}
+	state.weapon, state.ammo, state.potion, state.mana = loadout.weapon, loadout.ammo, loadout.use, loadout.mana or 0
+	local armor = loadout.armor and ItemCatalog.Items[loadout.armor]
+	state.armorId = loadout.armor
+	state.absorb = armor and armor.absorbFraction or 0
+	state.armorPool = loadout.armorPool or (armor and armor.armor) or 0
+	if WeaponVisualsAccess.HoldOn then WeaponVisualsAccess.HoldOn(model, state.weapon, nil) end
+	KitWear.Strip(model, ARMOR_FOLDER)
+	local kit = loadout.armor and ARMOR_KITS[loadout.armor]
+	if kit then KitWear.Wear(model, kit, nil, ARMOR_FOLDER) end
+end
+
+-- ของที่บอทยังเหลือติดตัว (รอดรอบ = พกไปรอบหน้า เหมือนคน)
+function ArenaBots.Loadout(model)
+	local state = Live[model]
+	if not state then return {} end
+	return { weapon = state.weapon, armor = state.armorId, armorPool = state.armorPool, use = state.potion,
+		mana = state.mana, ammo = state.ammo }
 end
 
 -- เปิด/ปิดขาทั้งสนามพร้อมกันตอนเริ่ม/จบรอบ

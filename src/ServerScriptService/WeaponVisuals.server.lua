@@ -193,8 +193,9 @@ local function tintModel(model, colour, material)
 	end
 end
 
-local function holdWeapon(player, weaponId, meta)
-	local character = player.Character
+-- วางอาวุธลงมือของ "ร่าง" ใดก็ได้ — ผู้เล่นเรียกผ่าน holdWeapon · บอทสนาม PVP เรียกผ่าน
+-- `WeaponVisualsAccess.HoldOn` (2026-09-24) ได้โมเดล สกิน และท่าจับชุดเดียวกับคนเป๊ะ
+local function holdOn(character, weaponId, meta, fighting)
 	if not character then return end
 	clearHeldWeapon(character)
 	local PREFABS = prefabFolder()
@@ -203,7 +204,6 @@ local function holdWeapon(player, weaponId, meta)
 	local item = ItemCatalog.Get(weaponId)
 	-- เครื่องมือทองใช้โมเดลถือ (และท่าจับ) ของตัวธรรมดา แล้วย้อมเป็นทอง
 	local shapeId = item and item.prefab or weaponId
-	local fighting = Fighting[player] == true
 	local anchor = anchorPartFor(character, shapeId, fighting)
 	if not anchor then return end
 
@@ -272,6 +272,14 @@ local function holdWeapon(player, weaponId, meta)
 	motor.Part1 = root
 	motor.C0 = gripFor(weaponId, fighting)
 	motor.Parent = anchor
+end
+
+local function holdWeapon(player, weaponId, meta)
+	holdOn(player.Character, weaponId, meta, Fighting[player] == true)
+end
+
+WeaponVisualsAccess.HoldOn = function(character, weaponId, meta)
+	holdOn(character, weaponId, meta, false)
 end
 
 local function refresh(player)

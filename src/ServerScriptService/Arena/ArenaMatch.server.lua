@@ -400,19 +400,19 @@ local function freezeAll(on)
 	ArenaBots.SetFree(not on)
 end
 
+-- คิล = คนที่ตีโดนครั้งสุดท้าย · **แอสซิส = ทุกคนที่เคยทำดาเมจใส่คนนี้ในชีวิตนี้ (รอบนี้) แต่ไม่ได้เป็นคนเก็บ**
+-- (ผู้ใช้กำหนด 2026-09-24 — เดิมนับเฉพาะคนที่ตีใน 12 วินาทีสุดท้าย) · นับทั้งคนและบอท
 local function killCredit(victimFighter)
 	local attacker = victimFighter.lastHitBy
-	local at = victimFighter.lastHitAt or 0
-	if attacker and os.clock() - at <= 12 then
+	if attacker then
 		local killer = Fighters[attacker]
 		if killer and killer.side ~= victimFighter.side then
 			killer.stats.kills += 1
 			killer.stats.roundKills += 1
 		end
 	end
-	-- แอสซิสต์: ใครก็ตามที่ตีคนนี้ใน 12 วินาทีสุดท้ายและไม่ใช่คนเก็บ
-	for key, hitAt in pairs(victimFighter.recentHits or {}) do
-		if key ~= attacker and os.clock() - hitAt <= 12 then
+	for key in pairs(victimFighter.recentHits or {}) do
+		if key ~= attacker then
 			local helper = Fighters[key]
 			if helper and helper.side ~= victimFighter.side then helper.stats.assists += 1 end
 		end
@@ -483,6 +483,7 @@ ArenaBots.Bind({
 	sideOfPlayer = sideOfPlayer,
 	onPlayerHitBot = function(player, model, amount) registerHit(player, model, amount) end,
 	onBotHitPlayer = function(model, player, amount) registerHit(model, player, amount) end,
+	onBotHitBot = function(model, other, amount) registerHit(model, other, amount) end,
 	onDied = function(model)
 		local f = Fighters[model]
 		if f then markDead(f) end
@@ -584,6 +585,48 @@ local function beginPhase(phase, seconds)
 end
 
 -- สร้างแถวของบอทครั้งเดียวตอนบูต ตามจำนวนที่ล็อบบี้สั่งมา
+-- บอทเลือกซื้อของตอนต้นรอบ ด้วยเงินและราคาเดียวกับคน (ArenaConfig.Shop)
+-- สายระยะใกล้/ไกลสุ่มครั้งเดียวต่อบอท · อาวุธ: ตัวแพงสุดที่ซื้อไหวในสายตัวเอง (ถ้ายังไม่มี) ·
+-- เกราะ: อัปเกรดเป็นชุดดีสุดที่ซื้อไหว · ยา: เหลือเงินพอค่อยซื้อ · อาวุธที่มีสกิล: ซื้อน้ำเติมมานาจนเต็ม
+local BOT_WEAPONS = { melee = { "Greatsword", "Shield", "Sword" }, ranged = { "Bow", "Spellbook", "Staff", "Pistol" } }
+local BOT_ARMORS = { "PlateArmor", "ChainmailArmor", "LeatherArmor" }
+
+local function botShop(entry)
+	local L = entry.loadout
+	local function buy(id)
+		local e = ArenaConfig.ShopEntry(id)
+		if e and entry.silver >= e.price then
+			entry.silver -= e.price
+			return e
+		end
+		return nil
+	end
+	if not L.weapon then
+		for _, id in ipairs(BOT_WEAPONS[entry.style] or BOT_WEAPONS.melee) do
+			local e = buy(id)
+			if e then
+				L.weapon, L.ammo = id, e.ammo
+				break
+			end
+		end
+	end
+	for _, id in ipairs(BOT_ARMORS) do
+		if id == L.armor then break end -- มีชุดนี้หรือดีกว่าอยู่แล้ว
+		if buy(id) then
+			L.armor, L.armorPool = id, nil
+			break
+		end
+	end
+	if not L.use and entry.silver >= 400 and buy("HealthPotion") then L.use = "HealthPotion" end
+	local item = L.weapon and ItemCatalog.Items[L.weapon]
+	if item and item.skill then
+		for _ = 1, 3 do
+			if (L.mana or 0) >= VitalsConfig.MaxMana or not buy("Water") then break end
+			L.mana = (L.mana or 0) + 1
+		end
+	end
+end
+
 local function buildBotRoster()
 	local n = 0
 	for _, side in ipairs(ArenaConfig.TeamOrder) do
@@ -594,6 +637,9 @@ local function buildBotRoster()
 				side = side,
 				name = ArenaConfig.Bots.names[((n - 1) % #ArenaConfig.Bots.names) + 1],
 				stats = newStats(),
+				silver = ArenaConfig.Economy.start,
+				loadout = {},
+				style = math.random() < 0.5 and "melee" or "ranged",
 			})
 		end
 	end
@@ -616,11 +662,21 @@ local function startRound()
 		f.boughtThisRound = {}
 		f.stats.roundKills = 0
 		f.roundDamage = {}
+		f.recentHits = {} -- แอสซิสนับต่อชีวิต: รอบใหม่ = ชีวิตใหม่
+		f.lastHitBy = nil
 	end
 
 	-- เกิดใหม่ทุกคนทั้งสองฝั่ง รวมคนที่ตายไปเมื่อรอบที่แล้ว
 	-- ร่างบอทของรอบก่อนถูกลบทั้งหมด แถวของมันใน `Fighters` จึงต้องถูกลบตามไปด้วย ไม่งั้นการนับ
 	-- "ยังเหลือกี่คน" จะนับร่างที่ไม่มีอยู่แล้ว แล้วรอบใหม่จะไม่มีวันจบ
+	-- บอท: เก็บเงินกับของที่ยังเหลือกลับลงแถวของมันก่อนลบร่าง — **รอดรอบ = พกของต่อ · ตาย = หายหมด**
+	-- กติกาเดียวกับคน (ผู้ใช้สั่ง 2026-09-24 ให้บอทซื้อของได้เหมือนคน)
+	for key, f in pairs(Fighters) do
+		if f.kind == "bot" and f.entry then
+			f.entry.silver = f.silver
+			f.entry.loadout = f.alive and ArenaBots.Loadout(key) or {}
+		end
+	end
 	ArenaBots.Clear()
 	for key, f in pairs(Fighters) do
 		if f.kind == "bot" then Fighters[key] = nil end
@@ -637,11 +693,13 @@ local function startRound()
 		index[entry.side] += 1
 		local model = ArenaBots.Spawn(entry.side, entry.name, spawnCFrame(entry.side, index[entry.side]), MAP.origin)
 		if model then
+			botShop(entry)
+			ArenaBots.Equip(model, entry.loadout)
 			Fighters[model] = {
 				kind = "bot", model = model, side = entry.side, name = entry.name,
-				silver = 0, alive = true, loadout = {}, boughtThisRound = {},
+				silver = entry.silver, alive = true, loadout = {}, boughtThisRound = {},
 				stats = entry.stats, -- **ตารางเดียวกับรอบก่อน** คะแนนจึงสะสมต่อ
-				recentHits = {}, roundDamage = {},
+				recentHits = {}, roundDamage = {}, entry = entry,
 			}
 		end
 	end
@@ -838,6 +896,10 @@ Players.PlayerRemoving:Connect(function(player)
 				name = name or ("หุ่นไอน้ำ-%02d"):format(#BotRoster + 1),
 				stats = newStats(),
 				replaces = player.UserId,
+				-- บอทแทนรับเงินที่คนนั้นเหลือไว้ (ของที่ถือไปพร้อมคนที่ออก บอทซื้อใหม่เอง)
+				silver = f.silver,
+				loadout = {},
+				style = math.random() < 0.5 and "melee" or "ranged",
 			})
 			print(("[Arena] %s ออกจากเกม — บอทเข้าแทนในทีม %s ตั้งแต่รอบหน้า"):format(player.Name, f.side))
 		end
