@@ -1,57 +1,95 @@
--- ArenaScoreboardGui: ตารางอันดับตอนจบแมตช์ — วาดตามภาพม็อกอัพที่ผู้ใช้ส่งมา 2026-09-23
+-- ArenaScoreboardGui: ตารางคะแนนของสนาม PVP — ใช้สองที่: ตารางจบแมตช์ และตาราง Tab ระหว่างเล่น
+-- รื้อดีไซน์ใหม่ 2026-09-24 (ผู้ใช้สั่ง "ให้ดูโมเดิร์นและทันสมัยกว่านี้") โทนเดียวกับร้าน (ArenaShopGui)
 --
---   จบเกมส์            ตารางอันดับ                         [กลับสู่ lobby]
---   อันดับ ชื่อ k/d/a damage money            รางวัล   เงินรางวัล
---   ───────────────────── ทีมชนะ (แถบเขียว) ─────────────────────
---   ───────────────────── ทีมแพ้ (แถบแดง) ──────────────────────
+--   ┌ ชัยชนะ!            [ทอง 3] : [1 เหล็ก]              [กลับสู่ล็อบบี้] ┐
+--   │ ปราสาทเฟืองทอง · จบแมตช์                                      │
+--   │ ▌ทีมทอง · ชนะ                                                  │
+--   │   #  ผู้เล่น        K   D   A   ดาเมจ  คะแนน   EXP  รางวัล  เงิน │
+--   │ ▌ 1  phumapanther MVP (คุณ)   ...                              │
+--   │ ▌ทีมเหล็ก · แพ้                                                 │
+--   └────────────── หีบ เงิน และ EXP เข้าตัวละครเมื่อกลับเกมหลัก ────────┘
 --
--- ⚠️ ช่อง "เงินรางวัล" คือ **เงินในเกมหลัก** ที่ได้ติดตัวกลับไป ไม่ใช่ซิลเวอร์ของแมตช์ (ซึ่งหายไป
--- พร้อมเซิร์ฟ) — สองอย่างนี้ใช้ไอคอนคล้ายกันและอยู่หน้าจอเดียวกัน จึงต้องเขียนหัวคอลัมน์ให้ต่างกันชัด
+-- ⚠️ "เงินรางวัล" = **เงินในเกมหลัก** ไม่ใช่ซิลเวอร์ของแมตช์ (ซึ่งหายไปพร้อมเซิร์ฟ)
+-- ตัววาดล้วน · ตัวคุม (ArenaController) ส่งผลจากเซิร์ฟมาให้
+local Players = game:GetService("Players")
+local TextService = game:GetService("TextService")
+
+local ArenaConfig = require(script.Parent.Parent.ArenaConfig)
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
 local ItemIcon = require(script.Parent.ItemIcon)
 
 local ArenaScoreboardGui = {}
 ArenaScoreboardGui.__index = ArenaScoreboardGui
 
-local PANEL = Color3.fromRGB(150, 150, 150)
-local WIN_HEAD = Color3.fromRGB(58, 196, 108)
-local WIN_ROW = Color3.fromRGB(122, 190, 148)
-local LOSE_HEAD = Color3.fromRGB(226, 62, 54)
-local LOSE_ROW = Color3.fromRGB(202, 132, 128)
-local TEXT_DARK = Color3.fromRGB(26, 26, 30)
-local ACCENT = Color3.fromRGB(226, 184, 78)
+local rgb = Color3.fromRGB
+local BG = rgb(16, 17, 22)
+local ROW = rgb(30, 32, 40)
+local ROW_ME = rgb(46, 42, 30)
+local STROKE = rgb(64, 68, 82)
+local GOLD = rgb(232, 190, 90)
+local TEXT = rgb(238, 236, 230)
+local MUTED = rgb(150, 150, 160)
+local RED = rgb(226, 110, 100)
+local GREEN = rgb(96, 214, 140)
 
+local PANEL_W = 960
+local ROW_H = 40
+
+-- คอลัมน์: x/w ในแถว (กว้าง PANEL_W - 64) · reward = โชว์เฉพาะตารางจบแมตช์
 local COLUMNS = {
-	{ key = "rank",   title = "อันดับ", x = 14,  w = 56,  align = Enum.TextXAlignment.Center },
-	{ key = "name",   title = "ชื่อ",    x = 74,  w = 190, align = Enum.TextXAlignment.Left },
-	{ key = "kda",    title = "k/d/a",  x = 268, w = 90,  align = Enum.TextXAlignment.Center },
-	{ key = "damage", title = "damage", x = 362, w = 90,  align = Enum.TextXAlignment.Center },
-	{ key = "score",  title = "คะแนน",  x = 456, w = 70,  align = Enum.TextXAlignment.Center },
-	{ key = "exp",    title = "EXP",    x = 530, w = 66,  align = Enum.TextXAlignment.Center },
-	{ key = "chest",  title = "รางวัล",  x = 600, w = 110, align = Enum.TextXAlignment.Right },
-	{ key = "gold",   title = "เงินรางวัล", x = 714, w = 78, align = Enum.TextXAlignment.Right },
+	{ key = "rank",   title = "#",        x = 16,  w = 30,  align = Enum.TextXAlignment.Center },
+	{ key = "name",   title = "ผู้เล่น",    x = 56,  w = 250, align = Enum.TextXAlignment.Left },
+	{ key = "kills",  title = "K",        x = 314, w = 44,  align = Enum.TextXAlignment.Center },
+	{ key = "deaths", title = "D",        x = 360, w = 44,  align = Enum.TextXAlignment.Center },
+	{ key = "assists",title = "A",        x = 406, w = 44,  align = Enum.TextXAlignment.Center },
+	{ key = "damage", title = "ดาเมจ",     x = 456, w = 80,  align = Enum.TextXAlignment.Center },
+	{ key = "score",  title = "คะแนน",     x = 540, w = 80,  align = Enum.TextXAlignment.Center },
+	{ key = "exp",    title = "EXP",      x = 628, w = 80,  align = Enum.TextXAlignment.Center, reward = true },
+	{ key = "chest",  title = "รางวัล",     x = 712, w = 70,  align = Enum.TextXAlignment.Center, reward = true },
+	{ key = "gold",   title = "เงิน",       x = 786, w = 100, align = Enum.TextXAlignment.Right, reward = true },
 }
 
-local function corner(parent, radius)
+local function corner(p, r)
 	local c = Instance.new("UICorner")
-	c.CornerRadius = radius or UDim.new(0, 6)
-	c.Parent = parent
-	return c
+	c.CornerRadius = UDim.new(0, r or 10)
+	c.Parent = p
 end
-
-local function cell(parent, column, text, size, bold)
-	local label = Instance.new("TextLabel")
-	label.Position = UDim2.fromOffset(column.x, 0)
-	label.Size = UDim2.new(0, column.w, 1, 0)
-	label.BackgroundTransparency = 1
-	label.Font = bold and Enum.Font.SourceSansBold or Enum.Font.SourceSans
-	label.TextSize = size or 18
-	label.TextColor3 = TEXT_DARK
-	label.TextXAlignment = column.align
-	label.TextTruncate = Enum.TextTruncate.AtEnd
-	label.Text = text
-	label.Parent = parent
-	return label
+local function stroke(p, colour, t, thick)
+	local s = Instance.new("UIStroke")
+	s.Color, s.Transparency, s.Thickness = colour, t or 0, thick or 1
+	s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	s.Parent = p
+	return s
+end
+local function text(parent, props)
+	local l = Instance.new("TextLabel")
+	l.BackgroundTransparency = 1
+	l.Font = props.font or Enum.Font.SourceSansBold
+	l.TextSize = props.size or 17
+	l.TextColor3 = props.colour or TEXT
+	l.TextXAlignment = props.align or Enum.TextXAlignment.Left
+	l.TextTruncate = Enum.TextTruncate.AtEnd
+	l.Text = props.text or ""
+	l.Position = props.pos or UDim2.new()
+	l.Size = props.dim or UDim2.fromScale(1, 1)
+	l.ZIndex = props.z or 2
+	l.Parent = parent
+	return l
+end
+local function pill(parent, label, bg, fg, x, w)
+	local p = Instance.new("TextLabel")
+	p.AnchorPoint = Vector2.new(0, 0.5)
+	p.Position = UDim2.new(0, x, 0.5, 0)
+	p.Size = UDim2.fromOffset(w, 18)
+	p.BackgroundColor3 = bg
+	p.Font = Enum.Font.GothamBold
+	p.TextSize = 11
+	p.TextColor3 = fg
+	p.Text = label
+	p.ZIndex = 3
+	p.Parent = parent
+	corner(p, 9)
+	return p
 end
 
 function ArenaScoreboardGui.new()
@@ -65,86 +103,103 @@ function ArenaScoreboardGui.new()
 	gui.Enabled = false
 	self.gui = gui
 
+	local dim = Instance.new("Frame")
+	dim.Size = UDim2.fromScale(1, 1)
+	dim.BackgroundColor3 = rgb(0, 0, 0)
+	dim.BackgroundTransparency = 0.45
+	dim.Parent = gui
+	self.dim = dim
+
 	local panel = Instance.new("Frame")
 	panel.AnchorPoint = Vector2.new(0.5, 0.5)
-	panel.Position = UDim2.fromScale(0.5, 0.46)
-	panel.Size = UDim2.fromOffset(820, 470)
-	panel.BackgroundColor3 = PANEL
-	panel.BorderSizePixel = 0
+	panel.Position = UDim2.fromScale(0.5, 0.5)
+	panel.Size = UDim2.fromOffset(PANEL_W, 600)
+	panel.BackgroundColor3 = BG
+	panel.BackgroundTransparency = 0.04
 	panel.Parent = gui
-	corner(panel, UDim.new(0, 14))
+	corner(panel, 18)
+	stroke(panel, GOLD, 0.7, 1.5)
+	local grad = Instance.new("UIGradient")
+	grad.Rotation = 90
+	grad.Color = ColorSequence.new(rgb(255, 255, 255), rgb(190, 190, 200))
+	grad.Parent = panel
+	local scale = Instance.new("UIScale")
+	scale.Parent = panel
+	local function rescale()
+		local cam = workspace.CurrentCamera
+		local v = cam and cam.ViewportSize or Vector2.new(1280, 720)
+		scale.Scale = math.clamp(math.min(v.X / (PANEL_W + 60), v.Y / 660), 0.5, 1)
+	end
+	rescale()
+	if workspace.CurrentCamera then workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(rescale) end
 	self.panel = panel
 
-	local title = Instance.new("TextLabel")
-	title.Position = UDim2.fromOffset(24, 14)
-	title.Size = UDim2.fromOffset(220, 44)
-	title.BackgroundTransparency = 1
-	title.Font = Enum.Font.GothamBold
-	title.TextSize = 30
-	title.TextColor3 = TEXT_DARK
-	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.Text = "จบเกม"
-	title.Parent = panel
-	self.title = title
+	-- หัว: ผลใหญ่ซ้าย · สกอร์ทีมกลาง · ปุ่มกลับขวา
+	self.title = text(panel, { text = "จบเกม", font = Enum.Font.GothamBold, size = 34, pos = UDim2.fromOffset(32, 18), dim = UDim2.fromOffset(300, 42) })
+	self.subtitle = text(panel, { text = "", size = 16, colour = MUTED, pos = UDim2.fromOffset(32, 60), dim = UDim2.fromOffset(360, 20) })
 
-	local subtitle = Instance.new("TextLabel")
-	subtitle.AnchorPoint = Vector2.new(0.5, 0)
-	subtitle.Position = UDim2.new(0.5, 0, 0, 14)
-	subtitle.Size = UDim2.fromOffset(300, 44)
-	subtitle.BackgroundTransparency = 1
-	subtitle.Font = Enum.Font.GothamBold
-	subtitle.TextSize = 28
-	subtitle.TextColor3 = TEXT_DARK
-	subtitle.Text = "ตารางอันดับ"
-	subtitle.Parent = panel
+	local score = Instance.new("Frame")
+	score.AnchorPoint = Vector2.new(0.5, 0)
+	score.Position = UDim2.new(0.5, 0, 0, 22)
+	score.Size = UDim2.fromOffset(220, 52)
+	score.BackgroundTransparency = 1
+	score.Parent = panel
+	local function chip(side, anchorX)
+		local c = Instance.new("TextLabel")
+		c.AnchorPoint = Vector2.new(anchorX, 0)
+		c.Position = UDim2.fromScale(anchorX, 0)
+		c.Size = UDim2.fromOffset(92, 52)
+		c.BackgroundColor3 = ArenaConfig.Teams[side].colour
+		c.Font = Enum.Font.GothamBold
+		c.TextSize = 30
+		c.TextColor3 = rgb(20, 20, 22)
+		c.Text = "0"
+		c.Parent = score
+		corner(c, 12)
+		return c
+	end
+	self.chipA = chip("A", 0)
+	self.chipB = chip("B", 1)
+	text(score, { text = ":", font = Enum.Font.GothamBold, size = 28, align = Enum.TextXAlignment.Center })
 
 	local back = Instance.new("TextButton")
 	back.AnchorPoint = Vector2.new(1, 0)
-	back.Position = UDim2.new(1, -18, 0, 18)
-	back.Size = UDim2.fromOffset(150, 40)
-	back.BackgroundColor3 = ACCENT
-	back.BorderSizePixel = 0
-	back.Font = Enum.Font.SourceSansBold
-	back.TextSize = 19
-	back.TextColor3 = TEXT_DARK
+	back.Position = UDim2.new(1, -28, 0, 26)
+	back.Size = UDim2.fromOffset(170, 44)
+	back.BackgroundColor3 = GOLD
+	back.Font = Enum.Font.GothamBold
+	back.TextSize = 17
+	back.TextColor3 = rgb(28, 24, 16)
 	back.Text = "กลับสู่ล็อบบี้"
 	back.Parent = panel
-	corner(back, UDim.new(1, 0))
+	corner(back, 22)
 	self.backButton = back
 
 	-- หัวคอลัมน์
 	local header = Instance.new("Frame")
-	header.Position = UDim2.fromOffset(20, 70)
-	header.Size = UDim2.fromOffset(796, 26)
+	header.Position = UDim2.fromOffset(32, 96)
+	header.Size = UDim2.fromOffset(PANEL_W - 64, 22)
 	header.BackgroundTransparency = 1
 	header.Parent = panel
 	self.headerCells = {}
 	for _, column in ipairs(COLUMNS) do
-		self.headerCells[column.key] = cell(header, column, column.title, 16, true)
+		self.headerCells[column.key] = text(header, { text = column.title, size = 14, colour = MUTED, align = column.align,
+			pos = UDim2.fromOffset(column.x, 0), dim = UDim2.new(0, column.w, 1, 0) })
 	end
 
 	local rows = Instance.new("Frame")
-	rows.Position = UDim2.fromOffset(20, 100)
-	rows.Size = UDim2.fromOffset(796, 300)
+	rows.Position = UDim2.fromOffset(32, 122)
+	rows.Size = UDim2.fromOffset(PANEL_W - 64, 420)
 	rows.BackgroundTransparency = 1
 	rows.Parent = panel
 	local layout = Instance.new("UIListLayout")
-	layout.Padding = UDim.new(0, 2)
+	layout.Padding = UDim.new(0, 6)
+	layout.SortOrder = Enum.SortOrder.LayoutOrder
 	layout.Parent = rows
 	self.rows = rows
 
-	local note = Instance.new("TextLabel")
-	note.AnchorPoint = Vector2.new(0.5, 1)
-	note.Position = UDim2.new(0.5, 0, 1, -12)
-	note.Size = UDim2.new(1, -40, 0, 26)
-	note.BackgroundTransparency = 1
-	note.Font = Enum.Font.SourceSans
-	note.TextSize = 17
-	note.TextColor3 = Color3.fromRGB(46, 46, 50)
-	note.Text = "หีบ เงิน และ EXP จะเข้าตัวละครของคุณเมื่อกลับเข้าเกมหลัก"
-	note.Parent = panel
-	self.note = note
-
+	self.note = text(panel, { text = "หีบ เงิน และ EXP เข้าตัวละครของคุณเมื่อกลับเข้าเกมหลัก", size = 15, colour = MUTED,
+		align = Enum.TextXAlignment.Center, pos = UDim2.new(0, 0, 1, -34), dim = UDim2.new(1, 0, 0, 22) })
 	return self
 end
 
@@ -152,16 +207,19 @@ function ArenaScoreboardGui:OnBack(callback)
 	self.backButton.MouseButton1Click:Connect(callback)
 end
 
--- REWARD_KEYS: คอลัมน์ที่มีความหมายเฉพาะตอนจบแมตช์ — ตาราง Tab ระหว่างเล่นซ่อนไว้
-local REWARD_KEYS = { exp = true, chest = true, gold = true }
+function ArenaScoreboardGui:SetVisible(visible)
+	self.gui.Enabled = visible and true or false
+end
 
--- โหมด "ตาราง Tab" (ผู้ใช้สั่ง 2026-09-24): ใช้หน้าตาเดียวกับตารางจบเกม แต่ไม่มีปุ่มกลับ/รางวัล
+-- โหมด "ตาราง Tab" (ผู้ใช้สั่ง 2026-09-24): หน้าตาเดียวกับตารางจบเกม แต่ไม่มีปุ่มกลับ/รางวัล และพื้นหลังจางกว่า
 function ArenaScoreboardGui:SetLive(live)
 	self.live = live
 	self.backButton.Visible = not live
 	self.note.Visible = not live
-	self.title.Text = live and "สถิติ" or "จบเกม"
-	for key in pairs(REWARD_KEYS) do self.headerCells[key].Visible = not live end
+	self.dim.BackgroundTransparency = live and 0.75 or 0.45
+	for _, column in ipairs(COLUMNS) do
+		if column.reward then self.headerCells[column.key].Visible = not live end
+	end
 end
 
 -- `snap` = ภาพแมตช์จาก ArenaState · อันดับเรียงตามคะแนนผลงาน ตัวเดียวกับตารางจบเกม
@@ -174,88 +232,141 @@ function ArenaScoreboardGui:RenderLive(snap)
 	end
 	table.sort(rows, function(a, b) return (a.score or 0) > (b.score or 0) end)
 	for rank, row in ipairs(rows) do row.rank = rank end
-	self:Render({ rows = rows, titles = { "ทีมเรา", "ทีมศัตรู" } })
-end
-
-function ArenaScoreboardGui:SetVisible(visible)
-	self.gui.Enabled = visible and true or false
+	self.title.Text, self.title.TextColor3 = "สถิติ", TEXT
+	self.subtitle.Text = ("รอบ %d · %s"):format(snap.round or 0, snap.mapName or "")
+	self:Render({ rows = rows, wins = snap.wins, titles = { "ทีมเรา", "ทีมศัตรู" } })
 end
 
 -- `result` = { rows = {…}, winner = "A"|"B"|nil, wins = {A=,B=} }
--- แต่ละแถวมี rank, name, side, bot, kills, deaths, assists, damage, score, gold, chest, won
+-- แต่ละแถวมี rank, name, side, bot, kills, deaths, assists, damage, score, gold, exp, chest, won, userId|me
 function ArenaScoreboardGui:Render(result)
 	for _, child in ipairs(self.rows:GetChildren()) do
 		if child:IsA("Frame") then child:Destroy() end
 	end
+	local wins = result.wins or { A = 0, B = 0 }
+	self.chipA.Text, self.chipB.Text = tostring(wins.A or 0), tostring(wins.B or 0)
 
-	-- **แบ่งเป็นสองก้อนตามทีมชนะ/แพ้เหมือนในภาพ** ไม่ใช่เรียงอันดับปนกัน — คนอ่านอยากรู้ก่อนว่า
-	-- ฝั่งไหนชนะ แล้วค่อยดูว่าใครทำอะไรได้บ้าง
+	local myId = Players.LocalPlayer and Players.LocalPlayer.UserId
+	local function isMe(row) return row.me or (row.userId ~= nil and row.userId == myId) end
+
+	if not self.live then
+		-- ผลของ "เรา" เป็นหัวใหญ่: ชนะ / แพ้ / เสมอ
+		local mine
+		for _, row in ipairs(result.rows or {}) do if isMe(row) then mine = row end end
+		if not result.winner then
+			self.title.Text, self.title.TextColor3 = "เสมอ", TEXT
+		elseif mine and mine.won then
+			self.title.Text, self.title.TextColor3 = "ชัยชนะ!", GOLD
+		elseif mine then
+			self.title.Text, self.title.TextColor3 = "พ่ายแพ้", RED
+		else
+			self.title.Text, self.title.TextColor3 = "จบเกม", TEXT
+		end
+		self.subtitle.Text = "จบแมตช์ · ตารางอันดับ"
+	end
+
+	-- MVP = คะแนนสูงสุดทั้งห้อง
+	local best = nil
+	for _, row in ipairs(result.rows or {}) do
+		if not best or (row.score or 0) > (best.score or 0) then best = row end
+	end
+
 	local order = 0
-	local function section(title, headColour, rowColour, predicate)
-		local head = Instance.new("Frame")
-		order += 1
-		head.LayoutOrder = order
-		head.Size = UDim2.new(1, 0, 0, 24)
-		head.BackgroundColor3 = headColour
-		head.BorderSizePixel = 0
-		head.Parent = self.rows
-		local label = Instance.new("TextLabel")
-		label.Size = UDim2.fromScale(1, 1)
-		label.BackgroundTransparency = 1
-		label.Font = Enum.Font.SourceSansBold
-		label.TextSize = 17
-		label.TextColor3 = Color3.fromRGB(250, 250, 250)
-		label.Text = title
-		label.Parent = head
-
+	local titles = result.titles or { "ทีมชนะ", "ทีมแพ้" }
+	local function section(title, winning)
+		local members = {}
 		for _, row in ipairs(result.rows or {}) do
-			if predicate(row) then
-				order += 1
-				local frame = Instance.new("Frame")
-				frame.LayoutOrder = order
-				frame.Size = UDim2.new(1, 0, 0, 26)
-				frame.BackgroundColor3 = rowColour
-				frame.BorderSizePixel = 0
-				frame.Parent = self.rows
+			if (row.won and true or false) == winning then table.insert(members, row) end
+		end
+		if #members == 0 then return end
+		local side = members[1].side
+		local team = ArenaConfig.Teams[side] or { name = "", colour = STROKE }
 
-				local chestItem = row.chest and ItemCatalog.Items[row.chest]
-				local values = {
-					-- (ตาราง Tab ระหว่างเล่นไม่มีรางวัล — คอลัมน์ว่าง)
-					rank = tostring(row.rank or "-"),
-					name = row.name .. (row.bot and "  (บอท)" or ""),
-					kda = ("%d/%d/%d"):format(row.kills or 0, row.deaths or 0, row.assists or 0),
-					damage = tostring(row.damage or 0),
-					score = tostring(math.floor((row.score or 0) + 0.5)),
-					-- หีบขึ้นเป็นรูปอย่างเดียว (ผู้ใช้สั่ง 2026-09-24) — ตัวอักษรว่าง รูปวาดทับข้างล่าง
-					chest = row.bot and "—" or "",
-					gold = row.bot and "—" or ("💰 %d"):format(row.gold or 0),
-					exp = row.bot and "—" or ("✨ %d"):format(row.exp or 0),
-				}
-				for _, column in ipairs(COLUMNS) do
-					local text = (self.live and REWARD_KEYS[column.key]) and "" or (values[column.key] or "")
-					local label = cell(frame, column, text, 17, column.key == "rank")
-					if row.me then label.Font = Enum.Font.SourceSansBold end
-					if row.alive == false and self.live then label.TextTransparency = 0.45 end
+		order += 1
+		local head = Instance.new("Frame")
+		head.LayoutOrder = order
+		head.Size = UDim2.new(1, 0, 0, 26)
+		head.BackgroundTransparency = 1
+		head.Parent = self.rows
+		local bar = Instance.new("Frame")
+		bar.Size = UDim2.fromOffset(4, 18)
+		bar.Position = UDim2.fromOffset(0, 4)
+		bar.BackgroundColor3 = team.colour
+		bar.Parent = head
+		corner(bar, 2)
+		text(head, { text = ("%s  ·  %s"):format(team.name, title), font = Enum.Font.GothamBold, size = 16,
+			colour = winning and (self.live and TEXT or GREEN) or (self.live and MUTED or RED), pos = UDim2.fromOffset(14, 0) })
+
+		for _, row in ipairs(members) do
+			order += 1
+			local me = isMe(row)
+			local frame = Instance.new("Frame")
+			frame.LayoutOrder = order
+			frame.Size = UDim2.new(1, 0, 0, ROW_H)
+			frame.BackgroundColor3 = me and ROW_ME or ROW
+			frame.BackgroundTransparency = (self.live and row.alive == false) and 0.5 or 0
+			frame.Parent = self.rows
+			corner(frame, 10)
+			if me then stroke(frame, GOLD, 0.2, 1.5) end
+			local accent = Instance.new("Frame")
+			accent.Size = UDim2.new(0, 4, 1, -12)
+			accent.Position = UDim2.fromOffset(6, 6)
+			accent.BackgroundColor3 = team.colour
+			accent.Parent = frame
+			corner(accent, 2)
+
+			local dead = self.live and row.alive == false
+			local dimText = dead and MUTED or TEXT
+			local values = {
+				rank = tostring(row.rank or "-"),
+				name = row.name .. (me and "  (คุณ)" or ""),
+				kills = tostring(row.kills or 0), deaths = tostring(row.deaths or 0), assists = tostring(row.assists or 0),
+				damage = tostring(math.floor(row.damage or 0)),
+				score = tostring(math.floor((row.score or 0) + 0.5)),
+				exp = row.bot and "—" or ("✨ %d"):format(row.exp or 0),
+				gold = row.bot and "—" or ("💰 %d"):format(row.gold or 0),
+				chest = row.bot and "—" or "",
+			}
+			local nameLabel
+			for _, column in ipairs(COLUMNS) do
+				if not (column.reward and self.live) then
+					local l = text(frame, { text = values[column.key] or "", size = column.key == "name" and 18 or 17,
+						font = (column.key == "score" or column.key == "rank") and Enum.Font.GothamBold or Enum.Font.SourceSansBold,
+						colour = column.key == "score" and GOLD or dimText, align = column.align,
+						pos = UDim2.fromOffset(column.x, 0), dim = UDim2.new(0, column.w, 1, 0) })
+					if column.key == "name" then nameLabel = l end
 				end
-				if chestItem and not row.bot and not self.live then
-					local chestColumn
-					for _, column in ipairs(COLUMNS) do if column.key == "chest" then chestColumn = column end end
-					local image = Instance.new("ImageLabel")
-					image.AnchorPoint = Vector2.new(1, 0.5)
-					image.Position = UDim2.new(0, chestColumn.x + chestColumn.w, 0.5, 0)
-					image.Size = UDim2.fromOffset(24, 24)
-					image.BackgroundTransparency = 1
-					image.ScaleType = Enum.ScaleType.Fit
-					image.Parent = frame
-					ItemIcon.Apply(image, chestItem.icon) -- ไม่มีรูปก็ขึ้น ⌛ ตามกติกาเดิม
-				end
+			end
+			-- ป้ายท้ายชื่อ: MVP / บอท / ตายแล้ว
+			-- วัดความกว้างชื่อด้วย TextService (TextBounds เป็น 0 ตอน ScreenGui ยังปิดอยู่)
+			local nameWidth = nameLabel and TextService:GetTextSize(nameLabel.Text, 18, Enum.Font.SourceSansBold, Vector2.new(250, ROW_H)).X or 0
+			local tagX = 56 + math.min(250, nameWidth) + 8
+			if row == best and (row.score or 0) > 0 then
+				pill(frame, "MVP", GOLD, rgb(28, 24, 16), tagX, 38)
+				tagX += 44
+			end
+			if row.bot then pill(frame, "บอท", rgb(70, 72, 84), TEXT, tagX, 36); tagX += 42 end
+			if dead then pill(frame, "ตาย", rgb(110, 50, 48), TEXT, tagX, 34) end
+
+			-- รูปหีบรางวัล (ตารางจบแมตช์เท่านั้น) — ไม่มีรูปก็ขึ้น ⌛ ตามกติกาเดิม
+			local chestItem = row.chest and ItemCatalog.Items[row.chest]
+			if chestItem and not row.bot and not self.live then
+				local column = COLUMNS[9]
+				local image = Instance.new("ImageLabel")
+				image.AnchorPoint = Vector2.new(0.5, 0.5)
+				image.Position = UDim2.new(0, column.x + column.w / 2, 0.5, 0)
+				image.Size = UDim2.fromOffset(30, 30)
+				image.BackgroundTransparency = 1
+				image.ScaleType = Enum.ScaleType.Fit
+				image.ZIndex = 3
+				image.Parent = frame
+				ItemIcon.Apply(image, chestItem.icon)
 			end
 		end
 	end
 
-	local titles = result.titles or { "ทีมชนะ", "ทีมแพ้" }
-	section(titles[1], WIN_HEAD, WIN_ROW, function(row) return row.won end)
-	section(titles[2], LOSE_HEAD, LOSE_ROW, function(row) return not row.won end)
+	section(titles[1], true)
+	section(titles[2], false)
 end
 
 return ArenaScoreboardGui

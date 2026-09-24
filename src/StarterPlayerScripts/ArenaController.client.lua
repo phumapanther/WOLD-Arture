@@ -128,6 +128,36 @@ RunService:BindToRenderStep("ArenaViewmodel", Enum.RenderPriority.Camera.Value +
 end)
 
 --------------------------------------------------------------------------------
+-- กล้องระดับตา (ผู้ใช้แจ้ง 2026-09-24: "มุมกล้องมองระดับอก ให้สูงถึงหัว")
+--------------------------------------------------------------------------------
+-- กล้องของ Roblox เกาะจุดคงที่เหนือ HumanoidRootPart ซึ่งกับอวตารตัวสูงจะอยู่ต่ำกว่าหัว (ระดับอก)
+-- **วัดเองครั้งเดียวต่อร่าง** แทนการเดาเลข: รอจนอยู่มุมบุคคลที่หนึ่ง อ่านความสูงกล้องจริงเทียบกับหัว
+-- แล้วยกด้วย Humanoid.CameraOffset เท่าส่วนต่าง — ได้ระดับตาทุกขนาดตัว
+local EYE_LIFT = 0.15 -- เหนือกึ่งกลางหัวเท่านี้ = ระดับตา · อยากสูง/ต่ำกว่านี้แก้เลขนี้
+local function calibrateEyes(character)
+	local humanoid = character:WaitForChild("Humanoid", 10)
+	local head = character:WaitForChild("Head", 10)
+	local root = character:WaitForChild("HumanoidRootPart", 10)
+	if not (humanoid and head and root) then return end
+	humanoid.CameraOffset = Vector3.zero
+	local deadline = os.clock() + 90 -- ช่วงเตรียมตัวร้านเปิดอยู่ (ไม่ใช่มุมบุคคลที่หนึ่ง) รอได้ถึงร้านปิด
+	while os.clock() < deadline and character.Parent do
+		task.wait(0.2)
+		local camera = workspace.CurrentCamera
+		if camera and camera.CameraSubject == humanoid and camera.CameraType == Enum.CameraType.Custom
+			and player.CameraMode == Enum.CameraMode.LockFirstPerson then
+			task.wait(0.3) -- ให้กล้องเกาะตำแหน่งนิ่งก่อนวัด
+			local camY = camera.CFrame.Position.Y - root.Position.Y
+			local eyeY = head.Position.Y + EYE_LIFT - root.Position.Y
+			humanoid.CameraOffset = Vector3.new(0, math.max(0, eyeY - camY), 0)
+			return
+		end
+	end
+end
+player.CharacterAdded:Connect(function(character) task.spawn(calibrateEyes, character) end)
+if player.Character then task.spawn(calibrateEyes, player.Character) end
+
+--------------------------------------------------------------------------------
 -- ปุ่ม F = ใช้ยาที่ซื้อไว้
 --------------------------------------------------------------------------------
 -- ใช้ทาง `RequestUseItem` เดิมของเกมหลักทั้งดุ้น ท่ากินและผลของยาจึงเหมือนกันเป๊ะโดยไม่ต้องเขียนใหม่
