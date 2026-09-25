@@ -22,6 +22,12 @@ pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.PlayerList, false
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+-- จอ "กำลังเข้าสู่โลก" ต่อเนื่องไปถึงปลายทาง ไม่ใช่จอเทเลพอร์ตเปล่าของ Roblox (ผู้ใช้สั่ง 2026-09-25)
+-- ลงทะเบียน **ตั้งแต่สคริปต์เริ่ม** ไม่ใช่ตอนกดปุ่ม — เทเลพอร์ตเริ่มจากเซิร์ฟเวอร์ ถ้ารอกดแล้วค่อยตั้งอาจไม่ทัน
+pcall(function()
+	game:GetService("TeleportService"):SetTeleportGui(ChannelSelectGui.BuildJoinVeil())
+end)
+
 -- Lock the lobby to landscape on phones and tablets. The channel rows are a wide strip — name, avatar
 -- gallery, then the count and JOIN — and portrait squeezes all of that into roughly half the width.
 -- LandscapeSensor rather than LandscapeLeft so the device can still flip between the two landscape

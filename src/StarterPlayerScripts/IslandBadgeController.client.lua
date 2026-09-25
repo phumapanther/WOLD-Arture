@@ -39,7 +39,9 @@ local Badges = {} -- [instance] = BillboardGui
 local function anchorOf(inst)
 	if inst:IsA("BasePart") then return inst, inst.Size.Y / 2 end
 	if not inst:IsA("Model") then return nil end
-	local part = inst.PrimaryPart or inst:FindFirstChildWhichIsA("BasePart", true)
+	-- ตัวที่มี HumanoidRootPart (หมา/แมว) ต้องแขวนป้ายที่ตัวมัน — PrimaryPart ของสัตว์เลี้ยงคือหมุด Root
+	-- ที่ตรึงอยู่จุดที่วาง ส่วนตัวสัตว์เดินไปทั่วฟาร์ม ป้ายจะค้างอยู่ที่เดิม
+	local part = inst:FindFirstChild("HumanoidRootPart") or inst.PrimaryPart or inst:FindFirstChildWhichIsA("BasePart", true)
 	if not part then return nil end
 	local ok, cf, size = pcall(function()
 		local a, b = inst:GetBoundingBox()
@@ -263,6 +265,8 @@ local function sweepPlots(seen, lit)
 	local island = workspace:FindFirstChild("WOLD_Island")
 	local placed = island and island:FindFirstChild("Placed")
 	for _, model in ipairs(placed and placed:GetChildren() or {}) do
+		-- หมา/แมวที่ลูบหัวได้แล้ว — `PatReady` ประกาศโดย IslandPets (ดับตอนติดคูลดาวน์หรือถูกอุ้ม)
+		if model:GetAttribute("PatReady") then seen[model] = CFG.pet end
 		if model:GetAttribute("Ripe") then
 			seen[model] = CFG.crop
 			local tone = model:GetAttribute("Glow") -- ทอยตอนสุก (IslandPlots.ripen) แสงจึงขึ้นพร้อมป้าย

@@ -2129,6 +2129,10 @@ LocalUserSecurity เหมือนกันหมด
 - **ลูบหมา/แมว** = หัวใจอีโมจิลอย (`Remotes.IslandPetHearts` → `IslandPetController` วาดเองทุกเครื่อง) + EXP `IslandConfig.PetPatExp` (20 ผมตั้ง ·
   ผ่านตัวคูณฟาร์ม) · **ตัวละครั้งต่อ 30 นาที** (`PetPatSeconds`) คูลดาวน์เป็นของตัวสัตว์ เซฟที่ `entry.pat` (os.time) ออก-เข้าไม่รีเซ็ต ·
   `refreshPrompts` ที่เดียวตั้ง Enabled ของ E/F บนตัวสัตว์ (ลูป 1 วิ)
+- **ป้าย ❤️ เหนือหมา/แมวที่ลูบหัวได้** (`IslandConfig.Badges.pet` · แอตทริบิวต์ `PatReady` จาก `refreshPrompts`) ·
+  `IslandBadgeController.anchorOf` แขวนป้ายที่ `HumanoidRootPart` ถ้ามี (PrimaryPart ของสัตว์เลี้ยงคือหมุด Root ที่ตรึงอยู่จุดวาง)
+- **จอตอนกดเข้าเซิร์ฟในล็อบบี้** = "กำลังเข้าสู่โลก..." / "กำลังค้นหาโลก รอสักครู่" บนแผ่นดำของ `ChannelSelectGui:Lock()`
+  (ทรงเดียวกับจอไปล็อบบี้) + สำเนานิ่ง `ChannelSelectGui.BuildJoinVeil()` ส่งให้ `SetTeleportGui` ตั้งแต่ `ChannelSelectController` เริ่ม
 - ⚠️ **กติกาผู้ใช้ 2026-09-25: ปุ่ม E/F ที่ติดคูลดาวน์ต้องซ่อนเสมอ** — ไล่ทั้งเกมแล้ว แก้ 6 จุด:
   แปลงผักระหว่างโต (`IslandPlots` Enabled = สุกแล้ว) · ยึดเมืองติดคูลดาวน์ (`TownCapture` ประกาศแอตทริบิวต์ `Cooling` บนปุ่ม
   **ไคลเอนต์ `TownVaultController` เป็นคนตั้ง Enabled** ห้ามตั้งฝั่งเซิร์ฟ) · ฟาร์มเถื่อนบนเกาะที่ใช้สิทธิ์วันนี้แล้ว (รายคน →

@@ -68,8 +68,11 @@ local function refreshPrompts(model)
 	local hrp = model:FindFirstChild("HumanoidRootPart")
 	if not state or not hrp then return end
 	local carried = state.carriedBy ~= nil
+	local canPat = not carried and patReady(model)
 	local petPrompt = hrp:FindFirstChild("PetPrompt")
-	if petPrompt then petPrompt.Enabled = not carried and patReady(model) end
+	if petPrompt then petPrompt.Enabled = canPat end
+	-- ประกาศให้ป้าย ❤️ ลอยเหนือหัว (IslandBadgeController อ่านแอตทริบิวต์ ไม่อ่าน Enabled ของปุ่ม)
+	if model:GetAttribute("PatReady") ~= canPat then model:SetAttribute("PatReady", canPat) end
 	local carryPrompt = hrp:FindFirstChild("CarryPrompt")
 	if carryPrompt then carryPrompt.Enabled = not carried end
 end

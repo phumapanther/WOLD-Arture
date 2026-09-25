@@ -37,6 +37,57 @@ local TEXT_LIGHT = Color3.fromRGB(240, 240, 245)
 local TEXT_MUTED = Color3.fromRGB(180, 180, 195)
 local GLASS = Color3.fromRGB(255, 255, 255)
 
+-- **หน้าจอตอนกดเข้าเซิร์ฟ** (ผู้ใช้สั่ง 2026-09-25) — ทรงเดียวกับจอ "กำลังพาไปหน้าล็อบบี้" ของ LobbyTravelController
+-- แทนจอดำเฉยๆ · ใช้สองที่: บนแผ่นดำของ Lock() (จุดไข่ปลาขยับ) และสำเนานิ่งที่ส่งให้ SetTeleportGui
+local JOIN_TITLE = "กำลังเข้าสู่โลก"
+local JOIN_SUB = "กำลังค้นหาโลก รอสักครู่"
+local JOIN_GOLD = Color3.fromRGB(244, 197, 66) -- สีเดียวกับจอไปล็อบบี้
+
+local function addJoinText(sheet)
+	local title = Instance.new("TextLabel")
+	title.Name = "Title"
+	title.AnchorPoint = Vector2.new(0.5, 0.5)
+	title.Position = UDim2.fromScale(0.5, 0.5)
+	title.Size = UDim2.new(1, -40, 0, 30)
+	title.BackgroundTransparency = 1
+	title.Font = Enum.Font.GothamBold
+	title.TextSize = 20
+	title.TextColor3 = JOIN_GOLD
+	title.Text = JOIN_TITLE
+	title.ZIndex = sheet.ZIndex + 1
+	title.Parent = sheet
+
+	local sub = Instance.new("TextLabel")
+	sub.Name = "Sub"
+	sub.AnchorPoint = Vector2.new(0.5, 0)
+	sub.Position = UDim2.new(0.5, 0, 0.5, 22)
+	sub.Size = UDim2.new(1, -40, 0, 20)
+	sub.BackgroundTransparency = 1
+	sub.Font = Enum.Font.Gotham
+	sub.TextSize = 13
+	sub.TextColor3 = Color3.fromRGB(176, 178, 188)
+	sub.Text = JOIN_SUB
+	sub.ZIndex = sheet.ZIndex + 1
+	sub.Parent = sheet
+	return title
+end
+
+-- สำเนานิ่งสำหรับ TeleportService:SetTeleportGui — หน้าโหลดของปลายทางไม่มีสคริปต์รัน จุดไข่ปลาจึงขยับไม่ได้
+function ChannelSelectGui.BuildJoinVeil()
+	local veil = Instance.new("ScreenGui")
+	veil.Name = "JoinWorldVeil"
+	veil.ResetOnSpawn = false
+	veil.IgnoreGuiInset = true
+	veil.DisplayOrder = 1000
+	local sheet = Instance.new("Frame")
+	sheet.Size = UDim2.fromScale(1, 1)
+	sheet.BackgroundColor3 = Color3.new(0, 0, 0)
+	sheet.BorderSizePixel = 0
+	sheet.Parent = veil
+	addJoinText(sheet)
+	return veil
+end
+
 local function corner(parent, radius)
 	local c = Instance.new("UICorner")
 	c.CornerRadius = radius or UDim.new(0, 8)
@@ -413,6 +464,7 @@ function ChannelSelectGui.new()
 	blackout.Active = true
 	blackout.Parent = gui
 	self.blackout = blackout
+	self.joinTitle = addJoinText(blackout)
 
 	--------------------------------------------------------------------------------
 	-- ปุ่มพับ UI (ผู้ใช้สั่ง 2026-09-23: "ปุ่มลูกศรลง-ลูกศรขึ้นที่มุมขวาบน ใช้ปิด-เปิด UI หน้าล็อบบี้")
@@ -649,6 +701,15 @@ function ChannelSelectGui:Lock()
 	if self._locked then return end
 	self._locked = true
 	self.blackout.Visible = true
+	-- จุดไข่ปลาขยับ ให้อ่านว่า "กำลังโหลด" ไม่ใช่ "ค้าง" (ทรงเดียวกับจอไปล็อบบี้)
+	task.spawn(function()
+		local dots = 0
+		while self._locked and self.joinTitle.Parent do
+			dots = (dots + 1) % 4
+			self.joinTitle.Text = JOIN_TITLE .. string.rep(".", dots)
+			task.wait(0.4)
+		end
+	end)
 	for _, btn in pairs(self.tabs) do
 		btn.Active = false
 	end
