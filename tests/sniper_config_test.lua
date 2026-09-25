@@ -36,6 +36,20 @@ for _, r in ipairs(CraftConfig.Recipes or CraftConfig) do
 	if type(r) == "table" and r.id == "Sniper" and r.tab == "weapon" then recipe = r end
 end
 check(recipe ~= nil, "สูตรคราฟสไนที่ช่างตีเหล็ก")
+-- วัสดุที่ผู้ใช้กำหนด 2026-09-25
+local want = { Blueprint = 15, GearSpare = 8, Chemical = 8, Coal = 30, MagicOre = 15, Crystal = 15,
+	GoldOre = 5, SilverOre = 5, IronOre = 5, Silver = 3000 }
+for id, n in pairs(want) do
+	check(recipe and recipe.cost[id] == n, ("สูตรสไน %s = %d"):format(id, n))
+end
+local function find(id, tab)
+	for _, r in ipairs(CraftConfig.Recipes) do
+		if r.id == id and r.tab == tab then return r end
+	end
+end
+check(find("Greatsword", "weapon").cost.Silver == 3000 and find("Shield", "weapon").cost.Silver == 3000, "ดาบใหญ่/โล่ ใช้ซิลเวอร์ 3,000")
+check(find("Sniper", "unlucky") and find("Sniper", "unlucky").cost.Insignia == 50, "สไน แลกเหรียญค้อน 50")
+check(find("Greatsword", "unlucky").cost.Insignia == 50, "ดาบใหญ่ แลกเหรียญค้อน 50")
 for id in pairs(recipe and recipe.cost or {}) do
 	check(ItemCatalog.Items[id] ~= nil, "วัสดุ " .. id .. " มีจริง")
 end

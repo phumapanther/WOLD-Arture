@@ -77,15 +77,16 @@ CraftConfig.Recipes = {
 	-- แผ่นประกบหลายชั้น ไม่ใช่ก้อนเหล็กก้อนเดียว — เพชรกับแร่เวทเป็นตัวที่ทำให้โล่หายากกว่าดาบใหญ่จริงๆ
 	-- แม้โอกาสสำเร็จจะเท่ากัน
 	{ id = "Greatsword", tab = "weapon", chance = 0.25, gold = 25000,
-		cost = { IronOre = 30, GoldOre = 15, Blueprint = 5, Chemical = 5, Coal = 30, GearSpare = 8, WoodScrap = 30 } },
+		cost = { IronOre = 30, GoldOre = 15, Blueprint = 5, Chemical = 5, Coal = 30, GearSpare = 8, WoodScrap = 30, Silver = 3000 } },
 
 	-- โล่ไอน้ำ — โอกาสสำเร็จกับค่าจ้างเท่าดาบใหญ่ เพราะมันเป็นของชั้นเดียวกัน แค่คนละบทบาท
 	{ id = "Shield", tab = "weapon", chance = 0.25, gold = 25000,
 		cost = { IronOre = 15, SilverOre = 7, GoldOre = 7, MagicOre = 5, Diamond = 5, Blueprint = 5,
-			Chemical = 5, Coal = 30, GearSpare = 8 } },
-	-- สไนเปอร์ (ผู้ใช้เลือกให้คราฟที่ช่างตีเหล็ก 2026-09-25) · วัสดุผมตั้ง ทรงเดียวกับดาบใหญ่/โล่ ต่างที่คริสตัล (เลนส์สโคป)
+			Chemical = 5, Coal = 30, GearSpare = 8, Silver = 3000 } },
+	-- สไนเปอร์ — วัสดุผู้ใช้กำหนด 2026-09-25 (ดาบใหญ่/โล่เพิ่มซิลเวอร์ 3,000 ในรอบเดียวกัน)
 	{ id = "Sniper", tab = "weapon", chance = 0.25, gold = 25000,
-		cost = { IronOre = 30, GoldOre = 10, Crystal = 5, Coal = 20, GearSpare = 10, Blueprint = 5, Chemical = 5 } },
+		cost = { Blueprint = 15, GearSpare = 8, Chemical = 8, Coal = 30, MagicOre = 15, Crystal = 15,
+			GoldOre = 5, SilverOre = 5, IronOre = 5, Silver = 3000 } },
 
 	-- Bullets moved off the weapon bench and in here with the everyday goods, where a near-certain 95% is
 	-- what makes ammunition something you top up rather than gamble on.
@@ -132,8 +133,10 @@ CraftConfig.Recipes = {
 	{ id = "Pistol", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 25 } },
 	-- สองชิ้นหนักสุดราคาเท่ากันที่ 30 เหรียญ (ผู้ใช้กำหนด 2026-09-20) — แพงกว่าปืนซึ่งเคยเป็นของที่แพงที่สุด
 	-- เพราะทั้งคู่เป็นของที่ต้องลุ้นคราฟ 25% เหมือนกัน คนที่พลาดสามสิบครั้งจึงเดินมาเอาไปได้แน่ๆ หนึ่งชิ้น
-	{ id = "Greatsword", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 30 } },
+	-- ดาบใหญ่ 30 → 50 · สไน 50 (ผู้ใช้สั่ง 2026-09-25)
+	{ id = "Greatsword", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 50 } },
 	{ id = "Shield", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 30 } },
+	{ id = "Sniper", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 50 } },
 
 	----------------------------------------------------------------------------
 	-- The garage.
