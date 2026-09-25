@@ -259,16 +259,30 @@ function InventoryGui.new()
 	-- ที่ทุกคำสั่ง (ใส่/ใช้/ทิ้ง/ให้/ฝาก) ใช้อ้างถึงของชิ้นหนึ่ง ถ้าแท็บขยับเลขช่อง คนกดของชิ้นแรกจะได้
 	-- ของอีกชิ้นโดยไม่มี error ให้เห็น (บทเรียนเดียวกับบอร์ดเควสที่กรองคนละแบบสองที่)
 	-- ช่องที่ไม่เข้าแท็บจึงถูกหรี่ลง ไม่ใช่ถูกเอาออก
+	-- **หน้าตาแบบ segmented control** (ผู้ใช้ทัก 2026-09-25 "สีแปลก ไม่โมเดิร์น มองไม่ชัด" — เดิมแท็บที่เลือก
+	-- เป็นพื้นขาวทึบตัวหนังสือทอง อ่านไม่ออก) รางมืดขอบทองบาง · แท็บที่เลือกเป็นทองทึบตัวหนังสือเข้ม
 	local tabBar = Instance.new("Frame")
 	tabBar.Name = "Tabs"
-	tabBar.Position = UDim2.new(0.3, 0, 0, small and 24 or 34)
-	tabBar.Size = UDim2.new(0.68, -18, 0, small and 20 or 24)
-	tabBar.BackgroundTransparency = 1
+	tabBar.Position = UDim2.new(0.3, 0, 0, small and 22 or 32)
+	tabBar.Size = UDim2.new(0.68, -18, 0, small and 24 or 28)
+	tabBar.BackgroundColor3 = SLOT_BG
+	tabBar.BackgroundTransparency = 0.1
+	tabBar.BorderSizePixel = 0
 	tabBar.Parent = panel
+	corner(tabBar, UDim.new(0, 8))
+	local tabEdge = Instance.new("UIStroke")
+	tabEdge.Color = ACCENT
+	tabEdge.Transparency = 0.65
+	tabEdge.Thickness = 1
+	tabEdge.Parent = tabBar
+	local tabPad = Instance.new("UIPadding")
+	tabPad.PaddingLeft, tabPad.PaddingRight = UDim.new(0, 3), UDim.new(0, 3)
+	tabPad.PaddingTop, tabPad.PaddingBottom = UDim.new(0, 3), UDim.new(0, 3)
+	tabPad.Parent = tabBar
 
 	local tabLayout = Instance.new("UIListLayout")
 	tabLayout.FillDirection = Enum.FillDirection.Horizontal
-	tabLayout.Padding = UDim.new(0, 4)
+	tabLayout.Padding = UDim.new(0, 3)
 	tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	tabLayout.Parent = tabBar
 
@@ -277,11 +291,12 @@ function InventoryGui.new()
 	for order, spec in ipairs(InventoryGui.Tabs) do
 		local b = Instance.new("TextButton")
 		b.LayoutOrder = order
-		b.Size = UDim2.new(1 / #InventoryGui.Tabs, -4, 1, 0)
-		b.BackgroundColor3 = GLASS
-		b.BackgroundTransparency = 0.45
+		b.Size = UDim2.new(1 / #InventoryGui.Tabs, -3, 1, 0)
+		b.BackgroundColor3 = ACCENT
+		b.BackgroundTransparency = 1
+		b.AutoButtonColor = false
 		b.BorderSizePixel = 0
-		b.Font = Enum.Font.GothamMedium
+		b.Font = Enum.Font.GothamBold
 		b.TextSize = small and 11 or 12
 		b.TextColor3 = TEXT_MUTED
 		b.Text = spec.label
@@ -424,8 +439,9 @@ function InventoryGui:RefreshTabs()
 	local label
 	for id, button in pairs(self.bagTabs) do
 		local on = (id == self.bagTab)
-		button.BackgroundTransparency = on and 0 or 0.45
-		button.TextColor3 = on and ACCENT or TEXT_MUTED
+		-- ที่เลือก = ทองทึบ ตัวหนังสือเข้ม · ที่ไม่ได้เลือก = ใส ตัวหนังสือเทาอ่อนบนรางมืด (อ่านชัดทั้งคู่)
+		button.BackgroundTransparency = on and 0 or 1
+		button.TextColor3 = on and PANEL_BG or TEXT_MUTED
 		if on then label = button.Text end
 	end
 	-- **ปุ่มบอกว่ากำลังจะจัดใบไหน** กระเป๋าสองใบแยกกันแล้ว ปุ่มที่เขียนแค่ "จัดกระเป๋า" ทำให้ไม่รู้ว่า
