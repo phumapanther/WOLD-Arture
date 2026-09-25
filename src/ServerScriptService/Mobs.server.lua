@@ -899,7 +899,8 @@ local function damage(model, amount, attacker)
 			task.defer(Mobs.OnEventMobKilled, spawner)
 		end
 	end
-	return true
+	-- ค่าที่สอง = ไม้นี้ฆ่ามันไหม (สไนคืนมานาเมื่อฆ่าได้ — ผู้ใช้สั่ง 2026-09-25)
+	return true, state.hp <= 0
 end
 
 MobAccess.Damage = damage

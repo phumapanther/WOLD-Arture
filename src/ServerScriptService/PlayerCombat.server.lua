@@ -497,6 +497,8 @@ local function fireSniper(player, weapon, attack, aim)
 			awardKill(player, victim)
 			StatusEffects.SetAsleep(victim, true)
 		end
+		-- ฆ่าได้ = คืนมานา 1 เม็ด (ผู้ใช้สั่ง 2026-09-25) · เกมหลักล้ม = เลือด 0 · สนามตายเลย = เลือด 0 เหมือนกัน
+		if landed and not wasDowned and vstate.hp <= 0 then Vitals.AddMana(player, 1) end
 		return
 	end
 
@@ -512,7 +514,9 @@ local function fireSniper(player, weapon, attack, aim)
 			amount = head and humanoid.Health or humanoid.MaxHealth * weapon.pierceFraction
 			if head and ArenaAccess.OnHeadshot then ArenaAccess.OnHeadshot(player, model) end
 		end
-		if MobAccess.Damage(model, amount, player, true) then playHitSound(model, player) end
+		local hit, killed = MobAccess.Damage(model, amount, player, true)
+		if hit then playHitSound(model, player) end
+		if killed then Vitals.AddMana(player, 1) end -- ฆ่าได้ = คืนมานา 1 เม็ด (มอน/บอทสนาม)
 	end
 end
 

@@ -489,7 +489,7 @@ function ArenaBots.Damage(model, amount, attacker, pierce)
 	if state.hp <= 0 then
 		ArenaBots.Kill(model, attacker)
 	end
-	return true
+	return true, state.hp <= 0 -- ค่าที่สอง = ไม้นี้ฆ่าไหม (เหมือน Mobs.damage)
 end
 
 function ArenaBots.Stun(model, seconds)
