@@ -17,6 +17,7 @@ local MobAccess = require(game.ServerScriptService.MobAccess)
 local ArenaAccess = require(game.ServerScriptService.ArenaAccess)
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local ArenaConfig = require(game.ReplicatedStorage.ArenaConfig)
+local RayThrough = require(game.ReplicatedStorage.RayThrough)
 local FishingAccess = require(game.ServerScriptService.FishingAccess)
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
@@ -442,7 +443,18 @@ local function fireSniper(player, weapon, attack, aim)
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = { character }
 	params.IgnoreWater = true
-	local result = workspace:Raycast(muzzle, forward * spec.length, params)
+	-- ทะลุเพื่อนร่วมทีม/ตี้ และศพ (รีวิวจบงาน: เพื่อนยืนขวางแนวยิงเคยกินนัดทิ้งทั้งที่ศัตรูอยู่ข้างหลัง)
+	local function passThrough(part)
+		local m = characterOf(part)
+		if not m then return nil end
+		local hum = m:FindFirstChildOfClass("Humanoid")
+		if hum and hum.Health <= 0 then return m end
+		local v = Players:GetPlayerFromCharacter(m)
+		if v and Party.SameParty(player, v) then return m end
+		if ArenaAccess.Friendly and ArenaAccess.Friendly(player, v or m) then return m end
+		return nil
+	end
+	local result = RayThrough.Cast(muzzle, forward * spec.length, params, passThrough)
 	local endPoint = result and result.Position or (muzzle + forward * spec.length)
 
 	playCastSound(player) -- เสียงปืนดังตอนกระสุนออก ไม่ใช่ตอนคลิก
