@@ -57,6 +57,8 @@ local E = ArenaConfig.Economy
 check(E.start == 700, ("ซิลเวอร์เริ่มต้น %d (สเปก 700 · ผู้ใช้เปลี่ยน 2026-09-25)"):format(E.start))
 check(E.overtimeRound == 7 and E.overtimeSilver == 5000, "รอบ 7 ขึ้นไปทุกคนเริ่มรอบด้วย 5,000")
 check(E.roundWin > E.roundLoss, "ชนะรอบได้มากกว่าแพ้รอบ")
+check(E.roundWin == 350 and E.roundWinMax == 550, "ทีมชนะได้ 350 สูงสุด 550 (ผู้ใช้สั่ง 2026-09-25)")
+check(E.roundLoss == 300 and E.roundLossMax == 450, "ทีมแพ้ได้ 300 สูงสุด 450 (ผู้ใช้สั่ง 2026-09-25)")
 check(E.perKill > 0 and E.roundTopFragger > 0, "มีโบนัสคิลและโบนัสคนฆ่าเยอะสุด")
 check(E.cap > E.start, "เพดานสะสมสูงกว่าเงินตั้งต้น")
 
