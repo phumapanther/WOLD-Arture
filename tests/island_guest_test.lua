@@ -22,7 +22,7 @@ local slot = assert(A("FindSlot", player, "FarmPlot"), "เสกแปลงไ
 local cx, cz
 for x = -20, 20 do
 	for z = -20, 20 do
-		if A("CanPlaceAt", x, z, 2, 2, 0, "FarmPlot") then cx, cz = x, z break end
+		if A("CanPlaceAt", x, z, 3, 3, 0, "FarmPlot") then cx, cz = x, z break end
 	end
 	if cx then break end
 end

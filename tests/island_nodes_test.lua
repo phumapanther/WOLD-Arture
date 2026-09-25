@@ -83,7 +83,7 @@ local slot = assert(A("FindSlot", player, "FarmPlot"), "เสกแปลงไ
 local cx, cz
 for _, m in ipairs(folder:GetChildren()) do
 	local x, z = IslandGrid.cellOf(m:GetPivot().X, m:GetPivot().Z)
-	if A("CanPlaceAt", x, z, 2, 2, 0, "FarmPlot") then cx, cz = x, z break end
+	if A("CanPlaceAt", x, z, 3, 3, 0, "FarmPlot") then cx, cz = x, z break end
 end
 if cx then
 	local ok = A("Place", player, slot, cx, cz, 0)

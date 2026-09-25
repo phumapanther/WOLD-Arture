@@ -153,7 +153,7 @@ local slot = assert(A("FindSlot", player, "FarmPlot"), "เสกแปลงไ
 local px, pz
 for x = -20, 20 do
 	for z = -20, 20 do
-		if A("CanPlaceAt", x, z, 2, 2, 0, "FarmPlot") then px, pz = x, z break end
+		if A("CanPlaceAt", x, z, 3, 3, 0, "FarmPlot") then px, pz = x, z break end
 	end
 	if px then break end
 end

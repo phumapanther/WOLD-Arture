@@ -96,7 +96,8 @@ local function showCrop(model, entry, stage)
 		crop:PivotTo(CFrame.new(soil.Position + Vector3.new(0, soil.Size.Y / 2, 0)))
 		crop.Parent = model
 	end
-	crop:ScaleTo(IslandConfig.Stages[stage].scale)
+	-- โตตามขนาดแปลง (แปลงขยาย 1.5 เท่า 2026-09-25 → ผักก็ใหญ่ตาม) · `GetScale` ของแปลงคือสเกลของต้นแบบที่โคลนมา
+	crop:ScaleTo(IslandConfig.Stages[stage].scale * model:GetScale())
 end
 
 --------------------------------------------------------------------------------

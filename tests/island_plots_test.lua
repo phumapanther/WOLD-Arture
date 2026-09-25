@@ -40,11 +40,12 @@ ok, why = A("Harvest", player, model); assert(not ok and why == "unripe", "เ�
 ok, why = A("Pickup", player, uid); assert(not ok and why == "growing", "เก็บแปลงที่ปลูกอยู่: " .. tostring(why))
 A("Tick")
 local crop = assert(model:FindFirstChild("Crop"), "โมเดลพืชโผล่")
-assert(math.abs(crop:GetScale() - 0.35) < 0.01, "ระยะแรกสเกล 0.35 ได้ " .. crop:GetScale())
+local plotScale = model:GetScale() -- แปลงขยาย 1.5 เท่า (2026-09-25) ผักใหญ่ตาม
+assert(math.abs(crop:GetScale() - 0.35 * plotScale) < 0.01, "ระยะแรกสเกล 0.35 x แปลง ได้ " .. crop:GetScale())
 
 assert(A("SetEntry", uid, "at", os.time() - 100000), "เร่งเวลา") -- แก้ของจริงผ่านเซิร์ฟเวอร์
 A("Tick")
-assert(math.abs(crop:GetScale() - 1) < 0.01, "สุกแล้วสเกล 1 ได้ " .. crop:GetScale())
+assert(math.abs(crop:GetScale() - plotScale) < 0.01, "สุกแล้วสเกลเท่าแปลง ได้ " .. crop:GetScale())
 assert(model.Soil.PlotPrompt.ActionText == "เก็บเกี่ยว", "ป้ายเก็บเกี่ยว ได้ " .. model.Soil.PlotPrompt.ActionText)
 local cropItem = e.crop
 local before = A("Count", player, cropItem)

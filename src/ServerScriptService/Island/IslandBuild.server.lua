@@ -285,12 +285,72 @@ local function despawnEntry(entry)
 end
 
 -- สร้างเกาะคืนจากข้อมูล — ล้างของเดิมก่อนเสมอ จึงเรียกซ้ำได้ (เจ้าของออกแล้วเข้าใหม่ = โปรไฟล์ตารางใหม่)
+-- **ของที่ซ้อนกันเพราะต้นแบบถูกขยาย → ดันออกไปช่องว่างที่ใกล้ที่สุด** (ผู้ใช้สั่ง 2026-09-25 ตอนขยายแปลงผัก
+-- 2x2 → 3x3: "ถ้าใครวางแปลงติดๆ กัน พอขยายก็ให้มันดันกันออกไป จะได้ไม่ซ้อนกัน")
+--
+-- ทำตอนสร้างคืน (ก่อนปลูกโมเดลตัวนั้น) แล้วจดตำแหน่งใหม่ลงโปรไฟล์ = ย้ายครั้งเดียว รอบหน้าไม่ซ้อนแล้วก็ไม่ทำอะไร
+-- ของที่ต้องย้าย: ช่องทับของที่ปลูกไปก่อน · ของที่ต้องอยู่บนดินแต่ขยายแล้วล้นออกนอกดิน
+-- หาที่ใหม่ด้วยด่านเดียวกับการวางของปกติ (`canPlace`) เป็นวงรอบจุดเดิมออกไปทีละช่อง · หาไม่เจอ = อยู่ที่เดิม (ของไม่หาย)
+local NUDGE_RADIUS = 16
+
+local function misplaced(entry, w, d)
+	for _, key in ipairs(IslandGrid.cellsOf(entry.x, entry.z, w, d, entry.r)) do
+		if Occupied[key] then return true end
+	end
+	if IslandConfig.SoilOnly[entry.id] then
+		local fw, fd = IslandGrid.footprintOf(w, d, entry.r)
+		for i = 0, fw - 1 do
+			for j = 0, fd - 1 do
+				if not IslandGrid.isSoil(entry.x + i, entry.z + j) then return true end
+			end
+		end
+	end
+	return false
+end
+
+local function nudge(entry, w, d)
+	local zones = noBuildZones()
+	for radius = 1, NUDGE_RADIUS do
+		for dx = -radius, radius do
+			for dz = -radius, radius do
+				if math.max(math.abs(dx), math.abs(dz)) == radius then
+					local cx, cz = entry.x + dx, entry.z + dz
+					if IslandGrid.canPlace(Occupied, zones, cx, cz, w, d, entry.r, entry.id) then return cx, cz end
+				end
+			end
+		end
+	end
+	return nil
+end
+
 local function rebuild()
 	for _, model in ipairs(placedFolder():GetChildren()) do model:Destroy() end
 	Occupied, Models, Entries = {}, {}, {}
 	if not Data then return end
-	for _, entry in ipairs(Data.placed) do spawnEntry(entry) end
-	print(("[Island] สร้างคืน %d ชิ้น"):format(#Data.placed))
+	-- ของที่ไม่ต้องอยู่บนดินก่อน (ขนาดไม่เปลี่ยน ไม่เคยซ้อนกัน) แล้วค่อยแปลงผัก — ตัวที่ถูกดันจึงเป็นแปลง ไม่ใช่บ้าน
+	local ordered = {}
+	for _, entry in ipairs(Data.placed) do
+		if not IslandConfig.SoilOnly[entry.id] then table.insert(ordered, entry) end
+	end
+	for _, entry in ipairs(Data.placed) do
+		if IslandConfig.SoilOnly[entry.id] then table.insert(ordered, entry) end
+	end
+	local moved = 0
+	for _, entry in ipairs(ordered) do
+		local proto = (entry.variant and prototypeOf(entry.variant)) or prototypeOf(entry.id)
+		if proto then
+			local w, d = footprintOf(proto)
+			if misplaced(entry, w, d) then
+				local cx, cz = nudge(entry, w, d)
+				if cx then
+					entry.x, entry.z = cx, cz
+					moved += 1
+				end
+			end
+		end
+		spawnEntry(entry)
+	end
+	print(("[Island] สร้างคืน %d ชิ้น%s"):format(#Data.placed, moved > 0 and (" · ดันของที่ซ้อนออก %d ชิ้น"):format(moved) or ""))
 end
 
 --------------------------------------------------------------------------------
