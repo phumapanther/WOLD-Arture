@@ -33,6 +33,12 @@ local CHARM_ITEM = "GuardianCharm"
 local function spendCharm(player)
 	local index = Inventory.FindSlotById(player, CHARM_ITEM)
 	if not index then return false end
+	-- **หัวแดง = เครื่องรางไม่ทำงาน** (ผู้ใช้สั่ง 2026-09-25) — ไม่แตกด้วย (ของยังอยู่ ใช้ได้ตอนหัวไม่แดง)
+	if Classes.IsMarked(player) then
+		Remotes.SocialNotify:FireClient(player, "warn",
+			"หัวแดงอยู่ — เครื่องรางคุ้มครองไม่ทำงาน เลเวลและอาชีพรีเซ็ต")
+		return false
+	end
 	if not Inventory.RemoveFromSlot(player, index, 1) then return false end
 
 	Remotes.SocialNotify:FireClient(player, "info",

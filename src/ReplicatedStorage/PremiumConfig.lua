@@ -191,11 +191,13 @@ local function item(id, n) return { item = id, count = n or 1 } end
 
 -- หีบสายฟรีให้ทีละใบ **สายพรีเมียมให้ทีละสิบใบ** (ผู้ใช้กำหนด 2026-09-20 — เดิมสายพรีเมียมก็ใบเดียว)
 -- หีบหนึ่งกองได้ 8 ใบ สิบใบจึงกินสองช่องและหนักราว 80-100 หน่วย: ตั้งใจให้เป็นของที่ต้องขนกลับบ้าน
+-- เครื่องรางคุ้มครอง (ผู้ใช้สั่ง 2026-09-25 "แบทเทิลพาสแจกโทเท็มด้วย") — ขั้นที่ใส่ผมเลือก:
+-- สายฟรีขั้น 17 (แทนถ่านหิน 20) · สายพรีเมียมขั้น 14 กับ 24 (แทนเฟืองอะไหล่)
 PremiumConfig.Pass.Free = {
 	[1] = silver(100), [2] = gold(1000), [3] = silver(150), [4] = item("Bread", 5), [5] = item("Chest_Wood"),
 	[6] = silver(150), [7] = gold(1500), [8] = item("Insignia", 1), [9] = silver(200), [10] = item("Chest_Ironbound"),
 	[11] = silver(200), [12] = gold(2000), [13] = item("Feast_Hearty"), [14] = silver(250), [15] = item("Chest_Ironbound"),
-	[16] = silver(250), [17] = item("Coal", 20), [18] = gold(2500), [19] = silver(300), [20] = item("Chest_Silver"),
+	[16] = silver(250), [17] = item("GuardianCharm", 1), [18] = gold(2500), [19] = silver(300), [20] = item("Chest_Silver"),
 	[21] = silver(300), [22] = item("Insignia", 2), [23] = gold(3000), [24] = silver(350), [25] = item("Chest_Silver"),
 	-- ขั้นสุดท้ายสายฟรี: กล่องเวทมนตร์ **ใบเดียว** (ผู้ใช้กำหนด) — สายพรีเมียมได้สิบใบที่ขั้นเดียวกัน
 	[26] = silver(400), [27] = item("Tonic_Vigor"), [28] = gold(4000), [29] = item("Chest_Gold"), [30] = item("MagicBox", 1),
@@ -204,9 +206,9 @@ PremiumConfig.Pass.Free = {
 PremiumConfig.Pass.Premium = {
 	[1] = gems(50), [2] = item("Chemical", 3), [3] = silver(300), [4] = item("GearSpare", 3), [5] = item("Chest_Ironbound", 10),
 	[6] = item("Blueprint", 2), [7] = gold(3000), [8] = item("Insignia", 3), [9] = item("Feast_Royal"), [10] = item("Chest_Silver", 10),
-	[11] = item("Chemical", 5), [12] = silver(500), [13] = gems(50), [14] = item("GearSpare", 5), [15] = item("Chest_Silver", 10),
+	[11] = item("Chemical", 5), [12] = silver(500), [13] = gems(50), [14] = item("GuardianCharm", 1), [15] = item("Chest_Silver", 10),
 	[16] = item("Blueprint", 3), [17] = gold(5000), [18] = item("Insignia", 5), [19] = item("Feast_Royal", 2), [20] = item("Chest_Gold", 10),
-	[21] = item("Chemical", 8), [22] = silver(800), [23] = gems(100), [24] = item("GearSpare", 8), [25] = item("Chest_Gold", 10),
+	[21] = item("Chemical", 8), [22] = silver(800), [23] = gems(100), [24] = item("GuardianCharm", 1), [25] = item("Chest_Gold", 10),
 	-- ขั้นสุดท้ายสายพรีเมียม: กล่องเวทมนตร์ 10 ใบ (หีบทอง 20 ใบที่เคยอยู่ขั้นนี้ย้ายไปขั้น 29)
 	[26] = item("Blueprint", 5), [27] = gold(8000), [28] = item("Insignia", 10), [29] = item("Chest_Gold", 20), [30] = item("MagicBox", 10),
 }

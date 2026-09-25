@@ -153,13 +153,18 @@ local function payout()
 	for rank, row in ipairs(ranked) do
 		local bracket = bracketFor(rank)
 		if bracket then
-			local extra = nil
-			if Killed and LastHitUserId == row.userId and WB.LastHit then
-				extra = { { id = WB.LastHit.item, count = WB.LastHit.count or 1 } }
+			local extra = {}
+			local lastHit = Killed and LastHitUserId == row.userId and WB.LastHit ~= nil
+			if lastHit then
+				table.insert(extra, { id = WB.LastHit.item, count = WB.LastHit.count or 1 })
+			end
+			-- อันดับ 1-5 ได้เครื่องรางคุ้มครองแน่นอน (ผู้ใช้สั่ง 2026-09-25)
+			if WB.CharmTopRanks and rank <= WB.CharmTopRanks then
+				table.insert(extra, { id = WB.CharmItem or "GuardianCharm", count = 1 })
 			end
 			local letter = letterFor(rank, row, bracket, extra)
 			-- ส่งแยกเธรด: MessageAsync ค้างได้หลายวินาทีต่อคน ไม่ให้ถ่วง stop hook ที่ต้องเก็บบอสออก
-			local stats = { bossJoins = 1, bossTop1 = rank == 1 and 1 or 0, bossLastHits = extra and 1 or 0 }
+			local stats = { bossJoins = 1, bossTop1 = rank == 1 and 1 or 0, bossLastHits = lastHit and 1 or 0 }
 			task.spawn(function()
 				if not Mail.Send(row.userId, letter) then
 					warn(("[WorldBoss] ส่งรางวัลถึง %s (%d) ไม่สำเร็จ:"):format(row.name, row.userId), letter.subject)
@@ -172,7 +177,7 @@ local function payout()
 				Remotes.SocialNotify:FireClient(player, "info",
 					("%s (ดาเมจ %d) — รางวัลส่งเข้ากล่องจดหมายแล้ว (P → กล่องจดหมาย)")
 						:format(bracket.label or ("อันดับ " .. rank), math.floor(row.damage)))
-				if extra then
+				if lastHit then
 					Remotes.SocialNotify:FireClient(player, "info", "ไม้สุดท้ายเป็นของคุณ! กล่องเวทมนตร์อยู่ในจดหมายฉบับเดียวกัน")
 				end
 			end
