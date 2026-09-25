@@ -120,17 +120,6 @@ end
 gui:AddMenuItem("💎 ร้านค้าพรีเมียม", Color3.fromRGB(70, 100, 150), function() openPremium("shop") end)
 gui:AddMenuItem("🎰 กาชา", Color3.fromRGB(120, 70, 150), function() openPremium("gacha") end)
 gui:AddMenuItem("🎫 แบทเทิลพาส", Color3.fromRGB(150, 110, 40), function() openPremium("pass") end)
--- เกาะฟาร์ม: ทางเข้าโหมดจัดเกาะของมือถือ (ไม่มีคีย์ F4) · ช่องทางเป็นของ IslandBuildController หยิบตอนกด
-if workspace:GetAttribute("IslandMode") == true then
-	gui:AddMenuItem("🏗️ จัดเกาะ (F4)", Color3.fromRGB(70, 120, 80), function()
-		local toggle = game.ReplicatedStorage:FindFirstChild("WOLD_ToggleBuildMode")
-		if toggle then
-			toggle:Fire()
-		else
-			warn("[Hud] ยังไม่มี WOLD_ToggleBuildMode — IslandBuildController ยังไม่พร้อมหรือหยุดกลางทาง")
-		end
-	end)
-end
 
 gui:OnLobbyRequested(function()
 	-- Server-authoritative: it saves the player's position THEN teleports, because PlayerRemoving does not

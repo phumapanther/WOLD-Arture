@@ -1,6 +1,7 @@
 -- IslandBuildController: โหมดจัดเกาะมุมสูง (ผู้ใช้สั่ง 2026-09-25) — ทุกการวาง/ย้าย/หมุน/เก็บของบนเกาะผ่านที่นี่
 --
--- เข้า: F4 · กระเป๋า → "ใช้ · จัดเกาะ" บนของวางได้ · เมนูสามจุด (มือถือ) — ออก: F4 · ปุ่มออก
+-- เข้า: F4 · กระเป๋า → "ใช้ · จัดเกาะ" บนของวางได้ · มือถือ: ปุ่ม 🏗️ ขวาบนข้างปุ่มแนะนำการเล่น — ออก: ทางเดิม · ปุ่มออก
+-- ปุ่ม F "เก็บเข้ากระเป๋า" บนของที่วางไว้ **โชว์เฉพาะตอนอยู่ในโหมดนี้** (ผู้ใช้สั่ง 2026-09-25) ไฟล์นี้เป็นเจ้าของ Enabled
 -- กล้องล็อกมุมสูงตามตัวละคร (เดินได้ปกติ = เลื่อนมุมมอง) · ล้อเมาส์ซูม
 --   แถบล่าง  แตะของ → ghost ตามตัวชี้ → คลิก (มือถือ: ปุ่ม "วาง") วาง
 --   ของบนเกาะ แตะ = เลือก (ย้าย/หมุน/เก็บ) · กดค้างแล้วลาก = ย้ายเลย ปล่อยตรงไหนวางตรงนั้น
@@ -22,6 +23,9 @@ local CollectionService = game:GetService("CollectionService")
 local IslandConfig = require(ReplicatedStorage.IslandConfig)
 local IslandGrid = require(ReplicatedStorage.IslandGrid)
 local ItemCatalog = require(ReplicatedStorage.ItemCatalog)
+local QuestConfig = require(ReplicatedStorage.QuestConfig)
+local Responsive = require(ReplicatedStorage.UI.Responsive)
+local ProximityPromptService = game:GetService("ProximityPromptService")
 local Remotes = require(ReplicatedStorage.Remotes)
 local IslandBuildGui = require(ReplicatedStorage.UI.IslandBuildGui)
 
@@ -376,6 +380,100 @@ end
 
 gui.OnExit = exitMode
 gui.OnPick = function(slotIndex, id) startNew(slotIndex, id) end
+
+--------------------------------------------------------------------------------
+-- ปุ่ม F "เก็บเข้ากระเป๋า" — โชว์เฉพาะในโหมดจัดเกาะ
+--------------------------------------------------------------------------------
+
+-- เก็บคืนได้ไหม (ฝั่งที่ดูได้จากโลก): ของที่เก็บเกี่ยวไปแล้ววันนี้ย้ายเข้ากระเป๋าไม่ได้ถึงพรุ่งนี้ = ซ่อน
+-- (กติกา "ปุ่มที่ติดคูลดาวน์ต้องซ่อนเสมอ") · เหตุผลอื่น (แปลงยังปลูกอยู่ คอกมีสัตว์) เซิร์ฟเวอร์ปฏิเสธพร้อมข้อความ
+local function pickupWanted(model)
+	return buildMode and model:GetAttribute("HarvestedDay") ~= QuestConfig.DayNumber()
+end
+
+local function pickupPromptOf(model)
+	local root = model.PrimaryPart
+	return root and root:FindFirstChild("PickupPrompt")
+end
+
+local function refreshPickupPrompts()
+	local folder = placedFolder()
+	if not folder then return end
+	for _, model in ipairs(folder:GetChildren()) do
+		local prompt = pickupPromptOf(model)
+		if prompt then
+			local want = pickupWanted(model)
+			if prompt.Enabled ~= want then prompt.Enabled = want end
+		end
+	end
+end
+
+-- ลูปถามใหม่ (กฎเหล็ก StreamingEnabled: ของบนเกาะถูกวาง/สตรีมมาถึงตอนไหนก็ได้)
+task.spawn(function()
+	while true do
+		refreshPickupPrompts()
+		task.wait(0.25)
+	end
+end)
+-- ปุ่มที่เพิ่งสตรีมมาถึงแล้วโผล่ก่อนรอบลูป — ดับทันที ไม่ให้กระพริบ
+ProximityPromptService.PromptShown:Connect(function(prompt)
+	if prompt.Name ~= "PickupPrompt" then return end
+	local model = prompt.Parent and prompt.Parent.Parent
+	if model and not pickupWanted(model) then prompt.Enabled = false end
+end)
+
+--------------------------------------------------------------------------------
+-- ปุ่มเปิด/ปิดโหมดของมือถือ — ขวาบน ซ้ายมือของปุ่มแนะนำการเล่น (!)
+--------------------------------------------------------------------------------
+
+-- กล่อง 220x140 ชิดขวาบน ย่อด้วยสเกลเดียวกับ HUD/ปุ่มแนะนำการเล่น (บทเรียน: ปุ่มที่ตรึงพิกเซลเองจะเดินคนละทาง
+-- กับกลุ่มที่ย่อด้วย UIScale แล้วซ้อนกันทุกครั้งที่จอเปลี่ยนขนาด) · ปุ่ม ! อยู่ที่ x -56 กว้าง 38 → ปุ่มนี้ -102
+if UserInputService.TouchEnabled then
+	local toggleGui = Instance.new("ScreenGui")
+	toggleGui.Name = "WOLD_BuildToggle"
+	toggleGui.ResetOnSpawn = false
+	toggleGui.IgnoreGuiInset = true
+	toggleGui.DisplayOrder = 41 -- เหนือหน้าจอจัดเกาะ (40) จะได้กดออกได้เสมอ
+	toggleGui.Parent = playerGui
+
+	local group = Instance.new("Frame")
+	group.AnchorPoint = Vector2.new(1, 0)
+	group.Position = UDim2.new(1, 0, 0, 0)
+	group.Size = UDim2.fromOffset(220, 140)
+	group.BackgroundTransparency = 1
+	group.Parent = toggleGui
+	Responsive.Scale(group, 0.55)
+
+	local button = Instance.new("TextButton")
+	button.Name = "BuildModeButton"
+	button.AnchorPoint = Vector2.new(1, 0)
+	button.Position = UDim2.new(1, -102, 0, 7)
+	button.Size = UDim2.fromOffset(38, 38)
+	button.BackgroundColor3 = Color3.fromRGB(40, 38, 46)
+	button.BackgroundTransparency = 0.35
+	button.BorderSizePixel = 0
+	button.TextSize = 20
+	button.Text = "🏗️"
+	button.AutoButtonColor = false
+	button.Parent = group
+	local round = Instance.new("UICorner")
+	round.CornerRadius = UDim.new(1, 0)
+	round.Parent = button
+	local rim = Instance.new("UIStroke")
+	rim.Color = Color3.fromRGB(196, 150, 60)
+	rim.Thickness = 2
+	rim.Transparency = 0.2
+	rim.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rim.Parent = button
+	button.Activated:Connect(function() toggleMode() end)
+	-- สีขอบบอกสถานะ: ทอง = ปิดอยู่ · เขียว = กำลังจัดเกาะ (แตะอีกครั้งเพื่อออก)
+	task.spawn(function()
+		while true do
+			rim.Color = buildMode and Color3.fromRGB(111, 224, 122) or Color3.fromRGB(196, 150, 60)
+			task.wait(0.25)
+		end
+	end)
+end
 
 --------------------------------------------------------------------------------
 -- ghost ทุกเฟรม: ตัวชี้ → เรย์ลง Terrain → ช่อง → ตรวจ → วาง ghost + ระบายสี
