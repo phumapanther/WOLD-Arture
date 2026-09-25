@@ -173,13 +173,13 @@ CombatConfig.Weapons = {
 		chainResetDelay = 0.6,
 		chainWindow = 1.4,
 	},
-	-- สไนเปอร์ (ผู้ใช้สั่ง 2026-09-25): กดยิงแล้วซูมเป็นสโคป กระสุนออกใน 0.5 วิ ไปตรงกลางกากบาท ณ วินาทีนั้น
-	-- · `quickDraw` = คลิกเดียวยิงเลย ไม่ต้องคลิกแรกยกการ์ดเหมือนอาวุธอื่น
-	-- · `manaCost` หักตอนคลิก ไม่พอ = ไม่เริ่มท่าเลย · `scope` = ไคลเอนต์เปิดจอสโคปและส่งจุดเล็งล่าสุด
+	-- สไนเปอร์ (ผู้ใช้สั่ง 2026-09-25 รอบสอง): **คลิกแรก = ส่อง** (มุมมองบุคคลที่หนึ่ง แล้วขึ้นสโคปซูมไกล)
+	-- **คลิกสอง = ยิงทันที** แล้วหลุดสโคป · คลิกขวา = เลิกส่อง · "ส่อง" คือสถานะการ์ดเดิมของระบบต่อสู้
+	-- · `scope` = ไคลเอนต์เปิดสโคปตอนการ์ดขึ้น และปืนย้ายจากมือขวาไปกลางอกตลอดที่ส่อง (WeaponVisuals)
+	-- · `manaCost` หักตอนยิง · มานาไม่พอ = ส่องไม่ได้ตั้งแต่คลิกแรก
 	-- · `pierceFraction` = ลดเลือดคนเป็นสัดส่วนของเลือดเต็ม ไม่ผ่านเกราะ · `mobDamage` = มอนเกมหลัก (ผู้ใช้เลือก)
-	-- · ท่ายืนของคทา (ผู้ใช้สั่ง "ถือเหมือนคทา") ท่ายิงไม่มี — ปืนติดอก ไม่ต้องเหวี่ยงอะไร
+	-- · ท่ายืนของคทาตลอดที่ส่อง (ผู้ใช้สั่ง "ถือเหมือนคทา") · `idleTimeout` 20 = ส่องรอเป้าได้นาน
 	Sniper = {
-		quickDraw = true,
 		manaCost = 1,
 		scope = true,
 		pierceFraction = 0.5,
@@ -187,9 +187,9 @@ CombatConfig.Weapons = {
 		idleAnimation = "rbxassetid://77326470579844", -- Staff_Idle
 		guardAnimation = "",
 		guardWalkSpeed = 6,
-		idleTimeout = 4,
+		idleTimeout = 20,
 		attacks = {
-			{ animation = "", damage = 0, windup = 0.5, active = 0.05, recovery = 0.6, range = 0,
+			{ animation = "", damage = 0, windup = 0.05, active = 0.05, recovery = 0.6, range = 0,
 				projectile = { kind = "hitscan", length = 400, life = 0.12, size = Vector3.new(0.08, 0.08, 1),
 					color = Color3.fromRGB(255, 240, 200), material = Enum.Material.Neon, muzzleHeight = 1.5 } },
 		},

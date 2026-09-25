@@ -11,6 +11,7 @@ local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local Inventory = require(game.ServerScriptService.Inventory)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local WeaponVisualsAccess = require(game.ServerScriptService.WeaponVisualsAccess)
+local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 
 if ServerConfig.IsLobby then return end
@@ -83,8 +84,8 @@ local GRIP = {
 	-- SWORD_GRIP. All that remains is pulling the model back 2.0 studs so the palm holds the stock rather
 	-- than the muzzle.
 	Pistol = CFrame.new(0, -0.2, 0) * CFrame.new(0, -2.0, 0),
-	-- สไน: **ติดกลางอกตลอด ปากกระบอกชี้ไปหน้า** (ผู้ใช้สั่ง "ถือเหมือนคฑา ปืนอยู่กลางอกแต่ชี้ไปด้านหน้าแบบปืน")
-	-- จุดยึดคือ UpperTorso (ดู ANCHOR_ALWAYS) · หมุนให้แกน +Y ของโมเดล (ไปทางพานท้าย) ชี้ไปหลัง (+Z ลำตัว)
+	-- สไน **ตอนส่องสโคป**: กลางอก ปากกระบอกชี้ไปหน้า (ผู้ใช้สั่ง "ปืนอยู่กลางอกแต่ชี้ไปด้านหน้าแบบปืน") · ตอนถือเฉยๆ ใช้ CARRY_GRIP
+	-- จุดยึดคือ UpperTorso (ดู ATTACH_TO) · หมุนให้แกน +Y ของโมเดล (ไปทางพานท้าย) ชี้ไปหลัง (+Z ลำตัว)
 	-- และ +Z ของโมเดล (กล้องเล็ง) ชี้ขึ้น · ปากกระบอกห่างหน้าอก 3.7 สตัด = ด้ามจับอยู่หน้าอกพอดี
 	-- ปรับเลขนี้ได้อย่างเดียวถ้าในเกมดูไม่ตรง ไม่ต้องแตะโมเดล
 	Sniper = CFrame.fromMatrix(Vector3.new(0, 0.1, -3.7), Vector3.new(-1, 0, 0), Vector3.new(0, 0, 1), Vector3.new(0, 1, 0)),
@@ -106,6 +107,8 @@ local GRIP = {
 -- the hand they went where the hand went, which is off to one side (measured: spellbook at x=2.5 instead of
 -- centred).
 local ATTACH_TO = {
+	-- สไน: มือขวาตอนถือเฉยๆ · กลางอกตลอดที่ส่องสโคป (ผู้ใช้สั่ง 2026-09-25 รอบสอง — ดู Aiming)
+	Sniper = "UpperTorso",
 	Spellbook = "UpperTorso",
 	Staff = "UpperTorso",
 }
@@ -117,7 +120,6 @@ local ATTACH_TO = {
 -- ส่วนโล่รัดอยู่กับแขนตลอดเวลา ไม่มีจังหวะไหนที่มันควรไปอยู่ในฝ่ามือ
 local ANCHOR_ALWAYS = {
 	Shield = "RightLowerArm",
-	Sniper = "UpperTorso", -- สไนติดกลางอกตลอด (ผู้ใช้สั่ง 2026-09-25)
 }
 
 -- ...but that is only right while the attack pose is up.
@@ -137,6 +139,9 @@ local CARRY_GRIP = {
 	-- the staff floated clear of the fist; 0.6 puts the grip in the palm. Small numbers here because the
 	-- staff's origin already sits near its middle, unlike the sword's, which hangs from the hilt at +2.
 	Staff = CFrame.new(0, -0.6, 0) * CFrame.Angles(math.rad(-90), 0, 0),
+	-- สไนในมือขวาแบบปืนพก (ผังโมเดลเดียวกัน: ปากกระบอกที่จุดกำเนิด ตัวปืนไป +Y) — ด้ามจับอยู่ที่ y 3.35
+	-- จึงดึงกลับ 3.35 ให้ฝ่ามือจับด้าม ลำกล้องชี้ไปข้างหน้า
+	Sniper = CFrame.new(0, -0.2, 0) * CFrame.new(0, -3.35, 0),
 }
 -- โล่รัดท่อนแขนขวา — วัดจากผังของโมเดล (`Builders.Shield`): หน้าโล่หันไป -Z กลางแผ่นอยู่ที่จุดกำเนิด
 --
@@ -149,6 +154,8 @@ local DEFAULT_GRIP = CFrame.new(0, -1, 0) * CFrame.Angles(math.rad(-90), 0, 0)
 -- Cleared by a timer rather than by an "attack ended" event, because there is no such event: an attack is
 -- a moment, and the pose that follows it lets go on its own.
 local Fighting = {}
+-- ใครกำลังส่องสโคปอยู่ (สไน) — ต่างจาก Fighting ที่หมดเองตามเวลา อันนี้อยู่จนกว่าจะเลิกส่อง
+local Aiming = {}
 
 -- Matches STANCE_SECONDS in CombatController, which is how long the attack pose lingers on the client. If
 -- the two disagree the weapon snaps back to the hand while the arms are still posed, or hangs at the chest
@@ -281,7 +288,10 @@ local function holdOn(character, weaponId, meta, fighting)
 end
 
 local function holdWeapon(player, weaponId, meta)
-	holdOn(player.Character, weaponId, meta, Fighting[player] == true)
+	-- ส่องสโคปนับเป็น "กำลังสู้" เฉพาะอาวุธที่มีสโคป — เปลี่ยนไปถือคทาระหว่างการ์ดค้างจะไม่ลอยไปอก
+	local spec = weaponId and CombatConfig.Weapons[weaponId]
+	local aiming = Aiming[player] == true and spec ~= nil and spec.scope == true
+	holdOn(player.Character, weaponId, meta, Fighting[player] == true or aiming)
 end
 
 WeaponVisualsAccess.HoldOn = function(character, weaponId, meta)
@@ -377,7 +387,15 @@ end
 
 WeaponVisualsAccess.OnAttack = onAttack
 
+-- PlayerCombat เรียกทุกครั้งที่การ์ดขึ้น/ลง · สร้างปืนใหม่เฉพาะอาวุธที่ย้ายที่ได้ (สไน) และเฉพาะตอนสถานะเปลี่ยน
+WeaponVisualsAccess.OnAim = function(player, aiming)
+	local was = Aiming[player] == true
+	Aiming[player] = aiming and true or nil
+	if was ~= (aiming == true) and movesWhileFighting(player) then refresh(player) end
+end
+
 Players.PlayerRemoving:Connect(function(player)
 	Fighting[player] = nil
+	Aiming[player] = nil
 	stanceToken[player] = nil
 end)

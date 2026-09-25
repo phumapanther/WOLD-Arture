@@ -230,10 +230,18 @@ end)
 -- what everyone else sees rather than predicting separately.
 Remotes.CombatStateChanged.OnClientEvent:Connect(function(who, event, chainIndex, _windup, moveSet)
 	if who ~= player then return end -- other players' characters animate via their own replicated tracks
+	-- สไน: การ์ด = ส่องสโคป → ถือท่ายืนของคทา (ปืนกลางอก) ค้างตลอดที่ส่อง ไม่ใช่แค่ 1.5 วิหลังตี
+	local spec = CombatConfig.Weapons[equippedWeaponId or CombatConfig.DefaultWeapon]
+	local scoped = spec and spec.scope
 	if event == "guard_start" then
 		if tracks.guard then tracks.guard:Play(0.15) end
+		if scoped and tracks.idle then
+			stanceToken += 1 -- ตัวนับถอยหลังที่ค้างอยู่ห้ามมาปลดท่าระหว่างส่อง
+			if not tracks.idle.IsPlaying then tracks.idle:Play(0.15) end
+		end
 	elseif event == "guard_end" then
 		if tracks.guard then tracks.guard:Stop(0.2) end
+		if scoped then dropStanceSoon() end
 	elseif event == "attack" then
 		-- The looping guard holds every joint at full weight, so a swing playing underneath it barely moves
 		-- (measured: 1.22 studs of reach solo, ~0.04 with the guard running). Stop the guard for the swing and

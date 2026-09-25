@@ -109,6 +109,8 @@ local function setGuard(player, state, guarding)
 		humanoid.WalkSpeed = guarding and weaponOf(player).guardWalkSpeed or 8
 	end
 	Remotes.CombatStateChanged:FireAllClients(player, guarding and "guard_start" or "guard_end")
+	-- สไน: การ์ด = ส่อง → ปืนย้ายจากมือขวาไปกลางอกตลอดที่ส่อง (ผู้ใช้สั่ง 2026-09-25 รอบสอง)
+	if WeaponVisualsAccess.OnAim then WeaponVisualsAccess.OnAim(player, guarding) end
 end
 
 -- The blow that downs someone is the kill, and it pays by how far above the killer the victim was: a big
@@ -602,11 +604,16 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	-- alternating sides, and each returns to guard. This is also what keeps the two animations from fighting:
 	-- the guard is never playing underneath a swing.
 	if not state.guarding then
+		-- สไน: การ์ด = ส่องสโคป · มานาไม่พอยิงสักนัด ก็ไม่ให้ส่อง (ส่องแล้วยิงไม่ได้คือปุ่มที่ดูเหมือนพัง)
+		local held = weaponOf(player)
+		if held.manaCost and Vitals.ManaOf(player) < held.manaCost then
+			Remotes.SocialNotify:FireClient(player, "warn", "มานาไม่พอ")
+			return
+		end
 		state.lastAttackAt = now
 		state.chainIndex = 0
 		setGuard(player, state, true)
-		-- สไน: คลิกเดียวยกและยิงในคราวเดียว (ผู้ใช้สั่ง "กดยิงแล้วซูม") · อาวุธอื่นคลิกแรกยังแค่ยกการ์ด
-		if not weaponOf(player).quickDraw then return end
+		return
 	end
 
 	-- A fishing rod casts rather than fights. The swing still plays -- the cast IS a swing, which is what
@@ -722,17 +729,14 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 
 		-- The aim is captured at the click and carried through the windup, so the shot goes where the player
 		-- was pointing when they fired rather than wherever the camera has swung to by the time it leaves.
-		-- สไน: ระหว่างรอผู้เล่นยังเล็งต่อได้ — ไคลเอนต์ส่งจุดเล็งล่าสุดมาทาง RequestAimUpdate
-		-- อาวุธอื่นยังใช้จุดที่คลิกเหมือนเดิม
-		local pending = weapon.scope and {} or nil
-		state.pendingAim = pending
 		task.delay(attack.windup, function()
 			if not player.Parent then return end
-			if state.pendingAim == pending then state.pendingAim = nil end
 			if attack.projectile.kind == "hitscan" then
 				-- ตาย/ล้ม/เปลี่ยนอาวุธระหว่างรอ = ไม่ยิง (มานาที่หักไปแล้วไม่คืน)
 				if weaponOf(player) ~= weapon or Vitals.IsDowned(player) then return end
-				fireSniper(player, weapon, attack, pending and pending.aim or aim)
+				fireSniper(player, weapon, attack, aim)
+				-- ยิงแล้วหลุดสโคป (แบบลูกเลื่อน) — ส่องใหม่ด้วยคลิกถัดไป
+				setGuard(player, state, false)
 			else
 				fireProjectile(player, attack, aim)
 			end
@@ -761,13 +765,10 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	end
 end)
 
--- จุดเล็งล่าสุดระหว่างสไนกำลังรอยิง · รับเฉพาะตอนมีนัดค้างอยู่ · ตรวจแบบเดียวกับ aimDirection
--- (ทิศทางเท่านั้น โกหกได้แค่ยิงพลาดต่างไป ยิงไกล/เร็วขึ้นไม่ได้)
-Remotes.RequestAimUpdate.OnServerEvent:Connect(function(player, aim)
+-- คลิกขวาระหว่างส่องสไน = เลิกส่องโดยไม่ยิง
+Remotes.RequestUnscope.OnServerEvent:Connect(function(player)
 	local state = States[player]
-	if not (state and state.pendingAim) then return end
-	if typeof(aim) ~= "Vector3" or aim.Magnitude ~= aim.Magnitude or aim.Magnitude == math.huge then return end
-	state.pendingAim.aim = aim
+	if state and state.guarding and weaponOf(player).scope then setGuard(player, state, false) end
 end)
 
 PlayerJoin.Each(function(player)

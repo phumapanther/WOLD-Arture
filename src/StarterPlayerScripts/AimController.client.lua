@@ -10,6 +10,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local TweenService = game:GetService("TweenService")
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
@@ -221,45 +222,69 @@ Remotes.DownedStateChanged.OnClientEvent:Connect(function(isDowned)
 end)
 
 --------------------------------------------------------------------------------
--- สโคปสไน (ผู้ใช้สั่ง 2026-09-25)
+-- สโคปสไน (ผู้ใช้สั่ง 2026-09-25 รอบสอง)
 --------------------------------------------------------------------------------
+-- คลิกแรก = เซิร์ฟเวอร์ยกการ์ด (guard_start) → เข้ามุมมองบุคคลที่หนึ่งก่อน แล้วค่อยขึ้นสโคปซูมไกล
+-- คลิกสอง = ยิง (เซิร์ฟเวอร์ปลดการ์ดหลังยิง → guard_end → ออกจากสโคป) · คลิกขวา = เลิกส่อง
+-- `savedFov ~= nil` แปลว่ากำลังส่องอยู่ (refresh/DownedStateChanged ข้างบนถามจากค่านี้)
 local ScopeGui = require(game.ReplicatedStorage.UI.ScopeGui)
 local scope = ScopeGui.new()
 scope.gui.Parent = player:WaitForChild("PlayerGui")
 
-local SCOPED_FOV = 20
-local AIM_SEND_EVERY = 0.05 -- ส่งจุดเล็งระหว่างรอ วินาทีละ 20 ครั้ง นัดออกตามจุดล่าสุดที่เซิร์ฟเวอร์ได้รับ
+local SCOPED_FOV = 12 -- ซูมไกล (ปกติ 70)
+local FIRST_PERSON_SECONDS = 0.2 -- อยู่ในมุมมองบุคคลที่หนึ่งเปล่าๆ แค่นี้ก่อนขึ้นสโคป
+local ZOOM_SECONDS = 0.3
+local SCOPED_SENSITIVITY = 0.35 -- ซูมไกลแล้วเมาส์ต้องช้าลง ไม่งั้นเล็งไม่ได้
 local scopeToken = 0
+local savedCameraMode, savedZoom, savedSensitivity, zoomTween = nil, nil, nil, nil
 
 closeScope = function()
 	scopeToken += 1
 	scope:Hide()
 	barBack.Position = BAR_POS
+	if zoomTween then zoomTween:Cancel(); zoomTween = nil end
 	if savedFov then
 		camera.FieldOfView = savedFov
 		savedFov = nil
 	end
+	if savedSensitivity then
+		UserInputService.MouseDeltaSensitivity = savedSensitivity
+		savedSensitivity = nil
+	end
+	if savedCameraMode then
+		player.CameraMode = savedCameraMode
+		-- ออกจาก LockFirstPerson แล้วกล้องค้างชิดหัว — ดันระยะกลับไปเท่าก่อนส่อง (ในสนามล็อกบุคคลที่หนึ่ง
+		-- อยู่แล้ว savedCameraMode เป็น LockFirstPerson จึงไม่ต้องดัน)
+		if savedCameraMode ~= Enum.CameraMode.LockFirstPerson and savedZoom then
+			local minZoom = player.CameraMinZoomDistance
+			player.CameraMinZoomDistance = math.clamp(savedZoom, minZoom, player.CameraMaxZoomDistance)
+			task.defer(function() player.CameraMinZoomDistance = minZoom end)
+		end
+		savedCameraMode, savedZoom = nil, nil
+	end
 	-- เป้าเล็งกลับมาตามอาวุธที่ถืออยู่
-	local spec = currentWeaponId and CombatConfig.Weapons[currentWeaponId]
-	gui.Enabled = spec ~= nil and usesAim(currentWeaponId)
+	gui.Enabled = currentWeaponId ~= nil and usesAim(currentWeaponId)
 end
 
-local function openScope(seconds)
+local function openScope()
 	scopeToken += 1
 	local mine = scopeToken
-	savedFov = savedFov or camera.FieldOfView
-	camera.FieldOfView = SCOPED_FOV
+	if not savedFov then
+		savedFov = camera.FieldOfView
+		savedCameraMode = player.CameraMode
+		savedZoom = (camera.CFrame.Position - camera.Focus.Position).Magnitude
+	end
 	gui.Enabled = false -- เป้าเล็งปกติหลบให้กากบาทของสโคป
-	scope:Show()
-	barBack.Position = BAR_POS_SCOPED
-	local started = os.clock()
-	task.spawn(function()
-		while scopeToken == mine and os.clock() - started < seconds do
-			Remotes.RequestAimUpdate:FireServer(aimPoint())
-			task.wait(AIM_SEND_EVERY)
-		end
-		task.wait(0.15) -- ค้างให้เห็นว่ายิงออกไปแล้วค่อยซูมออก
-		if scopeToken == mine then closeScope() end
+	player.CameraMode = Enum.CameraMode.LockFirstPerson
+	task.delay(FIRST_PERSON_SECONDS, function()
+		if scopeToken ~= mine then return end
+		scope:Show()
+		barBack.Position = BAR_POS_SCOPED
+		savedSensitivity = savedSensitivity or UserInputService.MouseDeltaSensitivity
+		UserInputService.MouseDeltaSensitivity = savedSensitivity * SCOPED_SENSITIVITY
+		zoomTween = TweenService:Create(camera, TweenInfo.new(ZOOM_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+			{ FieldOfView = SCOPED_FOV })
+		zoomTween:Play()
 	end)
 end
 
@@ -268,10 +293,22 @@ player.CharacterAdded:Connect(function()
 	if savedFov then closeScope() end
 end)
 
--- แถบโหลด (ทุกท่าที่เซิร์ฟเวอร์ส่งวินาทีมา) + สโคป (เฉพาะอาวุธที่มี `scope`)
+-- แถบโหลด (ทุกท่าที่เซิร์ฟเวอร์ส่งวินาทีมา) + สโคปตามการ์ดของอาวุธที่มี `scope`
 Remotes.CombatStateChanged.OnClientEvent:Connect(function(who, event, _chainIndex, windup)
-	if who ~= player or event ~= "attack" then return end
-	showCharge(windup)
-	local spec = currentWeaponId and CombatConfig.Weapons[currentWeaponId]
-	if windup and spec and spec.scope then openScope(windup) end
+	if who ~= player then return end
+	if event == "attack" then
+		showCharge(windup)
+	elseif event == "guard_start" then
+		local spec = currentWeaponId and CombatConfig.Weapons[currentWeaponId]
+		if spec and spec.scope then openScope() end
+	elseif event == "guard_end" then
+		if savedFov then closeScope() end
+	end
+end)
+
+UserInputService.InputBegan:Connect(function(input, gameProcessed)
+	if gameProcessed then return end
+	if input.UserInputType == Enum.UserInputType.MouseButton2 and savedFov then
+		Remotes.RequestUnscope:FireServer()
+	end
 end)

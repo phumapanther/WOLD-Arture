@@ -2037,10 +2037,13 @@ LocalUserSecurity เหมือนกันหมด
 
 ## สไนเปอร์ + ยิงหัว + แบนเนอร์คิล (2026-09-25)
 สเปก `docs/superpowers/specs/2026-09-25-sniper-design.md` · แผน `docs/superpowers/plans/2026-09-25-sniper.md`
-- `Sniper` = กระสุนชนิด `hitscan` ใน `CombatConfig.Weapons.Sniper` · คลิกเดียวยิง (`quickDraw`) · มานา 1/นัด หักตอนคลิก ·
-  รอ 0.5 วิ ระหว่างนั้นไคลเอนต์ส่งจุดเล็ง `RequestAimUpdate` 20 ครั้ง/วิ นัดออกตามจุดล่าสุด · คน = 50% เลือดเต็มข้ามเกราะ
-  (`Vitals.ApplyDamage(..., "combat", true)`) · มอนเกมหลัก 150 · บอทสนามคิดแบบคน · คราฟที่ช่างตีเหล็ก (วัสดุผมตั้ง)
-- ถือติดอก `ANCHOR_ALWAYS.Sniper = "UpperTorso"` · ปรับตำแหน่งที่ `GRIP.Sniper` เลขเดียว
+- `Sniper` = กระสุนชนิด `hitscan` ใน `CombatConfig.Weapons.Sniper` · **คลิกแรก = ส่อง** (สถานะการ์ดเดิม: มุมมองบุคคลที่หนึ่ง 0.2 วิ
+  แล้วขึ้นสโคปซูม FOV 12) · **คลิกสอง = ยิงทันที** หัก 1 มานา แล้วเซิร์ฟเวอร์ปลดการ์ด = หลุดสโคป · คลิกขวา `RequestUnscope` ·
+  มานาไม่พอ = ส่องไม่ได้ · คน = 50% เลือดเต็มข้ามเกราะ (`Vitals.ApplyDamage(..., "combat", true)`) · มอนเกมหลัก 150 ·
+  บอทสนามคิดแบบคน · ทะลุเพื่อน/ตี้/ศพ (`RayThrough`) · คราฟที่ช่างตีเหล็ก (วัสดุผมตั้ง)
+- **ถือมือขวาตอนเฉยๆ (`CARRY_GRIP.Sniper`) · กลางอกตลอดที่ส่อง** (`ATTACH_TO` + `Aiming` ใน WeaponVisuals ผ่าน `WeaponVisualsAccess.OnAim`)
+  · ตำแหน่งกลางอกปรับที่ `GRIP.Sniper`
+- ⚠️ เสียงยิง 101482767943742 **โหลดไม่ขึ้น** (PreloadAsync = Failure ทั้งที่เสียงปืน/เสียงคิลบัญชีเดียวกันโหลดได้) = ยังไม่ผ่านอนุมัติ/ถูกปฏิเสธ — แก้ที่ Creator Dashboard ไม่ใช่โค้ด
 - **แถบดีเลย์**: เซิร์ฟเวอร์ส่งวินาทีเฉพาะท่าที่ windup ≥ `CombatConfig.ChargeBarMinSeconds` (0.3) · แถบอยู่ `WOLD_ChargeBar` ของตัวเอง
   ⚠️ InventoryUpdate มาทุกครั้งที่อาวุธสึก — ห้ามซ่อนแถบในทุก refresh ซ่อนเฉพาะตอนชนิดอาวุธเปลี่ยน
 - **ยิงหัว (สนามเท่านั้น)** = ชิ้นที่ raycast ชนคือ `Head` หรือ Accessory ที่เชื่อมกับ Head · กระสุนเดิม ×`ArenaConfig.HeadshotMultiplier` ·

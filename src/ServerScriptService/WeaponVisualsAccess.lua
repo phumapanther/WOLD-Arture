@@ -13,4 +13,7 @@ local WeaponVisualsAccess = {}
 -- do not move.
 WeaponVisualsAccess.OnAttack = nil
 
+-- OnAim(player, aiming) -- การ์ดขึ้น/ลง · สไนย้ายจากมือไปอกตลอดที่ส่องสโคป (อาวุธอื่นไม่สนใจ)
+WeaponVisualsAccess.OnAim = nil
+
 return WeaponVisualsAccess
