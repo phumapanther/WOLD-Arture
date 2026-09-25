@@ -16,6 +16,7 @@ local ClanStore = require(game.ServerScriptService.ClanStore)
 local ClanAccess = require(game.ServerScriptService.ClanAccess)
 local TownAccess = require(game.ServerScriptService.TownAccess)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local Announce = require(game.ServerScriptService.Announce)
 
 -- เมืองทั้งหก ชื่อโมเดลตรงกับที่ผู้ใช้วางไว้
 local TOWNS = {
@@ -167,6 +168,12 @@ local function capture(player, townId)
 	end
 	Remotes.SocialNotify:FireAllClients("info", message)
 	for id in pairs(Prompts) do refreshPrompt(id) end
+	-- ประกาศข้ามเซิร์ฟ (ผู้ใช้เลือก 2026-09-25) · ชื่อแคลนผู้เล่นตั้งเอง → ผ่านตัวกรองก่อน กรองไม่ได้ = ไม่ประกาศ
+	local capturedTown, clanName, byUserId = townName(townId), clan.name, player.UserId
+	task.spawn(function()
+		local safe = Announce.Filter(clanName, byUserId)
+		if safe then Announce.Global(("🏰 แคลน %s ยึด%sได้แล้ว"):format(safe, capturedTown), "town") end
+	end)
 end
 
 --------------------------------------------------------------------------------

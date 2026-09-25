@@ -10,6 +10,7 @@ if ServerConfig.IsLobby or ServerConfig.IsArena then return end
 local Achievements = require(game.ServerScriptService.Achievements)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local Announce = require(game.ServerScriptService.Announce)
 
 local TICK = 2
 
@@ -25,6 +26,10 @@ local function tick(player)
 	for _, def in ipairs(Achievements.Check(player)) do
 		Remotes.SocialNotify:FireClient(player, "info",
 			("🏆 ปลดความสำเร็จ \"%s\" — %s · ได้ฉายา + เพชร %d"):format(def.title, def.desc, def.gems))
+		-- ระดับตำนาน = ทุกเซิร์ฟเห็น (ผู้ใช้เลือก 2026-09-25)
+		if def.tier == "legend" then
+			Announce.Global(("🏆 %s ปลดความสำเร็จตำนาน \"%s\""):format(player.DisplayName, def.title), "legend")
+		end
 	end
 	publish(player)
 end

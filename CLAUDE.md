@@ -2085,7 +2085,7 @@ LocalUserSecurity เหมือนกันหมด
   `tests/vault_take_test.lua`) · ของล้นเข้าคลังไม่พก meta (`SpillOver/Overflow` ส่ง meta แล้ว) · ถอดของตอนกระเป๋าเต็มถูกปฏิเสธ
 
 ## ความสำเร็จ + ฉายาเรืองแสงเหนือหัว (2026-09-25)
-สเปก `docs/superpowers/specs/2026-09-25-achievements-design.md` · ระบบที่ 4/4 (เหลือระบบที่ 2 แชท/ประกาศข้ามเซิร์ฟ)
+สเปก `docs/superpowers/specs/2026-09-25-achievements-design.md` · ระบบที่ 4/4 (ครบทั้งชุดแล้ว — ระบบที่ 2 ดูหัวข้อถัดไป)
 - สมุดสะสม (หินเวท P) แท็บที่สาม "ความสำเร็จ" · 20 อันใน `AchievementConfig` (ชื่อ/เป้า/เพชร ผมตั้ง) · ปลด = ฉายา + เพชร
 - **ข้อมูล** `profile.Data.Achievements = { stats, unlocked, title, seen }` · มอน/ปลา/เลเวล อ่านสด (Collection + `WOLD_Level`)
   · ตีบวก `Achievements.Record(..., "maxEnhance", n, "max")` ตอนอาวุธคืนมือ · **PVP/บอสโลกมาทางข้อความ `kind = "stats"`**
@@ -2096,6 +2096,13 @@ LocalUserSecurity เหมือนกันหมด
 - ⚠️ **ห้ามตั้งชื่อ `X.lua` คู่กับ `X.server.lua` ในโฟลเดอร์เดียวกัน** — Roblox ได้ instance ชื่อซ้ำ `push.js` เขียนทับตัวแรก
   (เจอจริงรอบนี้: สคริปต์ลูปทับโมดูล Achievements) · ตรวจด้วย `find src -name "*.lua" | sed ... | uniq -d`
 - **ยังไม่ได้เทสในเกม**
+
+## ประกาศข้ามเซิร์ฟ (2026-09-25) — ระบบที่ 2 ของชุด MMO (ผู้ใช้เลือก: เอาแค่ประกาศ **ไม่ทำแชทแคลน**)
+- สามเหตุการณ์: **ยึดเมืองได้** (TownCapture) · **ปลดความสำเร็จระดับตำนาน** (PlayerAchievements) · **ตีบวก +`EnhanceConfig.AnnounceFrom` (8) ขึ้นไปสำเร็จ** (Crafting)
+- `Announce.Global(text, kind)` → MessagingService หัวข้อ `WOLD_Announce` → `GlobalAnnounce.server` (ทุกเพลสรวมล็อบบี้) →
+  `Remotes.GlobalAnnounce` → `AnnounceController` แถบเลื่อนแบบข่าวใต้ป้ายอีเวนต์ (y 78) โผล่เฉพาะตอนมีประกาศ คิวสูงสุด 6
+- ⚠️ **ข้อความที่ผู้เล่นพิมพ์เอง (ชื่อแคลน) ต้องผ่าน `Announce.Filter` ก่อนประกาศ** กรองไม่ได้ = ไม่ประกาศ (ชื่อแคลนไม่เคยถูกกรองมาก่อน)
+- PublishAsync ล้ม = อย่างน้อยเซิร์ฟตัวเองยังเห็น · **ยังไม่ได้เทสในเกม** (ข้ามเซิร์ฟต้อง publish + สองเซิร์ฟ)
 
 ## เครื่องมือที่พร้อมใช้
 - **Studio MCP** (MCP server ในตัว Roblox Studio) ลงทะเบียน user-scope ชื่อ `Roblox_Studio` → เครื่องมือ `mcp__Roblox_Studio__*`

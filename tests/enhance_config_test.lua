@@ -48,5 +48,6 @@ check(EnhanceConfig.LevelOf({ enhance = "x" }) == 0 and EnhanceConfig.LevelOf({ 
 check(ItemCatalog.DisplayName("Sword", { enhance = 7 }) == "ดาบ +7", "ชื่อ \"ดาบ +7\" ได้: " .. ItemCatalog.DisplayName("Sword", { enhance = 7 }))
 local withSkin = ItemCatalog.DisplayName("Sword", { enhance = 3, skin = "Skin_Sword_Ember" })
 check(withSkin:find("^ดาบ %+3 %(") ~= nil, "ขั้นคู่สกิน: " .. withSkin)
+check(EnhanceConfig.AnnounceFrom == 8, "ตีบวก +8 ขึ้นไป = ประกาศข้ามเซิร์ฟ")
 
 return (fails == 0 and "PASS\n" or ("FAIL x%d\n"):format(fails)) .. table.concat(out, "\n")

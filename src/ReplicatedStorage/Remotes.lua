@@ -159,7 +159,7 @@ local EVENTS = {
 	"PremiumUpdate", "RequestPremium", "RequestSkin",
 	-- ปิดหน้าคราฟ: เซิร์ฟเวอร์จะได้ลืมว่ายืนอยู่สถานีไหน
 	"RequestCraftClose",
-	"RequestCollection", "CollectionUpdate", "RequestTitle",
+	"RequestCollection", "CollectionUpdate", "RequestTitle", "GlobalAnnounce",
 	"RequestLeaderboards", "LeaderboardUpdate",
 	"StorageChestOpen", "StorageChestUpdate",
 	"RequestStorageChestPut", "RequestStorageChestTake", "RequestStorageChestClose",

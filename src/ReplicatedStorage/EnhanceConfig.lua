@@ -13,6 +13,7 @@ EnhanceConfig.Weapons = {
 
 EnhanceConfig.MaxLevel = 10
 EnhanceConfig.FailDurabilityFraction = 0.10 -- ตีแตก = ความคงทนลด 10% ของค่าเต็ม (ต่ำสุดเหลือ 1)
+EnhanceConfig.AnnounceFrom = 8 -- ตีบวกสำเร็จถึงขั้นนี้ขึ้นไป = ประกาศข้ามเซิร์ฟ (ผู้ใช้เลือก 2026-09-25)
 EnhanceConfig.Seconds = 4 -- แถบเวลาตอนตี (ผู้ใช้สั่ง "ตีแล้ว รอรู้ผล เหมือนการคราฟ" · ความยาวผมตั้ง)
 
 -- [ขั้นที่กำลังตีขึ้นไป] = { chance = โอกาสสำเร็จ, bonus = ดาเมจรวมที่ขั้นนั้น, cost = ของที่ใช้ต่อการกดหนึ่งครั้ง }

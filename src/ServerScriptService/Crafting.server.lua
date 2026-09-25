@@ -24,6 +24,7 @@ local Mail = require(game.ServerScriptService.Mail)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 local Achievements = require(game.ServerScriptService.Achievements)
+local Announce = require(game.ServerScriptService.Announce)
 
 local TAG = "WOLD_Npc"
 local RANGE = 12
@@ -517,6 +518,10 @@ end
 
 local function announce(player, job)
 	local name = ItemCatalog.DisplayName(job.id, job.meta)
+	-- ตีบวก +8 ขึ้นไปสำเร็จ = ทุกเซิร์ฟเห็น (ผู้ใช้เลือก)
+	if job.success and EnhanceConfig.LevelOf(job.meta) >= EnhanceConfig.AnnounceFrom then
+		Announce.Global(("⚒️ %s ตีบวก %s สำเร็จ!"):format(player.DisplayName, name), "enhance")
+	end
 	Remotes.SocialNotify:FireClient(player, job.success and "info" or "error", job.success
 		and ("ตีบวกสำเร็จ! %s"):format(name)
 		or ("ตีแตก! %s ขั้นเท่าเดิม ความคงทนลด"):format(name))
