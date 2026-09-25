@@ -2,6 +2,7 @@
 --
 -- ไฟล์นี้แค่วางโมเดล + ปุ่มหยิบ แล้วถามคนที่ผูกไว้ (`Bind`) ว่าหยิบได้ไหม — กติกาของแมตช์ (ใครหยิบได้
 -- ช่วงไหน สลับอาวุธยังไง) อยู่ที่ ArenaMatch ซึ่งเป็นเจ้าของกระเป๋า/ของติดตัวของทุกคน
+local TweenService = game:GetService("TweenService")
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local WeaponVisualsAccess = require(game.ServerScriptService.WeaponVisualsAccess)
 
@@ -45,10 +46,25 @@ function ArenaDrops.Drop(position, id, meta, ammo)
 			d.Anchored, d.CanCollide, d.CanQuery, d.CanTouch = true, false, false, false
 		end
 	end
-	-- นอนราบกับพื้น: ตัวอาวุธยาวไปตามแกน Y ของโมเดล → หมุน 90° รอบ X · หันสุ่มให้กองไม่ดูเป็นแถว
+	-- **ร่วงลงพื้น** (ผู้ใช้สั่ง 2026-09-25): เริ่มที่ระดับอกของคนตาย ตั้งเฉียงๆ แล้วตกลงไปนอนราบกับพื้น
+	-- เด้งนิดหนึ่ง · ใช้ Tween ไม่ใช่ฟิสิกส์จริง — ของที่ปล่อยให้ฟิสิกส์ตกเองกระเด็นได้/ทะลุพื้นได้
+	-- และกองศพสามศพที่ทับกันจะผลักอาวุธกระจาย ส่วน Tween จบที่พื้นเสมอ
+	-- นอนราบ: ตัวอาวุธยาวไปตามแกน Y ของโมเดล → หมุน 90° รอบ X · หันสุ่มให้กองไม่ดูเป็นแถว
 	local ground = groundBelow(position)
-	model:PivotTo(CFrame.new(ground + Vector3.new(0, 0.35, 0))
-		* CFrame.Angles(0, math.random() * math.pi * 2, 0) * CFrame.Angles(math.rad(90), 0, 0))
+	local heading = CFrame.Angles(0, math.random() * math.pi * 2, 0)
+	local rest = CFrame.new(ground + Vector3.new(0, 0.35, 0)) * heading * CFrame.Angles(math.rad(90), 0, 0)
+	local startY = math.max(position.Y, ground.Y + 1.5)
+	model:PivotTo(CFrame.new(ground.X, startY, ground.Z) * heading * CFrame.Angles(math.rad(25), 0, math.rad(15)))
+	local fall = Instance.new("CFrameValue")
+	fall.Value = model:GetPivot()
+	fall.Changed:Connect(function(cf)
+		if model.Parent then model:PivotTo(cf) end
+	end)
+	local seconds = math.clamp((startY - ground.Y) * 0.12, 0.35, 0.8)
+	local tween = TweenService:Create(fall, TweenInfo.new(seconds, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out),
+		{ Value = rest })
+	tween.Completed:Once(function() fall:Destroy() end)
+	task.defer(function() tween:Play() end) -- หลัง model.Parent ถูกตั้ง (ท้ายฟังก์ชัน)
 
 	local glow = Instance.new("Highlight")
 	glow.FillTransparency = 1

@@ -838,6 +838,9 @@ local function startRound()
 				Inventory.AddItem(f.player, "Bullet", gun.ammo)
 			end
 		end
+		-- ต่อเวลา (รอบ 7+): ทุกคนเริ่มรอบด้วยเงินเท่ากัน ทั้งคนและบอท (บอทคัดลอก f.silver ลงแถวของมันข้างล่าง)
+		local E = ArenaConfig.Economy
+		if E.overtimeRound and State.round >= E.overtimeRound then f.silver = E.overtimeSilver end
 		f.diedThisRound = false
 		f.boughtThisRound = {}
 		f.receipts = {} -- ยกเลิกการซื้อได้เฉพาะของรอบนี้
