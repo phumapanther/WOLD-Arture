@@ -98,31 +98,10 @@ proto("Deco_FlowerPot", function(m)
 	end
 end)
 
----------------------------------------------------------------- ต้นไม้ 2x2 · ลัง · ถัง · แผ่นทางเดิน
-proto("Deco_Tree", function(m)
-	-- โอ๊กจริงจากชุดเดียวกับแมพหลัก · ย่อ 0.5 เพราะต้นจริงสูงราว 40 studs ซึ่งใหญ่เกินสวนบนเกาะ
-	if borrowAsset(m, "oak", 1, 7) then return end
-	K.cyl(m, K.at(0, 3, 0), 0.7, 6, MAT.Wood, C.wood)
-	K.ball(m, K.at(0, 8, 0), 6.5, MAT.Grass, C.moss, { cancollide = false })
-	K.ball(m, K.at(1.8, 6.5, 1.2), 4.2, MAT.Grass, C.grass, { cancollide = false })
-	K.ball(m, K.at(-1.6, 7, -1.4), 4.6, MAT.Grass, C.moss, { cancollide = false })
-end)
+-- ⚠️ **บล็อกนี้ต้องอยู่เหนือ `proto` ตัวแรกที่เรียกมัน** — `proto()` สร้างต้นแบบ**ทันที**ตอนถูกเรียก
+-- ไม่ได้เก็บไว้สร้างทีหลัง การจองชื่อ (`local borrowAsset` เฉยๆ) จึงไม่พอ ตัวฟังก์ชันต้องถูก
+-- กำหนดค่าจริงก่อนบรรทัด `proto("Deco_Tree", ...)` จะทำงาน (เฉพาะต้นไม้/หิน/พุ่มที่ยืมโมเดลจริง)
 
-proto("Deco_Crate", function(m) K.crate(m, CFrame.new(), 3.2, C.oak) end)
-proto("Deco_Barrel", function(m) K.barrel(m, CFrame.new(), 1.5, 3.4, C.wood) end)
-proto("Deco_PathTile", function(m)
-	K.box(m, K.at(0, 0.15, 0), Vector3.new(3.9, 0.3, 3.9), MAT.Cobblestone, C.stone)
-end)
-
-
-
----------------------------------------------------------------- ยืมโมเดลจริงจากเกมหลัก
---
--- **ต้นไม้ พุ่มไม้ ก้อนหิน ใช้ของชุดเดียวกับแมพหลัก** (ผู้ใช้ทักว่าของเกาะดูเหมือนสร้างใหม่ 2026-09-22)
--- ไม่ใช่กล่องที่ปั้นเอง — `ServerStorage.WOLD_Assets.<kind>` คือชุดที่ผู้ใช้อนุมัติไว้ตั้งแต่ 2026-09-06
--- (พุ่ม Foliage Pack · หินมอส Mossy rock pack · โอ๊ก/สนจริง) ติดตั้งด้วย `mapgen/assets_setup.lua`
---
--- คืน false เมื่อไม่มีชุดโมเดล — `proto` ที่เรียกจะตกไปใช้ของที่ปั้นเองแทน จึงยังได้ของครบเสมอ
 local ASSETS = game:GetService("ServerStorage"):FindFirstChild("WOLD_Assets")
 
 local function borrowAsset(m, kind, index, scale)
@@ -166,6 +145,36 @@ local function borrowAsset(m, kind, index, scale)
 	clone:Destroy()
 	return true
 end
+
+-- แต่ตัวมันถูกประกาศอยู่ข้างล่าง ไม่จองไว้ closure จะจับ global ที่เป็น nil แล้วเฟสตายกลางคัน
+-- ตอนสร้างต้นแบบชิ้นที่หก (บทเรียน "ใช้ก่อนประกาศ" ครั้งที่แปดของโปรเจ็คนี้)
+local borrowAsset
+
+---------------------------------------------------------------- ต้นไม้ 2x2 · ลัง · ถัง · แผ่นทางเดิน
+proto("Deco_Tree", function(m)
+	-- โอ๊กจริงจากชุดเดียวกับแมพหลัก · ย่อ 0.5 เพราะต้นจริงสูงราว 40 studs ซึ่งใหญ่เกินสวนบนเกาะ
+	if borrowAsset(m, "oak", 1, 7) then return end
+	K.cyl(m, K.at(0, 3, 0), 0.7, 6, MAT.Wood, C.wood)
+	K.ball(m, K.at(0, 8, 0), 6.5, MAT.Grass, C.moss, { cancollide = false })
+	K.ball(m, K.at(1.8, 6.5, 1.2), 4.2, MAT.Grass, C.grass, { cancollide = false })
+	K.ball(m, K.at(-1.6, 7, -1.4), 4.6, MAT.Grass, C.moss, { cancollide = false })
+end)
+
+proto("Deco_Crate", function(m) K.crate(m, CFrame.new(), 3.2, C.oak) end)
+proto("Deco_Barrel", function(m) K.barrel(m, CFrame.new(), 1.5, 3.4, C.wood) end)
+proto("Deco_PathTile", function(m)
+	K.box(m, K.at(0, 0.15, 0), Vector3.new(3.9, 0.3, 3.9), MAT.Cobblestone, C.stone)
+end)
+
+
+
+---------------------------------------------------------------- ยืมโมเดลจริงจากเกมหลัก
+--
+-- **ต้นไม้ พุ่มไม้ ก้อนหิน ใช้ของชุดเดียวกับแมพหลัก** (ผู้ใช้ทักว่าของเกาะดูเหมือนสร้างใหม่ 2026-09-22)
+-- ไม่ใช่กล่องที่ปั้นเอง — `ServerStorage.WOLD_Assets.<kind>` คือชุดที่ผู้ใช้อนุมัติไว้ตั้งแต่ 2026-09-06
+-- (พุ่ม Foliage Pack · หินมอส Mossy rock pack · โอ๊ก/สนจริง) ติดตั้งด้วย `mapgen/assets_setup.lua`
+--
+-- คืน false เมื่อไม่มีชุดโมเดล — `proto` ที่เรียกจะตกไปใช้ของที่ปั้นเองแทน จึงยังได้ของครบเสมอ
 
 -- ยืมโมเดล **จากเพลสหลักจริงๆ** (ผู้ใช้สั่ง 2026-09-22: "ใช้โมเดลเดียวกันกับเกมส์หลักเลย")
 --

@@ -3,12 +3,12 @@
   "servePlaceIds": [88774255487951],
   "tree": {
     "$className": "DataModel",
-    "ServerScriptService": { "$path": "src/ServerScriptService" },
+    "ServerScriptService": { "$path": "src/ServerScriptService", "$ignoreUnknownInstances": true },
     "ReplicatedStorage": { "$path": "src/ReplicatedStorage", "$ignoreUnknownInstances": true },
-    "StarterGui": { "$path": "src/StarterGui" },
+    "StarterGui": { "$path": "src/StarterGui", "$ignoreUnknownInstances": true },
     "StarterPlayer": {
       "$className": "StarterPlayer",
-      "StarterPlayerScripts": { "$path": "src/StarterPlayerScripts" }
+      "StarterPlayerScripts": { "$path": "src/StarterPlayerScripts", "$ignoreUnknownInstances": true }
     }
   }
 }
