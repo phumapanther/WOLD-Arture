@@ -169,7 +169,7 @@ for _ = 1, 10 do
 	assert(A("Plant", player, plot))
 	A("SetEntry", plotUid, "crop", "Wheat")
 	A("SetEntry", plotUid, "at", os.time() - 99999)
-	plot:SetAttribute("Glow", nil)
+	A("SetEntry", plotUid, "glow", false) -- ปิดแสง (อยู่ในโปรไฟล์แปลง ไม่ใช่แอตทริบิวต์แล้ว)
 	A("Tick")
 	local before = A("Count", player, "Wheat") or 0
 	assert(A("Harvest", player, plot))

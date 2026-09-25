@@ -12,6 +12,7 @@ end
 local RS = game.ReplicatedStorage
 local IslandConfig, GatherConfig = fresh(RS.IslandConfig), fresh(RS.GatherConfig)
 local QuestConfig, CraftConfig = fresh(RS.QuestConfig), fresh(RS.CraftConfig)
+local ShopConfig = fresh(RS.ShopConfig)
 local out, fails = {}, 0
 local function check(ok, text)
 	out[#out + 1] = (ok and "ok   " or "FAIL ") .. text
@@ -60,5 +61,40 @@ end
 check(bread and bread.cost.Wheat == 15 and bread.cost.Water == 5, "ขนมปัง = ข้าว 15 น้ำ 5 ที่เตา")
 local well = GatherConfig.Nodes.Well
 check(well and well.item == "Water" and well.min == 5 and well.max == 5 and not well.tool, "บ่อน้ำ = น้ำ 5 ขวด ไม่ใช้เครื่องมือ")
+
+-- เลเวลสัตว์ (2026-09-25): โตเองตามอายุ Lv5 ครบ 7 วัน · ได้สูงสุดเท่าเลเวล · ตัวใหญ่ขึ้นทุกเลเวล
+local DAY = 86400
+local t0 = 1000000
+check(IslandConfig.PenLevelOf(t0, t0) == 1, "ซื้อมา = Lv1")
+check(IslandConfig.PenLevelOf(t0, t0 + 1.74 * DAY) == 1 and IslandConfig.PenLevelOf(t0, t0 + 1.76 * DAY) == 2, "Lv2 ที่ 1.75 วัน")
+check(IslandConfig.PenLevelOf(t0, t0 + 6.99 * DAY) == 4 and IslandConfig.PenLevelOf(t0, t0 + 7 * DAY) == 5, "Lv5 ครบ 7 วันพอดี")
+check(IslandConfig.PenLevelOf(t0, t0 + 30 * DAY) == 5 and IslandConfig.PenNextLevelIn(t0, t0 + 8 * DAY) == nil, "เพดาน Lv5")
+check(math.abs(IslandConfig.PenNextLevelIn(t0, t0) - 1.75 * DAY) < 1, "Lv1 → Lv2 อีก 1.75 วัน")
+local maxAt, onlyOne = {}, true
+for level = 1, 5 do
+	maxAt[level] = 0
+	for _ = 1, 3000 do
+		local n = IslandConfig.RollPenYield(level)
+		maxAt[level] = math.max(maxAt[level], n)
+		if level == 1 and n ~= 1 then onlyOne = false end
+	end
+end
+check(onlyOne, "Lv1 ได้ 1 เสมอ")
+check(maxAt[2] == 2 and maxAt[3] == 3 and maxAt[4] == 4 and maxAt[5] == 5,
+	("ได้สูงสุดตามเลเวล %d/%d/%d/%d"):format(maxAt[2], maxAt[3], maxAt[4], maxAt[5]))
+local sc = IslandConfig.PenLevelScale
+check(sc[1] < sc[2] and sc[2] < sc[3] and sc[3] < sc[4] and sc[4] < sc[5] and sc[5] == 2, "ตัวโตทุกเลเวล Lv5 = 2 เท่า")
+
+-- เมล็ด · หนอน · ราคา
+local sb = IslandConfig.SeedBonus
+check(sb.chance == 0.3 and sb.min == 1 and sb.max == 2, "เมล็ดติดมา 1-2 โอกาส 30%")
+local wb = GatherConfig.WormBonus
+check(wb.min == 3 and wb.max == 5 and wb.chance == 0.4 and GatherConfig.Nodes.Herb.bonus == wb, "หนอน 3-5 โอกาส 40% (รวมเกมหลัก)")
+local price = {}
+for _, row in ipairs(ShopConfig.IslandSells) do
+	if row.currency ~= "gems" then price[row.id] = row.price end
+end
+check(price.AnimalPen == 15000 and price.MineZone == 30000 and price.FarmPlot == 10000,
+	("ราคา คอก %s · โซนแร่ %s · แปลงดิน %s"):format(tostring(price.AnimalPen), tostring(price.MineZone), tostring(price.FarmPlot)))
 
 return (fails == 0 and "PASS\n" or ("FAIL x%d\n"):format(fails)) .. table.concat(out, "\n")

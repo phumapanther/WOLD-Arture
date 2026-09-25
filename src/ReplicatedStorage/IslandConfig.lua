@@ -77,7 +77,8 @@ IslandConfig.CropExp = 8
 -- **เก็บผักแล้วมีโอกาสได้เมล็ดติดมา 1-3** (ผู้ใช้สั่ง 2026-09-23) — ทำให้แปลงเลี้ยงตัวเองได้บ้าง
 -- แต่ไม่ถึงกับไม่ต้องซื้อ: 40% × เฉลี่ย 2 เมล็ด = 0.8 เมล็ดต่อการปลูกหนึ่งครั้งที่ใช้ไป 1 เมล็ด
 -- **ตัวเลขผมตั้งเอง** — เกิน 50% เมื่อไหร่เมล็ดจะงอกเองจนร้านไม่มีความหมาย
-IslandConfig.SeedBonus = { chance = 0.4, min = 1, max = 3 }
+-- ปรับ 2026-09-25 (ผู้ใช้กำหนด): 1-2 เมล็ด โอกาส 30%
+IslandConfig.SeedBonus = { chance = 0.3, min = 1, max = 2 }
 -- ระยะการโต: สัดส่วนเวลา → สเกลของโมเดลพืช (ระยะสุดท้าย = สุก)
 IslandConfig.Stages = {
 	{ at = 0, scale = 0.35 },
@@ -157,15 +158,44 @@ end
 -- 1 กับ 5 รวม 10% · IslandZones ติดธง `YieldWeighted` บนตัวสัตว์ Gathering สุ่มผ่าน RollPenYield
 IslandConfig.PenYieldWeights = { [1] = 5, [2] = 50, [3] = 20, [4] = 20, [5] = 5 }
 
-function IslandConfig.RollPenYield()
+-- **เลเวลสัตว์ 1-5 โตเองตามอายุ Lv5 ครบ 7 วัน** (ผู้ใช้กำหนด 2026-09-25) — นับจาก `BornAt` (os.time)
+-- เวลาเดินตอนออฟไลน์ด้วย · ห่างกันเลเวลละ 7/4 วัน (Lv2 1.75 วัน · Lv3 3.5 · Lv4 5.25 · Lv5 7)
+-- **ได้ของสูงสุด = เลเวล** Lv1 ได้ 1 เสมอ · Lv5 ได้ 1-5 ด้วยน้ำหนักเดิมข้างบนเป๊ะ · เลเวลต่ำกว่าคือน้ำหนักเดิม
+-- ที่ตัดปลายทิ้ง (ผู้ใช้: "ระดับโอกาสของเลเวล 5 เท่ากับปัจจุบัน แค่ปรับ max ตามเลเวล")
+-- **ตัวโตตามเลเวล** Lv1 เล็กมาก → Lv5 ใหญ่เป็นสองเท่าของขนาดตัวเต็มวัยเดิม (ผู้ใช้เลือก) · ค่าสำหรับ `ScaleTo`
+IslandConfig.PenMaxLevel = 5
+IslandConfig.PenMaxLevelSeconds = 7 * 24 * 3600
+IslandConfig.PenLevelScale = { 0.4, 0.8, 1.2, 1.6, 2.0 }
+
+local function levelStep()
+	return IslandConfig.PenMaxLevelSeconds / (IslandConfig.PenMaxLevel - 1)
+end
+
+function IslandConfig.PenLevelOf(bornAt, now)
+	now = now or os.time()
+	local age = math.max(0, now - (bornAt or now))
+	return math.clamp(1 + math.floor(age / levelStep()), 1, IslandConfig.PenMaxLevel)
+end
+
+-- อีกกี่วินาทีถึงเลเวลถัดไป · nil = เต็มแล้ว
+function IslandConfig.PenNextLevelIn(bornAt, now)
+	now = now or os.time()
+	local level = IslandConfig.PenLevelOf(bornAt, now)
+	if level >= IslandConfig.PenMaxLevel then return nil end
+	return math.max(0, (bornAt or now) + level * levelStep() - now)
+end
+
+-- `level` nil = ไม่จำกัด (เท่ากับ Lv5)
+function IslandConfig.RollPenYield(level)
+	local top = math.clamp(math.floor(tonumber(level) or IslandConfig.PenMaxLevel), 1, 5)
 	local total = 0
-	for _, w in pairs(IslandConfig.PenYieldWeights) do total += w end
+	for n = 1, top do total += IslandConfig.PenYieldWeights[n] or 0 end
 	local pick = math.random() * total
-	for n = 1, 5 do
+	for n = 1, top do
 		pick -= IslandConfig.PenYieldWeights[n] or 0
 		if pick < 0 then return n end
 	end
-	return 2
+	return top
 end
 
 -- **เพดานวัตถุดิบต่อการเก็บหนึ่งครั้งบนเกาะ** (ผู้ใช้สั่ง 2026-09-23: "ควรได้ 1-5 ไม่เกิน 5 ทุกชนิด
@@ -180,9 +210,6 @@ end
 IslandConfig.YieldCap = 5
 -- สัตว์ที่ซื้อได้ · `kind` ต้องตรงกับ GatherConfig.Nodes (เกมหลักเป็นเจ้าของ "กด E ได้อะไร")
 -- ราคาเป็นเหรียญ Claude ตั้งไว้ก่อน ไล่ตามค่าของที่มันให้ (ไข่ถูกสุด หนังแพงสุด)
--- **สัตว์ค่อยๆ โตให้เห็น เหมือนแปลงผัก** (ผู้ใช้สั่ง 2026-09-22) — สเกลตอนเกิดถึงตอนโตเต็มที่
--- ลูกสัตว์เล็กกว่าตัวเต็มวัยครึ่งหนึ่ง แล้วขยายขึ้นเรื่อยๆ ตามเวลาที่เหลือ
-IslandConfig.PenBabyScale = 0.5
 
 IslandConfig.PenAnimals = {
 	{ kind = "Chicken", name = "ไก่", price = 400 },

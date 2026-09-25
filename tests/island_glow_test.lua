@@ -53,21 +53,26 @@ local function plantAs(item, tone)
 	assert(A("Plant", player, plot), "ปลูกไม่สำเร็จ")
 	A("SetEntry", uid, "crop", item) -- บังคับชนิดแทนการทอย
 	A("SetEntry", uid, "at", os.time() - 99999) -- สุกทันที
-	plot:SetAttribute("Glow", tone)
+	A("SetEntry", uid, "glow", tone or false) -- แสงอยู่ในโปรไฟล์ (false = ทอยแล้วไม่ติด) · Tick คืนแอตทริบิวต์ให้
 	A("Tick")
 end
 
------------------------------------------------------------------ 2. หยอดเมล็ดต้องทอยแสงให้
+----------------------------------------------------------------- 2. ทอยแสงตอนสุก ไม่ใช่ตอนหยอด (ผู้ใช้สั่ง 2026-09-25)
 local rolled = 0
 for _ = 1, 60 do
 	if (A("Count", player, C.SeedItem) or 0) < 1 then A("Grant", player, C.SeedItem, 1) end
 	A("Plant", player, plot)
+	assert(plot:GetAttribute("Glow") == nil, "หยอดเมล็ดแล้วต้องยังไม่มีแสง (แสงขึ้นตอนสุก)")
+	A("SetEntry", uid, "at", os.time() - 99999)
+	A("Tick")
 	if plot:GetAttribute("Glow") then rolled += 1 end
 	A("SetEntry", uid, "crop", nil)
 	A("SetEntry", uid, "at", nil)
+	A("SetEntry", uid, "glow", nil)
+	plot:SetAttribute("Glow", nil)
 end
-assert(rolled > 0, "หยอดเมล็ด 60 ครั้งต้องติดแสงอย่างน้อยหนึ่ง")
-table.insert(out, ("หยอดเมล็ด 60 ครั้ง → ติดแสง %d ครั้ง (ธงอยู่บนตัวแปลง ไคลเอนต์อ่านเองได้)"):format(rolled))
+assert(rolled > 0, "สุก 60 ครั้งต้องติดแสงอย่างน้อยหนึ่ง")
+table.insert(out, ("สุก 60 ครั้ง → ติดแสง %d ครั้ง (หยอดเมล็ดไม่ทอย)"):format(rolled))
 
 ----------------------------------------------------------------- 3. แสงฟ้า: ผัก ×2
 A("Revoke", player, "Wheat", A("Count", player, "Wheat") or 0)

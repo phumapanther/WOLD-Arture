@@ -113,14 +113,23 @@ local function plant(player, model)
 	if not Inventory.RemoveFromSlot(player, slot, 1) then return false, "noseed" end
 	local spec = rollCrop()
 	entry.crop, entry.at = spec.item, os.time()
-	-- **ทอยของเรืองแสงตอนหยอดเมล็ด ไม่ใช่ตอนเก็บ** (ผู้ใช้สั่ง 2026-09-23) — ผู้เล่นเห็นระหว่างที่มันโต
-	-- ว่าแปลงไหนพิเศษ · ธงอยู่บนตัวโมเดล ไคลเอนต์จึงวาดแสงได้เองโดยไม่ต้องมี remote
-	model:SetAttribute("Glow", IslandConfig.RollGlow())
+	-- แสงยังไม่ทอยตอนหยอด — ทอยตอนสุก (ripen ข้างล่าง · ผู้ใช้สั่ง 2026-09-25)
+	entry.glow = nil
+	model:SetAttribute("Glow", nil)
 	local state = Plots[model]
 	if state then state.stage = nil end -- ให้รอบถัดไปวาดใหม่
 	local item = ItemCatalog.Get(spec.item)
 	Remotes.SocialNotify:FireClient(player, "info", ("หยอดเมล็ดแล้ว — ขึ้นเป็น%s ใช้เวลา %d นาที"):format(item and item.name or spec.item, growSeconds(spec) / 60))
 	return true
+end
+
+-- **ทอยแสงตอนผักสุก = ตอนที่เก็บได้พอดี** (ผู้ใช้สั่ง 2026-09-25: "ไม่ใช่สุ่มตอนเก็บ แต่สุ่มแสดงผลขึ้น
+-- ตอนที่สามารถเก็บได้") · จดใน `entry.glow` (false = ทอยแล้วไม่ติด) ออก-เข้าเกาะจึงทอยใหม่ไม่ได้
+-- เรียกซ้ำได้: ทอยครั้งเดียวต่อรอบปลูก แล้วแค่คืนแอตทริบิวต์ให้ตรงกับโปรไฟล์ (หลังเซิร์ฟบูต)
+local function ripen(model, entry)
+	if entry.glow == nil then entry.glow = IslandConfig.RollGlow() or false end
+	local tone = entry.glow or nil
+	if model:GetAttribute("Glow") ~= tone then model:SetAttribute("Glow", tone) end
 end
 
 local function harvest(player, model)
@@ -133,6 +142,7 @@ local function harvest(player, model)
 	if not entry then return false, "missing" end
 	if not entry.crop then return false, "empty" end
 	if progressOf(entry) < 1 then return false, "unripe" end
+	ripen(model, entry) -- เผื่อเก็บก่อนรอบ tick ที่ทอยให้
 	local spec = cropSpec(entry.crop)
 	local amount = spec and math.random(spec.min, spec.max) or 1
 	-- เพดานเดียวกับที่ `Gathering` ใช้กับสัตว์/แร่ (ผู้ใช้สั่ง 2026-09-23) · หนีบก่อนคูณแสงเช่นกัน
@@ -140,7 +150,7 @@ local function harvest(player, model)
 
 	-- **ของเรืองแสง** (ผู้ใช้สั่ง 2026-09-23) ฟ้า = วัตถุดิบ ×2 · ทอง = EXP ×2
 	-- คูณ **ก่อน** ถามกระเป๋า เพื่อให้กระเป๋าที่ใส่ไม่ครบปฏิเสธทั้งกอง ไม่ใช่รับครึ่งเดียวเงียบๆ
-	local glow = model:GetAttribute("Glow")
+	local glow = entry.glow or nil
 	local G = IslandConfig.Glow
 	if glow == "blue" then amount = math.floor(amount * G.yield + 0.5) end
 
@@ -203,8 +213,8 @@ local function harvest(player, model)
 			glow == "gold" and "✨ แสงทอง: EXP สองเท่า" or "💠 แสงฟ้า: วัตถุดิบสองเท่า")
 	end
 
-	entry.crop, entry.at = nil, nil
-	model:SetAttribute("Glow", nil) -- ใช้แล้วหมด รอบหน้าทอยใหม่ตอนหยอดเมล็ด
+	entry.crop, entry.at, entry.glow = nil, nil, nil
+	model:SetAttribute("Glow", nil) -- ใช้แล้วหมด รอบหน้าทอยใหม่ตอนสุก
 	model:SetAttribute("Ripe", nil)
 	local state = Plots[model]
 	if state then state.stage = nil end
@@ -264,6 +274,7 @@ local function tick()
 					end
 					local item = ItemCatalog.Get(entry.crop)
 					local name = item and item.name or entry.crop
+					if progress >= 1 then ripen(model, entry) end -- แสงก่อนเปิดปุ่ม
 					-- **ปุ่มที่กดไม่ได้ต้องซ่อน** (ผู้ใช้สั่ง 2026-09-25) — ระหว่างโตกด E ได้แค่ "ยังไม่สุก"
 					state.prompt.Enabled = progress >= 1
 					if progress >= 1 then

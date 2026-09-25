@@ -163,7 +163,7 @@ for _ = 1, rounds do
 	assert(A("Plant", player, plot), "ปลูกไม่สำเร็จ")
 	A("SetEntry", uid, "crop", "Wheat")
 	A("SetEntry", uid, "at", os.time() - 99999)
-	plot:SetAttribute("Glow", nil) -- กันแสงฟ้าคูณเมล็ดจนวัดเพี้ยน
+	A("SetEntry", uid, "glow", false) -- กันแสงฟ้าคูณเมล็ดจนวัดเพี้ยน (แสงอยู่ในโปรไฟล์แปลง)
 	A("Tick")
 	local before = A("Count", player, C.SeedItem) or 0
 	assert(A("Harvest", player, plot))

@@ -351,8 +351,9 @@ local function gather(node, player)
 
 	local count = math.random(minCount, maxCount)
 	-- สัตว์ในคอกบนเกาะ: สุ่มถ่วงน้ำหนัก 1-5 (ได้ 2 บ่อยสุด) แทนช่วงเท่าๆ กัน (ผู้ใช้สั่ง 2026-09-25)
+	-- ได้สูงสุดเท่าเลเวลของตัวนั้น (`Level` จาก IslandZones · Lv1 = 1 เสมอ)
 	if node:GetAttribute("YieldWeighted") then
-		count = require(game.ReplicatedStorage.IslandConfig).RollPenYield()
+		count = require(game.ReplicatedStorage.IslandConfig).RollPenYield(node:GetAttribute("Level"))
 	end
 
 	-- **เพดานของเกาะ** (ผู้ใช้สั่ง 2026-09-23) — หนีบ **ก่อน** คูณแสง เพื่อให้แสงเป็นทางเดียวที่เกิน 5 ได้

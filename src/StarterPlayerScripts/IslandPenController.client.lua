@@ -129,6 +129,15 @@ layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Parent = list
 
 
+-- "1 วัน 4 ชม." / "3 ชม." / "12 นาที" — เลเวลสัตว์ห่างกันเป็นวัน นาทีอย่างเดียวอ่านไม่รู้เรื่อง
+local function longTime(seconds)
+	seconds = math.max(0, math.floor(seconds or 0))
+	local days, hours = math.floor(seconds / 86400), math.floor((seconds % 86400) / 3600)
+	if days > 0 then return ("%d วัน %d ชม."):format(days, hours) end
+	if hours > 0 then return ("%d ชม."):format(hours) end
+	return ("%d นาที"):format(math.max(1, math.ceil(seconds / 60)))
+end
+
 local function row(index, animal, snap)
 	local frame = Instance.new("Frame")
 	frame.LayoutOrder = index
@@ -225,12 +234,15 @@ local function draw(snap)
 		-- **บอกเป็นนาที:วินาที เมื่อเหลือน้อยกว่าหนึ่งนาที** ไม่งั้น "อีก 1 นาที" ค้างอยู่ตั้งนาน
 		local left = math.max(0, g.secondsLeft or 0)
 		local when = left >= 60 and ("%d นาที"):format(math.ceil(left / 60)) or ("%d วินาที"):format(left)
+		-- เลเวลนำหน้าชื่อ · ท้ายแถวบอกว่าอีกนานแค่ไหนถึงเลเวลถัดไป (โตเองตามอายุ Lv5 ครบ 7 วัน)
+		local who = ("%s Lv%d"):format(g.name or "สัตว์", g.level or 1)
+		local grow = g.nextLevelIn and (" · Lv%d ใน %s"):format((g.level or 1) + 1, longTime(g.nextLevelIn)) or " · เลเวลสูงสุด"
 		if g.state == "ready" then
-			text.Text = ("%s · เก็บได้แล้ว"):format(g.name or "สัตว์")
+			text.Text = ("%s · เก็บได้แล้ว%s"):format(who, grow)
 		elseif g.state == "cool" then
-			text.Text = ("%s · เก็บได้อีกใน %s"):format(g.name or "สัตว์", when)
+			text.Text = ("%s · เก็บได้อีกใน %s%s"):format(who, when, grow)
 		else
-			text.Text = ("%s · โตอีก %s (%d%%)"):format(g.name or "สัตว์", when, math.floor((g.progress or 0) * 100))
+			text.Text = ("%s · โตอีก %s (%d%%)%s"):format(who, when, math.floor((g.progress or 0) * 100), grow)
 		end
 		text.ZIndex = 2
 		text.Parent = bar
@@ -240,7 +252,15 @@ local function draw(snap)
 	release.Visible = (snap.count or 0) > 0
 	if not release.Visible then disarm() end
 
-	for i, animal in ipairs(snap.animals) do row(i, animal, snap) end
+	-- **เมนูซื้อสัตว์** (ผู้ใช้สั่ง 2026-09-25): เลือกชนิดไปแล้ว = เหลือแถวเดียวของชนิดนั้น ·
+	-- คอกเต็ม = ไม่มีเมนูซื้อเลย · คอกว่าง (หรือปล่อยสัตว์ไปแล้ว) = กลับมาครบทุกชนิด
+	local count = snap.count or 0
+	if count < (snap.max or 0) then
+		for i, animal in ipairs(snap.animals) do
+			local otherKind = snap.kind ~= nil and count > 0 and snap.kind ~= animal.kind
+			if not otherKind then row(i, animal, snap) end
+		end
+	end
 	-- **ภาพที่ส่งมาอัปเดตแถบความคืบหน้าไม่มีสิทธิ์เปิดหน้าต่าง** มีแต่การกด E กับการซื้อ (`snap.open`)
 	-- ไม่งั้นปิดแล้วมันเด้งกลับมาเองทุก 3 วินาที
 	if snap.open then gui.Enabled = true end

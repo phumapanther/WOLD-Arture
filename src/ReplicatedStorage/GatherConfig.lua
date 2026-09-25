@@ -249,7 +249,8 @@ GatherConfig.Nodes = {
 --
 -- **แปลงผักไม่ถูกแตะ** มันใช้ `alt` อยู่แล้ว (ผักหรือหนอน อย่างใดอย่างหนึ่ง 35% ตามที่ผู้ใช้กำหนดไว้เดิม)
 -- ถ้ามาใส่ `bonus` ทับ แปลงผักจะกลายเป็นจุดที่ได้หนอนสองทางในครั้งเดียว ซึ่งไม่ใช่ที่สั่ง
-GatherConfig.WormBonus = { item = "Worm", min = 1, max = 2, chance = 0.30 }
+-- 3-5 ตัว 40% ทุกที่ รวมเกมหลัก (ผู้ใช้กำหนด 2026-09-25 · เดิม 1-2 ตัว 30%)
+GatherConfig.WormBonus = { item = "Worm", min = 3, max = 5, chance = 0.40 }
 GatherConfig.Nodes.Herb.bonus = GatherConfig.WormBonus
 GatherConfig.Nodes.WheatField.bonus = GatherConfig.WormBonus
 

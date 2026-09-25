@@ -61,7 +61,9 @@ for _, a in ipairs(livestock():GetChildren()) do a:SetAttribute("ReadyAt", os.ti
 A("ZonesTick")
 for _, a in ipairs(livestock():GetChildren()) do
 	assert(a:GetAttribute("Grown") == true, "โตแล้วต้องติดธง Grown")
-	assert(math.abs(a:GetScale() - 1) < 0.02, "โตแล้วต้องเต็มสเกล ได้ " .. a:GetScale())
+	-- ขนาดตามเลเวล (อายุ) ไม่ใช่ "เต็มสเกล" แล้ว — ซื้อเมื่อกี้ = Lv1
+	local want = C.PenLevelScale[a:GetAttribute("Level") or 1]
+	assert(math.abs(a:GetScale() - want) < 0.02, ("สเกลต้องตรงเลเวล %.2f ได้ %.2f"):format(want, a:GetScale()))
 end
 herd = entry().herd
 assert(herd and #herd == 2, "ฝูงยังต้องครบ")
@@ -80,10 +82,11 @@ for _, a in ipairs(back) do
 	assert(a.Name == "Chicken", "ชนิดต้องเหมือนเดิม")
 	assert(a:GetAttribute("Grown") == true, "ตัวที่โตแล้วต้องกลับมาโตแล้ว ไม่ใช่เริ่มนับใหม่")
 	-- ⚠️ กับดักที่เจอตอนเขียน: `ScaleTo(PenBabyScale)` เคยรันทุกตัว ตัวเต็มวัยจึงค้างครึ่งตัวถาวร
-	assert(math.abs(a:GetScale() - 1) < 0.02, "ตัวที่โตแล้วต้องกลับมาเต็มสเกล ได้ " .. a:GetScale())
+	local want = C.PenLevelScale[a:GetAttribute("Level") or 1]
+	assert(math.abs(a:GetScale() - want) < 0.02, ("ตัวที่คืนมาต้องได้สเกลตามเลเวล %.2f ได้ %.2f"):format(want, a:GetScale()))
 	assert(not a:GetAttribute("Spent"), "ตัวที่ไม่ได้ติดคูลดาวน์ต้องเก็บได้เลย")
 end
-table.insert(out, "ล้างคอก (=รีสตาร์ท) → คืนครบ 2 ตัว โตแล้ว เต็มสเกล")
+table.insert(out, "ล้างคอก (=รีสตาร์ท) → คืนครบ 2 ตัว โตแล้ว สเกลตามเลเวล")
 
 ----------------------------------------------------------------- คูลดาวน์ที่ค้างมาต้องหมดอายุเองได้
 local one = back[1]

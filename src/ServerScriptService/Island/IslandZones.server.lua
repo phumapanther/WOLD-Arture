@@ -70,6 +70,16 @@ local function penCount(model)
 	return #penFolder(model):GetChildren()
 end
 
+-- **เลเวลสัตว์ 1-5 โตเองตามอายุ** (ผู้ใช้กำหนด 2026-09-25) · ตั้งแอตทริบิวต์ `Level` (Gathering อ่านไปจำกัดผลผลิต)
+-- แล้วขยายตัวตามเลเวล · ScaleTo เฉพาะตอนเลเวลเปลี่ยน ไม่ใช่ทุกวินาที · เลเวลคิดจาก BornAt จึงไม่ต้องเซฟแยก
+local function applyLevel(animal, now)
+	local level = IslandConfig.PenLevelOf(animal:GetAttribute("BornAt"), now)
+	if animal:GetAttribute("Level") == level then return end
+	animal:SetAttribute("Level", level)
+	local scale = IslandConfig.PenLevelScale[level] or 1
+	pcall(function() animal:ScaleTo(scale) end)
+end
+
 -- ปล่อยสัตว์หนึ่งตัวลงคอก · ติดแท็กให้ Gathering ของเกมหลักต่อปุ่ม "เก็บไข่/รีดนม/ตัดขน" ให้เอง
 --
 -- `saved` = สถานะที่เก็บไว้ในโปรไฟล์ (ตอนเซิร์ฟบูตใหม่) — ไม่ส่งมา = ตัวใหม่ที่เพิ่งซื้อ
@@ -101,7 +111,9 @@ local function spawnAnimal(model, kind, saved)
 	animal:SetAttribute("YieldWeighted", true)
 	-- สัตว์ที่เพิ่งถูกเก็บไม่ต้องจางเป็นผี — มันยังยืนอยู่ตรงนั้นจริงๆ แค่รีดนมซ้ำไม่ได้ชั่วคราว
 	animal:SetAttribute("NoFade", true)
-	animal:SetAttribute("BornAt", saved and saved.b or os.time()) -- ใช้คำนวณสเกลระหว่างโต
+	animal:SetAttribute("BornAt", saved and saved.b or os.time()) -- อายุ = เลเวล (applyLevel)
+	-- แสงที่ทอยไว้แล้วรอดข้ามการออก-เข้าเกาะ — ไม่งั้นออกแล้วเข้าใหม่ = ทอยแสงใหม่ได้เรื่อยๆ
+	if saved and saved.w then animal:SetAttribute("Glow", saved.w) end
 
 	-- ตัวที่โตแล้วกลับมาโตเหมือนเดิม · ตัวที่ยังโตไม่เสร็จนับต่อจากนาฬิกาเดิม (เวลาเดินตอนออฟไลน์ด้วย
 	-- เพราะใช้ `os.time` แบบเดียวกับแปลงผัก) · `a` = เวลาที่เก็บซ้ำได้อีกครั้ง ถ้ากำลังติดคูลดาวน์อยู่
@@ -116,8 +128,8 @@ local function spawnAnimal(model, kind, saved)
 		-- ตัวที่ถูกคืนมาพร้อมธง `Grown` จะไม่ผ่านทางนั้นอีก ย่อตรงนี้ = ตัวเต็มวัยค้างที่ครึ่งตัวถาวร
 	else
 		animal:SetAttribute("Spent", true) -- ยังโตไม่พอ: ปุ่มถูกปิดไว้จนกว่า tickPen จะปลดให้
-		pcall(function() animal:ScaleTo(IslandConfig.PenBabyScale) end) -- เกิดมาตัวเล็ก แล้วค่อยโต
 	end
+	applyLevel(animal, os.time()) -- ซื้อมา = Lv1 ตัวเล็กมาก · คืนจากเซฟ = เลเวลตามอายุจริง
 	CollectionService:AddTag(animal, NODE_TAG)
 	animal.Parent = penFolder(model)
 	return true
@@ -141,12 +153,17 @@ local function penSnapshot(model)
 		local name = ANIMAL_NAMES[a.Name] or a.Name
 		local readyAt = a:GetAttribute("ReadyAt") or 0
 		local again = a:GetAttribute("ReadyAgainAt")
+		local bornAt = a:GetAttribute("BornAt")
+		local level = IslandConfig.PenLevelOf(bornAt, now)
+		local nextLevelIn = IslandConfig.PenNextLevelIn(bornAt, now)
 		if readyAt > now then
-			local bornAt = a:GetAttribute("BornAt") or (readyAt - IslandConfig.PenGrowSeconds)
+			bornAt = bornAt or (readyAt - IslandConfig.PenGrowSeconds)
 			local span = math.max(1, readyAt - bornAt)
 			growing[#growing + 1] = {
 				state = "grow",
 				name = name,
+				level = level,
+				nextLevelIn = nextLevelIn,
 				progress = math.clamp((now - bornAt) / span, 0, 1),
 				secondsLeft = math.max(0, readyAt - now),
 			}
@@ -156,12 +173,15 @@ local function penSnapshot(model)
 			growing[#growing + 1] = {
 				state = "cool",
 				name = name,
+				level = level,
+				nextLevelIn = nextLevelIn,
 				progress = math.clamp(1 - (again - now) / span, 0, 1),
 				secondsLeft = math.max(0, again - now),
 			}
 		else
 			ready += 1
-			growing[#growing + 1] = { state = "ready", name = name, progress = 1, secondsLeft = 0 }
+			growing[#growing + 1] = { state = "ready", name = name, progress = 1, secondsLeft = 0,
+				level = level, nextLevelIn = nextLevelIn }
 		end
 	end
 	-- เรียงจากใกล้ได้ที่สุด · ตัวที่เก็บได้แล้วขึ้นก่อนเพื่อน
@@ -251,6 +271,7 @@ function saveHerd(model, entry)
 			r = a:GetAttribute("ReadyAt"),
 			g = a:GetAttribute("Grown") == true or nil,
 			a = a:GetAttribute("ReadyAgainAt"),
+			w = a:GetAttribute("Glow"),
 		}
 	end
 	entry.herd = #herd > 0 and herd or nil
@@ -283,9 +304,6 @@ local function tickPen(model, entry)
 	local now = os.time()
 	for _, animal in ipairs(live) do
 		local readyAt = animal:GetAttribute("ReadyAt") or 0
-		local bornAt = animal:GetAttribute("BornAt") or (readyAt - IslandConfig.PenGrowSeconds)
-		local span = math.max(1, readyAt - bornAt)
-		local progress = math.clamp((now - bornAt) / span, 0, 1)
 
 		-- ⚠️ **ปลดล็อกได้ครั้งเดียว ตอนโตเสร็จเท่านั้น** หลังจากนั้น `Spent` เป็นของ Gathering ล้วนๆ
 		-- (มันตั้งตอนเก็บ แล้วล้างเองเมื่อครบ `RespawnSeconds`) — ถ้าตรงนี้ยังล้างให้ด้วย สัตว์ที่เพิ่ง
@@ -310,19 +328,16 @@ local function tickPen(model, entry)
 		if not animal:GetAttribute("Grown") and readyAt <= now then
 			animal:SetAttribute("Grown", true)
 			animal:SetAttribute("Spent", nil)
-			animal:SetAttribute("Glow", IslandConfig.RollGlow()) -- โตเสร็จ = รอบแรกของมัน
-			pcall(function() animal:ScaleTo(1) end) -- โตเต็มวัย
+			animal:SetAttribute("Glow", IslandConfig.RollGlow()) -- โตเสร็จ = รอบแรกของมัน (ทอยตอนเก็บได้พอดี)
 			for _, d in ipairs(animal:GetDescendants()) do
 				if d:IsA("ProximityPrompt") then d.Enabled = true end
 			end
-		elseif not animal:GetAttribute("Grown") then
-			-- **ค่อยๆ โตให้เห็น** เหมือนพืชในแปลง — `ScaleTo` รับสเกลสัมบูรณ์ จึงคำนวณจากความคืบหน้าตรงๆ
-			local want = IslandConfig.PenBabyScale + (1 - IslandConfig.PenBabyScale) * progress
-			pcall(function() animal:ScaleTo(want) end)
 		end
+		-- ขนาดตามเลเวล (ไม่ใช่ตามความคืบหน้าสิบนาทีแรกแล้ว) · เปลี่ยนเฉพาะตอนเลเวลขึ้น
+		applyLevel(animal, now)
 
 		-- นาฬิกาบนปุ่ม ทรงเดียวกับแปลงผัก (ObjectText) — ไม่ต้องมีโค้ดไคลเอนต์
-		local label = ANIMAL_NAMES[animal.Name] or animal.Name
+		local label = ("%s Lv%d"):format(ANIMAL_NAMES[animal.Name] or animal.Name, animal:GetAttribute("Level") or 1)
 		for _, d in ipairs(animal:GetDescendants()) do
 			if d:IsA("ProximityPrompt") and d.Name == "GatherPrompt" then
 				if readyAt > now then

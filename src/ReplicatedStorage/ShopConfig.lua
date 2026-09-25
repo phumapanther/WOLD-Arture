@@ -46,7 +46,7 @@ ShopConfig.IslandSells = {
 
 	-- แปลงผัก: แจกฟรี 9 แปลงตอนเข้าเกาะครั้งแรก · ซื้อเพิ่มได้สองทาง
 	{ id = "FarmPlot", price = 40, currency = "gems" },
-	{ id = "FarmPlot", price = 25000 },
+	{ id = "FarmPlot", price = 10000 }, -- ผู้ใช้กำหนด 2026-09-25 (เดิม 25,000)
 
 	-- บ้าน: เหรียญเกมหลัก (ของชิ้นใหญ่ที่เก็บเงินทั้งเกมมาซื้อ)
 	{ id = "House_StoneCottage", price = 20000 },
@@ -102,8 +102,8 @@ ShopConfig.IslandSells = {
 	{ id = "Reactor", price = 500, currency = "gems" },
 
 	-- คอก/โซนแร่: เหรียญเกมหลัก (เป็นเครื่องมือหาของ ไม่ใช่ของตกแต่ง)
-	{ id = "AnimalPen", price = 35000 },
-	{ id = "MineZone", price = 50000 },
+	{ id = "AnimalPen", price = 15000 }, -- ผู้ใช้กำหนด 2026-09-25 (เดิม 35,000)
+	{ id = "MineZone", price = 30000 }, -- ผู้ใช้กำหนด 2026-09-25 (เดิม 50,000)
 }
 
 -- What the shopkeeper buys, and for how much of the catalog `value`. Well under 1 on purpose: the gap

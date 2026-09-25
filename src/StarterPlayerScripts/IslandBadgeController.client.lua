@@ -96,55 +96,124 @@ end
 -- เซิร์ฟเวอร์ทอยแล้วเขียนไว้ที่แอตทริบิวต์ `Glow` — ตรงนี้แค่แปลงเป็นภาพ · **เป็นสถานะของโลก
 -- ไม่ใช่ของใครคนหนึ่ง** ทุกคนที่ยืนอยู่จึงเห็นก้อนเดียวกัน (ทุกเครื่องวาดจากธงเดียวกัน)
 local GLOW = IslandConfig.Glow
-local Glows = {} -- [instance] = Folder
+local Glows = {} -- [instance] = Folder (อยู่ใน WOLD_GlowFX ของเครื่องนี้ ไม่ได้อยู่ในตัวโมเดล)
+
+-- **ออร่ารอบทั้งตัว ไม่ใช่จุดแสงจุดเดียว** (ผู้ใช้สั่ง 2026-09-25 "โมเดลจะเรืองแสงออกมาเป็นออร่า")
+-- ขอบเรืองแสง (Highlight) + หมอกแสงฟุ้งออกจากกล่องครอบทั้งตัว + ประกายลอยขึ้น + แสงส่อง
+-- ทุกชิ้นอยู่ในโฟลเดอร์ของเครื่องนี้ ไม่ได้แขวนในโมเดล — ไม่ไปทำให้กล่องครอบของโมเดลโตขึ้น
+-- และไม่ติดไปกับ ghost ตอนย้ายของในโหมดจัดเกาะ
+local fxFolder = nil
+local function fx()
+	if not fxFolder or not fxFolder.Parent then
+		fxFolder = Instance.new("Folder")
+		fxFolder.Name = "WOLD_GlowFX"
+		fxFolder.Parent = workspace
+	end
+	return fxFolder
+end
+
+local function boundsOf(inst)
+	if inst:IsA("Model") then return inst:GetBoundingBox() end
+	if inst:IsA("BasePart") then return inst.CFrame, inst.Size end
+	return nil
+end
+
+local function paint(holder, color)
+	holder.Core.Light.Color = color
+	holder.Core.Haze.Color = ColorSequence.new(color)
+	holder.Core.Sparkle.Color = ColorSequence.new(color)
+	holder.Outline.FillColor = color
+	holder.Outline.OutlineColor = color
+end
 
 local function showGlow(inst, tone)
 	local color = GLOW.colors[tone]
 	if not color then return end
+	local cf, size = boundsOf(inst)
+	if not cf then return end
 	local holder = Glows[inst]
-	if holder then
-		if holder:GetAttribute("Tone") ~= tone then
-			holder:SetAttribute("Tone", tone)
-			holder.Light.Color = color
-			holder.Sparkle.Color = ColorSequence.new(color)
-		end
-		return
+	if not holder then
+		holder = Instance.new("Folder")
+		holder.Name = "Glow"
+
+		-- กล่องล่องหนขนาดเท่าตัว ไว้ปล่อยอนุภาครอบทั้งตัว (ตามตัวเมื่อสัตว์โต/เลเวลขึ้น — อัปเดตทุกรอบข้างล่าง)
+		local core = Instance.new("Part")
+		core.Name = "Core"
+		core.Anchored = true
+		core.CanCollide, core.CanQuery, core.CanTouch = false, false, false
+		core.Transparency = 1
+		core.Parent = holder
+
+		local light = Instance.new("PointLight")
+		light.Name = "Light"
+		light.Brightness = GLOW.brightness
+		light.Range = GLOW.range
+		light.Shadows = false -- มีได้หลายสิบดวงพร้อมกัน เงาไม่คุ้ม
+		light.Parent = core
+
+		-- หมอกแสงโปร่งเม็ดใหญ่ ฟุ้งออกจากผิวกล่อง = ออร่า (บทเรียนออร่าผู้เล่น: เม็ดโปร่งซ้อนกัน ไม่ใช่เม็ดทึบ)
+		local haze = Instance.new("ParticleEmitter")
+		haze.Name = "Haze"
+		haze.Shape = Enum.ParticleEmitterShape.Box
+		haze.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+		haze.LightEmission = 1
+		haze.LightInfluence = 0
+		haze.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0.6),
+			NumberSequenceKeypoint.new(0.5, 1.4),
+			NumberSequenceKeypoint.new(1, 0.4),
+		})
+		haze.Transparency = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 1),
+			NumberSequenceKeypoint.new(0.3, 0.65),
+			NumberSequenceKeypoint.new(1, 1),
+		})
+		haze.Rate = 14
+		haze.Lifetime = NumberRange.new(1.2, 1.8)
+		haze.Speed = NumberRange.new(0.3, 0.8)
+		haze.SpreadAngle = Vector2.new(180, 180)
+		haze.Acceleration = Vector3.new(0, 1.2, 0)
+		haze.Parent = core
+
+		local sparkle = Instance.new("ParticleEmitter")
+		sparkle.Name = "Sparkle"
+		sparkle.Shape = Enum.ParticleEmitterShape.Box
+		sparkle.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+		sparkle.LightEmission = 1
+		sparkle.LightInfluence = 0
+		sparkle.Size = NumberSequence.new({
+			NumberSequenceKeypoint.new(0, 0),
+			NumberSequenceKeypoint.new(0.4, 0.45),
+			NumberSequenceKeypoint.new(1, 0),
+		})
+		sparkle.Transparency = NumberSequence.new(0.2)
+		sparkle.Rate = 9
+		sparkle.Lifetime = NumberRange.new(1.1, 1.8)
+		sparkle.Speed = NumberRange.new(0.6, 1.4)
+		sparkle.SpreadAngle = Vector2.new(180, 180)
+		sparkle.Acceleration = Vector3.new(0, 1.5, 0) -- ลอยขึ้น ไม่ใช่ร่วงลง
+		sparkle.Parent = core
+
+		-- ขอบเรืองแสงรอบตัว — ไม่ทะลุกำแพง (Occluded) · ของเรืองแสงมีแค่ราว 10% จึงไม่ชนเพดานจำนวน Highlight
+		local outline = Instance.new("Highlight")
+		outline.Name = "Outline"
+		outline.Adornee = inst
+		outline.DepthMode = Enum.HighlightDepthMode.Occluded
+		outline.FillTransparency = 0.8
+		outline.OutlineTransparency = 0.15
+		outline.Parent = holder
+
+		holder:SetAttribute("Tone", tone)
+		paint(holder, color)
+		holder.Parent = fx()
+		Glows[inst] = holder
+	elseif holder:GetAttribute("Tone") ~= tone then
+		holder:SetAttribute("Tone", tone)
+		paint(holder, color)
 	end
-
-	local part = anchorOf(inst)
-	if not part then return end
-	holder = Instance.new("Folder")
-	holder.Name = "WOLD_Glow"
-	holder:SetAttribute("Tone", tone)
-
-	local light = Instance.new("PointLight")
-	light.Name = "Light"
-	light.Color = color
-	light.Brightness = GLOW.brightness
-	light.Range = GLOW.range
-	light.Shadows = false -- แสงนี้มีได้หลายสิบดวงพร้อมกัน เงาคือค่าใช้จ่ายที่ไม่ได้อะไรกลับมา
-	light.Parent = holder
-
-	local sparkle = Instance.new("ParticleEmitter")
-	sparkle.Name = "Sparkle"
-	sparkle.Color = ColorSequence.new(color)
-	sparkle.LightEmission = 1
-	sparkle.LightInfluence = 0
-	sparkle.Size = NumberSequence.new({
-		NumberSequenceKeypoint.new(0, 0),
-		NumberSequenceKeypoint.new(0.4, 0.55),
-		NumberSequenceKeypoint.new(1, 0),
-	})
-	sparkle.Transparency = NumberSequence.new(0.25)
-	sparkle.Rate = 7
-	sparkle.Lifetime = NumberRange.new(1.1, 1.8)
-	sparkle.Speed = NumberRange.new(0.6, 1.4)
-	sparkle.SpreadAngle = Vector2.new(180, 180)
-	sparkle.Acceleration = Vector3.new(0, 1.5, 0) -- ลอยขึ้น ไม่ใช่ร่วงลง
-	sparkle.Parent = holder
-
-	holder.Parent = part
-	Glows[inst] = holder
+	local core = holder.Core
+	if core.Size ~= size then core.Size = size end
+	if core.CFrame ~= cf then core.CFrame = cf end
 end
 
 local function hideGlow(inst)
@@ -182,9 +251,9 @@ local function sweepNodes(seen, lit)
 		if node:IsDescendantOf(workspace) then
 			local emoji = nodeEmoji(node)
 			if emoji then seen[node] = emoji end
-			-- **แสงไม่ได้ผูกกับความพร้อม** สัตว์ที่ยังโตไม่เต็มวัยก็เรืองแสงรอไว้ได้ (ธงถูกทอยตอนมันเกิด)
+			-- **แสงขึ้นเฉพาะตอนเก็บได้** (ผู้ใช้สั่ง 2026-09-25) — ตัวที่ติดคูลดาวน์/ยังโตไม่เสร็จไม่เรือง
 			local tone = node:GetAttribute("Glow")
-			if tone then lit[node] = tone end
+			if tone and emoji then lit[node] = tone end
 		end
 	end
 end
@@ -194,9 +263,11 @@ local function sweepPlots(seen, lit)
 	local island = workspace:FindFirstChild("WOLD_Island")
 	local placed = island and island:FindFirstChild("Placed")
 	for _, model in ipairs(placed and placed:GetChildren() or {}) do
-		if model:GetAttribute("Ripe") then seen[model] = CFG.crop end
-		local tone = model:GetAttribute("Glow")
-		if tone then lit[model] = tone end
+		if model:GetAttribute("Ripe") then
+			seen[model] = CFG.crop
+			local tone = model:GetAttribute("Glow") -- ทอยตอนสุก (IslandPlots.ripen) แสงจึงขึ้นพร้อมป้าย
+			if tone then lit[model] = tone end
+		end
 	end
 end
 
