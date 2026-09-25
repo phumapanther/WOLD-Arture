@@ -755,6 +755,11 @@ function ItemCatalog.DisplayName(id, meta)
 	if type(meta) == "table" and type(meta.clan) == "string" then
 		return base .. " · " .. meta.clan
 	end
+	-- ขั้นตีบวก "+n" ต่อท้ายชื่อ (ก่อนชื่อสกิน): "ดาบ +7 (เปลวเพลิง)"
+	local level = type(meta) == "table" and tonumber(meta.enhance) or nil
+	if level and level == level and level >= 1 then
+		base = ("%s +%d"):format(base, math.min(math.floor(level), 10))
+	end
 	-- อาวุธ/เกราะที่ติดสกินอยู่ บอกชื่อสกินต่อท้าย
 	if type(meta) == "table" and type(meta.skin) == "string" then
 		local skin = ItemCatalog.Items[meta.skin]
