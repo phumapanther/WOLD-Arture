@@ -161,6 +161,7 @@ function CraftGui.new()
 end
 
 function CraftGui:OnCraft(callback) self.onCraft = callback end
+function CraftGui:OnEnhance(callback) self.onEnhance = callback end
 
 -- Puts every button to sleep and runs the bar on the one row that is being made. Split out from Begin because
 -- a redraw arriving mid-swing has to re-apply exactly the same thing to a brand new set of rows, and the bar
@@ -216,7 +217,8 @@ function CraftGui:ApplyOutcome()
 	row.odds.Font = Enum.Font.GothamBold
 	-- The colour carries it rather than the wording, because the one thing a player must not have to read
 	-- twice is whether the 25,000 they just spent bought anything.
-	row.odds.Text = self.outcomeOk and "สำเร็จ!" or "ล้มเหลว! เสียวัสดุและค่าจ้างไปแล้ว"
+	-- แถวตีบวกมีข้อความผลของตัวเอง (winText/failText จากสแนปช็อต)
+	row.odds.Text = self.outcomeOk and (row.winText or "สำเร็จ!") or (row.failText or "ล้มเหลว! เสียวัสดุและค่าจ้างไปแล้ว")
 	row.odds.TextColor3 = self.outcomeOk and WIN or LOSE
 	row.frame.BackgroundColor3 = self.outcomeOk and Color3.fromRGB(40, 66, 44) or Color3.fromRGB(72, 38, 36)
 	-- Fading back to the row's normal colour is what ends the moment, so the outcome does not need clearing by
@@ -331,7 +333,10 @@ local function recipeRow(parent, order, entry, onClick)
 	odds.RichText = true
 	local fee = entry.gold or 0
 	local feeColor = (entry.goldHave or 0) >= fee and ENOUGH or SHORT
-	if (entry.chance or 1) >= 1 and fee <= 0 then
+	if entry.note then
+		-- แถวตีบวก: เซิร์ฟเวอร์เขียนบรรทัดนี้มาเอง (โอกาส · ดาเมจก่อน→หลัง · ผลของการแตก)
+		odds.Text = entry.note
+	elseif (entry.chance or 1) >= 1 and fee <= 0 then
 		-- A straight exchange, which is what the unlucky page is. Printing "100% · 0 เหรียญ" would dress a
 		-- certainty up as a bet and invite the player to read odds that are not there.
 		odds.Text = "<font color=\"#" .. ENOUGH:ToHex() .. "\">แลกได้แน่นอน ไม่มีค่าจ้าง</font>"
@@ -374,7 +379,7 @@ local function recipeRow(parent, order, entry, onClick)
 	button.Font = Enum.Font.GothamBold
 	button.TextSize = 12
 	button.TextColor3 = entry.affordable and Color3.fromRGB(24, 26, 32) or TEXT_MUTED
-	button.Text = ((entry.chance or 1) >= 1 and (entry.gold or 0) <= 0) and "แลก" or "สร้าง"
+	button.Text = entry.action or (((entry.chance or 1) >= 1 and (entry.gold or 0) <= 0) and "แลก" or "สร้าง")
 	button.Parent = frame
 	corner(button, UDim.new(0, 5))
 	button.Activated:Connect(function()
@@ -393,7 +398,7 @@ local function recipeRow(parent, order, entry, onClick)
 	-- to sleep while another row is busy, and the odds line to swap for the outcome and back. The row's own
 	-- colour is kept so the outcome flash has something to fade home to.
 	return { frame = frame, track = track, fill = fill, button = button, odds = odds,
-		baseColor = frame.BackgroundColor3 }
+		baseColor = frame.BackgroundColor3, winText = entry.winText, failText = entry.failText }
 end
 
 -- Redraws the recipe list for whichever tab is open. Separate from Show because switching tabs must not need
@@ -410,7 +415,12 @@ function CraftGui:Render()
 		if entry.tab == self.activeTab then
 			shown += 1
 			self.rows[entry.index] = recipeRow(self.list, shown, entry, function()
-				if self.onCraft then self.onCraft(entry.index) end
+				-- แถวตีบวกขอ "ตีอาวุธช่องนี้" ไม่ใช่ "ทำสูตรลำดับนี้"
+				if entry.enhance then
+					if self.onEnhance then self.onEnhance(entry.enhance.slot) end
+				elseif self.onCraft then
+					self.onCraft(entry.index)
+				end
 			end)
 		end
 	end

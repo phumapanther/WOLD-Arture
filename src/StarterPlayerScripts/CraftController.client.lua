@@ -23,6 +23,11 @@ gui:OnCraft(function(index)
 	Remotes.RequestCraft:FireServer(index)
 end)
 
+-- ตีบวก: ส่งช่องของอาวุธ ("equipped" หรือเลขช่อง) — เซิร์ฟเวอร์ตรวจทุกอย่างซ้ำ
+gui:OnEnhance(function(slot)
+	Remotes.RequestEnhance:FireServer(slot)
+end)
+
 -- Sent both when the prompt is used and after every craft, so the window redraws itself from the server's own
 -- counts rather than guessing what the craft consumed.
 -- ที่มาของหน้าที่เปิดอยู่: ตำแหน่งสถานี (เตา/เครื่องปั่น/เครื่องต้มยา) ถ้าไม่มี = ช่างตีเหล็ก
