@@ -23,6 +23,7 @@ local EnhanceConfig = require(game.ReplicatedStorage.EnhanceConfig)
 local Mail = require(game.ServerScriptService.Mail)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
+local Achievements = require(game.ServerScriptService.Achievements)
 
 local TAG = "WOLD_Npc"
 local RANGE = 12
@@ -508,6 +509,8 @@ local function returnWeapon(player, data, job)
 		Remotes.SocialNotify:FireClient(player, "info", ("กระเป๋าเต็ม — %s อยู่ในกล่องจดหมายแล้ว"):format(name))
 	end
 	data.EnhanceJob = nil
+	-- ความสำเร็จ "ช่างฝีมือ/เทพแห่งเตาหลอม" นับตอนอาวุธกลับมาถึงมือ (ไม่ใช่ตอนทอย — ไม่งั้นแจ้งปลดก่อนแถบเต็ม)
+	if job.success then Achievements.Record(player, "maxEnhance", EnhanceConfig.LevelOf(job.meta), "max") end
 	if ProfileAccess.Flush then ProfileAccess.Flush(player) end
 	return where
 end

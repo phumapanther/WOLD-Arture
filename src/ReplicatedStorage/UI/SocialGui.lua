@@ -1192,10 +1192,12 @@ function SocialGui:buildCollection()
 
 	self.collectionTab = "fish"
 	self.collectionTabs = {}
-	for i, spec in ipairs({ { id = "fish", name = "ปลา" }, { id = "mobs", name = "มอนสเตอร์" } }) do
+	-- แท็บที่สาม "ความสำเร็จ" (2026-09-25 ผู้ใช้สั่งให้อยู่เมนูเดียวกับสมุดสะสม)
+	local tabSpecs = { { id = "fish", name = "ปลา" }, { id = "mobs", name = "มอนสเตอร์" }, { id = "achievements", name = "ความสำเร็จ" } }
+	for i, spec in ipairs(tabSpecs) do
 		local b = Instance.new("TextButton")
-		b.Position = UDim2.new((i - 1) / 2, 3, 0, 0)
-		b.Size = UDim2.new(1 / 2, -6, 1, 0)
+		b.Position = UDim2.new((i - 1) / #tabSpecs, 3, 0, 0)
+		b.Size = UDim2.new(1 / #tabSpecs, -6, 1, 0)
 		b.BackgroundColor3 = STONE_DEEP
 		b.BackgroundTransparency = 0.3
 		b.BorderSizePixel = 0
@@ -1236,6 +1238,11 @@ function SocialGui:RenderCollection(data)
 		local wait = label(list, "กำลังเปิดสมุด...", 13, TEXT_MUTED, Enum.TextXAlignment.Center)
 		wait.Size = UDim2.new(1, 0, 0, 60)
 		self.collectionSummary.Text = ""
+		return
+	end
+
+	if self.collectionTab == "achievements" then
+		self:RenderAchievements(data.achievements)
 		return
 	end
 
@@ -1298,6 +1305,98 @@ function SocialGui:RenderCollection(data)
 		count.AnchorPoint = Vector2.new(1, 0)
 		count.Position = UDim2.new(1, -10, 0, 0)
 		count.Size = UDim2.new(0, 150, 1, 0)
+	end
+end
+
+-- แท็บ "ความสำเร็จ": ฉายาที่เลือกอยู่ · แถว "ไม่ใช้ฉายา" · ฉายา VIP (ถ้ามี) · ความสำเร็จทั้งหมดพร้อมความคืบหน้า
+-- ปุ่ม "ใช้ฉายา" ส่ง id ขึ้นไปผ่าน callbacks.title — เซิร์ฟเวอร์ตัดสินว่าใช้ได้ไหม แล้วส่งภาพใหม่กลับมา
+function SocialGui:RenderAchievements(ach)
+	local list = self.collectionList
+	if not ach then
+		self.collectionSummary.Text = ""
+		local wait = label(list, "กำลังเปิดสมุด...", 13, TEXT_MUTED, Enum.TextXAlignment.Center)
+		wait.Size = UDim2.new(1, 0, 0, 60)
+		return
+	end
+	local done = 0
+	for _, row in ipairs(ach.rows or {}) do if row.unlocked then done += 1 end end
+	self.collectionSummary.Text = ach.marked and ("ปลดแล้ว %d/%d · ⚠️ ติดหัวแดง ฉายาถูกล็อกจนหมดเวลา"):format(done, #(ach.rows or {}))
+		or ("ปลดแล้ว %d/%d · เลือกฉายาเพื่อขึ้นเหนือหัว"):format(done, #(ach.rows or {}))
+
+	local order = 0
+	local function row(height)
+		order += 1
+		local frame = Instance.new("Frame")
+		frame.LayoutOrder = order
+		frame.Size = UDim2.new(1, -6, 0, height)
+		frame.BackgroundColor3 = STONE_DEEP
+		frame.BackgroundTransparency = 0.35
+		frame.BorderSizePixel = 0
+		frame.Parent = list
+		corner(frame, UDim.new(0, 8))
+		return frame
+	end
+	local function useButton(parent, id, enabled, equipped)
+		local b = Instance.new("TextButton")
+		b.AnchorPoint = Vector2.new(1, 0.5)
+		b.Position = UDim2.new(1, -8, 0.5, 0)
+		b.Size = UDim2.fromOffset(78, 24)
+		b.BorderSizePixel = 0
+		b.Font = Enum.Font.GothamBold
+		b.TextSize = 11
+		b.Text = equipped and "กำลังใช้" or (enabled and "ใช้ฉายา" or "ยังไม่ปลด")
+		b.BackgroundColor3 = equipped and RUNE or (enabled and Color3.fromRGB(70, 130, 90) or Color3.fromRGB(60, 62, 72))
+		b.TextColor3 = equipped and Color3.fromRGB(28, 24, 16) or (enabled and TEXT_LIGHT or TEXT_MUTED)
+		b.AutoButtonColor = enabled and not equipped
+		b.Parent = parent
+		corner(b, UDim.new(0, 6))
+		b.Activated:Connect(function()
+			if not enabled or equipped then return end
+			if self.callbacks.title then self.callbacks.title(id) end
+		end)
+	end
+
+	-- ไม่ใช้ฉายา
+	do
+		local frame = row(34)
+		local t = label(frame, "ไม่ใช้ฉายา", 13, TEXT_MUTED)
+		t.Position = UDim2.new(0, 10, 0, 0)
+		t.Size = UDim2.new(1, -100, 1, 0)
+		useButton(frame, "", true, ach.equipped == nil)
+	end
+	-- ฉายา VIP (มีเฉพาะตอน VIP ยังไม่หมด)
+	if ach.vip then
+		local frame = row(34)
+		local t = label(frame, ach.vip.title .. "  —  ฉายาของ VIP", 13, ach.vip.color)
+		t.Font = Enum.Font.GothamBold
+		t.Position = UDim2.new(0, 10, 0, 0)
+		t.Size = UDim2.new(1, -100, 1, 0)
+		useButton(frame, ach.vip.id, true, ach.equipped == ach.vip.id)
+	end
+	for _, entry in ipairs(ach.rows or {}) do
+		local frame = row(46)
+		local title = label(frame, entry.title, 13, entry.unlocked and entry.color or TEXT_MUTED)
+		title.Font = Enum.Font.GothamBold
+		title.Position = UDim2.new(0, 10, 0, 3)
+		title.Size = UDim2.new(1, -100, 0, 18)
+		title.TextTruncate = Enum.TextTruncate.AtEnd
+		local desc = label(frame, ("%s · %s/%s · 💎 %d"):format(entry.desc, entry.progress, entry.goal, entry.gems), 11, TEXT_MUTED)
+		desc.Position = UDim2.new(0, 10, 0, 22)
+		desc.Size = UDim2.new(1, -100, 0, 14)
+		desc.TextTruncate = Enum.TextTruncate.AtEnd
+		-- แถบความคืบหน้าบางๆ ใต้บรรทัด
+		local track = Instance.new("Frame")
+		track.Position = UDim2.new(0, 10, 1, -6)
+		track.Size = UDim2.new(1, -100, 0, 3)
+		track.BackgroundColor3 = Color3.fromRGB(30, 32, 40)
+		track.BorderSizePixel = 0
+		track.Parent = frame
+		local fill = Instance.new("Frame")
+		fill.Size = UDim2.fromScale(math.clamp(entry.progress / math.max(entry.goal, 1), 0, 1), 1)
+		fill.BackgroundColor3 = entry.color
+		fill.BorderSizePixel = 0
+		fill.Parent = track
+		useButton(frame, entry.id, entry.unlocked, ach.equipped == entry.id)
 	end
 end
 

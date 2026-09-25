@@ -18,6 +18,7 @@ local SpawnSelector = require(game.ReplicatedStorage.SpawnSelector)
 local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 local Vip = require(game.ServerScriptService.Vip)
 local Mail = require(game.ServerScriptService.Mail)
+local Achievements = require(game.ServerScriptService.Achievements)
 
 local ProfileTemplate = {
 	Position = nil, -- {x, y, z} | nil (nil = never saved yet)
@@ -294,6 +295,12 @@ if not ServerConfig.IsLobby then
 			-- เมล: Mail เป็นคนตัดสินว่าจะ processed เลยหรือรอคิว (กล่องเต็ม) — ห้าม processed แทนมันตรงนี้
 			if type(message) == "table" and message.kind == "mail" then
 				Mail.Deliver(player, profile.Data, message, processed)
+				return
+			end
+			-- สถิติความสำเร็จจากสนาม PVP / บอสโลก (ตัดซ้ำด้วย id ใน Achievements)
+			if type(message) == "table" and message.kind == "stats" then
+				Achievements.AddStatsData(profile.Data, message)
+				processed()
 				return
 			end
 			local until_ = nil

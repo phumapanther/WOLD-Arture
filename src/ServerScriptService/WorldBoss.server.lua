@@ -22,6 +22,7 @@ local GatherConfig = require(game.ReplicatedStorage.GatherConfig)
 local EventState = require(game.ServerScriptService.EventState)
 local MobAccess = require(game.ServerScriptService.MobAccess)
 local Mail = require(game.ServerScriptService.Mail)
+local HttpService = game:GetService("HttpService")
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local ID = "worldboss"
@@ -158,10 +159,13 @@ local function payout()
 			end
 			local letter = letterFor(rank, row, bracket, extra)
 			-- ส่งแยกเธรด: MessageAsync ค้างได้หลายวินาทีต่อคน ไม่ให้ถ่วง stop hook ที่ต้องเก็บบอสออก
+			local stats = { bossJoins = 1, bossTop1 = rank == 1 and 1 or 0, bossLastHits = extra and 1 or 0 }
 			task.spawn(function()
 				if not Mail.Send(row.userId, letter) then
 					warn(("[WorldBoss] ส่งรางวัลถึง %s (%d) ไม่สำเร็จ:"):format(row.name, row.userId), letter.subject)
 				end
+				-- สถิติไปความสำเร็จ (ติดอันดับ/อันดับ 1/ไม้สุดท้าย) — ทางเดียวกับสนาม PVP ถึงคนที่ออกไปแล้วด้วย
+				Mail.Transport(row.userId, { kind = "stats", id = HttpService:GenerateGUID(false), stats = stats })
 			end)
 			local player = Players:GetPlayerByUserId(row.userId)
 			if player then

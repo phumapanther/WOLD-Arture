@@ -192,7 +192,7 @@ end
 local Fighters = {}
 
 local function newStats()
-	return { kills = 0, deaths = 0, assists = 0, damage = 0, roundKills = 0 }
+	return { kills = 0, deaths = 0, assists = 0, damage = 0, roundKills = 0, aces = 0 }
 end
 
 local function sideOfUserId(userId)
@@ -740,7 +740,10 @@ local function payRound(winner)
 		-- เท่ากันเป๊ะ ไม่มีเหตุผลอะไรรองรับนอกจาก "ต้องมีคนเดียว")
 		if best > 0 and f.stats.roundKills == best then pay += E.roundTopFragger end
 		-- ACE: เก็บศัตรูครบทีมคนเดียว (ponytail: นับเทียบ TeamSize — ศัตรูออกเกมไปคนหนึ่งจะ ACE ไม่ได้)
-		if f.stats.roundKills >= ArenaConfig.TeamSize then pay += E.ace end
+		if f.stats.roundKills >= ArenaConfig.TeamSize then
+			pay += E.ace
+			f.stats.aces = (f.stats.aces or 0) + 1 -- นับไปความสำเร็จ "เอซ" ในเกมหลัก (ArenaRewards ส่งให้)
+		end
 		-- ฐานของฝั่งนั้นคือขั้นต่ำ · เพดานแยกชนะ/แพ้ (ผู้ใช้สั่ง 2026-09-25)
 		local won = f.side == winner
 		pay = math.clamp(pay, won and E.roundWin or E.roundLoss, won and E.roundWinMax or E.roundLossMax)
@@ -936,6 +939,7 @@ local function finishMatch()
 			kills = f.stats.kills,
 			deaths = f.stats.deaths,
 			assists = f.stats.assists,
+			aces = f.stats.aces or 0,
 			damage = math.floor(f.stats.damage + 0.5),
 			won = State.wins[f.side] > State.wins[f.side == "A" and "B" or "A"],
 			score = ArenaConfig.Score(f.stats),

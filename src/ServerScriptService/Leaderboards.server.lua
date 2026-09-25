@@ -17,6 +17,7 @@ local Progression = require(game.ServerScriptService.Progression)
 local Inventory = require(game.ServerScriptService.Inventory)
 local Bank = require(game.ServerScriptService.Bank)
 local Collection = require(game.ServerScriptService.Collection)
+local Achievements = require(game.ServerScriptService.Achievements)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local ChannelRegistry = require(game.ServerScriptService.Lobby.ChannelRegistry)
 local GlobalRanks = require(game.ServerScriptService.GlobalRanks)
@@ -153,12 +154,17 @@ Remotes.RequestLeaderboards.OnServerEvent:Connect(function(player)
 	Remotes.LeaderboardUpdate:FireClient(player, build(player))
 end)
 
-Remotes.RequestCollection.OnServerEvent:Connect(function(player)
+-- สมุดสะสม = ปลา · มอน · **ความสำเร็จ** (แท็บที่สาม 2026-09-25) ส่งก้อนเดียวกัน
+local function sendCollection(player)
 	local snapshot = Collection.Snapshot(player)
 	if snapshot then
+		snapshot.achievements = Achievements.Snapshot(player)
 		Remotes.CollectionUpdate:FireClient(player, snapshot)
 	end
-end)
+end
+Remotes.RequestCollection.OnServerEvent:Connect(sendCollection)
+-- เลือกฉายาแล้วสมุดวาดใหม่ทันที (PlayerAchievements.server เรียก)
+Achievements.OnChanged = sendCollection
 
 --------------------------------------------------------------------------------
 -- เผยแพร่ให้ระบบอื่นเรียกใช้

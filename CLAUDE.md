@@ -2084,6 +2084,19 @@ LocalUserSecurity เหมือนกันหมด
 - บั๊กเก่าที่รีวิวเจอระหว่างทางและแก้แล้ว: **เบิกของจากคลังตอนกระเป๋าเต็ม = ปั๊มของ** (`Vault.Take` ถาม `HasRoomFor` ก่อนแล้ว ·
   `tests/vault_take_test.lua`) · ของล้นเข้าคลังไม่พก meta (`SpillOver/Overflow` ส่ง meta แล้ว) · ถอดของตอนกระเป๋าเต็มถูกปฏิเสธ
 
+## ความสำเร็จ + ฉายาเรืองแสงเหนือหัว (2026-09-25)
+สเปก `docs/superpowers/specs/2026-09-25-achievements-design.md` · ระบบที่ 4/4 (เหลือระบบที่ 2 แชท/ประกาศข้ามเซิร์ฟ)
+- สมุดสะสม (หินเวท P) แท็บที่สาม "ความสำเร็จ" · 20 อันใน `AchievementConfig` (ชื่อ/เป้า/เพชร ผมตั้ง) · ปลด = ฉายา + เพชร
+- **ข้อมูล** `profile.Data.Achievements = { stats, unlocked, title, seen }` · มอน/ปลา/เลเวล อ่านสด (Collection + `WOLD_Level`)
+  · ตีบวก `Achievements.Record(..., "maxEnhance", n, "max")` ตอนอาวุธคืนมือ · **PVP/บอสโลกมาทางข้อความ `kind = "stats"`**
+  (`Mail.Transport` → `PlayerProfile` MessageHandler → `Achievements.AddStatsData` ตัดซ้ำด้วย id) เพราะเซิร์ฟสนามเขียนโปรไฟล์ไม่ได้
+  และคนที่ออกก่อนบอสจบก็ต้องได้นับ
+- `PlayerAchievements.server` ลูป 2 วิ ปลด + ประกาศ `WOLD_Title`/`WOLD_TitleColor` บนตัวผู้เล่น · `TitleTagController` วาดป้าย
+  (สตัด · ขอบเรืองแสงเต้น) · **หัวแดงชนะทุกฉายา** ถอดไม่ได้จนหมด · VIP ได้ฉายา "VIP" ทองตลอดที่ VIP ไม่หมด
+- ⚠️ **ห้ามตั้งชื่อ `X.lua` คู่กับ `X.server.lua` ในโฟลเดอร์เดียวกัน** — Roblox ได้ instance ชื่อซ้ำ `push.js` เขียนทับตัวแรก
+  (เจอจริงรอบนี้: สคริปต์ลูปทับโมดูล Achievements) · ตรวจด้วย `find src -name "*.lua" | sed ... | uniq -d`
+- **ยังไม่ได้เทสในเกม**
+
 ## เครื่องมือที่พร้อมใช้
 - **Studio MCP** (MCP server ในตัว Roblox Studio) ลงทะเบียน user-scope ชื่อ `Roblox_Studio` → เครื่องมือ `mcp__Roblox_Studio__*`
   ต้องเปิด Studio + place ก่อน และเปิดสวิตช์ที่ Assistant → … → Manage MCP Servers → Enable Studio as MCP server

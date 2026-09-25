@@ -9,6 +9,7 @@
 -- ไม่ได้ถูกส่งถึงมือตอนนั้น มันถูกฝากไว้กับชื่อเขา
 local ArenaConfig = require(game.ReplicatedStorage.ArenaConfig)
 local Mail = require(game.ServerScriptService.Mail)
+local HttpService = game:GetService("HttpService")
 
 local ArenaRewards = {}
 
@@ -37,6 +38,12 @@ function ArenaRewards.Grant(rows)
 				if not Mail.Send(row.userId, letter) then
 					warn("[ArenaRewards] ส่งรางวัลถึง", row.userId, "ไม่สำเร็จ", gold, exp, chest)
 				end
+				-- สถิติไปความสำเร็จในเกมหลัก (ชนะ/ACE/คิล) — ข้อความคนละชนิดกับเมล ไม่ต้องกดรับ
+				-- PlayerProfile ส่งต่อให้ Achievements.AddStatsData (ตัดซ้ำด้วย id)
+				Mail.Transport(row.userId, {
+					kind = "stats", id = HttpService:GenerateGUID(false),
+					stats = { pvpWins = row.won and 1 or 0, pvpAces = row.aces or 0, pvpKills = row.kills or 0 },
+				})
 			end)
 		end
 	end

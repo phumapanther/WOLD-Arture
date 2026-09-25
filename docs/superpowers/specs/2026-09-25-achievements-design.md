@@ -39,7 +39,7 @@
 ## องค์ประกอบ
 - `ReplicatedStorage/AchievementConfig.lua` — รายการ + สี + ฉายาพิเศษ (VIP / หัวแดง) + `IsDone(def, value)`
 - `ServerScriptService/Achievements.lua` — อ่านสถิติ · `Record` · `AddStatsData` (ตัวรับข้อความ) · `Snapshot` · `Check` (ปลด + ให้เพชร) · `DisplayTitle` (หัวแดง > ที่เลือกไว้ถ้ายังใช้ได้)
-- `ServerScriptService/Achievements.server.lua` — ลูป 2 วิ: ปลดของใหม่ → เพชร + แจ้ง · ประกาศฉายาบนตัวผู้เล่น (`WOLD_Title` / `WOLD_TitleColor`) · remote `RequestTitle(id|"")`
+- `ServerScriptService/PlayerAchievements.server.lua` — ลูป 2 วิ: ปลดของใหม่ → เพชร + แจ้ง · ประกาศฉายาบนตัวผู้เล่น (`WOLD_Title` / `WOLD_TitleColor`) · remote `RequestTitle(id|"")`
 - `StarterPlayerScripts/TitleTagController.client.lua` — ลูป 0.5 วิวาดป้ายเหนือหัวทุกคนที่มี `WOLD_Title` (BillboardGui ขนาดเป็นสตัด · แสงเต้นช้าๆ) · **โชว์แค่ฉายา ไม่มีชื่อ/เลเวล** (กติกาเดิมของเกม: หัวคนแปลกหน้าไม่บอกว่าเป็นใคร)
 - `SocialGui` แท็บ "ความสำเร็จ": แถวละอัน (ฉายาสี · เงื่อนไข · ความคืบหน้า · เพชร · ปุ่ม "ใช้ฉายา"/"กำลังใช้") + แถว "ไม่ใช้ฉายา" + ฉายา VIP ถ้ามี · ข้อมูลมากับ `CollectionUpdate` เดิม (`snapshot.achievements`)
 - สนาม PVP ไม่รันระบบนี้ (ไม่มีโปรไฟล์) — `ArenaRewards` แค่ส่งข้อความสถิติ

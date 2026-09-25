@@ -332,6 +332,11 @@ gui:On("bank", function(action, amount, target)
 	Remotes.RequestBankAction:FireServer(action, amount, target)
 end)
 
+-- เลือกฉายาในแท็บความสำเร็จ ("" = ไม่ใช้) · เซิร์ฟเวอร์ส่งสมุดสะสมฉบับใหม่กลับมาเอง
+gui:On("title", function(id)
+	Remotes.RequestTitle:FireServer(id)
+end)
+
 gui:On("openMap", function()
 	toggleMap()
 end)
