@@ -11,6 +11,7 @@ if workspace:GetAttribute("IslandMode") ~= true then return end
 
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
 local ContextActionService = game:GetService("ContextActionService")
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local Responsive = require(game.ReplicatedStorage.UI.Responsive)
@@ -99,6 +100,39 @@ Remotes.IslandPetHearts.OnClientEvent:Connect(function(model)
 		task.delay((i - 1) * 0.09, function()
 			if root.Parent then spawnHeart(root) end
 		end)
+	end
+end)
+
+-- ท่าอุ้ม -------------------------------------------------------------------------
+-- สองแขนยื่นมาข้างหน้าระดับอก ศอกงอประคองตัวสัตว์ (ผู้ใช้สั่ง 2026-09-25) · วาดให้ **ทุกคน** ที่ติดแอตทริบิวต์
+-- WOLD_CarryingPet ไม่ใช่แค่ตัวเรา คนรอบๆ จึงเห็นท่าเดียวกัน · เขียน Transform หลัง Animator (Stepped)
+-- ทรงเดียวกับ WorkPoses ขาจึงยังเดินตามอนิเมชันปกติ · X บวก = แขนยกไปข้างหน้าบน R15
+local CARRY_POSE = {
+	{ "LeftUpperArm", "LeftShoulder", CFrame.Angles(math.rad(55), 0, math.rad(20)) },
+	{ "RightUpperArm", "RightShoulder", CFrame.Angles(math.rad(55), 0, math.rad(-20)) },
+	{ "LeftLowerArm", "LeftElbow", CFrame.Angles(math.rad(65), 0, 0) },
+	{ "RightLowerArm", "RightElbow", CFrame.Angles(math.rad(65), 0, 0) },
+}
+local posed = {} -- [Player] = character ที่เคยจัดท่าไว้ (คืนท่าตอนเลิกอุ้ม)
+
+local function poseCarry(character, on)
+	for _, row in ipairs(CARRY_POSE) do
+		local part = character:FindFirstChild(row[1])
+		local joint = part and part:FindFirstChild(row[2])
+		if joint then joint.Transform = on and row[3] or CFrame.new() end
+	end
+end
+
+RunService.Stepped:Connect(function()
+	for _, other in ipairs(Players:GetPlayers()) do
+		local character = other.Character
+		if character and other:GetAttribute("WOLD_CarryingPet") then
+			poseCarry(character, true)
+			posed[other] = character
+		elseif posed[other] then
+			if posed[other].Parent then poseCarry(posed[other], false) end
+			posed[other] = nil
+		end
 	end
 end)
 

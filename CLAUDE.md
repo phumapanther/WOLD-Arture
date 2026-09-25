@@ -2124,6 +2124,9 @@ LocalUserSecurity เหมือนกันหมด
   (ปุ่มอาชีพ E/F ข้างตัวคนอื่นหายด้วย) **เว้น `TouchGui` กับ `TouchActionGui`** · ลูป 0.25 วิกวาดหน้าต่างที่ระบบอื่นเปิดใหม่ ·
   ออก: สวิตช์ · P · ปุ่มหินเวทบนมือถือ · ไม่เซฟ · BillboardGui ในโลก (ฉายา ป้ายอีโมจิ) ไม่ได้ซ่อน
 - **อุ้มหมา/แมวสั่น** = เซิร์ฟเขียน CFrame ทุกเฟรมแข่งฟิสิกส์ของคนอุ้ม → Weld `PetCarryWeld` เข้าตัวคนอุ้ม (massless ไม่ชน)
+  · **อุ้มแล้วหัวสัตว์หันออก** (`CARRY_OFFSET` ไม่หมุน 180° แล้ว) · **คนอุ้มเดินช้าเท่าโหมดเดิน** (`PlayerMovement` อ่าน
+    แอตทริบิวต์ `WOLD_CarryingPet` บนตัว Player) · **ท่าอุ้ม** สองแขนยื่นประคองระดับอก วาดทุกเครื่องใน `IslandPetController`
+    (Transform หลัง Animator ทรงเดียวกับ WorkPoses) · อุ้มได้ทีละตัว
   · **ระหว่างอุ้ม ปุ่ม E/F บนตัวสัตว์ปิดสำหรับทุกคน** (`setCarried`) · คนอุ้มวางลงด้วย F หรือปุ่ม "วางลง" บนจอ
     (`IslandPetController.client` อ่านแอตทริบิวต์ `CarriedBy` → `Remotes.IslandPetDrop`) — มือถือไม่มีทางอื่นแล้ว ห้ามถอดปุ่มนี้
 - **ลูบหมา/แมว** = หัวใจอีโมจิลอย (`Remotes.IslandPetHearts` → `IslandPetController` วาดเองทุกเครื่อง) + EXP `IslandConfig.PetPatExp` (20 ผมตั้ง ·

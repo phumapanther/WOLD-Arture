@@ -181,7 +181,8 @@ end
 -- เจ้าของฟิสิกส์ให้ผู้เล่นที่อยู่ใกล้ = สองฝั่งแย่งกันขยับ + ตำแหน่งคนอุ้มบนเซิร์ฟเวอร์ช้ากว่าบนจอเขา
 -- เชื่อมแล้วสัตว์เป็นชิ้นส่วนเดียวกับตัวคนอุ้ม เครื่องของคนอุ้มขยับให้เองทั้งก้อน ลื่นเท่าตัวละคร
 -- ระหว่างอุ้ม: ไร้มวล (ไม่ถ่วงคนอุ้ม) · ไม่ชน (ไม่ดันคนอุ้ม) · PlatformStand (ขาไม่พยายามเดิน)
-local CARRY_OFFSET = CFrame.new(0, 0.5, -2.2) * CFrame.Angles(0, math.pi, 0)
+-- **หัวหันออก** (ผู้ใช้สั่ง 2026-09-25) = หันทางเดียวกับคนอุ้ม · เดิมหมุน 180° หัวเลยหันเข้าหาอกคนอุ้ม
+local CARRY_OFFSET = CFrame.new(0, 0.5, -2.2)
 
 local function setCarried(model, on)
 	local humanoid = model:FindFirstChildOfClass("Humanoid")
@@ -206,7 +207,10 @@ local function setCarried(model, on)
 end
 
 local function release(model, entry)
+	local carrier = entry.carriedBy
 	entry.carriedBy = nil
+	-- เลิกเดินช้า/ท่าอุ้ม (PlayerMovement + IslandPetController อ่านแอตทริบิวต์นี้)
+	if carrier and carrier.Parent then carrier:SetAttribute("WOLD_CarryingPet", nil) end
 	model:SetAttribute("CarriedBy", nil)
 	local root = model:FindFirstChild("HumanoidRootPart")
 	local weld = root and root:FindFirstChild("PetCarryWeld")
@@ -239,10 +243,15 @@ function toggleCarry(model, player)
 	if entry.carriedBy then
 		return Remotes.SocialNotify:FireClient(player, "error", "มีคนอุ้มอยู่แล้ว")
 	end
+	if player:GetAttribute("WOLD_CarryingPet") then
+		return Remotes.SocialNotify:FireClient(player, "error", "อุ้มได้ทีละตัว")
+	end
 	local root = model:FindFirstChild("HumanoidRootPart")
 	if not root then return end
 	entry.carriedBy = player
 	model:SetAttribute("CarriedBy", player.UserId)
+	-- ตัวคนอุ้ม: เดินช้า (PlayerMovement) + ท่าอุ้ม (IslandPetController วาดให้ทุกเครื่อง) · ผู้ใช้สั่ง 2026-09-25
+	player:SetAttribute("WOLD_CarryingPet", true)
 	BeastGait.Detach(model)
 	setCarried(model, true)
 	root.CFrame = hrp.CFrame * CARRY_OFFSET

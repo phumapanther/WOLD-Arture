@@ -46,6 +46,9 @@ local function applySpeed(state, player)
 	local base = SPEED[state.state == "ForcedWalk" and "Walk" or state.state]
 	-- Carry weight and any slow effect both scale the same base speed, so neither has to know about the other.
 	local wanted = base * Inventory.SpeedMultiplier(player) * StatusEffects.SpeedMultiplier(player)
+	-- อุ้มหมา/แมวอยู่ = เดินช้าเท่าโหมดเดิน วิ่งไม่ได้ (ผู้ใช้สั่ง 2026-09-25) · IslandPets ตั้งแอตทริบิวต์บนตัว Player
+	-- ponytail: กด Shift ค้างระหว่างอุ้มยังกินสตามินาเหมือนวิ่ง (ความเร็วถูกกดไว้) — ตัดการวิ่งทิ้งถ้าเป็นปัญหา
+	if player:GetAttribute("WOLD_CarryingPet") then wanted = math.min(wanted, SPEED.Walk) end
 	if ServerConfig.IsArena then
 		local root = humanoid.RootPart
 		local move = humanoid.MoveDirection * Vector3.new(1, 0, 1)
