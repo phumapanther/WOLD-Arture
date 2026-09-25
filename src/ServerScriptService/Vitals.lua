@@ -377,6 +377,7 @@ function Vitals.Send(player, force)
 		hunger = state.hunger / maxHunger(player),
 		stamina = state.stamina / VitalsConfig.MaxStamina,
 		armor = state.armor / (state.maxArmor or VitalsConfig.MaxArmor),
+		armorPoints = math.ceil(state.armor), -- ตัวเลขบนป้ายเกราะในสนาม PVP (สีจางอย่างเดียวมองไม่ออกว่าลด)
 		mana = state.mana, -- whole pips, not a fraction: the HUD lights that many gems
 		buffs = Vitals.BuffSnapshot(player),
 	})
@@ -424,6 +425,9 @@ function Vitals.ApplyDamage(player, amount, kind, pierce)
 			state.armor -= absorbed
 			-- Wear the piece itself down, so it can be repaired or replaced rather than silently regenerating.
 			if entry then entry.durability = state.armor end
+			-- สนาม PVP: เกราะที่รับจนหมดพังทิ้งเลย (ผู้ใช้สั่ง 2026-09-25) · `Arena/ArenaMatch` ตั้ง hook นี้ที่เดียว
+			-- เกมหลักไม่ตั้ง เกราะหมดแล้วยังอยู่บนตัวรอค้อนซ่อมเหมือนเดิม
+			if state.armor <= 0 and entry and Vitals.OnArmorBroken then Vitals.OnArmorBroken(player) end
 		end
 	end
 

@@ -218,15 +218,19 @@ ammoGui.DisplayOrder = 5
 ammoGui.Enabled = false
 ammoGui.Parent = player:WaitForChild("PlayerGui")
 
+-- สนาม PVP: มุมซ้ายล่าง ต่อท้ายกล่องซิลเวอร์ของ ArenaHudGui (x 16..206 · ก้น 1,-150) — กลางล่างจอที่ -172px
+-- บนมือถือแนวนอน (สูง ~390px) คือกลางจอพอดี ทับเป้าเล็งทั้งแถว (ผู้ใช้แจ้ง 2026-09-25) · เกมหลักอยู่ที่เดิม
+local ARENA = workspace:GetAttribute("ArenaMode") == true
 local ammoRow = Instance.new("Frame")
-ammoRow.AnchorPoint = Vector2.new(0.5, 1)
-ammoRow.Position = UDim2.new(0.5, 0, 1, -172) -- เหนือแถวบัพ/หลอด EXP ของ HUD (สูงสุด ~1,-114)
+ammoRow.AnchorPoint = ARENA and Vector2.new(0, 1) or Vector2.new(0.5, 1)
+ammoRow.Position = ARENA and UDim2.new(0, 216, 1, -150)
+	or UDim2.new(0.5, 0, 1, -172) -- เหนือแถวบัพ/หลอด EXP ของ HUD (สูงสุด ~1,-114)
 ammoRow.AutomaticSize = Enum.AutomaticSize.XY
 ammoRow.BackgroundTransparency = 1
 ammoRow.Parent = ammoGui
 local ammoLayout = Instance.new("UIListLayout")
 ammoLayout.FillDirection = Enum.FillDirection.Horizontal
-ammoLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+ammoLayout.HorizontalAlignment = ARENA and Enum.HorizontalAlignment.Left or Enum.HorizontalAlignment.Center
 ammoLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
 ammoLayout.SortOrder = Enum.SortOrder.LayoutOrder
 ammoLayout.Padding = UDim.new(0, 4)

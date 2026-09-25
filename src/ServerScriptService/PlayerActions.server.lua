@@ -162,9 +162,10 @@ Remotes.RequestSlide.OnServerEvent:Connect(function(player)
 	local humanoid = humanoidOf(player)
 	local stamina = Vitals.GetStamina(player)
 	if stamina < cfg.minStaminaToStart then return end
-	-- Sliding is only reachable out of a sprint, which the server can verify from the speed it set itself
-	-- rather than trusting a client flag.
-	if humanoid.WalkSpeed < 12 then return end
+	-- Sliding is only reachable out of a sprint. PlayerMovement (server) publishes that as an attribute, so this is
+	-- still not a client flag -- and unlike the old WalkSpeed >= 12 test, it holds when carry weight or a slow
+	-- effect pulls the running speed under 12.
+	if not player:GetAttribute("WOLD_Sprinting") then return end
 
 	local character = player.Character
 	local hrp = character.HumanoidRootPart

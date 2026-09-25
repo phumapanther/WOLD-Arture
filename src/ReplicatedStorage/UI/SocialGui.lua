@@ -696,8 +696,11 @@ function SocialGui:buildHome()
 		name.TextWrapped = true
 
 		tile.Activated:Connect(function()
+			-- ล็อบบี้: แผนที่/ท่าทางไม่ผ่าน ShowScreen จึงต้องกันที่นี่ด้วย (ดู SetLobbyMode)
+			if self.lobbyNotice then
+				self:ShowNotice(screen.name, self.lobbyNotice)
 			-- The map is not a page inside the stone; it is its own screen, so the tile hands it off.
-			if screen.id == "map" then
+			elseif screen.id == "map" then
 				self:Hide()
 				if self.callbacks.openMap then self.callbacks.openMap() end
 			-- Same treatment as the map, and for the same reason: the pose panel wants the room, and this
@@ -2040,7 +2043,18 @@ local TITLES = {
 	mailCompose = "ส่งของ",
 }
 
+-- ล็อบบี้ (ผู้ใช้สั่ง 2026-09-25): เปิดได้เฉพาะหน้าที่ไม่ต้องใช้ข้อมูลตัวละคร — ล็อบบี้ห้ามเปิดเซสชันโปรไฟล์
+-- (จะแย่งล็อกกับเซิร์ฟที่คนนั้นกำลังเล่นอยู่) หน้าอื่นขึ้นป้ายบอกเหตุผลแทน ไม่ใช่ปุ่มตายเงียบ
+local LOBBY_SCREENS = { home = true, settings = true, notice = true }
+
+function SocialGui:SetLobbyMode(notice)
+	self.lobbyNotice = notice
+end
+
 function SocialGui:ShowScreen(id, titleOverride)
+	if self.lobbyNotice and not LOBBY_SCREENS[id] then
+		return self:ShowNotice(titleOverride or TITLES[id] or "หินเวทสื่อสาร", self.lobbyNotice)
+	end
 	for name, page in pairs(self.screens) do
 		page.Visible = (name == id)
 	end

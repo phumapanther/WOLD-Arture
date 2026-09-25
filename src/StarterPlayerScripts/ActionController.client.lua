@@ -4,8 +4,9 @@
 --   Ctrl while moving        -> roll in the WASD direction
 --   Ctrl while sprinting     -> slide (W + Shift + Ctrl, as the user described it)
 --
--- Sprinting is not replicated as a flag, but WalkSpeed is, and the run speed (16) is unambiguous against
--- normal (8) and walk (4) — the same test the touch button uses.
+-- "Sprinting" is the server's own answer, published by PlayerMovement as the player attribute WOLD_Sprinting —
+-- the same flag the touch button reads. (It used to be guessed from WalkSpeed >= 12, which a heavy bag or a
+-- slow effect could pull under the line while still running.)
 while workspace:GetAttribute("IsLobby") == nil do
 	task.wait()
 end
@@ -15,8 +16,6 @@ local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local ActionConfig = require(game.ReplicatedStorage.ActionConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
-
-local RUN_SPEED_THRESHOLD = 12
 
 local player = Players.LocalPlayer
 local tracks = {} -- rebuilt per character; the Animator is recreated with it
@@ -57,7 +56,7 @@ local function requestAction()
 	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 	if not humanoid then return end
 
-	if humanoid.WalkSpeed >= RUN_SPEED_THRESHOLD then
+	if player:GetAttribute("WOLD_Sprinting") then -- ตั้งโดย PlayerMovement ฝั่งเซิร์ฟ
 		Remotes.RequestSlide:FireServer()
 	else
 		-- Roll goes where the player is steering; the server re-checks and flattens this.

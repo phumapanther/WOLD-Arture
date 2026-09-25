@@ -120,6 +120,21 @@ function HudGui.new()
 	-- อีโมจิโล่ (ผู้ใช้กำหนด) ของเดิมเป็น ⚠ ซึ่งอ่านเป็น "ไอคอนพัง" ไม่ใช่เกราะ
 	armorIcon.Text = "🛡️"
 	armorIcon.Parent = armorBadge
+	-- แต้มเกราะที่เหลือ โชว์เฉพาะสนาม PVP (SetArenaMode) — สีจางอย่างเดียวบอกไม่ได้ว่าโดนตีแล้วลดไปเท่าไหร่
+	local armorPoints = Instance.new("TextLabel")
+	armorPoints.AnchorPoint = Vector2.new(0.5, 1)
+	armorPoints.Position = UDim2.fromScale(0.5, 0.98)
+	armorPoints.Size = UDim2.fromScale(0.9, 0.34)
+	armorPoints.BackgroundTransparency = 1
+	armorPoints.Font = Enum.Font.GothamBold
+	armorPoints.TextScaled = true
+	armorPoints.TextColor3 = Color3.new(1, 1, 1)
+	armorPoints.TextStrokeTransparency = 0.3
+	armorPoints.Text = ""
+	armorPoints.Visible = false
+	armorPoints.Parent = armorBadge
+	self.armorPoints = armorPoints
+	self.armorIcon = armorIcon
 
 	-- Middle: stamina, a thin vertical bar filling the middle 35% band of the column height (40/35/25
 	-- top/mid/bottom split). Centered in the actual gap between the armor badge's right edge (0.2) and the
@@ -578,6 +593,15 @@ function HudGui:SetArenaMode()
 	local hunger, hp = self.barRows.hunger, self.barRows.hp
 	if hunger then hunger.Visible = false end
 	if hp then hp.Position = UDim2.new(0, 0, 0.475, 0) end
+	self.armorPoints.Visible = true
+	-- โล่ขยับขึ้นหลบตัวเลข
+	self.armorIcon.Position = UDim2.fromScale(0.5, 0.36)
+	self.armorIcon.Size = UDim2.fromScale(0.4, 0.4)
+end
+
+-- แต้มเกราะเป็นตัวเลข (เห็นเฉพาะสนาม — ดู SetArenaMode)
+function HudGui:SetArmorPoints(points)
+	self.armorPoints.Text = points and tostring(points) or ""
 end
 
 function HudGui:SetExp(level, fraction)

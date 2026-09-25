@@ -63,6 +63,10 @@ local function applySpeed(state, player)
 	-- ponytail: กด Shift ค้างระหว่างอุ้มยังกินสตามินาเหมือนวิ่ง (ความเร็วถูกกดไว้) — ตัดการวิ่งทิ้งถ้าเป็นปัญหา
 	if player:GetAttribute("WOLD_CarryingPet") then wanted = math.min(wanted, SPEED.Walk) end
 	if backward then wanted *= BACKWARD_FACTOR end
+	-- "กำลังวิ่ง" เป็นแอตทริบิวต์บนตัว Player (สไลด์เริ่มได้จากการวิ่งเท่านั้น) — ไคลเอนต์ใช้เปลี่ยนปุ่มกลิ้งเป็นสไลด์
+	-- และ PlayerActions ใช้ตัดสิน · ของเดิมเดาจาก WalkSpeed >= 12 ซึ่งพังเมื่อกระเป๋าหนัก/โดนสโลว์จนวิ่งได้ไม่ถึง 12
+	local sprinting = state.state == "Run" and not backward
+	if player:GetAttribute("WOLD_Sprinting") ~= sprinting then player:SetAttribute("WOLD_Sprinting", sprinting) end
 	-- Only write when it actually differs: WalkSpeed replicates, so setting it every frame is wasteful.
 	if math.abs(humanoid.WalkSpeed - wanted) > 0.01 then
 		humanoid.WalkSpeed = wanted

@@ -246,6 +246,38 @@ function TouchActionGui.new()
 	return self
 end
 
+-- สนาม PVP (ผู้ใช้สั่ง 2026-09-25): ไม่มีกระเป๋า/หินเวทให้เปิด → คอลัมน์ขวาเป็น ร้าน (B) · สถิติ (Tab) · แผนที่ (M)
+-- และช่องบนสุดของกลุ่มปุ่มแอ็กชัน (ที่ของปุ่มวางคนที่อุ้ม ซึ่งสนามไม่มี) เป็นปุ่มใช้ยา (F)
+-- `onAction(name)` รับ "shop" | "stats" | "map" | "potion" · ป้ายเป็นอีโมจิ ไม่ต้องอัปโหลดรูป
+--
+-- DisplayOrder 21: เหนือร้าน (18) กับแผนที่ (20) ให้ปุ่มเดียวกันกดปิดสิ่งที่เปิดไว้ได้ · ต่ำกว่าตารางจบเกม (22)
+function TouchActionGui:SetArenaMode(onAction)
+	self.gui.DisplayOrder = 21
+	self.bagButton.Visible = false
+	self.socialButton.Visible = false
+	local column = self.bagButton.Parent
+	column.Size = UDim2.fromOffset(ROLL_SIZE, ROLL_SIZE * 3 + GAP * 2)
+
+	local function emojiButton(parent, emoji, action)
+		local btn, holder = circle(parent, ROLL_SIZE, ROLL_COLOR, nil)
+		btn.Name = action
+		btn.AnchorPoint = Vector2.new(1, 1)
+		local glyph = Instance.new("TextLabel")
+		glyph.Size = UDim2.fromScale(1, 1)
+		glyph.BackgroundTransparency = 1
+		glyph.TextScaled = true
+		glyph.Text = emoji
+		glyph.Parent = holder
+		btn.MouseButton1Down:Connect(function() onAction(action) end)
+		return btn
+	end
+
+	for i, spec in ipairs({ { "🛒", "shop" }, { "📊", "stats" }, { "🗺️", "map" } }) do
+		emojiButton(column, spec[1], spec[2]).Position = UDim2.new(1, 0, 1, -((i - 1) * (ROLL_SIZE + GAP)))
+	end
+	emojiButton(self.cluster, "🧪", "potion").Position = self.dropButton.Position
+end
+
 function TouchActionGui:OnBag(callback)
 	self.bagButton.MouseButton1Down:Connect(callback)
 end

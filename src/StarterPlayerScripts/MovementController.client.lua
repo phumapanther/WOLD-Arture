@@ -95,6 +95,9 @@ local function touchThumbstickMag()
 	-- speed. Humanoid.MoveDirection is NOT usable as a fallback here — it is always a unit vector, so it reads
 	-- 1.0 for any movement at all and every drag would sprint.
 	if touchDragStart and touchDragCurrent then
+		-- Not walking = not a thumbstick drag (a finger scrolling a left-side panel, say), so no sprint request.
+		local humanoid = humanoidOf(player.Character)
+		if not humanoid or humanoid.MoveDirection.Magnitude < 0.1 then return 0 end
 		local delta = touchDragCurrent - touchDragStart
 		-- InputObject.Position is a Vector3 whose Z is unused for touch; drop it or the magnitude is wrong.
 		local pixels = Vector2.new(delta.X, delta.Y).Magnitude
@@ -141,26 +144,33 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
 	end
 end)
 
--- Touch: follow one finger's drag so the DynamicThumbstick path above has a real distance to measure.
--- gameProcessed is true when the touch landed on a GUI button (our attack/roll buttons), which must not be
--- mistaken for a movement drag.
-UserInputService.TouchStarted:Connect(function(input, gameProcessed)
-	if gameProcessed or touchDragStart then return end
+-- Touch: follow ONE finger's drag so the DynamicThumbstick path above has a real distance to measure.
+--
+-- ⚠️ gameProcessed is NOT a filter here (2026-09-25): the DynamicThumbstick takes its finger through
+-- ContextActionService, so that touch arrives with gameProcessed = true every time -- the old guard threw away
+-- the very drag it existed to measure, and touch could never sprint (so never slide) on that stick -- which
+-- is what a phone gets by default (all three places are DevTouchMovementMode = UserChoice, checked 2026-09-25).
+-- The left-half test below keeps our right-hand buttons out instead, and the finger is tracked by its own
+-- InputObject so a right thumb turning the camera no longer moves the "drag" either.
+local dragInput = nil
+UserInputService.TouchStarted:Connect(function(input)
+	if dragInput then return end
 	-- Movement lives on the left half of the screen; a touch on the right is the camera or our action buttons.
 	local camera = workspace.CurrentCamera
 	if camera and input.Position.X > camera.ViewportSize.X / 2 then return end
+	dragInput = input
 	touchDragStart = input.Position
 	touchDragCurrent = input.Position
 end)
 
-UserInputService.TouchMoved:Connect(function(input, gameProcessed)
-	if not touchDragStart then return end
+UserInputService.TouchMoved:Connect(function(input)
+	if input ~= dragInput then return end
 	touchDragCurrent = input.Position
 end)
 
-UserInputService.TouchEnded:Connect(function()
-	touchDragStart = nil
-	touchDragCurrent = nil
+UserInputService.TouchEnded:Connect(function(input)
+	if input ~= dragInput then return end
+	dragInput, touchDragStart, touchDragCurrent = nil, nil, nil
 end)
 
 -- Gamepad: raw left-stick deflection (Position.X/Y are each -1..1)

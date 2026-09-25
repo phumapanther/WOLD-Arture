@@ -80,6 +80,11 @@ local function setShopOpen(open)
 	-- ปิดร้าน = กลับมุมบุคคลที่หนึ่ง (เดิมกลับเฉพาะตอนเกิดใหม่ ปิดร้านช่วงเตรียมตัวแล้วค้างมุมบุคคลที่สาม)
 	setFirstPerson(not open)
 	if snapshot then shop:Render(snapshot) end
+	-- มือถือ: ปุ่มโจมตี/กลิ้ง/สกิล/ยาอยู่เหนือร้าน (TouchActionGui DisplayOrder 21) และทับขอบขวาของหน้าร้าน
+	-- → ซ่อนกลุ่มนั้นตอนร้านเปิด เหลือคอลัมน์ ร้าน/สถิติ/แผนที่ ไว้กดปิด
+	local touch = playerGui:FindFirstChild("TouchActionGui")
+	local cluster = touch and touch:FindFirstChild("Cluster")
+	if cluster then cluster.Visible = not open end
 end
 
 shop:OnClose(function() setShopOpen(false) end)
@@ -103,12 +108,14 @@ local function onPhaseChanged(phase)
 end
 
 -- B = เปิด/ปิดร้าน · เปิดได้ช่วงเตรียมตัว หรือระหว่างสู้ตอนยืนอยู่ในฐานตัวเอง (`snapshot.canShop` จากเซิร์ฟ)
-ContextActionService:BindAction("ArenaShop", function(_, state)
-	if state ~= Enum.UserInputState.Begin then return end
+local function toggleShop()
 	if not snapshot or not (snapshot.canShop or shop:IsVisible()) then return end
 	setShopOpen(not shop:IsVisible())
-end, true, Enum.KeyCode.B)
-ContextActionService:SetTitle("ArenaShop", "ร้าน")
+end
+-- ปุ่มบนจอมือถือไม่สร้างผ่าน ContextActionService (false) — TouchActionGui วาดปุ่มของสนามเอง (WOLD_ArenaAction ข้างล่าง)
+ContextActionService:BindAction("ArenaShop", function(_, state)
+	if state == Enum.UserInputState.Begin then toggleShop() end
+end, false, Enum.KeyCode.B)
 
 --------------------------------------------------------------------------------
 -- มุมบุคคลที่หนึ่ง: เห็นแขน มือ และอาวุธของตัวเอง (ผู้ใช้สั่ง 2026-09-24)
@@ -198,8 +205,7 @@ Remotes.InventoryUpdate.OnClientEvent:Connect(function(data)
 	bagSlots = (data and data.slots) or {}
 end)
 
-ContextActionService:BindAction("ArenaUsePotion", function(_, state)
-	if state ~= Enum.UserInputState.Begin then return end
+local function usePotion()
 	local want = snapshot and snapshot.loadout and snapshot.loadout.use
 	if not want then return end
 	for index, slot in pairs(bagSlots) do
@@ -208,6 +214,9 @@ ContextActionService:BindAction("ArenaUsePotion", function(_, state)
 			return
 		end
 	end
+end
+ContextActionService:BindAction("ArenaUsePotion", function(_, state)
+	if state == Enum.UserInputState.Begin then usePotion() end
 end, false, Enum.KeyCode.F)
 
 --------------------------------------------------------------------------------
@@ -424,8 +433,9 @@ ContextActionService:BindAction("ArenaTab", function(_, state)
 		tabBoard:SetVisible(false)
 	end
 	return Enum.ContextActionResult.Sink
-end, true, Enum.KeyCode.Tab)
-ContextActionService:SetTitle("ArenaTab", "สถิติ")
+end, false, Enum.KeyCode.Tab)
+-- ตาราง Tab อยู่ใต้ปุ่มมือถือ (21) ไม่งั้นปุ่มสถิติที่ใช้ปิดมันถูกทับ · ตารางจบเกม (`board`) ยังอยู่บนสุด 22
+tabBoard.gui.DisplayOrder = 19
 
 local mapLoop = nil
 local function setMap(open)
@@ -457,8 +467,31 @@ end
 ContextActionService:BindAction("ArenaMap", function(_, state)
 	if state == Enum.UserInputState.Begin and not board.gui.Enabled then setMap(not map:IsVisible()) end
 	return Enum.ContextActionResult.Sink
-end, true, Enum.KeyCode.M)
-ContextActionService:SetTitle("ArenaMap", "แผนที่")
+end, false, Enum.KeyCode.M)
+
+-- ปุ่มสนามบนจอมือถือ (TouchActionGui:SetArenaMode) — **หน้าต่างเป็นเจ้าของช่องทาง** ฝั่งปุ่มหยิบตอนกด
+-- สถิติบนมือถือเป็นแตะเปิด/แตะปิด (คีย์บอร์ดเป็นกดค้างแบบ Tab ปกติ)
+local arenaAction = Instance.new("BindableEvent")
+arenaAction.Name = "WOLD_ArenaAction"
+arenaAction.Parent = playerGui
+arenaAction.Event:Connect(function(action)
+	if action == "shop" then
+		toggleShop()
+	elseif action == "potion" then
+		usePotion()
+	elseif board.gui.Enabled then
+		return -- จบเกมแล้ว ตารางสุดท้ายอยู่บนจอ
+	elseif action == "stats" then
+		if tabBoard.gui.Enabled then
+			tabBoard:SetVisible(false)
+		elseif snapshot then
+			tabBoard:RenderLive(snapshot)
+			tabBoard:SetVisible(true)
+		end
+	elseif action == "map" then
+		setMap(not map:IsVisible())
+	end
+end)
 
 --------------------------------------------------------------------------------
 -- ตารางจบเกม

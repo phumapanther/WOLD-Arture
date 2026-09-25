@@ -84,6 +84,16 @@ gui:OnSocial(function()
 	if toggle then toggle:Fire() end
 end)
 
+-- สนาม PVP (ผู้ใช้สั่ง 2026-09-25): กระเป๋ากับหินเวทใช้ไม่ได้ในสนาม → ร้าน (B) · สถิติ (Tab) · แผนที่ (M) · ยา (F)
+-- ArenaController เป็นเจ้าของทุกหน้าต่างพวกนั้นและเป็นคนสร้างช่องทาง `WOLD_ArenaAction` — หยิบตอนกด ไม่ผูกล่วงหน้า
+if workspace:GetAttribute("ArenaMode") == true then
+	gui:SetArenaMode(function(action)
+		local pg = player:FindFirstChild("PlayerGui")
+		local channel = pg and pg:FindFirstChild("WOLD_ArenaAction")
+		if channel then channel:Fire(action) else warn("[Touch] ไม่เจอ WOLD_ArenaAction (ArenaController)") end
+	end)
+end
+
 gui:Show()
 gui:AnchorJumpButton()
 
@@ -106,14 +116,10 @@ player.CharacterAdded:Connect(function()
 	gui:AnchorJumpButton()
 end)
 
--- Swap ROLL -> SLIDE while sprinting. Sprinting isn't replicated to the client as a flag, but WalkSpeed is,
--- and the run speed (16) is unambiguous against normal (8) and walk (4).
-local RUN_SPEED_THRESHOLD = 12
+-- Swap ROLL -> SLIDE while sprinting: the server's own flag (PlayerMovement), the same one it slides by.
 local sprinting = false
 RunService.Heartbeat:Connect(function()
-	local character = player.Character
-	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
-	local now = humanoid ~= nil and humanoid.WalkSpeed >= RUN_SPEED_THRESHOLD
+	local now = player:GetAttribute("WOLD_Sprinting") == true
 	if now ~= sprinting then
 		sprinting = now
 		gui:SetSprinting(sprinting)

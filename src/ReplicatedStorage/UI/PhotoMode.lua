@@ -8,7 +8,8 @@ local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 
-local KEEP = { TouchGui = true, TouchActionGui = true }
+-- WOLD_LobbyStone = ปุ่มหินเวทในล็อบบี้ (SocialController) ทางออกของมือถือตอนอยู่ล็อบบี้
+local KEEP = { TouchGui = true, TouchActionGui = true, WOLD_LobbyStone = true }
 
 local PhotoMode = {}
 local on = false

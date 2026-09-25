@@ -5,7 +5,9 @@
 while workspace:GetAttribute("IsLobby") == nil do
 	task.wait()
 end
-if workspace:GetAttribute("IsLobby") then return end
+-- ล็อบบี้ (ผู้ใช้สั่ง 2026-09-25): หินเวทเปิดได้ แต่ใช้ได้แค่หน้าตั้งค่า (โหมดถ่ายรูป วอลเปเปอร์) — ที่เหลือต้องใช้
+-- ข้อมูลตัวละครซึ่งล็อบบี้ห้ามโหลด และไม่มีสคริปต์ฝั่งเซิร์ฟคอยตอบ → ไม่ยิง remote ไปหาเซิร์ฟเลยตอนอยู่ล็อบบี้
+local LOBBY = workspace:GetAttribute("IsLobby") == true
 -- สนาม PVP ไม่มี PlayerSocial ฝั่งเซิร์ฟ และปุ่ม M ในสนามคือแผนที่สนาม (ArenaController)
 if workspace:GetAttribute("ArenaMode") == true then return end
 
@@ -27,6 +29,12 @@ local playerGui = player:WaitForChild("PlayerGui")
 
 local gui = SocialGui.new()
 gui.gui.Parent = playerGui
+if LOBBY then gui:SetLobbyMode("ใช้ได้หลังเข้าโลกแล้ว — ในล็อบบี้ใช้ได้แค่หน้าตั้งค่า (ปุ่มเฟืองด้านล่าง)") end
+
+-- ยิงไปหาเซิร์ฟเฉพาะตอนไม่ได้อยู่ล็อบบี้ (ล็อบบี้ไม่มีใครฟัง — Roblox จะเตือนคิวเต็มซ้ำๆ)
+local function ask(remote, ...)
+	if not LOBBY then remote:FireServer(...) end
+end
 
 local feed = BoardFeedGui.new()
 feed.gui.Parent = playerGui
@@ -387,14 +395,14 @@ end)
 -- Each screen draws from whatever arrived last, and asks for a refresh so it is not stale.
 gui:On("screenChanged", function(screen)
 	redraw()
-	Remotes.RequestSocialData:FireServer()
+	ask(Remotes.RequestSocialData)
 	-- ขอเฉพาะหน้าที่เปิด: ทั้งสองอย่างต้องนับใหม่ทุกครั้ง (อันดับเปลี่ยนตลอด สมุดอาจเพิ่งได้ปลาตัวใหม่)
 	if screen == "collection" then
-		Remotes.RequestCollection:FireServer()
+		ask(Remotes.RequestCollection)
 	elseif screen == "ranking" then
-		Remotes.RequestLeaderboards:FireServer()
+		ask(Remotes.RequestLeaderboards)
 	elseif screen == "mail" then
-		Remotes.RequestMail:FireServer("read")
+		ask(Remotes.RequestMail, "read")
 	end
 end)
 
@@ -414,18 +422,21 @@ local function toggle()
 	else
 		gui:Show()
 		redraw()
-		Remotes.RequestSocialData:FireServer()
+		ask(Remotes.RequestSocialData)
 	end
 end
 
 -- Bound through ContextActionService with Sink, the same as the bag's I: it stops the key reaching anything
 -- Roblox has bound to it, and leaves every other input alone.
-ContextActionService:BindAction("WOLD_ToggleMap", function(_, inputState)
-	if inputState == Enum.UserInputState.Begin then
-		toggleMap()
-	end
-	return Enum.ContextActionResult.Sink
-end, false, Enum.KeyCode.M)
+-- แผนที่อาร์เชอร์ไม่มีความหมายในล็อบบี้ (และไม่มีตัวละครให้นำทาง)
+if not LOBBY then
+	ContextActionService:BindAction("WOLD_ToggleMap", function(_, inputState)
+		if inputState == Enum.UserInputState.Begin then
+			toggleMap()
+		end
+		return Enum.ContextActionResult.Sink
+	end, false, Enum.KeyCode.M)
+end
 
 ContextActionService:BindAction("WOLD_ToggleSocial", function(_, inputState)
 	if inputState == Enum.UserInputState.Begin then
@@ -449,12 +460,56 @@ bindable.Name = "WOLD_ToggleSocial"
 bindable.Parent = playerGui
 bindable.Event:Connect(toggle)
 
+-- ล็อบบี้ไม่มีปุ่มมือถือของ TouchActionGui (ไม่มีการเล่นในล็อบบี้) → ปุ่มหินเวทของตัวเอง มุมขวาล่าง ในช่องว่างใต้
+-- รายชื่อเซิร์ฟ (ChannelSelectGui เว้นขอบล่างไว้ ≥96px) · ขึ้นทุกเครื่อง คอมก็กดได้ ไม่ต้องจำปุ่ม P
+-- ชื่อ ScreenGui อยู่ในรายการ KEEP ของ PhotoMode — ในโหมดถ่ายรูปมันคือทางออกทางเดียวของมือถือ
+if LOBBY then
+	local holder = Instance.new("ScreenGui")
+	holder.Name = "WOLD_LobbyStone"
+	holder.ResetOnSpawn = false
+	holder.IgnoreGuiInset = true
+	holder.DisplayOrder = 25
+	holder.Parent = playerGui
+	local button = Instance.new("TextButton")
+	button.AnchorPoint = Vector2.new(1, 1)
+	button.Position = UDim2.new(1, -24, 1, -24)
+	button.Size = UDim2.fromOffset(52, 52)
+	button.BackgroundColor3 = Color3.fromRGB(24, 22, 28)
+	button.BackgroundTransparency = 0.25
+	button.TextScaled = true
+	button.Text = "🔮"
+	button.Parent = holder
+	local round = Instance.new("UICorner")
+	round.CornerRadius = UDim.new(1, 0)
+	round.Parent = button
+	local rim = Instance.new("UIStroke")
+	rim.Color = Color3.fromRGB(196, 150, 60)
+	rim.Thickness = 1.5
+	rim.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rim.Parent = button
+	local pad = Instance.new("UIPadding")
+	for _, side in ipairs({ "PaddingTop", "PaddingBottom", "PaddingLeft", "PaddingRight" }) do
+		pad[side] = UDim.new(0.18, 0)
+	end
+	pad.Parent = button
+	button.Activated:Connect(toggle)
+	-- กด JOIN แล้วจอดำ "กำลังเข้าสู่โลก" (Blackout ของ ChannelSelectGui) — ปุ่มห้ามลอยทับจอนั้น
+	task.spawn(function()
+		while holder.Parent do
+			local lobbyGui = playerGui:FindFirstChild("ChannelSelectGui")
+			local blackout = lobbyGui and lobbyGui:FindFirstChild("Blackout", true)
+			holder.Enabled = not (blackout and blackout.Visible)
+			task.wait(0.25)
+		end
+	end)
+end
+
 -- Ask once at startup so the board is populated before the stone is ever opened. Retried because the
 -- profile may still be loading server-side when this runs.
 task.spawn(function()
 	for _ = 1, 10 do
 		if latest.board and #latest.board > 0 then return end
-		Remotes.RequestSocialData:FireServer()
+		ask(Remotes.RequestSocialData)
 		task.wait(1)
 	end
 end)

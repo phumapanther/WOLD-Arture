@@ -377,6 +377,17 @@ local function removeAll(player, id)
 	if n > 0 then Inventory.RemoveById(player, id, n) end
 end
 
+-- เกราะรับดาเมจจนหมด = พังหลุดจากตัว (ผู้ใช้สั่ง 2026-09-25) · Vitals เรียกตอนแต้มเกราะแตะศูนย์ครั้งเดียว
+-- (ชิ้นถูกถอดแล้ว ด่าน `state.armor > 0` ไม่ให้เข้ามาซ้ำ) · ล้างช่องเกราะในของติดตัวด้วย ไม่งั้นต้นรอบหน้าสวมให้คืน
+Vitals.OnArmorBroken = function(player)
+	Inventory.BreakEquipped(player, "armor")
+	local f = Fighters[player]
+	if f then f.loadout.armor = nil end
+	Vitals.SyncArmorFromEquipment(player)
+	Inventory.Send(player)
+	notify(player, "เกราะพังแล้ว", "warn")
+end
+
 -- ตายในรอบไหน = ของที่ซื้อไว้หายหมด รอบหน้าต้องซื้อใหม่ รวมมานา (ผู้ใช้สั่ง 2026-09-24)
 local function wipeLoadout(f)
 	local player = f.player

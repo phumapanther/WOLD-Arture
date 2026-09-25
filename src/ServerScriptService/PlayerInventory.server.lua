@@ -48,21 +48,9 @@ local STARTER_KIT = {
 	{ id = "Monowheel", count = 1 },
 }
 
--- One-off grant for everyone who has already played, so existing testers all hold the same full kit. Runs
--- once per player, ever: TestGrant in their profile records the version they last received, and only a player
--- whose profile ALREADY EXISTS is eligible — someone joining for the first time after this gets the starter
--- kit above and nothing more.
-local TEST_GRANT_VERSION = 1
-local TEST_GRANT = {
-	-- Every weapon and every armor set, one each.
-	{ id = "Sword" }, { id = "Bow" }, { id = "Staff" }, { id = "Spellbook" },
-	{ id = "LeatherArmor" }, { id = "ChainmailArmor" }, { id = "PlateArmor" },
-	-- Consumables to a full stack, whatever that stack size happens to be.
-	{ id = "Bread", full = true },
-	{ id = "Water", full = true },
-	{ id = "HealthPotion", full = true },
-	{ id = "RepairHammer", full = true },
-}
+-- ⚠️ เคยมี TEST_GRANT (อาวุธ 4 · เกราะ 3 · ยา · ค้อนซ่อม) แจกครั้งเดียวให้คนที่ "เคยเล่นแล้ว" ตอนยังเป็นช่วงเทส
+-- ถูกลบทิ้ง 2026-09-25 เพราะมันยิงใส่ **ผู้เล่นใหม่ทุกคนตอนเข้าเกมครั้งที่สอง** (ของเปิดตัวไม่ได้ปั๊ม TestGrant ไว้)
+-- แล้วล้างกระเป๋าทิ้งทั้งใบ = เครื่องมือฟาร์มหาย ได้อาวุธกับเกราะมาแทน ซึ่งคือสิ่งที่ผู้ใช้เห็นในเกมจริง
 
 PlayerJoin.Each(function(player)
 	-- ⚠️ **ในสนาม PVP ไม่มีโปรไฟล์ให้รอ** — เซิร์ฟแมตช์ไม่เปิดเซสชันของใครเลย (ถ้าเปิดแล้วเซฟตอนจบ
@@ -83,11 +71,9 @@ PlayerJoin.Each(function(player)
 	local data = ProfileAccess.Wait(player)
 	local saved = data and data.Inventory
 
-	-- Eligibility for the one-off grant is "has PLAYED before", which is whether a profile exists at all —
-	-- not whether a bag was saved. Keying it off the bag missed anyone who had played before inventories
-	-- existed, which is most of the current testers.
+	-- "Has PLAYED before" is whether a profile exists at all — not whether a bag was saved (an emptied bag is
+	-- still a returning player, and must not be handed the opening kit again).
 	local hasPlayedBefore = data ~= nil and data.Position ~= nil
-	local wantsGrant = hasPlayedBefore and (data.TestGrant or 0) < TEST_GRANT_VERSION
 
 	Inventory.Add(player, saved)
 
@@ -98,21 +84,7 @@ PlayerJoin.Each(function(player)
 		print(("[Inventory] ย้ายของเกาะ %d ชิ้นไปช่องกระเป๋า VIP ของ %s"):format(movedVip, player.Name))
 	end
 
-	if wantsGrant then
-		-- Clear first, so every tester ends up holding exactly the same kit rather than it piling on top of
-		-- whatever they happened to have.
-		data.TestGrant = TEST_GRANT_VERSION
-		local state = Inventory.Get(player)
-		if state then
-			state.slots = {}
-			state.equipped = {}
-		end
-		for _, entry in ipairs(TEST_GRANT) do
-			local count = entry.full and ItemCatalog.StackSize(entry.id) or 1
-			Inventory.AddItem(player, entry.id, count)
-		end
-		if ProfileAccess.Flush then ProfileAccess.Flush(player) end
-	elseif not hasPlayedBefore then
+	if not hasPlayedBefore then
 		-- **เงื่อนไขคือ "ไม่เคยเล่นมาก่อน" ไม่ใช่ "กระเป๋าว่าง"**
 		--
 		-- ของเดิมเช็ค `not saved` ซึ่งเป็นจริงเมื่อกระเป๋าว่างด้วย คนเก่าที่บังเอิญของหมดเกลี้ยงจึงได้ของ
