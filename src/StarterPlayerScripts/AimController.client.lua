@@ -67,25 +67,30 @@ tick(UDim2.fromOffset(LEN, THICK), UDim2.new(0.5, GAP, 0.5, 0), Vector2.new(0, 0
 -- The charge bar
 --------------------------------------------------------------------------------
 
--- A bar under the crosshair that fills while a ranged weapon is being aimed.
---
--- The pistol and the bow take a third of a second to come up before the shot leaves, and without something
--- on screen that delay reads as the game ignoring the click. The bar is what turns a wait into an aim.
---
--- It lives inside the crosshair's own ScreenGui, so it inherits everything already decided about when a
--- crosshair should be on screen at all: hidden without a ranged weapon, hidden while downed.
-local BAR_W, BAR_H, BAR_DROP = 46, 4, 22
+-- แถบโหลดของทุกท่าที่ต้องรอก่อนออกแรง (ผู้ใช้สั่ง 2026-09-25 — เดิมมีแค่อาวุธระยะไกล)
+-- อยู่ใน ScreenGui ของมันเองที่เปิดตลอด เพราะดาบใหญ่ไม่มีเป้าเล็ง แถบที่ฝากไว้กับเป้าเล็งจึงไม่เคยขึ้น
+-- เซิร์ฟเวอร์เป็นคนตัดสินว่าท่าไหนมีแถบ (ส่งวินาทีมาเฉพาะท่าที่รอ >= CombatConfig.ChargeBarMinSeconds)
+local BAR_W, BAR_H, BAR_DROP = 70, 5, 34
+local BAR_POS = UDim2.new(0.5, 0, 0.5, BAR_DROP)
+local BAR_POS_SCOPED = UDim2.new(0.5, 0, 0.95, 0) -- ใต้วงสโคป
+
+local barGui = Instance.new("ScreenGui")
+barGui.Name = "WOLD_ChargeBar"
+barGui.ResetOnSpawn = false
+barGui.IgnoreGuiInset = true
+barGui.DisplayOrder = 7 -- เหนือจอสโคป
+barGui.Parent = player:WaitForChild("PlayerGui")
 
 local barBack = Instance.new("Frame")
 barBack.Name = "ChargeBack"
 barBack.AnchorPoint = Vector2.new(0.5, 0)
-barBack.Position = UDim2.new(0.5, 0, 0.5, BAR_DROP)
+barBack.Position = BAR_POS
 barBack.Size = UDim2.fromOffset(BAR_W, BAR_H)
 barBack.BackgroundColor3 = Color3.fromRGB(18, 18, 22)
 barBack.BackgroundTransparency = 0.35
 barBack.BorderSizePixel = 0
 barBack.Visible = false
-barBack.Parent = gui
+barBack.Parent = barGui
 
 local barStroke = Instance.new("UIStroke")
 barStroke.Color = Color3.fromRGB(0, 0, 0)
@@ -116,7 +121,7 @@ local function showCharge(seconds)
 	local connection
 	connection = RunService.RenderStepped:Connect(function()
 		-- A newer shot owns the bar now, or the aim has been put away mid-draw.
-		if chargeToken ~= mine or not gui.Enabled then
+		if chargeToken ~= mine then
 			connection:Disconnect()
 			if chargeToken == mine then barBack.Visible = false end
 			return
@@ -135,11 +140,6 @@ local function showCharge(seconds)
 	end)
 end
 
--- Fired for every attack; only a ranged one carries a windup, so only those draw a bar.
-Remotes.CombatStateChanged.OnClientEvent:Connect(function(who, event, _chainIndex, windup)
-	if who ~= player or event ~= "attack" then return end
-	showCharge(windup)
-end)
 
 --------------------------------------------------------------------------------
 -- Where the weapon is pointed
@@ -184,15 +184,23 @@ local function usesAim(itemId)
 	return false
 end
 
+-- ประกาศไว้ก่อน: บล็อกสโคปท้ายไฟล์เป็นคนกำหนดค่า แต่ refresh/DownedStateChanged ต้องเรียกถึง
+local currentWeaponId = nil
+local savedFov = nil
+local closeScope
+
 local function refresh(equipped)
 	local weapon = equipped and equipped.weapon
-	gui.Enabled = usesAim(weapon and weapon.id)
-	-- Putting the weapon away mid-draw must not leave a half-filled bar waiting to reappear with the next
-	-- one. Bumping the token also tells any live fill loop that it no longer owns the bar.
-	if not gui.Enabled then
+	local id = weapon and weapon.id
+	gui.Enabled = usesAim(id) and savedFov == nil -- ระหว่างส่องสโคป เป้าเล็งปกติหลบให้
+	-- InventoryUpdate มาทุกครั้งที่อาวุธสึก (ทุกคลิก) — ซ่อนแถบเฉพาะตอน "เปลี่ยนอาวุธ" จริง
+	-- ไม่งั้นแถบดาบใหญ่หายทันทีที่เริ่มเหวี่ยง
+	if equipped ~= nil and id ~= currentWeaponId then
 		chargeToken += 1
 		barBack.Visible = false
+		if savedFov and closeScope then closeScope() end
 	end
+	if equipped ~= nil then currentWeaponId = id end
 end
 
 Remotes.InventoryUpdate.OnClientEvent:Connect(function(inventory)
@@ -204,5 +212,66 @@ Remotes.RequestInventoryRefresh:FireServer()
 
 -- Hidden while dead or downed: there is nothing to aim.
 Remotes.DownedStateChanged.OnClientEvent:Connect(function(isDowned)
-	if isDowned then gui.Enabled = false end
+	if isDowned then
+		gui.Enabled = false
+		chargeToken += 1
+		barBack.Visible = false
+		if savedFov and closeScope then closeScope() end
+	end
+end)
+
+--------------------------------------------------------------------------------
+-- สโคปสไน (ผู้ใช้สั่ง 2026-09-25)
+--------------------------------------------------------------------------------
+local ScopeGui = require(game.ReplicatedStorage.UI.ScopeGui)
+local scope = ScopeGui.new()
+scope.gui.Parent = player:WaitForChild("PlayerGui")
+
+local SCOPED_FOV = 20
+local AIM_SEND_EVERY = 0.05 -- ส่งจุดเล็งระหว่างรอ วินาทีละ 20 ครั้ง นัดออกตามจุดล่าสุดที่เซิร์ฟเวอร์ได้รับ
+local scopeToken = 0
+
+closeScope = function()
+	scopeToken += 1
+	scope:Hide()
+	barBack.Position = BAR_POS
+	if savedFov then
+		camera.FieldOfView = savedFov
+		savedFov = nil
+	end
+	-- เป้าเล็งกลับมาตามอาวุธที่ถืออยู่
+	local spec = currentWeaponId and CombatConfig.Weapons[currentWeaponId]
+	gui.Enabled = spec ~= nil and usesAim(currentWeaponId)
+end
+
+local function openScope(seconds)
+	scopeToken += 1
+	local mine = scopeToken
+	savedFov = savedFov or camera.FieldOfView
+	camera.FieldOfView = SCOPED_FOV
+	gui.Enabled = false -- เป้าเล็งปกติหลบให้กากบาทของสโคป
+	scope:Show()
+	barBack.Position = BAR_POS_SCOPED
+	local started = os.clock()
+	task.spawn(function()
+		while scopeToken == mine and os.clock() - started < seconds do
+			Remotes.RequestAimUpdate:FireServer(aimPoint())
+			task.wait(AIM_SEND_EVERY)
+		end
+		task.wait(0.15) -- ค้างให้เห็นว่ายิงออกไปแล้วค่อยซูมออก
+		if scopeToken == mine then closeScope() end
+	end)
+end
+
+-- ตายระหว่างส่อง: ร่างใหม่ต้องไม่ติดกล้องซูมค้าง
+player.CharacterAdded:Connect(function()
+	if savedFov then closeScope() end
+end)
+
+-- แถบโหลด (ทุกท่าที่เซิร์ฟเวอร์ส่งวินาทีมา) + สโคป (เฉพาะอาวุธที่มี `scope`)
+Remotes.CombatStateChanged.OnClientEvent:Connect(function(who, event, _chainIndex, windup)
+	if who ~= player or event ~= "attack" then return end
+	showCharge(windup)
+	local spec = currentWeaponId and CombatConfig.Weapons[currentWeaponId]
+	if windup and spec and spec.scope then openScope(windup) end
 end)
