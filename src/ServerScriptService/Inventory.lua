@@ -323,6 +323,9 @@ function Inventory.AutoSort(player, which)
 	-- ก็ชิดหน้าของช่วงนั้น · ถ้าอัดรวมกันเหมือนเดิม ของ VIP จะถูกย้ายมาทับช่องเกมหลักทันที
 	local function sortRange(from, to)
 		local totals, singles = {}, {}
+		-- สำเนาเดิมไว้คืน ถ้าจัดแล้วใส่ไม่พอ (ดูท้ายฟังก์ชัน)
+		local original = {}
+		for i = from, to do original[i] = state.slots[i] end
 		for i = from, to do
 			local slot = state.slots[i]
 			if slot then
@@ -361,10 +364,15 @@ function Inventory.AutoSort(player, which)
 			return (a.count or 1) > (b.count or 1)
 		end)
 
+		-- ⚠️ ใส่ไม่พอ = **ไม่จัดใบนี้เลย คืนของตามเดิม** (ผู้ใช้ถาม 2026-09-25 "จัดกระเป๋าแล้วของต้องยังอยู่")
+		-- เกิดได้เมื่อกองในเซฟใหญ่กว่าเพดานกองตอนนี้ (เพดานถูกลดทีหลัง) → แตกกองใหม่แล้วกินช่องมากกว่าเดิม
+		-- ของเดิมตัดส่วนเกินทิ้งเงียบๆ (`break`) = ของหายตอนกดจัดกระเป๋า
+		if #entries > to - from + 1 then
+			for i = from, to do state.slots[i] = original[i] end
+			return
+		end
 		for i, entry in ipairs(entries) do
-			local target = from + i - 1
-			if target > to then break end
-			state.slots[target] = entry
+			state.slots[from + i - 1] = entry
 		end
 	end
 
