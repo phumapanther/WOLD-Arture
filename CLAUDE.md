@@ -2068,6 +2068,18 @@ LocalUserSecurity เหมือนกันหมด
 - **ยังไม่ได้เทสในเกม** (ผู้ใช้เทสเอง): สโคป/FOV · นัดตามจุดเล็งล่าสุด · ท่าถือกลางอก · ยิงหัว · แบนเนอร์ · ป้ายขนาดในร้าน
 - เสียงพากย์ FIRST BLOOD/DOUBLE ชุด D1R · TRIPLE ของ ShadowKing0215 (ค้นจาก Creator Store ยังไม่ได้ฟัง) · ไอคอนสไน decal 72482920404625 → image 99786745255231
 
+## ตีบวกอาวุธ +1 ถึง +10 (2026-09-25) — แท็บ "ตีบวก" ที่ช่างตีเหล็ก
+สเปก `docs/superpowers/specs/2026-09-24-enhance-design.md` · แผน `docs/superpowers/plans/2026-09-25-enhance.md`
+- ตัวเลขทั้งหมดใน `EnhanceConfig.lua` (ผู้ใช้กำหนด): วัสดุ 10 ขั้น (แร่ + ของผิดกฎหมาย + ซิลเวอร์ 1,000→10,000) ·
+  โอกาส 100→20% · ดาเมจ +3%×5 แล้ว +8%×5 (+10 = +55%) · แตก = ความคงทน −10% ขั้นไม่ลด · อาวุธต่อสู้ 7 ชนิด **ไม่มีสไน**
+- ขั้นอยู่ที่ `meta.enhance` บนตัวอาวุธ · ชื่อ "ดาบ +7 (สกิน)" จาก `ItemCatalog.DisplayName` · ดาเมจคูณที่
+  `PlayerCombat` (สองจุด `dealt`) + `WeaponSkills` (`damageAndScore`/`alsoHitBots`) ผ่าน `EnhanceConfig.MultiplierFor`
+- เซิร์ฟเวอร์อยู่ใน `Crafting.server` (`RequestEnhance` · แถว `enh:<ช่อง>`/`enh:equipped`/`enh:job` · ล็อก `Busy.smith` ร่วมกับคราฟ)
+  · **อาวุธไปอยู่กับช่างระหว่างแถบ 4 วิ** (`Enhancing[player]`) แล้วคืน: กระเป๋า → สวมกลับถ้ามาจากมือ → ไม่มีที่/ออกเกม = **เมล**
+  · ⚠️ **ห้ามคืนผ่าน AddItem ที่ล้นเข้าคลัง** — `SpillOver` ไม่พก meta ขั้นจะหาย (ถาม `HasRoomFor` ก่อนเสมอ)
+- ในสนาม PVP อาวุธจากร้านไม่มี `meta.enhance` = ไม่มีโบนัส (เท่าเทียม)
+- เซิร์ฟดับกลางแถบ 4 วิ = อาวุธหาย (ยอมรับความเสี่ยง — ต่างจากคราฟที่เสียแค่วัสดุ) · **ยังไม่ได้เทสในเกม**
+
 ## เครื่องมือที่พร้อมใช้
 - **Studio MCP** (MCP server ในตัว Roblox Studio) ลงทะเบียน user-scope ชื่อ `Roblox_Studio` → เครื่องมือ `mcp__Roblox_Studio__*`
   ต้องเปิด Studio + place ก่อน และเปิดสวิตช์ที่ Assistant → … → Manage MCP Servers → Enable Studio as MCP server
