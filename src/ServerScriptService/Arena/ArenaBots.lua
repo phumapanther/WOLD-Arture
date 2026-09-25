@@ -470,12 +470,12 @@ end
 -- ทางที่ระบบต่อสู้ใช้ตีบอท
 --------------------------------------------------------------------------------
 -- คืน true เมื่อโมเดลนี้เป็นบอทที่ยังมีชีวิตจริงๆ — `PlayerCombat` ใช้ค่านี้ตัดสินว่าจะเล่นเสียงลงเป้าไหม
-function ArenaBots.Damage(model, amount, attacker)
+function ArenaBots.Damage(model, amount, attacker, pierce)
 	local state = Live[model]
 	if not state or not state.alive or amount <= 0 then return false end
 	if os.clock() < (state.invulnUntil or 0) then return true end -- คำท้าทองคำ / กล่องปฐมพยาบาล
 	-- เกราะ: กันดาเมจตามสัดส่วนของชุด จนกว่าแต้มเกราะจะหมด (ทรงเดียวกับเกราะของผู้เล่น)
-	if (state.armorPool or 0) > 0 and (state.absorb or 0) > 0 then
+	if not pierce and (state.armorPool or 0) > 0 and (state.absorb or 0) > 0 then
 		local blocked = math.min(state.armorPool, amount * state.absorb)
 		state.armorPool -= blocked
 		amount -= blocked

@@ -256,6 +256,11 @@ function Vitals.HealFraction(player, fraction)
 	Vitals.Heal(player, maxHP(player) * fraction)
 end
 
+-- เพดานเลือดของคนนี้ตอนนี้ (โตตามเลเวล) — สไนคิดดาเมจเป็นสัดส่วนของค่านี้
+function Vitals.MaxHP(player)
+	return maxHP(player)
+end
+
 -- เลือดกับความหิวเป็นสัดส่วน 0-1 สำหรับคนอื่นที่มีสิทธิ์เห็น (ตอนนี้คือเพื่อนร่วมตี้)
 --
 -- คืนสัดส่วน ไม่ใช่ตัวเลขดิบ เพราะเพดานเลือด/ความหิวโตตามเลเวล — "45" ของคนเลเวล 60 กับเลเวล 3
@@ -390,7 +395,8 @@ end
 -- Returns true only if blood was actually taken. Callers read that to decide whether the player should HEAR
 -- anything: a slime chewing on someone already crawling, or on someone still blinking from a respawn, changes
 -- nothing and must therefore also sound like nothing.
-function Vitals.ApplyDamage(player, amount, kind)
+-- `pierce` = ข้ามเกราะ (สไน: "เลือดลด 50% แน่นอน" ผู้ใช้สั่ง 2026-09-25) · บัพ/อมตะยังกันได้ตามเดิม
+function Vitals.ApplyDamage(player, amount, kind, pierce)
 	local state = States[player]
 	if not state or amount <= 0 then return false end
 	if Vitals.IsInvulnerable(player) then return false end
@@ -405,7 +411,7 @@ function Vitals.ApplyDamage(player, amount, kind)
 	-- rule is that you cannot crawl underwater.
 	if state.downed and kind ~= "drown" and kind ~= "void" then return false end
 
-	if kind == "combat" and state.armor > 0 then
+	if kind == "combat" and not pierce and state.armor > 0 then
 		-- The worn armor decides how much of the hit it eats; bare skin falls back to the old flat rate.
 		local armorItem, entry = Inventory and Inventory.EquippedArmor(player)
 		local fraction = armorItem and armorItem.absorbFraction or VitalsConfig.ArmorAbsorbFraction

@@ -15,6 +15,8 @@ local Debris = game:GetService("Debris")
 local CollectionService = game:GetService("CollectionService")
 local MobAccess = require(game.ServerScriptService.MobAccess)
 local ArenaAccess = require(game.ServerScriptService.ArenaAccess)
+local ServerConfig = require(game.ServerScriptService.ServerConfig)
+local ArenaConfig = require(game.ReplicatedStorage.ArenaConfig)
 local FishingAccess = require(game.ServerScriptService.FishingAccess)
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
@@ -263,6 +265,31 @@ local function aimDirection(hrp, origin, aim)
 	return delta.Unit
 end
 
+-- ร่างเจ้าของหัวที่กระสุนชน หรือ nil · หัว = ชิ้น `Head` หรือหมวก/ผม (Accessory ที่เชื่อมกับ Head)
+-- **ยิงหัวมีผลเฉพาะในสนาม PVP** (ผู้ใช้สั่ง 2026-09-25) เกมหลักคืน nil เสมอ
+local function headOwner(part)
+	if not (ServerConfig.IsArena and part) then return nil end
+	local model
+	if part.Name == "Head" then
+		model = part.Parent
+	elseif part.Parent and part.Parent:IsA("Accessory") then
+		local weld = part:FindFirstChild("AccessoryWeld")
+		local other = weld and (weld.Part0 == part and weld.Part1 or weld.Part0)
+		if other and other.Name == "Head" then model = part.Parent.Parent end
+	end
+	if model and model:IsA("Model") and model:FindFirstChildOfClass("Humanoid") then return model end
+	return nil
+end
+
+-- ร่างที่มี Humanoid ซึ่งชิ้นนี้เป็นส่วนหนึ่ง (ไต่ขึ้นทีละ Model)
+local function characterOf(part)
+	local model = part and part:FindFirstAncestorOfClass("Model")
+	while model and not model:FindFirstChildOfClass("Humanoid") do
+		model = model:FindFirstAncestorOfClass("Model")
+	end
+	return model
+end
+
 local function fireProjectile(player, attack, aim)
 	local spec = attack.projectile
 	local character = player.Character
@@ -308,7 +335,8 @@ local function fireProjectile(player, attack, aim)
 	-- four copies of the same condition and a fifth the next time something becomes hittable.
 	local dealt = ClassPerks.DamageFor(player, attack.damage)
 
-	local function damageAt(position)
+	-- `headModel` = ร่างที่กระสุนชนหัวพอดี (สนามเท่านั้น ดู headOwner) — คนนั้นโดนคูณ HeadshotMultiplier
+	local function damageAt(position, headModel)
 		for _, other in ipairs(Players:GetPlayers()) do
 			-- คนในตี้เดียวกันไม่ใช่เป้า: ลูกธนูทะลุผ่านไปเหมือนไม่มีใครยืนอยู่ตรงนั้น ไม่ใช่ "โดนแต่ 0 ดาเมจ"
 			-- ด่านอยู่ตรงนี้ ไม่ใช่ใน ApplyDamage เพราะ Vitals ไม่รู้ว่าใครเป็นคนตี — มันเห็นแค่คนที่ถูกตี
@@ -318,9 +346,14 @@ local function fireProjectile(player, attack, aim)
 				local otherChar = other.Character
 				if otherChar and distanceToBody(position, otherChar) <= CombatConfig.ProjectileHitRadius
 					and not Vitals.IsInvulnerable(other) then
+					local amount = dealt
+					if headModel and otherChar == headModel then
+						amount = dealt * ArenaConfig.HeadshotMultiplier
+						if ArenaAccess.OnHeadshot then ArenaAccess.OnHeadshot(player, other) end
+					end
 					local wasDowned = Vitals.IsDowned(other)
-					local landed = Vitals.ApplyDamage(other, dealt, "combat")
-					if landed and ArenaAccess.OnHit then ArenaAccess.OnHit(player, other, dealt) end
+					local landed = Vitals.ApplyDamage(other, amount, "combat")
+					if landed and ArenaAccess.OnHit then ArenaAccess.OnHit(player, other, amount) end
 					reportHit(player, other)
 					applyEffect(attack, other)
 					playHitSound(otherChar, player)
@@ -342,7 +375,12 @@ local function fireProjectile(player, attack, aim)
 		end
 		for _, mob in ipairs(CollectionService:GetTagged("WOLD_Mob")) do
 			if distanceToBody(position, mob) <= CombatConfig.ProjectileHitRadius then
-				if MobAccess.Damage and MobAccess.Damage(mob, dealt, player) then
+				local amount = dealt
+				if headModel and mob == headModel then
+					amount = dealt * ArenaConfig.HeadshotMultiplier
+					if ArenaAccess.OnHeadshot then ArenaAccess.OnHeadshot(player, mob) end
+				end
+				if MobAccess.Damage and MobAccess.Damage(mob, amount, player) then
 					playHitSound(mob, player)
 					local stun = stunSeconds(attack)
 					if stun and MobAccess.Stun then
@@ -360,7 +398,7 @@ local function fireProjectile(player, attack, aim)
 		local distance = (endPoint - origin).Magnitude
 		part.Size = Vector3.new(spec.size.X, spec.size.Y, distance)
 		part.CFrame = CFrame.lookAt(origin + (endPoint - origin) / 2, endPoint)
-		damageAt(endPoint)
+		damageAt(endPoint, result and headOwner(result.Instance))
 		-- Damage everything along the beam, not only at its end.
 		for step = 8, distance, 8 do
 			damageAt(origin + forward * step)
@@ -378,7 +416,7 @@ local function fireProjectile(player, attack, aim)
 			local step = forward * (spec.speed * dt)
 			local result = workspace:Raycast(part.Position, step, params)
 			if result then
-				damageAt(result.Position)
+				damageAt(result.Position, headOwner(result.Instance))
 				part:Destroy()
 				return
 			end
@@ -387,6 +425,79 @@ local function fireProjectile(player, attack, aim)
 		end
 		if part.Parent then part:Destroy() end
 	end)
+end
+
+-- สไน: raycast ครั้งเดียวถึงเป้าทันที (ไม่ใช่วงกว้าง 8 สตัดแบบกระสุนอื่น — สไนต้องเล็งจริง)
+-- คน: ลด `pierceFraction` ของเลือดเต็ม ข้ามเกราะ · หัว (สนามเท่านั้น) = เลือดที่เหลือทั้งหมด
+-- มอนเกมหลัก: `mobDamage` คงที่ · บอทในสนาม = เป็นฝั่งตรงข้าม ไม่ใช่มอน จึงคิดแบบเดียวกับคน
+local function fireSniper(player, weapon, attack, aim)
+	local spec = attack.projectile
+	local character = player.Character
+	local hrp = character and character:FindFirstChild("HumanoidRootPart")
+	if not hrp then return end
+	local muzzle = hrp.Position + Vector3.new(0, spec.muzzleHeight or 1.5, 0)
+	local forward = aimDirection(hrp, muzzle, aim)
+
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character }
+	params.IgnoreWater = true
+	local result = workspace:Raycast(muzzle, forward * spec.length, params)
+	local endPoint = result and result.Position or (muzzle + forward * spec.length)
+
+	playCastSound(player) -- เสียงปืนดังตอนกระสุนออก ไม่ใช่ตอนคลิก
+
+	-- เส้นกระสุนวาบให้ทุกคนเห็นว่ามีคนยิงมาจากไหน
+	local tracer = Instance.new("Part")
+	tracer.Name = "WOLD_Projectile"
+	tracer.Anchored, tracer.CanCollide, tracer.CanQuery, tracer.CanTouch = true, false, false, false
+	local distance = (endPoint - muzzle).Magnitude
+	tracer.Size = Vector3.new(spec.size.X, spec.size.Y, math.max(0.1, distance))
+	tracer.CFrame = CFrame.lookAt(muzzle + (endPoint - muzzle) / 2, endPoint)
+	tracer.Color, tracer.Material = spec.color, spec.material
+	tracer.Parent = workspace
+	Debris:AddItem(tracer, spec.life)
+
+	if not result then return end
+	local model = characterOf(result.Instance)
+	if not model then return end
+	local head = headOwner(result.Instance) == model
+	local victim = Players:GetPlayerFromCharacter(model)
+	-- ทีม/ตี้เดียวกัน = ทะลุไปเหมือนไม่มีใคร (ทั้งคนและบอท)
+	if ArenaAccess.Friendly and ArenaAccess.Friendly(player, victim or model) then return end
+
+	if victim then
+		if victim == player or Party.SameParty(player, victim) or Vitals.IsInvulnerable(victim) then return end
+		local vstate = Vitals.Get(victim)
+		if not vstate then return end
+		local amount = head and vstate.hp or Vitals.MaxHP(victim) * weapon.pierceFraction
+		if head and ArenaAccess.OnHeadshot then ArenaAccess.OnHeadshot(player, victim) end
+		local wasDowned = Vitals.IsDowned(victim)
+		local landed = Vitals.ApplyDamage(victim, amount, "combat", true)
+		if landed and ArenaAccess.OnHit then ArenaAccess.OnHit(player, victim, amount) end
+		reportHit(player, victim)
+		playHitSound(model, player)
+		if not wasDowned and Vitals.IsDowned(victim) then
+			awardKill(player, victim)
+			StatusEffects.SetAsleep(victim, true)
+		end
+		return
+	end
+
+	if CollectionService:HasTag(model, "WOLD_Dummy") then
+		Progression.AwardExp(player, ProgressionConfig.ExpPerDummyHit)
+		playHitSound(model, player)
+		return
+	end
+	if CollectionService:HasTag(model, "WOLD_Mob") and MobAccess.Damage then
+		local amount = weapon.mobDamage
+		local humanoid = model:FindFirstChildOfClass("Humanoid")
+		if ServerConfig.IsArena and humanoid then
+			amount = head and humanoid.Health or humanoid.MaxHealth * weapon.pierceFraction
+			if head and ArenaAccess.OnHeadshot then ArenaAccess.OnHeadshot(player, model) end
+		end
+		if MobAccess.Damage(model, amount, player, true) then playHitSound(model, player) end
+	end
 end
 
 local function resolveHit(player, state, attack)
@@ -482,7 +593,8 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 		state.lastAttackAt = now
 		state.chainIndex = 0
 		setGuard(player, state, true)
-		return
+		-- สไน: คลิกเดียวยกและยิงในคราวเดียว (ผู้ใช้สั่ง "กดยิงแล้วซูม") · อาวุธอื่นคลิกแรกยังแค่ยกการ์ด
+		if not weaponOf(player).quickDraw then return end
 	end
 
 	-- A fishing rod casts rather than fights. The swing still plays -- the cast IS a swing, which is what
@@ -538,6 +650,18 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 		end
 	end
 
+	-- อาวุธที่กินมานาต่อนัด (สไน) — ไม่พอ = ไม่เริ่มท่า ไม่สึก ไม่มีอะไรให้ไคลเอนต์วาด
+	if weapon.manaCost and not punching then
+		if not Vitals.TrySpendMana(player, weapon.manaCost) then
+			if not state.noManaWarned then
+				Remotes.SocialNotify:FireClient(player, "warn", "มานาไม่พอ")
+				state.noManaWarned = true
+			end
+			return
+		end
+		state.noManaWarned = nil
+	end
+
 	-- Continue the chain only if this click is soon enough after the last one, otherwise restart at attack 1.
 	if now - state.lastAttackAt > weapon.chainWindow then
 		state.chainIndex = 0
@@ -553,7 +677,8 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	-- The attacker's own sound fires on the windup, not on the hit: a swing that misses should still be
 	-- heard, and a bowstring should sound as the arrow leaves rather than when it lands.
 	-- (ต่อยแทนปืนไม่มีเสียงปืนดัง — หมัดไม่มีเสียงตอนเหวี่ยงอยู่แล้ว)
-	if not punching then playCastSound(player) end
+	-- (สไนดังตอนกระสุนออกใน fireSniper ไม่ใช่ตอนคลิก)
+	if not punching and not weapon.scope then playCastSound(player) end
 	-- The greatsword buries itself in the ground at the end of its arc. That sound belongs to the swing, not
 	-- to a victim, so it fires on a timer whether or not anything was standing there -- the earth is hit
 	-- every time. Only weapons that declare a `slam` time have one.
@@ -585,8 +710,20 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 
 		-- The aim is captured at the click and carried through the windup, so the shot goes where the player
 		-- was pointing when they fired rather than wherever the camera has swung to by the time it leaves.
+		-- สไน: ระหว่างรอผู้เล่นยังเล็งต่อได้ — ไคลเอนต์ส่งจุดเล็งล่าสุดมาทาง RequestAimUpdate
+		-- อาวุธอื่นยังใช้จุดที่คลิกเหมือนเดิม
+		local pending = weapon.scope and {} or nil
+		state.pendingAim = pending
 		task.delay(attack.windup, function()
-			if player.Parent then fireProjectile(player, attack, aim) end
+			if not player.Parent then return end
+			if state.pendingAim == pending then state.pendingAim = nil end
+			if attack.projectile.kind == "hitscan" then
+				-- ตาย/ล้ม/เปลี่ยนอาวุธระหว่างรอ = ไม่ยิง (มานาที่หักไปแล้วไม่คืน)
+				if weaponOf(player) ~= weapon or Vitals.IsDowned(player) then return end
+				fireSniper(player, weapon, attack, pending and pending.aim or aim)
+			else
+				fireProjectile(player, attack, aim)
+			end
 		end)
 	else
 		state.pendingAttack = attack
@@ -599,8 +736,10 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	-- click and a bar that appeared and vanished in a frame would be noise. Sent to EVERYONE rather than
 	-- just the shooter, so a player can also see that someone else is lining a shot up on them.
 	-- อาร์กิวเมนต์ท้าย = ชุดท่าที่ต้องเล่น เมื่อไม่ใช่ของอาวุธที่ถืออยู่ (ปืนกระสุนหมด → ท่าต่อย)
+	-- แถบโหลดให้ทุกท่าที่รอ >= ChargeBarMinSeconds (ผู้ใช้สั่ง 2026-09-25 — เดิมเฉพาะท่ายิง)
+	local chargeSeconds = attack.windup >= CombatConfig.ChargeBarMinSeconds and attack.windup or nil
 	Remotes.CombatStateChanged:FireAllClients(player, "attack", state.chainIndex,
-		attack.projectile and attack.windup or nil, punching and CombatConfig.DefaultWeapon or nil)
+		chargeSeconds, punching and CombatConfig.DefaultWeapon or nil)
 
 	-- The spellbook and the staff move from the hand to the chest for the duration of their attack pose;
 	-- WeaponVisuals owns that and needs telling, since CombatStateChanged is fired at clients and cannot be
@@ -608,6 +747,15 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	if WeaponVisualsAccess.OnAttack then
 		WeaponVisualsAccess.OnAttack(player)
 	end
+end)
+
+-- จุดเล็งล่าสุดระหว่างสไนกำลังรอยิง · รับเฉพาะตอนมีนัดค้างอยู่ · ตรวจแบบเดียวกับ aimDirection
+-- (ทิศทางเท่านั้น โกหกได้แค่ยิงพลาดต่างไป ยิงไกล/เร็วขึ้นไม่ได้)
+Remotes.RequestAimUpdate.OnServerEvent:Connect(function(player, aim)
+	local state = States[player]
+	if not (state and state.pendingAim) then return end
+	if typeof(aim) ~= "Vector3" or aim.Magnitude ~= aim.Magnitude or aim.Magnitude == math.huge then return end
+	state.pendingAim.aim = aim
 end)
 
 PlayerJoin.Each(function(player)
