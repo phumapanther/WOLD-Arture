@@ -59,6 +59,8 @@ check(E.overtimeRound == 7 and E.overtimeSilver == 5000, "รอบ 7 ขึ้�
 check(E.roundWin > E.roundLoss, "ชนะรอบได้มากกว่าแพ้รอบ")
 check(E.roundWin == 350 and E.roundWinMax == 550, "ทีมชนะได้ 350 สูงสุด 550 (ผู้ใช้สั่ง 2026-09-25)")
 check(E.roundLoss == 300 and E.roundLossMax == 450, "ทีมแพ้ได้ 300 สูงสุด 450 (ผู้ใช้สั่ง 2026-09-25)")
+check(E.ace == 50, "ACE (เก็บคนเดียวครบทีม) +50 ตอนจบรอบ")
+check(E.roundWin + ArenaConfig.TeamSize * E.perKill + E.ace == E.roundWinMax, "ชนะ + 3 คิล + ACE = 550 พอดีเพดาน")
 check(E.perKill > 0 and E.roundTopFragger > 0, "มีโบนัสคิลและโบนัสคนฆ่าเยอะสุด")
 check(E.cap > E.start, "เพดานสะสมสูงกว่าเงินตั้งต้น")
 

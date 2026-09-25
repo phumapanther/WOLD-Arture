@@ -13,6 +13,7 @@ local TITLES = {
 	first = { "FIRST BLOOD", Color3.fromRGB(235, 70, 60) },
 	double = { "DOUBLE KILL", Color3.fromRGB(255, 160, 50) },
 	triple = { "TRIPLE KILL", Color3.fromRGB(190, 110, 255) },
+	ace = { "ACE", Color3.fromRGB(255, 200, 40) },
 }
 local HOLD, FADE = 1.6, 0.4
 

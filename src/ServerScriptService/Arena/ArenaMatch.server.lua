@@ -435,7 +435,9 @@ local function announceKill(killer, victimFighter, attackerKey)
 	end
 	killer.killStreak, killer.lastKillAt = streak, now
 	local kind = "kill"
-	if streak >= 3 then
+	if killer.stats.roundKills >= ArenaConfig.TeamSize then
+		kind = "ace" -- เก็บศัตรูครบทีมคนเดียว ใหญ่กว่า TRIPLE KILL
+	elseif streak >= 3 then
 		kind = "triple"
 	elseif streak == 2 then
 		kind = "double"
@@ -737,6 +739,8 @@ local function payRound(winner)
 		-- **คนฆ่าได้เยอะสุดของรอบได้เพิ่ม** — เสมอกันได้ทุกคนที่เสมอ (การหักส่วนแบ่งของคนที่ทำได้
 		-- เท่ากันเป๊ะ ไม่มีเหตุผลอะไรรองรับนอกจาก "ต้องมีคนเดียว")
 		if best > 0 and f.stats.roundKills == best then pay += E.roundTopFragger end
+		-- ACE: เก็บศัตรูครบทีมคนเดียว (ponytail: นับเทียบ TeamSize — ศัตรูออกเกมไปคนหนึ่งจะ ACE ไม่ได้)
+		if f.stats.roundKills >= ArenaConfig.TeamSize then pay += E.ace end
 		-- ฐานของฝั่งนั้นคือขั้นต่ำ · เพดานแยกชนะ/แพ้ (ผู้ใช้สั่ง 2026-09-25)
 		local won = f.side == winner
 		pay = math.clamp(pay, won and E.roundWin or E.roundLoss, won and E.roundWinMax or E.roundLossMax)
