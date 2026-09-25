@@ -132,6 +132,40 @@ end
 
 -- อุ้มแล้วเดินไปวางที่ใหม่ได้ — **ไม่ผ่านระบบตารางของเกาะ** เพราะสัตว์ไม่ได้กินช่อง
 -- (มันเดินไปเรื่อยอยู่แล้ว การจองช่องให้ของที่ขยับตลอดเวลาไม่มีความหมาย)
+--
+-- ⚠️ **อุ้ม = เชื่อม (Weld) ตัวสัตว์เข้ากับตัวคนอุ้ม** (แก้ 2026-09-25 ผู้ใช้แจ้ง "อุ้มแล้วกระตุกไปมา")
+-- เดิมเซิร์ฟเวอร์เขียน CFrame ของสัตว์ทุกเฟรม แต่ตัวสัตว์ไม่ anchored ฟิสิกส์ยังทำงาน และ Roblox ยกความเป็น
+-- เจ้าของฟิสิกส์ให้ผู้เล่นที่อยู่ใกล้ = สองฝั่งแย่งกันขยับ + ตำแหน่งคนอุ้มบนเซิร์ฟเวอร์ช้ากว่าบนจอเขา
+-- เชื่อมแล้วสัตว์เป็นชิ้นส่วนเดียวกับตัวคนอุ้ม เครื่องของคนอุ้มขยับให้เองทั้งก้อน ลื่นเท่าตัวละคร
+-- ระหว่างอุ้ม: ไร้มวล (ไม่ถ่วงคนอุ้ม) · ไม่ชน (ไม่ดันคนอุ้ม) · PlatformStand (ขาไม่พยายามเดิน)
+local CARRY_OFFSET = CFrame.new(0, 0.5, -2.2) * CFrame.Angles(0, math.pi, 0)
+
+local function setCarried(model, on)
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if humanoid then humanoid.PlatformStand = on end
+	for _, d in ipairs(model:GetDescendants()) do
+		if d:IsA("BasePart") and d.Name ~= "Root" then
+			if on then
+				d:SetAttribute("PetCollide", d.CanCollide)
+				d.CanCollide, d.Massless = false, true
+			else
+				local was = d:GetAttribute("PetCollide")
+				if was ~= nil then d.CanCollide = was end
+				d.Massless = false
+				d:SetAttribute("PetCollide", nil)
+			end
+		end
+	end
+end
+
+local function release(model, entry)
+	entry.carriedBy = nil
+	local root = model:FindFirstChild("HumanoidRootPart")
+	local weld = root and root:FindFirstChild("PetCarryWeld")
+	if weld then weld:Destroy() end
+	setCarried(model, false)
+end
+
 function toggleCarry(model, player)
 	local entry = Live[model]
 	if not entry then return end
@@ -141,7 +175,7 @@ function toggleCarry(model, player)
 
 	if entry.carriedBy == player then
 		-- วางลง: ตรงหน้าคนอุ้ม ระดับพื้น
-		entry.carriedBy = nil
+		release(model, entry)
 		local root = model:FindFirstChild("HumanoidRootPart")
 		if root then
 			local drop = hrp.CFrame * CFrame.new(0, 0, -4)
@@ -157,15 +191,22 @@ function toggleCarry(model, player)
 	if entry.carriedBy then
 		return Remotes.SocialNotify:FireClient(player, "error", "มีคนอุ้มอยู่แล้ว")
 	end
+	local root = model:FindFirstChild("HumanoidRootPart")
+	if not root then return end
 	entry.carriedBy = player
 	BeastGait.Detach(model)
+	setCarried(model, true)
+	root.CFrame = hrp.CFrame * CARRY_OFFSET
+	local weld = Instance.new("Weld")
+	weld.Name = "PetCarryWeld"
+	weld.Part0, weld.Part1 = hrp, root
+	weld.C0 = CARRY_OFFSET
+	weld.Parent = root
 	Remotes.SocialNotify:FireClient(player, "info", "อุ้มไว้แล้ว — กด F อีกครั้งเพื่อวางลง")
 end
 
--- ตัวที่ถูกอุ้มเกาะตามคนอุ้มทุกเฟรม
---
--- **ไม่ใช้ Motor6D เหมือนการอุ้มคนล้ม** ตรงนั้นต้องใช้เพราะ Animator ของคนถูกอุ้มต้องเล่นท่าทับได้
--- ส่วนสัตว์ตัวนี้แค่ต้องตามตัวไป และการตั้ง CFrame ตรงๆ ไม่ต้องแตะ collision group หรือ network owner
+-- คนอุ้มตาย/ร่างใหม่/ออกเกม = ปล่อยสัตว์ลงตรงนั้น (Weld ไปกับร่างเก่า ต้องคืนสภาพสัตว์เอง)
+-- ไม่เขียน CFrame ทุกเฟรมแล้ว — Weld ทำให้เอง (ดูหมายเหตุเหนือ setCarried)
 RunService.Heartbeat:Connect(function()
 	for model, entry in pairs(Live) do
 		if not model.Parent then
@@ -174,10 +215,10 @@ RunService.Heartbeat:Connect(function()
 			local char = entry.carriedBy.Character
 			local hrp = char and char:FindFirstChild("HumanoidRootPart")
 			local root = model:FindFirstChild("HumanoidRootPart")
-			if hrp and root then
-				root.CFrame = hrp.CFrame * CFrame.new(0, 0.5, -2.2) * CFrame.Angles(0, math.pi, 0)
-			else
-				entry.carriedBy = nil -- คนอุ้มตาย/ออกเกม สัตว์ตกลงพื้นตรงนั้น
+			local weld = root and root:FindFirstChild("PetCarryWeld")
+			if not (hrp and root and weld and weld.Part0 == hrp) then
+				release(model, entry)
+				BeastGait.Attach(model, { wander = true })
 			end
 		end
 	end
@@ -185,8 +226,11 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	PetTimes[player] = nil
-	for _, entry in pairs(Live) do
-		if entry.carriedBy == player then entry.carriedBy = nil end
+	for model, entry in pairs(Live) do
+		if entry.carriedBy == player then
+			release(model, entry)
+			BeastGait.Attach(model, { wander = true })
+		end
 	end
 end)
 
