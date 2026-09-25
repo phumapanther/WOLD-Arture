@@ -19,6 +19,8 @@ local Vitals = require(game.ServerScriptService.Vitals)
 local CraftAccess = require(game.ServerScriptService.CraftAccess)
 local EventState = require(game.ServerScriptService.EventState)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local EnhanceConfig = require(game.ReplicatedStorage.EnhanceConfig)
+local Mail = require(game.ServerScriptService.Mail)
 
 local TAG = "WOLD_Npc"
 local RANGE = 12
@@ -89,6 +91,11 @@ local Source = {} -- [player] = { station = "stove", model = Model } | nil
 -- [player] = { [stationKey] = { index = ลำดับสูตร, finishAt = os.clock() ตอนเสร็จ } }
 local Busy = {}
 
+-- อาวุธที่ยื่นให้ช่างตีบวกอยู่ตอนนี้ (ตีบวก 2026-09-24) — [player] = { id, durability, meta, fromEquipped, level }
+-- อาวุธออกจากกระเป๋า/มือไปอยู่ตรงนี้ระหว่างแถบเดิน ไม่งั้นผู้เล่นย้าย/ทิ้ง/เทรดได้ระหว่างรอ แล้วตอนจบ
+-- ไม่รู้ว่าต้องบวกชิ้นไหน · ต้องประกาศก่อน snapshot (snapshot วาดแถวของชิ้นนี้ให้เห็นว่าอยู่กับช่าง)
+local Enhancing = {}
+
 -- ชื่อช่องของล็อก: สถานี หรือ "smith" สำหรับช่างตีเหล็ก
 local function stationKeyOf(station)
 	return station or "smith"
@@ -126,6 +133,73 @@ end
 local function stationOf(player)
 	local src = Source[player]
 	return src and src.station or nil
+end
+
+--------------------------------------------------------------------------------
+-- ตีบวก: แถวในหน้าต่าง
+--------------------------------------------------------------------------------
+
+-- หนึ่งแถวต่ออาวุธหนึ่งชิ้น · รูปเดียวกับแถวสูตร (CraftGui ใช้ recipeRow ตัวเดียวกัน) บวก note/action/ข้อความผล
+-- `key` = "equipped" | เลขช่องกระเป๋าเป็นสตริง | "job" (อยู่กับช่าง)
+local function enhanceRow(state, key, entry)
+	local item = ItemCatalog.Get(entry.id)
+	local level = EnhanceConfig.LevelOf(entry.meta)
+	local nextLevel = EnhanceConfig.Levels[level + 1]
+	local name = ItemCatalog.DisplayName(entry.id, entry.meta)
+	local row = {
+		index = "enh:" .. key, tab = "enhance", id = entry.id, icon = item and item.icon,
+		materials = {}, affordable = false, chance = 1, gold = 0, goldHave = 0, yields = 1,
+		enhance = { slot = key },
+	}
+	if key == "job" then
+		row.name = name .. "  —  อยู่ที่ช่าง"
+		row.note = "ช่างกำลังตีอยู่ รอรู้ผล"
+		row.action = "รอ"
+		return row
+	end
+	if not nextLevel then
+		row.name = name .. "  (สูงสุดแล้ว)"
+		row.note = "ตีบวกครบ +10 แล้ว"
+		row.action = "สูงสุด"
+		return row
+	end
+	local affordable = true
+	for material, need in pairs(nextLevel.cost) do
+		local m = ItemCatalog.Get(material)
+		local have = countMaterial(state, material)
+		if have < need then affordable = false end
+		table.insert(row.materials, { id = material, name = m and m.name or material, icon = m and m.icon,
+			have = have, need = need })
+	end
+	table.sort(row.materials, function(a, b) return a.id < b.id end)
+	row.affordable = affordable
+	row.chance = nextLevel.chance
+	row.name = ("%s%s  →  +%d"):format(name, key == "equipped" and " (ถืออยู่)" or "", level + 1)
+	row.note = ("โอกาส %d%%  ·  ดาเมจ +%d%% → +%d%%  ·  แตก = ความคงทน -10%%"):format(
+		math.floor(nextLevel.chance * 100 + 0.5),
+		math.floor(EnhanceConfig.Bonus(level) * 100 + 0.5), math.floor(nextLevel.bonus * 100 + 0.5))
+	row.action = "ตี"
+	row.winText = "สำเร็จ! ขั้นเพิ่มแล้ว"
+	row.failText = "ตีแตก! ความคงทนลด ขั้นเท่าเดิม"
+	return row
+end
+
+-- แถวทั้งหมดของแท็บตีบวก: อาวุธที่ถือ → อาวุธในกระเป๋าตามลำดับช่อง → ชิ้นที่อยู่กับช่าง
+local function enhanceRows(player, state)
+	local rows = {}
+	local held = state.equipped and state.equipped.weapon
+	if held and EnhanceConfig.Weapons[held.id] then table.insert(rows, enhanceRow(state, "equipped", held)) end
+	local indices = {}
+	for index, slot in pairs(state.slots) do
+		if slot and EnhanceConfig.Weapons[slot.id] then table.insert(indices, index) end
+	end
+	table.sort(indices)
+	for _, index in ipairs(indices) do
+		table.insert(rows, enhanceRow(state, tostring(index), state.slots[index]))
+	end
+	local job = Enhancing[player]
+	if job then table.insert(rows, enhanceRow(state, "job", job)) end
+	return rows
 end
 
 --------------------------------------------------------------------------------
@@ -178,6 +252,11 @@ local function snapshot(player)
 				yields = recipe.yields or 1,
 			})
 		end
+	end
+
+	-- ตีบวกมีเฉพาะที่ช่างตีเหล็ก (ไม่ใช่เตา/เครื่องปั่น/เครื่องต้มยา)
+	if station == nil and state then
+		for _, row in ipairs(enhanceRows(player, state)) do table.insert(recipes, row) end
 	end
 
 	local tabs = {}
@@ -387,6 +466,134 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 
 		-- The window redraws from a fresh snapshot rather than patching itself, so the have-counts on every
 		-- other recipe sharing a material move at the same moment this one's do.
+		Remotes.CraftOpen:FireClient(player, snapshot(player))
+	end)
+end)
+
+--------------------------------------------------------------------------------
+-- ตีบวก (ผู้ใช้สั่ง 2026-09-24 · สเปก docs/superpowers/specs/2026-09-24-enhance-design.md)
+--------------------------------------------------------------------------------
+
+-- คืนอาวุธจากช่าง **ไม่มีทางหาย**: กระเป๋ามีที่ → ใส่ (มาจากมือและมือยังว่าง = สวมกลับให้)
+-- ไม่มีที่ / ออกเกมไปแล้ว → เมลถึงตัวเองพร้อมขั้นและความคงทน
+-- ⚠️ ห้ามให้ AddItem ล้นเข้าคลัง — SpillOver ไม่พก meta ไปด้วย ขั้นตีบวกจะหาย จึงถาม HasRoomFor ก่อนเสมอ
+-- คืน key ของแถวที่อาวุธไปอยู่ ("equipped" / เลขช่อง) หรือ nil ถ้าส่งเมล
+local function returnWeapon(player, job)
+	local state = player.Parent and Inventory.Get(player)
+	if state and Inventory.HasRoomFor(player, job.id, 1, job.meta) then
+		Inventory.AddItem(player, job.id, 1, job.durability, job.meta)
+		local landed
+		for index, slot in pairs(state.slots) do
+			if slot and slot.meta == job.meta then landed = index break end
+		end
+		if landed and job.fromEquipped and not state.equipped.weapon and Inventory.Equip(player, landed) then
+			return "equipped"
+		end
+		if landed then return tostring(landed) end
+	end
+	local name = ItemCatalog.DisplayName(job.id, job.meta)
+	task.spawn(function()
+		local ok = Mail.Send(player.UserId, {
+			fromName = "ช่างตีเหล็ก",
+			subject = "คืนอาวุธที่ตีบวก",
+			body = ("%s — กระเป๋าเต็มหรือออกไปก่อน ช่างเลยฝากส่งมาทางนี้"):format(name),
+			items = { { id = job.id, count = 1, durability = job.durability, meta = job.meta } },
+		})
+		if not ok then warn(("[Enhance] ส่งเมลคืน %s ให้ %d ไม่สำเร็จ"):format(job.id, player.UserId)) end
+	end)
+	if player.Parent then
+		Remotes.SocialNotify:FireClient(player, "info", ("กระเป๋าเต็ม — %s ส่งไปที่กล่องจดหมายแล้ว"):format(name))
+	end
+	return nil
+end
+
+Remotes.RequestEnhance.OnServerEvent:Connect(function(player, key)
+	if type(key) ~= "string" then return end
+	if not canCraft(player) then return end
+	if Source[player] then return end -- ตีบวกที่ช่างตีเหล็กเท่านั้น ไม่ใช่ที่เตา
+	if not nearSmith(player) then
+		return Remotes.SocialNotify:FireClient(player, "error", "อยู่ไกลเกินไป")
+	end
+	local state = Inventory.Get(player)
+	if not state then return end
+
+	-- ช่องที่ไคลเอนต์ขอ: "equipped" หรือเลขช่องจำนวนเต็มที่มีของอยู่จริง (ค่าอื่น = nil = จบเงียบ)
+	local entry, bagIndex
+	if key == "equipped" then
+		entry = state.equipped.weapon
+	else
+		bagIndex = tonumber(key)
+		if not bagIndex or bagIndex ~= math.floor(bagIndex) then return end
+		entry = state.slots[bagIndex]
+	end
+	if not entry or not EnhanceConfig.Weapons[entry.id] then return end
+
+	local level = EnhanceConfig.LevelOf(entry.meta)
+	local nextLevel = EnhanceConfig.Levels[level + 1]
+	if not nextLevel then
+		return Remotes.SocialNotify:FireClient(player, "error", "ตีบวกครบ +10 แล้ว")
+	end
+
+	-- ล็อกตัวเดียวกับการคราฟที่ช่างตีเหล็ก: ตีบวกอยู่ = คราฟไม่ได้ และกลับกัน
+	Busy[player] = Busy[player] or {}
+	if Busy[player].smith then
+		return Remotes.SocialNotify:FireClient(player, "error", "กำลังตีอยู่ รอสักครู่")
+	end
+
+	for material, need in pairs(nextLevel.cost) do
+		if countMaterial(state, material) < need then
+			local m = ItemCatalog.Get(material)
+			return Remotes.SocialNotify:FireClient(player, "error",
+				("วัสดุไม่พอ: %s"):format(m and m.name or material))
+		end
+	end
+
+	-- หักวัสดุตอนเริ่ม (ไม่ว่าสำเร็จหรือแตก) แล้ว **ยื่นอาวุธให้ช่าง** — ไม่มีการ yield ระหว่างตรวจกับหัก
+	for material, need in pairs(nextLevel.cost) do
+		takeMaterial(player, state, material, need)
+	end
+	local job = {
+		id = entry.id, durability = entry.durability,
+		-- meta เป็นตารางเสมอ: returnWeapon หาช่องที่อาวุธลงด้วยการเทียบตารางนี้
+		meta = type(entry.meta) == "table" and entry.meta or {},
+		fromEquipped = key == "equipped", level = level,
+	}
+	if job.fromEquipped then
+		Inventory.BreakEquipped(player, "weapon") -- โมเดลออกจากมือ (อยู่กับช่าง)
+	else
+		state.slots[bagIndex] = nil
+	end
+	Inventory.Send(player)
+	Enhancing[player] = job
+
+	local seconds = EnhanceConfig.Seconds
+	Busy[player].smith = { index = "enh:job", finishAt = os.clock() + seconds, seconds = seconds }
+	Remotes.CraftStarted:FireClient(player, "enh:job", seconds)
+	Remotes.CraftOpen:FireClient(player, snapshot(player))
+
+	task.delay(seconds, function()
+		if Busy[player] then Busy[player].smith = nil end
+		if Enhancing[player] == job then Enhancing[player] = nil end
+
+		-- ทอยตอนจบ ไม่ใช่ตอนเริ่ม (เหตุผลเดียวกับคราฟ: ผลต้องไม่มีอยู่ระหว่างแถบเดิน)
+		local success = math.random() < nextLevel.chance
+		if success then
+			job.meta.enhance = level + 1
+		else
+			local item = ItemCatalog.Get(job.id)
+			local max = item and item.maxDurability
+			if max and job.durability then
+				job.durability = math.max(1, job.durability - math.ceil(max * EnhanceConfig.FailDurabilityFraction))
+			end
+		end
+
+		local where = returnWeapon(player, job)
+		if not player.Parent then return end
+		Remotes.CraftFinished:FireClient(player, where and ("enh:" .. where) or "enh:job", success)
+		local name = ItemCatalog.DisplayName(job.id, job.meta)
+		Remotes.SocialNotify:FireClient(player, success and "info" or "error", success
+			and ("ตีบวกสำเร็จ! %s"):format(name)
+			or ("ตีแตก! %s ขั้นเท่าเดิม ความคงทนลด"):format(name))
 		Remotes.CraftOpen:FireClient(player, snapshot(player))
 	end)
 end)

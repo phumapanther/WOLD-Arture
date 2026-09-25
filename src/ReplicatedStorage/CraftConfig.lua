@@ -12,6 +12,8 @@ CraftConfig.Tabs = {
 	{ id = "weapon", name = "อาวุธ" },
 	{ id = "misc", name = "ไอเทมจิปาถะ" },
 	{ id = "armor", name = "ชุดเกราะ" },
+	-- ตีบวกอาวุธ +1..+10 (ผู้ใช้สั่ง 2026-09-24) — แถวคนละแบบกับสูตร: อาวุธในกระเป๋า/มือ แต่ละชิ้นหนึ่งแถว
+	{ id = "enhance", name = "ตีบวก" },
 	-- The unlucky man's page: every weapon in the game, bought outright with the coins a failed craft leaves
 	-- behind. It is the floor under the gamble -- twenty-five failed pistols is still a pistol.
 	{ id = "unlucky", name = "คนดวงซวย" },

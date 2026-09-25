@@ -115,7 +115,7 @@ local EVENTS = {
 	-- CraftStarted tells the client to run its progress bar and for how long; CraftFinished says whether the
 	-- attempt worked. Both are needed because the swing takes a couple of seconds and the roll happens at
 	-- the END of it, so the window cannot know the outcome when the button is pressed.
-	"RequestCraftOpen", "CraftOpen", "RequestCraft", "CraftStarted", "CraftFinished",
+	"RequestCraftOpen", "CraftOpen", "RequestCraft", "CraftStarted", "CraftFinished", "RequestEnhance",
 	-- ท่าทำงานที่เตา/เครื่องปั่น/เครื่องต้มยา ยิงหาทุกคนเหมือน ConsumeStateChanged ไม่ใช่เฉพาะคนคราฟ:
 	-- คนที่เดินผ่านครัวต้องเห็นว่ามีคนกำลังคนหม้ออยู่ ไม่ใช่เห็นคนยืนเฉยๆ หน้าเตาที่มีไฟลุก
 	-- (player, station | nil = หยุด, seconds, stationPosition)
