@@ -204,8 +204,92 @@ local function refresh(equipped)
 	if equipped ~= nil then currentWeaponId = id end
 end
 
+--------------------------------------------------------------------------------
+-- กระสุนที่เหลือ (ผู้ใช้สั่ง 2026-09-25): รูปกระสุนเรียงกลางล่างจอ ตอนถืออาวุธที่กินกระสุน (ปืนเล็ก)
+--------------------------------------------------------------------------------
+-- นับจากกระเป๋าจริงทุกครั้งที่กระเป๋าเปลี่ยน (ยิงหนึ่งนัด = หักหนึ่งชิ้น = InventoryUpdate มาเอง)
+-- วาดรูปทีละนัดได้ถึง MAX_ICONS · เกินนั้น (เกมหลักพกได้เป็นร้อย) เหลือเลขบอกจำนวน
+local MAX_ICONS = 12
+local ammoGui = Instance.new("ScreenGui")
+ammoGui.Name = "WOLD_Ammo"
+ammoGui.ResetOnSpawn = false
+ammoGui.IgnoreGuiInset = true
+ammoGui.DisplayOrder = 5
+ammoGui.Enabled = false
+ammoGui.Parent = player:WaitForChild("PlayerGui")
+
+local ammoRow = Instance.new("Frame")
+ammoRow.AnchorPoint = Vector2.new(0.5, 1)
+ammoRow.Position = UDim2.new(0.5, 0, 1, -172) -- เหนือแถวบัพ/หลอด EXP ของ HUD (สูงสุด ~1,-114)
+ammoRow.AutomaticSize = Enum.AutomaticSize.XY
+ammoRow.BackgroundTransparency = 1
+ammoRow.Parent = ammoGui
+local ammoLayout = Instance.new("UIListLayout")
+ammoLayout.FillDirection = Enum.FillDirection.Horizontal
+ammoLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+ammoLayout.VerticalAlignment = Enum.VerticalAlignment.Bottom
+ammoLayout.SortOrder = Enum.SortOrder.LayoutOrder
+ammoLayout.Padding = UDim.new(0, 4)
+ammoLayout.Parent = ammoRow
+
+-- กระสุนหนึ่งนัด: ปลอกทองเหลือง + หัวทองแดงมน (Frame ล้วน ไม่มีรูปให้อัปโหลด)
+local ammoIcons = {}
+for i = 1, MAX_ICONS do
+	local case = Instance.new("Frame")
+	case.LayoutOrder = i
+	case.Size = UDim2.fromOffset(9, 26)
+	case.BackgroundColor3 = Color3.fromRGB(214, 172, 82)
+	case.BorderSizePixel = 0
+	case.Parent = ammoRow
+	local caseRound = Instance.new("UICorner")
+	caseRound.CornerRadius = UDim.new(0, 2)
+	caseRound.Parent = case
+	local caseStroke = Instance.new("UIStroke")
+	caseStroke.Color = Color3.fromRGB(40, 28, 12)
+	caseStroke.Thickness = 1
+	caseStroke.Parent = case
+	local head = Instance.new("Frame")
+	head.AnchorPoint = Vector2.new(0.5, 1)
+	head.Position = UDim2.fromScale(0.5, 0)
+	head.Size = UDim2.fromOffset(9, 9)
+	head.BackgroundColor3 = Color3.fromRGB(190, 112, 62)
+	head.BorderSizePixel = 0
+	head.Parent = case
+	local headRound = Instance.new("UICorner")
+	headRound.CornerRadius = UDim.new(1, 0)
+	headRound.Parent = head
+	ammoIcons[i] = case
+end
+
+local ammoText = Instance.new("TextLabel")
+ammoText.LayoutOrder = MAX_ICONS + 1
+ammoText.AutomaticSize = Enum.AutomaticSize.X
+ammoText.Size = UDim2.fromOffset(0, 26)
+ammoText.BackgroundTransparency = 1
+ammoText.Font = Enum.Font.GothamBold
+ammoText.TextSize = 20
+ammoText.TextColor3 = Color3.fromRGB(245, 240, 225)
+ammoText.TextStrokeTransparency = 0.4
+ammoText.Parent = ammoRow
+
+local function drawAmmo(inventory)
+	local weapon = inventory and inventory.equipped and inventory.equipped.weapon
+	local spec = weapon and CombatConfig.Weapons[weapon.id]
+	local ammoId = spec and spec.ammo
+	ammoGui.Enabled = ammoId ~= nil
+	if not ammoId then return end
+	local count = 0
+	for _, slot in pairs(inventory.slots or {}) do
+		if slot and slot.id == ammoId then count += slot.count or 1 end
+	end
+	for i, icon in ipairs(ammoIcons) do icon.Visible = i <= count end
+	ammoText.Text = count == 0 and "กระสุนหมด" or (" " .. count)
+	ammoText.TextColor3 = count == 0 and Color3.fromRGB(235, 110, 100) or Color3.fromRGB(245, 240, 225)
+end
+
 Remotes.InventoryUpdate.OnClientEvent:Connect(function(inventory)
 	refresh(inventory and inventory.equipped)
+	drawAmmo(inventory)
 end)
 
 -- The bag may not have been sent yet when this starts.
