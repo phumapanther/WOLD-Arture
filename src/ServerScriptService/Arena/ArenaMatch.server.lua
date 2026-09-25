@@ -649,7 +649,7 @@ Remotes.RequestArenaBuy.OnServerEvent:Connect(function(player, id)
 	-- เกราะใช้ชุดแฟชั่น `Fashion_*Kit` ใน `ServerStorage.Model_Item` ของเพลสนี้)
 	local skin = wearable and f.skins[id]
 	Inventory.AddItem(player, id, 1, nil, skin and { skin = skin } or nil)
-	-- ปืนมากับกระสุน 16 นัด แล้วจบ (ผู้ใช้กำหนด) — ยิงหมดต้องซื้อปืนใหม่ ไม่มีกระสุนขายแยก
+	-- ปืนมากับกระสุนตามแถวร้าน (`entry.ammo` ตอนนี้ 7 นัด) แล้วจบ — ยิงหมดต้องซื้อปืนใหม่ ไม่มีกระสุนขายแยก
 	if entry.ammo then
 		removeAll(player, "Bullet")
 		Inventory.AddItem(player, "Bullet", entry.ammo)

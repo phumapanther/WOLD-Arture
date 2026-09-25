@@ -79,13 +79,13 @@ ArenaConfig.Shop = {
 	-- ── อาวุธ ──────────────────────────────────────────────────────────────
 	-- `size` = เล็ก/กลาง/ใหญ่ (ผู้ใช้สั่ง 2026-09-25) หน้าร้านเรียงตามนี้ในแต่ละแถว · ของใหญ่ 3,000 ทั้งสองชิ้น
 	{ id = "Sword",          price = 250,  slot = "weapon", row = "melee",  col = 1, size = "small" },
-	{ id = "Shield",         price = 1500, slot = "weapon", row = "melee",  col = 2, size = "medium" },
+	{ id = "Shield",         price = 1250, slot = "weapon", row = "melee",  col = 2, size = "medium" },
 	{ id = "Greatsword",     price = 3000, slot = "weapon", row = "melee",  col = 3, size = "large" },
-	-- ปืน: ซื้อมาแล้วยิงได้ 16 นัด แล้วจบ (ผู้ใช้กำหนด) — กระสุนมากับปืน ไม่ได้ขายแยก
-	{ id = "Pistol",         price = 750,  slot = "weapon", row = "ranged", col = 1, size = "small", ammo = 16 }, -- 500 → 750 (ผู้ใช้สั่ง 2026-09-25)
-	{ id = "Bow",            price = 1000, slot = "weapon", row = "ranged", col = 2, size = "medium" },
-	{ id = "Staff",          price = 1000, slot = "weapon", row = "ranged", col = 3, size = "medium" },
-	{ id = "Spellbook",      price = 1000, slot = "weapon", row = "ranged", col = 4, size = "medium" },
+	-- ปืน: ซื้อมาแล้วยิงได้ 7 นัด แล้วจบ (ผู้ใช้กำหนด) — กระสุนมากับปืน ไม่ได้ขายแยก
+	{ id = "Pistol",         price = 750,  slot = "weapon", row = "ranged", col = 1, size = "small", ammo = 7 }, -- 500 → 750 · 16 → 7 นัด (ผู้ใช้สั่ง 2026-09-25)
+	{ id = "Bow",            price = 1500, slot = "weapon", row = "ranged", col = 2, size = "medium" },
+	{ id = "Staff",          price = 1500, slot = "weapon", row = "ranged", col = 3, size = "medium" },
+	{ id = "Spellbook",      price = 1500, slot = "weapon", row = "ranged", col = 4, size = "medium" },
 	-- สไน: **ซื้อแล้วมานาเต็มหลอด** (ผู้ใช้สั่ง 2026-09-25) — มานาในสนามเริ่มที่ 0 ไม่งั้นซื้อมายิงไม่ได้
 	{ id = "Sniper",         price = 3000, slot = "weapon", row = "ranged", col = 5, size = "large", fillMana = true },
 	-- ── เกราะ ──────────────────────────────────────────────────────────────

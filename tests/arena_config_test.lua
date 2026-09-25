@@ -29,8 +29,8 @@ end
 ----------------------------------------------------------------- 1. ราคาตรงตามสเปก
 -- ตารางนี้คัดลอกมาจากข้อความที่ผู้ใช้เขียน ไม่ได้อ่านจาก ArenaConfig — ถ้าสองฝั่งไม่ตรงกันคือมีคนขยับ
 local WANT = {
-	Sword = 250, Greatsword = 3000, Shield = 1500, Sniper = 3000, -- ดาบใหญ่/สไน 3,000 (ผู้ใช้สั่ง 2026-09-25)
-	Pistol = 750, Bow = 1000, Staff = 1000, Spellbook = 1000,
+	Sword = 250, Greatsword = 3000, Shield = 1250, Sniper = 3000, -- ดาบใหญ่/สไน 3,000 (ผู้ใช้สั่ง 2026-09-25)
+	Pistol = 750, Bow = 1500, Staff = 1500, Spellbook = 1500, -- ผู้ใช้สั่ง 2026-09-25
 	LeatherArmor = 250, ChainmailArmor = 500, PlateArmor = 1000,
 	HealthPotion = 200, GreatPotion = 500, FirstAidKit = 1000, Water = 50,
 }
@@ -47,9 +47,9 @@ for id in pairs(WANT) do
 	check(seen[id] == true, ("ร้านมี %s ขาย"):format(id))
 end
 
------------------------------------------------------------------ 2. ปืนต้องมี 16 นัด
+----------------------------------------------------------------- 2. ปืนต้องมี 7 นัด (ผู้ใช้เปลี่ยน 16 → 7 · 2026-09-25)
 local pistol = ArenaConfig.ShopEntry("Pistol")
-check(pistol and pistol.ammo == 16, "ปืนมากับกระสุน 16 นัด")
+check(pistol and pistol.ammo == 7, "ปืนมากับกระสุน 7 นัด")
 check(ItemCatalog.Items.Bullet ~= nil, "มีไอเทมกระสุนให้แจก")
 
 ----------------------------------------------------------------- 3. เศรษฐกิจ
