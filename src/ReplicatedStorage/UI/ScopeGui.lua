@@ -71,9 +71,21 @@ function ScopeGui.new()
 	frame(lens, { AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.fromScale(0.5, 1), Size = UDim2.fromScale(THICK, LONG), BackgroundColor3 = TICK })
 	frame(lens, { AnchorPoint = Vector2.new(0, 0.5), Position = UDim2.fromScale(0, 0.5), Size = UDim2.fromScale(LONG, THICK), BackgroundColor3 = TICK })
 	frame(lens, { AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.fromScale(1, 0.5), Size = UDim2.fromScale(LONG, THICK), BackgroundColor3 = TICK })
-	-- + ตรงกลาง
-	frame(lens, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.08, 0.012), BackgroundColor3 = TICK })
-	frame(lens, { AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5, 0.5), Size = UDim2.fromScale(0.012, 0.08), BackgroundColor3 = TICK })
+	-- เป้าตรงกลาง = เป้าเล็งปกติของเกม (จุด + สี่ขีดสั้น ขนาดพิกเซลคงที่ ไม่โตตามจอ) — ผู้ใช้สั่ง 2026-09-25
+	-- ให้เล็กลงแบบเป้าปกติ (ของเดิมเป็น + ใหญ่ 8% ของเลนส์) · ตัวเลขชุดเดียวกับ AimController
+	local GAP, LEN, THICK_PX = 8, 7, 2
+	local function tick(size, position, anchor)
+		local f = frame(lens, { Size = size, Position = position, AnchorPoint = anchor,
+			BackgroundColor3 = Color3.fromRGB(255, 255, 255), BackgroundTransparency = 0.25, ZIndex = 2 })
+		local s = Instance.new("UIStroke")
+		s.Color, s.Transparency, s.Thickness = Color3.fromRGB(0, 0, 0), 0.55, 1
+		s.Parent = f
+	end
+	tick(UDim2.fromOffset(THICK_PX, THICK_PX), UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5))
+	tick(UDim2.fromOffset(THICK_PX, LEN), UDim2.new(0.5, 0, 0.5, -GAP), Vector2.new(0.5, 1))
+	tick(UDim2.fromOffset(THICK_PX, LEN), UDim2.new(0.5, 0, 0.5, GAP), Vector2.new(0.5, 0))
+	tick(UDim2.fromOffset(LEN, THICK_PX), UDim2.new(0.5, -GAP, 0.5, 0), Vector2.new(1, 0.5))
+	tick(UDim2.fromOffset(LEN, THICK_PX), UDim2.new(0.5, GAP, 0.5, 0), Vector2.new(0, 0.5))
 	return self
 end
 
