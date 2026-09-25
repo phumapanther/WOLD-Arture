@@ -143,6 +143,13 @@ local CARRY_OFFSET = CFrame.new(0, 0.5, -2.2) * CFrame.Angles(0, math.pi, 0)
 local function setCarried(model, on)
 	local humanoid = model:FindFirstChildOfClass("Humanoid")
 	if humanoid then humanoid.PlatformStand = on end
+	-- ระหว่างอุ้ม ปุ่ม E/F ลอยตามหน้าคนอุ้มตลอด (ผู้ใช้สั่ง 2026-09-25 ให้ซ่อน) → ปิดทั้งสองปุ่มสำหรับทุกคน
+	-- คนอุ้มวางลงผ่านปุ่มบนจอของตัวเอง (IslandPetController ← แอตทริบิวต์ CarriedBy · Remotes.IslandPetDrop)
+	local hrp = model:FindFirstChild("HumanoidRootPart")
+	for _, name in ipairs({ "PetPrompt", "CarryPrompt" }) do
+		local prompt = hrp and hrp:FindFirstChild(name)
+		if prompt then prompt.Enabled = not on end
+	end
 	for _, d in ipairs(model:GetDescendants()) do
 		if d:IsA("BasePart") and d.Name ~= "Root" then
 			if on then
@@ -160,6 +167,7 @@ end
 
 local function release(model, entry)
 	entry.carriedBy = nil
+	model:SetAttribute("CarriedBy", nil)
 	local root = model:FindFirstChild("HumanoidRootPart")
 	local weld = root and root:FindFirstChild("PetCarryWeld")
 	if weld then weld:Destroy() end
@@ -194,6 +202,7 @@ function toggleCarry(model, player)
 	local root = model:FindFirstChild("HumanoidRootPart")
 	if not root then return end
 	entry.carriedBy = player
+	model:SetAttribute("CarriedBy", player.UserId)
 	BeastGait.Detach(model)
 	setCarried(model, true)
 	root.CFrame = hrp.CFrame * CARRY_OFFSET
@@ -202,7 +211,7 @@ function toggleCarry(model, player)
 	weld.Part0, weld.Part1 = hrp, root
 	weld.C0 = CARRY_OFFSET
 	weld.Parent = root
-	Remotes.SocialNotify:FireClient(player, "info", "อุ้มไว้แล้ว — กด F อีกครั้งเพื่อวางลง")
+	Remotes.SocialNotify:FireClient(player, "info", "อุ้มไว้แล้ว — กด F หรือปุ่ม วางลง บนจอ")
 end
 
 -- คนอุ้มตาย/ร่างใหม่/ออกเกม = ปล่อยสัตว์ลงตรงนั้น (Weld ไปกับร่างเก่า ต้องคืนสภาพสัตว์เอง)
@@ -220,6 +229,15 @@ RunService.Heartbeat:Connect(function()
 				release(model, entry)
 				BeastGait.Attach(model, { wander = true })
 			end
+		end
+	end
+end)
+
+Remotes.IslandPetDrop.OnServerEvent:Connect(function(player)
+	for model, entry in pairs(Live) do
+		if entry.carriedBy == player then
+			toggleCarry(model, player)
+			return
 		end
 	end
 end)
