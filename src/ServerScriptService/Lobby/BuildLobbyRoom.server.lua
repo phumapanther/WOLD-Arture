@@ -60,6 +60,9 @@ Lighting.Brightness = 2.5
 Lighting.Ambient = Color3.fromRGB(128, 114, 98)
 Lighting.OutdoorAmbient = Color3.fromRGB(138, 124, 106)
 Lighting.FogEnd = 100000
+-- **ตัวหรี่ไฟทุกดวงในห้อง** (ผู้ใช้สั่ง 2026-09-25 "ลดแสงจากโคมไฟ 50% แสงจ้าไป") — คูณความสว่างของ PointLight
+-- ทุกดวงข้างล่าง (หน้าต่าง เตาไฟ คบไฟ โคมบนโต๊ะ) ปรับที่นี่ที่เดียว · ไม่แตะแอมเบียนต์ (ห้องจะกลับไปเป็นสีน้ำเงิน)
+local LIGHT_SCALE = 0.5
 -- หมอกของบรรยากาศทำให้ห้องขุ่นเป็นฝ้า — ในห้องปิดมันไม่ได้ให้ระยะอะไร มีแต่บังของ
 local atmosphere = Lighting:FindFirstChildOfClass("Atmosphere")
 if atmosphere then atmosphere.Density = 0 end
@@ -126,7 +129,7 @@ for _, side in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
 		local light = Instance.new("PointLight")
 		light.Color = GLASS_TEAL
 		light.Range = 22
-		light.Brightness = 1.1
+		light.Brightness = 1.1 * LIGHT_SCALE
 		light.Parent = pane
 		-- ⚠️ **กรอบต้องเป็นสี่แท่งล้อม ไม่ใช่กล่องทึบใบเดียว** — กล่องที่ใหญ่กว่าบานกระจกและอยู่จุดเดียวกัน
 		-- จะกลืนบานไปทั้งใบ (ถ่ายภาพรอบแรกแล้วไม่เห็นหน้าต่างสักบาน ทั้งที่โค้ดสร้างครบ)
@@ -181,7 +184,7 @@ for _, corner in ipairs({ { 12, 12 }, { -12, 12 }, { 12, -12 }, { -12, -12 } }) 
 	local light = Instance.new("PointLight")
 	light.Color = Color3.fromRGB(255, 186, 120)
 	light.Range = 34
-	light.Brightness = 2.2
+	light.Brightness = 2.2 * LIGHT_SCALE
 	light.Parent = flame
 	local fire = Instance.new("Fire")
 	fire.Size = 6
@@ -208,7 +211,7 @@ for _, spot in ipairs({
 	local light = Instance.new("PointLight")
 	light.Color = Color3.fromRGB(255, 186, 120)
 	light.Range = 20
-	light.Brightness = 1.5
+	light.Brightness = 1.5 * LIGHT_SCALE
 	light.Parent = flame
 	local fire = Instance.new("Fire")
 	fire.Size = 3
@@ -314,7 +317,7 @@ local function longTable(centre, rotation)
 	local light = Instance.new("PointLight")
 	light.Color = Color3.fromRGB(255, 214, 150)
 	light.Range = 20
-	light.Brightness = 1.6
+	light.Brightness = 1.6 * LIGHT_SCALE
 	light.Parent = lantern
 end
 longTable(ORIGIN + Vector3.new(-38, 0, -18), 90)
