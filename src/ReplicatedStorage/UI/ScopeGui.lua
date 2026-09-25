@@ -1,11 +1,15 @@
 -- ScopeGui: จอสโคปสไน (ผู้ใช้ส่งภาพมา 2026-09-25) — วาดด้วย Frame ล้วน ไม่มีรูปให้อัปโหลด
 --
--- รอบนอกวงเลนส์ทึบด้วย UIStroke ความหนามหาศาลบนวงกลม: เส้นขอบวาดออกด้านนอก จึงถมทุกอย่างนอกวง
+-- รอบนอกวงเลนส์ถมด้วย UIStroke ความหนามหาศาลบนวงกลม: เส้นขอบวาดออกด้านนอก จึงถมทุกอย่างนอกวง
 -- ในขณะที่ข้างในวงยังใส (มองเห็นโลกผ่านเลนส์) — ทำรูกลมบนแผ่นทึบด้วย Frame ตรงๆ ไม่ได้
+--
+-- **นอกวงเป็นสีมืดโปร่ง ไม่ใช่เบลอ** (ผู้ใช้ขอเบลอ 2026-09-25): Roblox เบลอได้แค่ทั้งจอ (BlurEffect)
+-- ซึ่งจะเบลอในเลนส์ด้วยจนเล็งไม่ได้ และ UI ไม่มี backdrop blur — มืดโปร่ง + ขอบเลนส์มืดไล่ระดับคือที่ใกล้สุด
 local ScopeGui = {}
 ScopeGui.__index = ScopeGui
 
-local GREY = Color3.fromRGB(190, 190, 190)
+local SHADE = Color3.fromRGB(12, 12, 14)
+local OUTSIDE_TRANSPARENCY = 0.4 -- นอกวงเห็นโลกจางๆ (0 = ทึบ · 1 = ใสหมด)
 local TICK = Color3.fromRGB(150, 150, 150)
 
 local function frame(parent, props)
@@ -37,10 +41,19 @@ function ScopeGui.new()
 	local round = Instance.new("UICorner")
 	round.CornerRadius = UDim.new(1, 0)
 	round.Parent = lens
-	local fill = Instance.new("UIStroke")
-	fill.Color = GREY
-	fill.Thickness = 3000 -- ถมนอกวงทั้งจอ
-	fill.Parent = lens
+	-- ชั้นแรกถมนอกวงทั้งจอ ชั้นถัดไปบางลงเรื่อยๆ ซ้อนทับกันที่ขอบเลนส์ = ขอบมืดไล่ระดับออกไป
+	-- (หนึ่ง GuiObject มี UIStroke ได้เส้นเดียว จึงต้องเป็นวงซ้อนหลายวง)
+	for _, band in ipairs({ { 3000, OUTSIDE_TRANSPARENCY }, { 70, 0.8 }, { 35, 0.72 }, { 14, 0.55 } }) do
+		local ring = frame(lens, { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 })
+		local ringRound = Instance.new("UICorner")
+		ringRound.CornerRadius = UDim.new(1, 0)
+		ringRound.Parent = ring
+		local fill = Instance.new("UIStroke")
+		fill.Color = SHADE
+		fill.Thickness = band[1]
+		fill.Transparency = band[2]
+		fill.Parent = ring
+	end
 
 	-- ขอบดำของเลนส์: วงซ้อนข้างใน ขอบบาง
 	local rim = frame(lens, { Size = UDim2.fromScale(1, 1), BackgroundTransparency = 1 })
