@@ -175,7 +175,8 @@ local EVENTS = {
 	-- of the shared WeatherConfig rather than being told.
 	"WeatherChanged",
 	-- เกาะฟาร์ม: วาง (slot, cx, cz, r) เข้า → ตอบกลับทางเดียวกัน (ok, remaining) · เก็บ (uid) เข้า
-	"IslandPlace", "IslandPickup",
+	-- IslandMove: ย้าย/หมุนของที่วางแล้ว (uid, cx, cz, r) เข้า → ตอบ (ok) ทางเดียวกัน (โหมดจัดเกาะมุมสูง)
+	"IslandPlace", "IslandPickup", "IslandMove",
 	-- คอกสัตว์บนเกาะ: เซิร์ฟเวอร์ส่งภาพรวมทั้งก้อน (IslandPenOpen) ไคลเอนต์ตอบแค่ "ซื้อชนิดนี้ n ตัว"
 	-- IslandPenClose: ไคลเอนต์บอกว่าปิดหน้าต่างแล้ว เซิร์ฟเวอร์จะได้เลิกส่งภาพใหม่ทุก 3 วิ
 	-- IslandPenRelease: ปล่อยฝูงทิ้งเพื่อเปลี่ยนชนิดสัตว์ที่เลี้ยง (คอกที่มีสัตว์อยู่เก็บคืนไม่ได้)

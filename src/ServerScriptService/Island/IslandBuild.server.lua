@@ -352,6 +352,42 @@ local function pickup(player, uid)
 	return true
 end
 
+-- ย้าย/หมุนของที่วางแล้ว (โหมดจัดเกาะมุมสูง ผู้ใช้สั่ง 2026-09-25)
+--
+-- **ขยับโมเดลเดิม ไม่ใช่เก็บแล้ววางใหม่** — ทุกอย่างที่อยู่บนตัวมันตามไปครบ: ผักที่กำลังโต สัตว์ในคอก
+-- (Livestock อยู่ในโมเดล) คูลดาวน์รายวัน แสง · ของจึงไม่ต้องผ่านกระเป๋า และไม่มีด่าน growing/livestock
+-- แบบ pickup (ด่านพวกนั้นกันของหาย ซึ่งการย้ายไม่ทำให้อะไรหาย)
+local function move(player, uid, cx, cz, r)
+	if not isOwner(player) or not Data then return false, "notowner" end
+	if type(cx) ~= "number" or type(cz) ~= "number" then return false, "missing" end
+	local model = Models[uid]
+	local entry = model and Entries[model]
+	if not entry then return false, "missing" end
+	cx, cz = math.floor(cx), math.floor(cz)
+	r = (type(r) == "number") and (math.floor(r) % 4) or 0
+	local fp = model:GetAttribute("Footprint")
+	if typeof(fp) ~= "Vector2" then return false, "missing" end
+	-- ช่องของตัวเองไม่นับว่าถูกยึด ไม่งั้นหมุนอยู่กับที่/ขยับครึ่งตัวไม่ได้เลย · ตัวโมเดลเองก็ไม่นับเป็นสิ่งกีดขวาง (ignore)
+	local mine = {}
+	for key, owner in pairs(Occupied) do
+		if owner == uid then mine[key] = true end
+	end
+	for key in pairs(mine) do Occupied[key] = nil end
+	local ok, reason = IslandGrid.canPlace(Occupied, noBuildZones(), cx, cz, fp.X, fp.Y, r, entry.id, model)
+	if not ok then
+		for key in pairs(mine) do Occupied[key] = uid end
+		return false, reason
+	end
+	entry.x, entry.z, entry.r = cx, cz, r
+	for _, key in ipairs(IslandGrid.cellsOf(cx, cz, fp.X, fp.Y, r)) do Occupied[key] = uid end
+	local wx, wz = IslandGrid.centreOf(cx, cz, fp.X, fp.Y, r)
+	model:PivotTo(IslandGrid.pivotFor(cx, cz, fp.X, fp.Y, r, groundAt(wx, wz)))
+	model:SetAttribute("CellX", cx)
+	model:SetAttribute("CellZ", cz)
+	model:SetAttribute("Rot", r)
+	return true
+end
+
 --------------------------------------------------------------------------------
 -- เจ้าของเข้ามา → โหลด → ชุดเริ่มต้น → สร้างคืน
 --------------------------------------------------------------------------------
@@ -431,6 +467,13 @@ Remotes.IslandPlace.OnServerEvent:Connect(function(player, slotIndex, cx, cz, r)
 	local slot = state and type(slotIndex) == "number" and state.slots[slotIndex]
 	local remaining = (ok and slot and slot.count) or 0
 	Remotes.IslandPlace:FireClient(player, ok == true, remaining)
+end)
+
+Remotes.IslandMove.OnServerEvent:Connect(function(player, uid, cx, cz, r)
+	if rateLimited(player) then return end
+	local ok, reason = move(player, tonumber(uid) or -1, cx, cz, r)
+	if not ok then notify(player, reason) end
+	Remotes.IslandMove:FireClient(player, ok == true)
 end)
 
 Remotes.IslandPickup.OnServerEvent:Connect(function(player, uid)

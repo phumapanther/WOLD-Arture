@@ -210,9 +210,10 @@ gui:OnSlotClicked(function(index)
 			table.insert(entries, { label = hint, onClick = function() end })
 		end
 	elseif item.kind == "placeable" then
-		-- ของวางบนเกาะ: ทางเดียวคือเข้าโหมดวาง (IslandBuildController เป็นเจ้าของช่องทาง หยิบตอนกด ไม่รอไว้ล่วงหน้า)
+		-- ของวางบนเกาะ: "ใช้" = เข้าโหมดจัดเกาะมุมสูงแล้วหยิบชิ้นนี้ขึ้นมาเลย (IslandBuildController เป็นเจ้าของช่องทาง
+		-- หยิบตอนกด ไม่รอไว้ล่วงหน้า) · ผู้ใช้สั่ง 2026-09-25 "เปิดกระเป๋าและกด ใช้ หรือ กด F4"
 		if workspace:GetAttribute("IslandMode") == true then
-			table.insert(entries, { label = "วางบนเกาะ", onClick = function()
+			table.insert(entries, { label = "ใช้ · จัดเกาะ", onClick = function()
 				local opener = game.ReplicatedStorage:FindFirstChild("WOLD_StartPlacing")
 				if not opener then warn("[Inventory] ไม่พบ WOLD_StartPlacing (IslandBuildController ไม่ได้รัน?)") return end
 				gui:Hide()

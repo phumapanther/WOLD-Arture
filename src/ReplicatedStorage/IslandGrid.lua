@@ -102,7 +102,17 @@ end
 -- ส่วนของอย่างอื่น (ตัวละคร ของที่ตกอยู่ ghost) ยังใช้กฎเดิม
 --
 -- **กิ่งไม้/ใบไม้เหนือหัวไม่นับ** กล่องสูงแค่ ClearanceHeight จากผิวดิน ปลูกใต้ร่มไม้จึงยังทำได้ตามเดิม
-function IslandGrid.obstructed(cx, cz)
+-- ghost ของไคลเอนต์ + โมเดลที่กำลังถูกย้าย · สร้างทีละตัว: `{ nil, x }` เป็นตารางมีรู Roblox จะอ่านไม่เห็น x
+-- (ฝั่งเซิร์ฟเวอร์ไม่มี IslandGhost เลย ตัวแรกจึงเป็น nil เสมอ)
+local function excludeList(ignore)
+	local list = {}
+	local ghost = workspace:FindFirstChild("IslandGhost")
+	if ghost then table.insert(list, ghost) end
+	if ignore then table.insert(list, ignore) end
+	return list
+end
+
+function IslandGrid.obstructed(cx, cz, ignore)
 	local y = IslandGrid.surfaceAt(cx, cz)
 	if not y then return true end
 	local wx, wz = IslandGrid.worldOf(cx, cz)
@@ -110,7 +120,7 @@ function IslandGrid.obstructed(cx, cz)
 	local at = CFrame.new(wx, y + Config.ClearanceHeight / 2 - 0.4, wz)
 	local params = OverlapParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { workspace:FindFirstChild("IslandGhost") }
+	params.FilterDescendantsInstances = excludeList(ignore)
 	-- **ไม่จำกัด MaxParts แล้ว** ช่องที่มีแต่ใบไม้บางๆ หกชิ้นแรกอาจเป็นใบไม้ทั้งหมด แล้วชิ้นที่กันจริง
 	-- ไม่เคยถูกมองเห็น — เดิมตั้งไว้ 6 เพื่อความเร็ว แต่ตอนนี้ต้องดูให้ครบถึงจะตัดสินถูก
 	params.MaxParts = 60
@@ -148,13 +158,13 @@ local HEAD_ROOM = 3.0
 local reachSet, reachAt = nil, -math.huge
 
 -- ช่องนี้เดินผ่านได้ไหม (ไม่ใช่ "วางของได้ไหม" — ทางเดินหินกับสะพานเดินผ่านได้แต่วางของไม่ได้)
-local function walkable(cx, cz)
+local function walkable(cx, cz, ignore)
 	local y = IslandGrid.surfaceAt(cx, cz)
 	if not y then return false end
 	local wx, wz = IslandGrid.worldOf(cx, cz)
 	local params = OverlapParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
-	params.FilterDescendantsInstances = { workspace:FindFirstChild("IslandGhost") }
+	params.FilterDescendantsInstances = excludeList(ignore)
 	params.MaxParts = 40
 	-- กล่องช่วงลำตัว: เหนือระดับที่ก้าวข้ามได้ ขึ้นไปถึงหัว
 	local at = CFrame.new(wx, y + STEP_UP + HEAD_ROOM / 2, wz)
@@ -173,7 +183,7 @@ local function spawnCell()
 	return IslandGrid.cellOf(spawn.Position.X, spawn.Position.Z)
 end
 
-local function buildReach()
+local function buildReach(ignore)
 	local sx, sz = spawnCell()
 	if not sx then return nil end
 	local seen = { [IslandGrid.key(sx, sz)] = true }
@@ -183,7 +193,7 @@ local function buildReach()
 		for _, d in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
 			local nx, nz = c[1] + d[1], c[2] + d[2]
 			local k = IslandGrid.key(nx, nz)
-			if not seen[k] and IslandGrid.inBounds(nx, nz) and walkable(nx, nz) then
+			if not seen[k] and IslandGrid.inBounds(nx, nz) and walkable(nx, nz, ignore) then
 				seen[k] = true
 				queue[#queue + 1] = { nx, nz }
 			end
@@ -194,7 +204,14 @@ end
 
 -- เดินไปถึงช่องนี้ได้ไหม · **หาจุดเกิดไม่เจอ = ตอบว่าได้** ความไม่แน่ใจเอนไปทาง "วางได้"
 -- เหมือนกฎเดียวกับปุ่มคลังเมือง: ของที่วางเกินยังเก็บคืนได้ ส่วนของที่วางไม่ได้คือปริศนา
-function IslandGrid.reachable(cx, cz)
+-- ผังช่องที่เดินถึง **โดยทำเหมือนของชิ้น `ignore` ไม่อยู่** — ใช้ตอนย้าย/หมุนของที่วางแล้ว (ของขวางช่องของตัวเอง
+-- เสมอ ถ้าไม่ยกออกจากการคิด การหมุนอยู่กับที่จะตอบว่า "เดินเข้าไปไม่ได้") · คิดใหม่ทุกครั้ง ~30 ms: เรียกครั้งเดียวต่อการย้าย
+function IslandGrid.reachSet(ignore)
+	return buildReach(ignore)
+end
+
+function IslandGrid.reachable(cx, cz, reach)
+	if reach then return reach[IslandGrid.key(cx, cz)] == true end
 	if os.clock() - reachAt > REACH_TTL then
 		reachSet, reachAt = buildReach(), os.clock()
 	end
@@ -208,8 +225,11 @@ function IslandGrid.isSoil(cx, cz)
 end
 
 -- occupied = { ["cx,cz"] = uid } · `itemId` บอกว่าของชิ้นนี้ต้องการดินหรือห้ามอยู่บนดิน (nil = ไม่สนใจดิน)
+-- `ignore` = โมเดลที่กำลังถูกย้าย (ไม่นับเป็นสิ่งกีดขวางของตัวเอง) · `reach` = ผลของ reachSet(ignore) ที่คิดไว้แล้ว
+-- (ghost ถามทุกเฟรม ส่งมาเองจะได้ไม่คิด flood fill ใหม่ทุกเฟรม · ไม่ส่งแต่มี ignore = คิดให้ครั้งเดียวต่อการเรียก)
 -- ตอบ ok, reason โดย reason เป็นคำสั้นๆ ให้คนเรียกแปลเป็นข้อความเอง
-function IslandGrid.canPlace(occupied, zones, x, z, w, d, r, itemId)
+function IslandGrid.canPlace(occupied, zones, x, z, w, d, r, itemId, ignore, reach)
+	if ignore and not reach then reach = buildReach(ignore) or nil end
 	local fw, fd = IslandGrid.footprintOf(w, d, r)
 	local wantSoil = itemId ~= nil and Config.SoilOnly[itemId] == true
 	local careSoil = itemId ~= nil
@@ -232,9 +252,9 @@ function IslandGrid.canPlace(occupied, zones, x, z, w, d, r, itemId)
 			end
 			-- ช่องนี้ว่างจริงไหม: มีโมเดล/ชิ้นส่วนอะไรตั้งอยู่เหนือมันหรือเปล่า (ของที่ผู้ใช้วางไว้ในแมพ
 			-- ไม่ได้อยู่ในตาราง `occupied` ซึ่งรู้จักแต่ของที่ผู้เล่นวางผ่านระบบ)
-			if IslandGrid.obstructed(cx, cz) then return false, "obstructed" end
+			if IslandGrid.obstructed(cx, cz, ignore) then return false, "obstructed" end
 			-- ล้อมกำแพงไว้ไม่ให้เข้า = วางไม่ได้ ไม่งั้นของติดอยู่ข้างในถาวร
-			if not IslandGrid.reachable(cx, cz) then return false, "unreachable" end
+			if not IslandGrid.reachable(cx, cz, reach) then return false, "unreachable" end
 		end
 	end
 	-- พื้นต้องราบพอ ไม่งั้นของไปเกาะหน้าผาแล้วจมครึ่งตัว (โมเดลวางตามความสูงกึ่งกลาง footprint จุดเดียว)
