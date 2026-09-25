@@ -113,8 +113,8 @@ end
 --
 -- ตั้งไว้ที่นี่เพราะไฟล์นี้คือเจ้าของคลัง ส่วน `Inventory` แค่ถือ hook ไว้เฉยๆ — กระเป๋าจึงไม่ต้องรู้จัก
 -- คลัง และเพลสที่ไม่มีมาดามออเรเลีย (ล็อบบี้) ก็ไม่มีใครตั้ง hook นี้ ของที่เกินก็แค่ใส่ไม่ได้ตามปกติ
-Inventory.Overflow = function(player, id, count, durability)
-	local placed = Vault.Deposit(player, id, count, durability)
+Inventory.Overflow = function(player, id, count, durability, meta)
+	local placed = Vault.Deposit(player, id, count, durability, meta)
 	-- เซฟทันทีเหมือนทุกครั้งที่ของเข้าคลัง (เหตุผลเดียวกับ `Bank.set`): ของที่ฝากไว้สำคัญเกินกว่าจะหาย
 	-- ไปกับช่วงรอ autosave · หน้าต่างคลังที่เปิดค้างอยู่จะเห็นของใหม่ตอนกดอะไรสักอย่างในหน้าต่างนั้น
 	-- ซึ่งส่งภาพรวมกลับมาใหม่ทุกครั้งอยู่แล้ว

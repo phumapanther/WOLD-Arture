@@ -196,7 +196,8 @@ function Inventory.AddItem(player, id, count, durability, meta)
 		if not free then
 			Inventory.Send(player)
 			-- กระเป๋าเต็มจริงๆ ของที่เหลือรวมส่วนที่เกินเพดานด้วย ลองส่งเข้าคลังทั้งก้อน
-			Inventory.SpillOver(player, id, spill + count, durability)
+			-- meta ไปด้วย (ขั้นตีบวก/สกิน/ทะเบียน) — เดิมทิ้ง = ของที่ล้นเข้าคลังกลายเป็นชิ้นธรรมดา
+			Inventory.SpillOver(player, id, spill + count, durability, meta)
 			return false -- bag full; whatever fitted has been kept
 		end
 		local put = math.min(stackSize, count)
@@ -221,10 +222,10 @@ end
 --
 -- คลังเต็มด้วย = คืน false เหมือนกระเป๋าเต็ม ผู้เรียกที่เคยรับมือกับกระเป๋าเต็มอยู่แล้ว (คราฟ ร้านค้า
 -- รางวัลพาส) จึงรับมือกับกรณีนี้ได้โดยไม่ต้องแก้อะไร — และของไม่หายไปเงียบๆ
-function Inventory.SpillOver(player, id, count, durability)
+function Inventory.SpillOver(player, id, count, durability, meta)
 	if not count or count <= 0 then return true end
 	if not Inventory.Overflow then return false end
-	local placed = Inventory.Overflow(player, id, count, durability) or 0
+	local placed = Inventory.Overflow(player, id, count, durability, meta) or 0
 	if placed <= 0 then return false end
 
 	local item = ItemCatalog.Get(id)
@@ -456,6 +457,8 @@ function Inventory.Unequip(player, kind)
 	local state = States[player]
 	local entry = state and state.equipped[kind]
 	if not entry then return false end
+	-- กระเป๋าเต็ม = ไม่ถอด (รีวิว 2026-09-25) — เดิมถอดแล้วล้นเข้าคลัง ถ้าคลังเต็มด้วย ของหายทั้งชิ้น
+	if not Inventory.HasRoomFor(player, entry.id, 1, entry.meta) then return false end
 	state.equipped[kind] = nil
 	Inventory.AddItem(player, entry.id, 1, entry.durability, entry.meta)
 	broadcastEquipment(player, state)

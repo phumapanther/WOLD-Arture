@@ -254,6 +254,9 @@ Remotes.RequestUnequip.OnServerEvent:Connect(function(player, kind)
 		syncArmor(player)
 		playEquipSound(player)
 		flush(player)
+	elseif Inventory.Get(player) and Inventory.Get(player).equipped[kind] then
+		-- ถอดไม่ได้เพราะกระเป๋าเต็ม (Unequip ไม่ยอมให้ล้นเข้าคลัง) — บอกตรงๆ ไม่ใช่ปุ่มที่กดแล้วเงียบ
+		Remotes.SocialNotify:FireClient(player, "warn", "กระเป๋าเต็ม ถอดไม่ได้")
 	end
 end)
 
