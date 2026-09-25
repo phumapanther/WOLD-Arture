@@ -12,28 +12,14 @@ local Inventory = {}
 
 local States = {} -- [player] = { slots, equipped = {weapon, armor}, gold }
 
--- **คีย์ช่องต้องเป็นตัวเลขเสมอ** (แก้ 2026-09-22: วางของไม่ได้ ขึ้น "ไม่มีของชิ้นนั้นในกระเป๋า")
---
--- ⚠️ ตารางช่องเป็น **sparse** (ของอยู่ช่อง 2, 4, 37-43 แล้วที่เหลือเป็น nil) · DataStore เก็บเป็น JSON
--- ซึ่งไม่มี sparse array — ตอนเซฟมันกลายเป็น object แล้วตอนโหลดกลับมา **คีย์ทุกตัวเป็นสตริง**
--- `state.slots[40]` (ตัวเลข) จึงหาไม่เจอ ทั้งที่ `pairs` ยังเห็นของครบ (`FindSlotById` จึงคืนเลขที่
--- เอาไปใช้ต่อไม่ได้ แล้ว `place` ก็ตอบ noitem)
---
--- เกิดขึ้นชัดตอนแยกช่อง VIP เพราะช่อง 37-54 ทำให้ตารางเป็น sparse แน่นอน — ก่อนหน้านี้ของมักอัดชิด
--- ช่อง 1..n จึงรอดมาเป็น array จริงบ่อยๆ และไม่มีใครเจอ
-local function normaliseSlots(saved)
-	local out = {}
-	if type(saved) ~= "table" then return out end
-	for k, v in pairs(saved) do
-		local index = tonumber(k)
-		if index and v then out[index] = v end
-	end
-	return out
-end
+-- ⚠️ **ช่องกระเป๋าเป็นตาราง sparse** (ของอยู่ช่อง 1-3, 37-40 …) เซฟ/โหลดผ่าน `SlotCodec` เท่านั้น
+-- · 2026-09-22: โหลดกลับมาคีย์เป็นสตริง → `state.slots[40]` หาไม่เจอ (FromSave แปลงกลับเป็นตัวเลข)
+-- · 2026-09-25: เซฟตรงๆ แล้ว JSON ตัดทุกช่องหลังรูแรกทิ้ง = **ของกระเป๋า VIP หายหลังออกเข้าเซิร์ฟ** (ForSave ใช้คีย์สตริง)
+local SlotCodec = require(game.ServerScriptService.SlotCodec)
 
 function Inventory.Add(player, saved)
 	States[player] = {
-		slots = normaliseSlots(saved and saved.Slots),
+		slots = SlotCodec.FromSave(saved and saved.Slots),
 		equipped = saved and saved.Equipped or {},
 		gold = saved and saved.Gold or 0,
 		-- [hotbar 1-6] = item id. Ids rather than bag positions: the bag gets sorted and items move, and a
@@ -580,7 +566,8 @@ end
 function Inventory.Serialize(player)
 	local state = States[player]
 	if not state then return nil end
-	return { Slots = state.slots, Equipped = state.equipped, Gold = state.gold, Hotbar = state.hotbar }
+	-- ช่องเซฟด้วยคีย์สตริงเสมอ — ดู SlotCodec (JSON ตัดช่อง VIP ทิ้งถ้าเซฟตาราง sparse ตรงๆ)
+	return { Slots = SlotCodec.ForSave(state.slots), Equipped = state.equipped, Gold = state.gold, Hotbar = state.hotbar }
 end
 
 return Inventory

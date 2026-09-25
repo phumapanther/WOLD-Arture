@@ -12,6 +12,7 @@
 -- จะเขียนทับทั้งก้อน ซึ่งเป็นการแข่งกันเขียนระหว่างเซิร์ฟเวอร์ที่จะทำให้ข้อมูลหาย
 local DataStoreService = game:GetService("DataStoreService")
 local ClanConfig = require(game.ReplicatedStorage.ClanConfig)
+local SlotCodec = require(game.ServerScriptService.SlotCodec)
 
 local ClanStore = {}
 
@@ -34,12 +35,27 @@ local function clanKey(id)
 	return "clan_" .. id
 end
 
+-- ⚠️ คลังแคลน/คลังเมือง `vault` เป็นตาราง sparse — เข้า-ออก DataStore ผ่าน SlotCodec เท่านั้น
+-- (JSON ตัดทุกช่องหลังรูแรกทิ้ง + โหลดกลับมาคีย์เป็นสตริง · บั๊กเดียวกับกระเป๋า VIP หาย 2026-09-25)
+-- ในหน่วยความจำ/แคช/transform เห็นคีย์ตัวเลขเสมอ · ที่ DataStore เห็นคีย์สตริงเสมอ
+local function decoded(data)
+	if type(data) == "table" and data.vault then data.vault = SlotCodec.FromSave(data.vault) end
+	return data
+end
+local function encoded(data)
+	if type(data) ~= "table" or not data.vault then return data end
+	local copy = table.clone(data)
+	copy.vault = SlotCodec.ForSave(data.vault)
+	return copy
+end
+
 function ClanStore.Get(clanId, fresh)
 	if not clanId then return nil end
 	if not fresh and Cache[clanId] then return Cache[clanId] end
 	if not store then return Cache[clanId] end
 	local success, data = pcall(function() return store:GetAsync(clanKey(clanId)) end)
 	if success and type(data) == "table" then
+		data = decoded(data)
 		Cache[clanId] = data
 		return data
 	end
@@ -52,7 +68,7 @@ function ClanStore.Save(clan)
 	if not clan or not clan.id then return false end
 	Cache[clan.id] = clan
 	if not store then return false, "DataStore ใช้ไม่ได้" end
-	local success, err = pcall(function() store:SetAsync(clanKey(clan.id), clan) end)
+	local success, err = pcall(function() store:SetAsync(clanKey(clan.id), encoded(clan)) end)
 	if not success then
 		warn("[ClanStore] เขียนแคลนไม่ได้:", err)
 		return false, "บันทึกไม่สำเร็จ"
@@ -77,13 +93,14 @@ function ClanStore.Update(clanId, transform)
 	end
 	local success, result = pcall(function()
 		return store:UpdateAsync(clanKey(clanId), function(old)
-			return transform(old)
+			return encoded(transform(decoded(old)))
 		end)
 	end)
 	if not success then
 		warn("[ClanStore] แก้แคลนไม่ได้:", result)
 		return nil
 	end
+	result = decoded(result)
 	if type(result) == "table" then Cache[clanId] = result end
 	return result
 end
@@ -199,7 +216,7 @@ local TownVaultCache = {}
 function ClanStore.GetTownVault(townId, fresh)
 	if not fresh or not store then return TownVaultCache[townId] or { vault = {}, log = {} } end
 	local success, data = pcall(function() return store:GetAsync(townVaultKey(townId)) end)
-	if success and type(data) == "table" then TownVaultCache[townId] = data end
+	if success and type(data) == "table" then TownVaultCache[townId] = decoded(data) end
 	return TownVaultCache[townId] or { vault = {}, log = {} }
 end
 
@@ -214,17 +231,17 @@ function ClanStore.UpdateTownVault(townId, transform)
 	end
 	local success, result = pcall(function()
 		return store:UpdateAsync(townVaultKey(townId), function(old)
-			local current = (type(old) == "table") and old or { vault = {}, log = {} }
+			local current = (type(old) == "table") and decoded(old) or { vault = {}, log = {} }
 			current.vault = current.vault or {}
 			current.log = current.log or {}
-			return transform(current)
+			return encoded(transform(current))
 		end)
 	end)
 	if not success then
 		warn("[ClanStore] แก้คลังเมืองไม่ได้:", result)
 		return nil
 	end
-	if type(result) == "table" then TownVaultCache[townId] = result end
+	if type(result) == "table" then TownVaultCache[townId] = decoded(result) end
 	return TownVaultCache[townId]
 end
 

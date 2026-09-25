@@ -7,6 +7,7 @@
 -- What it is NOT is a second Inventory: no weight, no equipping, no hotbar. Things in the vault are out of
 -- play -- that is the whole reason to put them there -- so the only operations are "put in" and "take out".
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
+local SlotCodec = require(game.ServerScriptService.SlotCodec)
 
 local Vault = {}
 
@@ -17,7 +18,8 @@ Vault.SlotCount = 60
 local States = {} -- [player] = { slots = { [index] = slot } }
 
 function Vault.Add(player, saved)
-	States[player] = { slots = (type(saved) == "table" and saved.Slots) or {} }
+	-- ช่องคลังเป็น sparse — เซฟ/โหลดผ่าน SlotCodec (JSON ตัดช่องหลังรูทิ้ง · บั๊กเดียวกับกระเป๋า VIP 2026-09-25)
+	States[player] = { slots = SlotCodec.FromSave(type(saved) == "table" and saved.Slots or nil) }
 	return States[player]
 end
 
@@ -32,7 +34,7 @@ end
 function Vault.Serialize(player)
 	local state = States[player]
 	if not state then return nil end
-	return { Slots = state.slots }
+	return { Slots = SlotCodec.ForSave(state.slots) }
 end
 
 --------------------------------------------------------------------------------
