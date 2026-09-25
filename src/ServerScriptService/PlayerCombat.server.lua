@@ -506,9 +506,11 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	end
 
 	local weapon = weaponOf(player)
+	-- **กระสุนหมด = ต่อยแทน** (ผู้ใช้สั่ง 2026-09-25) เดิมคลิกแล้วเงียบ ขึ้นแค่ "ไม่มีกระสุน"
+	-- ต่อยด้วยตัวเลข/ท่าของมือเปล่าทั้งหมด ส่วนปืนยังถืออยู่ในมือ ได้กระสุนมาเมื่อไหร่ก็ยิงต่อได้ทันที
+	local punching = false
 
-	-- A weapon that eats ammunition spends one per shot, and refuses when the bag is empty. Checked before
-	-- anything else is committed, so a dry click costs no cooldown and plays no animation.
+	-- A weapon that eats ammunition spends one per shot. Checked before anything else is committed.
 	if weapon.ammo then
 		local spent = false
 		local invState = Inventory.Get(player)
@@ -522,10 +524,17 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 			end
 		end
 		if not spent then
-			local ammoItem = ItemCatalog.Get(weapon.ammo)
-			Remotes.SocialNotify:FireClient(player, "error",
-				("ไม่มี%s"):format(ammoItem and ammoItem.name or weapon.ammo))
-			return
+			-- บอกครั้งเดียวตอนเพิ่งหมด ไม่ใช่ทุกหมัด
+			if not state.outOfAmmoWarned then
+				local ammoItem = ItemCatalog.Get(weapon.ammo)
+				Remotes.SocialNotify:FireClient(player, "warn",
+					("%sหมด — ต่อยแทน"):format(ammoItem and ammoItem.name or weapon.ammo))
+				state.outOfAmmoWarned = true
+			end
+			weapon = CombatConfig.Weapons[CombatConfig.DefaultWeapon]
+			punching = true
+		else
+			state.outOfAmmoWarned = nil
 		end
 	end
 
@@ -543,7 +552,8 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	state.hitThisSwing = {}
 	-- The attacker's own sound fires on the windup, not on the hit: a swing that misses should still be
 	-- heard, and a bowstring should sound as the arrow leaves rather than when it lands.
-	playCastSound(player)
+	-- (ต่อยแทนปืนไม่มีเสียงปืนดัง — หมัดไม่มีเสียงตอนเหวี่ยงอยู่แล้ว)
+	if not punching then playCastSound(player) end
 	-- The greatsword buries itself in the ground at the end of its arc. That sound belongs to the swing, not
 	-- to a victim, so it fires on a timer whether or not anything was standing there -- the earth is hit
 	-- every time. Only weapons that declare a `slam` time have one.
@@ -581,15 +591,16 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	else
 		state.pendingAttack = attack
 	end
-	wearWeapon(player)
+	if not punching then wearWeapon(player) end
 
 	-- The windup rides along so the client can show how long the aim takes.
 	--
 	-- Sent only for a ranged attack, because only those have a delay worth drawing: a sword lands on the
 	-- click and a bar that appeared and vanished in a frame would be noise. Sent to EVERYONE rather than
 	-- just the shooter, so a player can also see that someone else is lining a shot up on them.
+	-- อาร์กิวเมนต์ท้าย = ชุดท่าที่ต้องเล่น เมื่อไม่ใช่ของอาวุธที่ถืออยู่ (ปืนกระสุนหมด → ท่าต่อย)
 	Remotes.CombatStateChanged:FireAllClients(player, "attack", state.chainIndex,
-		attack.projectile and attack.windup or nil)
+		attack.projectile and attack.windup or nil, punching and CombatConfig.DefaultWeapon or nil)
 
 	-- The spellbook and the staff move from the hand to the chest for the duration of their attack pose;
 	-- WeaponVisuals owns that and needs telling, since CombatStateChanged is fired at clients and cannot be

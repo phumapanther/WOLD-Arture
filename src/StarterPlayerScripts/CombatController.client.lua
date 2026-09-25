@@ -47,6 +47,11 @@ local function loadTracksFor(character)
 	for i, attack in ipairs(weapon.attacks) do
 		tracks.attacks[i] = load(attack.animation, Enum.AnimationPriority.Action4)
 	end
+	-- ท่าต่อยสำรอง: ปืนกระสุนหมดแล้วเซิร์ฟเวอร์สั่งให้ต่อยแทน (อาร์กิวเมนต์ท้ายของ "attack")
+	tracks.fists = {}
+	for i, attack in ipairs(CombatConfig.Weapons[CombatConfig.DefaultWeapon].attacks) do
+		tracks.fists[i] = load(attack.animation, Enum.AnimationPriority.Action4)
+	end
 
 	-- Every skill animation this character might play, loaded once with the rest. Keyed by skill id, not by
 	-- weapon: LungeSlash looks the same whichever blade threw it, which is what the user asked for.
@@ -223,7 +228,7 @@ end)
 
 -- Play animations for whoever the server says did what — including this player, so the local view matches
 -- what everyone else sees rather than predicting separately.
-Remotes.CombatStateChanged.OnClientEvent:Connect(function(who, event, chainIndex)
+Remotes.CombatStateChanged.OnClientEvent:Connect(function(who, event, chainIndex, _windup, moveSet)
 	if who ~= player then return end -- other players' characters animate via their own replicated tracks
 	if event == "guard_start" then
 		if tracks.guard then tracks.guard:Play(0.15) end
@@ -236,11 +241,15 @@ Remotes.CombatStateChanged.OnClientEvent:Connect(function(who, event, chainIndex
 		for _, other in pairs(tracks.attacks or {}) do
 			other:Stop(0)
 		end
+		for _, other in pairs(tracks.fists or {}) do
+			other:Stop(0)
+		end
 		if tracks.guard then tracks.guard:Stop(0.05) end
 		-- The held stance holds every arm joint, so a swing blended under it barely moves. Same fault the
 		-- guard had against the punches; stop it for the swing and bring it back after.
 		if tracks.idle then tracks.idle:Stop(0.05) end
-		local track = tracks.attacks and tracks.attacks[chainIndex]
+		local set = (moveSet == CombatConfig.DefaultWeapon and tracks.fists) or tracks.attacks
+		local track = set and set[chainIndex]
 		if track then
 			track:Play(0.05)
 			track.Stopped:Once(function()
