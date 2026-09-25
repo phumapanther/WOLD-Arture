@@ -19,6 +19,7 @@ local ArenaHudGui = require(game.ReplicatedStorage.UI.ArenaHudGui)
 local ArenaMapGui = require(game.ReplicatedStorage.UI.ArenaMapGui)
 local ArenaScoreboardGui = require(game.ReplicatedStorage.UI.ArenaScoreboardGui)
 local ArenaShopGui = require(game.ReplicatedStorage.UI.ArenaShopGui)
+local KillBannerGui = require(game.ReplicatedStorage.UI.KillBannerGui)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local player = Players.LocalPlayer
@@ -35,6 +36,12 @@ shop.gui.Parent = playerGui
 board.gui.Parent = playerGui
 tabBoard.gui.Parent = playerGui
 map.gui.Parent = playerGui
+-- แบนเนอร์คิล (ผู้ใช้สั่ง 2026-09-25) — เซิร์ฟเวอร์ส่งมาถึงคนเก็บคนเดียว
+local killBanner = KillBannerGui.new()
+killBanner.gui.Parent = playerGui
+Remotes.ArenaKillBanner.OnClientEvent:Connect(function(info)
+	if type(info) == "table" then killBanner:Show(info) end
+end)
 hud:SetVisible(true)
 
 local snapshot = nil

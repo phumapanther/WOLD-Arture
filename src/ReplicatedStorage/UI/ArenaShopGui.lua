@@ -95,6 +95,15 @@ local function statsOf(entry)
 	local item = ItemCatalog.Items[entry.id] or {}
 	local lines = {}
 	if entry.slot == "weapon" then
+		if entry.size then lines[#lines + 1] = "ขนาด  " .. (ArenaConfig.SizeLabel[entry.size] or "") end
+		-- สไน: ดาเมจเป็นสัดส่วน ไม่มีตัวเลขให้โชว์
+		local spec = CombatConfig.Weapons[entry.id]
+		if spec and spec.pierceFraction then
+			lines[#lines + 1] = ("เลือดลด %d%% ต่อนัด (ไม่ผ่านเกราะ)"):format(math.floor(spec.pierceFraction * 100 + 0.5))
+			lines[#lines + 1] = "โดนหัว = ตายทันที"
+			lines[#lines + 1] = ("ใช้มานา %d เม็ดต่อนัด · ซื้อแล้วมานาเต็ม"):format(spec.manaCost or 1)
+			return lines
+		end
 		local dmg = damageOf(entry.id)
 		if dmg then lines[#lines + 1] = ("ดาเมจต่อครั้ง  %d"):format(dmg) end
 		if entry.ammo then lines[#lines + 1] = ("กระสุน  %d นัด (หมดแล้วต้องซื้อปืนใหม่)"):format(entry.ammo) end
@@ -259,10 +268,18 @@ function ArenaShopGui.new()
 		grid.SortOrder = Enum.SortOrder.LayoutOrder
 		grid.Parent = row
 
+		-- เรียงเล็ก → กลาง → ใหญ่ (ผู้ใช้สั่ง 2026-09-25) · ของไม่มีขนาดตามลำดับ col เดิม
+		local entries = {}
 		for _, entry in ipairs(ArenaConfig.Shop) do
-			if entry.row == section.row then
-				self:_card(row, entry)
-			end
+			if entry.row == section.row then entries[#entries + 1] = entry end
+		end
+		table.sort(entries, function(a, b)
+			local sa, sb = ArenaConfig.SizeOrder[a.size] or 9, ArenaConfig.SizeOrder[b.size] or 9
+			if sa ~= sb then return sa < sb end
+			return (a.col or 0) < (b.col or 0)
+		end)
+		for i, entry in ipairs(entries) do
+			self:_card(row, entry).LayoutOrder = i
 		end
 	end
 
@@ -326,7 +343,7 @@ function ArenaShopGui:_card(parent, entry)
 	local item = ItemCatalog.Items[entry.id] or {}
 	local card = Instance.new("TextButton")
 	card.Name = entry.id
-	card.Size = UDim2.fromOffset(142, 132)
+	card.Size = UDim2.fromOffset(118, 132)
 	card.BackgroundColor3 = CARD
 	card.AutoButtonColor = false
 	card.Text = ""
@@ -336,7 +353,7 @@ function ArenaShopGui:_card(parent, entry)
 
 	local art = Instance.new("Frame")
 	art.Position = UDim2.fromOffset(8, 8)
-	art.Size = UDim2.fromOffset(126, 74)
+	art.Size = UDim2.fromOffset(102, 74)
 	art.BackgroundColor3 = rgb(38, 41, 52)
 	art.ClipsDescendants = true
 	art.Parent = card
@@ -352,11 +369,27 @@ function ArenaShopGui:_card(parent, entry)
 	icon.Parent = art
 	ItemIcon.Apply(icon, item.icon)
 
-	label(card, { text = item.name or entry.id, size = 17, pos = UDim2.fromOffset(10, 84), dim = UDim2.fromOffset(122, 22) })
+	-- ป้ายขนาด เล็ก/กลาง/ใหญ่ มุมล่างซ้ายของกรอบภาพ (ผู้ใช้สั่ง 2026-09-25)
+	if entry.size then
+		local SIZE_COLOUR = { small = rgb(92, 150, 110), medium = rgb(90, 130, 190), large = rgb(200, 120, 70) }
+		local tag = Instance.new("TextLabel")
+		tag.Position = UDim2.fromOffset(4, 54)
+		tag.Size = UDim2.fromOffset(36, 16)
+		tag.BackgroundColor3 = SIZE_COLOUR[entry.size] or STROKE
+		tag.Font = Enum.Font.GothamBold
+		tag.TextSize = 11
+		tag.TextColor3 = rgb(250, 250, 250)
+		tag.Text = ArenaConfig.SizeLabel[entry.size] or ""
+		tag.ZIndex = 5
+		tag.Parent = art
+		corner(tag, 8)
+	end
+
+	label(card, { text = item.name or entry.id, size = 17, pos = UDim2.fromOffset(10, 84), dim = UDim2.fromOffset(98, 22) })
 
 	local pricePill = Instance.new("Frame")
 	pricePill.Position = UDim2.fromOffset(10, 106)
-	pricePill.Size = UDim2.fromOffset(122, 22)
+	pricePill.Size = UDim2.fromOffset(98, 22)
 	pricePill.BackgroundTransparency = 1
 	pricePill.Parent = card
 	coin(pricePill, 14, UDim2.new(0, 0, 0.5, 0))
@@ -389,6 +422,7 @@ function ArenaShopGui:_card(parent, entry)
 		self:_select(entry.id)
 		if self.onBuy then self.onBuy(entry.id) end
 	end)
+	return card
 end
 
 -- อาวุธ: เปลี่ยนไอคอนเป็นโมเดล 3D ถ้าโมเดลมาถึงแล้ว (ถามซ้ำได้ทุกครั้งที่วาด จนกว่าจะได้)

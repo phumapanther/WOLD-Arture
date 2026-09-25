@@ -128,7 +128,13 @@ ArenaConfig.HeadshotMultiplier = 2
 ArenaConfig.MultiKillSeconds = 10
 ArenaConfig.KillSound = "rbxassetid://107279082816485"
 -- เสียงพากย์ (ถ้าหาได้) — "" = ใช้ KillSound ปรับเสียงสูงตาม KillPitch แทน
-ArenaConfig.KillSounds = { first = "", double = "", triple = "" }
+-- เสียงพากย์ฟรีจาก Creator Store (ค้นเมื่อ 2026-09-25 ยังไม่ได้ฟังจริง — ไม่ถูกใจแทน id ได้เลย):
+-- first/double = ชุด "Killstreak sound" ของ D1R · triple = "triple kill" ของ ShadowKing0215 (ชุด D1R ไม่มี triple)
+ArenaConfig.KillSounds = {
+	first = "rbxassetid://93254093525275",
+	double = "rbxassetid://116907610084760",
+	triple = "rbxassetid://119830932835553",
+}
 ArenaConfig.KillPitch = { kill = 1, first = 1.1, double = 1.2, triple = 1.3 }
 
 --------------------------------------------------------------------------------

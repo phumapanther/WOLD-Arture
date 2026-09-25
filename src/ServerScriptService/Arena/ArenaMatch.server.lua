@@ -402,6 +402,29 @@ end
 
 -- คิล = คนที่ตีโดนครั้งสุดท้าย · **แอสซิส = ทุกคนที่เคยทำดาเมจใส่คนนี้ในชีวิตนี้ (รอบนี้) แต่ไม่ได้เป็นคนเก็บ**
 -- (ผู้ใช้กำหนด 2026-09-24 — เดิมนับเฉพาะคนที่ตีใน 12 วินาทีสุดท้าย) · นับทั้งคนและบอท
+-- แบนเนอร์คิลถึงคนเก็บคนเดียว (ผู้ใช้สั่ง 2026-09-25): คิลแรกของรอบ = FIRST BLOOD · คิลติดกันไม่เกิน
+-- MultiKillSeconds = DOUBLE / TRIPLE (3v3 ได้มากสุดสาม) · บอทไม่มีจอ จึงไม่ส่ง
+local function announceKill(killer, victimFighter, attackerKey)
+	local now = os.clock()
+	local streak = 1
+	if killer.lastKillAt and now - killer.lastKillAt <= ArenaConfig.MultiKillSeconds then
+		streak = (killer.killStreak or 1) + 1
+	end
+	killer.killStreak, killer.lastKillAt = streak, now
+	local kind = "kill"
+	if streak >= 3 then
+		kind = "triple"
+	elseif streak == 2 then
+		kind = "double"
+	elseif not State.firstBlood then
+		kind = "first"
+	end
+	State.firstBlood = true
+	if killer.kind ~= "player" or not killer.player or not killer.player.Parent then return end
+	local headshot = victimFighter.headshotBy == attackerKey and now - (victimFighter.headshotAt or 0) < 1
+	Remotes.ArenaKillBanner:FireClient(killer.player, { kind = kind, victim = victimFighter.name or "?", headshot = headshot })
+end
+
 local function killCredit(victimFighter)
 	local attacker = victimFighter.lastHitBy
 	if attacker then
@@ -409,6 +432,7 @@ local function killCredit(victimFighter)
 		if killer and killer.side ~= victimFighter.side then
 			killer.stats.kills += 1
 			killer.stats.roundKills += 1
+			announceKill(killer, victimFighter, attacker)
 		end
 	end
 	for key in pairs(victimFighter.recentHits or {}) do
@@ -474,6 +498,11 @@ ArenaAccess.Friendly = function(a, b)
 end
 ArenaAccess.OnHit = function(attacker, victim, amount)
 	registerHit(attacker, victim, amount)
+end
+-- PlayerCombat บอกว่านัดนี้เข้าหัว (ก่อนดาเมจลง) — announceKill ถามว่าคิลนี้มาจากหัวไหม
+ArenaAccess.OnHeadshot = function(attacker, victim)
+	local f = Fighters[victim]
+	if f then f.headshotBy, f.headshotAt = attacker, os.clock() end
 end
 ArenaAccess.OnKill = function()
 	-- ในสนามไม่มี EXP และไม่มีหัวแดง · คิลถูกนับตอนร่างตายจริง (`markDead`) ไม่ใช่ตอนล้ม
@@ -545,6 +574,8 @@ Remotes.RequestArenaBuy.OnServerEvent:Connect(function(player, id)
 		-- ⚠️ ลบของเก่า **หลัง** สวมชิ้นใหม่: `Equip` คืนชิ้นที่ถอดลงกระเป๋า ลบก่อนแล้วมันเด้งกลับมากอง
 		if previous then removeAll(player, previous) end
 		Vitals.SyncArmorFromEquipment(player)
+		-- สไน: ซื้อแล้วมานาเต็มหลอด (ผู้ใช้สั่ง 2026-09-25) — มานาในสนามเริ่มที่ 0
+		if entry.fillMana then Vitals.SetMana(player, VitalsConfig.MaxMana) end
 	end
 	Inventory.Send(player)
 
@@ -648,6 +679,7 @@ end
 local function startRound()
 	State.round += 1
 	State.lastRoundWinner = nil
+	State.firstBlood = false -- FIRST BLOOD นับใหม่ทุกรอบ
 
 	-- **รอดรอบที่แล้ว = ของที่ซื้อไว้ติดตัวต่อ (รวมยาและมานา) · ตาย = หายหมด ซื้อใหม่** (ผู้ใช้สั่ง 2026-09-24)
 	for _, f in pairs(Fighters) do
@@ -664,6 +696,7 @@ local function startRound()
 		f.roundDamage = {}
 		f.recentHits = {} -- แอสซิสนับต่อชีวิต: รอบใหม่ = ชีวิตใหม่
 		f.lastHitBy = nil
+		f.killStreak, f.lastKillAt, f.headshotBy = 0, nil, nil
 	end
 
 	-- เกิดใหม่ทุกคนทั้งสองฝั่ง รวมคนที่ตายไปเมื่อรอบที่แล้ว
