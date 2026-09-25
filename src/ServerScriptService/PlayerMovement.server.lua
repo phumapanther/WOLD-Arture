@@ -23,6 +23,12 @@ local STAMINA_DRAIN_PER_SEC = 20 -- empties in ~5s from full
 local STAMINA_REGEN_PER_SEC = 50
 local FORCED_WALK_SECONDS = 2
 
+-- **สนาม PVP เท่านั้น: เดินถอยหลังช้าลง** (ผู้ใช้สั่ง 2026-09-25 — ห้ามกระทบโหมดอื่น)
+-- ในสนามกล้องล็อกมุมบุคคลที่หนึ่ง ตัวละครหันตามกล้องเสมอ "ทิศที่เดินสวนกับทิศที่ตัวหัน" จึงเท่ากับ
+-- "เดินสวนกับจอ" · เดินข้าง (dot ≈ 0) ไม่โดน · ถอยเฉียงหลังโดน · ค่าผมตั้ง ปรับได้สองตัวนี้
+local BACKWARD_FACTOR = 0.6
+local BACKWARD_DOT = -0.3
+
 local States = {} -- [player] = { state, sprintIntent, forcedWalkUntil }
 
 local function humanoidOf(player)
@@ -40,6 +46,14 @@ local function applySpeed(state, player)
 	local base = SPEED[state.state == "ForcedWalk" and "Walk" or state.state]
 	-- Carry weight and any slow effect both scale the same base speed, so neither has to know about the other.
 	local wanted = base * Inventory.SpeedMultiplier(player) * StatusEffects.SpeedMultiplier(player)
+	if ServerConfig.IsArena then
+		local root = humanoid.RootPart
+		local move = humanoid.MoveDirection * Vector3.new(1, 0, 1)
+		local look = root and root.CFrame.LookVector * Vector3.new(1, 0, 1)
+		if look and move.Magnitude > 0.1 and look.Magnitude > 0.1 and move.Unit:Dot(look.Unit) < BACKWARD_DOT then
+			wanted *= BACKWARD_FACTOR
+		end
+	end
 	-- Only write when it actually differs: WalkSpeed replicates, so setting it every frame is wasteful.
 	if math.abs(humanoid.WalkSpeed - wanted) > 0.01 then
 		humanoid.WalkSpeed = wanted
