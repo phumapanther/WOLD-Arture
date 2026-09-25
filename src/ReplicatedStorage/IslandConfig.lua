@@ -147,16 +147,20 @@ end
 
 -- ได้ของมากกว่าจุดเก็บเกี่ยวทั่วไป เพราะสัตว์ต้องซื้อด้วยเงิน ส่วนฝูงในแมพหลักเดินมาเก็บฟรี
 -- **ตัวเลขนี้ผมตั้งเอง** ผู้ใช้สั่งแค่ว่า "ให้มีโอกาสได้มากสักนิด" — ปรับที่นี่ที่เดียว ไม่กระทบแมพหลัก
-IslandConfig.PenYield = {
-	Chicken = { min = 3, max = 5 },
-	Duck = { min = 3, max = 5 },
-	Pig = { min = 3, max = 5 },
-	Goat = { min = 3, max = 5 },
-	Sheep = { min = 3, max = 5 },
-	Cow = { min = 4, max = 5 },
-	Deer = { min = 2, max = 4 },
-	Horse = { min = 2, max = 4 },
-}
+-- **ผลผลิตสัตว์ทุกชนิด สุ่ม 1-5 แบบถ่วงน้ำหนัก** (ผู้ใช้สั่ง 2026-09-25): ได้ 2 บ่อยสุด 50% · 3 กับ 4 รวม 40% ·
+-- 1 กับ 5 รวม 10% · IslandZones ติดธง `YieldWeighted` บนตัวสัตว์ Gathering สุ่มผ่าน RollPenYield
+IslandConfig.PenYieldWeights = { [1] = 5, [2] = 50, [3] = 20, [4] = 20, [5] = 5 }
+
+function IslandConfig.RollPenYield()
+	local total = 0
+	for _, w in pairs(IslandConfig.PenYieldWeights) do total += w end
+	local pick = math.random() * total
+	for n = 1, 5 do
+		pick -= IslandConfig.PenYieldWeights[n] or 0
+		if pick < 0 then return n end
+	end
+	return 2
+end
 
 -- **เพดานวัตถุดิบต่อการเก็บหนึ่งครั้งบนเกาะ** (ผู้ใช้สั่ง 2026-09-23: "ควรได้ 1-5 ไม่เกิน 5 ทุกชนิด
 -- ผักกับแร่ก็เช่นกัน จะได้เกินก็ต่อเมื่อมีบัพเรืองแสงจนได้ ×2")

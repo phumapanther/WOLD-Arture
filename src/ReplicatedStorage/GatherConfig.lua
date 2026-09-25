@@ -96,6 +96,13 @@ GatherConfig.Nodes = {
 		sound = "rbxassetid://120916604676149",
 		prompt = "ขุดถ่านหิน", object = "ถ่านหิน",
 	},
+	-- บ่อน้ำบนเกาะฟาร์ม (ของตกแต่ง Deco_Well) กด E ได้น้ำ 1 กอง (5 ขวด) วันละครั้ง (ผู้ใช้สั่ง 2026-09-25)
+	-- ไม่ต้องใช้เครื่องมือ · วันละครั้งมาจากกติกาของตกแต่งบนเกาะ (IslandBuild: daily ทุกชิ้น)
+	Well = {
+		item = "Water", min = 5, max = 5,
+		seconds = 1.5, xp = 2,
+		prompt = "ตักน้ำ", object = "บ่อน้ำ",
+	},
 	Herb = {
 		item = "Herb", min = 1, max = 2,
 		-- A shovel, per the user. Digging a root out is a shovel's job even though picking a leaf is not.
@@ -252,7 +259,7 @@ GatherConfig.Nodes.WheatField.bonus = GatherConfig.WormBonus
 -- การขุดเลิกเป็น "ทุบสายแร่เหล็กแล้วได้แร่เหล็กแน่ๆ" แล้ว มันคือการทุบหินที่มีแร่ฝังอยู่ ของที่ออกมา
 -- ส่วนใหญ่จึงเป็นหิน และแร่คือสิ่งที่ "บางทีก็เจอ" — สายแร่บอกแค่ว่าตรงนั้นมีโอกาสเจออะไรมากที่สุด
 --
---   สายแร่ทั่วไป   หิน 70% · แร่ของสายนั้นเอง 15% · ถ่านหิน 10% · แร่อื่น 5%
+--   สายแร่ทั่วไป   หิน 50% · แร่ของสายนั้นเอง 30% · ถ่านหิน 10% · แร่อื่น 10%  (ปรับ 2026-09-25)
 --   สายถ่านหิน     หิน 50% · ถ่านหิน 45% · แร่อื่น 5%
 --   ก้อนหินธรรมดา  หิน 99% · แร่อื่น 1%
 --
@@ -305,10 +312,11 @@ do
 			slice(list, "Coal", 0.45)
 			others(list, 0.05)
 		else
-			slice(list, "Stone", 0.70)
-			slice(list, item, 0.15)
+			-- ผู้ใช้ปรับ 2026-09-25: หิน 50 · แร่ของสายนั้น 30 · ถ่านหิน 10 · แร่อื่นรวม 10 (เดิม 70/15/10/5)
+			slice(list, "Stone", 0.50)
+			slice(list, item, 0.30)
 			slice(list, "Coal", 0.10)
-			others(list, 0.05, item)
+			others(list, 0.10, item)
 		end
 		return list
 	end

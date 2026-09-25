@@ -350,6 +350,10 @@ local function gather(node, player)
 	if overMin and overMax then minCount, maxCount = overMin, overMax end
 
 	local count = math.random(minCount, maxCount)
+	-- สัตว์ในคอกบนเกาะ: สุ่มถ่วงน้ำหนัก 1-5 (ได้ 2 บ่อยสุด) แทนช่วงเท่าๆ กัน (ผู้ใช้สั่ง 2026-09-25)
+	if node:GetAttribute("YieldWeighted") then
+		count = require(game.ReplicatedStorage.IslandConfig).RollPenYield()
+	end
 
 	-- **เพดานของเกาะ** (ผู้ใช้สั่ง 2026-09-23) — หนีบ **ก่อน** คูณแสง เพื่อให้แสงเป็นทางเดียวที่เกิน 5 ได้
 	-- · แมพหลักไม่ถูกแตะ (ค่าที่นั่นอยู่ที่ 1-4 อยู่แล้ว แต่นี่คือเพดานที่บังคับจริง ไม่ใช่ความบังเอิญ)

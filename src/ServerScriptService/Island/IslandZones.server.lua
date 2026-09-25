@@ -95,11 +95,10 @@ local function spawnAnimal(model, kind, saved)
 	-- **แต่ละชนิดรอไม่เท่ากัน** (ผู้ใช้สั่ง 2026-09-23) — ไก่ 15 นาที ถึง ม้า 45 นาที
 	animal:SetAttribute("RespawnSeconds", IslandConfig.PenHarvestFor(kind))
 	-- ได้ของมากกว่าฝูงในแมพหลัก เพราะตัวนี้ซื้อมาด้วยเงิน
-	local yield = IslandConfig.PenYield and IslandConfig.PenYield[kind]
-	if yield then
-		animal:SetAttribute("YieldMin", yield.min)
-		animal:SetAttribute("YieldMax", yield.max)
-	end
+	-- ผลผลิตสุ่มถ่วงน้ำหนัก 1-5 (IslandConfig.RollPenYield) ทุกชนิด — ล้างช่วงเดิมทิ้งด้วย (สัตว์ที่คืนจากเซฟ)
+	animal:SetAttribute("YieldMin", nil)
+	animal:SetAttribute("YieldMax", nil)
+	animal:SetAttribute("YieldWeighted", true)
 	-- สัตว์ที่เพิ่งถูกเก็บไม่ต้องจางเป็นผี — มันยังยืนอยู่ตรงนั้นจริงๆ แค่รีดนมซ้ำไม่ได้ชั่วคราว
 	animal:SetAttribute("NoFade", true)
 	animal:SetAttribute("BornAt", saved and saved.b or os.time()) -- ใช้คำนวณสเกลระหว่างโต

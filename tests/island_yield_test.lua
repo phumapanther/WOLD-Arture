@@ -19,8 +19,9 @@ assert(A("Data"), "ข้อมูลเกาะไม่โหลด")
 
 ----------------------------------------------------------------- 1. ตัวเลขในคอนฟิกต้องไม่เกินเพดาน
 local worst, worstName = 0, "?"
-for kind, y in pairs(C.PenYield) do
-	if y.max > worst then worst, worstName = y.max, kind end
+-- ผลผลิตสัตว์สุ่มถ่วงน้ำหนัก 1-5 ทุกชนิด (2026-09-25) — เพดานคือเลขสูงสุดที่มีน้ำหนัก
+for n, w in pairs(C.PenYieldWeights) do
+	if w > 0 and n > worst then worst, worstName = n, "ทุกชนิด" end
 end
 assert(worst <= CAP, ("ผลผลิตสัตว์ในคอนฟิกเกินเพดาน: %s ได้ถึง %d"):format(worstName, worst))
 for _, crop in ipairs(C.Crops) do

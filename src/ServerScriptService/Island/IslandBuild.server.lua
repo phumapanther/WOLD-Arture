@@ -32,6 +32,7 @@ local HARVESTABLE = {
 	Deco_Tree = "Tree",
 	Deco_Stump = "Tree",
 	Deco_Bush = "Herb", -- พุ่มไม้ในเกมหลักคือจุดสมุนไพร ไม่ใช่ NodeKind ชื่อ Bush (ไม่มีอยู่จริง)
+	Deco_Well = "Well", -- ตักน้ำวันละครั้ง (ผู้ใช้สั่ง 2026-09-25)
 }
 
 -- ของป่าที่ **ชื่อไม่ตรงกับ NodeKind** — ต้องบอกตรงๆ ว่าอันไหนคืออะไร

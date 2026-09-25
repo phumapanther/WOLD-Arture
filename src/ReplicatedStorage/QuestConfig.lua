@@ -208,13 +208,13 @@ local function difficultyRange()
 	return DIFFICULTY_MIN, DIFFICULTY_MAX
 end
 
--- ซิลเวอร์ที่ได้: 100 ที่งานง่ายสุด ถึง 500 ที่งานยากสุด
-QuestConfig.SilverMin = 100
-QuestConfig.SilverMax = 500
+-- **ผู้ใช้ปรับ 2026-09-25: ต่อเควสเงินไม่เกิน 1,000 ซิลเวอร์ไม่เกิน 100** (เดิม 1,000-3,000 / 100-500)
+-- เพดานเป็นของผู้ใช้ · ขั้นต่ำผมตั้ง (ลดตามสัดส่วนเดิม) · โบนัสแคลนยึดเมือง ×2 ยังคูณทับอยู่ (Quests.server)
+QuestConfig.SilverMin = 20
+QuestConfig.SilverMax = 100
 
--- เงินในเกม: เริ่มที่ 1000 ตามที่ผู้ใช้กำหนด แล้วไต่ขึ้นตามความยาก
-QuestConfig.GoldMin = 1000
-QuestConfig.GoldMax = 3000
+QuestConfig.GoldMin = 300
+QuestConfig.GoldMax = 1000
 
 -- รางวัลของงานหนึ่ง คืน ซิลเวอร์, เงิน
 --
