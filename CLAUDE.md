@@ -2035,6 +2035,22 @@ LocalUserSecurity เหมือนกันหมด
 - เทส: `tests/mail_config_test.lua` + `tests/mail_core_test.lua` (Edit) · `tests/mail_test.lua` (Play ผ่าน `ServerStorage.MailTest`)
 - **ยังไม่ได้เทส:** `/mail` กับ `/worldboss` พิมพ์ในแชท (ต้องให้ผู้ใช้พิมพ์เอง) · ส่งถึงคนออฟไลน์จริง · ส่งข้ามเซิร์ฟ · รางวัลสนามจริง (ต้อง publish)
 
+## สไนเปอร์ + ยิงหัว + แบนเนอร์คิล (2026-09-25)
+สเปก `docs/superpowers/specs/2026-09-25-sniper-design.md` · แผน `docs/superpowers/plans/2026-09-25-sniper.md`
+- `Sniper` = กระสุนชนิด `hitscan` ใน `CombatConfig.Weapons.Sniper` · คลิกเดียวยิง (`quickDraw`) · มานา 1/นัด หักตอนคลิก ·
+  รอ 0.5 วิ ระหว่างนั้นไคลเอนต์ส่งจุดเล็ง `RequestAimUpdate` 20 ครั้ง/วิ นัดออกตามจุดล่าสุด · คน = 50% เลือดเต็มข้ามเกราะ
+  (`Vitals.ApplyDamage(..., "combat", true)`) · มอนเกมหลัก 150 · บอทสนามคิดแบบคน · คราฟที่ช่างตีเหล็ก (วัสดุผมตั้ง)
+- ถือติดอก `ANCHOR_ALWAYS.Sniper = "UpperTorso"` · ปรับตำแหน่งที่ `GRIP.Sniper` เลขเดียว
+- **แถบดีเลย์**: เซิร์ฟเวอร์ส่งวินาทีเฉพาะท่าที่ windup ≥ `CombatConfig.ChargeBarMinSeconds` (0.3) · แถบอยู่ `WOLD_ChargeBar` ของตัวเอง
+  ⚠️ InventoryUpdate มาทุกครั้งที่อาวุธสึก — ห้ามซ่อนแถบในทุก refresh ซ่อนเฉพาะตอนชนิดอาวุธเปลี่ยน
+- **ยิงหัว (สนามเท่านั้น)** = ชิ้นที่ raycast ชนคือ `Head` หรือ Accessory ที่เชื่อมกับ Head · กระสุนเดิม ×`ArenaConfig.HeadshotMultiplier` ·
+  สไนเข้าหัว = ตาย · ท่าฟันระยะประชิดแยกหัวไม่ได้ (วงกลมรอบตัว)
+- **แบนเนอร์คิล** `ArenaMatch.announceKill` → `ArenaKillBanner` ถึงคนเก็บ · FIRST BLOOD/DOUBLE/TRIPLE (ต่อเนื่อง 10 วิ) ·
+  เสียงพากย์ใส่ `ArenaConfig.KillSounds` ("" = เสียงคิลปรับระดับเสียงแทน)
+- ร้าน B: `size` เล็ก/กลาง/ใหญ่ในแถวร้าน · ดาบใหญ่/สไน 3,000 · ซื้อสไน = มานาเต็ม (`fillMana`)
+- **ยังไม่ได้เทสในเกม** (ผู้ใช้เทสเอง): สโคป/FOV · นัดตามจุดเล็งล่าสุด · ท่าถือกลางอก · ยิงหัว · แบนเนอร์ · ป้ายขนาดในร้าน
+- เสียงพากย์ FIRST BLOOD/DOUBLE ชุด D1R · TRIPLE ของ ShadowKing0215 (ค้นจาก Creator Store ยังไม่ได้ฟัง) · ไอคอนสไน decal 72482920404625 → image 99786745255231
+
 ## เครื่องมือที่พร้อมใช้
 - **Studio MCP** (MCP server ในตัว Roblox Studio) ลงทะเบียน user-scope ชื่อ `Roblox_Studio` → เครื่องมือ `mcp__Roblox_Studio__*`
   ต้องเปิด Studio + place ก่อน และเปิดสวิตช์ที่ Assistant → … → Manage MCP Servers → Enable Studio as MCP server
