@@ -17,6 +17,7 @@ local MobAccess = require(game.ServerScriptService.MobAccess)
 local ArenaAccess = require(game.ServerScriptService.ArenaAccess)
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local ArenaConfig = require(game.ReplicatedStorage.ArenaConfig)
+local EnhanceConfig = require(game.ReplicatedStorage.EnhanceConfig)
 local RayThrough = require(game.ReplicatedStorage.RayThrough)
 local FishingAccess = require(game.ServerScriptService.FishingAccess)
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
@@ -338,7 +339,8 @@ local function fireProjectile(player, attack, aim)
 	-- The rogue's doubling is applied ONCE here rather than at each of the places the number is used, so a
 	-- player, a training dummy and a monster all take the same blow. Working it out per target would mean
 	-- four copies of the same condition and a fifth the next time something becomes hittable.
-	local dealt = ClassPerks.DamageFor(player, attack.damage)
+	-- ตีบวก: ดาเมจคูณตามขั้นของอาวุธที่ถือ (EnhanceConfig — ไม่มีขั้น/มือเปล่า = ×1)
+	local dealt = ClassPerks.DamageFor(player, attack.damage) * EnhanceConfig.MultiplierFor(select(2, Inventory.EquippedWeapon(player)))
 
 	-- `headModel` = ร่างที่กระสุนชนหัวพอดี (สนามเท่านั้น ดู headOwner) — คนนั้นโดนคูณ HeadshotMultiplier
 	local function damageAt(position, headModel)
@@ -536,7 +538,8 @@ local function resolveHit(player, state, attack)
 
 	-- Worked out once per swing, for the same reason as the projectile path above: a monster and a player
 	-- struck by the same blow must take the same number.
-	local dealt = ClassPerks.DamageFor(player, attack.damage)
+	-- ตีบวก: ดาเมจคูณตามขั้นของอาวุธที่ถือ (EnhanceConfig — ไม่มีขั้น/มือเปล่า = ×1)
+	local dealt = ClassPerks.DamageFor(player, attack.damage) * EnhanceConfig.MultiplierFor(select(2, Inventory.EquippedWeapon(player)))
 
 	-- Training dummies: static targets that pay a little EXP per punch. Checked before players because they
 	-- are not Players at all, so the loop below would never see them.

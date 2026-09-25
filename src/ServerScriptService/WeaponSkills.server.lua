@@ -16,6 +16,7 @@ local Vitals = require(game.ServerScriptService.Vitals)
 local Party = require(game.ServerScriptService.Party)
 local ArenaAccess = require(game.ServerScriptService.ArenaAccess)
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
+local EnhanceConfig = require(game.ReplicatedStorage.EnhanceConfig)
 local Consuming = require(game.ServerScriptService.Consuming)
 local StatusEffects = require(game.ServerScriptService.StatusEffects)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
@@ -55,6 +56,8 @@ end
 -- reward the basic attacks use.
 local function damageAndScore(caster, victim, amount)
 	if Vitals.IsInvulnerable(victim) then return end
+	-- ตีบวก: สกิลแรงขึ้นตามขั้นของอาวุธที่ร่าย เหมือนการตีธรรมดา
+	amount *= EnhanceConfig.MultiplierFor(select(2, Inventory.EquippedWeapon(caster)))
 	-- สกิลก็คือการตีอย่างหนึ่ง เพื่อนร่วมตี้จึงไม่โดนเหมือนกัน (ท่าฮีลหมู่ไม่ผ่านทางนี้ มันรักษา ไม่ได้ตี)
 	if Party.SameParty(caster, victim) then return end
 	-- ในสนาม PVP ตี้ของล็อบบี้ไม่ได้เดินทางมาด้วย — ทีมของแมตช์คือด่าน "ตีกันเองไม่ได้" ที่นั่น
@@ -88,6 +91,7 @@ local function alsoHitBots(caster, origin, radius, amount)
 	if not ArenaAccess.OnHit then return end
 	local MobAccess = require(game.ServerScriptService.MobAccess)
 	if not MobAccess.Damage then return end
+	amount *= EnhanceConfig.MultiplierFor(select(2, Inventory.EquippedWeapon(caster)))
 	for _, mob in ipairs(game:GetService("CollectionService"):GetTagged("WOLD_Mob")) do
 		local root = mob.PrimaryPart or mob:FindFirstChild("HumanoidRootPart")
 		if root and (root.Position - origin).Magnitude <= radius then
