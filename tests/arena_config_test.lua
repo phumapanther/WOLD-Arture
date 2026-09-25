@@ -61,6 +61,10 @@ check(E.roundWin == 350 and E.roundWinMax == 550, "ทีมชนะได้ 3
 check(E.roundLoss == 300 and E.roundLossMax == 450, "ทีมแพ้ได้ 300 สูงสุด 450 (ผู้ใช้สั่ง 2026-09-25)")
 check(E.ace == 50, "ACE (เก็บคนเดียวครบทีม) +50 ตอนจบรอบ")
 check(E.roundWin + ArenaConfig.TeamSize * E.perKill + E.ace == E.roundWinMax, "ชนะ + 3 คิล + ACE = 550 พอดีเพดาน")
+-- ยิ่งรอบมากยิ่งได้มาก (ผู้ใช้สั่ง 2026-09-25): จบรอบ N ได้ฐาน + 250 × (N-1)
+check(E.roundStep == 250, "เงินรายรอบเพิ่มรอบละ 250")
+check(E.roundWin + E.roundStep * 1 == 600 and E.roundLoss + E.roundStep * 1 == 550, "จบรอบ 2: ชนะ 600 แพ้ 550")
+check(E.roundWin + E.roundStep * 2 == 850 and E.roundLoss + E.roundStep * 2 == 800, "จบรอบ 3: ชนะ 850 แพ้ 800")
 check(E.perKill > 0 and E.roundTopFragger > 0, "มีโบนัสคิลและโบนัสคนฆ่าเยอะสุด")
 check(E.cap > E.start, "เพดานสะสมสูงกว่าเงินตั้งต้น")
 

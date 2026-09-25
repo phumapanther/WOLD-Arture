@@ -733,8 +733,10 @@ local function payRound(winner)
 		if f.stats.roundKills > best then best = f.stats.roundKills end
 	end
 
+	-- ฐานกับเพดานโตรอบละ roundStep (จบรอบ 1 = +0) · State.round ตอนนี้คือรอบที่เพิ่งจบ
+	local step = (E.roundStep or 0) * math.max(0, State.round - 1)
 	for _, f in pairs(Fighters) do
-		local pay = (f.side == winner) and E.roundWin or E.roundLoss
+		local pay = ((f.side == winner) and E.roundWin or E.roundLoss) + step
 		pay += f.stats.roundKills * E.perKill
 		-- **คนฆ่าได้เยอะสุดของรอบได้เพิ่ม** — เสมอกันได้ทุกคนที่เสมอ (การหักส่วนแบ่งของคนที่ทำได้
 		-- เท่ากันเป๊ะ ไม่มีเหตุผลอะไรรองรับนอกจาก "ต้องมีคนเดียว")
@@ -746,7 +748,7 @@ local function payRound(winner)
 		end
 		-- ฐานของฝั่งนั้นคือขั้นต่ำ · เพดานแยกชนะ/แพ้ (ผู้ใช้สั่ง 2026-09-25)
 		local won = f.side == winner
-		pay = math.clamp(pay, won and E.roundWin or E.roundLoss, won and E.roundWinMax or E.roundLossMax)
+		pay = math.clamp(pay, (won and E.roundWin or E.roundLoss) + step, (won and E.roundWinMax or E.roundLossMax) + step)
 		f.silver = math.min(E.cap, f.silver + pay)
 		f.stats.roundKills = 0
 	end

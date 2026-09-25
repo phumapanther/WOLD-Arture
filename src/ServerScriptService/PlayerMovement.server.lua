@@ -26,7 +26,9 @@ local FORCED_WALK_SECONDS = 2
 -- **สนาม PVP เท่านั้น: เดินถอยหลังช้าลง** (ผู้ใช้สั่ง 2026-09-25 — ห้ามกระทบโหมดอื่น)
 -- ในสนามกล้องล็อกมุมบุคคลที่หนึ่ง ตัวละครหันตามกล้องเสมอ "ทิศที่เดินสวนกับทิศที่ตัวหัน" จึงเท่ากับ
 -- "เดินสวนกับจอ" · เดินข้าง (dot ≈ 0) ไม่โดน · ถอยเฉียงหลังโดน · ค่าผมตั้ง ปรับได้สองตัวนี้
-local BACKWARD_FACTOR = 0.6
+-- 2026-09-25 รอบสอง (ผู้ใช้สั่ง): **ถอยหลังวิ่งไม่ได้** (ความเร็วฐานถูกกดไว้ที่เดินปกติ ไม่กินสตามินา) และ
+-- **ช้าลงอีก 25%** จากเดิม 0.6 → 0.6 × 0.75 = 0.45 ของความเร็วเดินปกติ
+local BACKWARD_FACTOR = 0.45
 local BACKWARD_DOT = -0.3
 
 local States = {} -- [player] = { state, sprintIntent, forcedWalkUntil }
@@ -34,6 +36,15 @@ local States = {} -- [player] = { state, sprintIntent, forcedWalkUntil }
 local function humanoidOf(player)
 	local character = player.Character
 	return character and character:FindFirstChildOfClass("Humanoid")
+end
+
+-- เดินสวนทิศที่ตัวหันอยู่ไหม (สนามเท่านั้น)
+local function backpedaling(humanoid)
+	if not ServerConfig.IsArena or not humanoid then return false end
+	local root = humanoid.RootPart
+	local move = humanoid.MoveDirection * Vector3.new(1, 0, 1)
+	local look = root and root.CFrame.LookVector * Vector3.new(1, 0, 1)
+	return look ~= nil and move.Magnitude > 0.1 and look.Magnitude > 0.1 and move.Unit:Dot(look.Unit) < BACKWARD_DOT
 end
 
 -- Applies the current state's speed, scaled by how overloaded the player is. Called on state changes AND
@@ -44,19 +55,14 @@ local function applySpeed(state, player)
 	-- Vitals owns WalkSpeed while downed (crawling pace); don't fight it.
 	if not humanoid or Vitals.IsDowned(player) then return end
 	local base = SPEED[state.state == "ForcedWalk" and "Walk" or state.state]
+	local backward = backpedaling(humanoid)
+	if backward then base = math.min(base, SPEED.Normal) end -- ถอยหลังวิ่งไม่ได้
 	-- Carry weight and any slow effect both scale the same base speed, so neither has to know about the other.
 	local wanted = base * Inventory.SpeedMultiplier(player) * StatusEffects.SpeedMultiplier(player)
 	-- อุ้มหมา/แมวอยู่ = เดินช้าเท่าโหมดเดิน วิ่งไม่ได้ (ผู้ใช้สั่ง 2026-09-25) · IslandPets ตั้งแอตทริบิวต์บนตัว Player
 	-- ponytail: กด Shift ค้างระหว่างอุ้มยังกินสตามินาเหมือนวิ่ง (ความเร็วถูกกดไว้) — ตัดการวิ่งทิ้งถ้าเป็นปัญหา
 	if player:GetAttribute("WOLD_CarryingPet") then wanted = math.min(wanted, SPEED.Walk) end
-	if ServerConfig.IsArena then
-		local root = humanoid.RootPart
-		local move = humanoid.MoveDirection * Vector3.new(1, 0, 1)
-		local look = root and root.CFrame.LookVector * Vector3.new(1, 0, 1)
-		if look and move.Magnitude > 0.1 and look.Magnitude > 0.1 and move.Unit:Dot(look.Unit) < BACKWARD_DOT then
-			wanted *= BACKWARD_FACTOR
-		end
-	end
+	if backward then wanted *= BACKWARD_FACTOR end
 	-- Only write when it actually differs: WalkSpeed replicates, so setting it every frame is wasteful.
 	if math.abs(humanoid.WalkSpeed - wanted) > 0.01 then
 		humanoid.WalkSpeed = wanted
@@ -122,7 +128,8 @@ if ACTIVE then
 			-- regenerate here, or drowning could never start.
 			if Vitals.IsDowned(player) or swimming then
 				if state.state ~= "Normal" then setState(state, player, "Normal") end
-			elseif state.state == "Run" then
+			-- ถอยหลังในสนาม = ไม่ได้วิ่งจริง (ความเร็วถูกกด) จึงไม่กินสตามินา ตกไปฟื้นแทน
+			elseif state.state == "Run" and not backpedaling(humanoid) then
 				local stamina = Vitals.GetStamina(player) - STAMINA_DRAIN_PER_SEC * dt
 				Vitals.SetStamina(player, stamina)
 				if stamina <= 0 then
