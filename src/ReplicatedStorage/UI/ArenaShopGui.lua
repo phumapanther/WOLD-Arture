@@ -325,7 +325,13 @@ function ArenaShopGui.new()
 	buy.Parent = detail
 	corner(buy, 12)
 	buy.MouseButton1Click:Connect(function()
-		if self.selected and self.onBuy then self.onBuy(self.selected) end
+		if not self.selected then return end
+		-- ของที่ซื้อรอบนี้ในช่วงเตรียมตัว: ปุ่มเดียวกันกลายเป็น "ยกเลิกการซื้อ" (ผู้ใช้สั่ง 2026-09-25)
+		if self.refundMode then
+			if self.onRefund then self.onRefund(self.selected) end
+		elseif self.onBuy then
+			self.onBuy(self.selected)
+		end
 	end)
 	self.buyButton = buy
 
@@ -473,6 +479,7 @@ function ArenaShopGui:_select(id)
 end
 
 function ArenaShopGui:OnBuy(callback) self.onBuy = callback end
+function ArenaShopGui:OnRefund(callback) self.onRefund = callback end
 function ArenaShopGui:OnClose(callback) self.closeButton.MouseButton1Click:Connect(callback) end
 function ArenaShopGui:SetVisible(visible) self.gui.Enabled = visible and true or false end
 function ArenaShopGui:IsVisible() return self.gui.Enabled end
@@ -520,12 +527,17 @@ function ArenaShopGui:Render(snap)
 
 	-- ปุ่มซื้อในแผงรายละเอียด
 	local row = self.selected and self.cards[self.selected]
+	self.refundMode = false
 	if not row then
 		self.buyButton.Text, self.buyButton.BackgroundColor3 = "ชี้ที่การ์ดเพื่อเลือก", rgb(60, 62, 72)
 		return
 	end
 	local owned, _, _, used, afford = stateOf(row.entry)
-	if used then
+	if snap.refundable and snap.refundable[row.entry.id] then
+		self.refundMode = true
+		self.buyButton.Text = ("ยกเลิกการซื้อ  —  คืน %d"):format(row.entry.price)
+		self.buyButton.BackgroundColor3 = rgb(196, 96, 84)
+	elseif used then
 		self.buyButton.Text, self.buyButton.BackgroundColor3 = "รอบนี้ซื้อครบแล้ว", rgb(60, 62, 72)
 	elseif not afford then
 		self.buyButton.Text, self.buyButton.BackgroundColor3 = "ซิลเวอร์ไม่พอ", rgb(120, 58, 54)

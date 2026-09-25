@@ -19,7 +19,7 @@ local EVENTS = {
 	-- `ArenaState` คือภาพเดียวที่หน้าจอทุกชิ้นในสนามวาดตาม (รอบ ตัวนับเวลา ซิลเวอร์ ของที่ถืออยู่ ใครยังยืน)
 	-- ส่งทั้งก้อนทุกครั้งแทนที่จะส่งทีละสนาม: แมตช์ยาวสิบกว่านาที ส่งวินาทีละครั้งให้หกคนยังเบามาก
 	-- และหน้าจอที่ประกอบจากอีเวนต์หลายตัวคือหน้าจอที่ค้างผิดสถานะเมื่อมีอีเวนต์ไหนมาไม่ถึง
-	"ArenaState", "RequestArenaBuy", "ArenaMatchEnd", "ArenaNotice", "ArenaKillBanner",
+	"ArenaState", "RequestArenaBuy", "RequestArenaRefund", "ArenaMatchEnd", "ArenaNotice", "ArenaKillBanner",
 	"SetSprintIntent", "ToggleWalk", -- movement (client intent in; stamina goes out via VitalsUpdate)
 	"RequestAttack", "CombatStateChanged", "RequestUnscope", -- combat (click intent in, guard/attack playback out)
 	"VitalsUpdate", "DownedStateChanged", "RequestRespawn", -- vitals (hp/hunger/stamina/armor out, downed UI, respawn in)

@@ -261,6 +261,19 @@ local function canShop(f)
 	return State.phase == "buy" or (State.phase == "live" and inOwnBase(f))
 end
 
+-- ใบเสร็จที่ยกเลิกได้ของ id นี้ = ใบท้ายสุดของช่องนั้น และต้องเป็นของ id นี้ · nil = ยกเลิกไม่ได้
+local function refundableIndex(f, id)
+	local entry = ArenaConfig.ShopEntry(id)
+	if not entry or not f.receipts then return nil end
+	for i = #f.receipts, 1, -1 do
+		local r = f.receipts[i]
+		if r.slot == entry.slot then
+			return r.id == id and i or nil
+		end
+	end
+	return nil
+end
+
 --------------------------------------------------------------------------------
 -- ภาพที่ส่งให้หน้าจอ
 --------------------------------------------------------------------------------
@@ -319,6 +332,15 @@ local function snapshotFor(player)
 		loadout = me.loadout,
 		-- ซื้อไปแล้วช่องไหนในรอบนี้ — หน้าร้านทำปุ่มเป็นสีเทาโดยไม่ต้องเดาเอง
 		bought = me.boughtThisRound, -- [slot] = ซื้อไปแล้วกี่ชิ้นในรอบนี้
+		-- [id] = true ของที่กดยกเลิกการซื้อได้ตอนนี้ (ช่วงเตรียมตัวเท่านั้น)
+		refundable = (function()
+			if State.phase ~= "buy" then return {} end
+			local out = {}
+			for _, r in ipairs(me.receipts or {}) do
+				if refundableIndex(me, r.id) then out[r.id] = true end
+			end
+			return out
+		end)(),
 		mana = Vitals.ManaOf(player),
 		canShop = canShop(me), -- หน้าจอเปิดร้าน/โชว์ป้าย "กด B" ตามค่านี้ · เซิร์ฟตัดสินซ้ำตอนซื้อทุกครั้ง
 		roster = roster,
@@ -540,6 +562,17 @@ Remotes.RequestArenaBuy.OnServerEvent:Connect(function(player, id)
 		return notify(player, "มานาเต็มแล้ว", "warn")
 	end
 
+	-- ใบเสร็จไว้ยกเลิกการซื้อ (ผู้ใช้สั่ง 2026-09-25) — จดสภาพ "ก่อนซื้อ" ทุกอย่างที่การซื้อนี้จะเปลี่ยน
+	local before = f.loadout[entry.slot]
+	f.receipts = f.receipts or {}
+	table.insert(f.receipts, {
+		id = id, slot = entry.slot, price = entry.price,
+		previous = before,
+		previousCount = before and Inventory.CountOf(player, before) or 0,
+		bullets = Inventory.CountOf(player, "Bullet"),
+		mana = Vitals.ManaOf(player),
+	})
+
 	f.silver -= entry.price
 	f.boughtThisRound[entry.slot] = count + 1
 
@@ -581,6 +614,56 @@ Remotes.RequestArenaBuy.OnServerEvent:Connect(function(player, id)
 
 	local item = ItemCatalog.Items[id]
 	notify(player, ("ซื้อ %s แล้ว"):format(item and item.name or id))
+	pushTo(player)
+end)
+
+-- **ยกเลิกการซื้อ** (ผู้ใช้สั่ง 2026-09-25): เฉพาะช่วงเตรียมตัว · เฉพาะของที่ซื้อรอบนี้ · ได้เงินคืนเต็ม
+-- ยกเลิกได้เฉพาะ "ชิ้นล่าสุดของช่องนั้น" (ใบเสร็จท้ายสุด) — ซื้อดาบแล้วเปลี่ยนเป็นดาบใหญ่ ต้องยกเลิกดาบใหญ่ก่อน
+-- ไม่งั้นย้อนสภาพไม่ได้ (ของที่อยู่ในมือไม่ใช่ของใบเสร็จนั้นแล้ว)
+Remotes.RequestArenaRefund.OnServerEvent:Connect(function(player, id)
+	local f = Fighters[player]
+	if not f or not f.receipts then return end
+	if State.phase ~= "buy" then return notify(player, "ยกเลิกได้เฉพาะช่วงเตรียมตัว", "warn") end
+	local index = refundableIndex(f, id)
+	if not index then return notify(player, "ยกเลิกได้เฉพาะของที่ซื้อล่าสุดในรอบนี้", "warn") end
+	local r = table.remove(f.receipts, index)
+	local entry = ArenaConfig.ShopEntry(r.id)
+
+	f.silver += r.price
+	f.boughtThisRound[r.slot] = math.max(0, (f.boughtThisRound[r.slot] or 1) - 1)
+
+	if entry.mana then
+		Vitals.SetMana(player, math.max(0, Vitals.ManaOf(player) - entry.mana))
+	else
+		local wearable = r.slot == "weapon" or r.slot == "armor"
+		if r.previous ~= r.id then
+			if r.previous then
+				-- ของเดิมกลับมา (สกินเดิม) · สวมก่อนแล้วค่อยลบของที่ยกเลิก — ทรงเดียวกับตอนซื้อ
+				local skin = wearable and f.skins[r.previous]
+				Inventory.AddItem(player, r.previous, math.max(1, r.previousCount), nil, skin and { skin = skin } or nil)
+				if wearable then equipById(player, r.previous) end
+			elseif wearable then
+				Inventory.BreakEquipped(player, r.slot)
+			end
+			removeAll(player, r.id)
+		elseif not wearable then
+			-- ยาชนิดเดิมซ้ำ: คืนจำนวนเดิม
+			removeAll(player, r.id)
+			if r.previousCount > 0 then Inventory.AddItem(player, r.id, r.previousCount) end
+		end
+		-- กระสุนกลับเท่าก่อนซื้อ (ปืนมากับกระสุน) · มานากลับเท่าก่อนซื้อ (สไนเติมมานาเต็ม)
+		if entry.ammo then
+			removeAll(player, "Bullet")
+			if r.bullets > 0 then Inventory.AddItem(player, "Bullet", r.bullets) end
+		end
+		if entry.fillMana then Vitals.SetMana(player, r.mana) end
+		f.loadout[r.slot] = r.previous
+		Vitals.SyncArmorFromEquipment(player)
+		Inventory.Send(player)
+	end
+
+	local item = ItemCatalog.Items[r.id]
+	notify(player, ("ยกเลิก %s แล้ว · คืน %d ซิลเวอร์"):format(item and item.name or r.id, r.price))
 	pushTo(player)
 end)
 
@@ -701,6 +784,7 @@ local function startRound()
 		end
 		f.diedThisRound = false
 		f.boughtThisRound = {}
+		f.receipts = {} -- ยกเลิกการซื้อได้เฉพาะของรอบนี้
 		f.stats.roundKills = 0
 		f.roundDamage = {}
 		f.recentHits = {} -- แอสซิสนับต่อชีวิต: รอบใหม่ = ชีวิตใหม่

@@ -86,6 +86,9 @@ shop:OnClose(function() setShopOpen(false) end)
 shop:OnBuy(function(id)
 	Remotes.RequestArenaBuy:FireServer(id)
 end)
+shop:OnRefund(function(id)
+	Remotes.RequestArenaRefund:FireServer(id)
+end)
 
 -- **เปิดเองตอนเริ่มช่วงซื้อของ ปิดเองตอนหมดเวลา** — ร้านที่ต้องกดเปิดเองคือร้านที่คนลืมเปิดแล้ว
 -- ออกไปสู้มือเปล่า · ระหว่างนั้นกด B ปิด/เปิดซ้ำได้ตามใจ
