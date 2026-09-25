@@ -530,6 +530,44 @@ function Builders.Pistol()
 end
 
 --------------------------------------------------------------------------------
+-- The sniper
+--------------------------------------------------------------------------------
+
+-- สไนเปอร์สตีมพังก์: ลำกล้องเหล็กยาว เบรกปากกระบอก ตัวรับทองเหลือง กล้องเล็งบนหลัง พานท้ายไม้ ขาทราย
+-- ผังเดียวกับปืนพก (ปากกระบอกที่จุดกำเนิด ตัวปืนไป +Y · +Z = ด้านบน) — PrimaryPart คือเบรกปากกระบอก
+-- ซึ่งไม่ถูกหมุนและอยู่ที่จุดกำเนิด (กติกา CLAUDE.md: Motor6D ขับชิ้นนี้)
+function Builders.Sniper()
+	local b = {}
+	local brake = box(b, "MuzzleBrake", CFrame.new(), Vector3.new(0.24, 0.32, 0.24), DARK_STEEL, Enum.Material.Metal)
+	box(b, "BrakePort", CFrame.new(0, 0.02, 0), Vector3.new(0.30, 0.10, 0.12), DARK_STEEL, Enum.Material.Metal)
+	cyl(b, "Barrel", CFrame.new(0, 1.25, 0), 0.08, 2.2, DARK_STEEL, Enum.Material.Metal)
+	cyl(b, "BarrelRing", CFrame.new(0, 0.55, 0), 0.11, 0.10, GOLD, Enum.Material.Metal)
+	cyl(b, "BarrelRing2", CFrame.new(0, 1.85, 0), 0.11, 0.10, GOLD, Enum.Material.Metal)
+	box(b, "Handguard", CFrame.new(0, 1.95, -0.02), Vector3.new(0.26, 0.9, 0.28), WOOD, Enum.Material.Wood)
+	box(b, "Receiver", CFrame.new(0, 2.75, 0), Vector3.new(0.28, 0.9, 0.34), GOLD, Enum.Material.Metal)
+	box(b, "Bolt", CFrame.new(0.19, 2.85, 0.06), Vector3.new(0.14, 0.10, 0.10), DARK_STEEL, Enum.Material.Metal)
+	-- กล้องเล็ง: ท่อบนหลังตัวรับ + ฝาเลนส์สองข้าง + ขายึดสองตัว
+	cyl(b, "Scope", CFrame.new(0, 2.55, 0.36), 0.12, 1.3, DARK_STEEL, Enum.Material.Metal)
+	cyl(b, "ScopeFront", CFrame.new(0, 1.92, 0.36), 0.15, 0.12, GOLD, Enum.Material.Metal)
+	cyl(b, "ScopeBack", CFrame.new(0, 3.18, 0.36), 0.14, 0.10, GOLD, Enum.Material.Metal)
+	box(b, "ScopeMount", CFrame.new(0, 2.35, 0.24), Vector3.new(0.10, 0.10, 0.16), DARK_STEEL, Enum.Material.Metal)
+	box(b, "ScopeMount2", CFrame.new(0, 2.85, 0.24), Vector3.new(0.10, 0.10, 0.16), DARK_STEEL, Enum.Material.Metal)
+	-- ใต้ปืน: แม็กกาซีน ไก โกร่งไก ด้ามจับ
+	box(b, "Magazine", CFrame.new(0, 2.65, -0.34), Vector3.new(0.16, 0.34, 0.34), DARK_STEEL, Enum.Material.Metal)
+	box(b, "Trigger", CFrame.new(0, 3.05, -0.28) * pitch(deg(16)), Vector3.new(0.05, 0.18, 0.08), DARK_STEEL, Enum.Material.Metal)
+	box(b, "Guard", CFrame.new(0, 3.05, -0.38), Vector3.new(0.06, 0.34, 0.06), GOLD, Enum.Material.Metal)
+	box(b, "Grip", CFrame.new(0, 3.35, -0.36) * pitch(deg(20)), Vector3.new(0.20, 0.30, 0.46), WOOD, Enum.Material.Wood)
+	-- พานท้าย + แผ่นรองไหล่
+	box(b, "Stock", CFrame.new(0, 3.75, -0.08), Vector3.new(0.24, 0.9, 0.40), WOOD, Enum.Material.Wood)
+	box(b, "CheekRest", CFrame.new(0, 3.65, 0.16), Vector3.new(0.22, 0.5, 0.10), DARK_WOOD, Enum.Material.Wood)
+	box(b, "ButtPad", CFrame.new(0, 4.24, -0.08), Vector3.new(0.26, 0.10, 0.44), DARK_STEEL, Enum.Material.Metal)
+	-- ขาทรายพับอยู่ใต้ลำกล้อง
+	box(b, "BipodLeft", CFrame.new(-0.08, 1.05, -0.18) * roll(deg(8)), Vector3.new(0.05, 0.8, 0.05), DARK_STEEL, Enum.Material.Metal)
+	box(b, "BipodRight", CFrame.new(0.08, 1.05, -0.18) * roll(deg(-8)), Vector3.new(0.05, 0.8, 0.05), DARK_STEEL, Enum.Material.Metal)
+	return assembleBag("Sniper", brake, b)
+end
+
+--------------------------------------------------------------------------------
 -- The fishing rod
 --------------------------------------------------------------------------------
 

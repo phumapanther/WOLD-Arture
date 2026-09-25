@@ -268,6 +268,9 @@ Remotes.CombatStateChanged.OnClientEvent:Connect(function(who, event, chainIndex
 					tracks.guard:Play(0.1)
 				end
 			end)
+		else
+			-- ท่ายิงไม่มี (สไน: ปืนติดอก ไม่เหวี่ยงอะไร) — ใส่ท่ายืนของอาวุธให้ช่วงยิงแทน ไม่งั้นแขนห้อยปกติ
+			if tracks.idle then wearStanceBriefly() end
 		end
 	end
 end)

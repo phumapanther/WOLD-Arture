@@ -83,6 +83,11 @@ local GRIP = {
 	-- SWORD_GRIP. All that remains is pulling the model back 2.0 studs so the palm holds the stock rather
 	-- than the muzzle.
 	Pistol = CFrame.new(0, -0.2, 0) * CFrame.new(0, -2.0, 0),
+	-- สไน: **ติดกลางอกตลอด ปากกระบอกชี้ไปหน้า** (ผู้ใช้สั่ง "ถือเหมือนคฑา ปืนอยู่กลางอกแต่ชี้ไปด้านหน้าแบบปืน")
+	-- จุดยึดคือ UpperTorso (ดู ANCHOR_ALWAYS) · หมุนให้แกน +Y ของโมเดล (ไปทางพานท้าย) ชี้ไปหลัง (+Z ลำตัว)
+	-- และ +Z ของโมเดล (กล้องเล็ง) ชี้ขึ้น · ปากกระบอกห่างหน้าอก 3.7 สตัด = ด้ามจับอยู่หน้าอกพอดี
+	-- ปรับเลขนี้ได้อย่างเดียวถ้าในเกมดูไม่ตรง ไม่ต้องแตะโมเดล
+	Sniper = CFrame.fromMatrix(Vector3.new(0, 0.1, -3.7), Vector3.new(-1, 0, 0), Vector3.new(0, 0, 1), Vector3.new(0, 1, 0)),
 	-- The bow's belly has to face out to the RIGHT while it is held in the right hand, so the limbs curve away
 	-- from the character rather than into it. The 180 is on ROLL, not yaw: the bow lies in a plane, so yawing
 	-- it only spins that plane about the arm while rolling it turns the belly over.
@@ -112,6 +117,7 @@ local ATTACH_TO = {
 -- ส่วนโล่รัดอยู่กับแขนตลอดเวลา ไม่มีจังหวะไหนที่มันควรไปอยู่ในฝ่ามือ
 local ANCHOR_ALWAYS = {
 	Shield = "RightLowerArm",
+	Sniper = "UpperTorso", -- สไนติดกลางอกตลอด (ผู้ใช้สั่ง 2026-09-25)
 }
 
 -- ...but that is only right while the attack pose is up.
