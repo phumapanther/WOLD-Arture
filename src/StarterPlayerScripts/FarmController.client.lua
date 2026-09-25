@@ -19,6 +19,9 @@ local TAG = "WOLD_Farm"
 local SHOW_DISTANCE = 60
 
 local Labels = {} -- [node] = BillboardGui
+-- ปุ่ม E ที่ไคลเอนต์ซ่อนเพราะ "วันนี้ใช้สิทธิ์ไปแล้ว" (กติกาเกาะ รายคน) — จำไว้เพื่อคืนเมื่อวันพลิก
+-- เพราะค่าที่ไคลเอนต์เขียนเองไม่ถูกเซิร์ฟเวอร์เขียนทับ ถ้าเซิร์ฟไม่ได้เปลี่ยนมันอีก
+local HiddenToday = {} -- [ProximityPrompt] = true
 
 local function anchorOf(node)
 	if node:IsA("BasePart") then return node end
@@ -88,9 +91,27 @@ task.spawn(function()
 			end
 		end
 
+		-- ชนิดที่ใช้สิทธิ์วันนี้ไปแล้ว (บนเกาะ วันละครั้งต่อคน) — เซิร์ฟประกาศไว้บนตัวเราใน WOLD_FarmDone
+		local doneToday = {}
+		for name in string.gmatch(game.Players.LocalPlayer:GetAttribute("WOLD_FarmDone") or "", "[^,]+") do
+			doneToday[name] = true
+		end
+
 		for _, node in ipairs(CollectionService:GetTagged(TAG)) do
 			local readyAt = node:GetAttribute("FarmReadyAt")
 			local left = type(readyAt) == "number" and (readyAt - now) or 0
+			-- **ใช้สิทธิ์วันนี้แล้ว = ซ่อนปุ่ม E** (ผู้ใช้สั่ง 2026-09-25 ปุ่มที่ติดคูลดาวน์ต้องซ่อนเสมอ)
+			-- ทำทุกรอบ ไม่ใช่ครั้งเดียว: เซิร์ฟเปิดปุ่มคืนเองเมื่อคูลดาวน์ 30 นาทีหมด แล้วค่านั้น replicate มาทับ
+			local prompt = node:FindFirstChild("FarmPrompt", true)
+			if prompt then
+				if doneToday[node.Name] then
+					HiddenToday[prompt] = true
+					if prompt.Enabled then prompt.Enabled = false end
+				elseif HiddenToday[prompt] then
+					HiddenToday[prompt] = nil
+					prompt.Enabled = left <= 0 -- คืนตามคูลดาวน์ของเซิร์ฟ (ช่วงคูลดาวน์เซิร์ฟปิดปุ่มอยู่แล้ว)
+				end
+			end
 			if left > 0 then
 				local gui = labelFor(node)
 				if gui then

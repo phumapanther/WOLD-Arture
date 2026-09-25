@@ -74,13 +74,14 @@ local function canCapture(townId)
 	local owner = Owner[townId]
 	if not owner then return true end
 
+	-- ค่าที่สาม true = ติดคูลดาวน์ (ต่างจาก "คนไม่ครบ" ซึ่งไม่ใช่เวลา) → ปุ่มถูกซ่อน
 	local since = owner.since
 	if since and os.time() - since < COOLDOWN_SECONDS then
-		return false, leftText(COOLDOWN_SECONDS - (os.time() - since))
+		return false, leftText(COOLDOWN_SECONDS - (os.time() - since)), true
 	end
 	local ready = LocalReadyAt[townId]
 	if ready and os.clock() < ready then
-		return false, leftText(ready - os.clock())
+		return false, leftText(ready - os.clock()), true
 	end
 	return true
 end
@@ -267,8 +268,11 @@ end
 function refreshPrompt(townId)
 	local prompt = Prompts[townId]
 	if not prompt or not prompt.Parent then return end
-	local ok, why = canCapture(townId)
+	local ok, why, cooling = canCapture(townId)
 	local owner = Owner[townId]
+	-- **ติดคูลดาวน์ = ซ่อนปุ่ม** (ผู้ใช้สั่ง 2026-09-25) · ความมองเห็นเป็นของ `TownVaultController` (รายคน)
+	-- เซิร์ฟเวอร์แค่ประกาศ ถ้าตั้ง Enabled ที่นี่ ไคลเอนต์จะเขียนทับทุกวินาที
+	prompt:SetAttribute("Cooling", cooling == true)
 	local action = ok and "ยึดเมือง" or (why or "ยึดไม่ได้")
 	local object = owner and ("%s — แคลน %s"):format(townName(townId), owner.clanName) or townName(townId)
 	local hold = ok and ClanConfig.CaptureSeconds or 0

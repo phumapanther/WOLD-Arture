@@ -100,7 +100,8 @@ local function refreshTownPrompts()
 				local isOwner = myClan ~= nil and owner ~= nil and myClan == owner
 				if prompt.Name == "CapturePrompt" then
 					-- ไม่มีแคลน = ยึดไม่ได้อยู่แล้ว · เจ้าของเมืองก็ไม่ต้องยึดเมืองตัวเอง
-					prompt.Enabled = myClan ~= nil and not isOwner
+					-- ติดคูลดาวน์หลังถูกยึด = ซ่อน (ผู้ใช้สั่ง 2026-09-25 ปุ่มที่ติดคูลดาวน์ต้องซ่อนเสมอ)
+					prompt.Enabled = myClan ~= nil and not isOwner and prompt:GetAttribute("Cooling") ~= true
 				elseif prompt.Name == "TownVaultPrompt" then
 					prompt.Enabled = isOwner
 				end

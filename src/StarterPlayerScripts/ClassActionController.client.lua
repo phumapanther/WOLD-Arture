@@ -22,6 +22,20 @@ local gui = ClassActionGui.new()
 
 local prompts = {} -- [target] = { ProximityPrompt, ... }
 
+-- **ปุ่มที่ติดคูลดาวน์ต้องซ่อนเสมอ** (ผู้ใช้สั่ง 2026-09-25) · ขอเงินมีคูลดาวน์ของคนขอ (ClassActionConfig.Beg)
+-- ใช้ได้กับทุกเป้าหมาย จึงซ่อนที่นี่ฝั่งไคลเอนต์ นับจากตอนกดเอง (+0.5 วิเผื่อเวลาที่คำขอวิ่งไปถึงเซิร์ฟเวอร์)
+local COOLDOWN = { beg = ClassActionConfig.Beg.cooldownSeconds }
+local coolUntil = {} -- [actionId] = os.clock ที่ปุ่มกลับมา
+
+local function applyCooldowns()
+	for _, held in pairs(prompts) do
+		for _, prompt in ipairs(held) do
+			local readyAt = coolUntil[prompt:GetAttribute("ActionId")]
+			if readyAt and prompt.Parent then prompt.Enabled = os.clock() >= readyAt end
+		end
+	end
+end
+
 --------------------------------------------------------------------------------
 
 local function clearPrompts(target)
@@ -82,6 +96,9 @@ local function buildPrompts(target)
 		prompt.RequiresLineOfSight = false
 		prompt.HoldDuration = action.hold or 0
 		prompt.UIOffset = Vector2.new(0, (order - 1) * 44)
+		prompt:SetAttribute("ActionId", action.id)
+		local readyAt = coolUntil[action.id]
+		if readyAt and os.clock() < readyAt then prompt.Enabled = false end
 		prompt.Parent = root
 
 		prompt.Triggered:Connect(function()
@@ -96,6 +113,12 @@ local function buildPrompts(target)
 				end)
 			else
 				Remotes.RequestClassAction:FireServer(action.id, target)
+			end
+			local wait = COOLDOWN[action.id]
+			if wait then
+				coolUntil[action.id] = os.clock() + wait + 0.5
+				applyCooldowns()
+				task.delay(wait + 0.6, applyCooldowns)
 			end
 		end)
 		table.insert(held, prompt)

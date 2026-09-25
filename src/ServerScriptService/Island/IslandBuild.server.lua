@@ -261,6 +261,13 @@ local function spawnEntry(entry)
 		local ok, reason = IslandAccess.Pickup(player, entry.uid)
 		if not ok then notify(player, reason) end
 	end)
+	-- **เก็บเกี่ยวไปแล้ววันนี้ = ย้ายเข้ากระเป๋าไม่ได้ถึงพรุ่งนี้ → ซ่อนปุ่ม F** (ผู้ใช้สั่ง 2026-09-25 ปุ่มที่ติดคูลดาวน์
+	-- ต้องซ่อนเสมอ) · ลูปวันพลิกของ `Gathering` ล้างตรานี้ทิ้ง = สัญญาณเปิดปุ่มคืนมาเอง
+	local function refreshPickup()
+		prompt.Enabled = model:GetAttribute("HarvestedDay") ~= QuestConfig.DayNumber()
+	end
+	refreshPickup()
+	model:GetAttributeChangedSignal("HarvestedDay"):Connect(refreshPickup)
 
 	for _, key in ipairs(IslandGrid.cellsOf(entry.x, entry.z, w, d, entry.r)) do Occupied[key] = entry.uid end
 	Models[entry.uid] = model

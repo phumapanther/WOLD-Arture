@@ -466,6 +466,10 @@ local function register(node)
 	-- แล้วรีดนมลูกไก่แรกเกิดได้ทันที
 	-- จุดรายวันที่เก็บไปแล้ววันนี้ ต้องเกิดมาพร้อมปุ่มที่ปิดอยู่ด้วย (แอตทริบิวต์รอดข้ามรีสตาร์ท)
 	if node:GetAttribute("DailyNode") then Daily[node] = true end
+	-- ⚠️ **ตราวันที่คืนมาจากโปรไฟล์ต้องติดธง `Spent` ด้วย** ไม่ใช่แค่ปิดปุ่ม (แก้ 2026-09-25) —
+	-- `GatherController` เปิดปุ่มฝั่งไคลเอนต์คืนให้คนถือเครื่องมือถูกชนิด โดยข้ามเฉพาะโหนดที่มี `Spent`
+	-- ไม่มีธง = ปุ่ม E ที่กดไม่ได้โผล่กลับมาหลังออก-เข้าเกาะ · ลูปวันพลิกข้างล่างล้างธงผ่าน setSpent เอง
+	if dailyBlocked(node) then node:SetAttribute("Spent", true) end
 	prompt.Enabled = not (node:GetAttribute("Spent") or dailyBlocked(node))
 	prompt.Parent = anchor
 	publishRequirementLater(node)

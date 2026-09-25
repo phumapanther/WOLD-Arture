@@ -264,6 +264,8 @@ local function tick()
 					end
 					local item = ItemCatalog.Get(entry.crop)
 					local name = item and item.name or entry.crop
+					-- **ปุ่มที่กดไม่ได้ต้องซ่อน** (ผู้ใช้สั่ง 2026-09-25) — ระหว่างโตกด E ได้แค่ "ยังไม่สุก"
+					state.prompt.Enabled = progress >= 1
 					if progress >= 1 then
 						state.prompt.ActionText = "เก็บเกี่ยว"
 						state.prompt.ObjectText = name .. " · สุกแล้ว"
@@ -276,6 +278,7 @@ local function tick()
 					model:SetAttribute("Ripe", progress >= 1 or nil)
 				else
 					if state.stage then showCrop(model, entry, 1); state.stage = nil end
+					state.prompt.Enabled = true
 					state.prompt.ActionText = "หยอดเมล็ด"
 					state.prompt.ObjectText = "แปลงว่าง"
 					model:SetAttribute("Ripe", nil)
