@@ -16,4 +16,7 @@ WeaponVisualsAccess.OnAttack = nil
 -- OnAim(player, aiming) -- การ์ดขึ้น/ลง · สไนย้ายจากมือไปอกตลอดที่ส่องสโคป (อาวุธอื่นไม่สนใจ)
 WeaponVisualsAccess.OnAim = nil
 
+-- BuildModel(weaponId, meta) -> model, shapeId -- โมเดลอาวุธ (สกินครบ) ที่ยังไม่ได้วาง · อาวุธตกพื้นในสนามใช้
+WeaponVisualsAccess.BuildModel = nil
+
 return WeaponVisualsAccess

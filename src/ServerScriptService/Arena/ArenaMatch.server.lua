@@ -15,6 +15,7 @@ local TeleportService = game:GetService("TeleportService")
 
 local ArenaAccess = require(game.ServerScriptService.ArenaAccess)
 local ArenaBots = require(script.Parent.ArenaBots)
+local ArenaDrops = require(script.Parent.ArenaDrops)
 local ArenaConfig = require(game.ReplicatedStorage.ArenaConfig)
 local ArenaRegistry = require(game.ServerScriptService.Lobby.ArenaRegistry)
 local ArenaRewards = require(script.Parent.ArenaRewards)
@@ -466,14 +467,67 @@ local function killCredit(victimFighter)
 	victimFighter.recentHits = {}
 end
 
+-- **คนตาย = อาวุธตกที่จุดตาย** (ผู้ใช้สั่ง 2026-09-25) ใครก็หยิบได้จนรอบจบ · ปืนตกพร้อมกระสุนที่เหลือ
+-- ของคนตายหายจากตัวทันที (ตายแล้วของหายอยู่แล้วตามกติกาเดิม แค่ย้ายไปอยู่บนพื้นให้คนอื่นแทน)
+local function dropWeapon(f)
+	if f.kind == "player" then
+		local player = f.player
+		local _, entry = Inventory.EquippedWeapon(player)
+		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+		if not (entry and root) then return end
+		local gun = ArenaConfig.ShopEntry(entry.id)
+		local ammo = gun and gun.ammo and Inventory.CountOf(player, "Bullet") or nil
+		ArenaDrops.Drop(root.Position, entry.id, entry.meta, ammo)
+		Inventory.BreakEquipped(player, "weapon")
+		removeAll(player, entry.id)
+		if ammo then removeAll(player, "Bullet") end
+		f.loadout.weapon = nil
+		Inventory.Send(player)
+	else
+		local loadout = ArenaBots.Loadout(f.model)
+		local root = f.model and f.model:FindFirstChild("HumanoidRootPart")
+		if loadout.weapon and root then
+			local gun = ArenaConfig.ShopEntry(loadout.weapon)
+			ArenaDrops.Drop(root.Position, loadout.weapon, nil, gun and gun.ammo and (loadout.ammo or 0) or nil)
+		end
+	end
+end
+
 local function markDead(f)
 	if not f.alive then return end
 	f.alive = false
 	f.diedThisRound = true
 	f.stats.deaths += 1
+	-- ช่วงสู้เท่านั้น (ตายช่วงรอบจบ/เตรียมตัว เช่นตกแมพ ไม่ต้องมีของกองบนพื้น)
+	if State.phase == "live" then dropWeapon(f) end
 	killCredit(f)
 	pushAll()
 end
+
+-- หยิบอาวุธที่ตก: **สลับ** — อาวุธในมือตกลงแทนที่จุดนั้น (มือว่างก็หยิบเฉยๆ) · ช่วงสู้ + ยังไม่ตายเท่านั้น
+-- อาวุธที่หยิบมาติดตัวข้ามรอบได้ถ้ารอดเหมือนของที่ซื้อ (อยู่ใน loadout)
+ArenaDrops.Bind(function(player, drop)
+	local f = Fighters[player]
+	if not (f and f.alive and State.phase == "live") then return false end
+	local _, entry = Inventory.EquippedWeapon(player)
+	if entry then
+		local gun = ArenaConfig.ShopEntry(entry.id)
+		local ammo = gun and gun.ammo and Inventory.CountOf(player, "Bullet") or nil
+		ArenaDrops.Drop(drop.position, entry.id, entry.meta, ammo)
+		Inventory.BreakEquipped(player, "weapon")
+		removeAll(player, entry.id)
+		if ammo then removeAll(player, "Bullet") end
+	end
+	Inventory.AddItem(player, drop.id, 1, nil, drop.meta)
+	if drop.ammo and drop.ammo > 0 then Inventory.AddItem(player, "Bullet", drop.ammo) end
+	equipById(player, drop.id)
+	f.loadout.weapon = drop.id
+	Inventory.Send(player)
+	local item = ItemCatalog.Items[drop.id]
+	notify(player, ("หยิบ %s แล้ว"):format(item and item.name or drop.id))
+	pushTo(player)
+	return true
+end)
 
 local function spawnPlayer(f, index)
 	local player = f.player
@@ -693,6 +747,8 @@ end
 -- รอบ
 --------------------------------------------------------------------------------
 local function beginPhase(phase, seconds)
+	-- อาวุธที่ตกหยิบได้ถึงรอบจบเท่านั้น (ผู้ใช้สั่ง "ก่อนรอบจะจบลง")
+	if phase ~= "live" then ArenaDrops.Clear() end
 	State.phase = phase
 	State.phaseEndsAt = os.clock() + seconds
 	pushAll()

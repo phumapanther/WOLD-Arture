@@ -206,19 +206,14 @@ local function tintModel(model, colour, material)
 	end
 end
 
--- วางอาวุธลงมือของ "ร่าง" ใดก็ได้ — ผู้เล่นเรียกผ่าน holdWeapon · บอทสนาม PVP เรียกผ่าน
--- `WeaponVisualsAccess.HoldOn` (2026-09-24) ได้โมเดล สกิน และท่าจับชุดเดียวกับคนเป๊ะ
-local function holdOn(character, weaponId, meta, fighting)
-	if not character then return end
-	clearHeldWeapon(character)
+-- โมเดลของอาวุธชิ้นนี้ (สกิน/ย้อมสีครบ) ยังไม่ได้วางที่ไหน · คืน model, shapeId (ชนิดรูปทรงที่ใช้หาท่าจับ)
+-- แยกออกมาให้อาวุธที่ตกพื้นในสนาม PVP ใช้โมเดลชุดเดียวกับที่ถือในมือ (WeaponVisualsAccess.BuildModel)
+local function buildModel(weaponId, meta)
 	local PREFABS = prefabFolder()
-	if not weaponId or not PREFABS then return end
-
+	if not weaponId or not PREFABS then return nil end
 	local item = ItemCatalog.Get(weaponId)
 	-- เครื่องมือทองใช้โมเดลถือ (และท่าจับ) ของตัวธรรมดา แล้วย้อมเป็นทอง
 	local shapeId = item and item.prefab or weaponId
-	local anchor = anchorPartFor(character, shapeId, fighting)
-	if not anchor then return end
 
 	-- สกินที่ติดตั้งไว้: มีโมเดลของตัวเองใน WOLD_Skins ก็ใช้ ไม่มีก็ย้อมโมเดลเดิม
 	local skin = meta and meta.skin and ItemCatalog.Get(meta.skin) or nil
@@ -234,14 +229,12 @@ local function holdOn(character, weaponId, meta, fighting)
 	local prefab = (skin and skinFolder and skinFolder:FindFirstChild(skin.model or meta.skin))
 		or own
 		or PREFABS:FindFirstChild(shapeId)
-	if not prefab then return end
+	if not prefab then return nil end
 
 	local model = prefab:Clone()
-	model.Name = "EquippedWeapon"
-	local root = model.PrimaryPart
-	if not root then
+	if not model.PrimaryPart then
 		model:Destroy()
-		return
+		return nil
 	end
 	-- ย้อมสีเฉพาะตอนที่ยืมรูปทรงมาตรฐานมาใช้ — โมเดลที่ปั้นมาเพื่อของชิ้นนั้นโดยเฉพาะมีสีของมันเองแล้ว
 	-- ถ้าย้อมทับจะกลายเป็นก้อนสีเดียวทั้งชิ้น ลายและวัสดุที่ออกแบบไว้หายหมด
@@ -251,6 +244,23 @@ local function holdOn(character, weaponId, meta, fighting)
 	elseif item and item.tint and borrowed then
 		tintModel(model, item.tint, item.material or Enum.Material.Metal)
 	end
+	return model, shapeId
+end
+
+WeaponVisualsAccess.BuildModel = buildModel
+
+-- วางอาวุธลงมือของ "ร่าง" ใดก็ได้ — ผู้เล่นเรียกผ่าน holdWeapon · บอทสนาม PVP เรียกผ่าน
+-- `WeaponVisualsAccess.HoldOn` (2026-09-24) ได้โมเดล สกิน และท่าจับชุดเดียวกับคนเป๊ะ
+local function holdOn(character, weaponId, meta, fighting)
+	if not character then return end
+	clearHeldWeapon(character)
+	local item = weaponId and ItemCatalog.Get(weaponId)
+	local anchor = anchorPartFor(character, item and item.prefab or weaponId, fighting)
+	if not anchor then return end
+	local model, shapeId = buildModel(weaponId, meta)
+	if not model then return end
+	model.Name = "EquippedWeapon"
+	local root = model.PrimaryPart
 	weaponId = shapeId
 
 	-- **ของที่ถืออยู่ต้องไม่ anchored ไม่ชน และไม่มีมวล** (แก้ 2026-09-22: ผู้ใช้แจ้ง "ดาบปักอยู่เฉยๆ

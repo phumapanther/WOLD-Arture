@@ -5,9 +5,19 @@
 --
 -- เทสนี้ไม่ได้ตรวจว่าแมตช์เดินถูกไหม — อันนั้นต้องเล่นจริง · มันกันเรื่องที่พังเงียบที่สุดแทน:
 -- ราคาที่ขยับโดยไม่มีใครตั้งใจ ไอเทมที่ถูกเปลี่ยนชื่อจนร้านชี้ไปที่ของที่ไม่มีอยู่ และหีบที่ไม่มีจริง
-local ArenaConfig = require(game.ReplicatedStorage.ArenaConfig)
-local ChestConfig = require(game.ReplicatedStorage.ChestConfig)
-local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
+-- โคลนก่อน require: Edit mode แคช require ข้ามการรัน แก้คอนฟิกแล้วเทสจะเห็นของเก่า
+local function fresh(module)
+	local copy = module:Clone()
+	copy.Name = module.Name .. "_t" .. math.random(1, 1e9)
+	copy.Parent = module.Parent
+	local ok, result = pcall(require, copy)
+	copy:Destroy()
+	assert(ok, result)
+	return result
+end
+local ArenaConfig = fresh(game.ReplicatedStorage.ArenaConfig)
+local ChestConfig = fresh(game.ReplicatedStorage.ChestConfig)
+local ItemCatalog = fresh(game.ReplicatedStorage.ItemCatalog)
 local out = {}
 local fails = 0
 
@@ -20,7 +30,7 @@ end
 -- ตารางนี้คัดลอกมาจากข้อความที่ผู้ใช้เขียน ไม่ได้อ่านจาก ArenaConfig — ถ้าสองฝั่งไม่ตรงกันคือมีคนขยับ
 local WANT = {
 	Sword = 250, Greatsword = 3000, Shield = 1500, Sniper = 3000, -- ดาบใหญ่/สไน 3,000 (ผู้ใช้สั่ง 2026-09-25)
-	Pistol = 500, Bow = 1000, Staff = 1000, Spellbook = 1000,
+	Pistol = 750, Bow = 1000, Staff = 1000, Spellbook = 1000,
 	LeatherArmor = 250, ChainmailArmor = 500, PlateArmor = 1000,
 	HealthPotion = 200, GreatPotion = 500, FirstAidKit = 1000, Water = 50,
 }

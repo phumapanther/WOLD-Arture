@@ -78,7 +78,7 @@ ArenaConfig.Shop = {
 	{ id = "Shield",         price = 1500, slot = "weapon", row = "melee",  col = 2, size = "medium" },
 	{ id = "Greatsword",     price = 3000, slot = "weapon", row = "melee",  col = 3, size = "large" },
 	-- ปืน: ซื้อมาแล้วยิงได้ 16 นัด แล้วจบ (ผู้ใช้กำหนด) — กระสุนมากับปืน ไม่ได้ขายแยก
-	{ id = "Pistol",         price = 500,  slot = "weapon", row = "ranged", col = 1, size = "small", ammo = 16 },
+	{ id = "Pistol",         price = 750,  slot = "weapon", row = "ranged", col = 1, size = "small", ammo = 16 }, -- 500 → 750 (ผู้ใช้สั่ง 2026-09-25)
 	{ id = "Bow",            price = 1000, slot = "weapon", row = "ranged", col = 2, size = "medium" },
 	{ id = "Staff",          price = 1000, slot = "weapon", row = "ranged", col = 3, size = "medium" },
 	{ id = "Spellbook",      price = 1000, slot = "weapon", row = "ranged", col = 4, size = "medium" },
