@@ -29,7 +29,7 @@ check(w and w.idleTimeout >= 15, "สไน: ส่องค้างได้�
 check(w and w.pierceFraction == 0.5 and w.mobDamage == 150, "สไน: คน 50% · มอน 150")
 local a = w and w.attacks[1]
 check(a and a.windup < 0.3 and a.projectile and a.projectile.kind == "hitscan", "สไน: คลิกสองยิงทันที (ไม่มีแถบ) hitscan")
-check(CombatConfig.Sounds.Sniper and CombatConfig.Sounds.Sniper.cast == "rbxassetid://101482767943742", "เสียงยิงสไน")
+check(CombatConfig.Sounds.Sniper and CombatConfig.Sounds.Sniper.cast == "rbxassetid://74678624641254" and CombatConfig.Sounds.Sniper.castDistance == 150, "เสียงยิงสไน ได้ยิน 150 สตัด")
 
 local recipe
 for _, r in ipairs(CraftConfig.Recipes or CraftConfig) do

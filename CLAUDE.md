@@ -2043,7 +2043,7 @@ LocalUserSecurity เหมือนกันหมด
   บอทสนามคิดแบบคน · ทะลุเพื่อน/ตี้/ศพ (`RayThrough`) · คราฟที่ช่างตีเหล็ก (วัสดุผมตั้ง)
 - **ถือมือขวาตอนเฉยๆ (`CARRY_GRIP.Sniper`) · กลางอกตลอดที่ส่อง** (`ATTACH_TO` + `Aiming` ใน WeaponVisuals ผ่าน `WeaponVisualsAccess.OnAim`)
   · ตำแหน่งกลางอกปรับที่ `GRIP.Sniper`
-- ⚠️ เสียงยิง 101482767943742 **โหลดไม่ขึ้น** (PreloadAsync = Failure ทั้งที่เสียงปืน/เสียงคิลบัญชีเดียวกันโหลดได้) = ยังไม่ผ่านอนุมัติ/ถูกปฏิเสธ — แก้ที่ Creator Dashboard ไม่ใช่โค้ด
+- เสียงยิง 74678624641254 ได้ยิน 150 สตัด (`Sounds.Sniper.castDistance`) · ตัวแรก 101482767943742 ไม่ผ่านการตรวจของ Roblox (PreloadAsync = Failure) — **เช็คเสียงใหม่ด้วย PreloadAsync ก่อนเสมอ**
 - **แถบดีเลย์**: เซิร์ฟเวอร์ส่งวินาทีเฉพาะท่าที่ windup ≥ `CombatConfig.ChargeBarMinSeconds` (0.3) · แถบอยู่ `WOLD_ChargeBar` ของตัวเอง
   ⚠️ InventoryUpdate มาทุกครั้งที่อาวุธสึก — ห้ามซ่อนแถบในทุก refresh ซ่อนเฉพาะตอนชนิดอาวุธเปลี่ยน
 - **ยิงหัว (สนามเท่านั้น)** = ชิ้นที่ raycast ชนคือ `Head` หรือ Accessory ที่เชื่อมกับ Head · กระสุนเดิม ×`ArenaConfig.HeadshotMultiplier` ·

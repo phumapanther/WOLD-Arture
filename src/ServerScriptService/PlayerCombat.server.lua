@@ -153,7 +153,7 @@ end
 
 -- The sound pair for whatever the player is wielding. Falls back to the punch sound for the impact so an
 -- unconfigured weapon still thumps rather than landing in silence.
--- Returns cast, hit, hitVolume, hitSeconds, castSeconds.
+-- Returns cast, hit, hitVolume, hitSeconds, castSeconds, castDistance.
 local function soundsFor(player)
 	local _, entry = Inventory.EquippedWeapon(player)
 	-- Bare hands have no inventory entry, so they fall back to the default weapon key the same way weaponOf
@@ -168,7 +168,9 @@ local function soundsFor(player)
 		set and set.hitSeconds or nil,
 		-- How long the CAST sound is allowed to run. The pistol's clip is six seconds and a gunshot is a
 		-- crack, so it says half a second here rather than every weapon being cut to the shortest one.
-		set and set.castSeconds or nil
+		set and set.castSeconds or nil,
+		-- ได้ยินไกลแค่ไหน — สไนดังไกลกว่าอาวุธอื่น (ผู้ใช้สั่ง 150 สตัด)
+		set and set.castDistance or nil
 end
 
 -- Tells the two people in a fight that a blow just landed, so their music can react. Only the pair: a
@@ -200,8 +202,8 @@ CombatConfig.PlayWeaponHitSound = playHitSound
 
 -- The attacker's own sound: the swing, the bowstring, the spell leaving the book.
 local function playCastSound(player)
-	local cast, _, _, _, castSeconds = soundsFor(player)
-	playAt(player.Character, cast, CombatConfig.CastSoundDistance, nil,
+	local cast, _, _, _, castSeconds, castDistance = soundsFor(player)
+	playAt(player.Character, cast, castDistance or CombatConfig.CastSoundDistance, nil,
 		castSeconds or CombatConfig.CastSoundMaxSeconds)
 end
 

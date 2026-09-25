@@ -328,9 +328,11 @@ CombatConfig.Sounds = {
 		hit = "",
 	},
 	-- เสียงยิงเล่น "ตอนกระสุนออก" ไม่ใช่ตอนคลิก (PlayerCombat เรียกใน fireSniper) · 2.5 วิพอให้เสียงสะท้อนจบ
+	-- 101482767943742 ไม่ผ่านการตรวจของ Roblox → ผู้ใช้เปลี่ยนเป็น 74678624641254 (2026-09-25) · ได้ยินไกล 150 สตัด
 	Sniper = {
-		cast = "rbxassetid://101482767943742",
-		castSeconds = 2.5,
+		cast = "rbxassetid://74678624641254",
+		castSeconds = 4.2,
+		castDistance = 150,
 		hit = "",
 	},
 	Bow = {
