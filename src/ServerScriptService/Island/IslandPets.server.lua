@@ -23,9 +23,9 @@ local IslandConfig = require(game.ReplicatedStorage.IslandConfig)
 local IslandAccess = require(game.ServerScriptService.Island.IslandAccess)
 local BeastGait = require(game.ServerScriptService.BeastGait)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local Progression = require(game.ServerScriptService.Progression)
 
 local WANDER_RADIUS = 60 -- เดินเล่นไกลจากจุดที่วางได้เท่านี้ (ทั่วฟาร์ม ไม่ใช่ยืนกับที่)
-local PET_COOLDOWN = 20 -- ลูบหัวซ้ำได้ทุกกี่วินาที (กันกดรัวเอาข้อความ)
 local CARRY_RANGE = 12
 
 local Live = {} -- [model] = { uid, carriedBy }
@@ -33,7 +33,6 @@ local Live = {} -- [model] = { uid, carriedBy }
 -- **ประกาศไว้ก่อนใช้** ปุ่มถูกผูกใน `setup` ซึ่งอยู่เหนือนิยามจริงของสองตัวนี้ — local ที่ประกาศทีหลัง
 -- จะเป็น nil ตอน closure จับได้ (กับดัก "ใช้ก่อนประกาศ" ที่โปรเจ็คนี้เจอมาห้าครั้ง)
 local pat, toggleCarry
-local PetTimes = {} -- [player] = os.clock ล่าสุดที่ลูบหัว
 
 --------------------------------------------------------------------------------
 -- ตั้งสัตว์ให้เดินได้
@@ -42,6 +41,37 @@ local PetTimes = {} -- [player] = os.clock ล่าสุดที่ลูบ�
 local function isPet(model)
 	local id = model:GetAttribute("ItemId")
 	return id and IslandConfig.Pets[id] == true
+end
+
+-- แถวของสัตว์ตัวนี้ในโปรไฟล์เกาะ (nil = เจ้าของไม่อยู่ โปรไฟล์ปิดแล้ว)
+local function entryOf(model)
+	local data = IslandAccess.Data and IslandAccess.Data()
+	local uid = model:GetAttribute("Uid")
+	if not data or not uid then return nil end
+	for _, entry in ipairs(data.placed or {}) do
+		if entry.uid == uid then return entry end
+	end
+	return nil
+end
+
+-- ลูบได้หรือยัง · เวลาเป็น os.time (ข้ามการรีสตาร์ทได้) อ่านจากโปรไฟล์ก่อน แอตทริบิวต์เป็นทางสำรองตอนเจ้าของไม่อยู่
+local function patReady(model)
+	local entry = entryOf(model)
+	local last = (entry and entry.pat) or model:GetAttribute("PatAt") or 0
+	return os.time() - last >= IslandConfig.PetPatSeconds
+end
+
+-- **ปุ่มที่ใช้ไม่ได้ตอนนี้ต้องซ่อนเสมอ** (ผู้ใช้สั่ง): E ซ่อนตอนติดคูลดาวน์หรือถูกอุ้ม · F ซ่อนตอนถูกอุ้ม
+-- ที่เดียวที่ตั้ง Enabled ของสองปุ่มนี้ — ลูป 1 วิเรียกซ้ำจึงเปิดกลับเองเมื่อคูลดาวน์หมด
+local function refreshPrompts(model)
+	local state = Live[model]
+	local hrp = model:FindFirstChild("HumanoidRootPart")
+	if not state or not hrp then return end
+	local carried = state.carriedBy ~= nil
+	local petPrompt = hrp:FindFirstChild("PetPrompt")
+	if petPrompt then petPrompt.Enabled = not carried and patReady(model) end
+	local carryPrompt = hrp:FindFirstChild("CarryPrompt")
+	if carryPrompt then carryPrompt.Enabled = not carried end
 end
 
 local function setup(model)
@@ -98,6 +128,7 @@ local function setup(model)
 			toggleCarry(model, player)
 		end)
 	end
+	refreshPrompts(model)
 end
 
 --------------------------------------------------------------------------------
@@ -107,9 +138,12 @@ end
 function pat(model, player)
 	local entry = Live[model]
 	if not entry or entry.carriedBy then return end
-	local last = PetTimes[player] or -math.huge
-	if os.clock() - last < PET_COOLDOWN then return end
-	PetTimes[player] = os.clock()
+	if not patReady(model) then return end -- ปุ่มถูกซ่อนอยู่แล้ว กันกดพร้อมกันสองคน
+	local now = os.time()
+	model:SetAttribute("PatAt", now)
+	local saved = entryOf(model)
+	if saved then saved.pat = now end
+	refreshPrompts(model)
 
 	-- หันมาหาคนลูบ แล้วกระโดดเบาๆ — ไม่มีอนิเมชันเฉพาะ ใช้สิ่งที่ Humanoid ทำได้อยู่แล้ว
 	local root = model:FindFirstChild("HumanoidRootPart")
@@ -122,8 +156,14 @@ function pat(model, player)
 	local humanoid = model:FindFirstChildOfClass("Humanoid")
 	if humanoid then humanoid.Jump = true end
 
+	Remotes.IslandPetHearts:FireAllClients(model)
+
+	local xp = IslandConfig.PetPatExp
+	if IslandAccess.FarmExpMultiplier then xp = math.floor(xp * IslandAccess.FarmExpMultiplier() + 0.5) end
+	Progression.AwardExp(player, xp)
+
 	local name = model:GetAttribute("ItemId") == "Pet_Cat" and "แมว" or "สุนัข"
-	Remotes.SocialNotify:FireClient(player, "info", ("%s ดูมีความสุข"):format(name))
+	Remotes.SocialNotify:FireClient(player, "info", ("%s ดูมีความสุข (+%d EXP)"):format(name, xp))
 end
 
 --------------------------------------------------------------------------------
@@ -145,11 +185,8 @@ local function setCarried(model, on)
 	if humanoid then humanoid.PlatformStand = on end
 	-- ระหว่างอุ้ม ปุ่ม E/F ลอยตามหน้าคนอุ้มตลอด (ผู้ใช้สั่ง 2026-09-25 ให้ซ่อน) → ปิดทั้งสองปุ่มสำหรับทุกคน
 	-- คนอุ้มวางลงผ่านปุ่มบนจอของตัวเอง (IslandPetController ← แอตทริบิวต์ CarriedBy · Remotes.IslandPetDrop)
-	local hrp = model:FindFirstChild("HumanoidRootPart")
-	for _, name in ipairs({ "PetPrompt", "CarryPrompt" }) do
-		local prompt = hrp and hrp:FindFirstChild(name)
-		if prompt then prompt.Enabled = not on end
-	end
+	-- (carriedBy ถูกตั้ง/ล้างก่อนเรียกตัวนี้เสมอ)
+	refreshPrompts(model)
 	for _, d in ipairs(model:GetDescendants()) do
 		if d:IsA("BasePart") and d.Name ~= "Root" then
 			if on then
@@ -243,7 +280,6 @@ Remotes.IslandPetDrop.OnServerEvent:Connect(function(player)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
-	PetTimes[player] = nil
 	for model, entry in pairs(Live) do
 		if entry.carriedBy == player then
 			release(model, entry)
@@ -310,6 +346,9 @@ task.spawn(function()
 			for _, model in ipairs(placed:GetChildren()) do
 				if model:IsA("Model") and isPet(model) then setup(model) end
 			end
+		end
+		for model in pairs(Live) do
+			if model.Parent then refreshPrompts(model) end -- คูลดาวน์ลูบหัวหมด = ปุ่ม E กลับมาเอง
 		end
 		task.wait(1)
 	end

@@ -1,4 +1,7 @@
--- IslandPetController: ปุ่ม "วางลง" ของคนที่อุ้มหมา/แมวอยู่ (ผู้ใช้สั่ง 2026-09-25)
+-- IslandPetController: ปุ่ม "วางลง" ของคนที่อุ้มหมา/แมวอยู่ + หัวใจลอยตอนลูบหัว (ผู้ใช้สั่ง 2026-09-25)
+--
+-- หัวใจ: เซิร์ฟเวอร์ยิง Remotes.IslandPetHearts ถึงทุกเครื่อง แต่ละเครื่องวาดเอง (ทุกคนรอบๆ เห็น)
+-- เป็นอีโมจิบน BillboardGui ไม่ใช่ ParticleEmitter เพราะไม่มีรูปหัวใจที่ตรวจแล้วว่าผ่านการตรวจของ Roblox
 --
 -- ระหว่างอุ้ม ปุ่ม E/F บนตัวสัตว์ถูกปิด (ไม่งั้นมันลอยอยู่หน้าคนอุ้มตลอดทาง) ทางวางลงจึงย้ายมาอยู่ที่นี่:
 -- คีย์ F หรือแตะปุ่มบนจอ (มือถือ) → Remotes.IslandPetDrop · รู้ว่ากำลังอุ้มจากแอตทริบิวต์ CarriedBy บนตัวสัตว์
@@ -7,6 +10,7 @@ while workspace:GetAttribute("IsLobby") == nil do task.wait() end
 if workspace:GetAttribute("IslandMode") ~= true then return end
 
 local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
 local ContextActionService = game:GetService("ContextActionService")
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local Responsive = require(game.ReplicatedStorage.UI.Responsive)
@@ -57,6 +61,48 @@ local function carrying()
 	end
 	return false
 end
+
+-- หัวใจ ---------------------------------------------------------------------------
+
+local HEARTS = { "❤️", "💕", "💗" }
+local HEART_COUNT = 7
+local HEART_SECONDS = 1.6
+
+local function spawnHeart(root)
+	local board = Instance.new("BillboardGui")
+	board.Adornee = root
+	board.Size = UDim2.fromScale(1.1, 1.1) -- Scale ของ BillboardGui = สตัด: เล็กลงตามระยะเหมือนของในโลก
+	board.LightInfluence = 0
+	board.MaxDistance = 150
+	local start = Vector3.new((math.random() - 0.5) * 2, 0.8, (math.random() - 0.5) * 2)
+	board.StudsOffsetWorldSpace = start
+	local label = Instance.new("TextLabel")
+	label.BackgroundTransparency = 1
+	label.Size = UDim2.fromScale(1, 1)
+	label.TextScaled = true
+	label.Text = HEARTS[math.random(#HEARTS)]
+	label.Parent = board
+	board.Parent = root
+	local info = TweenInfo.new(HEART_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	local rise = start + Vector3.new((math.random() - 0.5) * 2.5, 3 + math.random() * 1.5, (math.random() - 0.5) * 2.5)
+	TweenService:Create(board, info, { StudsOffsetWorldSpace = rise, Size = UDim2.fromScale(1.7, 1.7) }):Play()
+	TweenService:Create(label, TweenInfo.new(HEART_SECONDS, Enum.EasingStyle.Quad, Enum.EasingDirection.In),
+		{ TextTransparency = 1 }):Play()
+	task.delay(HEART_SECONDS + 0.1, function() board:Destroy() end)
+end
+
+Remotes.IslandPetHearts.OnClientEvent:Connect(function(model)
+	-- สัตว์อาจยังไม่ถูกสตรีมมาถึงเครื่องนี้ (StreamingEnabled) = ไม่เห็นก็ไม่เป็นไร
+	local root = typeof(model) == "Instance" and model:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	for i = 1, HEART_COUNT do
+		task.delay((i - 1) * 0.09, function()
+			if root.Parent then spawnHeart(root) end
+		end)
+	end
+end)
+
+-- ปุ่มวางลง ------------------------------------------------------------------------
 
 local bound = false
 while true do
