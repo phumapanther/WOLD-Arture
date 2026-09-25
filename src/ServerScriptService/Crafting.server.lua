@@ -21,6 +21,8 @@ local EventState = require(game.ServerScriptService.EventState)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local EnhanceConfig = require(game.ReplicatedStorage.EnhanceConfig)
 local Mail = require(game.ServerScriptService.Mail)
+local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
+local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 
 local TAG = "WOLD_Npc"
 local RANGE = 12
@@ -473,38 +475,48 @@ end)
 --------------------------------------------------------------------------------
 -- ตีบวก (ผู้ใช้สั่ง 2026-09-24 · สเปก docs/superpowers/specs/2026-09-24-enhance-design.md)
 --------------------------------------------------------------------------------
+--
+-- ⚠️ **อาวุธที่อยู่กับช่างเก็บใน `profile.Data.EnhanceJob`** (รีวิว 2026-09-25) ไม่ใช่แค่ในหน่วยความจำ
+-- เดิมถ้าออกเกม/เซิร์ฟปิดกลางแถบ 4 วิ กระเป๋าถูกเซฟโดยไม่มีอาวุธ แล้วเมลคืนล้มเพราะ ProfileStore กำลังปิด
+-- = อาวุธหายถาวร · ตอนนี้งานถูกเซฟพร้อมกระเป๋าเสมอ: จบในเซิร์ฟนี้ → คืน · ออกไปก่อน → คืนตอนเข้าเกมครั้งหน้า
+-- ผลถูกทอยตอนยื่น (ต้องเซฟไปพร้อมงานได้) แต่ไคลเอนต์เห็นตอนแถบเต็มเท่านั้น
 
--- คืนอาวุธจากช่าง **ไม่มีทางหาย**: กระเป๋ามีที่ → ใส่ (มาจากมือและมือยังว่าง = สวมกลับให้)
--- ไม่มีที่ / ออกเกมไปแล้ว → เมลถึงตัวเองพร้อมขั้นและความคงทน
--- ⚠️ ห้ามให้ AddItem ล้นเข้าคลัง — SpillOver ไม่พก meta ไปด้วย ขั้นตีบวกจะหาย จึงถาม HasRoomFor ก่อนเสมอ
--- คืน key ของแถวที่อาวุธไปอยู่ ("equipped" / เลขช่อง) หรือ nil ถ้าส่งเมล
-local function returnWeapon(player, job)
-	local state = player.Parent and Inventory.Get(player)
-	if state and Inventory.HasRoomFor(player, job.id, 1, job.meta) then
-		Inventory.AddItem(player, job.id, 1, job.durability, job.meta)
-		local landed
+-- คืนอาวุธจากช่าง **ไม่มีทางหาย** แล้วล้างงานออกจากโปรไฟล์ · ลำดับ: มาจากมือและมือว่าง → สวมกลับ (ไม่กิน
+-- ช่องกระเป๋า) · กระเป๋ามีที่ → ใส่ · ไม่มีที่ → จดหมายลงกล่องตัวเอง (โปรไฟล์เดียวกัน ส่งไม่ล้ม)
+-- ⚠️ ห้ามให้ AddItem ล้นเอง — ถาม HasRoomFor ก่อนเสมอ
+-- คืน key ของแถวที่อาวุธไปอยู่ ("equipped" / เลขช่อง) หรือ nil ถ้าเข้ากล่องจดหมาย
+local function returnWeapon(player, data, job)
+	local state = Inventory.Get(player)
+	local where = nil
+	if state and job.fromEquipped and not state.equipped.weapon
+		and Inventory.EquipDirect(player, "weapon", job) then
+		where = "equipped"
+	elseif state and Inventory.HasRoomFor(player, job.id, 1, job.meta)
+		and Inventory.AddItem(player, job.id, 1, job.durability, job.meta) then
+		where = "job"
 		for index, slot in pairs(state.slots) do
-			if slot and slot.meta == job.meta then landed = index break end
+			if slot and slot.meta == job.meta then where = tostring(index) break end
 		end
-		if landed and job.fromEquipped and not state.equipped.weapon and Inventory.Equip(player, landed) then
-			return "equipped"
-		end
-		if landed then return tostring(landed) end
-	end
-	local name = ItemCatalog.DisplayName(job.id, job.meta)
-	task.spawn(function()
-		local ok = Mail.Send(player.UserId, {
+	else
+		local name = ItemCatalog.DisplayName(job.id, job.meta)
+		Mail.PutOwn(player, data, {
 			fromName = "ช่างตีเหล็ก",
 			subject = "คืนอาวุธที่ตีบวก",
-			body = ("%s — กระเป๋าเต็มหรือออกไปก่อน ช่างเลยฝากส่งมาทางนี้"):format(name),
+			body = ("%s — กระเป๋าเต็ม ช่างเลยฝากไว้ในกล่องจดหมาย"):format(name),
 			items = { { id = job.id, count = 1, durability = job.durability, meta = job.meta } },
 		})
-		if not ok then warn(("[Enhance] ส่งเมลคืน %s ให้ %d ไม่สำเร็จ"):format(job.id, player.UserId)) end
-	end)
-	if player.Parent then
-		Remotes.SocialNotify:FireClient(player, "info", ("กระเป๋าเต็ม — %s ส่งไปที่กล่องจดหมายแล้ว"):format(name))
+		Remotes.SocialNotify:FireClient(player, "info", ("กระเป๋าเต็ม — %s อยู่ในกล่องจดหมายแล้ว"):format(name))
 	end
-	return nil
+	data.EnhanceJob = nil
+	if ProfileAccess.Flush then ProfileAccess.Flush(player) end
+	return where
+end
+
+local function announce(player, job)
+	local name = ItemCatalog.DisplayName(job.id, job.meta)
+	Remotes.SocialNotify:FireClient(player, job.success and "info" or "error", job.success
+		and ("ตีบวกสำเร็จ! %s"):format(name)
+		or ("ตีแตก! %s ขั้นเท่าเดิม ความคงทนลด"):format(name))
 end
 
 Remotes.RequestEnhance.OnServerEvent:Connect(function(player, key)
@@ -515,7 +527,11 @@ Remotes.RequestEnhance.OnServerEvent:Connect(function(player, key)
 		return Remotes.SocialNotify:FireClient(player, "error", "อยู่ไกลเกินไป")
 	end
 	local state = Inventory.Get(player)
-	if not state then return end
+	local data = ProfileAccess.Get(player)
+	if not state or not data then return end
+	if data.EnhanceJob then
+		return Remotes.SocialNotify:FireClient(player, "error", "ช่างยังถืออาวุธชิ้นก่อนอยู่ รอสักครู่")
+	end
 
 	-- ช่องที่ไคลเอนต์ขอ: "equipped" หรือเลขช่องจำนวนเต็มที่มีของอยู่จริง (ค่าอื่น = nil = จบเงียบ)
 	local entry, bagIndex
@@ -548,53 +564,74 @@ Remotes.RequestEnhance.OnServerEvent:Connect(function(player, key)
 		end
 	end
 
-	-- หักวัสดุตอนเริ่ม (ไม่ว่าสำเร็จหรือแตก) แล้ว **ยื่นอาวุธให้ช่าง** — ไม่มีการ yield ระหว่างตรวจกับหัก
+	-- ล็อกก่อนจ่าย (ทรงเดียวกับ RequestCraft) · ไม่มีการ yield จากตรงนี้ถึงการยื่นอาวุธ
+	local seconds = EnhanceConfig.Seconds
+	Busy[player].smith = { index = "enh:job", finishAt = os.clock() + seconds, seconds = seconds }
+
 	for material, need in pairs(nextLevel.cost) do
 		takeMaterial(player, state, material, need)
 	end
+
+	-- ทอยตอนยื่น (ต้องเซฟผลไปกับงาน) · ผลแปะลงตัวอาวุธในงานเลย
 	local job = {
 		id = entry.id, durability = entry.durability,
 		-- meta เป็นตารางเสมอ: returnWeapon หาช่องที่อาวุธลงด้วยการเทียบตารางนี้
 		meta = type(entry.meta) == "table" and entry.meta or {},
 		fromEquipped = key == "equipped", level = level,
+		success = math.random() < nextLevel.chance,
 	}
+	if job.success then
+		job.meta.enhance = level + 1
+	else
+		local item = ItemCatalog.Get(job.id)
+		local max = item and item.maxDurability
+		if max then
+			job.durability = math.max(1, (job.durability or max) - math.ceil(max * EnhanceConfig.FailDurabilityFraction))
+		end
+	end
+
+	-- ยื่นอาวุธ: ออกจากมือ/ช่อง แล้วเข้าโปรไฟล์ในจังหวะเดียวกัน (ไม่มีช่วงที่อาวุธไม่อยู่ที่ไหนเลย)
 	if job.fromEquipped then
 		Inventory.BreakEquipped(player, "weapon") -- โมเดลออกจากมือ (อยู่กับช่าง)
 	else
 		state.slots[bagIndex] = nil
 	end
-	Inventory.Send(player)
+	data.EnhanceJob = job
 	Enhancing[player] = job
+	Inventory.Send(player)
+	if ProfileAccess.Flush then ProfileAccess.Flush(player) end
 
-	local seconds = EnhanceConfig.Seconds
-	Busy[player].smith = { index = "enh:job", finishAt = os.clock() + seconds, seconds = seconds }
 	Remotes.CraftStarted:FireClient(player, "enh:job", seconds)
 	Remotes.CraftOpen:FireClient(player, snapshot(player))
 
 	task.delay(seconds, function()
 		if Busy[player] then Busy[player].smith = nil end
 		if Enhancing[player] == job then Enhancing[player] = nil end
-
-		-- ทอยตอนจบ ไม่ใช่ตอนเริ่ม (เหตุผลเดียวกับคราฟ: ผลต้องไม่มีอยู่ระหว่างแถบเดิน)
-		local success = math.random() < nextLevel.chance
-		if success then
-			job.meta.enhance = level + 1
-		else
-			local item = ItemCatalog.Get(job.id)
-			local max = item and item.maxDurability
-			if max and job.durability then
-				job.durability = math.max(1, job.durability - math.ceil(max * EnhanceConfig.FailDurabilityFraction))
-			end
-		end
-
-		local where = returnWeapon(player, job)
-		if not player.Parent then return end
-		Remotes.CraftFinished:FireClient(player, where and ("enh:" .. where) or "enh:job", success)
-		local name = ItemCatalog.DisplayName(job.id, job.meta)
-		Remotes.SocialNotify:FireClient(player, success and "info" or "error", success
-			and ("ตีบวกสำเร็จ! %s"):format(name)
-			or ("ตีแตก! %s ขั้นเท่าเดิม ความคงทนลด"):format(name))
+		-- ออกเกมไปแล้ว = งานอยู่ในโปรไฟล์ที่เซฟไปแล้ว เข้าเกมครั้งหน้าได้คืน (ห้ามคืนตรงนี้ซ้ำ = อาวุธสองชิ้น)
+		if not player.Parent or ProfileAccess.Get(player) ~= data or data.EnhanceJob ~= job then return end
+		local where = returnWeapon(player, data, job)
+		Remotes.CraftFinished:FireClient(player, where and ("enh:" .. where) or "enh:job", job.success)
+		announce(player, job)
 		Remotes.CraftOpen:FireClient(player, snapshot(player))
+	end)
+end)
+
+-- เข้าเกมมาแล้วมีงานค้างที่ช่าง (ออกไปกลางแถบ / เซิร์ฟปิด) → คืนเลย ผลทอยไว้แล้วตั้งแต่ตอนยื่น
+PlayerJoin.Each(function(player)
+	task.spawn(function()
+		local data = ProfileAccess.Wait(player)
+		if not data or type(data.EnhanceJob) ~= "table" then return end
+		-- กระเป๋าโหลดทีหลังโปรไฟล์ได้ (PlayerInventory ก็รอโปรไฟล์เหมือนกัน) — รอจนมี
+		while player.Parent and not Inventory.Get(player) do task.wait(0.2) end
+		if not player.Parent or type(data.EnhanceJob) ~= "table" then return end
+		local job = data.EnhanceJob
+		if type(job.id) ~= "string" or not ItemCatalog.Exists(job.id) then
+			data.EnhanceJob = nil
+			return
+		end
+		if type(job.meta) ~= "table" then job.meta = {} end
+		returnWeapon(player, data, job)
+		announce(player, job)
 	end)
 end)
 

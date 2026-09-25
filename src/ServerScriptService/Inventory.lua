@@ -453,6 +453,16 @@ function Inventory.RepairAll(player)
 	return repaired
 end
 
+-- ใส่ของลงช่องสวมตรงๆ โดยไม่ผ่านกระเป๋า — ใช้ได้เฉพาะตอนช่องนั้นว่าง (ตีบวกคืนอาวุธเข้ามือ ไม่กินช่องกระเป๋า)
+function Inventory.EquipDirect(player, kind, entry)
+	local state = States[player]
+	if not state or state.equipped[kind] or type(entry) ~= "table" then return false end
+	state.equipped[kind] = { id = entry.id, durability = entry.durability, meta = entry.meta }
+	broadcastEquipment(player, state)
+	Inventory.Send(player)
+	return true
+end
+
 function Inventory.Unequip(player, kind)
 	local state = States[player]
 	local entry = state and state.equipped[kind]

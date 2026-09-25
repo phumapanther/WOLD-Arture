@@ -95,6 +95,19 @@ local function sanitize(m)
 	}
 end
 
+-- ใส่จดหมายลงกล่องของ **คนที่อยู่ในเซิร์ฟนี้** ตรงๆ (โปรไฟล์เดียวกัน = เซฟพร้อมกัน ไม่มีทางส่งไม่ถึง)
+-- ต่างจาก Send ที่ผ่าน MessageAsync ซึ่งล้มได้ตอนเซิร์ฟกำลังปิด · ใช้กับของที่ "ต้องไม่หาย" ของคนตรงหน้า
+-- (ตีบวกคืนอาวุธตอนกระเป๋าเต็ม) · ไม่เช็คกล่องเต็ม — ล้น 50 ฉบับดีกว่าของหาย
+function Mail.PutOwn(player, data, letter)
+	letter.id = HttpService:GenerateGUID(false)
+	letter.at = os.time()
+	local clean = sanitize(letter)
+	if not clean then return false end
+	table.insert(Mail.Box(data), clean)
+	if Mail.Changed then task.defer(Mail.Changed, player, clean) end
+	return true
+end
+
 -- ตัวรับข้อความ `kind == "mail"` (เรียกจาก MessageHandler ใน PlayerProfile.server)
 function Mail.Deliver(player, data, message, processed)
 	local letter = sanitize(message)
