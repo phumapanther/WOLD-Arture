@@ -20,6 +20,7 @@ local MapGui = require(game.ReplicatedStorage.UI.MapGui)
 local Navigation = require(game.ReplicatedStorage.Navigation)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local UiSound = require(game.ReplicatedStorage.UI.UiSound)
+local PhotoMode = require(game.ReplicatedStorage.UI.PhotoMode)
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -151,6 +152,10 @@ local settings = { muteCalls = false, muteChat = false, wallpaper = "rune" }
 gui:SetSettings(settings)
 gui:On("settingsChanged", function(updated)
 	settings = updated
+	if (settings.photoMode == true) ~= PhotoMode.IsOn() then
+		if settings.photoMode then gui:Hide() end -- ไม่งั้นหินเวทถูกนับเป็นหน้าต่างที่ต้องคืน แล้วเด้งกลับมาตอนออก
+		PhotoMode.Set(settings.photoMode)
+	end
 end)
 local threads = {} -- [userId] = { messages }
 
@@ -398,6 +403,12 @@ end)
 --------------------------------------------------------------------------------
 
 local function toggle()
+	if PhotoMode.IsOn() then -- ในโหมดถ่ายรูป P / ปุ่มหินเวท = ออกจากโหมด (ทางออกเดียวของมือถือ)
+		settings.photoMode = false
+		PhotoMode.Set(false)
+		gui:SetSettings(settings)
+		return
+	end
 	if gui:IsOpen() then
 		gui:Hide()
 	else

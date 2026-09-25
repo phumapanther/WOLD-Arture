@@ -526,6 +526,8 @@ function SocialGui:buildSettings()
 			track.BackgroundColor3 = on and OK_GREEN or Color3.fromRGB(52, 56, 68)
 		end
 		paint()
+		self.settingPainters = self.settingPainters or {}
+		self.settingPainters[key] = paint -- SetSettings วาดสวิตช์ใหม่เมื่อค่าเปลี่ยนจากที่อื่น (ออกโหมดถ่ายรูปด้วยคีย์ P)
 
 		track.Activated:Connect(function()
 			self.settings[key] = not self.settings[key]
@@ -541,6 +543,7 @@ function SocialGui:buildSettings()
 
 	toggleRow("ปิดเสียงโทรเข้า", "muteCalls")
 	toggleRow("ปิดแจ้งเตือนแชท", "muteChat")
+	toggleRow("โหมดถ่ายรูป · ซ่อน UI (ออก: P / ปุ่มหินเวท)", "photoMode")
 
 	local head = label(page, "พื้นหลังหน้าจอ", 12, TEXT_MUTED)
 	head.Position = UDim2.new(0, 0, 0, y + 6)
@@ -611,6 +614,7 @@ end
 function SocialGui:SetSettings(settings)
 	self.settings = settings
 	self:ApplyWallpaper(settings.wallpaper)
+	for _, paint in pairs(self.settingPainters or {}) do paint() end
 end
 
 function SocialGui:buildHome()
