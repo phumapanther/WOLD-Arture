@@ -163,11 +163,18 @@ function Vault.Take(player, inventory, slotIndex, count)
 
 	-- One at a time, so a part-full bag takes what fits instead of refusing the lot. Anything carrying meta is
 	-- a single item by definition and goes in one call, which is also the only way its meta survives.
+	-- ⚠️ **ถาม HasRoomFor ก่อน AddItem ทุกชิ้น** (แก้บั๊กปั๊มของ 2026-09-25): กระเป๋าเต็มแล้ว AddItem จะล้น
+	-- ของกลับเข้าคลังนี้เอง (Inventory.Overflow → Vault.Deposit) แล้วคืน false — ถ้าเรียกไปก่อน ช่องเดิม
+	-- ไม่ถูกหักแต่คลังได้ของเพิ่มหนึ่งชิ้นทุกคลิก · มีที่ = AddItem ไม่ล้นแน่นอน (want ถูกตัดตามเพดานพกแล้ว)
 	local moved = 0
 	if slot.meta then
-		if inventory.AddItem(player, slot.id, 1, slot.durability, slot.meta) then moved = 1 end
+		if inventory.HasRoomFor(player, slot.id, 1, slot.meta)
+			and inventory.AddItem(player, slot.id, 1, slot.durability, slot.meta) then
+			moved = 1
+		end
 	else
 		for _ = 1, want do
+			if not inventory.HasRoomFor(player, slot.id, 1) then break end
 			if not inventory.AddItem(player, slot.id, 1, slot.durability) then break end
 			moved += 1
 		end
