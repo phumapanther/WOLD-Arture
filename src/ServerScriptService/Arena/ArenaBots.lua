@@ -59,9 +59,24 @@ end
 --------------------------------------------------------------------------------
 -- บอทเล็งคนที่ **ใกล้ที่สุดในฝั่งตรงข้าม** ไม่ใช่คนที่ตีมันล่าสุด — สนามปิดขนาดนี้ การไล่ตามคนที่
 -- วิ่งหนีข้ามแมพไปแล้วแปลว่าบอทจะเดินผ่านศัตรูที่ยืนอยู่ตรงหน้าโดยไม่สนใจ
+-- clearLine ประกาศข้างล่าง แต่ nearestEnemy ต้องใช้ → จองชื่อไว้ก่อน (กติกาใช้ก่อนประกาศ)
+local clearLine
+
+-- **เลือกเป้าแบบคน ไม่ใช่แค่ตัวใกล้สุด** (ผู้ใช้สั่ง 2026-09-25 "บอทเล่นเก่งกว่านี้")
+-- คะแนน = ระยะ − โบนัสเลือดน้อย (ไล่เก็บตัวที่ใกล้ตาย) + โทษถ้ามองไม่เห็น (ไม่วิ่งไล่คนหลังกำแพงถ้ามีตัวที่ยิงได้)
+-- คืน root กับ **ระยะจริง** (ไม่ใช่คะแนน) เพราะผู้เรียกเอาไปเทียบกับระยะอาวุธ
+local LOW_HP_BONUS = 30
+local HIDDEN_PENALTY = 40
 local function nearestEnemy(state)
 	local origin = state.root.Position
-	local best, bestDist = nil, CFG.sight
+	local best, bestDist, bestScore = nil, nil, math.huge
+	local function consider(root, hpFraction)
+		local d = (root.Position - origin).Magnitude
+		if d > CFG.sight then return end
+		local score = d - (1 - math.clamp(hpFraction, 0, 1)) * LOW_HP_BONUS
+		if not clearLine(state, root.Position) then score += HIDDEN_PENALTY end
+		if score < bestScore then best, bestDist, bestScore = root, d, score end
+	end
 
 	for _, player in ipairs(Players:GetPlayers()) do
 		local side = hooks.sideOfPlayer and hooks.sideOfPlayer(player)
@@ -70,16 +85,15 @@ local function nearestEnemy(state)
 			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 			local root = character and character:FindFirstChild("HumanoidRootPart")
 			if humanoid and humanoid.Health > 0 and root then
-				local d = (root.Position - origin).Magnitude
-				if d < bestDist then best, bestDist = root, d end
+				local f = Vitals.Fractions(player)
+				consider(root, f and f.hp or 1)
 			end
 		end
 	end
 
 	for model, other in pairs(Live) do
 		if other.side ~= state.side and other.alive and model ~= state.model then
-			local d = (other.root.Position - origin).Magnitude
-			if d < bestDist then best, bestDist = other.root, d end
+			consider(other.root, other.hp / math.max(CFG.hp, 1))
 		end
 	end
 	return best, bestDist
@@ -97,7 +111,7 @@ local AGENT = { AgentRadius = 2.5, AgentHeight = 5.5, AgentCanJump = true, Waypo
 local REPATH_SECONDS = 1.5  -- เป้าเดินอยู่ตลอด ทางเก่าหมดอายุเร็ว
 local DIRECT_RANGE = 14     -- ใกล้ขนาดนี้และไม่มีอะไรบัง เดินตรงไปเลย ไม่ต้องคำนวณทาง
 
-local function clearLine(state, goal)
+function clearLine(state, goal)
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = { state.model }
@@ -163,7 +177,7 @@ end
 --------------------------------------------------------------------------------
 local ARMOR_KITS = { LeatherArmor = "Armor_LeatherKit", ChainmailArmor = "Armor_ChainKit", PlateArmor = "Armor_PlateKit" }
 local ARMOR_FOLDER = "WOLD_ArmorOn" -- ชื่อเดียวกับ ArmorVisuals
-local RANGED_ACCURACY = 0.7 -- บอทยิงไกลโดนกี่ครั้งในร้อย (คนเล็งพลาดได้ บอทก็ต้องพลาดได้)
+local RANGED_ACCURACY = 0.8 -- บอทยิงไกลโดนกี่ครั้งในร้อย (0.7 → 0.8 ผู้ใช้สั่ง "เก่งขึ้น" 2026-09-25 · ยังพลาดได้)
 
 local function sound(parent, id, volume, seconds)
 	if not id or id == "" or not parent then return end
@@ -238,7 +252,7 @@ local function weaponSpec(state)
 	if not damage or damage <= 0 then damage = (ItemCatalog.Items[id] or {}).damage or CFG.damage end
 	return {
 		id = id, attack = a, ranged = p ~= nil, range = range, damage = damage,
-		period = (a.windup or 0.2) + (a.active or 0.1) + (a.recovery or 0.3) + 0.25,
+		period = (a.windup or 0.2) + (a.active or 0.1) + (a.recovery or 0.3) + 0.1, -- ช่องว่าง 0.25 → 0.1 (2026-09-25)
 	}
 end
 
@@ -286,6 +300,11 @@ local function attack(state, targetRoot, spec)
 	if now < state.nextSwing then return end
 	state.nextSwing = now + spec.period
 	state.combo = (state.combo or 0) + 1
+	-- หันเข้าเป้าตอนลงมือ (ระหว่างหลบซ้ายขวาตัวหันตามทางเดิน — หันทุกรอบจะฆ่าแรงเดินของ MoveTo)
+	local look = Vector3.new(targetRoot.Position.X, state.root.Position.Y, targetRoot.Position.Z)
+	if (look - state.root.Position).Magnitude > 0.5 then
+		state.root.CFrame = CFrame.lookAt(state.root.Position, look)
+	end
 	playAnim(state, spec.attack.animation)
 	local sounds = CombatConfig.Sounds[spec.id] or {}
 	sound(state.root, sounds.cast, CombatConfig.AttackSoundVolume)
@@ -305,6 +324,32 @@ local function attack(state, targetRoot, spec)
 			sound(targetRoot, sounds.hit, sounds.hitVolume, sounds.hitSeconds)
 		end
 	end)
+end
+
+-- **หลบระหว่างสู้** — เปลี่ยนข้างทุก 1.2-2.2 วิ (สุ่ม เดาทางยาก)
+local THINK_SECONDS = 0.2 -- เดิม 0.35 — ตอบสนองเร็วขึ้น (2026-09-25)
+local STRAFE_STEP = 6
+local function strafe(state, targetRoot, distance, spec)
+	local now = os.clock()
+	if now >= (state.strafeFlipAt or 0) then
+		state.strafeSide = (state.strafeSide == 1) and -1 or 1
+		state.strafeFlipAt = now + 1.2 + math.random()
+	end
+	local toTarget = (targetRoot.Position - state.root.Position) * Vector3.new(1, 0, 1)
+	if toTarget.Magnitude < 0.1 then return end
+	local forward = toTarget.Unit
+	local side = forward:Cross(Vector3.yAxis) * state.strafeSide
+	local goal
+	if spec.ranged then
+		-- ใกล้เกินครึ่งระยะ = ถอยพลางส่าย · ไกลพอแล้ว = ส่ายอย่างเดียว
+		local back = distance < spec.range * 0.5 and -forward * STRAFE_STEP or Vector3.zero
+		goal = state.root.Position + side * STRAFE_STEP + back
+	else
+		-- ดาบ: วนรอบเป้าในระยะเอื้อม
+		local radius = math.max(3, (spec.range or 5) * 0.6)
+		goal = targetRoot.Position - forward * radius + side * STRAFE_STEP * 0.6
+	end
+	state.humanoid:MoveTo(goal)
 end
 
 -- ยา: เลือดต่ำกว่า 40% แล้วมียาติดตัว
@@ -430,7 +475,7 @@ end
 local function think(state)
 	loadTracks(state)
 	while state.alive and state.model.Parent do
-		task.wait(0.35)
+		task.wait(THINK_SECONDS)
 		animate(state)
 		if not state.free then
 			-- ช่วงซื้อของ: ยืนนิ่งอยู่ในฐานเหมือนคนอื่น
@@ -441,20 +486,13 @@ local function think(state)
 			if targetRoot then
 				local spec = weaponSpec(state)
 				local inRange = distance <= spec.range and (not spec.ranged or clearLine(state, targetRoot.Position))
-				-- อาวุธยิงไกล: ยืนยิงเมื่อเห็นเป้าในระยะ ไม่เดินเข้าไปชิดเหมือนดาบ
-				if spec.ranged and inRange and distance <= spec.range * 0.8 then
-					state.humanoid:MoveTo(state.root.Position)
+				-- **เดินหลบระหว่างสู้ ไม่ยืนเป็นเป้านิ่ง** (2026-09-25) · ยิงไกล: ส่ายซ้ายขวา + ถอยถ้าโดนประชิด
+				-- ดาบ: วนรอบเป้าแทนการเดินชนหน้าตรงๆ · นอกระยะ: เดินหาทางตามเดิม
+				-- หันหน้าเข้าเป้าเกิดใน attack() ตอนลงมือเท่านั้น (หันทุกรอบฆ่าแรงเดินของ MoveTo — เจอจริง 2026-09-24)
+				if inRange or (not spec.ranged and distance <= spec.range + 3) then
+					strafe(state, targetRoot, distance, spec)
 				else
 					walkTo(state, targetRoot.Position)
-				end
-				-- หันหน้าเข้าหาเป้า **เฉพาะตอนอยู่ในระยะโจมตี**
-				-- ⚠️ ห้ามหันทุกรอบตอนเดิน: เขียน CFrame ของ root ทับทุก 0.35 วิ ฆ่าแรงเดินของ MoveTo
-				-- ทันทีที่ทางเดินพาอ้อม (เช่นอ้อมหอนาฬิกา) บอทหยุดนิ่งทั้งที่มีทางอยู่ (เจอจริง 2026-09-24)
-				if inRange or distance <= spec.range + 2 then
-					local look = Vector3.new(targetRoot.Position.X, state.root.Position.Y, targetRoot.Position.Z)
-					if (look - state.root.Position).Magnitude > 0.5 then
-						state.root.CFrame = CFrame.lookAt(state.root.Position, look)
-					end
 				end
 				if not trySkill(state, targetRoot, distance, spec) and inRange then attack(state, targetRoot, spec) end
 			elseif state.home then
