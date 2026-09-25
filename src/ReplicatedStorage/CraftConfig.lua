@@ -83,6 +83,9 @@ CraftConfig.Recipes = {
 	{ id = "Shield", tab = "weapon", chance = 0.25, gold = 25000,
 		cost = { IronOre = 15, SilverOre = 7, GoldOre = 7, MagicOre = 5, Diamond = 5, Blueprint = 5,
 			Chemical = 5, Coal = 30, GearSpare = 8 } },
+	-- สไนเปอร์ (ผู้ใช้เลือกให้คราฟที่ช่างตีเหล็ก 2026-09-25) · วัสดุผมตั้ง ทรงเดียวกับดาบใหญ่/โล่ ต่างที่คริสตัล (เลนส์สโคป)
+	{ id = "Sniper", tab = "weapon", chance = 0.25, gold = 25000,
+		cost = { IronOre = 30, GoldOre = 10, Crystal = 5, Coal = 20, GearSpare = 10, Blueprint = 5, Chemical = 5 } },
 
 	-- Bullets moved off the weapon bench and in here with the everyday goods, where a near-certain 95% is
 	-- what makes ammunition something you top up rather than gamble on.

@@ -19,7 +19,7 @@ end
 ----------------------------------------------------------------- 1. ราคาตรงตามสเปก
 -- ตารางนี้คัดลอกมาจากข้อความที่ผู้ใช้เขียน ไม่ได้อ่านจาก ArenaConfig — ถ้าสองฝั่งไม่ตรงกันคือมีคนขยับ
 local WANT = {
-	Sword = 250, Greatsword = 1500, Shield = 1500,
+	Sword = 250, Greatsword = 3000, Shield = 1500, Sniper = 3000, -- ดาบใหญ่/สไน 3,000 (ผู้ใช้สั่ง 2026-09-25)
 	Pistol = 500, Bow = 1000, Staff = 1000, Spellbook = 1000,
 	LeatherArmor = 250, ChainmailArmor = 500, PlateArmor = 1000,
 	HealthPotion = 200, GreatPotion = 500, FirstAidKit = 1000, Water = 50,
@@ -50,10 +50,10 @@ check(E.perKill > 0 and E.roundTopFragger > 0, "มีโบนัสคิล�
 check(E.cap > E.start, "เพดานสะสมสูงกว่าเงินตั้งต้น")
 
 ----------------------------------------------------------------- 4. กติกาแมตช์
-check(ArenaConfig.RoundsToWin == 3, "ชนะ 3 รอบก่อน = ชนะแมตช์")
+check(ArenaConfig.RoundsToWin == 5, "ชนะ 5 รอบก่อน = ชนะแมตช์ (ผู้ใช้เปลี่ยน 2026-09-24)")
 check(ArenaConfig.TeamSize == 3 and ArenaConfig.MatchPlayers == 6, "3v3 รวม 6 คน")
 check(ArenaConfig.MaxRounds > ArenaConfig.RoundsToWin, "เพดานรอบสูงกว่าจำนวนรอบที่ต้องชนะ")
-check(ArenaConfig.Bots.searchSeconds == 180, "เติมบอทเมื่อค้นหาครบ 3 นาที")
+check(ArenaConfig.Bots.searchSeconds == 90, "เติมบอทเมื่อค้นหาครบ 1:30 นาที (ผู้ใช้เปลี่ยน)")
 check(ArenaConfig.Phase.buyFirst >= ArenaConfig.Phase.buy, "ช่วงซื้อของรอบแรกยาวกว่าหรือเท่ารอบอื่น")
 
 ----------------------------------------------------------------- 5. หีบรางวัล

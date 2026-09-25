@@ -152,6 +152,15 @@ ItemCatalog.Items = {
 		damage = 0, range = 6,
 		maxDurability = 120,
 	},
+	-- สไนเปอร์ (ผู้ใช้สั่ง 2026-09-25) — ดาเมจคิดเป็นสัดส่วนของเลือดเต็ม ไม่ใช่ตัวเลข `damage` จึงเป็น 0
+	-- เลขจริงอยู่ที่ `CombatConfig.Weapons.Sniper` (pierceFraction ใส่คน · mobDamage ใส่มอน)
+	-- ไอคอน: ผู้ใช้ให้ decal 72482920404625 → image ที่ resolve แล้ว
+	Sniper = {
+		icon = "rbxassetid://99786745255231",
+		name = "สไนเปอร์", kind = "weapon", weight = 6, stackSize = 1,
+		damage = 0, range = 6,
+		maxDurability = 120,
+	},
 	FishingRod = {
 		icon = "rbxassetid://108988125515479",
 		name = "คันเบ็ด", kind = "weapon", weight = 3, stackSize = 1,

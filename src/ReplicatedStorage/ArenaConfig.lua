@@ -73,14 +73,17 @@ ArenaConfig.Economy = {
 -- `row`/`col` คือตำแหน่งในภาพม็อกอัพที่ผู้ใช้ส่งมา หน้าร้านวาดตามนี้ตรงๆ ไม่ต้องเดา
 ArenaConfig.Shop = {
 	-- ── อาวุธ ──────────────────────────────────────────────────────────────
-	{ id = "Sword",          price = 250,  slot = "weapon", row = "melee",  col = 1 },
-	{ id = "Greatsword",     price = 1500, slot = "weapon", row = "melee",  col = 2 },
-	{ id = "Shield",         price = 1500, slot = "weapon", row = "melee",  col = 3 },
+	-- `size` = เล็ก/กลาง/ใหญ่ (ผู้ใช้สั่ง 2026-09-25) หน้าร้านเรียงตามนี้ในแต่ละแถว · ของใหญ่ 3,000 ทั้งสองชิ้น
+	{ id = "Sword",          price = 250,  slot = "weapon", row = "melee",  col = 1, size = "small" },
+	{ id = "Shield",         price = 1500, slot = "weapon", row = "melee",  col = 2, size = "medium" },
+	{ id = "Greatsword",     price = 3000, slot = "weapon", row = "melee",  col = 3, size = "large" },
 	-- ปืน: ซื้อมาแล้วยิงได้ 16 นัด แล้วจบ (ผู้ใช้กำหนด) — กระสุนมากับปืน ไม่ได้ขายแยก
-	{ id = "Pistol",         price = 500,  slot = "weapon", row = "ranged", col = 1, ammo = 16 },
-	{ id = "Bow",            price = 1000, slot = "weapon", row = "ranged", col = 2 },
-	{ id = "Staff",          price = 1000, slot = "weapon", row = "ranged", col = 3 },
-	{ id = "Spellbook",      price = 1000, slot = "weapon", row = "ranged", col = 4 },
+	{ id = "Pistol",         price = 500,  slot = "weapon", row = "ranged", col = 1, size = "small", ammo = 16 },
+	{ id = "Bow",            price = 1000, slot = "weapon", row = "ranged", col = 2, size = "medium" },
+	{ id = "Staff",          price = 1000, slot = "weapon", row = "ranged", col = 3, size = "medium" },
+	{ id = "Spellbook",      price = 1000, slot = "weapon", row = "ranged", col = 4, size = "medium" },
+	-- สไน: **ซื้อแล้วมานาเต็มหลอด** (ผู้ใช้สั่ง 2026-09-25) — มานาในสนามเริ่มที่ 0 ไม่งั้นซื้อมายิงไม่ได้
+	{ id = "Sniper",         price = 3000, slot = "weapon", row = "ranged", col = 5, size = "large", fillMana = true },
 	-- ── เกราะ ──────────────────────────────────────────────────────────────
 	{ id = "LeatherArmor",   price = 250,  slot = "armor", row = "armor", col = 1 },
 	{ id = "ChainmailArmor", price = 500,  slot = "armor", row = "armor", col = 2 },
@@ -112,6 +115,21 @@ function ArenaConfig.ShopEntry(id)
 	end
 	return nil
 end
+
+ArenaConfig.SizeOrder = { small = 1, medium = 2, large = 3 }
+ArenaConfig.SizeLabel = { small = "เล็ก", medium = "กลาง", large = "ใหญ่" }
+
+--------------------------------------------------------------------------------
+-- ยิงหัว + แบนเนอร์คิล (ผู้ใช้สั่ง 2026-09-25)
+--------------------------------------------------------------------------------
+-- หัว = ชิ้นที่กระสุน raycast ชน (ท่าฟันระยะประชิดแยกไม่ได้) · สไนโดนหัวตายทันทีโดยไม่ดูตัวคูณนี้
+ArenaConfig.HeadshotMultiplier = 2
+-- คิลที่ห่างจากคิลก่อนไม่เกินเท่านี้นับต่อเป็น DOUBLE / TRIPLE
+ArenaConfig.MultiKillSeconds = 10
+ArenaConfig.KillSound = "rbxassetid://107279082816485"
+-- เสียงพากย์ (ถ้าหาได้) — "" = ใช้ KillSound ปรับเสียงสูงตาม KillPitch แทน
+ArenaConfig.KillSounds = { first = "", double = "", triple = "" }
+ArenaConfig.KillPitch = { kill = 1, first = 1.1, double = 1.2, triple = 1.3 }
 
 --------------------------------------------------------------------------------
 -- ของที่ต้องแรงคนละอย่างกับในเกมหลัก

@@ -173,6 +173,29 @@ CombatConfig.Weapons = {
 		chainResetDelay = 0.6,
 		chainWindow = 1.4,
 	},
+	-- สไนเปอร์ (ผู้ใช้สั่ง 2026-09-25): กดยิงแล้วซูมเป็นสโคป กระสุนออกใน 0.5 วิ ไปตรงกลางกากบาท ณ วินาทีนั้น
+	-- · `quickDraw` = คลิกเดียวยิงเลย ไม่ต้องคลิกแรกยกการ์ดเหมือนอาวุธอื่น
+	-- · `manaCost` หักตอนคลิก ไม่พอ = ไม่เริ่มท่าเลย · `scope` = ไคลเอนต์เปิดจอสโคปและส่งจุดเล็งล่าสุด
+	-- · `pierceFraction` = ลดเลือดคนเป็นสัดส่วนของเลือดเต็ม ไม่ผ่านเกราะ · `mobDamage` = มอนเกมหลัก (ผู้ใช้เลือก)
+	-- · ท่ายืนของคทา (ผู้ใช้สั่ง "ถือเหมือนคทา") ท่ายิงไม่มี — ปืนติดอก ไม่ต้องเหวี่ยงอะไร
+	Sniper = {
+		quickDraw = true,
+		manaCost = 1,
+		scope = true,
+		pierceFraction = 0.5,
+		mobDamage = 150,
+		idleAnimation = "rbxassetid://77326470579844", -- Staff_Idle
+		guardAnimation = "",
+		guardWalkSpeed = 6,
+		idleTimeout = 4,
+		attacks = {
+			{ animation = "", damage = 0, windup = 0.5, active = 0.05, recovery = 0.6, range = 0,
+				projectile = { kind = "hitscan", length = 400, life = 0.12, size = Vector3.new(0.08, 0.08, 1),
+					color = Color3.fromRGB(255, 240, 200), material = Enum.Material.Neon, muzzleHeight = 1.5 } },
+		},
+		chainResetDelay = 0.6,
+		chainWindow = 1.4,
+	},
 	Bow = {
 		idleAnimation = "rbxassetid://109624563861296", -- Bow_Idle
 		guardAnimation = "",
@@ -304,6 +327,12 @@ CombatConfig.Sounds = {
 		castSeconds = 2.5,
 		hit = "",
 	},
+	-- เสียงยิงเล่น "ตอนกระสุนออก" ไม่ใช่ตอนคลิก (PlayerCombat เรียกใน fireSniper) · 2.5 วิพอให้เสียงสะท้อนจบ
+	Sniper = {
+		cast = "rbxassetid://101482767943742",
+		castSeconds = 2.5,
+		hit = "",
+	},
 	Bow = {
 		cast = "rbxassetid://110510289237765", -- assets/sounds/bow_shoot.mp3
 		hit = "rbxassetid://95565382064387",  -- assets/sounds/bow_hit.mp3
@@ -374,6 +403,10 @@ CombatConfig.AttackSoundVolume = 0.24
 -- the whole sound, short enough that a fast chain does not pile up.
 CombatConfig.CastSoundMaxSeconds = 1.2
 CombatConfig.HitSoundMaxSeconds = 1.5
+
+-- ท่าที่รอเท่านี้ขึ้นไปก่อนออกแรง ขึ้นแถบโหลดให้เห็น (ผู้ใช้สั่ง 2026-09-25 "การตีที่มีดีเลย์ขึ้นแถบทั้งหมด")
+-- ดาบ/หมัด/คทา/สมุด รอ 0.1-0.24 วิ แถบจะแวบแล้วหาย จึงตั้งเส้นไว้ที่ 0.3
+CombatConfig.ChargeBarMinSeconds = 0.3
 
 CombatConfig.DefaultWeapon = "Fists"
 
