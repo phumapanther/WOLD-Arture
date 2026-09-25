@@ -624,6 +624,9 @@ local BOT_ARMORS = { "PlateArmor", "ChainmailArmor", "LeatherArmor" }
 
 local function botShop(entry)
 	local L = entry.loadout
+	-- บอทที่รอดพร้อมปืน: กระสุนเต็มใหม่ทุกรอบเหมือนคน
+	local gun = L.weapon and ArenaConfig.ShopEntry(L.weapon)
+	if gun and gun.ammo then L.ammo = gun.ammo end
 	local function buy(id)
 		local e = ArenaConfig.ShopEntry(id)
 		if e and entry.silver >= e.price then
@@ -688,6 +691,12 @@ local function startRound()
 				wipeLoadout(f)
 			elseif f.loadout.use and Inventory.CountOf(f.player, f.loadout.use) == 0 then
 				f.loadout.use = nil -- ใช้ยาไปแล้วในรอบก่อน
+			end
+			-- ปืนรอดข้ามรอบ = กระสุนเติมกลับเต็มทุกรอบ (ผู้ใช้สั่ง 2026-09-25)
+			local gun = f.loadout.weapon and ArenaConfig.ShopEntry(f.loadout.weapon)
+			if gun and gun.ammo then
+				removeAll(f.player, "Bullet")
+				Inventory.AddItem(f.player, "Bullet", gun.ammo)
 			end
 		end
 		f.diedThisRound = false
