@@ -46,13 +46,13 @@ end
 local BASELINE_WIDTH = 1280
 local MIN_UI_SCALE = 0.55
 
-local function responsiveScale(parent)
+local function responsiveScale(parent, minScale)
 	local scale = Instance.new("UIScale")
 	scale.Parent = parent
 	local camera = workspace.CurrentCamera
 	local function update()
 		local width = camera and camera.ViewportSize.X or BASELINE_WIDTH
-		scale.Scale = math.clamp(width / BASELINE_WIDTH, MIN_UI_SCALE, 1)
+		scale.Scale = math.clamp(width / BASELINE_WIDTH, minScale or MIN_UI_SCALE, 1)
 	end
 	update()
 	if camera then camera:GetPropertyChangedSignal("ViewportSize"):Connect(update) end
@@ -258,7 +258,7 @@ function HudGui.new()
 	menuGroup.Position = UDim2.new(1, 0, 0, 0)
 	menuGroup.BackgroundTransparency = 1
 	menuGroup.Parent = gui
-	responsiveScale(menuGroup)
+	responsiveScale(menuGroup, require(script.Parent.Responsive).CornerMinScale())
 
 	local menuButton = Instance.new("TextButton")
 	menuButton.AnchorPoint = Vector2.new(1, 0)
@@ -308,6 +308,13 @@ function HudGui.new()
 	hotbar.BackgroundTransparency = 1
 	hotbar.Parent = gui
 	responsiveScale(hotbar)
+	-- มือถือ: กลางล่างไม่มีที่ — ซ้าย 40% ล่างคือโซนจอยเดิน (แตะช่องแรกแล้วได้กินของแทนเดิน) และบนจอ 667-740 px
+	-- ช่อง 5-6 อยู่ใต้ปุ่มกระโดด → ย้ายไปซ้ายบนใต้แถบของ Roblox ห่างทั้งจอยและกลุ่มปุ่มขวาล่าง (QA 2026-09-26)
+	-- ตำแหน่งนี้ VehicleController วางแถบขับไว้ใต้มัน (y 132) — ขยับที่นี่ต้องขยับที่นั่นด้วย
+	if require(script.Parent.Responsive).IsTouchOnly() then
+		hotbar.AnchorPoint = Vector2.new(0, 0)
+		hotbar.Position = UDim2.new(0, 12, 0, 60)
+	end
 	self.hotbarFrame = hotbar
 	local hotbarLayout = Instance.new("UIListLayout")
 	hotbarLayout.FillDirection = Enum.FillDirection.Horizontal

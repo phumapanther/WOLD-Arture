@@ -30,6 +30,9 @@ end
 if not isTouchOnlyDevice() and not FORCE_SHOW_IN_STUDIO_FOR_TESTING then return end
 
 local player = Players.LocalPlayer
+-- ล็อกแนวนอนในเกมหลัก/เกาะ/สนาม เหมือนที่ล็อบบี้ทำ (ChannelSelectController) — HUD ทุกชิ้นวางไว้สำหรับจอกว้าง
+-- แนวตั้งทำให้ปุ่มขวาล่างทับจอยและหลอดสถานะ · Sensor = พลิกซ้าย/ขวาได้ (QA 2026-09-26)
+player:WaitForChild("PlayerGui").ScreenOrientation = Enum.ScreenOrientation.LandscapeSensor
 local gui = TouchActionGui.new()
 gui.gui.Parent = player:WaitForChild("PlayerGui")
 
@@ -52,6 +55,15 @@ end)
 -- messages are all whatever they already were.
 gui:OnSkill(function()
 	Remotes.RequestSkill:FireServer()
+end)
+
+-- ปุ่มสกิลขึ้นเฉพาะตอนของในมือมีสกิล อ่านจากภาพกระเป๋าที่เซิร์ฟเวอร์ส่งมาทุกครั้งที่ของเปลี่ยน
+-- เริ่มแบบโชว์ไว้: ภาพกระเป๋าชุดแรกอาจมาก่อนสคริปต์นี้ต่อสาย ถ้าเริ่มแบบซ่อน ปุ่มจะหายจนกว่ากระเป๋าจะเปลี่ยน
+local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
+Remotes.InventoryUpdate.OnClientEvent:Connect(function(inventory)
+	local held = type(inventory) == "table" and inventory.equipped and inventory.equipped.weapon
+	local item = held and ItemCatalog.Get(held.id)
+	gui:SetSkillAvailable(item and item.skill ~= nil)
 end)
 
 -- Dropping a carried player is bound to F on desktop, which touch cannot press. This button drives the same
@@ -118,6 +130,8 @@ end)
 -- Swap ROLL -> SLIDE while sprinting: the server's own flag (PlayerMovement), the same one it slides by.
 local sprinting = false
 RunService.Heartbeat:Connect(function()
+	-- ตอนขับ ปุ่มขับของ VehicleController (บูสต์/หวูด/ขึ้น-ลง) ขึ้นแทนที่กลุ่มนี้ ตำแหน่งเดียวกัน (QA 2026-09-26)
+	gui.cluster.Visible = player:GetAttribute("WOLD_Driving") ~= true
 	local now = player:GetAttribute("WOLD_Sprinting") == true
 	if now ~= sprinting then
 		sprinting = now

@@ -130,6 +130,27 @@ local ARM = { LeftUpperArm = true, LeftLowerArm = true, LeftHand = true,
 local hiddenSelf = false
 -- อาวุธที่ไม่โชว์ในมุมบุคคลที่หนึ่งของตัวเอง (ชิ้นใหญ่ ยกขึ้นกลางจอตอนร่าย) · เพิ่มได้ที่นี่
 local HIDE_IN_FIRST_PERSON = { Staff = true, Spellbook = true }
+-- รายชื่อชิ้นส่วนบนตัว แคชไว้ ล้างเมื่อมีของเพิ่ม/หายจากตัว — เดิม GetDescendants ทุกเฟรม = ตารางใหม่ ~200 ช่อง
+-- ทุกเฟรม เครื่องมือถือต้องเก็บขยะไม่หยุด (QA 2026-09-26) · ยังต้องเขียน LocalTransparencyModifier ทุกเฟรม
+-- เพราะกล้องของ Roblox เขียนทับทุกเฟรม
+local partsCache = { character = nil, parts = nil, conns = {} }
+local function characterParts(character)
+	if partsCache.character ~= character then
+		for _, c in ipairs(partsCache.conns) do c:Disconnect() end
+		partsCache.character, partsCache.parts = character, nil
+		local function dirty() partsCache.parts = nil end
+		partsCache.conns = { character.DescendantAdded:Connect(dirty), character.DescendantRemoving:Connect(dirty) }
+	end
+	if not partsCache.parts then
+		local parts = {}
+		for _, d in ipairs(character:GetDescendants()) do
+			if d:IsA("BasePart") then parts[#parts + 1] = d end
+		end
+		partsCache.parts = parts
+	end
+	return partsCache.parts
+end
+
 RunService:BindToRenderStep("ArenaViewmodel", Enum.RenderPriority.Camera.Value + 1, function()
 	if shop:IsVisible() or board.gui.Enabled then
 		UserInputService.MouseBehavior = Enum.MouseBehavior.Default
@@ -155,11 +176,9 @@ RunService:BindToRenderStep("ArenaViewmodel", Enum.RenderPriority.Camera.Value +
 	-- คทากับสมุดเวทบังจอตอนร่าย (ผู้ใช้แจ้ง 2026-09-24) → ซ่อนเฉพาะในจอเรา คนอื่นยังเห็นปกติ
 	local held = snapshot and snapshot.loadout and snapshot.loadout.weapon
 	if HIDE_IN_FIRST_PERSON[held] then weapon = nil end
-	for _, part in ipairs(character:GetDescendants()) do
-		if part:IsA("BasePart") then
-			local show = ARM[part.Name] and part.Parent == character or (weapon and part:IsDescendantOf(weapon))
-			part.LocalTransparencyModifier = show and 0 or 1
-		end
+	for _, part in ipairs(characterParts(character)) do
+		local show = ARM[part.Name] and part.Parent == character or (weapon and part:IsDescendantOf(weapon))
+		part.LocalTransparencyModifier = show and 0 or 1
 	end
 	-- หน้า (Decal บนหัว) ไม่ใช่ BasePart — ซ่อนด้วย Transparency ของมันเองในเครื่องเรา
 	local face = character:FindFirstChild("Head") and character.Head:FindFirstChildOfClass("Decal")
@@ -392,7 +411,10 @@ local function bannerFor(snap)
 		return ("%s ชนะรอบ %d"):format(team.name, snap.round),
 			mine and Color3.fromRGB(96, 220, 140) or Color3.fromRGB(230, 120, 112)
 	end
-	if snap.phase == "buy" then return "เตรียมตัว — ซื้อของได้เลย (B)", Color3.fromRGB(226, 184, 78) end
+	if snap.phase == "buy" then
+		local key = (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled) and "(แตะ 🛒)" or "(B)"
+		return "เตรียมตัว — ซื้อของได้เลย " .. key, Color3.fromRGB(226, 184, 78)
+	end
 	if snap.phase == "live" and not snap.alive and not spectating then
 		return "คุณตายแล้ว — รอรอบหน้า", Color3.fromRGB(210, 200, 190)
 	end

@@ -319,16 +319,47 @@ local ScopeGui = require(game.ReplicatedStorage.UI.ScopeGui)
 local scope = ScopeGui.new()
 scope.gui.Parent = player:WaitForChild("PlayerGui")
 
-local SCOPED_FOV = 12 -- ซูมไกล (ปกติ 70)
+-- **มือถือ**: การหมุนกล้องด้วยนิ้วไม่สนใจ MouseDeltaSensitivity (ลดความไวได้แค่เมาส์) ที่ FOV 12 นิ้วเลื่อนนิดเดียว
+-- ภาพกระชากไปไกล ~6 เท่า · มือถือจึงซูมน้อยกว่า (30) = ความไวเหลือราว 2 เท่า ยังเล็งได้ (QA 2026-09-26)
+local TOUCH_ONLY = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
+local SCOPED_FOV = TOUCH_ONLY and 30 or 12 -- ซูมไกล (ปกติ 70)
 local FIRST_PERSON_SECONDS = 0.2 -- อยู่ในมุมมองบุคคลที่หนึ่งเปล่าๆ แค่นี้ก่อนขึ้นสโคป
 local ZOOM_SECONDS = 0.3
 local SCOPED_SENSITIVITY = 0.35 -- ซูมไกลแล้วเมาส์ต้องช้าลง ไม่งั้นเล็งไม่ได้
 local scopeToken = 0
 local savedCameraMode, savedZoom, savedSensitivity, zoomTween = nil, nil, nil, nil
 
+-- ปุ่ม "×" ออกจากสโคปบนมือถือ — ของเดิมออกได้แค่คลิกขวา มือถือต้องยิง (เสียมานา) หรือรอ 20 วิ (QA 2026-09-26)
+-- อยู่ขวากลางจอ เหนือกลุ่มปุ่มโจมตี ไม่ทับปุ่มไหน · DisplayOrder เหนือสโคป (6) และเหนือปุ่มสนาม (21)
+local unscopeGui = Instance.new("ScreenGui")
+unscopeGui.Name = "WOLD_Unscope"
+unscopeGui.ResetOnSpawn = false
+unscopeGui.IgnoreGuiInset = true
+unscopeGui.DisplayOrder = 23
+unscopeGui.Enabled = false
+unscopeGui.Parent = player:WaitForChild("PlayerGui")
+local unscopeButton = Instance.new("TextButton")
+unscopeButton.AnchorPoint = Vector2.new(1, 0.5)
+unscopeButton.Position = UDim2.new(1, -24, 0.32, 0)
+unscopeButton.Size = UDim2.fromOffset(56, 56)
+unscopeButton.BackgroundColor3 = Color3.fromRGB(20, 20, 24)
+unscopeButton.BackgroundTransparency = 0.25
+unscopeButton.Font = Enum.Font.GothamBold
+unscopeButton.TextSize = 30
+unscopeButton.TextColor3 = Color3.fromRGB(240, 240, 245)
+unscopeButton.Text = "×" -- × (เครื่องหมายคูณ ฟอนต์วาดได้ ต่างจาก ✕)
+unscopeButton.Parent = unscopeGui
+local unscopeCorner = Instance.new("UICorner")
+unscopeCorner.CornerRadius = UDim.new(1, 0)
+unscopeCorner.Parent = unscopeButton
+unscopeButton.Activated:Connect(function()
+	if savedFov then Remotes.RequestUnscope:FireServer() end
+end)
+
 closeScope = function()
 	scopeToken += 1
 	scope:Hide()
+	unscopeGui.Enabled = false
 	barBack.Position = BAR_POS
 	if zoomTween then zoomTween:Cancel(); zoomTween = nil end
 	if savedFov then
@@ -367,6 +398,7 @@ local function openScope()
 	task.delay(FIRST_PERSON_SECONDS, function()
 		if scopeToken ~= mine then return end
 		scope:Show()
+		unscopeGui.Enabled = TOUCH_ONLY
 		barBack.Position = BAR_POS_SCOPED
 		savedSensitivity = savedSensitivity or UserInputService.MouseDeltaSensitivity
 		UserInputService.MouseDeltaSensitivity = savedSensitivity * SCOPED_SENSITIVITY

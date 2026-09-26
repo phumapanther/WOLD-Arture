@@ -193,6 +193,17 @@ local function completeTrade(session)
 	-- pcall เพราะระบบพาหนะอาจไม่ได้ติดตั้งในเซิร์ฟเวอร์นี้ การเทรดต้องไม่พังตามไปด้วย
 	pcall(function()
 		local VehicleService = require(game.ServerScriptService.Vehicle.Service)
+		-- **กรรมสิทธิ์รถเดินตามกุญแจ** เหมือนทาง "ให้ของ" (QA 2026-09-26) — เดิมไม่โอน `forgetKeyless` ข้างล่างเลย
+		-- ลบแถวโรงรถของคนให้ทิ้ง คนรับได้ "รถผี" ที่ไม่มีข้อมูล (ถ่าน/ความคงทนเต็มทุกครั้งที่เรียก ของท้ายรถหาย)
+		-- ต้องโอน **ก่อน** forgetKeyless
+		if VehicleService.handOver then
+			for _, pair in ipairs({ { takingA, a, b }, { takingB, b, a } }) do
+				for _, entry in ipairs(pair[1]) do
+					local plate = type(entry.meta) == "table" and entry.meta.plate
+					if plate then VehicleService.handOver(pair[2], pair[3], plate) end
+				end
+			end
+		end
 		if VehicleService.forgetKeyless then
 			VehicleService.forgetKeyless(a)
 			VehicleService.forgetKeyless(b)

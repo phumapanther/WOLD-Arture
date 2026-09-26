@@ -14,6 +14,10 @@
 -- ⚠️ ปุ่มกากบาทวาดจาก Frame หมุน ไม่ใช่ตัวอักษร ✕ (ฟอนต์ Roblox วาดสัญลักษณ์หนาเป็นกล่องเปล่า)
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
+-- มือถือไม่มี "ชี้" (hover) — แตะการ์ด = ดูรายละเอียด · ซื้อผ่านปุ่ม "ซื้อ" ในแผงข้าง (QA 2026-09-26: เดิมแตะ = ซื้อทันที
+-- ช่วงสู้คืนเงินไม่ได้ แตะดูดาบ = ทิ้งสไน 3,000 ไปแล้ว) · คอมยังคลิก = ซื้อเหมือนเดิม
+local TOUCH_ONLY = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 
 local ArenaConfig = require(script.Parent.Parent.ArenaConfig)
 local CombatConfig = require(script.Parent.Parent.CombatConfig)
@@ -118,7 +122,7 @@ local function statsOf(entry)
 		if use.stat == "hp" then lines[#lines + 1] = ("ฟื้นเลือด %d"):format(use.amount or 0)
 		elseif use.stat == "healfull" then lines[#lines + 1] = "ฟื้นเลือดเต็มหลอด"
 		elseif use.stat == "firstaid" then lines[#lines + 1] = ("พันแผล %d วิ · เลือดไม่ลด %d วิ"):format(use.holdSeconds or 0, use.seconds or 0) end
-		lines[#lines + 1] = "กด F เพื่อใช้"
+		lines[#lines + 1] = TOUCH_ONLY and "แตะปุ่ม 🧪 เพื่อใช้" or "กด F เพื่อใช้"
 	end
 	lines[#lines + 1] = entry.slot == "mana" and "" or "ซื้อทับ = ของเก่าหาย · ตายแล้วต้องซื้อใหม่"
 	return lines
@@ -307,7 +311,7 @@ function ArenaShopGui.new()
 	self.stage = stage
 
 	self.detailName = label(detail, { text = "เลือกไอเทม", font = Enum.Font.GothamBold, size = 22, pos = UDim2.fromOffset(16, 284), dim = UDim2.fromOffset(264, 28) })
-	self.detailKind = label(detail, { text = "ชี้ที่การ์ดเพื่อดูรายละเอียด", size = 15, colour = MUTED, pos = UDim2.fromOffset(16, 314), dim = UDim2.fromOffset(264, 20) })
+	self.detailKind = label(detail, { text = TOUCH_ONLY and "แตะการ์ดเพื่อดู แล้วกดปุ่มซื้อด้านล่าง" or "ชี้ที่การ์ดเพื่อดูรายละเอียด", size = 15, colour = MUTED, pos = UDim2.fromOffset(16, 314), dim = UDim2.fromOffset(264, 20) })
 	self.detailStats = label(detail, { text = "", size = 16, colour = TEXT, wrap = true, pos = UDim2.fromOffset(16, 346), dim = UDim2.fromOffset(264, 150) })
 	self.detailStats.TextYAlignment = Enum.TextYAlignment.Top
 	self.detailStats.LineHeight = 1.15
@@ -426,7 +430,7 @@ function ArenaShopGui:_card(parent, entry)
 	card.MouseLeave:Connect(function() card.BackgroundColor3 = CARD end)
 	card.MouseButton1Click:Connect(function()
 		self:_select(entry.id)
-		if self.onBuy then self.onBuy(entry.id) end
+		if not TOUCH_ONLY and self.onBuy then self.onBuy(entry.id) end
 	end)
 	return card
 end

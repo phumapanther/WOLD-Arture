@@ -342,17 +342,21 @@ local function fireProjectile(player, attack, aim)
 	-- ตีบวก: ดาเมจคูณตามขั้นของอาวุธที่ถือ (EnhanceConfig — ไม่มีขั้น/มือเปล่า = ×1)
 	local dealt = ClassPerks.DamageFor(player, attack.damage) * EnhanceConfig.MultiplierFor(select(2, Inventory.EquippedWeapon(player)))
 
+	-- **หนึ่งนัด โดนเป้าเดียวได้ครั้งเดียว** (QA 2026-09-26) — ลำแสงคทาเรียก damageAt ทุก 8 สตัดตามแนว (รัศมีโดน 8)
+	-- เป้าที่ยืนห่าง 12-16 สตัดอยู่ในวงสองสามวง = ดาเมจ 2-3 เท่า สโลว์ซ้อน และยอดดาเมจบอสโลกพอง
+	local hitThisShot = {}
 	-- `headModel` = ร่างที่กระสุนชนหัวพอดี (สนามเท่านั้น ดู headOwner) — คนนั้นโดนคูณ HeadshotMultiplier
 	local function damageAt(position, headModel)
 		for _, other in ipairs(Players:GetPlayers()) do
 			-- คนในตี้เดียวกันไม่ใช่เป้า: ลูกธนูทะลุผ่านไปเหมือนไม่มีใครยืนอยู่ตรงนั้น ไม่ใช่ "โดนแต่ 0 ดาเมจ"
 			-- ด่านอยู่ตรงนี้ ไม่ใช่ใน ApplyDamage เพราะ Vitals ไม่รู้ว่าใครเป็นคนตี — มันเห็นแค่คนที่ถูกตี
 			-- ในสนาม PVP ตี้ของล็อบบี้ไม่ได้เดินทางมาด้วย — ทีมของแมตช์คือด่านเดียวที่มีผลที่นั่น
-			if other ~= player and not Party.SameParty(player, other)
+			if other ~= player and not hitThisShot[other] and not Party.SameParty(player, other)
 				and not (ArenaAccess.Friendly and ArenaAccess.Friendly(player, other)) then
 				local otherChar = other.Character
 				if otherChar and distanceToBody(position, otherChar) <= CombatConfig.ProjectileHitRadius
 					and not Vitals.IsInvulnerable(other) then
+					hitThisShot[other] = true
 					local amount = dealt
 					if headModel and otherChar == headModel then
 						amount = dealt * ArenaConfig.HeadshotMultiplier
@@ -375,13 +379,15 @@ local function fireProjectile(player, attack, aim)
 		end
 		for _, dummy in ipairs(CollectionService:GetTagged("WOLD_Dummy")) do
 			local root = dummy.PrimaryPart
-			if root and distanceToBody(position, dummy) <= CombatConfig.ProjectileHitRadius then
+			if root and not hitThisShot[dummy] and distanceToBody(position, dummy) <= CombatConfig.ProjectileHitRadius then
+				hitThisShot[dummy] = true
 				Progression.AwardExp(player, ProgressionConfig.ExpPerDummyHit)
 				playHitSound(dummy, player)
 			end
 		end
 		for _, mob in ipairs(CollectionService:GetTagged("WOLD_Mob")) do
-			if distanceToBody(position, mob) <= CombatConfig.ProjectileHitRadius then
+			if not hitThisShot[mob] and distanceToBody(position, mob) <= CombatConfig.ProjectileHitRadius then
+				hitThisShot[mob] = true
 				local amount = dealt
 				if headModel and mob == headModel then
 					amount = dealt * ArenaConfig.HeadshotMultiplier

@@ -154,7 +154,7 @@ function ArrestGui.new()
 	s.Transparency = 0.45
 	s.Thickness = 2
 	s.Parent = panel
-	Responsive.Scale(panel)
+	Responsive.Scale(panel, Responsive.IsSmallScreen() and 0.95 or nil) -- มือถือ: แผงเต็มจออยู่แล้ว ห้ามย่อซ้ำ (QA 2026-09-26)
 	self.panel = panel
 
 	local title = label(panel, "จับกุม", 18, GUARD_BLUE, 12, 28)

@@ -343,6 +343,12 @@ function TouchActionGui:OnRoll(callback)
 	self.rollButton.MouseButton1Down:Connect(callback)
 end
 
+-- ซ่อนปุ่มสกิลเมื่อของในมือไม่มีสกิล (มือเปล่า เครื่องมือ ปืน) — ปุ่มที่กดแล้วไม่มีวันเกิดอะไรคือเสียงรบกวน
+-- ตำแหน่งปุ่มอื่นไม่ขยับ ช่องว่างไว้ ปุ่มที่เลื่อนไปมาใต้นิ้วแย่กว่าช่องว่าง (QA 2026-09-26)
+function TouchActionGui:SetSkillAvailable(available)
+	self.skillButton.Visible = available and true or false
+end
+
 function TouchActionGui:OnSkill(callback)
 	self.skillButton.MouseButton1Down:Connect(callback)
 end

@@ -117,13 +117,24 @@ local function canAct(player, state)
 	return true
 end
 
+-- กดแล้วไม่เกิดอะไรขึ้นเลยคือปุ่มที่อ่านเหมือนพัง (มือถือโดยเฉพาะ ไม่มีแป้นให้รู้สึกว่ากดติด) — บอกเหตุผล
+-- ที่ผู้เล่นแก้ได้เอง (สตามินา) เพดาน 1 ข้อความ/1.5 วิ ไม่ถล่มจอตอนกดรัว (QA 2026-09-26)
+local LastRefusal = {}
+local function refuse(player, text)
+	local now = os.clock()
+	if now - (LastRefusal[player] or -10) < 1.5 then return end
+	LastRefusal[player] = now
+	Remotes.SocialNotify:FireClient(player, "warn", text)
+end
+Players.PlayerRemoving:Connect(function(player) LastRefusal[player] = nil end)
+
 Remotes.RequestRoll.OnServerEvent:Connect(function(player, direction)
 	local state = States[player]
 	if not state or not canAct(player, state) then return end
 	if typeof(direction) ~= "Vector3" then return end
 
 	local cfg = ActionConfig.Roll
-	if Vitals.GetStamina(player) < cfg.staminaCost then return end
+	if Vitals.GetStamina(player) < cfg.staminaCost then return refuse(player, "สตามินาไม่พอกลิ้ง") end
 
 	local character = player.Character
 	local humanoid = humanoidOf(player)
@@ -164,7 +175,7 @@ Remotes.RequestSlide.OnServerEvent:Connect(function(player)
 	local cfg = ActionConfig.Slide
 	local humanoid = humanoidOf(player)
 	local stamina = Vitals.GetStamina(player)
-	if stamina < cfg.minStaminaToStart then return end
+	if stamina < cfg.minStaminaToStart then return refuse(player, "สตามินาไม่พอสไลด์") end
 	-- Sliding is only reachable out of a sprint. PlayerMovement (server) publishes that as an attribute, so this is
 	-- still not a client flag -- and unlike the old WalkSpeed >= 12 test, it holds when carry weight or a slow
 	-- effect pulls the running speed under 12.

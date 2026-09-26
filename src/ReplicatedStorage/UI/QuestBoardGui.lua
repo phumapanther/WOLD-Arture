@@ -84,7 +84,7 @@ function QuestBoardGui.new()
 	panel.Parent = gui
 	corner(panel, UDim.new(0, 10))
 	stroke(panel, WOOD_DARK, 0, 4)
-	Responsive.Scale(panel)
+	Responsive.Scale(panel, Responsive.IsSmallScreen() and 0.95 or nil) -- มือถือ: แผงเต็มจออยู่แล้ว ห้ามย่อซ้ำ (QA 2026-09-26)
 
 	-- ลายไม้: เส้นแนวนอนจางๆ ให้ดูเป็นแผ่นไม้ประกบกัน ไม่ใช่สี่เหลี่ยมสีน้ำตาล
 	for i = 1, 5 do

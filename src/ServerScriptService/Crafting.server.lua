@@ -315,6 +315,72 @@ end)
 -- Crafting
 --------------------------------------------------------------------------------
 
+--------------------------------------------------------------------------------
+-- งานคราฟที่ค้างอยู่เซฟในโปรไฟล์ (QA 2026-09-26)
+--------------------------------------------------------------------------------
+-- กติกาผู้ใช้: "เดินออกจากเครื่อง/ออกเกม อาหารยังทำต่อจนเสร็จแล้วเด้งเข้ากระเป๋า" — ของเดิมงานอยู่ใน task.delay อย่างเดียว
+-- ออกเกม = วัตถุดิบถูกหักไปแล้วแต่ไม่มีใครส่งของ (สเต็ก 15 นาทีหายทั้งจาน) · เกาะปิดตามเจ้าของ = เตาบนเกาะเสียทุกงาน
+-- ตอนนี้งานอยู่ใน `profile.Data.CraftJobs`: จบในเซิร์ฟนี้ → ส่งตามปกติ · ออกไปก่อน → ส่งตอนเข้าเกมครั้งหน้า (ทุกเพลส
+-- ที่มีระบบคราฟ) · **การเอางานออกจากรายการคือสิทธิ์ส่งของ** ใครเอาออกได้คนนั้นส่ง กันส่งซ้ำสองทาง
+local function takeJob(data, job)
+	local list = data and data.CraftJobs
+	if type(list) ~= "table" then return false end
+	for i, j in ipairs(list) do
+		if j == job then
+			table.remove(list, i)
+			return true
+		end
+	end
+	return false
+end
+
+-- ทอยผล (ตอนงานจบ ไม่ใช่ตอนเริ่ม) แล้วส่งของ · กระเป๋าเต็ม → กล่องจดหมายของตัวเอง (โปรไฟล์เดียวกัน ส่งไม่ล้ม)
+-- คืน true = สำเร็จ · ข้อความแจ้งอยู่ในนี้ที่เดียว ทั้งทางปกติและทางส่งตอนเข้าเกมใหม่
+local function resolveJob(player, data, job)
+	local item = ItemCatalog.Get(job.id)
+	local name = item and item.name or job.id
+	if math.random() >= (job.chance or 1) then
+		-- A failure is not nothing: a consolation (the recipe's own `failGives`, else an Insignia coin for a
+		-- recipe that could fail) — quietly skipped when the bag is full, as before.
+		local awarded, awardedItem = 0, CraftConfig.InsigniaItem
+		if type(job.failGives) == "table" and #job.failGives > 0 then
+			local pick = job.failGives[math.random(#job.failGives)]
+			if Inventory.AddItem(player, pick, 1) then awarded, awardedItem = 1, pick end
+		elseif (job.chance or 1) < 1 then
+			local coins = CraftConfig.InsigniaPerFailure or 1
+			if Inventory.AddItem(player, CraftConfig.InsigniaItem, coins) then awarded = coins end
+		end
+		local fee = job.fee or 0
+		local reason = fee > 0 and ("สร้าง %s ล้มเหลว เสียวัสดุและเงิน %d"):format(name, fee)
+			or ("สร้าง %s ล้มเหลว วัสดุเสียไป"):format(name)
+		if awarded > 0 then
+			local coin = ItemCatalog.Get(awardedItem)
+			reason ..= ("  ·  ได้ %s x%d"):format(coin and coin.name or awardedItem, awarded)
+		end
+		Remotes.SocialNotify:FireClient(player, "error", reason)
+		return false
+	end
+
+	local yields = job.yields or 1
+	if Inventory.HasRoomFor(player, job.id, yields) and Inventory.AddItem(player, job.id, yields) then
+		Remotes.SocialNotify:FireClient(player, "info", yields > 1
+			and ("สร้าง %s x%d สำเร็จ"):format(name, yields) or ("สร้าง %s สำเร็จ"):format(name))
+	elseif not data then
+		Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม ของที่สร้างหล่นหาย")
+		return false
+	else
+		-- เดิม "กระเป๋าเต็ม ของที่สร้างหล่นหาย" · ตอนนี้ฝากกล่องจดหมาย
+		Mail.PutOwn(player, data, {
+			fromName = "โรงงาน", subject = "ของที่สร้างเสร็จ",
+			body = ("%s — กระเป๋าเต็ม เลยฝากไว้ในกล่องจดหมาย"):format(name),
+			items = { { id = job.id, count = yields } },
+		})
+		Remotes.SocialNotify:FireClient(player, "info", ("สร้าง %s สำเร็จ — กระเป๋าเต็ม อยู่ในกล่องจดหมายแล้ว"):format(name))
+	end
+	return true
+end
+
+
 Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 	if type(index) ~= "number" then return end
 	if not canCraft(player) then return end
@@ -390,6 +456,16 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 		Inventory.AddGold(player, -fee)
 	end
 
+	-- งานเข้าโปรไฟล์ทันทีพร้อมกับที่วัตถุดิบออกจากกระเป๋า — ไม่มีช่วงที่ของไม่อยู่ที่ไหนเลย (ดู resolveJob)
+	local data = ProfileAccess.Get(player)
+	local job = { id = recipe.id, yields = yields, chance = recipe.chance or 1, failGives = recipe.failGives,
+		fee = fee, readyAt = os.time() + seconds }
+	if data then
+		data.CraftJobs = data.CraftJobs or {}
+		table.insert(data.CraftJobs, job)
+		if ProfileAccess.Flush then ProfileAccess.Flush(player) end
+	end
+
 	-- Tell the client to run its progress bar, and redraw the window so the materials visibly leave the bag
 	-- as the hammer starts.
 	Remotes.CraftStarted:FireClient(player, index, seconds)
@@ -409,65 +485,18 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 	task.delay(seconds, function()
 		if Busy[player] then Busy[player][key] = nil end
 		if station then Remotes.CraftPoseChanged:FireAllClients(player, nil) end
-		-- The player may have left while the hammer was swinging.
+		-- ออกเกมไปแล้ว = งานอยู่ในโปรไฟล์ที่เซฟไปแล้ว ส่งตอนเข้าเกมครั้งหน้า · ส่งไปแล้ว (เข้าใหม่ระหว่างรอ) = ไม่ส่งซ้ำ
 		if not player.Parent then return end
+		-- ไม่มีโปรไฟล์ตอนเริ่ม (ไม่ควรเกิด) = งานไม่ได้เข้าโปรไฟล์ ส่งตรงนี้เลยไม่ต้องทวงสิทธิ์
+		if data and (ProfileAccess.Get(player) ~= data or not takeJob(data, job)) then return end
 
-		-- Rolled on the server, at the END of the wait. Rolling it up front would be the same odds, but the
-		-- result would already exist while the bar was still filling -- and anything that exists can leak.
-		local chance = recipe.chance or 1
-		if math.random() >= chance then
-			Remotes.CraftFinished:FireClient(player, index, false)
-
-			-- A failure is not nothing any more. The smith stamps a coin with a broken hammer and hands it
-			-- over, and enough of them buy the weapon outright at the "unlucky" page -- so a run of bad luck
-			-- is progress towards a guarantee rather than a pile of lost ore.
-			--
-			-- Given BEFORE the message so the two arrive together, and quietly skipped when the bag is full:
-			-- the player has just lost a craft, and a second red line telling them off for it would be the
-			-- wrong moment. Awarded only for a recipe that could actually fail, which is what keeps the
-			-- unlucky page itself from minting the coins it spends.
-			--
-			-- A recipe may name its OWN consolation prize with `failGives`, a list to pick one at random
-			-- from. The vehicle bench uses it: a failed key leaves you holding a car part, and six of those
-			-- trade for the key outright. Such a recipe mints no coins -- it already pays out in parts, and
-			-- paying both would make failing there better than failing anywhere else.
-			local awarded, awardedItem = 0, CraftConfig.InsigniaItem
-			if recipe.failGives and #recipe.failGives > 0 then
-				local pick = recipe.failGives[math.random(#recipe.failGives)]
-				if Inventory.AddItem(player, pick, 1) then
-					awarded, awardedItem = 1, pick
-				end
-			elseif chance < 1 then
-				local coins = CraftConfig.InsigniaPerFailure or 1
-				if Inventory.AddItem(player, CraftConfig.InsigniaItem, coins) then awarded = coins end
-			end
-
-			local reason = fee > 0 and ("สร้าง %s ล้มเหลว เสียวัสดุและเงิน %d"):format(item.name, fee)
-				or ("สร้าง %s ล้มเหลว วัสดุเสียไป"):format(item.name)
-			if awarded > 0 then
-				local coin = ItemCatalog.Get(awardedItem)
-				reason ..= ("  ·  ได้ %s x%d"):format(coin and coin.name or awardedItem, awarded)
-			end
-			Remotes.SocialNotify:FireClient(player, "error", reason)
-			Remotes.CraftOpen:FireClient(player, snapshot(player))
-			return
+		local ok = resolveJob(player, data, job)
+		Remotes.CraftFinished:FireClient(player, index, ok)
+		if ok then
+			local src = Source[player]
+			if src and CraftAccess.OnCrafted then CraftAccess.OnCrafted(player, src.station, src.model, recipe) end
 		end
-
-		if not Inventory.AddItem(player, recipe.id, yields) then
-			-- The bag had room when the attempt started and does not now, which means the player filled it
-			-- from somewhere else mid-swing. Rare, and the honest thing is to say so rather than pretend.
-			Remotes.CraftFinished:FireClient(player, index, false)
-			Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม ของที่สร้างหล่นหาย")
-			return
-		end
-
-		Remotes.CraftFinished:FireClient(player, index, true)
-		local src = Source[player]
-		if src and CraftAccess.OnCrafted then CraftAccess.OnCrafted(player, src.station, src.model, recipe) end
-		Remotes.SocialNotify:FireClient(player, "info", yields > 1
-			and ("สร้าง %s x%d สำเร็จ"):format(item.name, yields)
-			or ("สร้าง %s สำเร็จ"):format(item.name))
-
+		if ProfileAccess.Flush then ProfileAccess.Flush(player) end
 		-- The window redraws from a fresh snapshot rather than patching itself, so the have-counts on every
 		-- other recipe sharing a material move at the same moment this one's do.
 		Remotes.CraftOpen:FireClient(player, snapshot(player))
@@ -621,6 +650,26 @@ Remotes.RequestEnhance.OnServerEvent:Connect(function(player, key)
 		Remotes.CraftFinished:FireClient(player, where and ("enh:" .. where) or "enh:job", job.success)
 		announce(player, job)
 		Remotes.CraftOpen:FireClient(player, snapshot(player))
+	end)
+end)
+
+-- เข้าเกมมาแล้วมีงานคราฟค้าง (ออกไประหว่างทำ) → ครบเวลาแล้วส่งเลย ยังไม่ครบรอจนครบแล้วส่ง (ที่ไหนก็ได้ ไม่ต้องยืนที่เตา)
+PlayerJoin.Each(function(player)
+	task.spawn(function()
+		local data = ProfileAccess.Wait(player)
+		if not data or type(data.CraftJobs) ~= "table" or #data.CraftJobs == 0 then return end
+		while player.Parent and not Inventory.Get(player) do task.wait(0.2) end
+		for _, job in ipairs(table.clone(data.CraftJobs)) do
+			if type(job) ~= "table" or type(job.id) ~= "string" or not ItemCatalog.Exists(job.id) then
+				takeJob(data, job)
+			else
+				task.delay(math.max(0, (tonumber(job.readyAt) or 0) - os.time()), function()
+					if not player.Parent or ProfileAccess.Get(player) ~= data or not takeJob(data, job) then return end
+					resolveJob(player, data, job)
+					if ProfileAccess.Flush then ProfileAccess.Flush(player) end
+				end)
+			end
+		end
 	end)
 end)
 

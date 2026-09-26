@@ -22,6 +22,7 @@ local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local GIVE_RANGE = 8
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local HudAccess = require(game.ReplicatedStorage.UI.HudAccess)
+local InventoryConfig = require(game.ReplicatedStorage.InventoryConfig)
 
 local player = Players.LocalPlayer
 local gui = InventoryGui.new()
@@ -225,6 +226,20 @@ gui:OnSlotClicked(function(index)
 		else
 			table.insert(entries, { label = "วางได้บนเกาะฟาร์มเท่านั้น", onClick = function() end })
 		end
+	end
+
+	-- ใส่ช่องลัด 1-6 จากเมนู — ทางเดียวที่ใช้ได้แน่บนมือถือ (การลากจากกระเป๋าไปแถบล่าง นิ้วบังช่องปลายทาง)
+	-- เงื่อนไขเดียวกับการลาก: ของขยะไม่มีอะไรให้กด (QA 2026-09-26)
+	if item.kind ~= "junk" then
+		table.insert(entries, { label = "ใส่ช่องลัด", onClick = function()
+			local picks = {}
+			for n = 1, InventoryConfig.HotbarSlots do
+				table.insert(picks, { label = ("ช่อง %d"):format(n), onClick = function()
+					Remotes.RequestSetHotbar:FireServer(n, slot.id)
+				end })
+			end
+			gui:ShowItemMenu(button, picks, "ใส่ช่องลัดช่องไหน")
+		end })
 	end
 
 	-- ไม่มีปุ่ม "ให้" สำหรับของประจำตำแหน่ง (ตะหลิวเชฟ แหวนแคลน) ด้วยเหตุผลเดียวกับปุ่มทิ้งของกุญแจรถ

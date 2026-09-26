@@ -634,7 +634,13 @@ function Vitals.RefillOnLevelUp(player)
 	state.hunger = maxHunger(player)
 	state.stamina = VitalsConfig.MaxStamina
 	state.mana = VitalsConfig.MaxMana
-	state.armor = VitalsConfig.MaxArmor
+	-- ใส่เกราะจริงอยู่ = แต้มเกราะคือความคงทนของชิ้นนั้น ไม่ใช่ 20 · ของเดิมตั้ง 20 แล้วดาเมจครั้งถัดไปเขียนทับ
+	-- ความคงทนเกราะเหล็กหนัก 260 เหลือ ~20 ทุกครั้งที่เลเวลอัพ (QA 2026-09-26) · ตัวเปล่ายังเติมเต็มเหมือนเดิม
+	if Inventory and Inventory.EquippedArmor(player) then
+		Vitals.SyncArmorFromEquipment(player)
+	else
+		state.armor = VitalsConfig.MaxArmor
+	end
 	Vitals.Send(player, true)
 end
 

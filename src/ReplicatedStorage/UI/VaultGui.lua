@@ -102,7 +102,7 @@ function VaultGui.new()
 	panel.Parent = gui
 	corner(panel, UDim.new(0, 14))
 	stroke(panel, RUNE, 0.55, 2)
-	Responsive.Scale(panel)
+	Responsive.Scale(panel, Responsive.IsSmallScreen() and 0.95 or nil) -- มือถือ: แผงเต็มจออยู่แล้ว ห้ามย่อซ้ำ (QA 2026-09-26)
 	self.panel = panel
 
 	local title = label(panel, "ธนาคารและคลังสินค้า", 19, RUNE, true)

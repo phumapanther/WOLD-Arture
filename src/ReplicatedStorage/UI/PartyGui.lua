@@ -96,20 +96,35 @@ function PartyGui.new()
 
 	-- ทางออกอยู่ตรงนี้ที่เดียว: ตี้ที่เข้าแล้วออกไม่ได้คือกับดัก ไม่ใช่ฟีเจอร์
 	local leave = Instance.new("TextButton")
-	leave.AnchorPoint = Vector2.new(1, 0)
-	leave.Position = UDim2.new(1, 0, 0, 0)
-	leave.Size = UDim2.fromOffset(40, HEADER_HEIGHT)
-	leave.BackgroundColor3 = Color3.fromRGB(96, 56, 52)
+	-- มือถือ: ปุ่มนี้อยู่ในโซนจอยเดิน (ซ้ายล่าง) และหลัง UIScale เหลือราว 24x11 px → ใหญ่ขึ้นบนจอสัมผัส
+	-- (ยื่นขึ้นด้านบนหัวข้อ ที่ว่าง) และทุกเครื่องต้องแตะสองครั้งยืนยัน ไม่งั้นนิ้วที่จะเดินพาออกจากตี้ (QA 2026-09-26)
+	local touchOnly = Responsive.IsTouchOnly()
+	local LEAVE_COLOR, ARMED_COLOR = Color3.fromRGB(96, 56, 52), Color3.fromRGB(176, 62, 52)
+	leave.AnchorPoint = Vector2.new(1, 1)
+	leave.Position = UDim2.new(1, 0, 0, HEADER_HEIGHT)
+	leave.Size = touchOnly and UDim2.fromOffset(64, 34) or UDim2.fromOffset(44, HEADER_HEIGHT)
+	leave.BackgroundColor3 = LEAVE_COLOR
 	leave.BackgroundTransparency = 0.15
 	leave.BorderSizePixel = 0
 	leave.AutoButtonColor = true
 	leave.Font = Enum.Font.GothamBold
-	leave.TextSize = 11
+	leave.TextSize = touchOnly and 14 or 11
 	leave.TextColor3 = TEXT_LIGHT
 	leave.Text = "ออก"
 	leave.Parent = panel
 	corner(leave, UDim.new(0, 6))
+	local armedUntil = 0
 	leave.Activated:Connect(function()
+		if os.clock() > armedUntil then
+			armedUntil = os.clock() + 3
+			leave.Text, leave.BackgroundColor3 = "ยืนยัน?", ARMED_COLOR
+			task.delay(3, function()
+				if os.clock() >= armedUntil then leave.Text, leave.BackgroundColor3 = "ออก", LEAVE_COLOR end
+			end)
+			return
+		end
+		armedUntil = 0
+		leave.Text, leave.BackgroundColor3 = "ออก", LEAVE_COLOR
 		if self.onLeave then self.onLeave() end
 	end)
 

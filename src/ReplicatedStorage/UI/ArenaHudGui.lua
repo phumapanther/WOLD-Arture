@@ -210,6 +210,14 @@ function ArenaHudGui.new()
 	cards.BackgroundTransparency = 1
 	cards.Visible = false
 	cards.Parent = gui
+	-- มือถือ: ขวากลางคือกองปุ่มสนาม (DisplayOrder 21 อยู่เหนือการ์ด) → ย้ายไปซ้าย (ตายอยู่ ไม่ได้ใช้จอยเดิน)
+	-- และย่อตามจอ — 260 px เต็มๆ คือ 70% ความสูงจอมือถือแนวนอน (QA 2026-09-26)
+	local Responsive = require(script.Parent.Responsive)
+	Responsive.Scale(cards, 0.55)
+	if Responsive.IsTouchOnly() then
+		cards.AnchorPoint = Vector2.new(0, 0.5)
+		cards.Position = UDim2.new(0, 16, 0.5, 0)
+	end
 	local list = Instance.new("UIListLayout")
 	list.Padding = UDim.new(0, 6)
 	list.VerticalAlignment = Enum.VerticalAlignment.Center
@@ -233,7 +241,7 @@ function ArenaHudGui:SetShopHint(on)
 		hint.Font = Enum.Font.GothamBold
 		hint.TextSize = 16
 		hint.TextColor3 = Color3.fromRGB(232, 190, 90)
-		hint.Text = "อยู่ในฐาน — กด B เปิดร้าน"
+		hint.Text = require(game.ReplicatedStorage.UI.Responsive).IsTouchOnly() and "อยู่ในฐาน — แตะ 🛒 เปิดร้าน" or "อยู่ในฐาน — กด B เปิดร้าน"
 		hint.Parent = self.gui
 		corner(hint, UDim.new(0, 17))
 		self.shopHint = hint

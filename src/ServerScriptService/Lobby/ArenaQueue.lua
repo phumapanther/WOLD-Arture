@@ -14,6 +14,7 @@ local TeleportService = game:GetService("TeleportService")
 local ArenaConfig = require(game.ReplicatedStorage.ArenaConfig)
 local AdminRoster = require(game.ServerScriptService.AdminRoster)
 local ArenaRegistry = require(script.Parent.ArenaRegistry)
+local ArenaTeams = require(script.Parent.ArenaTeams)
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 
 local ArenaQueue = {}
@@ -105,45 +106,9 @@ end
 --------------------------------------------------------------------------------
 -- จัดทีม
 --------------------------------------------------------------------------------
--- **เรียงตามลำดับที่เข้าคิว แล้วสลับฝั่ง** (ผู้ใช้กำหนด 2026-09-24): ปาร์ตี้ที่รอนานที่สุด = "ฝั่งเรา" (A)
--- คนที่เจอถัดมาไปฝั่งตรงข้าม (B) ก่อน แล้วสลับ A, B, A... ไปเรื่อยๆ ช่องที่เหลือค่อยเป็นบอท
--- ปาร์ตี้ไม่ถูกหั่นข้ามทีม: ฝั่งที่ถึงคิวใส่ไม่พอ ย้ายไปอีกฝั่ง · ใส่ไม่ลงทั้งสองฝั่ง = ยังไม่ส่ง
--- ทางสำรอง (วิธีเดิม): ปาร์ตี้ใหญ่ลงก่อน ไปฝั่งที่ว่างกว่า — ใช้เมื่อสลับฝั่งแล้วใส่ไม่ลง
--- (เช่นคนเดี่ยว 3 คนตามด้วยปาร์ตี้ 3 คน: สลับได้ A,B,A แล้วปาร์ตี้ 3 คนไม่มีฝั่งไหนว่างพอ)
-local function splitBySize(entries)
-	local sorted = table.clone(entries)
-	table.sort(sorted, function(a, b) return #a.members > #b.members end)
-	local teams = { A = {}, B = {} }
-	for _, entry in ipairs(sorted) do
-		local target = (#teams.A <= #teams.B) and "A" or "B"
-		if #teams[target] + #entry.members > TEAM_SIZE then target = (target == "A") and "B" or "A" end
-		if #teams[target] + #entry.members > TEAM_SIZE then return nil end
-		for _, member in ipairs(entry.members) do table.insert(teams[target], member) end
-	end
-	return teams
-end
-
-local function splitAlternating(entries)
-	entries = table.clone(entries)
-	table.sort(entries, function(a, b) return a.at < b.at end)
-	local teams = { A = {}, B = {} }
-	local nextSide = "A"
-	for _, entry in ipairs(entries) do
-		local target = nextSide
-		if #teams[target] + #entry.members > TEAM_SIZE then
-			target = (target == "A") and "B" or "A"
-		end
-		if #teams[target] + #entry.members > TEAM_SIZE then
-			return nil
-		end
-		for _, member in ipairs(entry.members) do table.insert(teams[target], member) end
-		nextSide = (target == "A") and "B" or "A"
-	end
-	return teams
-end
-
-local function splitIntoTeams(entries)
-	return splitAlternating(entries) or splitBySize(entries)
+-- จัดทีม = ArenaTeams.Assign (เจอก่อนได้ไปก่อน · ก้อนที่ลงไม่ได้รอแมตช์หน้า) — แยกไฟล์ไว้ให้เทสได้
+local function assign(entries)
+	return ArenaTeams.Assign(entries, TEAM_SIZE)
 end
 
 --------------------------------------------------------------------------------
@@ -157,8 +122,9 @@ end
 
 -- คืน true ถ้าส่งไปแล้ว · `reason` มีไว้บอกหน้าจอเวลาไปไม่ได้
 local function launch(entries)
-	local teams = splitIntoTeams(entries)
-	if not teams then return false end
+	-- ทุกก้อนที่ส่งมาต้องลงทีมได้ครบ (ผู้เรียกหยิบมาด้วย assign อยู่แล้ว · กันไว้เผื่อทางอื่น)
+	local chosenAll, teams = assign(entries)
+	if #chosenAll ~= #entries then return false end
 
 	local everyone = {}
 	for _, side in ipairs(ArenaConfig.TeamOrder) do
@@ -222,33 +188,17 @@ function ArenaQueue.Start(notify)
 		while true do
 			task.wait(1)
 			if ServerConfig.ArenaPlaceId ~= 0 and #Queue > 0 then
-				-- 1) ครบหกคนเมื่อไหร่ไปเมื่อนั้น — หยิบตามลำดับที่เข้าคิว คนที่รอนานที่สุดได้ไปก่อน
-				local picked, count = {}, 0
-				for _, entry in ipairs(Queue) do
-					if count + #entry.members <= FULL then
-						table.insert(picked, entry)
-						count += #entry.members
-					end
-					if count == FULL then break end
-				end
+				-- หยิบตามลำดับที่เข้าคิว (Queue เรียงตามเวลาที่กดเล่นอยู่แล้ว) ทีละก้อนที่ลงทีมได้ — ก้อนที่ลงไม่ได้รอต่อ
+				local chosen, teams = assign(Queue)
+				local count = #teams.A + #teams.B
 				if count == FULL then
-					launch(picked)
-				else
+					-- 1) ครบหกคนเมื่อไหร่ไปเมื่อนั้น
+					launch(chosen)
+				elseif count > 0 then
 					-- 2) **ครบเวลา (ArenaConfig.Bots.searchSeconds) แล้วยังไม่ครบหกคน → เติมบอท** (ผู้ใช้กำหนด)
-					-- ตัดสินจากปาร์ตี้ที่รอนานที่สุด แล้วพาทุกคนที่รออยู่ตอนนี้ไปด้วยกัน
-					local oldest = Queue[1]
-					for _, entry in ipairs(Queue) do
-						if entry.at < oldest.at then oldest = entry end
-					end
-					if os.clock() - oldest.at >= BOT_FILL_SECONDS then
-						local group, taken = {}, 0
-						for _, entry in ipairs(Queue) do
-							if taken + #entry.members <= FULL then
-								table.insert(group, entry)
-								taken += #entry.members
-							end
-						end
-						launch(group)
+					-- ตัดสินจากคนที่รอนานที่สุดในชุดที่ได้ไป (ก้อนแรกเสมอ) · ก้อนที่ถูกข้ามรอแมตช์ถัดไป
+					if os.clock() - chosen[1].at >= BOT_FILL_SECONDS then
+						launch(chosen)
 					end
 				end
 			end

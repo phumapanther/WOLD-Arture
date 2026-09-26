@@ -382,7 +382,9 @@ function InventoryGui.new()
 		slot.InputBegan:Connect(function(input)
 			if input.UserInputType == Enum.UserInputType.MouseButton1
 				or input.UserInputType == Enum.UserInputType.Touch then
-				if self.onDragStarted then self.onDragStarted(i, input) end
+				-- เลขช่องจริง ไม่ใช่เลขปุ่ม (แท็บอัดของชิดหน้า) — เดิมส่ง i แล้วลากได้ของผิดชิ้น (QA 2026-09-26)
+				local index = self.slotIndex and self.slotIndex[i]
+				if index and self.onDragStarted then self.onDragStarted(index, input) end
 			end
 		end)
 

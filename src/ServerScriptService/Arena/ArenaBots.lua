@@ -17,6 +17,7 @@ local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local KitWear = require(game.ServerScriptService.KitWear)
 local MobAccess = require(game.ServerScriptService.MobAccess)
+local ArenaAccess = require(game.ServerScriptService.ArenaAccess)
 local Vitals = require(game.ServerScriptService.Vitals)
 local WeaponVisualsAccess = require(game.ServerScriptService.WeaponVisualsAccess)
 
@@ -511,6 +512,9 @@ end
 function ArenaBots.Damage(model, amount, attacker, pierce)
 	local state = Live[model]
 	if not state or not state.alive or amount <= 0 then return false end
+	-- **บอททีมเดียวกันโดนไม่ได้** (QA 2026-09-26) — ด่านเดียวที่ทุกทางผ่าน (กระสุน ระยะประชิด สกิล Q ธนูกระจาย)
+	-- เดิมมีแค่สไนที่เช็คเอง ดาบ/ธนู/คทาตีบอทเพื่อนร่วมทีมตายได้ และนับเป็นดาเมจ/คิลให้ด้วย
+	if attacker and ArenaAccess.Friendly and ArenaAccess.Friendly(attacker, model) then return false end
 	if os.clock() < (state.invulnUntil or 0) then return true end -- คำท้าทองคำ / กล่องปฐมพยาบาล
 	-- เกราะ: กันดาเมจตามสัดส่วนของชุด จนกว่าแต้มเกราะจะหมด (ทรงเดียวกับเกราะของผู้เล่น)
 	if not pierce and (state.armorPool or 0) > 0 and (state.absorb or 0) > 0 then

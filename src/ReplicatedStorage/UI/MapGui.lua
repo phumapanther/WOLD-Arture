@@ -150,7 +150,7 @@ function MapGui.new()
 	footer.TextSize = 12
 	footer.TextColor3 = Color3.fromRGB(150, 156, 172)
 	footer.TextXAlignment = Enum.TextXAlignment.Left
-	footer.Text = "ลากเพื่อเลื่อน · ล้อเมาส์เพื่อซูม"
+	footer.Text = Responsive.IsTouchOnly() and "ลากเพื่อเลื่อน · ปุ่ม + / - เพื่อซูม" or "ลากเพื่อเลื่อน · ล้อเมาส์เพื่อซูม"
 	footer.Parent = panel
 	self.footer = footer
 

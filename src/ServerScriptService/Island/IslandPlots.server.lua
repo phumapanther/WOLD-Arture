@@ -23,6 +23,7 @@ local REASON_TEXT = {
 	planted = "แปลงนี้ปลูกอยู่แล้ว",
 	empty = "แปลงว่าง หยอดเมล็ดก่อน",
 	unripe = "ยังไม่สุก",
+	ownerleft = "เจ้าของเกาะไม่อยู่ เก็บของไม่ได้",
 	full = "กระเป๋าเต็ม",
 	missing = "ไม่พบแปลงนี้แล้ว",
 }
@@ -139,6 +140,8 @@ local function harvest(player, model)
 	--
 	-- ไม่ต้องเช็คอะไรเลยตรงนี้: คนที่ยืนอยู่บนเกาะนี้ได้ ผ่านด่านล็อบบี้ (เพื่อนกันจริง + เจ้าของอยู่)
 	-- กับด่าน `IslandGuests` มาแล้วทั้งคู่ · ทรงเดียวกับ `Gathering` ที่ไม่เคยถามว่าใครเป็นเจ้าของที่
+	-- เจ้าของไม่อยู่ = โปรไฟล์ปิด ของที่เก็บไม่ถูกเซฟ (ดู Gathering) QA 2026-09-26
+	if not (IslandAccess.Data and IslandAccess.Data()) then return false, "ownerleft" end
 	local entry = IslandAccess.EntryOf(model)
 	if not entry then return false, "missing" end
 	if not entry.crop then return false, "empty" end

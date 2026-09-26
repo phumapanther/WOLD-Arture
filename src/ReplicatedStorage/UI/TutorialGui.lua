@@ -64,7 +64,7 @@ function TutorialGui.new()
 	corner_group.Size = UDim2.fromOffset(220, 140)
 	corner_group.BackgroundTransparency = 1
 	corner_group.Parent = gui
-	Responsive.Scale(corner_group, 0.55) -- 0.55 = ค่าเดียวกับ HudGui.responsiveScale
+	Responsive.Scale(corner_group, Responsive.CornerMinScale()) -- ค่าเดียวกับกลุ่มเมนู ⋯ ของ HudGui
 
 	local button = Instance.new("TextButton")
 	button.Name = "TutorialButton"
@@ -146,7 +146,7 @@ function TutorialGui.new()
 	book.Parent = gui
 	corner(book, UDim.new(0, 14))
 	stroke(book, RUNE, 0.45, 2)
-	Responsive.Scale(book)
+	Responsive.Scale(book, Responsive.IsSmallScreen() and 0.95 or nil) -- มือถือ: แผงเต็มจออยู่แล้ว ห้ามย่อซ้ำ (QA 2026-09-26)
 	self.book = book
 
 
@@ -231,7 +231,14 @@ function TutorialGui.new()
 
 	-- ปุ่มหัวข้อ สร้างครั้งเดียว เนื้อหาถึงเปลี่ยนทุกครั้งที่กด
 	self.tabs = {}
+	-- หน้าที่ผูกกับอุปกรณ์ (`device`) โชว์เฉพาะเครื่องที่ตรง: หน้าคีย์บอร์ดบนมือถือคือรายการปุ่มที่กดไม่ได้
+	local touchOnly = game:GetService("UserInputService").TouchEnabled
+		and not game:GetService("UserInputService").KeyboardEnabled
+	local firstShown = nil
 	for order, section in ipairs(TutorialConfig.Sections) do
+		if section.device == "touch" and not touchOnly then continue end
+		if section.device == "keyboard" and touchOnly then continue end
+		firstShown = firstShown or section.id
 		local tab = Instance.new("TextButton")
 		tab.Name = section.id
 		tab.LayoutOrder = order
@@ -258,7 +265,7 @@ function TutorialGui.new()
 		if book.Visible then self:Hide() else self:Show() end
 	end)
 
-	self:ShowSection(TutorialConfig.Sections[1] and TutorialConfig.Sections[1].id)
+	self:ShowSection(touchOnly and "controls_touch" or firstShown) -- มือถือเปิดมาเจอหน้าปุ่มก่อน
 	return self
 end
 

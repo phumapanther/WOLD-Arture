@@ -10,10 +10,9 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 
-while workspace:GetAttribute("IsLobby") == nil do
-	task.wait()
-end
-if workspace:GetAttribute("IsLobby") then return end
+-- ล็อบบี้ก็แสดงด้วย (QA 2026-09-26) — หน้าปาร์ตี้ PVP บอกเหตุผลทุกอย่างผ่าน SocialNotify (ชวนไม่ได้ ปาร์ตี้เต็ม อยู่ในคิว
+-- แล้ว) ของเดิมปิดตัวเองในล็อบบี้ ข้อความพวกนั้นเลยไม่เคยขึ้นจอ กดแล้วเหมือนปุ่มพัง
+local UserInputService = game:GetService("UserInputService")
 
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
@@ -35,16 +34,19 @@ gui.Parent = player:WaitForChild("PlayerGui")
 
 -- Above the hotbar and clear of the vitals cluster: the bottom left is taken, the bottom middle is the
 -- hotbar, so these sit bottom-right where nothing else lives.
+-- **มือถือ: กลางบน** (QA 2026-09-26) — มุมขวาล่างของมือถือคือปุ่มโจมตี/สกิล/กลิ้ง ข้อความ "มานาไม่พอ" ขึ้นทับปุ่มที่
+-- เพิ่งกดพอดี 3.5 วิ · กลางบนใต้แถบประกาศว่างเสมอ และ TextLabel ไม่กินการแตะ
+local touchOnly = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 local holder = Instance.new("Frame")
-holder.AnchorPoint = Vector2.new(1, 1)
-holder.Position = UDim2.new(1, -16, 1, -120)
+holder.AnchorPoint = touchOnly and Vector2.new(0.5, 0) or Vector2.new(1, 1)
+holder.Position = touchOnly and UDim2.new(0.5, 0, 0, 118) or UDim2.new(1, -16, 1, -120)
 holder.Size = UDim2.fromOffset(320, 200)
 holder.BackgroundTransparency = 1
 holder.Parent = gui
 
 local layout = Instance.new("UIListLayout")
-layout.VerticalAlignment = Enum.VerticalAlignment.Bottom
-layout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+layout.VerticalAlignment = touchOnly and Enum.VerticalAlignment.Top or Enum.VerticalAlignment.Bottom
+layout.HorizontalAlignment = touchOnly and Enum.HorizontalAlignment.Center or Enum.HorizontalAlignment.Right
 layout.SortOrder = Enum.SortOrder.LayoutOrder
 layout.Padding = UDim.new(0, 4)
 layout.Parent = holder

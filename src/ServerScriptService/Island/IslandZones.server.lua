@@ -474,14 +474,18 @@ local function tickTree(model, entry)
 	for i, s in ipairs(IslandConfig.Stages) do
 		if progress >= s.at then stage = i end
 	end
-	if entry.stage ~= stage then
-		model:ScaleTo(IslandConfig.Stages[stage].scale)
+	-- ⚠️ **เทียบกับสภาพของโมเดลจริง ไม่ใช่กับ `entry.stage`** (QA 2026-09-26) — entry.stage ถูกเซฟลงโปรไฟล์ พอเข้าเกม
+	-- ใหม่ ต้นที่ปลูกใหม่จาก `spawnEntry` ไม่มีแท็กและขนาดเป็นค่าเริ่มต้น แต่ entry.stage ยังเท่าเดิม ของเดิมจึงไม่เคย
+	-- ติดแท็กให้อีก = ต้นที่โตแล้วตัดไม่ได้ถาวรหลังออก-เข้าใหม่ · ต้นครึ่งทางโชว์เต็มต้นจนกว่าจะข้ามระยะถัดไป
+	local scale = IslandConfig.Stages[stage].scale
+	if entry.stage ~= stage or math.abs(model:GetScale() - scale) > 0.01 then
+		model:ScaleTo(scale)
 		entry.stage = stage
-		-- โตเต็มที่ = ตัดได้ · ก่อนหน้านั้นไม่มีแท็ก ปุ่มจึงไม่ขึ้นเลย (ต้นกล้าตัดไม่ได้)
-		if progress >= 1 then
-			model:SetAttribute("NodeKind", "Tree")
-			if not CollectionService:HasTag(model, NODE_TAG) then CollectionService:AddTag(model, NODE_TAG) end
-		end
+	end
+	-- โตเต็มที่ = ตัดได้ · ก่อนหน้านั้นไม่มีแท็ก ปุ่มจึงไม่ขึ้นเลย (ต้นกล้าตัดไม่ได้)
+	if progress >= 1 and not CollectionService:HasTag(model, NODE_TAG) then
+		model:SetAttribute("NodeKind", "Tree")
+		CollectionService:AddTag(model, NODE_TAG)
 	end
 end
 

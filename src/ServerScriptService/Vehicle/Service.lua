@@ -913,6 +913,12 @@ function VehicleService.moveItem(player, plate, itemId, count, toTrunk)
     if not ItemCatalog.IsStorable(itemId) then
       return nil, "กุญแจเก็บในท้ายพาหนะไม่ได้ — ต้องพกติดตัวไว้"
     end
+    -- ของที่มีความคงทน (อาวุธ เครื่องมือ เกราะ) ก็ด้วยเหตุผลเดียวกัน: ท้ายรถจำแค่ "จำนวน" ความคงทนจึงหาย
+    -- ใส่ของสึกแล้วเอาออก = ได้ของใหม่เต็มความคงทน (ซ่อมฟรี) · QA 2026-09-26
+    local itemSpec = ItemCatalog.Get(itemId)
+    if itemSpec and (itemSpec.maxDurability or itemSpec.armor) then
+      return nil, "อาวุธ/เครื่องมือ/เกราะเก็บในท้ายพาหนะไม่ได้ — ฝากคลังมาดามแทน"
+    end
 
     -- ช่องท้ายพาหนะนับเป็น "ชนิดของ" ไม่ใช่ช่องกระเป๋า ของชนิดใหม่จึงกินหนึ่งช่อง ส่วนของชนิดเดิมไปกองรวม
     local slots = 0

@@ -44,6 +44,11 @@ local function sendHome(player, message)
 			TeleportService:Teleport(ServerConfig.MainPlaceId or game.PlaceId, player)
 		end)
 		if not ok then warn("[IslandGuests] ส่งแขกกลับล็อบบี้ไม่สำเร็จ:", err) end
+		-- เทเลพอร์ตล้มเหลว (ทันทีหรือทีหลัง) = แขกค้างอยู่บนเกาะที่ไม่มีเจ้าของตลอดไป · ยังอยู่หลัง 10 วิ = เตะออก
+		-- (QA 2026-09-26) เกาะที่ไม่มีเจ้าของไม่ควรมีใครยืนอยู่เลย
+		task.delay(10, function()
+			if player:IsDescendantOf(Players) and not ownerHere() then player:Kick(message) end
+		end)
 	end)
 end
 

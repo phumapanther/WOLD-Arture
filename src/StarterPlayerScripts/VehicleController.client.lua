@@ -20,6 +20,8 @@ local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local net = Net.get()
 
 local player = Players.LocalPlayer
+-- มือถือ/แท็บเล็ตล้วน (ไม่มีคีย์บอร์ด) — จอสัมผัสที่มีคีย์บอร์ดใช้ Shift/H/R/F ได้อยู่แล้ว
+local TOUCH_ONLY = UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled
 local PALETTE = {
   ink = Color3.fromRGB(22, 19, 16),
   panel = Color3.fromRGB(38, 32, 27),
@@ -442,6 +444,13 @@ local hud = make("Frame", {
   BackgroundTransparency = 0.08, AnchorPoint = Vector2.new(0.5, 1),
   Position = UDim2.new(0.5, 0, 1, -18), Size = UDim2.fromOffset(468, 118),
 }, { corner(12), stroke(PALETTE.brass, 2), pad(12) })
+-- มือถือ: ขวาล่างเป็นของปุ่มกระโดด (= ลงจากรถ) กับปุ่มขับ ล่างซ้ายเป็นของจอย กลางบนเป็นของป้ายอีเวนต์
+-- ซ้ายบนเป็นของแถบช่องลัด (HudGui y 60 สูงสุด 64) → วางใต้แถบช่องลัดแล้วย่อลง (QA 2026-09-26)
+if TOUCH_ONLY then
+  hud.AnchorPoint = Vector2.new(0, 0)
+  hud.Position = UDim2.new(0, 12, 0, 132)
+  require(game.ReplicatedStorage.UI.Responsive).Scale(hud, 0.55)
+end
 
 local hudTitle = make("TextLabel", {
   Parent = hud, BackgroundTransparency = 1, Font = Enum.Font.Garamond, TextSize = 22,
@@ -520,6 +529,7 @@ local function setMeter(m, fraction, broken)
 end
 
 local driving = nil          -- { plate, mode, model }
+local onTouchDriving = nil   -- ตั้งโดยชุดปุ่มมือถือข้างล่าง (มีเฉพาะเครื่องจอสัมผัสล้วน)
 local lift = 0
 local boosting = false
 local warnedLow, warnedWear = false, false
@@ -544,14 +554,17 @@ local function setDriving(data)
     boosting = false
     lastAim = 0
     warnedWear = false
+    if onTouchDriving then onTouchDriving(nil) end
     return
   end
   driving = { plate = data.plate, mode = data.mode, model = findModel(data.plate) }
   hudTitle.Text = (data.display or "พาหนะ") .. "  " .. data.plate
-  hudHint.Text = data.mode == "Hover"
+  hudHint.Text = TOUCH_ONLY and ("⚡ บูสต์ · 📯 หวูด" .. (data.mode == "Hover" and " · ลูกศรขึ้น-ลง" or "") .. " · ปุ่มกระโดด = ลงจากรถ")
+    or data.mode == "Hover"
     and "W/S เดินหน้า-ถอย · Shift บูสต์ · A/D เลี้ยว · เล็งกล้องไต่-ดิ่ง · R/F ขึ้น-ลง · H หวูด · L ล็อก · ซ้อน " .. (data.seats or 0)
     or "W/S เร่ง-ถอย · Shift บูสต์ · A/D เลี้ยว · H หวูด · L ล็อก · เบาะซ้อน " .. (data.seats or 0) .. " ที่"
   hud.Visible = true
+  if onTouchDriving then onTouchDriving(data.mode) end
 end
 
 RunService.RenderStepped:Connect(function()
@@ -604,6 +617,18 @@ RunService.RenderStepped:Connect(function()
   hudBoost.Visible = model:GetAttribute("Boost") == true
 end)
 
+-- บูสต์/ไต่-ดิ่ง ส่งเฉพาะขอบขาขึ้น/ขาลง ไม่ใช่ทุกเฟรม — เซิร์ฟเวอร์ถือธงไว้เอง · คีย์บอร์ดกับปุ่มมือถือเรียกสองตัวนี้ตัวเดียวกัน
+local function setBoost(on)
+  if not driving or boosting == on then return end
+  boosting = on
+  net.Signal:FireServer({ action = "Boost", value = on })
+end
+local function setLift(value)
+  if not driving or driving.mode ~= "Hover" or lift == value then return end
+  lift = value
+  net.Signal:FireServer({ action = "Lift", value = value })
+end
+
 UserInputService.InputBegan:Connect(function(input, processed)
   if processed or not driving then return end
   if input.KeyCode == Enum.KeyCode.L then
@@ -614,14 +639,9 @@ UserInputService.InputBegan:Connect(function(input, processed)
     net.Signal:FireServer({ action = "Horn" })
   elseif input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
     -- Shift เป็นปุ่มวิ่งตอนเดินเท้าด้วย แต่ตอนนั่งอยู่บนเบาะ ความเร็วเดินไม่มีความหมาย ปุ่มจึงว่างพอดี
-    -- ส่งขอบขาขึ้น/ขาลงอย่างละครั้ง ไม่ใช่ทุกเฟรม — เซิร์ฟเวอร์ถือธงไว้เอง
-    if not boosting then
-      boosting = true
-      net.Signal:FireServer({ action = "Boost", value = true })
-    end
-  elseif driving.mode == "Hover" then
-    if input.KeyCode == Enum.KeyCode.R then lift = 1; net.Signal:FireServer({ action = "Lift", value = 1 })
-    elseif input.KeyCode == Enum.KeyCode.F then lift = -1; net.Signal:FireServer({ action = "Lift", value = -1 }) end
+    setBoost(true)
+  elseif input.KeyCode == Enum.KeyCode.R then setLift(1)
+  elseif input.KeyCode == Enum.KeyCode.F then setLift(-1)
   end
 end)
 
@@ -629,18 +649,72 @@ UserInputService.InputEnded:Connect(function(input)
   if not driving then return end
   -- ปล่อย Shift ไม่เช็ก `processed`: การกดเริ่มอาจถูก UI กินไปแต่การปล่อยต้องผ่านเสมอ ไม่งั้นบูสต์ค้าง
   if input.KeyCode == Enum.KeyCode.LeftShift or input.KeyCode == Enum.KeyCode.RightShift then
-    if boosting then
-      boosting = false
-      net.Signal:FireServer({ action = "Boost", value = false })
-    end
-    return
-  end
-  if driving.mode ~= "Hover" then return end
-  if (input.KeyCode == Enum.KeyCode.R and lift > 0) or (input.KeyCode == Enum.KeyCode.F and lift < 0) then
-    lift = 0
-    net.Signal:FireServer({ action = "Lift", value = 0 })
+    setBoost(false)
+  elseif (input.KeyCode == Enum.KeyCode.R and lift > 0) or (input.KeyCode == Enum.KeyCode.F and lift < 0) then
+    setLift(0)
   end
 end)
+
+-- ---------------------------------------------------------------- ปุ่มมือถือตอนขับ (QA 2026-09-26)
+-- มือถือไม่มี Shift/H/R/F — ปุ่มชุดนี้ขึ้นแทนกลุ่มปุ่มโจมตี/กลิ้ง (TouchActionController ซ่อนกลุ่มนั้นเมื่อเห็น
+-- แอตทริบิวต์ WOLD_Driving) ตำแหน่ง/ขนาดเท่ากลุ่มเดิมเป๊ะ ปุ่มกระโดด (= ลงจากรถ) จึงไม่ถูกทับ
+if TOUCH_ONLY then
+  local TouchActionGui = require(game.ReplicatedStorage.UI.TouchActionGui)
+  local BIG, SMALL, GAP = 90, 45, 14
+  local pad = make("Frame", {
+    Name = "DriveTouch", Parent = gui, Visible = false, BackgroundTransparency = 1,
+    AnchorPoint = Vector2.new(1, 1), Position = UDim2.new(1, -(30 + SMALL + GAP), 1, -30),
+    Size = UDim2.fromOffset(BIG, BIG + (SMALL + GAP) * 3),
+  })
+
+  -- ลูกศรวาดจาก Frame สองเส้น ไม่ใช่ตัวอักษร ▲▼ (ฟอนต์ Roblox วาดเป็นกล่องเปล่า)
+  local function chevron(holder, up)
+    for _, side in ipairs({ -1, 1 }) do
+      make("Frame", {
+        Parent = holder, BackgroundColor3 = PALETTE.text, BorderSizePixel = 0,
+        AnchorPoint = Vector2.new(0.5, 0.5), Position = UDim2.fromScale(0.5 + side * 0.17, 0.5),
+        Size = UDim2.fromScale(0.48, 0.14), Rotation = (up and 40 or -40) * side,
+      }, { corner(3) })
+    end
+  end
+
+  -- ปุ่มกดค้าง: จำนิ้วที่เริ่มกด แล้วฟังการปล่อยจาก UserInputService (นิ้วเลื่อนออกนอกปุ่มก็ยังปล่อยได้)
+  local function holdButton(size, rise, draw, onDown, onUp)
+    local btn, holder = TouchActionGui.Circle(pad, size, nil)
+    btn.AnchorPoint = Vector2.new(1, 1)
+    btn.Position = UDim2.new(1, -(BIG - size) / 2, 1, -rise)
+    draw(holder)
+    local finger
+    btn.InputBegan:Connect(function(input)
+      if input.UserInputType ~= Enum.UserInputType.Touch and input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+      finger = input
+      onDown()
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+      if input == finger then finger = nil; if onUp then onUp() end end
+    end)
+    return btn
+  end
+  local function glyph(text)
+    return function(holder)
+      make("TextLabel", { Parent = holder, BackgroundTransparency = 1, Size = UDim2.fromScale(1, 1), TextScaled = true, Text = text })
+    end
+  end
+
+  holdButton(BIG, 0, glyph("⚡"), function() setBoost(true) end, function() setBoost(false) end)
+  holdButton(SMALL, BIG + GAP, glyph("📯"), function() net.Signal:FireServer({ action = "Horn" }) end)
+  local down = holdButton(SMALL, BIG + SMALL + GAP * 2, function(h) chevron(h, false) end,
+    function() setLift(-1) end, function() if lift < 0 then setLift(0) end end)
+  local up = holdButton(SMALL, BIG + SMALL * 2 + GAP * 3, function(h) chevron(h, true) end,
+    function() setLift(1) end, function() if lift > 0 then setLift(0) end end)
+
+  onTouchDriving = function(mode)
+    pad.Visible = mode ~= nil
+    up.Visible = mode == "Hover"
+    down.Visible = mode == "Hover"
+    player:SetAttribute("WOLD_Driving", mode ~= nil or nil)
+  end
+end
 
 -- ---------------------------------------------------------------- ข้อความจากเซิร์ฟเวอร์
 net.Signal.OnClientEvent:Connect(function(msg)

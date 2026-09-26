@@ -81,6 +81,8 @@ local function damageAndScore(caster, victim, amount)
 			Progression.GetLevel(caster), Progression.GetLevel(victim))
 		Progression.AwardExp(caster, math.floor(ProgressionConfig.ExpPerPlayerKill * multiplier + 0.5))
 	end
+	-- คืนว่าโดนจริงไหม — ผลพ่วง (ล้ม/สโลว์) ต้องเกิดเฉพาะเป้าที่โดนจริง ไม่ใช่เพื่อนร่วมทีม/คนที่อมตะอยู่
+	return landed
 end
 
 -- สกิล Q ในเกมหลัก **ไม่เคยทำดาเมจใส่มอนเลย** (มันวนแต่ `playersNear`) ซึ่งไม่เป็นไรในเมือง
@@ -285,8 +287,8 @@ function Skills.ScatterShot(player)
 					local victim = Players:GetPlayerFromCharacter(result.Instance.Parent)
 					if victim and victim ~= player and not hitAlready[victim] then
 						hitAlready[victim] = true
-						damageAndScore(player, victim, 14)
-						StatusEffects.Knockdown(victim, 3)
+						-- ล้มเฉพาะคนที่โดนจริง (QA 2026-09-26 — เดิมล้มเพื่อนตี้/ทีม/คนเพิ่งเกิดด้วย)
+						if damageAndScore(player, victim, 14) then StatusEffects.Knockdown(victim, 3) end
 					else
 						-- ลูกธนูของสกิลพุ่งชนบอท: ทำดาเมจแล้วหยุดที่นั่นเหมือนชนคน
 						alsoHitBots(player, arrow.Position, 6, 14)
@@ -422,6 +424,16 @@ end
 -- Request handling
 --------------------------------------------------------------------------------
 
+-- เหตุผลที่สกิลไม่ออก ผู้เล่นแก้เองได้ทั้งสามข้อ (ถืออาวุธ/รอ/หามานา) จึงต้องบอก ไม่ใช่เงียบ
+-- เพดาน 1 ข้อความ/1.5 วิ (QA 2026-09-26)
+local LastRefusal = {}
+local function refuse(player, text)
+	local now = os.clock()
+	if now - (LastRefusal[player] or -10) < 1.5 then return end
+	LastRefusal[player] = now
+	Remotes.SocialNotify:FireClient(player, "warn", text)
+end
+
 Remotes.RequestSkill.OnServerEvent:Connect(function(player)
 	if Vitals.IsDowned(player) then return end
 	if not StatusEffects.CanFight(player) then return end -- ถูกจับกุม/ยิงล้ม/มึนหัว/ถูกอุ้ม (QA 2026-09-26)
@@ -431,7 +443,8 @@ Remotes.RequestSkill.OnServerEvent:Connect(function(player)
 	if not humanoid or humanoid.Health <= 0 then return end
 
 	local item, entry = Inventory.EquippedWeapon(player)
-	if not item or not item.skill or not entry then return end -- bare hands have no skill
+	if not item or not entry then return refuse(player, "มือเปล่าไม่มีสกิล — ถืออาวุธก่อน") end
+	if not item.skill then return refuse(player, "ของที่ถืออยู่ไม่มีสกิล") end
 
 	local skill = item.skill
 	local handler = Skills[skill.id]
@@ -439,11 +452,13 @@ Remotes.RequestSkill.OnServerEvent:Connect(function(player)
 
 	Cooldowns[player] = Cooldowns[player] or {}
 	local readyAt = Cooldowns[player][skill.id] or 0
-	if os.clock() < readyAt then return end
+	if os.clock() < readyAt then
+		return refuse(player, ("สกิลยังไม่พร้อม อีก %d วิ"):format(math.ceil(readyAt - os.clock())))
+	end
 
 	-- Mana is spent only once everything else has passed, and TrySpendMana refuses when there is not enough,
 	-- so a failed cast never silently eats a pip.
-	if not Vitals.TrySpendMana(player, skill.manaCost or 1) then return end
+	if not Vitals.TrySpendMana(player, skill.manaCost or 1) then return refuse(player, "มานาไม่พอ") end
 
 	Cooldowns[player][skill.id] = os.clock() + (skill.cooldown or 5)
 
@@ -471,4 +486,5 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	Cooldowns[player] = nil
+	LastRefusal[player] = nil
 end)

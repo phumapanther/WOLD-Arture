@@ -56,6 +56,10 @@ local session = nil -- ghost: { kind = "new"|"move", slotIndex, id, uid, model, 
 local selected = nil -- { model, highlight }
 local press = nil -- { model, at = Vector2 } กดค้างบนของอยู่ (ยังไม่รู้ว่าจะแตะหรือลาก)
 local pointer = nil -- Vector2 ตำแหน่งตัวชี้ล่าสุด (พิกัดจอ ไม่รวมแถบบน = InputObject.Position)
+-- นิ้วที่เป็น "ตัวชี้" = นิ้วที่เริ่มแตะบนโลก (ไม่ใช่บนจอย/ปุ่ม) · นิ้วอื่นขยับไม่มีผล — เดิมทุกนิ้วเลื่อน ghost
+-- รวมนิ้วที่คุมจอยเดิน ของที่จะวางจึงวิ่งตามจอย (QA 2026-09-26)
+local pointerTouch = nil
+local KEY_R = not IslandBuildGui.TouchOnly -- ป้ายปุ่มบอกคีย์ลัดเฉพาะเครื่องที่มีคีย์บอร์ด
 local occupied, occupiedDirty = {}, true
 local latestSlots = {}
 local hiddenHud = nil
@@ -318,16 +322,16 @@ end
 function refreshPanel()
 	if session then
 		gui:SetActions((session.kind == "move" and "ย้าย: " or "วาง: ") .. itemName(session.id), {
-			{ label = "หมุน (R)", color = "rotate", fn = rotate },
+			{ label = KEY_R and "หมุน (R)" or "หมุน", color = "rotate", fn = rotate },
 			{ label = "วาง", color = "place", fn = confirm },
-			{ label = "ยกเลิก (Esc)", color = "cancel", fn = cancel },
+			{ label = KEY_R and "ยกเลิก (Esc)" or "ยกเลิก", color = "cancel", fn = cancel },
 		})
 	elseif selected then
 		gui:SetActions(itemName(selected.model:GetAttribute("ItemId")), {
 			{ label = "ย้าย", color = "move", fn = function() if selected then startMove(selected.model) end end },
-			{ label = "หมุน (R)", color = "rotate", fn = rotate },
+			{ label = KEY_R and "หมุน (R)" or "หมุน", color = "rotate", fn = rotate },
 			{ label = "เก็บ", color = "pickup", fn = pickup },
-			{ label = "ยกเลิก (Esc)", color = "cancel", fn = cancel },
+			{ label = KEY_R and "ยกเลิก (Esc)" or "ยกเลิก", color = "cancel", fn = cancel },
 		})
 	else
 		gui:SetActions(nil, nil)
@@ -379,6 +383,7 @@ local function toggleMode()
 end
 
 gui.OnExit = exitMode
+gui.OnZoom = function(delta) zoom = math.clamp(zoom + delta, ZOOM_MIN, ZOOM_MAX) end
 gui.OnPick = function(slotIndex, id) startNew(slotIndex, id) end
 
 --------------------------------------------------------------------------------
@@ -442,7 +447,7 @@ if UserInputService.TouchEnabled then
 	group.Size = UDim2.fromOffset(220, 140)
 	group.BackgroundTransparency = 1
 	group.Parent = toggleGui
-	Responsive.Scale(group, 0.55)
+	Responsive.Scale(group, Responsive.CornerMinScale())
 
 	local button = Instance.new("TextButton")
 	button.Name = "BuildModeButton"
@@ -531,6 +536,7 @@ end
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if not buildMode or gameProcessed then return end
 	if isPress(input) then
+		if input.UserInputType == Enum.UserInputType.Touch then pointerTouch = input end
 		pointer = Vector2.new(input.Position.X, input.Position.Y)
 		if session then
 			-- เมาส์คลิก = วางเลย · นิ้วแตะ = แค่ย้าย ghost มาตรงนั้น (ยืนยันด้วยปุ่ม "วาง" จะได้ไม่วางพลาด)
@@ -553,7 +559,8 @@ end)
 
 UserInputService.InputChanged:Connect(function(input)
 	if not buildMode then return end
-	if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then
+	if input.UserInputType == Enum.UserInputType.MouseMovement
+		or (input.UserInputType == Enum.UserInputType.Touch and input == pointerTouch) then
 		pointer = Vector2.new(input.Position.X, input.Position.Y)
 		if press and (pointer - press.at).Magnitude > DRAG_PIXELS then
 			local model = press.model
@@ -570,6 +577,10 @@ end)
 
 UserInputService.InputEnded:Connect(function(input)
 	if not buildMode or not isPress(input) then return end
+	if input.UserInputType == Enum.UserInputType.Touch then
+		if input ~= pointerTouch then return end -- นิ้วจอย/นิ้วบนปุ่มปล่อย ไม่ใช่การวาง
+		pointerTouch = nil
+	end
 	if session and session.dragging then
 		confirm() -- ลากแล้วปล่อย = วางตรงนั้น (วางไม่ได้ = ghost ค้างให้เลื่อนต่อ/ยกเลิก)
 		if session then session.dragging = false end

@@ -89,7 +89,7 @@ function TownBuyerGui.new()
 	panel.BorderSizePixel = 0
 	panel.Parent = gui
 	corner(panel, UDim.new(0, 12))
-	Responsive.Scale(panel)
+	Responsive.Scale(panel, Responsive.IsSmallScreen() and 0.95 or nil) -- มือถือ: แผงเต็มจออยู่แล้ว ห้ามย่อซ้ำ (QA 2026-09-26)
 
 	local title = label(panel, "พ่อค้าประจำเมือง", 17, RUNE)
 	title.Position = UDim2.new(0, 16, 0, 10)

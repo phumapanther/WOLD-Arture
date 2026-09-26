@@ -7,6 +7,9 @@
 -- ปุ่มทุกปุ่มมีไว้ให้มือถือเป็นหลัก คีย์บอร์ดมีทางลัดเดียวกัน (คลิก ลาก R Esc F4)
 local Responsive = require(script.Parent.Responsive)
 local ItemIcon = require(script.Parent.ItemIcon)
+-- จอสัมผัสล้วน: ไม่มีล้อเมาส์/R/Esc/F4 → มีปุ่มซูม และป้ายปุ่มไม่บอกคีย์ที่กดไม่ได้ (QA 2026-09-26)
+IslandBuildGui.TouchOnly = game:GetService("UserInputService").TouchEnabled
+	and not game:GetService("UserInputService").KeyboardEnabled
 
 local PANEL = Color3.fromRGB(24, 22, 28)
 local CARD = Color3.fromRGB(40, 37, 46)
@@ -77,7 +80,7 @@ function IslandBuildGui.new(playerGui)
 	exit.Font = Enum.Font.GothamBold
 	exit.TextSize = 14
 	exit.TextColor3 = TEXT
-	exit.Text = "ออก (F4)"
+	exit.Text = IslandBuildGui.TouchOnly and "ออก" or "ออก (F4)"
 	exit.Parent = head
 	corner(exit, 8)
 	exit.MouseButton1Click:Connect(function() if self.OnExit then self.OnExit() end end)
@@ -127,6 +130,11 @@ function IslandBuildGui.new(playerGui)
 	bar.Parent = gui
 	corner(bar)
 	Responsive.Scale(bar, 0.55)
+	-- มือถือ: แถบล่างกว้าง 760 ทับปุ่มกระโดดกับกลุ่มปุ่มขวาล่าง → ขึ้นไปอยู่ใต้หัวบน (HUD ถูกซ่อนตอนจัดเกาะ ที่ว่าง)
+	if IslandBuildGui.TouchOnly then
+		bar.AnchorPoint = Vector2.new(0.5, 0)
+		bar.Position = UDim2.new(0.5, 0, 0, 104)
+	end
 	local pad = Instance.new("UIPadding")
 	pad.PaddingLeft, pad.PaddingTop = UDim.new(0, 10), UDim.new(0, 8)
 	pad.Parent = bar
@@ -137,6 +145,32 @@ function IslandBuildGui.new(playerGui)
 	barLayout.Parent = bar
 	local empty = text(bar, "ไม่มีของวางได้ในกระเป๋า VIP — ซื้อที่ร้านบนเกาะ", 15, MUTED)
 	empty.Size = UDim2.new(0, 740, 0, 90)
+
+	-- ปุ่มซูม (มือถือ): ขวากลางจอ ห่างทั้งแถบล่างและกลุ่มปุ่มกระโดด · + / - เป็นตัวอักษร ASCII วาดได้ทุกฟอนต์
+	if IslandBuildGui.TouchOnly then
+		local zoomBox = Instance.new("Frame")
+		zoomBox.AnchorPoint = Vector2.new(1, 0.5)
+		zoomBox.Position = UDim2.new(1, -12, 0.42, 0)
+		zoomBox.Size = UDim2.new(0, 56, 0, 124)
+		zoomBox.BackgroundTransparency = 1
+		zoomBox.Parent = gui
+		Responsive.Scale(zoomBox, 0.8)
+		for i, spec in ipairs({ { "+", -0.25 }, { "-", 0.25 } }) do
+			local b = Instance.new("TextButton")
+			b.Position = UDim2.new(0, 0, 0, (i - 1) * 68)
+			b.Size = UDim2.new(0, 56, 0, 56)
+			b.BackgroundColor3 = PANEL
+			b.BackgroundTransparency = 0.2
+			b.BorderSizePixel = 0
+			b.Font = Enum.Font.GothamBold
+			b.TextSize = 30
+			b.TextColor3 = TEXT
+			b.Text = spec[1]
+			b.Parent = zoomBox
+			corner(b, 28)
+			b.Activated:Connect(function() if self.OnZoom then self.OnZoom(spec[2]) end end)
+		end
+	end
 
 	self.gui, self.title, self.status, self.panel, self.row, self.bar, self.empty = gui, title, status, panel, row, bar, empty
 	return self

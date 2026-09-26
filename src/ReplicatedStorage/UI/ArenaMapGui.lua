@@ -60,7 +60,7 @@ function ArenaMapGui.new()
 	title.TextColor3 = Color3.fromRGB(238, 234, 226)
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.ZIndex = 5
-	title.Text = "แผนที่ (M)"
+	title.Text = require(game.ReplicatedStorage.UI.Responsive).IsTouchOnly() and "แผนที่" or "แผนที่ (M)"
 	title.Parent = panel
 	self.title = title
 
@@ -90,7 +90,7 @@ function ArenaMapGui:Build(mapId, mapName)
 	-- ⚠️ StreamingEnabled: ชิ้นที่ยังไม่มาถึงไคลเอนต์จะหายจากแผนที่ — วาดใหม่ถ้าจำนวนชิ้นเปลี่ยน
 	if self.builtFor == mapId and self.builtCount == #parts then return true end
 	self.builtFor, self.builtCount = mapId, #parts
-	self.title.Text = ("%s — แผนที่ (M)"):format(mapName or mapId)
+	self.title.Text = (require(game.ReplicatedStorage.UI.Responsive).IsTouchOnly() and "%s — แผนที่" or "%s — แผนที่ (M)"):format(mapName or mapId)
 
 	for _, child in ipairs(self.canvas:GetChildren()) do child:Destroy() end
 	self.dots = {}

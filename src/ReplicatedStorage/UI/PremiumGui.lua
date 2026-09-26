@@ -124,7 +124,7 @@ function PremiumGui.new()
 	panel.BorderSizePixel = 0
 	panel.Parent = gui
 	corner(panel, UDim.new(0, 12))
-	Responsive.Scale(panel)
+	Responsive.Scale(panel, Responsive.IsSmallScreen() and 0.95 or nil) -- มือถือ: แผงเต็มจออยู่แล้ว ห้ามย่อซ้ำ (QA 2026-09-26)
 	self.panel = panel
 
 	-- หัว: ชื่อแท็บ + เพชร + ปิด

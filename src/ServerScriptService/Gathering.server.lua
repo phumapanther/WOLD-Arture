@@ -274,6 +274,15 @@ local function gather(node, player)
 	-- through here, so one check covers both.
 	if Vitals.IsDowned(player) then return end
 
+	-- **เกาะที่เจ้าของไม่อยู่ (โปรไฟล์ปิดแล้ว/ยังไม่โหลด) เก็บไม่ได้** (QA 2026-09-26) — ของที่เก็บช่วงนั้นไม่ถูกเซฟลง
+	-- เกาะ เจ้าของกลับมาเจอครบเหมือนเดิม = บัญชีรองยืนเก็บช่วงรอส่งกลับแล้วปั๊มได้
+	if ServerConfig.IsFarm then
+		local IslandAccess = require(game.ServerScriptService.Island.IslandAccess)
+		if not (IslandAccess.Data and IslandAccess.Data()) then
+			return Remotes.SocialNotify:FireClient(player, "warn", "เจ้าของเกาะไม่อยู่ เก็บของไม่ได้")
+		end
+	end
+
 	local config = configFor(node)
 	if not config then return end
 	if isSpent(node) then return end

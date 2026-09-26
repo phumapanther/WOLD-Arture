@@ -59,14 +59,16 @@ function ClassCardGui.new()
 	panel.Name = "Panel"
 	panel.AnchorPoint = Vector2.new(0.5, 0.5)
 	panel.Position = UDim2.fromScale(0.5, 0.5)
-	panel.Size = Responsive.IsSmallScreen() and UDim2.fromScale(0.94, 0.6)
+	-- มือถือสูงพอให้การ์ด (168) + ปุ่มข้ามอยู่ใต้การ์ด ไม่ทับกัน (QA 2026-09-26 — เดิม 0.6 การ์ดล้นแถว ปุ่มข้ามทับ
+	-- การ์ดกลาง แตะพลาด = ข้ามการเลือกอาชีพไปจนตาย)
+	panel.Size = Responsive.IsSmallScreen() and UDim2.fromScale(0.94, 0.94)
 		or UDim2.fromOffset(720, 380)
 	panel.BackgroundColor3 = STONE
 	panel.BorderSizePixel = 0
 	panel.Parent = gui
 	corner(panel, UDim.new(0, 14))
 	stroke(panel, RUNE, 0.55, 2)
-	Responsive.Scale(panel)
+	Responsive.Scale(panel, Responsive.IsSmallScreen() and 0.95 or nil) -- มือถือ: แผงเต็มจออยู่แล้ว ห้ามย่อซ้ำ (QA 2026-09-26)
 	self.panel = panel
 
 	local title = Instance.new("TextLabel")
@@ -96,7 +98,7 @@ function ClassCardGui.new()
 	local row = Instance.new("Frame")
 	row.Name = "Cards"
 	row.Position = UDim2.new(0, 12, 0, 76)
-	row.Size = UDim2.new(1, -24, 1, -92)
+	row.Size = UDim2.new(1, -24, 1, -122) -- เว้นล่าง 46px ให้ปุ่ม "ยังไม่เลือกตอนนี้"
 	row.BackgroundTransparency = 1
 	row.Parent = panel
 	self.row = row

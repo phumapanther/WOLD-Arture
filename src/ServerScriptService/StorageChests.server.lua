@@ -21,6 +21,7 @@ local Classes = require(game.ServerScriptService.Classes)
 local ClassConfig = require(game.ReplicatedStorage.ClassConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local ChestStorageAccess = require(game.ServerScriptService.ChestStorageAccess)
+local SlotCodec = require(game.ServerScriptService.SlotCodec)
 
 --------------------------------------------------------------------------------
 -- ตัวเลข
@@ -74,13 +75,30 @@ local Contents = setmetatable({}, { __mode = "k" }) -- weak key: หีบที
 -- ใครเปิดหีบไหนอยู่ ใช้ส่งภาพให้ตรงกันเมื่อมีคนอื่นหยิบของไปจากหีบเดียวกัน
 local Viewers = {} -- [player] = model
 
+-- **บนเกาะ ของในตู้ต้องรอดการออกเกม** (QA 2026-09-26) — กติกา "หายตอนเซิร์ฟปิด" ตั้งไว้สำหรับหีบสาธารณะกลางเมือง
+-- แต่เซิร์ฟเกาะปิดทุกครั้งที่เจ้าของออก = ตู้เย็น/ตู้ยา 120 เพชรว่างทุกครั้งที่กลับมา · ตู้บนเกาะจึงจำของไว้ที่ entry
+-- ของชิ้นที่วาง (อยู่ในโปรไฟล์เจ้าของอยู่แล้ว) ผ่าน SlotCodec เพราะช่องเป็น sparse
+-- ตัวตู้ที่ใช้งานได้ถูกห่อด้วย Model ลูกชื่อต้นแบบ (IslandBuild FUNCTIONAL) — entry จึงอยู่ที่ตัวแม่
+local function islandEntryOf(model)
+	if not ServerConfig.IsFarm or not IslandAccess.EntryOf then return nil end
+	return IslandAccess.EntryOf(model) or (model.Parent and IslandAccess.EntryOf(model.Parent))
+end
+
 local function contentsOf(model)
 	local c = Contents[model]
 	if not c then
-		c = {}
+		local entry = islandEntryOf(model)
+		c = (entry and entry.storage) and SlotCodec.FromSave(entry.storage) or {}
 		Contents[model] = c
 	end
 	return c
+end
+
+local function persist(model)
+	local entry = islandEntryOf(model)
+	if not entry then return end
+	local c = Contents[model]
+	entry.storage = (c and next(c) ~= nil) and SlotCodec.ForSave(c) or nil
 end
 
 -- ภาพของหีบสำหรับส่งให้ไคลเอนต์ — ส่งทั้งสามช่องเสมอ ช่องว่างเป็น false
@@ -108,6 +126,7 @@ end
 
 -- บอกทุกคนที่กำลังเปิดหีบใบนี้อยู่ ไม่ใช่แค่คนที่เพิ่งทำอะไรไป
 local function pushAll(model)
+	persist(model) -- ทุกครั้งที่ของในตู้เปลี่ยน (ใส่/หยิบ) ผ่านตรงนี้
 	for player, open in pairs(Viewers) do
 		if open == model then pushTo(player, model) end
 	end
@@ -138,6 +157,7 @@ local function put(player, model, bagIndex, count)
 	if not slot then return end
 
 	count = math.clamp(math.floor(tonumber(count) or 1), 1, slot.count or 1)
+	if count ~= count then return end -- NaN (ไม่งั้นตู้ได้กองที่ไม่มีวันหมด ส่วนกระเป๋าไม่ถูกหัก)
 
 	if not accepts(model, slot.id) then
 		local want = model:GetAttribute("StorageAccepts")

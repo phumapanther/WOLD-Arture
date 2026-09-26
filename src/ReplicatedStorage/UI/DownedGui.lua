@@ -107,6 +107,10 @@ function DownedGui.new()
 	pad.PaddingTop = UDim.new(0, 8)
 	pad.PaddingBottom = UDim.new(0, 8)
 	pad.Parent = button
+	-- จอมือถือแนวนอนสูงแค่ ~390 px: 6.5% เหลือปุ่มสูง 25 px ตัวหนังสือ 9 px — ขั้นต่ำเท่านิ้วแตะ (QA 2026-09-26)
+	local minSize = Instance.new("UISizeConstraint")
+	minSize.MinSize = Vector2.new(200, 52)
+	minSize.Parent = button
 
 	-- The world itself darkens too, so it isn't just a flat panel over a bright scene.
 	local effect = Instance.new("ColorCorrectionEffect")

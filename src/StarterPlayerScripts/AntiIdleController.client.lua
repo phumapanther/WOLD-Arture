@@ -99,7 +99,7 @@ end
 
 local function showWarning(secondsLeft)
 	ensureWarnGui()
-	warnLabel.Text = ("ขยับเมาส์หรือกดปุ่มอะไรก็ได้ — อีก %d นาทีระบบของ Roblox จะตัดการเชื่อมต่อเพราะอยู่นิ่ง")
+	warnLabel.Text = ((UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled) and "แตะจอหรือขยับตัวละคร" or "ขยับเมาส์หรือกดปุ่มอะไรก็ได้") .. (" — อีก %d นาทีระบบของ Roblox จะตัดการเชื่อมต่อเพราะอยู่นิ่ง")
 		:format(math.max(1, math.ceil(secondsLeft / 60)))
 	warnGui.Enabled = true
 end

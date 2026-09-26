@@ -64,7 +64,7 @@ function DiscordGui.new(url)
 	stroke.Transparency = 0.35
 	stroke.Thickness = 2
 	stroke.Parent = panel
-	Responsive.Scale(panel)
+	Responsive.Scale(panel, Responsive.IsSmallScreen() and 0.95 or nil) -- มือถือ: แผงเต็มจออยู่แล้ว ห้ามย่อซ้ำ (QA 2026-09-26)
 
 	local title = Instance.new("TextLabel")
 	title.Size = UDim2.new(1, -24, 0, 30)
@@ -127,7 +127,7 @@ function DiscordGui.new(url)
 		if type(clip) == "function" then
 			copied = pcall(clip, self.url)
 		end
-		copy.Text = copied and "คัดลอกแล้ว!" or "เลือกข้อความข้างบนแล้วกด Ctrl+C"
+		copy.Text = copied and "คัดลอกแล้ว!" or (Responsive.IsTouchOnly() and "กดค้างที่ข้อความข้างบนแล้วเลือกคัดลอก" or "เลือกข้อความข้างบนแล้วกด Ctrl+C")
 		task.delay(2.5, function()
 			if copy.Parent then copy.Text = "คัดลอกลิงก์" end
 		end)
