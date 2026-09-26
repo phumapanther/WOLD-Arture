@@ -67,9 +67,12 @@ local function requestAction()
 end
 -- The touch button fires the same path as the Ctrl key. A BindableEvent rather than a global: it is the
 -- supported way for two LocalScripts to talk, and it cannot be clobbered by load order.
+-- ⚠️ ช่องทางอยู่ใน ReplicatedStorage (สร้างฝั่งไคลเอนต์ = มีแค่เครื่องนี้) **ห้ามไว้ใน PlayerGui** — ตัวละครเกิดทีไร
+-- Roblox ล้าง PlayerGui ทุกอย่างยกเว้น ScreenGui ที่ ResetOnSpawn=false ช่องทางหายเงียบๆ ปุ่มมือถือตายทั้งแถบ
+-- (สนาม PVP เกิดตัวละครหลังสคริปต์เริ่มและทุกรอบ = ตายตั้งแต่ต้น · เกมหลักตายหลังตายครั้งแรก) QA 2026-09-26
 local bindable = Instance.new("BindableEvent")
 bindable.Name = "WOLD_RequestAction"
-bindable.Parent = player:WaitForChild("PlayerGui")
+bindable.Parent = game.ReplicatedStorage
 bindable.Event:Connect(requestAction)
 
 UserInputService.InputBegan:Connect(function(input, gameProcessed)

@@ -33,6 +33,13 @@ local SHADOWS_BELOW = 8
 local SCENERY_BELOW = 5
 local EVERYTHING_BELOW = 2
 
+-- **บนเกาะฟาร์มมิ่ง Low ไม่ซ่อนโมเดล** (ผู้ใช้สั่ง 2026-09-26) — ต้นไม้ หิน พุ่ม ของตกแต่งบนเกาะคือของที่ผู้เล่นซื้อ
+-- มาวางเอง ซ่อนแล้วเกาะดูโล่ง · เงา ไฟ เอฟเฟกต์ หญ้าบนพื้น ยังลดตามระดับเหมือนเดิม (ยังได้เฟรมคืน)
+-- ถามทุกครั้ง ไม่จำไว้ตอนเริ่ม: แอตทริบิวต์ของเวิร์กสเปซอาจยังมาไม่ถึงตอนสคริปต์นี้เริ่ม
+local function hidesModels()
+	return Workspace:GetAttribute("IslandMode") ~= true
+end
+
 -- Phones and tablets ONLY, using the same test TouchActionController settled on: a touchscreen laptop and
 -- Studio's device emulator both report TouchEnabled while still having a keyboard and mouse.
 local function isTouchOnlyDevice()
@@ -292,8 +299,8 @@ local function apply()
 	local wantEffects = wantLamps or not isTouchOnlyDevice()
 
 	-- Nothing to do if the tier has not actually changed; the slider fires this on every nudge.
-	local signature = ("%s|%s|%s|%s"):format(tostring(wantShadows), tostring(wantScenery),
-		tostring(wantLamps), tostring(wantEffects))
+	local signature = ("%s|%s|%s|%s|%s"):format(tostring(wantShadows), tostring(wantScenery),
+		tostring(wantLamps), tostring(wantEffects), tostring(hidesModels()))
 	if signature == applied then return end
 	applied = signature
 
@@ -307,8 +314,8 @@ local function apply()
 	pcall(function()
 		Workspace.Terrain.Decoration = wantScenery
 	end)
-	applyScenery(not wantScenery)
-	applyClutter(not wantScenery)
+	applyScenery(not wantScenery and hidesModels())
+	applyClutter(not wantScenery and hidesModels())
 
 	applyLamps(not wantLamps)
 	applyEffects(not wantEffects)
@@ -322,6 +329,8 @@ end
 
 -- Re-applied whenever the player moves the slider, so the effect is immediate rather than needing a rejoin.
 GameSettings:GetPropertyChangedSignal("SavedQualityLevel"):Connect(apply)
+-- ธงเกาะมาถึงช้ากว่าสคริปต์นี้ได้ → คิดใหม่ตอนมันมา (ลายเซ็นมีธงนี้อยู่ด้วย จึงไม่ถูกข้าม)
+Workspace:GetAttributeChangedSignal("IslandMode"):Connect(apply)
 
 -- Anything that streams in later gets whatever the current tier says, so walking into a fresh village does
 -- not bring back the scenery and lamps the tier had already turned off.
@@ -339,7 +348,7 @@ local function catchUp(instance)
 		end
 		return
 	end
-	if level > SCENERY_BELOW then return end
+	if level > SCENERY_BELOW or not hidesModels() then return end
 	if instance:IsA("BasePart") and isClutter(instance) then hidePart(instance) end
 end
 
@@ -347,7 +356,7 @@ Workspace.DescendantAdded:Connect(catchUp)
 
 for _, tag in ipairs({ "Tree", "Rock", "Bush" }) do
 	CollectionService:GetInstanceAddedSignal(tag):Connect(function(instance)
-		if qualityLevel() > SCENERY_BELOW then return end
+		if qualityLevel() > SCENERY_BELOW or not hidesModels() then return end
 		if isHarvestable(instance) then return end
 		eachSceneryPart(instance, hidePart)
 	end)

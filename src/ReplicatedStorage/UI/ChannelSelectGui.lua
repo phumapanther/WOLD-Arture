@@ -229,8 +229,14 @@ function ChannelSelectGui.new()
 	-- On a phone the header eats proportionally more of a short screen, so the list starts higher and keeps a
 	-- smaller bottom margin than on desktop.
 	-- Portrait leaves room at the bottom for the touch controls, which sit over the lower corners.
-	local bottomMargin = portrait and 150 or (Responsive.IsSmallScreen() and 96 or 140)
-	list.Size = UDim2.new(0.94, 0, 1, -TOP_BAR - bottomMargin)
+	local bottomMargin = portrait and 150 or (Responsive.IsSmallScreen() and 86 or 140) -- มือถือ: แถบปุ่มกระโดด 70px + ขอบ
+	-- ⚠️ ต้องหัก `headerDrop` ด้วย (QA 2026-09-26) — เดิมหักแค่แถบบนกับขอบล่าง แต่วางลงมาที่ TOP_BAR + headerDrop
+	-- รายการจึงยาวเลยขอบล่างไป headerDrop พอดี แถบล่างที่ตั้งใจเว้นไว้ให้ปุ่มมือถือ (กระโดด/🔮/🛠️) ไม่เคยว่างจริง
+	-- = ปุ่มพวกนั้นทับปุ่ม JOIN แถวล่าง · แผงฟาร์ม/PVP ใช้ขนาดเดียวกัน (ผู้ใช้สั่งให้กล่องสามโหมดเท่ากัน)
+	local panelSize = UDim2.new(0.94, 0, 1, -TOP_BAR - headerDrop - bottomMargin)
+	-- เพดานล่างของความสูง: มือถือแนวนอนสูงแค่ ~390px ถ้ายังบังคับ 260 รายการจะดันเลยขอบจออยู่ดี
+	local panelMinHeight = Responsive.IsSmallScreen() and not portrait and 140 or 260
+	list.Size = panelSize
 	list.Position = UDim2.new(0.5, 0, 0, TOP_BAR + headerDrop)
 	-- Glass panel: background image/gradient shows through instead of flat black. The touch action buttons
 	-- reuse these exact values (Responsive.Glass*) so the two surfaces read as one material.
@@ -245,7 +251,7 @@ function ChannelSelectGui.new()
 	corner(list, UDim.new(0, 20))
 	glassStroke(list, 0.8)
 	local listSizeConstraint = Instance.new("UISizeConstraint")
-	listSizeConstraint.MinSize = Vector2.new(480, 260)
+	listSizeConstraint.MinSize = Vector2.new(480, panelMinHeight)
 	listSizeConstraint.Parent = list
 	local listLayout = Instance.new("UIListLayout")
 	listLayout.Padding = UDim.new(0, 8)
@@ -381,7 +387,7 @@ function ChannelSelectGui.new()
 	-- ค่าพวกนี้คิดมาจากความสูงหัวจอและขอบล่างของมือถือ/จอแนวตั้งแล้ว การตั้งเลขเองใหม่จึงเพี้ยนแน่นอน
 	local farmList = Instance.new("ScrollingFrame")
 	farmList.AnchorPoint = Vector2.new(0.5, 0)
-	farmList.Size = UDim2.new(0.94, 0, 1, -TOP_BAR - bottomMargin)
+	farmList.Size = panelSize
 	farmList.Position = UDim2.new(0.5, 0, 0, TOP_BAR + headerDrop)
 	farmList.BackgroundColor3 = Responsive.GlassColor
 	farmList.BackgroundTransparency = Responsive.GlassTransparency
@@ -395,7 +401,7 @@ function ChannelSelectGui.new()
 	corner(farmList, UDim.new(0, 20))
 	glassStroke(farmList, 0.8)
 	local farmSizeConstraint = Instance.new("UISizeConstraint")
-	farmSizeConstraint.MinSize = Vector2.new(480, 260)
+	farmSizeConstraint.MinSize = Vector2.new(480, panelMinHeight)
 	farmSizeConstraint.Parent = farmList
 	local farmLayout = Instance.new("UIListLayout")
 	farmLayout.Padding = UDim.new(0, 8)

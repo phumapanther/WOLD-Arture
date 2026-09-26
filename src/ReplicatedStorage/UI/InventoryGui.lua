@@ -159,14 +159,17 @@ function InventoryGui.new()
 	title.Position = UDim2.new(0, 18, 0, 12)
 	title.Font = Enum.Font.GothamBold
 
+	-- ⚠️ แถบแท็บกระเป๋าหลัก/VIP เคยทับป้ายน้ำหนัก (y 33-49 ใต้เงิน) ทั้งคอมและมือถือ และบนมือถือทับเงินด้วย
+	-- (ผู้ใช้แจ้ง 2026-09-26) · เงินอยู่แถวบนสุด จบก่อนปุ่มปิด · น้ำหนักย้ายลงไปมุมขวาล่าง แถวเดียวกับปุ่มจัดกระเป๋า
 	local goldLabel = label(panel, "0", 15, ACCENT, Enum.TextXAlignment.Right)
-	goldLabel.Size = UDim2.new(0.3, 0, 0, 18)
-	goldLabel.Position = UDim2.new(0.66, 0, 0, 14)
+	goldLabel.Size = UDim2.new(0.6, -56, 0, 18)
+	goldLabel.Position = UDim2.new(0.4, 0, 0, small and 3 or 12)
 	self.goldLabel = goldLabel
 
 	local weightLabel = label(panel, "0 / 0", 13, TEXT_MUTED, Enum.TextXAlignment.Right)
-	weightLabel.Size = UDim2.new(0.3, 0, 0, 16)
-	weightLabel.Position = UDim2.new(0.66, 0, 0, 33)
+	weightLabel.AnchorPoint = Vector2.new(1, 1)
+	weightLabel.Size = UDim2.new(0.4, 0, 0, 18)
+	weightLabel.Position = UDim2.new(1, -18, 1, small and -6 or -20) -- มือถือ: ช่องจบที่ 28px จากขอบล่าง
 	self.weightLabel = weightLabel
 
 	local close = Instance.new("TextButton")
@@ -264,7 +267,7 @@ function InventoryGui.new()
 	local tabBar = Instance.new("Frame")
 	tabBar.Name = "Tabs"
 	tabBar.Position = UDim2.new(0.3, 0, 0, small and 22 or 32)
-	tabBar.Size = UDim2.new(0.68, -18, 0, small and 24 or 28)
+	tabBar.Size = UDim2.new(0.68, -58, 0, small and 24 or 28) -- จบก่อนปุ่มปิด (เดิมทับปุ่ม ✕ ด้วย)
 	tabBar.BackgroundColor3 = SLOT_BG
 	tabBar.BackgroundTransparency = 0.1
 	tabBar.BorderSizePixel = 0
@@ -420,7 +423,7 @@ function InventoryGui.new()
 	local hint = label(panel, "แตะช่องเพื่อใช้ / สวมใส่", 11, TEXT_MUTED)
 	hint.AnchorPoint = Vector2.new(0, 1)
 	hint.Position = UDim2.new(0.3, 0, 1, -18)
-	hint.Size = UDim2.new(0.6, 0, 0, 16)
+	hint.Size = UDim2.new(0.3, 0, 0, 16) -- ครึ่งขวาของแถวนี้เป็นของป้ายน้ำหนัก
 
 	-- On a phone the panel is already sized as a fraction of the viewport, so the width-driven scale would
 	-- shrink it a second time; keep it near 1 there and let the layout do the adapting.

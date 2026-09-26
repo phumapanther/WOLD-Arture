@@ -42,11 +42,14 @@ end)
 -- ทรงที่ใช้ได้จริงในเกมนี้คือทรงเดียวกับ `WOLD_ToggleInventory`/`WOLD_RequestAction`: **เจ้าของหน้าต่าง
 -- สร้างช่องทาง ฝั่งที่กดปุ่มไปหยิบตอนกด** (`FindFirstChild` ตอนคลิก) ไม่มีใครต้องรอใคร
 local pg = player:WaitForChild("PlayerGui")
-local opener = pg:FindFirstChild("WOLD_OpenPremium")
+-- ⚠️ ช่องทางอยู่ใน ReplicatedStorage (สร้างฝั่งไคลเอนต์ = มีแค่เครื่องนี้) **ห้ามไว้ใน PlayerGui** — ตัวละครเกิดทีไร
+-- Roblox ล้าง PlayerGui ทุกอย่างยกเว้น ScreenGui ที่ ResetOnSpawn=false ช่องทางหายเงียบๆ ปุ่มมือถือตายทั้งแถบ
+-- (สนาม PVP เกิดตัวละครหลังสคริปต์เริ่มและทุกรอบ = ตายตั้งแต่ต้น · เกมหลักตายหลังตายครั้งแรก) QA 2026-09-26
+local opener = game.ReplicatedStorage:FindFirstChild("WOLD_OpenPremium")
 if not opener then
 	opener = Instance.new("BindableEvent")
 	opener.Name = "WOLD_OpenPremium"
-	opener.Parent = pg
+	opener.Parent = game.ReplicatedStorage
 end
 opener.Event:Connect(function(tab)
 	gui:Show(tab, latest)

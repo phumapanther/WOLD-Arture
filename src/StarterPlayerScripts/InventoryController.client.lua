@@ -60,9 +60,12 @@ end
 
 -- Exposed to the touch controller the same way the roll button reaches ActionController: a BindableEvent
 -- rather than a global, so load order cannot break it.
+-- ⚠️ ช่องทางอยู่ใน ReplicatedStorage (สร้างฝั่งไคลเอนต์ = มีแค่เครื่องนี้) **ห้ามไว้ใน PlayerGui** — ตัวละครเกิดทีไร
+-- Roblox ล้าง PlayerGui ทุกอย่างยกเว้น ScreenGui ที่ ResetOnSpawn=false ช่องทางหายเงียบๆ ปุ่มมือถือตายทั้งแถบ
+-- (สนาม PVP เกิดตัวละครหลังสคริปต์เริ่มและทุกรอบ = ตายตั้งแต่ต้น · เกมหลักตายหลังตายครั้งแรก) QA 2026-09-26
 local bindable = Instance.new("BindableEvent")
 bindable.Name = "WOLD_ToggleInventory"
-bindable.Parent = player:WaitForChild("PlayerGui")
+bindable.Parent = game.ReplicatedStorage
 bindable.Event:Connect(toggle)
 
 -- เปิดกระเป๋าได้ทั้ง I และ B ตามที่ผู้ใช้สั่ง

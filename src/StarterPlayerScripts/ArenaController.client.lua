@@ -471,9 +471,12 @@ end, false, Enum.KeyCode.M)
 
 -- ปุ่มสนามบนจอมือถือ (TouchActionGui:SetArenaMode) — **หน้าต่างเป็นเจ้าของช่องทาง** ฝั่งปุ่มหยิบตอนกด
 -- สถิติบนมือถือเป็นแตะเปิด/แตะปิด (คีย์บอร์ดเป็นกดค้างแบบ Tab ปกติ)
+-- ⚠️ ช่องทางอยู่ใน ReplicatedStorage (สร้างฝั่งไคลเอนต์ = มีแค่เครื่องนี้) **ห้ามไว้ใน PlayerGui** — ตัวละครเกิดทีไร
+-- Roblox ล้าง PlayerGui ทุกอย่างยกเว้น ScreenGui ที่ ResetOnSpawn=false ช่องทางหายเงียบๆ ปุ่มมือถือตายทั้งแถบ
+-- (สนาม PVP เกิดตัวละครหลังสคริปต์เริ่มและทุกรอบ = ตายตั้งแต่ต้น · เกมหลักตายหลังตายครั้งแรก) QA 2026-09-26
 local arenaAction = Instance.new("BindableEvent")
 arenaAction.Name = "WOLD_ArenaAction"
-arenaAction.Parent = playerGui
+arenaAction.Parent = game.ReplicatedStorage
 arenaAction.Event:Connect(function(action)
 	if action == "shop" then
 		toggleShop()

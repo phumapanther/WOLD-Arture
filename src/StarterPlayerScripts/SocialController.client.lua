@@ -455,53 +455,18 @@ end)
 
 -- Reached by the touch controller through a BindableEvent, the same way the bag button works: a global
 -- would depend on load order, and this does not.
+-- ⚠️ ช่องทางอยู่ใน ReplicatedStorage (สร้างฝั่งไคลเอนต์ = มีแค่เครื่องนี้) **ห้ามไว้ใน PlayerGui** — ตัวละครเกิดทีไร
+-- Roblox ล้าง PlayerGui ทุกอย่างยกเว้น ScreenGui ที่ ResetOnSpawn=false ช่องทางหายเงียบๆ ปุ่มมือถือตายทั้งแถบ
+-- (สนาม PVP เกิดตัวละครหลังสคริปต์เริ่มและทุกรอบ = ตายตั้งแต่ต้น · เกมหลักตายหลังตายครั้งแรก) QA 2026-09-26
 local bindable = Instance.new("BindableEvent")
 bindable.Name = "WOLD_ToggleSocial"
-bindable.Parent = playerGui
+bindable.Parent = game.ReplicatedStorage
 bindable.Event:Connect(toggle)
 
--- ล็อบบี้ไม่มีปุ่มมือถือของ TouchActionGui (ไม่มีการเล่นในล็อบบี้) → ปุ่มหินเวทของตัวเอง มุมขวาล่าง ในช่องว่างใต้
--- รายชื่อเซิร์ฟ (ChannelSelectGui เว้นขอบล่างไว้ ≥96px) · ขึ้นทุกเครื่อง คอมก็กดได้ ไม่ต้องจำปุ่ม P
--- ชื่อ ScreenGui อยู่ในรายการ KEEP ของ PhotoMode — ในโหมดถ่ายรูปมันคือทางออกทางเดียวของมือถือ
+-- ล็อบบี้ไม่มีปุ่มมือถือของ TouchActionGui (ไม่มีการเล่นในล็อบบี้) → ปุ่มหินเวทกลมมุมขวาล่าง หน้าตาเดียวกับในเกม
+-- วางไว้ซ้ายของปุ่มกระโดด (LobbyButton) · ชื่อ ScreenGui อยู่ในรายการ KEEP ของ PhotoMode = ทางออกของมือถือตอนถ่ายรูป
 if LOBBY then
-	local holder = Instance.new("ScreenGui")
-	holder.Name = "WOLD_LobbyStone"
-	holder.ResetOnSpawn = false
-	holder.IgnoreGuiInset = true
-	holder.DisplayOrder = 25
-	holder.Parent = playerGui
-	local button = Instance.new("TextButton")
-	button.AnchorPoint = Vector2.new(1, 1)
-	button.Position = UDim2.new(1, -24, 1, -24)
-	button.Size = UDim2.fromOffset(52, 52)
-	button.BackgroundColor3 = Color3.fromRGB(24, 22, 28)
-	button.BackgroundTransparency = 0.25
-	button.TextScaled = true
-	button.Text = "🔮"
-	button.Parent = holder
-	local round = Instance.new("UICorner")
-	round.CornerRadius = UDim.new(1, 0)
-	round.Parent = button
-	local rim = Instance.new("UIStroke")
-	rim.Color = Color3.fromRGB(196, 150, 60)
-	rim.Thickness = 1.5
-	rim.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-	rim.Parent = button
-	local pad = Instance.new("UIPadding")
-	for _, side in ipairs({ "PaddingTop", "PaddingBottom", "PaddingLeft", "PaddingRight" }) do
-		pad[side] = UDim.new(0.18, 0)
-	end
-	pad.Parent = button
-	button.Activated:Connect(toggle)
-	-- กด JOIN แล้วจอดำ "กำลังเข้าสู่โลก" (Blackout ของ ChannelSelectGui) — ปุ่มห้ามลอยทับจอนั้น
-	task.spawn(function()
-		while holder.Parent do
-			local lobbyGui = playerGui:FindFirstChild("ChannelSelectGui")
-			local blackout = lobbyGui and lobbyGui:FindFirstChild("Blackout", true)
-			holder.Enabled = not (blackout and blackout.Visible)
-			task.wait(0.25)
-		end
-	end)
+	require(game.ReplicatedStorage.UI.LobbyButton).new("WOLD_LobbyStone", 1, "stone", nil, function() return true end, toggle)
 end
 
 -- Ask once at startup so the board is populated before the stone is ever opened. Retried because the

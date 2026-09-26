@@ -159,6 +159,12 @@ local function circle(parent, size, color, iconName)
 	return btn, holder
 end
 
+-- ปุ่มวงกลมกระจกหน้าตาเดียวกับปุ่มมือถือในเกม ให้ที่อื่นใช้ (ปุ่มล็อบบี้ 🔮 🛠️) — คืน (ปุ่ม, กรอบไอคอน)
+-- `iconName` = ชื่อไอคอนวาดด้วย Frame ในไฟล์นี้ ("stone" "bag" ...) หรือ nil แล้วใส่อะไรเองในกรอบ
+function TouchActionGui.Circle(parent, size, iconName)
+	return circle(parent, size, ROLL_COLOR, iconName)
+end
+
 function TouchActionGui.new()
 	local self = setmetatable({}, TouchActionGui)
 
@@ -309,43 +315,23 @@ function TouchActionGui:AnchorJumpButton()
 			-(EDGE_MARGIN + (ATTACK_SIZE - JUMP_SIZE) / 2))
 	end
 
-	-- Roblox REBUILDS its touch controls on rotation, which resets the jump button to its own corner while our
-	-- cluster stays put — that is the pile-up seen after turning a phone. So keep watching rather than placing
-	-- once: re-place whenever the button reappears, and whenever the viewport changes shape.
+	-- Roblox REBUILDS or re-positions its touch controls on rotation, on every respawn (the arena respawns
+	-- each round), and whenever ModalEnabled flips (the arena shop) — each resets the jump button to its own
+	-- corner, under our buttons. Event-watching missed some of those (user report 2026-09-26: "next round the
+	-- jump button moves under the other buttons"), so ONE loop re-places it twice a second instead: whatever
+	-- moved it, it is back within half a second. Writing the same Position is free (no change event fires).
+	if self._anchoring then return end
+	self._anchoring = true
 	task.spawn(function()
-		local playerGui = player:FindFirstChildOfClass("PlayerGui")
-		if not playerGui then return end
-
-		local function findJump()
-			local touchGui = playerGui:FindFirstChild("TouchGui")
+		while self.gui.Parent do
+			local playerGui = player:FindFirstChildOfClass("PlayerGui")
+			local touchGui = playerGui and playerGui:FindFirstChild("TouchGui")
 			local frame = touchGui and touchGui:FindFirstChild("TouchControlFrame")
-			return frame and frame:FindFirstChild("JumpButton")
+			local jump = frame and frame:FindFirstChild("JumpButton")
+			if jump and self.gui.Enabled then place(jump) end
+			task.wait(0.5)
 		end
-
-		-- Wait for the controls to exist at all.
-		local deadline = os.clock() + 20
-		local jump
-		repeat
-			jump = findJump()
-			if not jump then task.wait(0.5) end
-		until jump or os.clock() > deadline
-		if not jump then return end
-		place(jump)
-
-		-- A rotation destroys and rebuilds TouchGui, so watch for the replacement and re-place it.
-		playerGui.DescendantAdded:Connect(function(descendant)
-			if descendant.Name == "JumpButton" then
-				task.wait(0.1) -- let Roblox finish laying its own controls out first
-				place(descendant)
-			end
-		end)
-
-		-- Belt and braces: the button can also simply be MOVED on a resize without being rebuilt.
-		Responsive.OnViewportChanged(function()
-			task.wait(0.15)
-			local current = findJump()
-			if current then place(current) end
-		end)
+		self._anchoring = false
 	end)
 end
 

@@ -42,8 +42,8 @@ end)
 -- The roll/slide button drives the same path as the Ctrl key, through ActionController's BindableEvent, so
 -- the two input routes cannot drift apart. It resolves to a slide while sprinting and a roll otherwise.
 gui:OnRoll(function()
-	local bindable = player:FindFirstChild("PlayerGui")
-	bindable = bindable and bindable:FindFirstChild("WOLD_RequestAction")
+	-- ช่องทางอยู่ใน ReplicatedStorage ไม่ใช่ PlayerGui (PlayerGui ถูกล้างทุกครั้งที่ตัวละครเกิด) QA 2026-09-26
+	local bindable = game.ReplicatedStorage:FindFirstChild("WOLD_RequestAction")
 	if bindable then bindable:Fire() end
 end)
 
@@ -74,15 +74,13 @@ end)
 
 -- The bag button drives InventoryController's BindableEvent, so touch and the I key share one path.
 gui:OnBag(function()
-	local pg = player:FindFirstChild("PlayerGui")
-	local toggle = pg and pg:FindFirstChild("WOLD_ToggleInventory")
+	local toggle = game.ReplicatedStorage:FindFirstChild("WOLD_ToggleInventory")
 	if toggle then toggle:Fire() end
 end)
 
 -- Same again for the speaking stone: touch and the P key share SocialController's BindableEvent.
 gui:OnSocial(function()
-	local pg = player:FindFirstChild("PlayerGui")
-	local toggle = pg and pg:FindFirstChild("WOLD_ToggleSocial")
+	local toggle = game.ReplicatedStorage:FindFirstChild("WOLD_ToggleSocial")
 	if toggle then toggle:Fire() end
 end)
 
@@ -90,8 +88,7 @@ end)
 -- ArenaController เป็นเจ้าของทุกหน้าต่างพวกนั้นและเป็นคนสร้างช่องทาง `WOLD_ArenaAction` — หยิบตอนกด ไม่ผูกล่วงหน้า
 if workspace:GetAttribute("ArenaMode") == true then
 	gui:SetArenaMode(function(action)
-		local pg = player:FindFirstChild("PlayerGui")
-		local channel = pg and pg:FindFirstChild("WOLD_ArenaAction")
+		local channel = game.ReplicatedStorage:FindFirstChild("WOLD_ArenaAction")
 		if channel then channel:Fire(action) else warn("[Touch] ไม่เจอ WOLD_ArenaAction (ArenaController)") end
 	end)
 end

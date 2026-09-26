@@ -110,12 +110,11 @@ end)
 -- ทรงเดียวกับปุ่มกระเป๋า/หินสื่อสารบนจอสัมผัส — ไม่มีสองสคริปต์ต้องมาถึงพร้อมกัน จึงไม่มีจังหวะให้แพ้
 -- ถ้าหน้าจอพรีเมียมยังไม่พร้อมจริงๆ ให้ดังออกมาเป็น warn ไม่ใช่เงียบ (ของเดิมเงียบจนหาไม่เจอว่าพังตรงไหน)
 local function openPremium(tab)
-	local bindable = player:FindFirstChild("PlayerGui")
-	bindable = bindable and bindable:FindFirstChild("WOLD_OpenPremium")
+	local bindable = game.ReplicatedStorage:FindFirstChild("WOLD_OpenPremium")
 	if bindable then
 		bindable:Fire(tab)
 	else
-		warn("[Hud] ยังไม่มี WOLD_OpenPremium ใน PlayerGui — PremiumController ยังไม่พร้อมหรือหยุดกลางทาง")
+		warn("[Hud] ยังไม่มี WOLD_OpenPremium — PremiumController ยังไม่พร้อมหรือหยุดกลางทาง")
 	end
 end
 gui:AddMenuItem("💎 ร้านค้าพรีเมียม", Color3.fromRGB(70, 100, 150), function() openPremium("shop") end)
