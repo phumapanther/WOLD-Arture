@@ -67,6 +67,14 @@ Remotes.EquipmentChanged.OnClientEvent:Connect(function(who, weaponId)
 	if who ~= player then return end
 	setEquipped(weaponId)
 end)
+-- ⚠️ ตอนเข้าเซิร์ฟพร้อมถือเครื่องมือ EquipmentChanged ไม่ยิงเลย (โหลดกระเป๋าไม่ใช่ "การเปลี่ยน") → เดิม heldTool ว่าง
+-- ปุ่ม E ไม่ขึ้นจนถอดใส่ใหม่ (ผู้ใช้แจ้ง 2026-09-26) · แอตทริบิวต์ `WOLD_Weapon` ที่ Inventory.Send ตั้งคือสถานะที่ค้างอยู่
+-- อ่านได้ทุกเมื่อ ไม่มีจังหวะให้พลาด · refreshPrompts ถูกประกาศข้างล่าง จึงเรียกผ่านการ defer ตอนสัญญาณมา
+local function syncHeldFromAttribute()
+	setEquipped(player:GetAttribute("WOLD_Weapon"))
+end
+syncHeldFromAttribute()
+player:GetAttributeChangedSignal("WOLD_Weapon"):Connect(syncHeldFromAttribute)
 
 --------------------------------------------------------------------------------
 -- Hiding prompts this player cannot use
@@ -557,5 +565,8 @@ task.spawn(function()
 		refreshPrompts()
 	end
 end)
+
+-- ของในมือมาถึงทีหลังตอนเข้าเซิร์ฟ (แอตทริบิวต์) → จัดปุ่มใหม่ทันที ไม่ต้องรอรอบวินาที
+player:GetAttributeChangedSignal("WOLD_Weapon"):Connect(function() task.defer(refreshPrompts) end)
 
 refreshPrompts()

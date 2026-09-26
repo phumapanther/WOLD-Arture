@@ -131,9 +131,7 @@ local function setup(model)
 			toggleCarry(model, player)
 		end)
 	end
-	-- สองปุ่มแขวนชิ้นเดียวกัน = ป้ายซ้อนทับกันเป๊ะ มือถือแตะได้แค่ตัวบน → ดันปุ่มอุ้มลงไปใต้ปุ่มลูบหัว (QA 2026-09-26)
-	local carryPrompt = root:FindFirstChild("CarryPrompt")
-	if carryPrompt then carryPrompt.UIOffset = Vector2.new(0, 84) end
+	-- สองปุ่มแขวนชิ้นเดียวกัน: PromptStackController ฝั่งไคลเอนต์เรียงให้ (ลูบหัว E บน อุ้ม F ล่าง) ไม่ตั้ง UIOffset ที่นี่
 	refreshPrompts(model)
 end
 

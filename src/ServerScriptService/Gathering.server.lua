@@ -517,8 +517,7 @@ local function register(node)
 	auto.MaxActivationDistance = GatherConfig.Range
 	auto.HoldDuration = 0
 	auto.RequiresLineOfSight = false
-	-- Under the gather prompt rather than over it, so [E] reads first.
-	auto.UIOffset = Vector2.new(0, 44)
+	-- ตำแหน่งบนจอ (E บน F ล่าง) เป็นของ PromptStackController ฝั่งไคลเอนต์ ไม่ตั้ง UIOffset ที่นี่
 	-- ปุ่มฟาร์มออโต้ต้องเกิดมาปิดเหมือนปุ่มเก็บ ไม่งั้นสัตว์แรกเกิดยังมีปุ่ม F ค้างให้กด
 	auto.Enabled = not node:GetAttribute("Spent")
 	auto.Parent = anchor

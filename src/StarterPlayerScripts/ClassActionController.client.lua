@@ -95,7 +95,6 @@ local function buildPrompts(target)
 		prompt.MaxActivationDistance = ClassActionConfig.Range
 		prompt.RequiresLineOfSight = false
 		prompt.HoldDuration = action.hold or 0
-		prompt.UIOffset = Vector2.new(0, (order - 1) * 44)
 		prompt:SetAttribute("ActionId", action.id)
 		local readyAt = coolUntil[action.id]
 		if readyAt and os.clock() < readyAt then prompt.Enabled = false end

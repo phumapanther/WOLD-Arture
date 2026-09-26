@@ -583,6 +583,11 @@ end
 function Inventory.Send(player)
 	local state = States[player]
 	if not state then return end
+	-- ของในมือเป็นแอตทริบิวต์บนตัว Player ด้วย — สถานะที่คงอยู่ ไม่ใช่เหตุการณ์ครั้งเดียว (QA 2026-09-26: เข้าเซิร์ฟพร้อม
+	-- ถืออีเต้อ/ขวาน/พลั่ว แล้วปุ่ม E เก็บเกี่ยวไม่ขึ้นจนถอดใส่ใหม่ — ตอนโหลดกระเป๋าไม่มี EquipmentChanged ยิงเลย)
+	-- ไคลเอนต์ที่เริ่มช้ากว่าก็อ่านได้ · เขียนซ้ำค่าเดิมไม่ส่งอะไรข้ามเน็ต
+	local held = state.equipped.weapon and state.equipped.weapon.id or nil
+	if player:GetAttribute("WOLD_Weapon") ~= held then player:SetAttribute("WOLD_Weapon", held) end
 	Remotes.InventoryUpdate:FireClient(player, {
 		slots = wireSlots(state.slots),
 		equipped = state.equipped,

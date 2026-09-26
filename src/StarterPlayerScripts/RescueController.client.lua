@@ -68,7 +68,6 @@ local function addPrompts(target)
 		prompt.KeyboardKeyCode = keyboardKey
 		prompt.MaxActivationDistance = ActionConfig.Revive.range
 		prompt.RequiresLineOfSight = false
-		prompt.UIOffset = Vector2.new(0, order * 44)
 		-- The prompt draws its own filling ring for a hold, so the wait is visible without any UI of ours.
 		prompt.HoldDuration = holdSeconds or 0
 		prompt.Parent = root
