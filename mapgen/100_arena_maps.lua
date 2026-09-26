@@ -45,7 +45,7 @@ local FLOOR_T = 6
 
 local MAPS = {
 	{
-		id = "Foundry", name = "โรงหล่อ", origin = Vector3.new(0, 500, 0),
+		id = "Foundry", name = "โรงหล่อ", origin = Vector3.new(8000, 500, 0), -- เดิม (0,500,0) ทับปราสาท (QA 2026-09-26)
 		-- โทนโรงหล่อ: อิฐเผา เหล็กร้อน ทองเหลือง
 		floor = { Color3.fromRGB(86, 74, 66), Enum.Material.Slate },
 		wall = { Color3.fromRGB(122, 74, 52), Enum.Material.Brick },

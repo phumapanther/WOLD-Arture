@@ -62,7 +62,8 @@ return L.runPhase("NpcSetup", function(folder)
 	-- The prompts the working systems add for themselves. Named here so the cleanup below can tell a live
 	-- prompt from the kit's dead one and leave it alone -- rerunning this phase in a running game would
 	-- otherwise strip the button the server just built.
-	local LIVE_PROMPTS = { ShopPrompt = true, CraftPrompt = true, VaultPrompt = true, VehiclePrompt = true }
+	local LIVE_PROMPTS = { ShopPrompt = true, CraftPrompt = true, VaultPrompt = true, VehiclePrompt = true,
+		GuildPrompt = true } -- GuildPrompt: สมาคม (Clans.server) เดิมโดนลบถ้ารันเฟสนี้ซ้ำ (QA 2026-09-26)
 
 	local workers, cleaned = 0, 0
 	for _, m in ipairs(workspace:GetDescendants()) do
