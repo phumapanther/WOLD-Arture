@@ -11,6 +11,9 @@ while workspace:GetAttribute("IsLobby") == nil do
 	task.wait()
 end
 if workspace:GetAttribute("IsLobby") then return end
+-- สนาม PVP ไม่มีตัวแจกของ (AdminChest.server อยู่ใน denylist ตั้งใจ — ของแอดมินในแมตช์ทำให้เสียความเท่าเทียม)
+-- หีบที่วาดขึ้นมาแล้วกดไม่ได้คือปุ่มพัง จึงไม่วาดเลย (QA 2026-09-26)
+if workspace:GetAttribute("ArenaMode") == true then return end
 
 local AdminChestGui = require(game.ReplicatedStorage.UI.AdminChestGui)
 local Remotes = require(game.ReplicatedStorage.Remotes)

@@ -2,7 +2,6 @@
   "name": "WOLD Farming",
   "servePlaceIds": [136992335889132],
   "globIgnorePaths": [
-    "src/ServerScriptService/AdminChest.server.lua",
     "src/ServerScriptService/AnimalHerds.server.lua",
     "src/ServerScriptService/DevTeleport.server.lua",
     "src/ServerScriptService/Mobs.server.lua",

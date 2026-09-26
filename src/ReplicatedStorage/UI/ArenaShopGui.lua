@@ -312,7 +312,7 @@ function ArenaShopGui.new()
 
 	self.detailName = label(detail, { text = "เลือกไอเทม", font = Enum.Font.GothamBold, size = 22, pos = UDim2.fromOffset(16, 284), dim = UDim2.fromOffset(264, 28) })
 	self.detailKind = label(detail, { text = TOUCH_ONLY and "แตะการ์ดเพื่อดู แล้วกดปุ่มซื้อด้านล่าง" or "ชี้ที่การ์ดเพื่อดูรายละเอียด", size = 15, colour = MUTED, pos = UDim2.fromOffset(16, 314), dim = UDim2.fromOffset(264, 20) })
-	self.detailStats = label(detail, { text = "", size = 16, colour = TEXT, wrap = true, pos = UDim2.fromOffset(16, 346), dim = UDim2.fromOffset(264, 150) })
+	self.detailStats = label(detail, { text = "", size = 16, colour = TEXT, wrap = true, pos = UDim2.fromOffset(16, 346), dim = UDim2.fromOffset(264, 128) })
 	self.detailStats.TextYAlignment = Enum.TextYAlignment.Top
 	self.detailStats.LineHeight = 1.15
 
@@ -338,6 +338,25 @@ function ArenaShopGui.new()
 		end
 	end)
 	self.buyButton = buy
+
+	-- ปุ่มยกเลิกแยก สำหรับของที่ซื้อได้หลายชิ้นต่อรอบ (ขวดน้ำ 3 ขวด) — ถ้าใช้ปุ่มเดียวกับปุ่มซื้อ ซื้อขวดแรกแล้ว
+	-- ปุ่มกลายเป็น "ยกเลิก" ทันที ขวดที่สองซื้อไม่ได้เลย (QA 2026-09-26) · ของชิ้นเดียวต่อรอบยังใช้ปุ่มซื้อตัวเดิมกลับด้าน
+	local refund = Instance.new("TextButton")
+	refund.AnchorPoint = Vector2.new(0.5, 1)
+	refund.Position = UDim2.new(0.5, 0, 1, -70)
+	refund.Size = UDim2.new(1, -28, 0, 36)
+	refund.BackgroundColor3 = rgb(196, 96, 84)
+	refund.Font = Enum.Font.GothamBold
+	refund.TextSize = 16
+	refund.TextColor3 = rgb(250, 244, 236)
+	refund.AutoButtonColor = true
+	refund.Visible = false
+	refund.Parent = detail
+	corner(refund, 10)
+	refund.MouseButton1Click:Connect(function()
+		if self.selected and self.onRefund then self.onRefund(self.selected) end
+	end)
+	self.refundButton = refund
 
 	-- หมุนโมเดลเฉพาะตอนเปิดร้าน
 	RunService.RenderStepped:Connect(function(dt)
@@ -532,12 +551,19 @@ function ArenaShopGui:Render(snap)
 	-- ปุ่มซื้อในแผงรายละเอียด
 	local row = self.selected and self.cards[self.selected]
 	self.refundMode = false
+	self.refundButton.Visible = false
 	if not row then
 		self.buyButton.Text, self.buyButton.BackgroundColor3 = "ชี้ที่การ์ดเพื่อเลือก", rgb(60, 62, 72)
 		return
 	end
-	local owned, _, _, used, afford = stateOf(row.entry)
-	if snap.refundable and snap.refundable[row.entry.id] then
+	local owned, _, limit, used, afford = stateOf(row.entry)
+	local refundable = snap.refundable and snap.refundable[row.entry.id]
+	if refundable and limit > 1 then
+		self.refundButton.Visible = true
+		self.refundButton.Text = ("ยกเลิก 1 ชิ้น  —  คืน %d"):format(row.entry.price)
+		refundable = false -- ปุ่มหลักยังเป็นปุ่มซื้อ
+	end
+	if refundable then
 		self.refundMode = true
 		self.buyButton.Text = ("ยกเลิกการซื้อ  —  คืน %d"):format(row.entry.price)
 		self.buyButton.BackgroundColor3 = rgb(196, 96, 84)

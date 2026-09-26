@@ -129,9 +129,15 @@ end)
 
 -- Swap ROLL -> SLIDE while sprinting: the server's own flag (PlayerMovement), the same one it slides by.
 local sprinting = false
+local driving = false
 RunService.Heartbeat:Connect(function()
 	-- ตอนขับ ปุ่มขับของ VehicleController (บูสต์/หวูด/ขึ้น-ลง) ขึ้นแทนที่กลุ่มนี้ ตำแหน่งเดียวกัน (QA 2026-09-26)
-	gui.cluster.Visible = player:GetAttribute("WOLD_Driving") ~= true
+	-- ⚠️ เขียนเฉพาะตอนสถานะขับเปลี่ยน — เขียนทุกเฟรมจะทับการซ่อนกลุ่มนี้ของร้านสนาม (ArenaController.setShopOpen)
+	local nowDriving = player:GetAttribute("WOLD_Driving") == true
+	if nowDriving ~= driving then
+		driving = nowDriving
+		gui.cluster.Visible = not driving
+	end
 	local now = player:GetAttribute("WOLD_Sprinting") == true
 	if now ~= sprinting then
 		sprinting = now

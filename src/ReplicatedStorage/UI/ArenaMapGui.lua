@@ -15,6 +15,8 @@ ArenaMapGui.__index = ArenaMapGui
 
 local LOW = Color3.fromRGB(46, 46, 52)
 local HIGH = Color3.fromRGB(206, 200, 188)
+local GRID = 64 -- ช่องตามด้านยาวของแมพ
+local LEVELS = 8 -- ระดับสีความสูง (น้อย = แถบยาวขึ้น Frame น้อยลง)
 
 function ArenaMapGui.new()
 	local self = setmetatable({ dots = {} }, ArenaMapGui)
@@ -116,24 +118,54 @@ function ArenaMapGui:Build(mapId, mapName)
 	self.minX, self.minZ = minX, minZ
 	self.w, self.d = math.max(1, maxX - minX), math.max(1, maxZ - minZ)
 	self.aspect.AspectRatio = self.w / self.d
-	-- เตี้ยวาดก่อน สูงทับทีหลัง — พื้นอยู่ล่างสุด กำแพงเห็นชัด
-	table.sort(boxes, function(a, b) return a.top < b.top end)
 	local range = math.max(1, highTop - lowTop)
 
-	for i, b in ipairs(boxes) do
-		local f = Instance.new("Frame")
-		f.BorderSizePixel = 0
-		f.Position = UDim2.fromScale((b.x0 - minX) / self.w, (b.z0 - minZ) / self.d)
-		f.Size = UDim2.fromScale((b.x1 - b.x0) / self.w, (b.z1 - b.z0) / self.d)
+	-- ⚠️ ห้ามวาดหนึ่ง Frame ต่อชิ้น: แมพ Castle มี 17,182 ชิ้นที่ผ่านเกณฑ์ข้างบน = Frame หมื่นกว่าอัน มือถือค้างตอนเปิด
+	-- แผนที่ (QA 2026-09-26) → ระบายลงกริดหยาบก่อน (ช่องละ = ชิ้นที่ยอดสูงสุดในช่องนั้น สีแบ่ง LEVELS ระดับ) แล้วรวม
+	-- ช่องติดกันที่สีเดียวกันในแถวเป็นแถบเดียว — จำนวน Frame มีเพดานที่ GRID² ไม่ขึ้นกับจำนวนชิ้นในแมพอีก
+	local cell = math.max(self.w, self.d) / GRID
+	local cols, rows = math.max(1, math.ceil(self.w / cell)), math.max(1, math.ceil(self.d / cell))
+	local topAt, spawnAt = {}, {}
+	for _, b in ipairs(boxes) do
 		local spawnSide = b.part.Parent and b.part.Parent.Name:match("^Spawn(%u)$")
-		if spawnSide and ArenaConfig.Teams[spawnSide] then
-			f.BackgroundColor3 = ArenaConfig.Teams[spawnSide].colour
-		else
-			f.BackgroundColor3 = LOW:Lerp(HIGH, (b.top - lowTop) / range)
+		if not (spawnSide and ArenaConfig.Teams[spawnSide]) then spawnSide = nil end
+		local c0 = math.clamp(math.floor((b.x0 - minX) / cell), 0, cols - 1)
+		local c1 = math.clamp(math.floor((b.x1 - minX) / cell), 0, cols - 1)
+		local r0 = math.clamp(math.floor((b.z0 - minZ) / cell), 0, rows - 1)
+		local r1 = math.clamp(math.floor((b.z1 - minZ) / cell), 0, rows - 1)
+		for r = r0, r1 do
+			for c = c0, c1 do
+				local i = r * cols + c
+				-- ฐานเกิดของแต่ละทีมชนะทุกความสูง (หลังคาที่คร่อมฐานไม่ควรลบสีทีมทิ้ง)
+				if spawnSide then spawnAt[i] = spawnSide end
+				if b.top > (topAt[i] or -math.huge) then topAt[i] = b.top end
+			end
 		end
-		f.ZIndex = 1
-		f.LayoutOrder = i
-		f.Parent = self.canvas
+	end
+
+	local function keyAt(i)
+		if spawnAt[i] then return spawnAt[i] end
+		local top = topAt[i]
+		return top and math.floor((top - lowTop) / range * (LEVELS - 1) + 0.5) or nil
+	end
+	for r = 0, rows - 1 do
+		local c = 0
+		while c < cols do
+			local key = keyAt(r * cols + c)
+			local run = 1
+			if key ~= nil then
+				while c + run < cols and keyAt(r * cols + c + run) == key do run += 1 end
+				local f = Instance.new("Frame")
+				f.BorderSizePixel = 0
+				f.Position = UDim2.fromScale(c * cell / self.w, r * cell / self.d)
+				f.Size = UDim2.fromScale(math.min(run * cell, self.w - c * cell) / self.w, math.min(cell, self.d - r * cell) / self.d)
+				f.BackgroundColor3 = type(key) == "string" and ArenaConfig.Teams[key].colour
+					or LOW:Lerp(HIGH, key / (LEVELS - 1))
+				f.ZIndex = 1
+				f.Parent = self.canvas
+			end
+			c += run
+		end
 	end
 	return true
 end
