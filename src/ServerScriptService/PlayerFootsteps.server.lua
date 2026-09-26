@@ -30,12 +30,22 @@ Remotes.Footstep.OnServerEvent:Connect(function(player, group)
 	lastStep[player] = now
 
 	local character = player.Character
-	if not character or not character:FindFirstChild("HumanoidRootPart") then return end
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then return end
 
-	-- Everyone except the author, who already played it locally the moment it happened.
+	-- Everyone except the author, who already played it locally the moment it happened -- and only those
+	-- close enough to hear it. เดิมส่งถึงทุกคนในเซิร์ฟ แต่ได้ยินแค่ 45 สตัด: 30 คนวิ่งพร้อมกัน = มือถือทุกเครื่อง
+	-- รับรีโมต + สร้าง Sound 100+ ครั้งต่อวินาทีเพื่อเสียงที่ไม่มีใครได้ยิน (QA 2026-09-26) · เผื่อระยะ 1.5 เท่า
+	-- เพราะตำแหน่งฝั่งเซิร์ฟตามหลังจริงนิดหน่อย
+	local reach = SoundscapeConfig.FootstepDistance * 1.5
+	local here = root.Position
 	for _, other in ipairs(Players:GetPlayers()) do
 		if other ~= player then
-			Remotes.Footstep:FireClient(other, player, group)
+			local otherCharacter = other.Character
+			local otherRoot = otherCharacter and otherCharacter:FindFirstChild("HumanoidRootPart")
+			if otherRoot and (otherRoot.Position - here).Magnitude <= reach then
+				Remotes.Footstep:FireClient(other, player, group)
+			end
 		end
 	end
 end)

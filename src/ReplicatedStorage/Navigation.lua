@@ -132,6 +132,11 @@ function Navigation:compute()
 	end
 	self.legTarget = target
 
+	-- จดเวลา/จุดของ "ความพยายาม" ไม่ใช่แค่ของรอบที่สำเร็จ — เดิมหาไม่เจอแล้วไม่จด ลูปวินาทีละรอบจึงคำนวณ
+	-- ComputeAsync ซ้ำทุกวินาทีตลอดที่ไปไม่ถึง (มือถือสตรีมแมพน้อยกว่า เจอ NoPath บ่อยกว่า) QA 2026-09-26
+	self.lastComputeAt = os.clock()
+	self.lastComputeFrom = from
+
 	local path = PathfindingService:CreatePath(NavigationConfig.AgentParams)
 	local ok, err = pcall(function()
 		path:ComputeAsync(from, target)
@@ -211,7 +216,9 @@ function Navigation:Update()
 	local moved = self.lastComputeFrom and (from - self.lastComputeFrom).Magnitude or math.huge
 	-- Also recompute when the current leg is nearly finished, which is what carries a long route forward.
 	local legLeft = self.legTarget and (self.legTarget - from).Magnitude or math.huge
-	if os.clock() - self.lastComputeAt >= NavigationConfig.RecomputeSeconds
+	-- ตัวจับเวลาทำงานเฉพาะตอนกำลังเดิน: ยืนนิ่งเส้นทางไม่เปลี่ยน การคำนวณใหม่ + วาดเส้น ~220 ชิ้นใหม่ทุก 4 วิ
+	-- คือภาระเปล่าๆ ของมือถือ
+	if (os.clock() - self.lastComputeAt >= NavigationConfig.RecomputeSeconds and moved >= 4)
 		or moved >= NavigationConfig.RecomputeDistance
 		or legLeft <= NavigationConfig.ArriveDistance * 4 then
 		self:compute()

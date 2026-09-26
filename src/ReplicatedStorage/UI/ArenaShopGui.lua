@@ -362,7 +362,11 @@ function ArenaShopGui.new()
 	RunService.RenderStepped:Connect(function(dt)
 		if not gui.Enabled then return end
 		for _, s in ipairs(self.spinners) do
-			if s.model.Parent then s.model:PivotTo(s.model:GetPivot() * CFrame.Angles(0, dt * 0.9, 0)) end
+			-- มือถือ: หมุนแค่โมเดลใหญ่ในแผงรายละเอียด — ViewportFrame วาดใหม่ทุกเฟรมที่โมเดลขยับ การ์ด 8 ใบ ~500 ชิ้น
+			-- หมุนพร้อมกันตลอดช่วงซื้อของ (ร้านเปิดเองทุกรอบ) คือภาระที่มือถือรู้สึกได้ (QA 2026-09-26) · คอมหมุนครบเหมือนเดิม
+			if s.model.Parent and (s.big or not TOUCH_ONLY) then
+				s.model:PivotTo(s.model:GetPivot() * CFrame.Angles(0, dt * 0.9, 0))
+			end
 		end
 	end)
 	return self

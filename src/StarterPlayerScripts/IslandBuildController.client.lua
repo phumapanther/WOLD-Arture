@@ -73,7 +73,9 @@ local function placedFolder()
 	return island and island:FindFirstChild("Placed")
 end
 
+local occupiedVersion = 0 -- ขยับทุกครั้งที่ผังช่องถูกยึดถูกสร้างใหม่ — ตัวบอกว่าผลตรวจช่องที่แคชไว้หมดอายุ
 local function rebuildOccupied()
+	occupiedVersion += 1
 	occupied = {}
 	local folder = placedFolder()
 	if not folder then return end
@@ -252,7 +254,9 @@ local function startNew(slotIndex, id)
 	local fp = proto:GetAttribute("Footprint")
 	if typeof(fp) ~= "Vector2" then warn("[IslandBuild] ต้นแบบ " .. id .. " ไม่มี Footprint") return end
 	local folder, ghost, squares = makeGhost(proto, fp)
-	session = { kind = "new", slotIndex = slotIndex, id = id, w = fp.X, d = fp.Y, r = 0, ghost = ghost, squares = squares, folder = folder, ok = false }
+	session = { kind = "new", slotIndex = slotIndex, id = id, w = fp.X, d = fp.Y, r = 0, ghost = ghost, squares = squares, folder = folder, ok = false,
+		-- ผังเดินถึงคิดครั้งเดียวตอนหยิบ (เดิมปล่อยให้ canPlace คิดเองทุก 10 วิกลางลูปเรนเดอร์ = มือถือค้างเป็นจังหวะ)
+		reach = IslandGrid.reachSet(nil) }
 	occupiedDirty = true
 	refreshPanel()
 end
@@ -506,8 +510,15 @@ RunService.RenderStepped:Connect(function()
 			if owner ~= session.model then occ[key] = owner end
 		end
 	end
-	local ok, reason = IslandGrid.canPlace(occ, noBuildZones(), cx, cz, session.w, session.d, session.r, session.id,
-		session.model, session.reach)
+	-- ตรวจช่องเฉพาะตอนช่อง/ทิศเปลี่ยน หรือผังช่องถูกยึดเพิ่งสร้างใหม่ (ทุก ~0.5 วิ) — เดิมตรวจทุกเฟรม: ช่องละเรย์ 2 เส้น
+	-- + ค้นชิ้นในกล่อง ของ 3x3 = 18 เรย์ 9 กล่องต่อเฟรม มือถือหน่วงตลอดที่ถือของ (QA 2026-09-26) · ghost ยังตามนิ้วทุกเฟรม
+	local checkKey = ("%d,%d,%d,%d"):format(cx, cz, session.r, occupiedVersion)
+	local ok, reason = session.ok, session.reason
+	if checkKey ~= session.checkKey then
+		session.checkKey = checkKey
+		ok, reason = IslandGrid.canPlace(occ, noBuildZones(), cx, cz, session.w, session.d, session.r, session.id,
+			session.model, session.reach)
+	end
 	session.cx, session.cz, session.ok, session.reason = cx, cz, ok, reason
 	session.ghost:PivotTo(IslandGrid.pivotFor(cx, cz, session.w, session.d, session.r, hit.Position.Y))
 
@@ -603,6 +614,10 @@ Remotes.IslandPlace.OnClientEvent:Connect(function(ok, remaining)
 	if ok and (remaining or 0) <= 0 and session and session.kind == "new" then
 		stopSession()
 		refreshPanel()
+	elseif ok and session and session.kind == "new" then
+		-- วางต่อ (รั้ว 20 อัน): ของที่เพิ่งวางอาจปิดทางเดิน คิดผังเดินถึงใหม่ตรงนี้ ไม่ใช่ในลูปเรนเดอร์
+		session.reach = IslandGrid.reachSet(nil)
+		session.checkKey = nil
 	end
 end)
 Remotes.IslandMove.OnClientEvent:Connect(function()

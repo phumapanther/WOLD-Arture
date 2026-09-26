@@ -287,14 +287,21 @@ local function nearestNode(exclude)
 	local root = rootOf()
 	if not root then return nil end
 	local best, bestDistance
+	local here = root.Position
 	for _, node in ipairs(CollectionService:GetTagged(TAG)) do
-		if node ~= exclude and isAvailable(node) then
-			local prompt = node:FindFirstChild("GatherPrompt", true)
-			local anchor = prompt and prompt.Parent
-			if anchor then
-				local d = (anchor.Position - root.Position).Magnitude
-				if not bestDistance or d < bestDistance then
-					best, bestDistance = node, d
+		if node ~= exclude and node.Parent and node:GetAttribute("Spent") ~= true and canUse(node) and autoTarget(node) then
+			-- ระยะคร่าวจากจุดหมุนก่อน (ถูก) แล้วค่อยค้นปุ่มแบบลึก (แพง) เฉพาะตัวที่อาจใกล้กว่าตัวที่ดีที่สุดตอนนี้ — เดิมค้นลึก
+			-- สองรอบกับต้นไม้ทุกต้นที่โหลดมา มือถือหน่วงทุกครั้งที่ออโต้หาจุดใหม่ (QA 2026-09-26) · เผื่อ 30 สตัดเพราะ
+			-- จุดหมุนของต้นไม้ Creator Store เพี้ยนได้ ~20
+			local pivot = node:IsA("BasePart") and node.Position or node:GetPivot().Position
+			if not bestDistance or (pivot - here).Magnitude - 30 < bestDistance then
+				local prompt = node:FindFirstChild("GatherPrompt", true)
+				local anchor = prompt and prompt.Parent
+				if anchor then
+					local d = (anchor.Position - here).Magnitude
+					if not bestDistance or d < bestDistance then
+						best, bestDistance = node, d
+					end
 				end
 			end
 		end

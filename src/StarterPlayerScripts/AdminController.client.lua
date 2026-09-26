@@ -425,6 +425,17 @@ if LOBBY and not UserInputService.KeyboardEnabled then
 		function() setOpen(not gui.Enabled) end)
 end
 
+-- ในเกม (หลัก/เกาะ/สนาม) บนเครื่องที่ไม่มีคีย์บอร์ด: กด F2 ไม่ได้ แชทถูกซ่อน → อาชีพขั้นสูงใช้ /announce ไม่ได้ ขุนนางใช้
+-- /tpto /bring ไม่ได้ (QA 2026-09-26) → เมนู ⋯ ได้แถว "🛠️ คำสั่ง" · เพิ่มครั้งเดียวเมื่อมีสิทธิ์จริง (แอดมิน/อาชีพขั้นสูง)
+-- เลือกอาชีพกลางเซสชันก็ได้ปุ่มโดยไม่ต้องเข้าเกมใหม่ · เซิร์ฟเวอร์ตรวจสิทธิ์ทุกคำสั่งอยู่แล้ว ปุ่มนี้แค่เปิดกล่อง
+if not LOBBY and not UserInputService.KeyboardEnabled then
+	task.spawn(function()
+		local HudAccess = require(game.ReplicatedStorage.UI.HudAccess)
+		while not (hasCommands() and HudAccess.Get()) do task.wait(3) end
+		HudAccess.Get():AddMenuItem("🛠️ คำสั่ง", Color3.fromRGB(90, 70, 120), function() setOpen(not gui.Enabled) end)
+	end)
+end
+
 --------------------------------------------------------------------------------
 -- Flight
 --------------------------------------------------------------------------------
