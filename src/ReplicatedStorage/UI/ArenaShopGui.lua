@@ -210,6 +210,11 @@ function ArenaShopGui.new()
 	-- หัว
 	label(panel, { text = "คลังอาวุธ", font = Enum.Font.GothamBold, size = 28, pos = UDim2.fromOffset(28, 16), dim = UDim2.fromOffset(300, 34) })
 	self.subtitle = label(panel, { text = "", size = 16, colour = MUTED, pos = UDim2.fromOffset(28, 50), dim = UDim2.fromOffset(560, 20) })
+	-- ข้อความสั้นจากเซิร์ฟเวอร์ (ซื้อแล้ว/ซิลเวอร์ไม่พอ/คืนเงิน) — เดิมขึ้นกลางจอ ผู้ใช้สั่งเอาออก (เฟส 1 · 2026-09-26)
+	self.status = label(panel, { text = "", font = Enum.Font.GothamBold, size = 18, colour = GOLD,
+		align = Enum.TextXAlignment.Right, pos = UDim2.fromOffset(340, 28), dim = UDim2.fromOffset(390, 26) })
+	self.status.Name = "Status"
+	self.status.Visible = false
 
 	local wallet = Instance.new("Frame")
 	wallet.AnchorPoint = Vector2.new(1, 0)
@@ -510,6 +515,18 @@ function ArenaShopGui:OnRefund(callback) self.onRefund = callback end
 function ArenaShopGui:OnClose(callback) self.closeButton.MouseButton1Click:Connect(callback) end
 function ArenaShopGui:SetVisible(visible) self.gui.Enabled = visible and true or false end
 function ArenaShopGui:IsVisible() return self.gui.Enabled end
+
+-- บรรทัดสถานะหัวร้าน 2.5 วิ · "warn" = แดง อื่นๆ = ทอง · ข้อความใหม่ทับของเก่าและนับเวลาใหม่
+function ArenaShopGui:Flash(text, kind)
+	self.status.Text = text or ""
+	self.status.TextColor3 = kind == "warn" and RED or GOLD
+	self.status.Visible = text ~= nil and text ~= ""
+	local token = {}
+	self.flashToken = token
+	task.delay(2.5, function()
+		if self.flashToken == token then self.status.Visible = false end
+	end)
+end
 
 -- `snap` = ภาพแมตช์จากเซิร์ฟเวอร์ — ใช้ silver, loadout, bought, phase, secondsLeft, canShop
 function ArenaShopGui:Render(snap)
