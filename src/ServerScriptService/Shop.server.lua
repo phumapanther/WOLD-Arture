@@ -262,7 +262,12 @@ Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, 
 
 		-- **จ่ายด้วยเพชรหรือเหรียญ ตามที่แถวนั้นบอก** (ผู้ใช้กำหนด 2026-09-22)
 		local gems = entry.currency == "gems"
-		local purse = gems and PremiumAccess.GetGems and PremiumAccess.GetGems(player) or state.gold
+		-- ระบบเพชรยังไม่ตั้ง (PremiumStore โหลดไม่ขึ้น) = ปฏิเสธ (QA 2026-09-26: เดิมตกไปอ่านเหรียญแทนเพชร
+		-- แล้วเรียก SpendGems ที่เป็น nil หลังให้ของไปแล้ว = ได้ของฟรี)
+		if gems and not (PremiumAccess.GetGems and PremiumAccess.SpendGems) then
+			return Remotes.SocialNotify:FireClient(player, "error", "ร้านเพชรยังไม่พร้อม ลองใหม่อีกครั้ง")
+		end
+		local purse = gems and PremiumAccess.GetGems(player) or state.gold
 		local affordable = math.floor(purse / entry.price)
 		if affordable < 1 then
 			return Remotes.SocialNotify:FireClient(player, "error", gems and "เพชรไม่พอ" or "เงินไม่พอ")
@@ -288,7 +293,11 @@ Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, 
 		end
 		if gems then
 			-- **หักหลังของเข้ากระเป๋าแล้ว** เหมือนทางเหรียญ — กระเป๋าเต็มกลางคันจะได้จ่ายเท่าที่ได้จริง
-			PremiumAccess.SpendGems(player, entry.price * bought)
+			-- หักไม่ผ่าน = ถอดของที่เพิ่งใส่คืน (RemoveById ทั้งหมดหรือไม่เอาเลย) · ปกติไม่เกิด ไม่มี yield คั่นจากตอนเช็ค
+			if not PremiumAccess.SpendGems(player, entry.price * bought) then
+				Inventory.RemoveById(player, entry.id, got)
+				return Remotes.SocialNotify:FireClient(player, "error", "เพชรไม่พอ")
+			end
 		else
 			Inventory.AddGold(player, -entry.price * bought)
 		end
