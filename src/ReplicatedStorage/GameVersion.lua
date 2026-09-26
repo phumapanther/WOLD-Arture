@@ -10,9 +10,11 @@ local GameVersion = {}
 
 -- Bump this, and nothing else, when cutting a release. The git tag (`rolplayV_1`) and this string are the
 -- same fact recorded in two places; they have to be changed together.
-GameVersion.Number = "1.0"
-GameVersion.Name = "V1"
-GameVersion.Released = "2026-09-12"
+-- 1.5 = the whole time the v1.5 roadmap is being built (docs/superpowers/specs/2026-09-26-v1.5-roadmap-design.md);
+-- after its final QA pass this becomes 2.0 (tag `rolplayV_2`).
+GameVersion.Number = "1.5"
+GameVersion.Name = "V1.5"
+GameVersion.Released = "2026-09-26"
 
 -- What went in, shortest form, for the changelog line a player might be shown later. Newest first.
 GameVersion.Highlights = {
