@@ -386,6 +386,13 @@ local function buildFromModel(config)
     local model = prototype:Clone()
     model.Name = config.model
 
+    -- โมเดลโชว์จากโรงงานพกสคริปต์ของตัวเอง (SlimeController ดึงกลับจุดเกิดทุกเฟรม · NPCController เดินสุ่ม ·
+    -- BeastGait เขียน Transform ที่ไม่ replicate) ซึ่งแย่งกับ AI ที่นี่ — ยืนยันใน ServerStorage ของเพลสหลักแล้ว
+    -- 2026-09-26 · ถอดก่อนถูกวางลงโลกจึงไม่เคยรัน (LocalScript ไม่รันใน workspace อยู่แล้ว)
+    for _, d in ipairs(model:GetDescendants()) do
+        if d:IsA("Script") then d:Destroy() end
+    end
+
     -- A monster has to be driveable, and a display model is not. It needs a part the Humanoid can steer
     -- from, and that part has to be called HumanoidRootPart -- the kit names its pivot handle "Root", which
     -- Roblox does not recognise.
@@ -1486,6 +1493,13 @@ RunService.Heartbeat:Connect(function(dt)
 		else
 			local position = root.Position
 			local config = state.config
+
+			-- ฟิสิกส์ของมอนเป็นของเซิร์ฟเวอร์เสมอ (QA 2026-09-26): ปล่อยอัตโนมัติ เอนจินยกให้เครื่องผู้เล่นที่ใกล้สุด —
+			-- มือถือเป็นเจ้าของแล้วสไลม์ไม่ขยับ และตำแหน่งที่สไนยิงใส่ไม่ตรงกับที่เซิร์ฟเวอร์ตัดสิน
+			-- ถามทุกรอบแทนการตั้งครั้งเดียวตอนเกิด: ช่วงโผล่จากดินทุกชิ้น Anchored ตั้งเจ้าของไม่ได้
+			if not root.Anchored and root:GetNetworkOwnershipAuto() then
+				pcall(root.SetNetworkOwner, root, nil)
+			end
 
 			-- หลุดโลก หรือลงไปอยู่ในน้ำแล้ว: ส่งกลับบ้านทันที (ผู้ใช้กำหนด ไม่ให้มอนอยู่ในน้ำ/ตกโลก)
 			-- ตัวที่ถูกเสกล่าไม่มีบ้าน ให้กลับไปที่เดิมของมันเอง

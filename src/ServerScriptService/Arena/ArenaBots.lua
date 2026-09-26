@@ -43,7 +43,14 @@ end
 
 local function buildRig()
 	local proto = prototype()
-	if proto then return proto:Clone() end
+	if proto then
+		local model = proto:Clone()
+		-- ร่าง NPC จากโรงงานพก NPCController (เดินสุ่ม) แย่งกับ AI บอท — ถอดก่อนลงโลก (QA 2026-09-26)
+		for _, d in ipairs(model:GetDescendants()) do
+			if d:IsA("Script") then d:Destroy() end
+		end
+		return model
+	end
 
 	-- ทางสำรอง: ร่าง R15 เปล่าจาก Roblox เอง · ใช้ได้ทันทีโดยไม่ต้องรอ mapgen ซึ่งสำคัญมากตอนเทสรอบแรก
 	-- (แมตช์ที่เริ่มไม่ได้เพราะยังไม่ได้อบโมเดล = เทสอะไรไม่ได้เลยสักอย่าง)
@@ -596,6 +603,9 @@ function ArenaBots.Spawn(side, name, cframe, home)
 
 	model.Parent = workspace
 	model:PivotTo(cframe)
+	-- ฟิสิกส์ของบอทเป็นของเซิร์ฟเวอร์ (QA 2026-09-26) — ตำแหน่งที่เซิร์ฟตัดสินกระสุนตรงกับที่ทุกคนเห็น
+	local botRoot = model:FindFirstChild("HumanoidRootPart")
+	if botRoot and not botRoot.Anchored then pcall(botRoot.SetNetworkOwner, botRoot, nil) end
 	CollectionService:AddTag(model, "WOLD_Mob") -- ทางที่ระบบต่อสู้ใช้หาเป้าที่ไม่ใช่ผู้เล่น
 	model:SetAttribute("ArenaSide", side)
 
