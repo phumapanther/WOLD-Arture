@@ -251,7 +251,8 @@ function ChannelSelectGui.new()
 	corner(list, UDim.new(0, 20))
 	glassStroke(list, 0.8)
 	local listSizeConstraint = Instance.new("UISizeConstraint")
-	listSizeConstraint.MinSize = Vector2.new(480, panelMinHeight)
+	-- แนวตั้ง: จอกว้างแค่ ~360 px ขั้นต่ำ 480 ทำให้แผงล้นสองข้าง ชื่อเชิฟโดนตัดเหลือ "1" ปุ่ม JOIN หลุดขอบขวา (QA 2026-09-26)
+	listSizeConstraint.MinSize = Vector2.new(portrait and 0 or 480, panelMinHeight)
 	listSizeConstraint.Parent = list
 	local listLayout = Instance.new("UIListLayout")
 	listLayout.Padding = UDim.new(0, 8)
@@ -401,7 +402,7 @@ function ChannelSelectGui.new()
 	corner(farmList, UDim.new(0, 20))
 	glassStroke(farmList, 0.8)
 	local farmSizeConstraint = Instance.new("UISizeConstraint")
-	farmSizeConstraint.MinSize = Vector2.new(480, panelMinHeight)
+	farmSizeConstraint.MinSize = Vector2.new(portrait and 0 or 480, panelMinHeight)
 	farmSizeConstraint.Parent = farmList
 	local farmLayout = Instance.new("UIListLayout")
 	farmLayout.Padding = UDim.new(0, 8)
@@ -440,6 +441,11 @@ function ChannelSelectGui.new()
 	pvpPanel.AnchorPoint = list.AnchorPoint
 	pvpPanel.Position = list.Position
 	pvpPanel.Size = list.Size
+	-- มือถือแนวนอน: แผงสูงแค่ ~140 px ไม่พอให้การ์ดปาร์ตี้ (การ์ดล้นขอบบน-ล่าง ปุ่มเล่นทับป้ายเลเวล) → ยืดลงถึงขอบล่าง
+	-- ปุ่มกระโดด/🔮/🛠️ มุมขวาล่างยังลอยทับได้ — `PvpPartyGui` โหมด "short" วางปุ่มไว้ห่างมุมนั้นแล้ว (QA 2026-09-26)
+	if small and not portrait then
+		pvpPanel.Size = UDim2.new(0.94, 0, 1, -TOP_BAR - headerDrop - 8)
+	end
 	pvpPanel.BackgroundColor3 = Responsive.GlassColor
 	pvpPanel.BackgroundTransparency = Responsive.GlassTransparency
 	pvpPanel.BorderSizePixel = 0

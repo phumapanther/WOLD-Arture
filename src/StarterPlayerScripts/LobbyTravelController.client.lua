@@ -168,10 +168,10 @@ local function buildVeil()
 	sub.Text = "กำลังหาเซิร์ฟเวอร์ล็อบบี้ รอสักครู่"
 	sub.Parent = sheet
 
-	return veil, title
+	return veil, title, sub
 end
 
-local veil, veilTitle = buildVeil()
+local veil, veilTitle, veilSub = buildVeil()
 veil.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
 
 pcall(function()
@@ -182,11 +182,18 @@ end)
 
 local function veilOn()
 	veil.Enabled = true
+	local shownAt = os.clock()
+	veilSub.Text = "กำลังหาเซิร์ฟเวอร์ล็อบบี้ รอสักครู่"
 	task.spawn(function()
 		local dots = 0
 		while veil.Enabled do
 			dots = (dots + 1) % 4
 			veilTitle.Text = "กำลังพาไปหน้าล็อบบี้" .. string.rep(".", dots)
+			-- มือถือ/เน็ตช้าใช้เวลานาน — บอกว่ายังทำงานอยู่ ไม่ใช่ค้าง (เซิร์ฟเวอร์ลองซ้ำเองสามรอบ แล้วคืนจอถ้าไม่สำเร็จ)
+			local waited = math.floor(os.clock() - shownAt)
+			if waited >= 8 then
+				veilSub.Text = ("ยังกำลังเชื่อมต่อ (%d วินาที) — เครือข่ายช้า ระบบกำลังลองใหม่ให้"):format(waited)
+			end
 			task.wait(0.4)
 		end
 	end)

@@ -7,9 +7,6 @@
 -- ปุ่มทุกปุ่มมีไว้ให้มือถือเป็นหลัก คีย์บอร์ดมีทางลัดเดียวกัน (คลิก ลาก R Esc F4)
 local Responsive = require(script.Parent.Responsive)
 local ItemIcon = require(script.Parent.ItemIcon)
--- จอสัมผัสล้วน: ไม่มีล้อเมาส์/R/Esc/F4 → มีปุ่มซูม และป้ายปุ่มไม่บอกคีย์ที่กดไม่ได้ (QA 2026-09-26)
-IslandBuildGui.TouchOnly = game:GetService("UserInputService").TouchEnabled
-	and not game:GetService("UserInputService").KeyboardEnabled
 
 local PANEL = Color3.fromRGB(24, 22, 28)
 local CARD = Color3.fromRGB(40, 37, 46)
@@ -21,6 +18,10 @@ local BRASS = Color3.fromRGB(196, 150, 60)
 
 local IslandBuildGui = {}
 IslandBuildGui.__index = IslandBuildGui
+-- ⚠️ ต้องอยู่หลัง `local IslandBuildGui = {}` — เคยวางไว้ก่อนแล้วโมดูลพังตอนโหลด ทั้งโหมดจัดเกาะ/F4/การซ่อนปุ่ม F ตายหมด
+-- จอสัมผัสล้วน: ไม่มีล้อเมาส์/R/Esc/F4 → มีปุ่มซูม และป้ายปุ่มไม่บอกคีย์ที่กดไม่ได้ (QA 2026-09-26)
+IslandBuildGui.TouchOnly = game:GetService("UserInputService").TouchEnabled
+	and not game:GetService("UserInputService").KeyboardEnabled
 
 -- สีปุ่มตามหน้าที่ ให้คนเรียกพูดเป็นคำ ไม่ต้องจำ RGB
 IslandBuildGui.Colors = {

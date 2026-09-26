@@ -25,6 +25,13 @@ local Remotes = require(game.ReplicatedStorage.Remotes)
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
+-- สนามไม่ใช้จอโหลดของ LoadingController → ดึงเสียงยิง/ท่าต่อสู้/รูปไอเทมมาไว้ก่อนเบื้องหลังช่วงวอร์มอัพ
+-- ไม่งั้นมือถือกระตุกตอนยิงนัดแรก/ฟันครั้งแรกกลางการสู้ (QA 2026-09-26) · ไม่รอ ไม่ขวางอะไร
+task.spawn(function()
+	local assets = require(game.ReplicatedStorage.AssetPreload).Collect()
+	pcall(function() game:GetService("ContentProvider"):PreloadAsync(assets) end)
+end)
+
 local hud = ArenaHudGui.new()
 local shop = ArenaShopGui.new()
 local board = ArenaScoreboardGui.new()

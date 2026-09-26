@@ -35,13 +35,26 @@ local STEPS = {
 		end,
 	},
 	{
+		-- รูปไอเทม เสียง อนิเมชันทั้งหมดจากคอนฟิก (ยกเว้นเพลง) ดึงมาไว้ก่อนเปิดจอ (ผู้ใช้สั่ง 2026-09-26: เข้าช้าลงได้
+		-- แต่เล่นต้องลื่น) · เพดาน 25 วิ ที่เหลือโหลดต่อเบื้องหลัง — เน็ตแย่ต้องไม่ติดจอโหลดตลอดไป
 		name = "preload",
-		weight = 2,
-		run = function()
-			local assets = {} -- later sub-projects append animation/model asset ids here; empty list preloads instantly
-			if #assets > 0 then
-				ContentProvider:PreloadAsync(assets)
-			end
+		weight = 4,
+		run = function(report)
+			local assets = require(game.ReplicatedStorage.AssetPreload).Collect()
+			if #assets == 0 then return end
+			local loaded, finished, stepOver = 0, false, false
+			task.spawn(function()
+				pcall(function()
+					ContentProvider:PreloadAsync(assets, function()
+						loaded += 1
+						if not stepOver then report(loaded / #assets) end -- หมดเวลาแล้วโหลดต่อเงียบๆ ไม่ขยับแถบของขั้นอื่น
+					end)
+				end)
+				finished = true
+			end)
+			local deadline = os.clock() + 25
+			while not finished and os.clock() < deadline do task.wait(0.1) end
+			stepOver = true
 		end,
 	},
 	{
@@ -50,6 +63,8 @@ local STEPS = {
 		run = function()
 			local hrp = player.Character:WaitForChild("HumanoidRootPart")
 			local target = Remotes.GetSpawnPosition:InvokeServer()
+			-- ขอให้สตรีมพื้นที่รอบจุดเกิดมาให้ครบก่อนเปิดจอ (แทนที่จะให้แมพค่อยๆ โผล่ตอนเริ่มเดิน)
+			pcall(function() player:RequestStreamAroundAsync(target, 10) end)
 			hrp.CFrame = CFrame.new(target)
 			local deadline = os.clock() + 10
 			while os.clock() < deadline do
@@ -74,7 +89,11 @@ end
 local startTime = os.clock()
 local done = 0
 for _, step in ipairs(STEPS) do
-	local ok, err = pcall(step.run)
+	-- ขั้นที่ยาวรายงานความคืบหน้าระหว่างทางได้ (0..1 ของขั้นนั้น) แถบจึงไม่ค้างนิ่งตอนโหลดของล่วงหน้า
+	local function report(fraction)
+		gui:SetProgress((done + step.weight * math.clamp(fraction, 0, 1)) / totalWeight)
+	end
+	local ok, err = pcall(step.run, report)
 	if not ok then
 		warn("[Loading] step failed:", step.name, err)
 	end

@@ -103,14 +103,26 @@ function PvpPartyGui.new(parent)
 	content.Parent = panel
 	local uiScale = Instance.new("UIScale")
 	uiScale.Parent = content
+	-- สามทรง (QA 2026-09-26 — มือถือเคยใช้ทรงคอมย่อลงที่เพดาน 0.6 การ์ดสูง 288 ล้นแผงสูง 140 ทั้งบนและล่าง
+	-- ปุ่มเล่นไปทับป้ายเลเวล) · wide = คอม ออกแบบ 800x480 ปุ่มใต้การ์ด (เหมือนเดิมทุกค่า) ·
+	-- short = มือถือแนวนอน แผงเตี้ย ออกแบบ 800x300 ปุ่มเป็นคอลัมน์ขวาของการ์ด (ห่างปุ่มกระโดดมุมขวาล่าง) ·
+	-- tall = แนวตั้ง ออกแบบ 520x480 เรียงลงล่าง · ตัวแปร `panel` ถูกเปลี่ยนเป็นกล่อง content ข้างล่าง จึงจับตัวนอกไว้แยก
+	local outer = panel
 	local function rescale()
-		local size = panel.AbsoluteSize
+		local size = outer.AbsoluteSize
 		if size.X < 1 or size.Y < 1 then return end
-		local s = math.clamp(math.min(size.X / 800, size.Y / 480), 0.6, 1.8)
+		local mode = size.X < size.Y and "tall" or (size.Y < 320 and "short" or "wide")
+		local dw, dh = 800, 480
+		if mode == "short" then dw, dh = 800, 300 elseif mode == "tall" then dw, dh = 520, 480 end
+		local s = math.clamp(math.min(size.X / dw, size.Y / dh), 0.4, 1.8)
 		uiScale.Scale = s
 		content.Size = UDim2.fromScale(1 / s, 1 / s)
+		if self.mode ~= mode then
+			self.mode = mode
+			if self.playButton then self:_layout() end
+		end
 	end
-	panel:GetPropertyChangedSignal("AbsoluteSize"):Connect(rescale)
+	outer:GetPropertyChangedSignal("AbsoluteSize"):Connect(rescale)
 	rescale()
 	panel = content -- ของทุกชิ้นข้างล่างไปอยู่ในกล่องที่ขยายได้
 
@@ -124,6 +136,7 @@ function PvpPartyGui.new(parent)
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Text = "ปาร์ตี้"
 	title.Parent = panel
+	self.title = title
 
 	-- แถวช่องสามช่อง กลางจอ
 	local row = Instance.new("Frame")
@@ -139,6 +152,7 @@ function PvpPartyGui.new(parent)
 	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
 	layout.VerticalAlignment = Enum.VerticalAlignment.Center
 	layout.Parent = row
+	self.row, self.rowLayout = row, layout
 
 	for i = 1, SLOTS do
 		local card = Instance.new("TextButton")
@@ -374,6 +388,9 @@ function PvpPartyGui.new(parent)
 		end)
 	end
 
+	-- ของครบแล้ว จัดทรงตามจอ (rescale ตอนต้นรู้ทรงแล้วแต่ยังไม่มีของให้จัด) · แผงยังซ่อน = ได้ทรงตอนมันโผล่
+	rescale()
+	if self.mode then self:_layout() end
 	return self
 end
 
@@ -392,6 +409,64 @@ function PvpPartyGui:SetSlotAvatar(index, content)
 	if not slot then return end
 	slot.avatar.Image = content or ""
 	slot.avatar.Visible = (content ~= nil and content ~= "")
+end
+
+-- จัดตำแหน่ง/ขนาดตามทรงของจอ (`self.mode` จาก rescale) — ค่าทรง wide คือค่าเดิมของคอมทุกค่า
+function PvpPartyGui:_layout()
+	local mode = self.mode or "wide"
+	local sw, sh, gap = SLOT_W, SLOT_H, SLOT_GAP
+	if mode ~= "wide" then sw, sh, gap = 150, 220, 16 end
+	local rowW = SLOTS * sw + (SLOTS - 1) * gap
+	self.row.Size = UDim2.fromOffset(rowW, sh)
+	self.rowLayout.Padding = UDim.new(0, gap)
+	for _, slot in ipairs(self.slots) do
+		slot.card.Size = UDim2.fromOffset(sw, sh)
+		slot.avatar.Size = UDim2.fromOffset(sw - 12, sh - 86)
+	end
+	self.title.Position = mode == "wide" and UDim2.new(0, 26, 0, 18) or UDim2.new(0, 20, 0, 8)
+	self.searchLabel.Size = UDim2.new(0, mode == "short" and 240 or 420, 0, 26)
+	if mode == "wide" then
+		self.row.AnchorPoint, self.row.Position = Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.46)
+		self.invite.AnchorPoint, self.invite.Position = Vector2.new(0.5, 1), UDim2.new(0.5, 0, 0.46, -sh / 2 - 12)
+		self.searchLabel.AnchorPoint, self.searchLabel.Position = Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, -94)
+		self.cancelButton.AnchorPoint, self.cancelButton.Position = Vector2.new(0.5, 1), UDim2.new(0.5, 0, 1, -34)
+		self.friends.Size = UDim2.fromOffset(460, 400)
+	elseif mode == "short" then
+		-- การ์ดเยื้องซ้าย คอลัมน์ปุ่มขวามือการ์ด · คำเชิญลอยทับกลางแถวการ์ด (ข้างบนไม่มีที่แล้ว)
+		local colX = rowW / 2 + 24
+		self.row.AnchorPoint, self.row.Position = Vector2.new(0.5, 0.5), UDim2.new(0.44, 0, 0.5, 14)
+		self.invite.AnchorPoint, self.invite.Position = Vector2.new(0.5, 0.5), UDim2.new(0.44, 0, 0.5, 14)
+		self.searchLabel.AnchorPoint, self.searchLabel.Position = Vector2.new(0, 0.5), UDim2.new(0.44, colX, 0.5, -38)
+		self.cancelButton.AnchorPoint, self.cancelButton.Position = Vector2.new(0, 0.5), UDim2.new(0.44, colX, 0.5, 20)
+		self.friends.Size = UDim2.fromOffset(460, 280)
+	else -- tall
+		self.row.AnchorPoint, self.row.Position = Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 60)
+		self.invite.AnchorPoint, self.invite.Position = Vector2.new(0.5, 0.5), UDim2.new(0.5, 0, 0, 60 + sh / 2)
+		self.searchLabel.AnchorPoint, self.searchLabel.Position = Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 60 + sh + 16)
+		self.cancelButton.AnchorPoint, self.cancelButton.Position = Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, 60 + sh + 52)
+		self.friends.Size = UDim2.fromOffset(480, 420)
+	end
+	self:_placeButtons()
+end
+
+-- ปุ่มเล่น + ปุ่มแอดมิน (ขึ้นกับว่าปุ่มแอดมินโชว์อยู่ไหม) — ป้ายค้นหา/ปุ่มแอดมินไม่เคยโชว์พร้อมกัน จึงใช้ที่เดียวกันได้
+function PvpPartyGui:_placeButtons()
+	local mode = self.mode or "wide"
+	local solo = self.soloButton and self.soloButton.Visible
+	local rowW = self.row.Size.X.Offset
+	if mode == "wide" then
+		-- ปุ่มเล่นถอยไปทางซ้ายเมื่อมีปุ่มแอดมินอยู่ข้างๆ ไม่งั้นสองปุ่มทับกันกลางจอ
+		self.playButton.AnchorPoint = solo and Vector2.new(1, 1) or Vector2.new(0.5, 1)
+		self.playButton.Position = solo and UDim2.new(0.5, -100, 1, -34) or UDim2.new(0.5, 0, 1, -34)
+		self.soloButton.AnchorPoint, self.soloButton.Position = Vector2.new(0, 1), UDim2.new(0.5, 100, 1, -34)
+	elseif mode == "short" then
+		self.playButton.AnchorPoint, self.playButton.Position = Vector2.new(0, 0.5), UDim2.new(0.44, rowW / 2 + 24, 0.5, 20)
+		self.soloButton.AnchorPoint, self.soloButton.Position = Vector2.new(0, 0.5), UDim2.new(0.44, rowW / 2 + 24, 0.5, -42)
+	else
+		local below = 60 + self.row.Size.Y.Offset
+		self.playButton.AnchorPoint, self.playButton.Position = Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, below + 52)
+		self.soloButton.AnchorPoint, self.soloButton.Position = Vector2.new(0.5, 0), UDim2.new(0.5, 0, 0, below + 114)
+	end
 end
 
 function PvpPartyGui:Render(snap)
@@ -435,10 +510,7 @@ function PvpPartyGui:Render(snap)
 	-- ปุ่มแอดมินโผล่เฉพาะตอนยังไม่ได้เข้าคิว และเฉพาะกับแอดมินจริงๆ (เซิร์ฟเวอร์เป็นคนบอก)
 	if self.soloButton then
 		self.soloButton.Visible = (snap.admin == true) and not searching and snap.notReady ~= true
-		-- ปุ่มเล่นถอยไปทางซ้ายเมื่อมีปุ่มแอดมินอยู่ข้างๆ ไม่งั้นสองปุ่มทับกันกลางจอ
-		self.playButton.Position = self.soloButton.Visible
-			and UDim2.new(0.5, -100, 1, -34) or UDim2.new(0.5, 0, 1, -34)
-		self.playButton.AnchorPoint = self.soloButton.Visible and Vector2.new(1, 1) or Vector2.new(0.5, 1)
+		self:_placeButtons()
 	end
 
 	if snap.notReady == true and not searching then

@@ -94,19 +94,33 @@ end
 
 -- The server owns Enabled for the SPENT state; this only ever hides a prompt further, never re-enables one
 -- the server switched off. `spentPrompts` remembers which those are.
-local function refreshPrompts()
-	for _, node in ipairs(CollectionService:GetTagged(TAG)) do
-		-- BOTH prompts -- the [E] gather and the [F] auto-farm. Taking only the first would have left the
-		-- F prompt showing on nodes this player cannot use.
-		if node:GetAttribute("Spent") ~= true then
-			local usable = canUse(node)
-			for _, d in ipairs(node:GetDescendants()) do
-				if d:IsA("ProximityPrompt") and GatherConfig.OwnPrompts[d.Name] then
-					-- ปุ่ม F ขึ้นเฉพาะจุดที่ออโต้จะเล็งจริง ไม่งั้นกดแล้วมันเดินไปที่อื่น
-					d.Enabled = usable and (d.Name ~= "AutoFarmPrompt" or autoTarget(node))
-				end
-			end
+local function refreshNode(node)
+	-- BOTH prompts -- the [E] gather and the [F] auto-farm. Taking only the first would have left the
+	-- F prompt showing on nodes this player cannot use.
+	if node:GetAttribute("Spent") == true then return end
+	local usable = canUse(node)
+	for _, d in ipairs(node:GetDescendants()) do
+		if d:IsA("ProximityPrompt") and GatherConfig.OwnPrompts[d.Name] then
+			-- ปุ่ม F ขึ้นเฉพาะจุดที่ออโต้จะเล็งจริง ไม่งั้นกดแล้วมันเดินไปที่อื่น
+			local want = usable and (d.Name ~= "AutoFarmPrompt" or autoTarget(node))
+			if d.Enabled ~= want then d.Enabled = want end
 		end
+	end
+end
+
+-- ⚠️ **เฉพาะจุดที่อยู่ใกล้ตัว** (QA 2026-09-26 มือถือหน่วง) — เดิมไล่ทุกจุดที่โหลดมา (แมพหลักมีต้นไม้/หิน/พุ่ม ~25,000)
+-- เปิด GetDescendants ทุกตัวทุกวินาที และทุกจุดที่สตรีมเข้ามาตอนเดินสั่งไล่ใหม่ทั้งหมดอีกรอบ · ปุ่มขึ้นแค่ในระยะ ~10 สตัด
+-- จุดไกลกว่า REFRESH_RADIUS จึงไม่ต้องแตะ (เดิน 16 สตัด/วิ ลูปวินาทีละรอบ = ถูกจัดก่อนเดินถึงเสมอ)
+-- ponytail: ยังวนรายชื่อทั้งหมดเพื่อวัดระยะ (ถูก) ถ้าวันไหนจุดเป็นแสน ค่อยแบ่งกริดพื้นที่
+local REFRESH_RADIUS = 80
+local function refreshPrompts()
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	local here = root.Position
+	for _, node in ipairs(CollectionService:GetTagged(TAG)) do
+		local pos = node:IsA("BasePart") and node.Position or (node:IsA("Model") and node:GetPivot().Position)
+		if pos and (pos - here).Magnitude <= REFRESH_RADIUS then refreshNode(node) end
 	end
 end
 
@@ -130,8 +144,9 @@ Remotes.EquipmentChanged.OnClientEvent:Connect(function(who)
 		task.defer(refreshPrompts)
 	end
 end)
-CollectionService:GetInstanceAddedSignal(TAG):Connect(function()
-	task.defer(refreshPrompts)
+-- จุดที่เพิ่งสตรีมเข้ามา: จัดแค่ตัวนั้น (เดิมสั่งไล่ใหม่ทั้งแมพต่อหนึ่งจุด = เดินเข้าป่าแล้วกระตุก)
+CollectionService:GetInstanceAddedSignal(TAG):Connect(function(node)
+	task.defer(refreshNode, node)
 end)
 
 --------------------------------------------------------------------------------

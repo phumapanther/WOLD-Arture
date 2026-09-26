@@ -34,6 +34,8 @@ local TRAVEL_SECONDS = 5
 local TICK = 0.1
 
 local Travelling = {} -- [player] = true while the bar is filling
+local Leaving = {} -- [player] = true ระหว่างลองเทเลพอร์ต (หลังแถบเต็มแล้ว)
+local TELEPORT_ATTEMPTS, TELEPORT_WAIT = 3, 15 -- ลองกี่รอบ · รอผลรอบละกี่วินาที
 
 local function stop(player, reason)
 	if not Travelling[player] then return end
@@ -103,15 +105,22 @@ Remotes.RequestReturnToLobby.OnServerEvent:Connect(function(player)
 		-- ล็อบบี้คือเซิร์ฟสาธารณะของ *เพลสหลัก* · `game.PlaceId` ถูกตอนอยู่ในเพลสหลัก แต่บนเกาะ
 		-- มันคือเลขของเกาะเอง = เทเลพอร์ตกลับมาที่เดิม ซึ่งดูเหมือนปุ่มไม่ทำงาน (ผู้ใช้แจ้ง 2026-09-22)
 		local destination = ServerConfig.MainPlaceId or game.PlaceId
-		local ok, err = pcall(function()
-			TeleportService:Teleport(destination, player)
-		end)
-		if not ok then
-			warn("[LobbyTravel] teleport failed for", player.UserId, err)
-			-- Told, rather than left staring at a bar that will never move again.
-			if player:IsDescendantOf(Players) then
-				Remotes.LobbyTravelChanged:FireClient(player, "stopped", "failed")
-			end
+		-- เทเลพอร์ตที่ Roblox รับไปแล้วค้างเงียบได้ (ผู้ใช้แจ้ง 2026-09-26: สนาม PVP บนมือถือกดกลับล็อบบี้แล้วจอดำค้าง)
+		-- → ลองซ้ำ 3 รอบ รอบละ 15 วิ · ยังอยู่ในเซิร์ฟนี้ครบทุกรอบ = คืนจอให้พร้อมบอกให้ลองใหม่ ไม่ปล่อยดำไปตลอด
+		-- ระหว่างรอบ `Leaving` กันตัวดัก TeleportInitFailed ข้างล่างไม่ให้คืนจอก่อนรอบสุดท้าย
+		Leaving[player] = true
+		for attempt = 1, TELEPORT_ATTEMPTS do
+			if not player:IsDescendantOf(Players) then break end
+			local ok, err = pcall(function()
+				TeleportService:TeleportAsync(destination, { player })
+			end)
+			if not ok then warn("[LobbyTravel] teleport attempt", attempt, "failed for", player.UserId, err) end
+			local giveUpAt = os.clock() + TELEPORT_WAIT
+			while os.clock() < giveUpAt and player:IsDescendantOf(Players) do task.wait(0.5) end
+		end
+		Leaving[player] = nil
+		if player:IsDescendantOf(Players) then
+			Remotes.LobbyTravelChanged:FireClient(player, "stopped", "failed")
 		end
 	end)
 end)
@@ -123,6 +132,7 @@ end)
 -- solve.
 TeleportService.TeleportInitFailed:Connect(function(player, result, message)
 	warn("[LobbyTravel] teleport rejected for", player.UserId, tostring(result), message)
+	if Leaving[player] then return end -- ลูปลองซ้ำข้างบนยังไม่จบ มันคืนจอเองตอนหมดรอบ
 	if player:IsDescendantOf(Players) then
 		Remotes.LobbyTravelChanged:FireClient(player, "stopped", "failed")
 	end
@@ -130,4 +140,5 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	Travelling[player] = nil
+	Leaving[player] = nil
 end)
