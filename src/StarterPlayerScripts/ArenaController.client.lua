@@ -410,24 +410,6 @@ end
 --------------------------------------------------------------------------------
 -- ภาพจากเซิร์ฟเวอร์
 --------------------------------------------------------------------------------
-local function bannerFor(snap)
-	if snap.phase == "roundEnd" and snap.lastWinner then
-		if snap.lastWinner == "draw" then return "รอบนี้เสมอ", nil end
-		local team = ArenaConfig.Teams[snap.lastWinner]
-		local mine = snap.lastWinner == snap.mySide
-		return ("%s ชนะรอบ %d"):format(team.name, snap.round),
-			mine and Color3.fromRGB(96, 220, 140) or Color3.fromRGB(230, 120, 112)
-	end
-	if snap.phase == "buy" then
-		local key = (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled) and "(แตะ 🛒)" or "(B)"
-		return "เตรียมตัว — ซื้อของได้เลย " .. key, Color3.fromRGB(226, 184, 78)
-	end
-	if snap.phase == "live" and not snap.alive and not spectating then
-		return "คุณตายแล้ว — รอรอบหน้า", Color3.fromRGB(210, 200, 190)
-	end
-	return nil, nil
-end
-
 Remotes.ArenaState.OnClientEvent:Connect(function(snap)
 	if not snap then return end
 	snapshot = snap
@@ -437,9 +419,6 @@ Remotes.ArenaState.OnClientEvent:Connect(function(snap)
 	-- เดินออกจากฐานระหว่างสู้ = ร้านปิดเอง
 	if shop:IsVisible() and not snap.canShop then setShopOpen(false) end
 	if shop:IsVisible() then shop:Render(snap) end
-	hud:SetShopHint(snap.phase == "live" and snap.canShop and not shop:IsVisible())
-	local text, colour = bannerFor(snap)
-	hud:SetBanner(text, colour)
 	if tabBoard.gui.Enabled then tabBoard:RenderLive(snap) end
 end)
 
@@ -539,7 +518,6 @@ Remotes.ArenaMatchEnd.OnClientEvent:Connect(function(result)
 	UserInputService.ModalEnabled = true
 	board:Render(result)
 	board:SetVisible(true)
-	hud:SetBanner(nil)
 end)
 
 board:OnBack(function()
@@ -550,13 +528,8 @@ end)
 --------------------------------------------------------------------------------
 -- ข้อความสั้นๆ จากเซิร์ฟเวอร์ (ซื้อไม่ผ่าน เงินไม่พอ ฯลฯ)
 --------------------------------------------------------------------------------
+-- ข้อความสั้นจากเซิร์ฟเวอร์: ขึ้นในบรรทัดสถานะของร้านเฉพาะตอนร้านเปิด (ผู้ใช้สั่ง 2026-09-26: ไม่มีข้อความกลางจอ)
+-- ร้านปิดอยู่ = ไม่วาด (เกราะพัง/หยิบของ เห็นได้จากตัวเองอยู่แล้ว)
 Remotes.ArenaNotice.OnClientEvent:Connect(function(kind, text)
-	-- ยืมป้ายกลางจอของ HUD: ข้อความในสนามต้องอ่านได้โดยไม่ละสายตา และมันหายเองในสองวินาที
-	hud:SetBanner(text, kind == "warn" and Color3.fromRGB(230, 120, 112) or Color3.fromRGB(226, 184, 78))
-	task.delay(2, function()
-		if snapshot then
-			local again, colour = bannerFor(snapshot)
-			hud:SetBanner(again, colour)
-		end
-	end)
+	if shop:IsVisible() then shop:Flash(text, kind) end
 end)
