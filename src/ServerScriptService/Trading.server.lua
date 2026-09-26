@@ -100,14 +100,9 @@ end
 -- The swap
 --------------------------------------------------------------------------------
 
--- How many free bag slots a player has, so a swap cannot destroy an item by dropping it into a full bag.
-local function freeSlots(player)
-	local state = Inventory.Get(player)
-	if not state then return 0 end
-	local used = 0
-	for _ in pairs(state.slots) do used += 1 end
-	return InventoryConfig.SlotCount - used
-end
+-- ห้องรับของนับแยกฝั่งกระเป๋า (หลัก/VIP) — เดิมนับช่องที่ใช้ทั้งหมดรวม VIP แล้วเทียบกับกระเป๋าหลัก
+-- กระเป๋า VIP เต็มจึงเทรดอะไรไม่ได้เลย (QA 2026-09-26) · กติกาอยู่ที่ BagRanges ที่เดียวกับ Inventory
+local BagRanges = require(game.ServerScriptService.BagRanges)
 
 local function completeTrade(session)
 	local a, b = session.a, session.b
@@ -169,7 +164,9 @@ local function completeTrade(session)
 
 	-- Room to receive, counted before anything moves. Each side frees the slots it gives up, so swapping
 	-- one item for one item works even with a full bag.
-	if freeSlots(a) + #takingA < #takingB or freeSlots(b) + #takingB < #takingA then
+	local stateA, stateB = Inventory.Get(a), Inventory.Get(b)
+	if not (stateA and stateB and BagRanges.SwapFits(stateA.slots, takingA, takingB)
+		and BagRanges.SwapFits(stateB.slots, takingB, takingA)) then
 		return closeSession(session, "กระเป๋าไม่พอ")
 	end
 

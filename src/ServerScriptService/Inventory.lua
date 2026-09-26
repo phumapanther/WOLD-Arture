@@ -71,22 +71,15 @@ end
 -- Adding and removing
 --------------------------------------------------------------------------------
 
--- **ของชิ้นนี้อยู่ฝั่งไหนของกระเป๋า** — เกณฑ์เดียวกับแท็บบนหน้าจอเป๊ะ
---
--- `InventoryGui.IsFarmItem` อ่านจาก `vip = true` หรือ `kind == "placeable"` · ที่นี่ต้องคิดเหมือนกัน
--- ไม่งั้นของจะไปลงช่องที่แท็บนั้นมองไม่เห็น แล้วอ่านเหมือนของหาย
-local function isVipItem(id)
-	local item = ItemCatalog.Get(id)
-	if not item then return false end
-	return item.vip == true or item.kind == "placeable"
+-- **ของชิ้นนี้อยู่ฝั่งไหนของกระเป๋า** — กติกาอยู่ที่ `BagRanges` ที่เดียว (เทรดถามที่เดียวกัน · QA 2026-09-26)
+local BagRanges = require(script.Parent.BagRanges)
+
+local function rangeFor(id, meta)
+	return BagRanges.For(id, meta)
 end
 
--- ช่วงช่องที่ของชนิดนี้ใช้ได้
-local function rangeFor(id)
-	if isVipItem(id) then
-		return InventoryConfig.VipSlotStart, InventoryConfig.VipSlotEnd
-	end
-	return 1, InventoryConfig.SlotCount
+local function isVipItem(id)
+	return (rangeFor(id)) ~= 1
 end
 
 local function firstFreeSlot(state, id)
