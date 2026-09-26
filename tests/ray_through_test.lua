@@ -55,4 +55,20 @@ end)
 root:Destroy()
 if not ok then error(err) end
 
+-- สไนเฉียดเป้า (QA 2026-09-26): ตำแหน่งมอนบนจอผู้ยิงช้ากว่าเซิร์ฟ ~1-3 สตัด → นับโดนถ้าอยู่ใกล้แนวยิง
+check(type(RayThrough.NearestNear) == "function", "มีฟังก์ชัน NearestNear")
+if type(RayThrough.NearestNear) == "function" then
+	local o, u = Vector3.zero, Vector3.new(0, 0, -1)
+	local near = { model = "A", position = Vector3.new(2, 0, -100) }
+	local far = { model = "B", position = Vector3.new(1, 0, -300) }
+	check(RayThrough.NearestNear(o, u, 500, { far, near }, 3) == near, "เฉียด: เลือกตัวที่ใกล้ตามแนวยิงก่อน")
+	check(RayThrough.NearestNear(o, u, 200, { far }, 3) == nil, "เฉียด: เลยจุดที่กระสุนหยุด (กำแพง) = ไม่นับ")
+	check(RayThrough.NearestNear(o, u, 500, { { model = "C", position = Vector3.new(6, 0, -50) } }, 3) == nil,
+		"เฉียด: ห่างแนวยิงเกินรัศมี = ไม่นับ")
+	check(RayThrough.NearestNear(o, u, 500, { { model = "D", position = Vector3.new(6, 0, -50), pad = 4 } }, 3) ~= nil,
+		"เฉียด: บอสตัวใหญ่ (pad) นับระยะเผื่อเพิ่ม")
+	check(RayThrough.NearestNear(o, u, 500, { { model = "E", position = Vector3.new(0, 0, 20) } }, 3) == nil,
+		"เฉียด: อยู่ข้างหลังผู้ยิง = ไม่นับ")
+end
+
 return (fails == 0 and "PASS\n" or ("FAIL x%d\n"):format(fails)) .. table.concat(out, "\n")

@@ -458,7 +458,8 @@ local function fireSniper(player, weapon, attack, aim)
 	-- ทะลุเพื่อนร่วมทีม/ตี้ และศพ (รีวิวจบงาน: เพื่อนยืนขวางแนวยิงเคยกินนัดทิ้งทั้งที่ศัตรูอยู่ข้างหลัง)
 	local function passThrough(part)
 		local m = characterOf(part)
-		if not m then return nil end
+		-- ใบไม้ หญ้า หมุดล่องหน: ชนไม่ได้และไม่ใช่ร่างใคร = กระสุนทะลุ (QA 2026-09-26 — เดิมกระสุนหยุดที่ใบไม้)
+		if not m then return (not part.CanCollide) and part or nil end
 		local hum = m:FindFirstChildOfClass("Humanoid")
 		if hum and hum.Health <= 0 then return m end
 		local v = Players:GetPlayerFromCharacter(m)
@@ -466,8 +467,29 @@ local function fireSniper(player, weapon, attack, aim)
 		if ArenaAccess.Friendly and ArenaAccess.Friendly(player, v or m) then return m end
 		return nil
 	end
-	local result = RayThrough.Cast(muzzle, forward * spec.length, params, passThrough)
+	-- 12 ชั้น: ป่าทึบมีใบไม้ซ้อนหลายชั้นก่อนถึงเป้า (เดิม 4 = หมดชั้นกลางพุ่มแล้วไม่โดนอะไร)
+	local result = RayThrough.Cast(muzzle, forward * spec.length, params, passThrough, 12)
 	local endPoint = result and result.Position or (muzzle + forward * spec.length)
+
+	-- เฉียดเป้า: เรย์ไม่ได้ชนร่างใคร → หาเป้าที่อยู่ใกล้แนวยิงภายใน 3 สตัดก่อนจุดที่กระสุนหยุด (นับโดนลำตัว)
+	-- ตำแหน่งบนจอผู้ยิงช้ากว่าเซิร์ฟเล็กน้อย (QA 2026-09-26) · กำแพงยังกันได้เพราะนับแค่ก่อนจุดที่กระสุนหยุด
+	local forgiven = nil
+	if not (result and characterOf(result.Instance)) then
+		local candidates = {}
+		local function add(m)
+			local r = m:FindFirstChild("HumanoidRootPart") or m.PrimaryPart
+			if r and m ~= character then
+				candidates[#candidates + 1] = { model = m, position = r.Position, pad = m:GetAttribute("WOLD_HitPad") }
+			end
+		end
+		for _, m in ipairs(CollectionService:GetTagged("WOLD_Mob")) do add(m) end
+		for _, m in ipairs(CollectionService:GetTagged("WOLD_Dummy")) do add(m) end
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p.Character then add(p.Character) end
+		end
+		local pick = RayThrough.NearestNear(muzzle, forward, (endPoint - muzzle).Magnitude, candidates, 3)
+		forgiven = pick and pick.model
+	end
 
 	playCastSound(player) -- เสียงปืนดังตอนกระสุนออก ไม่ใช่ตอนคลิก
 
@@ -482,10 +504,10 @@ local function fireSniper(player, weapon, attack, aim)
 	tracer.Parent = workspace
 	Debris:AddItem(tracer, spec.life)
 
-	if not result then return end
-	local model = characterOf(result.Instance)
+	local model = forgiven or (result and characterOf(result.Instance))
 	if not model then return end
-	local head = headOwner(result.Instance) == model
+	-- เฉียด = โดนลำตัวเสมอ ยิงหัวต้องโดนหัวจริง
+	local head = (not forgiven) and headOwner(result.Instance) == model
 	local victim = Players:GetPlayerFromCharacter(model)
 	-- ทีม/ตี้เดียวกัน = ทะลุไปเหมือนไม่มีใคร (ทั้งคนและบอท)
 	if ArenaAccess.Friendly and ArenaAccess.Friendly(player, victim or model) then return end

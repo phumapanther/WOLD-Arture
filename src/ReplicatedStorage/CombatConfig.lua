@@ -190,7 +190,8 @@ CombatConfig.Weapons = {
 		idleTimeout = 20,
 		attacks = {
 			{ animation = "", damage = 0, windup = 0.05, active = 0.05, recovery = 0.6, range = 0,
-				projectile = { kind = "hitscan", length = 400, life = 0.12, size = Vector3.new(0.08, 0.08, 1),
+				-- 500 = ระยะเล็งของ AimController (AIM_DISTANCE) · เดิม 400 เป้า 400-500 สตัดพลาดเสมอ (QA 2026-09-26)
+				projectile = { kind = "hitscan", length = 500, life = 0.12, size = Vector3.new(0.08, 0.08, 1),
 					color = Color3.fromRGB(255, 240, 200), material = Enum.Material.Neon, muzzleHeight = 1.5 } },
 		},
 		chainResetDelay = 0.6,

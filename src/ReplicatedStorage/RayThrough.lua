@@ -23,4 +23,22 @@ function RayThrough.Cast(origin, direction, params, skip, maxHops)
 	return nil
 end
 
+-- กระสุนเฉียดเป้า: ใครอยู่ใกล้แนวยิงที่สุด (ระยะตั้งฉาก ≤ radius + pad) ก่อนจุดที่กระสุนหยุด
+-- ตำแหน่งมอนบนจอผู้ยิงช้ากว่าเซิร์ฟเวอร์ ~0.1-0.2 วิ มอนวิ่ง 8-16 สตัด/วิ = คลาด 1-3 สตัด (QA 2026-09-26)
+-- `candidates` = { { model, position = Vector3, pad = number? } } · คืนแถวที่ถูกเลือก หรือ nil
+function RayThrough.NearestNear(origin, unit, maxDist, candidates, radius)
+	local best, bestT = nil, math.huge
+	for _, c in ipairs(candidates) do
+		local rel = c.position - origin
+		local t = rel:Dot(unit)
+		if t >= 0 and t <= maxDist and t < bestT then
+			local perp = (rel - unit * t).Magnitude
+			if perp <= radius + (c.pad or 0) then
+				best, bestT = c, t
+			end
+		end
+	end
+	return best
+end
+
 return RayThrough
