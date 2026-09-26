@@ -29,24 +29,8 @@ local function syncArmor(player)
 	task.defer(function() Vitals.SyncArmorFromEquipment(player) end)
 end
 
--- Starting kit, so a new player has something to test the bag with rather than an empty grid.
--- ponytail: all four weapons for now so every Q skill is reachable without a shop or drops. Trim this to a
--- sword once items can actually be found in the world.
--- What a brand-new player starts with. Deliberately modest: the full set is a one-off test grant below, not
--- the normal opening hand.
-local STARTER_KIT = {
-	-- ของเปิดตัวตามที่ผู้ใช้กำหนด: เครื่องมือครบสามอย่าง คันเบ็ด และขนมปังหนึ่งสแตค
-	--
-	-- ให้เครื่องมือครบทั้งสามเพราะการเก็บเกี่ยวบังคับว่าต้องมีเครื่องมือให้ตรงชนิด คนเข้าใหม่ไม่มีเงิน
-	-- และไม่มีทางหาได้เลยถ้าไม่มีอันไหนสักอัน
-	{ id = "Axe", count = 1 },
-	{ id = "Shovel", count = 1 },
-	{ id = "Pickaxe", count = 1 },
-	{ id = "FishingRod", count = 1 },
-	{ id = "Bread", count = 16 },
-	-- จักรยานล้อเดียว แจกทุกคนตั้งแต่เริ่ม ตามที่ผู้ใช้สั่ง
-	{ id = "Monowheel", count = 1 },
-}
+-- ของเปิดตัวและกติกา "ใครใหม่" อยู่ใน StarterKit.lua (ทดสอบได้) — ไม่มีอาวุธ/เกราะ ตามที่ผู้ใช้กำหนด
+local StarterKit = require(game.ServerScriptService.StarterKit)
 
 -- ⚠️ เคยมี TEST_GRANT (อาวุธ 4 · เกราะ 3 · ยา · ค้อนซ่อม) แจกครั้งเดียวให้คนที่ "เคยเล่นแล้ว" ตอนยังเป็นช่วงเทส
 -- ถูกลบทิ้ง 2026-09-25 เพราะมันยิงใส่ **ผู้เล่นใหม่ทุกคนตอนเข้าเกมครั้งที่สอง** (ของเปิดตัวไม่ได้ปั๊ม TestGrant ไว้)
@@ -71,9 +55,7 @@ PlayerJoin.Each(function(player)
 	local data = ProfileAccess.Wait(player)
 	local saved = data and data.Inventory
 
-	-- "Has PLAYED before" is whether a profile exists at all — not whether a bag was saved (an emptied bag is
-	-- still a returning player, and must not be handed the opening kit again).
-	local hasPlayedBefore = data ~= nil and data.Position ~= nil
+	local giveKit = StarterKit.ShouldGive(data, saved)
 
 	Inventory.Add(player, saved)
 
@@ -84,16 +66,12 @@ PlayerJoin.Each(function(player)
 		print(("[Inventory] ย้ายของเกาะ %d ชิ้นไปช่องกระเป๋า VIP ของ %s"):format(movedVip, player.Name))
 	end
 
-	if not hasPlayedBefore then
-		-- **เงื่อนไขคือ "ไม่เคยเล่นมาก่อน" ไม่ใช่ "กระเป๋าว่าง"**
-		--
-		-- ของเดิมเช็ค `not saved` ซึ่งเป็นจริงเมื่อกระเป๋าว่างด้วย คนเก่าที่บังเอิญของหมดเกลี้ยงจึงได้ของ
-		-- เปิดตัวใหม่ทุกครั้งที่เข้าเกม ซึ่งเป็นบั๊กที่ผู้ใช้รายงาน ตัวชี้ขาดคือโปรไฟล์มีอยู่แล้วหรือยัง
-		-- ซึ่งคือ `hasPlayedBefore` ตัวเดียวกับที่ของแจกรอบเดียวใช้อยู่แล้ว
-		-- Brand new: the ordinary opening hand.
-		for _, entry in ipairs(STARTER_KIT) do
+	if giveKit then
+		for _, entry in ipairs(StarterKit.Items) do
 			Inventory.AddItem(player, entry.id, entry.count)
 		end
+		-- จดในโปรไฟล์เดียวกับกระเป๋า: เซฟพร้อมกันเสมอ (เซิร์ฟล่มก่อนเซฟ = หายทั้งคู่ ได้ชุดใหม่ครั้งหน้าอย่างถูกต้อง)
+		data.StarterKit = true
 	end
 
 	Inventory.Send(player)

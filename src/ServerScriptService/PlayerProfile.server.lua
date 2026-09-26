@@ -83,6 +83,8 @@ local ProfileTemplate = {
 	-- ออกเกมคือวิธีหนีคุก โทษต้องเดินตามเวลาจริงต่อไปแม้ไม่ได้เล่น
 	JailUntil = nil,
 	TestChestAt = 0,
+	-- true = ได้ของเปิดตัว (เครื่องมือสามอย่าง คันเบ็ด ขนมปัง ล้อเดียว) ไปแล้ว — ครั้งเดียวต่อบัญชี ดู PlayerInventory
+	StarterKit = nil,
 	-- One-off test grant. Recorded in the profile so it happens once per player, ever, rather than on every
 	-- rejoin. Bumping the number re-runs it for everyone; leave it alone to stop granting.
 	TestGrant = 0,
