@@ -26,19 +26,22 @@ end
 -- กระสุนเฉียดเป้า: ใครอยู่ใกล้แนวยิงที่สุด (ระยะตั้งฉาก ≤ radius + pad) ก่อนจุดที่กระสุนหยุด
 -- ตำแหน่งมอนบนจอผู้ยิงช้ากว่าเซิร์ฟเวอร์ ~0.1-0.2 วิ มอนวิ่ง 8-16 สตัด/วิ = คลาด 1-3 สตัด (QA 2026-09-26)
 -- `candidates` = { { model, position = Vector3, pad = number? } } · คืนแถวที่ถูกเลือก หรือ nil
-function RayThrough.NearestNear(origin, unit, maxDist, candidates, radius)
-	local best, bestT = nil, math.huge
+-- `accept(c)` (ไม่ใส่ก็ได้) ปฏิเสธตัวที่ห้ามนับ (เพื่อน ศพ มองไม่เห็นจากปากกระบอก) — ถูกปฏิเสธแล้วไล่ตัวถัดไปตามแนวยิง
+-- ไม่ใช่เสียนัดทิ้ง (รีวิวเฟส 0: เดิมเลือกตัวใกล้สุดก่อนกรอง เพื่อนยืนหน้าศัตรูกินนัดเฉียดไป)
+function RayThrough.NearestNear(origin, unit, maxDist, candidates, radius, accept)
+	local inRange = {}
 	for _, c in ipairs(candidates) do
 		local rel = c.position - origin
 		local t = rel:Dot(unit)
-		if t >= 0 and t <= maxDist and t < bestT then
-			local perp = (rel - unit * t).Magnitude
-			if perp <= radius + (c.pad or 0) then
-				best, bestT = c, t
-			end
+		if t >= 0 and t <= maxDist and (rel - unit * t).Magnitude <= radius + (c.pad or 0) then
+			inRange[#inRange + 1] = { c = c, t = t }
 		end
 	end
-	return best
+	table.sort(inRange, function(a, b) return a.t < b.t end)
+	for _, entry in ipairs(inRange) do
+		if not accept or accept(entry.c) then return entry.c end
+	end
+	return nil
 end
 
 return RayThrough

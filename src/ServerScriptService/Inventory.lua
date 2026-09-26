@@ -219,6 +219,7 @@ function Inventory.AddItem(player, id, count, durability, meta)
 		end
 	end
 
+	local firstSlot = true
 	while count > 0 do
 		local free = firstFreeSlot(state, id)
 		if not free then break end -- ไม่เกิด: bagRoom นับไว้แล้ว · กันไว้ไม่ให้วนไม่จบ
@@ -231,10 +232,11 @@ function Inventory.AddItem(player, id, count, durability, meta)
 			durability = durability or item.maxDurability or item.armor,
 			-- Only present on items that carry their own identity. Absent everywhere else, so the slot
 			-- shape is unchanged for the things that were working before.
-			-- สำเนาต่อช่อง (QA 2026-09-26): ของ meta แยกชิ้นเสมอ จำนวน >1 เคยได้ตารางก้อนเดียวกันทุกช่อง
-			-- แก้ meta ช่องหนึ่ง (ตีบวก/สกิน/ขอบทอง) แล้วช่องอื่นเปลี่ยนตามไปด้วย
-			meta = meta and table.clone(meta) or nil,
+			-- ช่องแรกได้ตารางของผู้เรียก (ตีบวกหาช่องที่คืนอาวุธด้วย `slot.meta == job.meta`) · ช่องที่เหลือได้สำเนา
+			-- (QA 2026-09-26: จำนวน >1 เคยได้ตารางก้อนเดียวกันทุกช่อง แก้ช่องหนึ่งแล้วช่องอื่นเปลี่ยนตาม)
+			meta = meta and (firstSlot and meta or table.clone(meta)) or nil,
 		}
+		firstSlot = false
 		count -= put
 	end
 

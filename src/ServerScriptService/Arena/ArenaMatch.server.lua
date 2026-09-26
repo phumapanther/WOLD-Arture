@@ -1058,6 +1058,9 @@ PlayerJoin.Each(function(player)
 		if f.kind == "player" and f.left and f.userId == player.UserId then
 			Fighters[oldKey] = nil
 			f.player, f.left = player, nil
+			-- กระเป๋าสนามเกิดใหม่เปล่าทุกครั้งที่เข้า (PlayerInventory) ของติดตัวเดิมจึงไม่อยู่แล้ว (รีวิวเฟส 0):
+			-- ล้างรายการของติดตัว/ใบเสร็จ ไม่งั้นร้านโชว์ "ติดตัว" กับของที่ไม่มี และเกิดมามือเปล่า
+			f.loadout, f.receipts = {}, {}
 			Fighters[player] = f
 			if State.phase == "warmup" or State.phase == "buy" then
 				spawnPlayer(f, countIn(f.side))

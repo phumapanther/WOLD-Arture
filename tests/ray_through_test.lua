@@ -69,6 +69,13 @@ if type(RayThrough.NearestNear) == "function" then
 		"เฉียด: บอสตัวใหญ่ (pad) นับระยะเผื่อเพิ่ม")
 	check(RayThrough.NearestNear(o, u, 500, { { model = "E", position = Vector3.new(0, 0, 20) } }, 3) == nil,
 		"เฉียด: อยู่ข้างหลังผู้ยิง = ไม่นับ")
+	-- ตรวจเพิ่มหลังรีวิว: ตัวที่ใกล้สุดถูกปฏิเสธ (เพื่อน/ศพ/มองไม่เห็น) ต้องได้ตัวถัดไป ไม่ใช่เสียนัดทิ้ง
+	local behind = { model = "F", position = Vector3.new(1, 0, -200) }
+	local blocked = { model = "G", position = Vector3.new(1, 0, -100) }
+	check(RayThrough.NearestNear(o, u, 500, { blocked, behind }, 3, function(c) return c ~= blocked end) == behind,
+		"เฉียด: ตัวใกล้สุดถูกปฏิเสธ = ได้ตัวถัดไปตามแนวยิง")
+	check(RayThrough.NearestNear(o, u, 500, { blocked }, 3, function() return false end) == nil,
+		"เฉียด: ถูกปฏิเสธทุกตัว = ไม่โดน")
 end
 
 return (fails == 0 and "PASS\n" or ("FAIL x%d\n"):format(fails)) .. table.concat(out, "\n")

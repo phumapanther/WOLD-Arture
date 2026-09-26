@@ -487,7 +487,22 @@ local function fireSniper(player, weapon, attack, aim)
 		for _, p in ipairs(Players:GetPlayers()) do
 			if p.Character then add(p.Character) end
 		end
-		local pick = RayThrough.NearestNear(muzzle, forward, (endPoint - muzzle).Magnitude, candidates, 3)
+		-- นับเฉพาะตัวที่ยิงโดนได้จริง (รีวิวเฟส 0): ไม่ใช่เพื่อน/ตี้/ศพ ไม่อมตะ และ **มองเห็นจากปากกระบอก**
+		-- ไม่งั้นศัตรูที่หลบหลังมุมลังยังโดนเพราะรากตัวอยู่ใกล้แนวยิง
+		local function acceptable(c)
+			local root = c.model:FindFirstChild("HumanoidRootPart") or c.model.PrimaryPart
+			if not root or passThrough(root) then return false end
+			local v = Players:GetPlayerFromCharacter(c.model)
+			if v and (v == player or Vitals.IsInvulnerable(v)) then return false end
+			local sight = RaycastParams.new()
+			sight.FilterType = Enum.RaycastFilterType.Exclude
+			sight.FilterDescendantsInstances = { character }
+			sight.IgnoreWater = true
+			local toward = root.Position - muzzle
+			local seen = RayThrough.Cast(muzzle, toward.Unit * (toward.Magnitude + 3), sight, passThrough, 12)
+			return seen ~= nil and characterOf(seen.Instance) == c.model
+		end
+		local pick = RayThrough.NearestNear(muzzle, forward, (endPoint - muzzle).Magnitude, candidates, 3, acceptable)
 		forgiven = pick and pick.model
 	end
 
