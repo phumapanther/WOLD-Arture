@@ -42,12 +42,18 @@ end
 --
 -- `onlyIfNone = true` : มี VIP อยู่แล้วไม่แตะเลย — กติกาของ `/givevip` (ผู้ใช้สั่ง 2026-09-22)
 -- และต้องตัดสิน **ตอนส่งถึง** ไม่ใช่ตอนสั่งแจก เพราะระหว่างนั้นเขาอาจซื้อเองไปแล้ว
-function Vip.GrantData(data, days, onlyIfNone)
+-- `now` ไม่ใส่ = os.time() (ใส่เองได้ไว้เทส)
+function Vip.GrantData(data, days, onlyIfNone, now)
 	if not data then return nil end
-	local until_ = tonumber(data.VipUntil) or 0
-	if onlyIfNone and until_ > os.time() then return nil end
-	data.VipUntil = math.max(os.time(), until_) + math.floor((days or 0) * 86400)
+	now = now or os.time()
+	if onlyIfNone and Vip.ActiveData(data, now) then return nil end
+	data.VipUntil = math.max(now, tonumber(data.VipUntil) or 0) + math.floor((days or 0) * 86400)
 	return data.VipUntil
+end
+
+-- เหมือน `Has` แต่ถามจาก **ตารางข้อมูลโปรไฟล์** (คู่กับ `GrantData`)
+function Vip.ActiveData(data, now)
+	return (tonumber(data and data.VipUntil) or 0) > (now or os.time())
 end
 
 -- แจกให้คนที่ **ไม่ได้อยู่ในเซิร์ฟนี้** (หรือไม่ได้ออนไลน์เลย) — ฝากข้อความไว้ในเรคอร์ดของเขาใน

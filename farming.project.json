@@ -11,6 +11,7 @@
     "src/ServerScriptService/TownVault.server.lua",
     "src/ServerScriptService/Transformers.server.lua",
     "src/ServerScriptService/VehicleMain.server.lua",
+    "src/ServerScriptService/VipGiftPrompt.server.lua",
     "src/ServerScriptService/WorldBoss.server.lua",
     "src/ServerScriptService/WorldEvents.server.lua",
     "src/ServerScriptService/Arena/ArenaMatch.server.lua",

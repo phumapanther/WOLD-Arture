@@ -46,6 +46,7 @@
     "src/ServerScriptService/TreasureChests.server.lua",
     "src/ServerScriptService/VehicleMain.server.lua",
     "src/ServerScriptService/Weather.server.lua",
+    "src/ServerScriptService/VipGiftPrompt.server.lua",
     "src/ServerScriptService/WorldBoss.server.lua",
     "src/ServerScriptService/WorldEvents.server.lua",
     "src/ServerScriptService/Island/IslandBuild.server.lua",
