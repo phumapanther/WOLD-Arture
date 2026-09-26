@@ -100,9 +100,19 @@ local Busy = {}
 -- ไม่รู้ว่าต้องบวกชิ้นไหน · ต้องประกาศก่อน snapshot (snapshot วาดแถวของชิ้นนี้ให้เห็นว่าอยู่กับช่าง)
 local Enhancing = {}
 
--- ชื่อช่องของล็อก: สถานี หรือ "smith" สำหรับช่างตีเหล็ก
-local function stationKeyOf(station)
-	return station or "smith"
+-- ชื่อช่องของล็อก **รายเครื่อง ไม่ใช่รายชนิด** (QA 2026-09-26): เตาสองใบคือสองงานขนานได้ · ช่างตีเหล็ก = "smith"
+-- เครื่องบนเกาะรู้จักกันด้วย `Uid` ของชิ้นที่วาง (ไต่ขึ้นหาเพราะเครื่องถูกห่อด้วย Model ลูกชื่อต้นแบบ) ·
+-- ในแมพหลักใช้เส้นทางเต็มของโมเดล · ต้องเป็นสตริงเพราะจดลงงานในโปรไฟล์ด้วย (ล็อกคืนตอนเข้าเกมใหม่)
+local function lockKeyOf(player)
+	local src = Source[player]
+	if not (src and src.station) then return "smith" end
+	local model, uid = src.model, nil
+	local at = model
+	while at and at ~= workspace and not uid do
+		uid = at:GetAttribute("Uid")
+		at = at.Parent
+	end
+	return src.station .. "@" .. tostring(uid or (model and model:GetFullName()) or "?")
 end
 
 Players.PlayerRemoving:Connect(function(player)
@@ -269,7 +279,7 @@ local function snapshot(player)
 	end
 	-- งานที่ยังทำค้างอยู่ที่เครื่องนี้ (ถ้ามี) กลับมายืนที่เตาแล้วต้องเห็นแถบเดินต่อจากเดิม ไม่ใช่หน้าว่าง
 	-- ที่ชวนให้กดซ้ำ — สูตร 15 นาทีทำให้เรื่องนี้จำเป็น ไม่ใช่ของแถม
-	local busy = Busy[player] and Busy[player][stationKeyOf(station)] or nil
+	local busy = Busy[player] and Busy[player][lockKeyOf(player)] or nil
 	local remaining = busy and math.max(0, busy.finishAt - os.clock()) or nil
 
 	local src = Source[player]
@@ -436,7 +446,7 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 	-- button again during it, which without this would spend the materials twice over from one set. แยกตาม
 	-- เครื่องเพราะเตาที่ตุ๋นสเต็กอยู่ 15 นาทีต้องไม่ล็อกเครื่องต้มยาไปด้วย
 	local station = stationOf(player)
-	local key = stationKeyOf(station)
+	local key = lockKeyOf(player)
 	Busy[player] = Busy[player] or {}
 	if Busy[player][key] then
 		return Remotes.SocialNotify:FireClient(player, "error",
@@ -458,8 +468,9 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 
 	-- งานเข้าโปรไฟล์ทันทีพร้อมกับที่วัตถุดิบออกจากกระเป๋า — ไม่มีช่วงที่ของไม่อยู่ที่ไหนเลย (ดู resolveJob)
 	local data = ProfileAccess.Get(player)
+	-- `lock` = เครื่องที่งานนี้จองไว้ · เข้าเกมใหม่ระหว่างทำ ล็อกเครื่องนี้คืนจนงานเสร็จ (QA 2026-09-26)
 	local job = { id = recipe.id, yields = yields, chance = recipe.chance or 1, failGives = recipe.failGives,
-		fee = fee, readyAt = os.time() + seconds }
+		fee = fee, readyAt = os.time() + seconds, lock = key }
 	if data then
 		data.CraftJobs = data.CraftJobs or {}
 		table.insert(data.CraftJobs, job)
@@ -663,7 +674,15 @@ PlayerJoin.Each(function(player)
 			if type(job) ~= "table" or type(job.id) ~= "string" or not ItemCatalog.Exists(job.id) then
 				takeJob(data, job)
 			else
-				task.delay(math.max(0, (tonumber(job.readyAt) or 0) - os.time()), function()
+				-- ล็อกเครื่องเดิมคืนจนงานเสร็จ (QA 2026-09-26): เดิมล็อกหายตอนออกเกม เข้ามาใหม่เริ่มงานซ้อนที่เครื่องเดิมได้
+				-- งานเก่าก่อนมีช่อง `lock` ไม่มีเครื่องให้ล็อก — ส่งของตามเดิมเฉยๆ
+				local left = math.max(0, (tonumber(job.readyAt) or 0) - os.time())
+				if type(job.lock) == "string" then
+					Busy[player] = Busy[player] or {}
+					Busy[player][job.lock] = { finishAt = os.clock() + left, seconds = left }
+				end
+				task.delay(left, function()
+					if Busy[player] and job.lock then Busy[player][job.lock] = nil end
 					if not player.Parent or ProfileAccess.Get(player) ~= data or not takeJob(data, job) then return end
 					resolveJob(player, data, job)
 					if ProfileAccess.Flush then ProfileAccess.Flush(player) end
