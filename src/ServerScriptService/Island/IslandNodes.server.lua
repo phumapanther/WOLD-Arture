@@ -104,7 +104,20 @@ end
 -- (บทเรียน "ใช้ก่อนประกาศ" ครั้งที่เจ็ดของโปรเจ็คนี้ · เจอเพราะเทสเหลือค้าง 1 จุดแทนที่จะเป็น 0)
 local drop
 
-local function spawnAt(kind, cx, cz)
+-- ⚠️ **ตอนเซิร์ฟกำลังปิด ห้ามลบอะไรออกจากคลัง** — เอนจินไล่ทำลายของใน workspace ตอนปิด
+-- ถ้า `Destroying` ข้างล่างยิงตอนนั้นด้วย มันจะกวาดจุดที่ยัง *ไม่ถูกเก็บ* ออกจากโปรไฟล์ทั้งหมด
+-- **ต้องประกาศก่อน `spawnAt`** (QA 2026-09-26): เดิมประกาศทีหลัง closure จึงจับ global ที่เป็น nil →
+-- `not closing` จริงเสมอ → ปิดเซิร์ฟทุกครั้งคลังจุดเก็บเกี่ยวถูกล้างทิ้งหมด (ใช้ก่อนประกาศ ครั้งที่แปด)
+local closing = false
+game:BindToClose(function() closing = true end)
+
+-- แสงของจุดที่โผล่ จำไว้ในโปรไฟล์แยกจากชนิด ("cx,cz" -> สี · false = ทอยแล้วไม่ติด)
+local function glowStore()
+	return IslandAccess.NodeGlowStore and IslandAccess.NodeGlowStore() or nil
+end
+
+-- `glow` = สีที่คืนจากโปรไฟล์ (false = ทอยแล้วไม่ติด) · nil = จุดใหม่ ทอยเอง
+local function spawnAt(kind, cx, cz, glow)
 	local picks = prototypes(kind)
 	if not picks or #picks == 0 then return false end
 	local folder = liveFolder()
@@ -134,8 +147,12 @@ local function spawnAt(kind, cx, cz)
 	-- ไม่ให้ฟาร์มออโต้จับ: มันใช้คีย์ F ชนกับปุ่มเก็บของคืนกระเป๋าของระบบเกาะ
 	model:SetAttribute("Uid", "node:" .. IslandGrid.key(cx, cz))
 	-- ของเรืองแสง (ผู้ใช้สั่ง 2026-09-23) — จุดที่เพิ่งโผล่ไม่เคยผ่าน `Gathering.setSpent(node, false)`
-	-- จึงต้องทอยเองตรงนี้ · จุดที่คืนจากคลังตอนบูตก็ผ่านทางนี้ ได้ทอยใหม่ทุกครั้งที่เซิร์ฟเปิด
-	model:SetAttribute("Glow", IslandConfig.RollGlow())
+	-- จึงต้องทอยเองตรงนี้ **ครั้งเดียวตอนโผล่ครั้งแรก** แล้วจำไว้ (QA 2026-09-26: เดิมทอยใหม่ทุกครั้งที่เซิร์ฟเปิด
+	-- = ออกเข้าใหม่จนได้สีที่อยากได้)
+	if glow == nil then glow = IslandConfig.RollGlow() or false end
+	model:SetAttribute("Glow", glow or nil)
+	local gs = glowStore()
+	if gs then gs[IslandGrid.key(cx, cz)] = glow end
 	model.Parent = folder
 	CollectionService:AddTag(model, "WOLD_Node")
 	Live[model] = IslandGrid.key(cx, cz)
@@ -157,16 +174,13 @@ local function spawnAt(kind, cx, cz)
 	return true
 end
 
--- ⚠️ **ตอนเซิร์ฟกำลังปิด ห้ามลบอะไรออกจากคลัง** — เอนจินไล่ทำลายของใน workspace ตอนปิด
--- ถ้า `Destroying` ข้างล่างยิงตอนนั้นด้วย มันจะกวาดจุดที่ยัง *ไม่ถูกเก็บ* ออกจากโปรไฟล์ทั้งหมด
-local closing = false
-game:BindToClose(function() closing = true end)
-
 function drop(model, key)
 	Live[model] = nil
 	Taken[key] = nil
 	local st = store()
 	if st then st[key] = nil end
+	local gs = glowStore()
+	if gs then gs[key] = nil end
 end
 
 local function countLive()
@@ -193,14 +207,19 @@ local function restoreSaved()
 	if not liveFolder() then return end -- เกาะยังไม่ประกอบ ลองใหม่รอบหน้า
 	restored = true
 	local back, dropped = 0, 0
+	local gs = glowStore()
 	for key, kind in pairs(st) do
 		local cx, cz = tostring(key):match("(-?%d+),(-?%d+)")
 		cx, cz = tonumber(cx), tonumber(cz)
+		-- สีเดิมจากโปรไฟล์ · ไม่มีบันทึก (จุดจากก่อนมีคลังสี) = false ไม่ใช่ทอยใหม่ ไม่งั้นทุกจุดเก่าได้ลุ้นซ้ำ
+		local glow = false
+		if gs and gs[key] ~= nil then glow = gs[key] end
 		if cx and not Taken[IslandGrid.key(cx, cz)] and not cellClaimed(cx, cz)
-			and spawnAt(kind, cx, cz) then
+			and spawnAt(kind, cx, cz, glow) then
 			back += 1
 		else
 			st[key] = nil
+			if gs then gs[key] = nil end
 			dropped += 1
 		end
 	end

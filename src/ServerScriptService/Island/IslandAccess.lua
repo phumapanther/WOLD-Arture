@@ -7,6 +7,7 @@ IslandAccess.IsOwner = nil -- (player) -> bool
 IslandAccess.Data = nil
 -- NodeStore() -> ตารางจุดที่สุ่มโผล่ (เซฟในโปรไฟล์) · nil = โปรไฟล์ยังไม่โหลด
 IslandAccess.NodeStore = nil -- () -> profile.Data.Island ของเจ้าของ หรือ nil ถ้ายังไม่โหลด
+IslandAccess.NodeGlowStore = nil -- () -> Data.nodeGlow ("cx,cz" -> สีแสง · false = ทอยแล้วไม่ติด) · QA 2026-09-26
 IslandAccess.EntryOf = nil -- (model) -> entry ในตาราง placed
 IslandAccess.ModelOf = nil -- (uid) -> model
 IslandAccess.Place = nil -- (player, slotIndex, cx, cz, r) -> ok, reason

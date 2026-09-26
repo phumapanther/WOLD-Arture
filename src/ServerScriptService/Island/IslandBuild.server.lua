@@ -576,6 +576,12 @@ IslandAccess.NodeStore = function()
 	if not Data.nodes then Data.nodes = {} end
 	return Data.nodes
 end
+-- สีแสงของจุดที่สุ่มโผล่ แยกตารางจาก `nodes` (คงรูปแบบเดิมของ nodes ไว้ให้ของที่อ่านอยู่แล้ว)
+IslandAccess.NodeGlowStore = function()
+	if not Data then return nil end
+	if not Data.nodeGlow then Data.nodeGlow = {} end
+	return Data.nodeGlow
+end
 -- นาฬิการอบเกิดของ `IslandNodes` — **ต้องอยู่ในโปรไฟล์ ไม่ใช่ตัวนับในหน่วยความจำ**
 --
 -- เกาะเป็นเซิร์ฟส่วนตัวที่ปิดทุกครั้งที่เจ้าของออก นาฬิกาที่เก็บในหน่วยความจำจึงเริ่มนับหนึ่งใหม่ทุกครั้งที่

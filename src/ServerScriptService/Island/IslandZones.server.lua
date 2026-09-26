@@ -430,6 +430,8 @@ local function spawnRock(model, kind)
 	-- (Gathering ข้ามโหนดที่มี Uid) ทรงเดียวกับจุดสุ่มบนดินของ IslandNodes
 	rock:SetAttribute("OneShot", true)
 	rock:SetAttribute("Uid", "mine:" .. HttpService:GenerateGUID(false))
+	-- ก้อนในโซนแร่ติดแสงได้เหมือนแร่อื่น (QA 2026-09-26: เดิมไม่เคยทอย — ก้อน OneShot ไม่เคยผ่าน setSpent)
+	rock:SetAttribute("Glow", IslandConfig.RollGlow())
 	CollectionService:AddTag(rock, NODE_TAG)
 	rock.Parent = rockFolder(model)
 end
