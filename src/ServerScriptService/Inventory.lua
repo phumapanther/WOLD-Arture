@@ -231,7 +231,9 @@ function Inventory.AddItem(player, id, count, durability, meta)
 			durability = durability or item.maxDurability or item.armor,
 			-- Only present on items that carry their own identity. Absent everywhere else, so the slot
 			-- shape is unchanged for the things that were working before.
-			meta = meta,
+			-- สำเนาต่อช่อง (QA 2026-09-26): ของ meta แยกชิ้นเสมอ จำนวน >1 เคยได้ตารางก้อนเดียวกันทุกช่อง
+			-- แก้ meta ช่องหนึ่ง (ตีบวก/สกิน/ขอบทอง) แล้วช่องอื่นเปลี่ยนตามไปด้วย
+			meta = meta and table.clone(meta) or nil,
 		}
 		count -= put
 	end
