@@ -25,9 +25,11 @@ function ArenaRewards.Grant(rows)
 		local exp = (row.won and R.expWin or R.expLoss) + (row.kills or 0) * R.expPerKill
 		local chest = R.chestByRank[rank] or R.chestFallback
 		row.gold, row.exp, row.chest, row.rank = gold, exp, chest, rank
+		-- คนที่ออกไปไม่กลับมา / แอดมินที่เข้ามาดู: โชว์ศูนย์ ไม่ส่งอะไร (QA 2026-09-26)
+		if row.noReward then row.gold, row.exp, row.chest = 0, 0, nil end
 
 		-- บอทไม่มี userId จึงไม่มีอะไรให้ส่ง — มันอยู่ในตารางเพื่อให้คนอ่านเห็นว่าใครทำอะไรไว้เท่านั้น
-		if row.userId then
+		if row.userId and not row.noReward then
 			local letter = {
 				from = 0, fromName = "สนามประลอง",
 				subject = ("รางวัลสนาม PVP — อันดับ %d"):format(rank),

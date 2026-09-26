@@ -954,7 +954,9 @@ local function finishMatch()
 			assists = f.stats.assists,
 			aces = f.stats.aces or 0,
 			damage = math.floor(f.stats.damage + 0.5),
-			won = State.wins[f.side] > State.wins[f.side == "A" and "B" or "A"],
+			-- ออกแล้วไม่กลับมาก่อนจบ = แพ้ ไม่มีรางวัล · แอดมินที่เข้ามาดู = ไม่มีรางวัล/สถิติ (ผู้ใช้กำหนด 2026-09-26)
+			won = not f.left and State.wins[f.side] > State.wins[f.side == "A" and "B" or "A"],
+			noReward = (f.kind == "player" and (f.left == true or f.visitor == true)) or nil,
 			score = ArenaConfig.Score(f.stats),
 		})
 	end
@@ -1050,6 +1052,22 @@ PlayerJoin.Each(function(player)
 		end
 	end
 
+	-- **กลับเข้ามาใหม่ = ใช้แถวเดิม** (QA 2026-09-26): เดิมสร้างแถวใหม่ต่อ Player ตัวใหม่ → ตารางจบมีสองแถว
+	-- ได้รางวัลสองชุด สถิติสองชุด · แถวเดิมเก็บผลงานไว้ครบ ย้ายกุญแจมาที่ Player ตัวใหม่
+	for oldKey, f in pairs(Fighters) do
+		if f.kind == "player" and f.left and f.userId == player.UserId then
+			Fighters[oldKey] = nil
+			f.player, f.left = player, nil
+			Fighters[player] = f
+			if State.phase == "warmup" or State.phase == "buy" then
+				spawnPlayer(f, countIn(f.side))
+			end
+			print(("[Arena] %s กลับเข้าทีม %s"):format(player.Name, f.side))
+			pushAll()
+			return
+		end
+	end
+
 	if not side and (record.studio or AdminRoster.IsAdmin(player)) then
 		-- แอดมินเข้าดู/เทสแมตช์ไหนก็ได้ — ลงฝั่งที่คนน้อยกว่า
 		side = countIn("A") <= countIn("B") and "A" or "B"
@@ -1060,6 +1078,9 @@ PlayerJoin.Each(function(player)
 
 	Fighters[player] = {
 		kind = "player", player = player, side = side,
+		userId = player.UserId,
+		-- แอดมินที่เข้ามาดู/เทส (ไม่มีชื่อในบันทึกแมตช์) = ไม่มีรางวัล/สถิติ (ผู้ใช้กำหนด 2026-09-26)
+		visitor = sideOfUserId(player.UserId) == nil,
 		name = player.DisplayName ~= "" and player.DisplayName or player.Name,
 		silver = ArenaConfig.Economy.start,
 		alive = false,
