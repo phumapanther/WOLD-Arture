@@ -1,4 +1,4 @@
--- ArenaHudGui: แถบบนของสนาม PVP — สกอร์รอบ เวลาที่เหลือของเฟส ซิลเวอร์ และใครยังยืนอยู่บ้าง
+-- ArenaHudGui: แถบบนของสนาม PVP — สกอร์รอบ เวลาที่เหลือของเฟส และใครยังยืนอยู่บ้าง (ซิลเวอร์อยู่ในร้าน)
 --
 -- ตัววาดล้วน ตัวคุม (`ArenaController`) เป็นคนส่งภาพจากเซิร์ฟเวอร์มาให้
 --
@@ -42,11 +42,12 @@ function ArenaHudGui.new()
 	--------------------------------------------------------------------------
 	-- แถบสกอร์กลางบน
 	--------------------------------------------------------------------------
+	-- กะทัดรัด (ผู้ใช้สั่ง 2026-09-26 เฟส 1): เดิม 420x64 กินกลางจอบนเยอะเกินบนมือถือ
 	local bar = Instance.new("Frame")
 	bar.Name = "ScoreBar"
 	bar.AnchorPoint = Vector2.new(0.5, 0)
-	bar.Position = UDim2.new(0.5, 0, 0, 8)
-	bar.Size = UDim2.fromOffset(420, 64)
+	bar.Position = UDim2.new(0.5, 0, 0, 6)
+	bar.Size = UDim2.fromOffset(260, 40)
 	bar.BackgroundColor3 = DIM
 	bar.BackgroundTransparency = 0.25
 	bar.BorderSizePixel = 0
@@ -57,27 +58,27 @@ function ArenaHudGui.new()
 		local box = Instance.new("TextLabel")
 		box.AnchorPoint = Vector2.new(anchorX, 0.5)
 		box.Position = UDim2.new(anchorX, x, 0.5, 0)
-		box.Size = UDim2.fromOffset(86, 48)
+		box.Size = UDim2.fromOffset(52, 30)
 		box.BackgroundColor3 = ArenaConfig.Teams[side].colour
 		box.BorderSizePixel = 0
 		box.Font = Enum.Font.GothamBold
-		box.TextSize = 30
+		box.TextSize = 20
 		box.TextColor3 = Color3.fromRGB(20, 20, 20)
 		box.Text = "0"
 		box.Parent = bar
 		corner(box, UDim.new(0, 8))
 		return box
 	end
-	self.scoreA = scoreBox("A", 0, 10)
-	self.scoreB = scoreBox("B", 1, -10)
+	self.scoreA = scoreBox("A", 0, 6)
+	self.scoreB = scoreBox("B", 1, -6)
 
 	local middle = Instance.new("TextLabel")
 	middle.AnchorPoint = Vector2.new(0.5, 0.5)
 	middle.Position = UDim2.fromScale(0.5, 0.5)
-	middle.Size = UDim2.fromOffset(220, 56)
+	middle.Size = UDim2.fromOffset(120, 34)
 	middle.BackgroundTransparency = 1
 	middle.Font = Enum.Font.GothamBold
-	middle.TextSize = 26
+	middle.TextSize = 20
 	middle.TextColor3 = TEXT
 	middle.Text = "0:00"
 	middle.Parent = bar
@@ -86,33 +87,16 @@ function ArenaHudGui.new()
 	local phase = Instance.new("TextLabel")
 	phase.AnchorPoint = Vector2.new(0.5, 0)
 	phase.Position = UDim2.new(0.5, 0, 1, 2)
-	phase.Size = UDim2.fromOffset(420, 22)
+	phase.Size = UDim2.fromOffset(260, 18)
 	phase.BackgroundTransparency = 1
 	phase.Font = Enum.Font.SourceSansBold
-	phase.TextSize = 18
+	phase.TextSize = 14
 	phase.TextColor3 = MUTED
 	phase.Text = ""
 	phase.Parent = bar
 	self.phase = phase
 
-	--------------------------------------------------------------------------
-	-- ซิลเวอร์ (มุมซ้ายล่าง เหนือหลอดเลือดของ HUD เกมหลัก)
-	--------------------------------------------------------------------------
-	local silver = Instance.new("TextLabel")
-	silver.Name = "Silver"
-	silver.AnchorPoint = Vector2.new(0, 1)
-	silver.Position = UDim2.new(0, 16, 1, -150)
-	silver.Size = UDim2.fromOffset(190, 40)
-	silver.BackgroundColor3 = DIM
-	silver.BackgroundTransparency = 0.25
-	silver.BorderSizePixel = 0
-	silver.Font = Enum.Font.GothamBold
-	silver.TextSize = 20
-	silver.TextColor3 = Color3.fromRGB(226, 184, 78)
-	silver.Text = "0"
-	silver.Parent = gui
-	corner(silver, UDim.new(0, 8))
-	self.silver = silver
+	-- ซิลเวอร์: ไม่มีกล่องบนจอแล้ว (ผู้ใช้สั่ง 2026-09-26 เฟส 1) ดูได้ในร้าน (B / 🛒)
 
 	--------------------------------------------------------------------------
 	-- ใครยังยืนอยู่ — จุดต่อหนึ่งคน สองแถวซ้าย/ขวาใต้แถบสกอร์
@@ -122,8 +106,8 @@ function ArenaHudGui.new()
 		local holder = Instance.new("Frame")
 		holder.Name = "Alive" .. side
 		holder.AnchorPoint = Vector2.new(side == "A" and 1 or 0, 0)
-		holder.Position = UDim2.new(0.5, side == "A" and -224 or 224, 0, 20)
-		holder.Size = UDim2.fromOffset(160, 30)
+		holder.Position = UDim2.new(0.5, side == "A" and -140 or 140, 0, 16)
+		holder.Size = UDim2.fromOffset(110, 20)
 		holder.BackgroundTransparency = 1
 		holder.Parent = gui
 
@@ -135,23 +119,8 @@ function ArenaHudGui.new()
 		self.dots[side] = holder
 	end
 
-	--------------------------------------------------------------------------
-	-- ป้ายประกาศกลางจอ (ผลของรอบ)
-	--------------------------------------------------------------------------
-	local banner = Instance.new("TextLabel")
-	banner.Name = "Banner"
-	banner.AnchorPoint = Vector2.new(0.5, 0.5)
-	banner.Position = UDim2.fromScale(0.5, 0.3)
-	banner.Size = UDim2.fromOffset(620, 64)
-	banner.BackgroundTransparency = 1
-	banner.Font = Enum.Font.GothamBold
-	banner.TextSize = 40
-	banner.TextStrokeTransparency = 0.4
-	banner.TextColor3 = TEXT
-	banner.Text = ""
-	banner.Visible = false
-	banner.Parent = gui
-	self.banner = banner
+	-- ป้ายประกาศกลางจอ (ผลรอบ/เตรียมตัว/คุณตายแล้ว) ถูกถอดออก (ผู้ใช้สั่ง 2026-09-26 เฟส 1) —
+	-- ผลรอบดูจากแถบคะแนน · ป้ายคิล FIRST BLOOD/ACE อยู่ที่ KillBannerGui ไม่เกี่ยวกับตรงนี้
 
 	--------------------------------------------------------------------------
 	-- ตอนตายแล้วดูเพื่อน (ผู้ใช้สั่ง 2026-09-24)
@@ -226,27 +195,6 @@ function ArenaHudGui.new()
 	self.cards = cards
 
 	return self
-end
-
--- ป้าย "กด B เปิดร้าน" ตอนยืนในฐานตัวเองระหว่างสู้
-function ArenaHudGui:SetShopHint(on)
-	if not self.shopHint then
-		local hint = Instance.new("TextLabel")
-		hint.Name = "ShopHint"
-		hint.AnchorPoint = Vector2.new(0.5, 1)
-		hint.Position = UDim2.new(0.5, 0, 1, -170)
-		hint.Size = UDim2.fromOffset(260, 34)
-		hint.BackgroundColor3 = DIM
-		hint.BackgroundTransparency = 0.25
-		hint.Font = Enum.Font.GothamBold
-		hint.TextSize = 16
-		hint.TextColor3 = Color3.fromRGB(232, 190, 90)
-		hint.Text = require(game.ReplicatedStorage.UI.Responsive).IsTouchOnly() and "อยู่ในฐาน — แตะ 🛒 เปิดร้าน" or "อยู่ในฐาน — กด B เปิดร้าน"
-		hint.Parent = self.gui
-		corner(hint, UDim.new(0, 17))
-		self.shopHint = hint
-	end
-	self.shopHint.Visible = on and true or false
 end
 
 function ArenaHudGui:OnSpectateStep(callback)
@@ -332,12 +280,6 @@ function ArenaHudGui:SetVisible(visible)
 	self.gui.Enabled = visible and true or false
 end
 
-function ArenaHudGui:SetBanner(text, colour)
-	self.banner.Text = text or ""
-	self.banner.TextColor3 = colour or TEXT
-	self.banner.Visible = (text ~= nil and text ~= "")
-end
-
 function ArenaHudGui:Render(snap)
 	self.scoreA.Text = tostring((snap.wins and snap.wins.A) or 0)
 	self.scoreB.Text = tostring((snap.wins and snap.wins.B) or 0)
@@ -346,7 +288,6 @@ function ArenaHudGui:Render(snap)
 	self.timer.Text = ("%d:%02d"):format(math.floor(secs / 60), secs % 60)
 	self.phase.Text = ("รอบ %d · %s · %s"):format(snap.round or 0,
 		PHASE_TEXT[snap.phase] or snap.phase or "", snap.mapName or "")
-	self.silver.Text = ("ซิลเวอร์  %d"):format(snap.silver or 0)
 
 	-- จุดคนเป็น/คนตาย: วาดใหม่ทั้งแถวทุกครั้ง (หกจุด ไม่ใช่หกร้อย)
 	for _, side in ipairs(ArenaConfig.TeamOrder) do
@@ -360,7 +301,7 @@ function ArenaHudGui:Render(snap)
 				order += 1
 				local dot = Instance.new("Frame")
 				dot.LayoutOrder = order
-				dot.Size = UDim2.fromOffset(20, 20)
+				dot.Size = UDim2.fromOffset(14, 14)
 				dot.BackgroundColor3 = member.alive and ArenaConfig.Teams[side].colour
 					or Color3.fromRGB(70, 70, 74)
 				dot.BackgroundTransparency = member.alive and 0 or 0.25
