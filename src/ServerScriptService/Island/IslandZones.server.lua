@@ -10,6 +10,7 @@ if not ServerConfig.IsFarm then return end
 
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local CollectionService = game:GetService("CollectionService")
+local HttpService = game:GetService("HttpService")
 local Inventory = require(game.ServerScriptService.Inventory)
 local IslandAccess = require(script.Parent.IslandAccess)
 local IslandConfig = require(ReplicatedStorage.IslandConfig)
@@ -424,6 +425,11 @@ local function spawnRock(model, kind)
 	end
 	rock.PrimaryPart = base
 	rock:SetAttribute("NodeKind", kind)
+	-- **ขุดแล้วหายไปเลย รอบหน้าค่อยเติม** (QA 2026-09-26) — เดิมไม่มี `OneShot` ก้อนเลยไม่หาย Gathering ให้เกิดซ้ำ
+	-- ทุก 60 วิ แถมมีปุ่มฟาร์มออโต้ = ทองคำ/แร่เวท/เพชรไม่จำกัดแบบยืน AFK · `Uid` = ไม่มีปุ่มฟาร์มออโต้
+	-- (Gathering ข้ามโหนดที่มี Uid) ทรงเดียวกับจุดสุ่มบนดินของ IslandNodes
+	rock:SetAttribute("OneShot", true)
+	rock:SetAttribute("Uid", "mine:" .. HttpService:GenerateGUID(false))
 	CollectionService:AddTag(rock, NODE_TAG)
 	rock.Parent = rockFolder(model)
 end
@@ -437,8 +443,13 @@ local function tickMine(model, entry)
 	end
 	if not entry.nextAt then
 		entry.nextAt = os.time() + IslandConfig.MineEverySeconds
-		-- โซนที่เพิ่งวาง: ให้ก้อนแรกเลย ไม่ต้องรอสิบนาทีถึงจะรู้ว่ามันทำงาน
-		if alive == 0 then spawnRock(model, rollRock()) end
+		-- โซนที่เพิ่งวาง: ให้ก้อนแรกเลย ไม่ต้องรอครึ่งชั่วโมงถึงจะรู้ว่ามันทำงาน — **แต่ครั้งเดียวต่อรอบเวลาของเกาะ**
+		-- เก็บโซนแล้ววางใหม่ได้ uid ใหม่ทุกครั้ง ถ้าไม่มีนาฬิกานี้ = วาง/เก็บรัวๆ ได้แร่ฟรีทีละก้อน (QA 2026-09-26)
+		local data = IslandAccess.Data and IslandAccess.Data()
+		if alive == 0 and data and os.time() >= (data.mineFreeAt or 0) then
+			data.mineFreeAt = os.time() + IslandConfig.MineEverySeconds
+			spawnRock(model, rollRock())
+		end
 		return
 	end
 	if os.time() >= entry.nextAt then

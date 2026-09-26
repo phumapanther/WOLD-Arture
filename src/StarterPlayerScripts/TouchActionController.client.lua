@@ -61,8 +61,10 @@ gui:OnDrop(function()
 	Remotes.RequestDrop:FireServer()
 end)
 
-Remotes.CarryStateChanged.OnClientEvent:Connect(function(actor, event)
-	if actor ~= player then return end
+Remotes.CarryStateChanged.OnClientEvent:Connect(function(actor, event, target)
+	-- คนที่ยอมให้อุ้ม (ยังยืนได้) ก็ได้ปุ่มวางไว้ขอลงเอง (QA 2026-09-26) · คนล้มถูกอุ้มไม่ได้ปุ่ม เซิร์ฟเวอร์ไม่รับอยู่ดี
+	if actor ~= player and target ~= player then return end
+	if event == "carry_start" and actor ~= player and player:GetAttribute("WOLD_Downed") then return end
 	if event == "carry_start" then
 		gui:SetCarrying(true)
 	elseif event == "carry_end" then

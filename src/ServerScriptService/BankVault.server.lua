@@ -121,6 +121,7 @@ Inventory.Overflow = function(player, id, count, durability, meta)
 	if placed > 0 and ProfileAccess.Flush then ProfileAccess.Flush(player) end
 	return placed
 end
+Inventory.OverflowRoom = Vault.RoomFor
 
 local function snapshot(player)
 	local bag = Inventory.Get(player)

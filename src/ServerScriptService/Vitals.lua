@@ -12,7 +12,6 @@ local Players = game:GetService("Players")
 local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local ClassPerks = require(game.ServerScriptService.ClassPerks)
-local RescueAccess = require(game.ServerScriptService.RescueAccess)
 
 local Vitals = {}
 
@@ -346,15 +345,9 @@ end
 function Vitals.IsInvulnerable(player)
 	local state = States[player]
 	if Godmode[player] then return true end
-	-- A passenger cannot be hit. Someone slung over another player's shoulder has no way to fight back, dodge
-	-- or even see what is coming, so letting them be shot amounts to punishing the rescue -- and the carrier
-	-- is already the one exposed. Protection lasts until they are put down, which happens by itself the
-	-- moment the carrier is floored, dies or logs out.
-	--
-	-- Read through RescueAccess rather than by requiring PlayerRescue, which would be a cycle: PlayerRescue
-	-- requires this file. The function is nil until PlayerRescue has published itself, and in the lobby it
-	-- never is, so the call is guarded.
-	if RescueAccess.IsCarried and RescueAccess.IsCarried(player) then return true end
+	-- A DOWNED passenger cannot be hit (the rescue carry) -- `state.downed` below already covers that.
+	-- ⚠️ ของเดิมกัน "ทุกคนที่ถูกอุ้ม" รวมคนที่ยอมให้อุ้มทั้งที่ยังยืนได้ = อมตะไม่จำกัดเวลา + ยิงจากหลังคนอุ้มได้
+	-- (QA 2026-09-26) · ตอนนี้คนที่ยืนได้แล้วยอมให้อุ้มโดนตีได้ตามปกติ และโจมตีไม่ได้ (StatusEffects.CanFight)
 	return state ~= nil and (state.downed or os.clock() < state.invulnUntil)
 end
 

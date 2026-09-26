@@ -81,6 +81,25 @@ local function put(state, id, count, durability, meta)
 	return placed
 end
 
+-- ลงได้ครบ `count` ไหม โดยไม่แตะอะไร — นับแบบเดียวกับ `put` เป๊ะ · `Inventory.AddItem` ถามก่อนวางของชิ้นแรก
+-- เพื่อให้การให้ของเป็น "ทั้งหมดหรือไม่เอาเลย" (QA 2026-09-26)
+function Vault.RoomFor(player, id, count, meta)
+	local state = States[player]
+	if not state then return false end
+	local stackSize = meta and 1 or ItemCatalog.StackSize(id)
+	local room = 0
+	for i = 1, Vault.SlotCount do
+		local slot = state.slots[i]
+		if slot == nil then
+			room += stackSize
+		elseif stackSize > 1 and slot.id == id and not slot.meta and (slot.count or 1) < stackSize then
+			room += stackSize - (slot.count or 1)
+		end
+		if room >= count then return true end
+	end
+	return false
+end
+
 -- ของที่ **ล้นเพดานพกติดตัว** ลงชั้นวางตรงๆ โดยไม่ผ่านกระเป๋า (ผู้ใช้สั่ง 2026-09-20: "ถ้าเกิน เด้งเข้าคลัง")
 --
 -- `Inventory.AddItem` เรียกผ่าน hook `Inventory.Overflow` ที่ `BankVault.server` ตั้งไว้ คืนจำนวนที่ลงจริง

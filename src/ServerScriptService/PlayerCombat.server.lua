@@ -602,6 +602,7 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	local humanoid = humanoidOf(player)
 	if not state or not humanoid or humanoid.Health <= 0 then return end
 	if Vitals.IsDowned(player) then return end -- can't throw punches while crawling
+	if not StatusEffects.CanFight(player) then return end -- ถูกจับกุม/ยิงล้ม/มึนหัว/ถูกอุ้ม
 	-- Hands are full: raising a potion to your mouth and swinging a sword are the same two hands. Movement
 	-- is deliberately still allowed -- walking, running, rolling and sliding all stay available.
 	if Consuming.IsConsuming(player) then return end

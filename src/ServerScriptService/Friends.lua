@@ -8,6 +8,7 @@
 -- friend list into a spam surface.
 local SocialConfig = require(game.ReplicatedStorage.SocialConfig)
 local ProfileAccess = require(script.Parent.ProfileAccess)
+local Announce = require(script.Parent.Announce)
 
 local Friends = {}
 
@@ -193,10 +194,7 @@ local function clean(text)
 	if typeof(text) ~= "string" then return nil end
 	text = text:gsub("[\r\n\t]", " "):gsub("%s+", " "):gsub("^%s*(.-)%s*$", "%1")
 	if text == "" then return nil end
-	if #text > SocialConfig.MessageMaxLength then
-		text = text:sub(1, SocialConfig.MessageMaxLength)
-	end
-	return text
+	return Announce.Trim(text, SocialConfig.MessageMaxLength)
 end
 
 -- Sends to a friend who is in this server. Returns the recipient too, so the caller can notify them.
@@ -219,6 +217,10 @@ function Friends.Send(player, toUserId, text)
 	-- Cross-server delivery would need MessagingService; the spec puts that out of scope, so say so plainly
 	-- rather than accepting a message that will never arrive.
 	if not target then return false, "เพื่อนคนนี้ไม่ได้อยู่ในเซิร์ฟเวอร์นี้" end
+
+	-- **ผ่านตัวกรองของ Roblox ก่อนส่ง** (QA 2026-09-26) แบบแชทส่วนตัว สำหรับผู้รับคนนั้น · กรองไม่ได้ = ไม่ส่ง
+	body = Announce.FilterFor(body, player.UserId, toUserId)
+	if not body then return false, "กรองข้อความไม่สำเร็จ ลองใหม่อีกครั้ง" end
 
 	local key = threadKey(player.UserId, toUserId)
 	local thread = Threads[key]

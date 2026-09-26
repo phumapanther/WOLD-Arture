@@ -190,6 +190,43 @@ end
 -- Heal (Priest)
 --------------------------------------------------------------------------------
 
+-- **บริการที่คนรับเป็นคนจ่าย (ฮีล/ซ่อม) ต้องได้คำยินยอมก่อนเสมอ** (QA 2026-09-26)
+--
+-- ของเดิมหักเงินคนรับทันทีที่นักบวช/ช่างกด — ยืนใกล้ใครก็ได้แล้วกดรัว = ดูดเงินคนอื่นครั้งละ 2,000 เลือดเต็ม
+-- ก็ยังหัก · ตอนนี้คนรับเห็นป้าย "X ขอฮีลให้คุณ (2,000 ทอง)" แล้วต้องกดรับเอง ทรงเดียวกับขออุ้ม
+-- ตรวจซ้ำทุกอย่างตอนตอบ ไม่ใช่ตอนถาม: ระหว่างรอ 15 วิ อาจเดินห่าง เงินหมด หรือเลือดเต็มไปแล้ว
+local ServiceRequests = {} -- [target] = { asker, actionId }
+local SERVICE_ASK_SECONDS = 15
+
+local function askService(actor, target, actionId, question, run)
+	if ServiceRequests[target] then
+		return report(actor, nil, actionId, false, "เขากำลังถูกถามอยู่")
+	end
+	local entry = { asker = actor, actionId = actionId, run = run }
+	ServiceRequests[target] = entry
+	Remotes.ClassActionPrompt:FireClient(target, "service", actor, SERVICE_ASK_SECONDS, question)
+	report(actor, nil, actionId, true, "รอเขาตอบรับ...")
+	task.delay(SERVICE_ASK_SECONDS, function()
+		if ServiceRequests[target] == entry then
+			ServiceRequests[target] = nil
+			report(actor, nil, actionId, false, "ไม่มีคำตอบ")
+		end
+	end)
+end
+
+local function answerService(target, accepted)
+	local entry = ServiceRequests[target]
+	if not entry then return end
+	ServiceRequests[target] = nil
+	if not accepted then
+		return report(entry.asker, nil, entry.actionId, false, "ถูกปฏิเสธ")
+	end
+	if not mayAct(entry.asker, target, entry.actionId) then
+		return report(entry.asker, nil, entry.actionId, false, "อยู่ไกลเกินไปแล้ว")
+	end
+	entry.run()
+end
+
 local function doHeal(actor, target, size)
 	-- Only the two real sizes. Indexing the Heal table by whatever string arrived would also match
 	-- reviveFraction and reviveSeconds, which are numbers and would blow up on option.cost.
@@ -199,22 +236,31 @@ local function doHeal(actor, target, size)
 	end
 
 	-- The patient pays. A healer who had to pay to heal would simply not heal anyone.
-	local state = Inventory.Get(target)
-	if not state or state.gold < option.cost then
-		return report(actor, target, "heal", false, "ผู้รับมีเงินไม่พอ")
+	-- ตรวจทั้งตอนถามและตอนตอบ (ใช้ฟังก์ชันเดียว) · เลือดเต็มไม่ต้องถามเลย
+	local function refusal()
+		local state = Inventory.Get(target)
+		if not state or state.gold < option.cost then return "ผู้รับมีเงินไม่พอ" end
+		local fractions = Vitals.Fractions(target)
+		if not fractions then return "ฮีลไม่ได้ตอนนี้" end
+		if fractions.hp >= 0.999 then return "เขาเลือดเต็มอยู่แล้ว" end
+		return nil
 	end
+	local why = refusal()
+	if why then return report(actor, nil, "heal", false, why) end
 
-	if not Vitals.Get(target) then
-		return report(actor, nil, "heal", false, "ฮีลไม่ได้ตอนนี้")
-	end
-
-	Inventory.AddGold(target, -option.cost)
-	Inventory.AddGold(actor, option.cost)
-	-- A fraction of the patient's OWN maximum, which scales with their level -- healing 25% of a flat 100
-	-- would be a rounding error to a level 80 player. Vitals.Heal clamps to the same maximum, so a full heal
-	-- cannot overshoot.
-	Vitals.Heal(target, Progression.MaxHP(target) * option.fraction)
-	report(actor, target, "heal", true, ("%s (%d ทอง)"):format(option.label, option.cost), option.cost)
+	local actorName = actor.DisplayName ~= "" and actor.DisplayName or actor.Name
+	askService(actor, target, "heal", ("%s ขอ%sให้คุณ (%d ทอง)"):format(actorName, option.label, option.cost),
+		function()
+			local stillWhy = refusal()
+			if stillWhy then return report(actor, target, "heal", false, stillWhy) end
+			Inventory.AddGold(target, -option.cost)
+			Inventory.AddGold(actor, option.cost)
+			-- A fraction of the patient's OWN maximum, which scales with their level -- healing 25% of a flat
+			-- 100 would be a rounding error to a level 80 player. Vitals.Heal clamps to the same maximum, so a
+			-- full heal cannot overshoot.
+			Vitals.Heal(target, Progression.MaxHP(target) * option.fraction)
+			report(actor, target, "heal", true, ("%s (%d ทอง)"):format(option.label, option.cost), option.cost)
+		end)
 end
 
 --------------------------------------------------------------------------------
@@ -225,16 +271,24 @@ local function doRepair(actor, target)
 	local cost = ClassActionConfig.Repair.cost
 	local state = Inventory.Get(target)
 	if not state or state.gold < cost then
-		return report(actor, target, "repair", false, "ผู้รับมีเงินไม่พอ")
+		return report(actor, nil, "repair", false, "ผู้รับมีเงินไม่พอ")
 	end
 
-	if not Inventory.RepairAll(target) then
-		return report(actor, target, "repair", false, "ของยังไม่สึกหรอ")
-	end
-	Inventory.AddGold(target, -cost)
-	Inventory.AddGold(actor, cost)
-	Vitals.SyncArmorFromEquipment(target)
-	report(actor, target, "repair", true, ("ซ่อมของทั้งตัว (%d ทอง)"):format(cost), cost)
+	-- ต้องได้คำยินยอมก่อน เหตุผลเดียวกับฮีล (ดู askService)
+	local actorName = actor.DisplayName ~= "" and actor.DisplayName or actor.Name
+	askService(actor, target, "repair", ("%s ขอซ่อมของทั้งตัวให้คุณ (%d ทอง)"):format(actorName, cost), function()
+		local now = Inventory.Get(target)
+		if not now or now.gold < cost then
+			return report(actor, target, "repair", false, "ผู้รับมีเงินไม่พอ")
+		end
+		if not Inventory.RepairAll(target) then
+			return report(actor, target, "repair", false, "ของยังไม่สึกหรอ")
+		end
+		Inventory.AddGold(target, -cost)
+		Inventory.AddGold(actor, cost)
+		Vitals.SyncArmorFromEquipment(target)
+		report(actor, target, "repair", true, ("ซ่อมของทั้งตัว (%d ทอง)"):format(cost), cost)
+	end)
 end
 
 --------------------------------------------------------------------------------
@@ -391,6 +445,8 @@ Remotes.RespondClassAction.OnServerEvent:Connect(function(player, actionId, acce
 		entry.defended = true
 	elseif actionId == "carry" then
 		answerCarry(player, accepted == true)
+	elseif actionId == "service" then
+		answerService(player, accepted == true)
 	end
 end)
 
@@ -400,6 +456,10 @@ Players.PlayerRemoving:Connect(function(player)
 	CarryRequests[player] = nil
 	for target, entry in pairs(CarryRequests) do
 		if entry.asker == player then CarryRequests[target] = nil end
+	end
+	ServiceRequests[player] = nil
+	for target, entry in pairs(ServiceRequests) do
+		if entry.asker == player then ServiceRequests[target] = nil end
 	end
 	-- A thief who leaves mid-robbery: the countdown still resolves, and finds no thief to pay.
 	for victim, entry in pairs(Robberies) do

@@ -21,6 +21,24 @@ function Announce.Filter(text, fromUserId)
 	return ok and result or nil
 end
 
+-- ข้อความส่วนตัว (นกพิราบ) — กรองแบบแชทส่วนตัวให้ผู้รับคนนั้น · ล้ม = nil (ไม่ส่ง)
+function Announce.FilterFor(text, fromUserId, toUserId)
+	local ok, result = pcall(function()
+		return TextService:FilterStringAsync(text, fromUserId, Enum.TextFilterContext.PrivateChat)
+			:GetChatForUserAsync(toUserId)
+	end)
+	return ok and result or nil
+end
+
+-- ตัดข้อความให้ไม่เกิน `maxBytes` ที่ขอบตัวอักษร — ไทย 3 ไบต์ต่อตัว `:sub` เฉยๆ ผ่ากลางตัวอักษรแล้ว UTF-8 เสีย
+-- ซึ่งตัวกรองของ Roblox ปฏิเสธ (โพสต์ไทยยาวๆ จะถูกปัดตกทั้งที่ไม่ได้ผิดอะไร)
+function Announce.Trim(text, maxBytes)
+	if #text <= maxBytes then return text end
+	text = text:sub(1, maxBytes)
+	while #text > 0 and not utf8.len(text) do text = text:sub(1, -2) end
+	return text
+end
+
 -- ประกาศไปทุกเซิร์ฟ · `kind` = "town" | "legend" | "enhance" (สีของแถบ) · ไม่ yield ผู้เรียก
 function Announce.Global(text, kind)
 	if type(text) ~= "string" or text == "" then return end

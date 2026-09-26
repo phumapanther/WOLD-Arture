@@ -153,12 +153,37 @@ end
 --
 -- เป็น hook ไม่ใช่ `require` ตรงๆ เพราะกระเป๋าไม่ควรรู้จักคลัง: ของที่ล้นจะไปลงที่ไหนเป็นการตัดสินใจ
 -- ของเกม ไม่ใช่ของโครงสร้างข้อมูล · ไม่มีใครตั้ง = ของที่เกินไม่ถูกเพิ่ม และ AddItem คืน false
+-- `OverflowRoom(player, id, count, meta)` ถามก่อนว่าคลังรับครบไหม โดยไม่แตะอะไร (ตั้งคู่กันที่เดียวกัน)
 Inventory.Overflow = nil
+Inventory.OverflowRoom = nil
 
+-- กระเป๋ารับของชนิดนี้เพิ่มได้อีกกี่ชิ้น (เติมกองที่ยังไม่เต็ม + ช่องว่าง · เฉพาะฝั่งของมันเอง หลัก/VIP)
+local function bagRoom(state, id, meta)
+	local stackSize = meta and 1 or ItemCatalog.StackSize(id)
+	local from, to = rangeFor(id)
+	local room = 0
+	for i = from, to do
+		local slot = state.slots[i]
+		if not slot then
+			room += stackSize
+		elseif stackSize > 1 and slot.id == id and not slot.meta and slot.count < stackSize then
+			room += stackSize - slot.count
+		end
+	end
+	return room
+end
+
+-- ⚠️ **ทั้งหมดหรือไม่เอาเลย** (QA 2026-09-26): คืน true = ทุกชิ้นมีที่อยู่แล้ว (กระเป๋า + ส่วนเกินเข้าคลัง)
+-- · คืน false = **ไม่ได้แตะอะไรเลย** — ของเดิมเติมกระเป๋าไปบางส่วน/ส่งเข้าคลังไปแล้วแต่คืน false ผู้เรียก
+-- ทุกตัวอ่านว่า "ไม่ได้ให้อะไร" แล้วไม่หักต้นทาง = ปั๊มของ 7 ทาง (ซื้อร้านฟรี · ให้ของ · คลังแคลน/เมือง ·
+-- ท้ายรถ · หีบสมบัติ · รางวัลพาส) ตัดสินครั้งเดียวก่อนวางของชิ้นแรก จึงไม่มีสถานะ "ได้ไปครึ่งเดียว" อีก
 function Inventory.AddItem(player, id, count, durability, meta)
 	local state = States[player]
 	if not state or not ItemCatalog.Exists(id) then return false end
 	count = count or 1
+	-- NaN / inf / ศูนย์ / ติดลบ = ไม่ใช่จำนวนของ (NaN ผ่านทุกด่าน `<` แล้วทำให้กองของไม่มีวันหมด)
+	if type(count) ~= "number" or count ~= count or count < 1 or count == math.huge then return false end
+	count = math.floor(count)
 
 	-- **เพดานพกติดตัว** (ยา/อาหาร/เครื่องดื่ม กองเดียว — ผู้ใช้สั่ง 2026-09-20)
 	--
@@ -173,19 +198,29 @@ function Inventory.AddItem(player, id, count, durability, meta)
 		end
 	end
 
+	-- กระเป๋ารับไม่หมด → ส่วนที่เหลือต้องลงคลังได้ **ครบ** ก่อนเริ่มวาง ไม่งั้นไม่วางอะไรเลย
+	local fits = bagRoom(state, id, meta)
+	if count > fits then
+		spill += count - fits
+		count = fits
+	end
+	if spill > 0 and not (Inventory.OverflowRoom and Inventory.OverflowRoom(player, id, spill, meta)) then
+		return false
+	end
+
 	local stackSize = ItemCatalog.StackSize(id)
 	if meta then stackSize = 1 end
 	if count > 0 and stackSize > 1 then
 		local from, to = rangeFor(id)
 		for i = from, to do
 			local slot = state.slots[i]
-			if slot and slot.id == id and slot.count < stackSize then
+			if slot and slot.id == id and not slot.meta and slot.count < stackSize then
 				local moved = math.min(stackSize - slot.count, count)
 				slot.count += moved
 				count -= moved
 				if count <= 0 then
 					Inventory.Send(player)
-					return Inventory.SpillOver(player, id, spill, durability)
+					return Inventory.SpillOver(player, id, spill, durability, meta)
 				end
 			end
 		end
@@ -193,13 +228,7 @@ function Inventory.AddItem(player, id, count, durability, meta)
 
 	while count > 0 do
 		local free = firstFreeSlot(state, id)
-		if not free then
-			Inventory.Send(player)
-			-- กระเป๋าเต็มจริงๆ ของที่เหลือรวมส่วนที่เกินเพดานด้วย ลองส่งเข้าคลังทั้งก้อน
-			-- meta ไปด้วย (ขั้นตีบวก/สกิน/ทะเบียน) — เดิมทิ้ง = ของที่ล้นเข้าคลังกลายเป็นชิ้นธรรมดา
-			Inventory.SpillOver(player, id, spill + count, durability, meta)
-			return false -- bag full; whatever fitted has been kept
-		end
+		if not free then break end -- ไม่เกิด: bagRoom นับไว้แล้ว · กันไว้ไม่ให้วนไม่จบ
 		local put = math.min(stackSize, count)
 		local item = ItemCatalog.Get(id)
 		state.slots[free] = {
@@ -215,24 +244,22 @@ function Inventory.AddItem(player, id, count, durability, meta)
 	end
 
 	Inventory.Send(player)
-	return Inventory.SpillOver(player, id, spill, durability)
+	return Inventory.SpillOver(player, id, spill, durability, meta)
 end
 
--- ส่งส่วนที่เกินเพดานเข้าคลัง คืน true เมื่อ "ของทุกชิ้นมีที่อยู่แล้ว"
---
--- คลังเต็มด้วย = คืน false เหมือนกระเป๋าเต็ม ผู้เรียกที่เคยรับมือกับกระเป๋าเต็มอยู่แล้ว (คราฟ ร้านค้า
--- รางวัลพาส) จึงรับมือกับกรณีนี้ได้โดยไม่ต้องแก้อะไร — และของไม่หายไปเงียบๆ
+-- ส่งส่วนที่เกิน (เพดานพก/กระเป๋าเต็ม) เข้าคลัง คืน true เมื่อ "ของทุกชิ้นมีที่อยู่แล้ว"
+-- AddItem ถาม `OverflowRoom` ครบแล้วก่อนเรียก จึงไม่ควรได้ false จากตรงนี้ · ยังคืนตามจริงไว้กันพลาด
 function Inventory.SpillOver(player, id, count, durability, meta)
 	if not count or count <= 0 then return true end
 	if not Inventory.Overflow then return false end
 	local placed = Inventory.Overflow(player, id, count, durability, meta) or 0
 	if placed <= 0 then return false end
 
-	local item = ItemCatalog.Get(id)
-	local name = item and item.name or id
+	local name = ItemCatalog.DisplayName(id, meta)
 	local limit = ItemCatalog.BagLimit(id)
-	Remotes.SocialNotify:FireClient(player, "info",
-		("%s พกได้ไม่เกิน %d ชิ้น — ส่วนที่เกิน %d ชิ้นเข้าคลังแล้ว"):format(name, limit or 0, placed))
+	Remotes.SocialNotify:FireClient(player, "info", limit
+		and ("%s พกได้ไม่เกิน %d ชิ้น — ส่วนที่เกิน %d ชิ้นเข้าคลังแล้ว"):format(name, limit, placed)
+		or ("กระเป๋าเต็ม — %s %d ชิ้นเข้าคลังแล้ว"):format(name, placed))
 	return placed >= count
 end
 
@@ -248,30 +275,8 @@ function Inventory.HasRoomFor(player, id, count, meta)
 	local state = States[player]
 	if not state or not ItemCatalog.Exists(id) then return false end
 	count = count or 1
-
-	local stackSize = ItemCatalog.StackSize(id)
-	if meta then stackSize = 1 end
-
-	-- **ถามเฉพาะฝั่งของมันเอง** ของเกาะเต็มไม่ได้แปลว่าซื้อยาในเมืองไม่ได้ และกลับกัน
-	local from, to = rangeFor(id)
-
-	if stackSize > 1 then
-		for i = from, to do
-			local slot = state.slots[i]
-			if slot and slot.id == id and slot.count < stackSize then
-				count -= math.min(stackSize - slot.count, count)
-				if count <= 0 then return true end
-			end
-		end
-	end
-
-	for i = from, to do
-		if not state.slots[i] then
-			count -= stackSize
-			if count <= 0 then return true end
-		end
-	end
-	return false
+	-- **ถามเฉพาะฝั่งของมันเอง** ของเกาะเต็มไม่ได้แปลว่าซื้อยาในเมืองไม่ได้ และกลับกัน · นับแบบเดียวกับ AddItem
+	return bagRoom(state, id, meta) >= count
 end
 
 function Inventory.RemoveFromSlot(player, index, count)
@@ -279,6 +284,8 @@ function Inventory.RemoveFromSlot(player, index, count)
 	local slot = state and state.slots[index]
 	if not slot then return false end
 	count = count or slot.count or 1
+	-- NaN/inf/ติดลบ = ปฏิเสธ (NaN ลบแล้วกองไม่มีวันหมด เพราะ NaN <= 0 เป็นเท็จ) · QA 2026-09-26
+	if type(count) ~= "number" or count ~= count or count <= 0 or count == math.huge then return false end
 	slot.count = (slot.count or 1) - count
 	if slot.count <= 0 then state.slots[index] = nil end
 	Inventory.Send(player)
@@ -518,6 +525,8 @@ end
 function Inventory.AddGold(player, amount)
 	local state = States[player]
 	if not state then return false end
+	-- NaN/inf = ปฏิเสธ (math.max(0, gold + NaN) = 0 = ล้างเงินทั้งกระเป๋า) · QA 2026-09-26
+	if type(amount) ~= "number" or amount ~= amount or math.abs(amount) == math.huge then return false end
 	state.gold = math.max(0, state.gold + amount)
 	Inventory.Send(player)
 	return true

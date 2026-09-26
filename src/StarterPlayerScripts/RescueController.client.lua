@@ -158,10 +158,14 @@ Players.PlayerRemoving:Connect(removePrompts)
 -- Carrying someone: press the same key again to set them down.
 local UserInputService = game:GetService("UserInputService")
 local carryingSomeone = false
+-- คนที่ยอมให้อุ้มกด F ขอลงเองได้ (QA 2026-09-26) · เซิร์ฟเวอร์รับเฉพาะคนที่ยืนได้ — คนล้มยังต้องให้คนอุ้มวาง
+local beingCarried = false
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	-- Deliberately ignores gameProcessed: while carrying someone, that player's own "อุ้ม" ProximityPrompt is
 	-- still in range and also bound to F, so it marks the key as consumed and the drop never fired.
-	if not carryingSomeone then return end
+	if not (carryingSomeone or beingCarried) then return end
+	-- ...แต่พิมพ์ตัว f ในแชท/ช่องพิมพ์ ไม่ใช่การกดวาง (เดิมวางคนลงกลางประโยค)
+	if UserInputService:GetFocusedTextBox() then return end
 	if input.KeyCode == Enum.KeyCode.F then
 		Remotes.RequestDrop:FireServer()
 	end
@@ -184,6 +188,7 @@ Remotes.CarryStateChanged.OnClientEvent:Connect(function(actor, event, target)
 			removePrompts(target)
 		end
 		if target == player then
+			beingCarried = true
 			-- We are the one being carried: play the ride-along pose on our own rig.
 			local character = player.Character
 			local track = character and loadTrack(character, ActionConfig.Carry.heldAnimation, true)
@@ -193,6 +198,7 @@ Remotes.CarryStateChanged.OnClientEvent:Connect(function(actor, event, target)
 			end
 		end
 	elseif event == "carry_end" then
+		if target == player then beingCarried = false end
 		if actor == player then
 			carryingSomeone = false
 			if tracks.holder then tracks.holder:Stop(0.2) end

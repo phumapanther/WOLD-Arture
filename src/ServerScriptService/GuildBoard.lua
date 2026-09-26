@@ -5,6 +5,7 @@
 -- board free of the write budget every persistent system has to share.
 local SocialConfig = require(game.ReplicatedStorage.SocialConfig)
 local Classes = require(script.Parent.Classes)
+local Announce = require(script.Parent.Announce)
 
 local GuildBoard = {}
 
@@ -18,10 +19,7 @@ local function clean(text)
 	if typeof(text) ~= "string" then return nil end
 	text = text:gsub("[\r\n\t]", " "):gsub("%s+", " "):gsub("^%s*(.-)%s*$", "%1")
 	if text == "" then return nil end
-	if #text > SocialConfig.BoardMaxLength then
-		text = text:sub(1, SocialConfig.BoardMaxLength)
-	end
-	return text
+	return Announce.Trim(text, SocialConfig.BoardMaxLength)
 end
 
 -- Returns the new post, or nil plus a reason the caller can show the player.
@@ -35,6 +33,11 @@ function GuildBoard.Post(player, text)
 		return nil, ("รออีก %.0f วินาที"):format(SocialConfig.BoardCooldown - (now - last))
 	end
 	LastPostAt[player] = now
+
+	-- **ผ่านตัวกรองของ Roblox ก่อนขึ้นบอร์ด** (QA 2026-09-26) — บอร์ดส่งถึงทุกคนในเซิร์ฟ ข้อความผู้เล่นที่ไม่ผ่าน
+	-- ตัวกรองแล้วไปโผล่ให้คนอื่นเห็นคือสิ่งที่ Roblox ลงโทษเกมได้ · กรองไม่สำเร็จ = ไม่โพสต์
+	body = Announce.Filter(body, player.UserId)
+	if not body then return nil, "กรองข้อความไม่สำเร็จ ลองใหม่อีกครั้ง" end
 
 	local post = {
 		id = NextId,

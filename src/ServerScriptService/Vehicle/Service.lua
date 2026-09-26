@@ -935,10 +935,14 @@ function VehicleService.moveItem(player, plate, itemId, count, toTrunk)
 
     -- ใส่กระเป๋าทีละชิ้นก่อน แล้วค่อยหักออกจากท้ายเท่าที่ใส่ได้จริง ด้วยเหตุผลกลับกัน: ตอนนี้กระเป๋าคือฝั่ง
     -- ที่ล้มเหลวได้ (เต็ม) ส่วนกองในท้ายหักออกยังไงก็สำเร็จ
+    -- AddItem เป็น "ทั้งหมดหรือไม่เอาเลย" (QA 2026-09-26 — ของเดิมทีละชิ้น: กระเป๋าเต็มแล้วของลงคลังแต่คืน false
+    -- ท้ายรถไม่ถูกหัก = ปั๊มของ) · ขอทั้งก้อนแล้วลดทีละชิ้นจนพอดี
     local moved = 0
-    for _ = 1, count do
-      if not Inventory.AddItem(player, itemId, 1) then break end
-      moved += 1
+    for n = count, 1, -1 do
+      if Inventory.AddItem(player, itemId, n) then
+        moved = n
+        break
+      end
     end
     if moved <= 0 then return nil, "กระเป๋าเต็ม" end
     record.trunk[itemId] = have - moved

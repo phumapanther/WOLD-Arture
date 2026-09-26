@@ -197,8 +197,13 @@ Remotes.RequestCarry.OnServerEvent:Connect(function(carrier, target)
 	beginCarry(carrier, target, false)
 end)
 
-Remotes.RequestDrop.OnServerEvent:Connect(function(carrier)
-	dropCarried(carrier)
+Remotes.RequestDrop.OnServerEvent:Connect(function(player)
+	if Carrying[player] then return dropCarried(player) end
+	-- คนที่ **ยอม** ให้อุ้ม (ยังยืนได้) ขอลงเองได้ — เดิมมีแต่คนอุ้มที่วางได้ คนเปลี่ยนใจติดบนหลังตลอดไป
+	-- (QA 2026-09-26) · คนที่ล้มแล้วถูกอุ้มยังลงเองไม่ได้ (นั่นคือการช่วยชีวิต)
+	local carrier = CarriedBy[player]
+	local entry = carrier and Carrying[carrier]
+	if entry and entry.consented and not Vitals.IsDowned(player) then dropCarried(carrier) end
 end)
 
 --------------------------------------------------------------------------------

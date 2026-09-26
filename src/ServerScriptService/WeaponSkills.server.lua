@@ -424,6 +424,7 @@ end
 
 Remotes.RequestSkill.OnServerEvent:Connect(function(player)
 	if Vitals.IsDowned(player) then return end
+	if not StatusEffects.CanFight(player) then return end -- ถูกจับกุม/ยิงล้ม/มึนหัว/ถูกอุ้ม (QA 2026-09-26)
 	-- Same reason attacks are blocked: both hands are busy holding food.
 	if Consuming.IsConsuming(player) then return end
 	local _, _, humanoid = characterParts(player)

@@ -17,6 +17,7 @@ local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local Announce = require(game.ServerScriptService.Announce)
 
 local SILVER = "Silver"
 
@@ -231,6 +232,26 @@ local function create(player, name, blurb)
 	if silverHeld(player) < cost then
 		return Remotes.SocialNotify:FireClient(player, "error",
 			("ต้องใช้เหรียญซิลเวอร์ %d เหรียญ"):format(cost))
+	end
+
+	-- **ชื่อ/คำอธิบายแคลนผ่านตัวกรองของ Roblox ก่อน** (QA 2026-09-26) — มันโผล่ในรายชื่อแคลน บนแหวน และบน
+	-- ป้ายยึดเมืองให้ทุกคนเห็น · ชื่อที่ตัวกรองต้องแก้ = ใช้ไม่ได้ (ชื่อที่มี #### เป็นชื่อถาวรที่ไม่มีใครอยากได้)
+	-- · คำอธิบายรับฉบับที่กรองแล้ว · กรองไม่สำเร็จ (บริการล่ม) = ยังไม่สร้าง
+	if type(name) ~= "string" then return end
+	name = name:gsub("^%s+", ""):gsub("%s+$", "")
+	local shownName = Announce.Filter(name, player.UserId)
+	if not shownName then
+		return Remotes.SocialNotify:FireClient(player, "error", "กรองข้อความไม่สำเร็จ ลองใหม่อีกครั้ง")
+	end
+	if shownName ~= name then
+		return Remotes.SocialNotify:FireClient(player, "error", "ชื่อแคลนนี้ใช้ไม่ได้ ลองชื่ออื่น")
+	end
+	blurb = type(blurb) == "string" and Announce.Trim(blurb, ClanConfig.BlurbMaxLength) or ""
+	if blurb ~= "" then
+		blurb = Announce.Filter(blurb, player.UserId)
+		if not blurb then
+			return Remotes.SocialNotify:FireClient(player, "error", "กรองข้อความไม่สำเร็จ ลองใหม่อีกครั้ง")
+		end
 	end
 
 	local clan, err = ClanStore.Create(name, blurb, player.UserId, player.DisplayName)

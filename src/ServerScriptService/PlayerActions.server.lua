@@ -13,6 +13,7 @@ local InventoryConfig = require(game.ReplicatedStorage.InventoryConfig)
 local ActionConfig = require(game.ReplicatedStorage.ActionConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
+local StatusEffects = require(game.ServerScriptService.StatusEffects)
 
 if ServerConfig.IsLobby then return end
 
@@ -105,6 +106,8 @@ local function canAct(player, state)
 	local humanoid = humanoidOf(player)
 	if not humanoid or humanoid.Health <= 0 then return false end
 	if Vitals.IsDowned(player) then return false end
+	-- ถูกจับกุม/ยิงล้ม/มึนหัว/ถูกอุ้ม/ถูกตรึงตอนเล่นมินิเกม = กลิ้งหนีไม่ได้ (QA 2026-09-26)
+	if not StatusEffects.CanFight(player) or StatusEffects.IsRooted(player) then return false end
 	if state.action then return false end
 	if os.clock() < state.nextAllowedAt then return false end
 	-- Only from solid ground. A roll drives the character with a LinearVelocity that overrides gravity for its

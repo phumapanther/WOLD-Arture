@@ -126,6 +126,13 @@ local function completeTrade(session)
 			seen[index] = true
 			local slot = state.slots[index]
 			if not slot then return nil end -- it is gone; the trade is off rather than partly done
+			-- **ต้องเป็นของชิ้นเดิมที่อีกฝ่ายเห็นตอนกดตกลง** (QA 2026-09-26): ข้อเสนอเก็บเลขช่อง ของเดิมจึงสลับ
+			-- ของในช่องได้หลังอีกฝ่ายตกลงแล้ว (จัดกระเป๋า/ทิ้ง/ขาย ให้ช่องนั้นเหลือหินก้อนเดียว) แล้วได้ของไปฟรี
+			local seenThen = offer.snap and offer.snap[index]
+			if not seenThen or seenThen.id ~= slot.id or seenThen.count ~= (slot.count or 1)
+				or seenThen.meta ~= slot.meta then
+				return nil
+			end
 			if ItemCatalog.IsBound(slot.id) then return nil end -- ของประจำตำแหน่งเทรดไม่ได้
 			table.insert(taking, { index = index, id = slot.id, count = slot.count or 1,
 				durability = slot.durability, meta = slot.meta })
@@ -286,20 +293,25 @@ Remotes.RequestTradeOffer.OnServerEvent:Connect(function(player, slots, gold)
 	local state = Inventory.Get(player)
 	if not state then return end
 
-	local clean, seen = {}, {}
+	local clean, seen, snap = {}, {}, {}
 	for _, index in ipairs(slots) do
-		if type(index) == "number" and state.slots[index] and not seen[index] then
+		local slot = type(index) == "number" and state.slots[index]
+		if slot and not seen[index] then
 			seen[index] = true
 			table.insert(clean, index)
+			-- จำของชิ้นนั้นไว้ ตอนสรุปต้องยังเป็นชิ้นเดิม (ดู collect)
+			snap[index] = { id = slot.id, count = slot.count or 1, meta = slot.meta }
 			if #clean >= ClassActionConfig.Trade.offerSlots then break end
 		end
 	end
 
-	gold = math.floor(tonumber(gold) or 0)
-	gold = math.clamp(gold, 0, state.gold)
+	gold = tonumber(gold) or 0
+	if gold ~= gold or gold == math.huge then gold = 0 end -- NaN/inf
+	gold = math.clamp(math.floor(gold), 0, state.gold)
 
 	local offer = session.offers[player]
 	offer.slots = clean
+	offer.snap = snap
 	offer.gold = gold
 	-- Changing what is on the table withdraws both agreements.
 	unconfirm(session)

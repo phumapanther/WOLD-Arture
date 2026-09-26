@@ -269,25 +269,22 @@ Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, 
 		end
 		local count = math.min(want, affordable)
 
-		-- Given one at a time BEFORE the gold is taken, so a full bag cannot charge for nothing. Stopping
-		-- at the first refusal and paying only for what landed is what makes a part-filled bag buy what
-		-- fits instead of failing outright.
-		-- **หนึ่งครั้งที่กดอาจได้หลายชิ้น** (`entry.count`) — ยังใส่ทีละชิ้นเหมือนเดิม เพื่อให้กระเป๋า
-		-- ที่เหลือที่ไม่พอทั้งชุดยังรับเท่าที่ได้ แล้วจ่ายตามชุดที่ครบจริง ไม่ใช่ตามชิ้นที่หลุดเข้าไป
+		-- Given BEFORE the gold is taken, so a full bag cannot charge for nothing. `AddItem` is all-or-nothing
+		-- (QA 2026-09-26 — the old one-at-a-time loop was a free-item dupe: a full bag spilled the item into the
+		-- vault, reported false, and the purchase was never charged), so ask for the whole order and step down
+		-- one bundle at a time until it fits: a part-filled bag still buys what fits, and pays for exactly that.
+		-- **หนึ่งครั้งที่กดอาจได้หลายชิ้น** (`entry.count`) — จ่ายตามชุดที่ได้จริงเสมอ
 		local per = math.max(1, math.floor(entry.count or 1))
-		local bought, got = 0, 0
-		for _ = 1, count do
-			local landed = 0
-			for _ = 1, per do
-				if not Inventory.AddItem(player, entry.id, 1) then break end
-				landed += 1
+		local bought = 0
+		for n = count, 1, -1 do
+			if Inventory.AddItem(player, entry.id, n * per) then
+				bought = n
+				break
 			end
-			got += landed
-			if landed < per then break end -- กระเป๋าเต็มกลางชุด ชุดนี้ไม่คิดเงิน
-			bought += 1
 		end
+		local got = bought * per
 		if bought == 0 then
-			return Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม")
+			return Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าและคลังเต็ม")
 		end
 		if gems then
 			-- **หักหลังของเข้ากระเป๋าแล้ว** เหมือนทางเหรียญ — กระเป๋าเต็มกลางคันจะได้จ่ายเท่าที่ได้จริง

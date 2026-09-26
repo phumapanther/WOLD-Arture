@@ -36,6 +36,7 @@ local TownAccess = require(game.ServerScriptService.TownAccess)
 local ClanAccess = require(game.ServerScriptService.ClanAccess)
 local Vip = require(game.ServerScriptService.Vip)
 local Mail = require(game.ServerScriptService.Mail)
+local Announce = require(game.ServerScriptService.Announce)
 local PremiumConfig = require(game.ReplicatedStorage.PremiumConfig)
 local MobAccess = require(game.ServerScriptService.MobAccess)
 local GatherConfig = require(game.ReplicatedStorage.GatherConfig)
@@ -1008,7 +1009,9 @@ end
 Commands.announce = function(admin, args)
 	local text = table.concat(args, " ")
 	if text == "" then return reply(admin, "ใช้: /announce <ข้อความ>") end
-	if #text > 140 then text = text:sub(1, 140) end
+	-- ผ่านตัวกรองของ Roblox ก่อนส่งถึงทุกคน (QA 2026-09-26) · ตัดที่ขอบตัวอักษร ไม่ใช่กลางตัวอักษรไทย
+	text = Announce.Filter(Announce.Trim(text, 140), admin.UserId)
+	if not text then return reply(admin, "กรองข้อความไม่สำเร็จ ลองใหม่อีกครั้ง") end
 	local name = admin.DisplayName ~= "" and admin.DisplayName or admin.Name
 	-- "admin" is not a class id, which is exactly how the client knows to paint it red instead of looking
 	-- up a class colour that does not exist.
@@ -1056,7 +1059,9 @@ ClassCommands.announce = function(player, args, classId)
 	if text == "" then
 		return reply(player, "ใช้: /announce <ข้อความ>")
 	end
-	if #text > 140 then text = text:sub(1, 140) end
+	-- ผ่านตัวกรองของ Roblox ก่อนส่งถึงทุกคน (QA 2026-09-26)
+	text = Announce.Filter(Announce.Trim(text, 140), player.UserId)
+	if not text then return reply(player, "กรองข้อความไม่สำเร็จ ลองใหม่อีกครั้ง") end
 
 	local name = player.DisplayName ~= "" and player.DisplayName or player.Name
 	Remotes.ClassAnnouncement:FireAllClients(classId, name, text)

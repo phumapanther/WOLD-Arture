@@ -170,8 +170,14 @@ end
 -- Being on the receiving end
 --------------------------------------------------------------------------------
 
-Remotes.ClassActionPrompt.OnClientEvent:Connect(function(actionId, fromPlayer, seconds)
-	if actionId == "rob" then
+Remotes.ClassActionPrompt.OnClientEvent:Connect(function(actionId, fromPlayer, seconds, question)
+	-- ฮีล/ซ่อมที่เราต้องจ่ายเงิน — เซิร์ฟเวอร์เขียนคำถามมาให้ (ราคาอยู่ในนั้น) · QA 2026-09-26
+	if actionId == "service" then
+		gui:AskConsent(fromPlayer, seconds, tostring(question or "มีคนขอให้บริการ"),
+			function(accepted)
+				Remotes.RespondClassAction:FireServer("service", accepted)
+			end)
+	elseif actionId == "rob" then
 		gui:ShowRobDefence(fromPlayer, seconds, function()
 			Remotes.RespondClassAction:FireServer("rob", false)
 		end)

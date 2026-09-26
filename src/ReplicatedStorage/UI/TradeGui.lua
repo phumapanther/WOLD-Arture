@@ -327,6 +327,9 @@ function TradeGui:RenderBag(inventory)
 	for _, index in ipairs(self.offeredSlots) do offered[index] = true end
 
 	for index, slot in pairs((inventory and inventory.slots) or {}) do
+		-- ช่องว่างมาเป็น `false` (Inventory.Send เติมรูให้ข้าม RemoteEvent ได้) · ไม่ข้าม = error ตั้งแต่ช่องว่างแรก
+		-- แล้วหน้าต่างเทรดไม่เคยวาดข้อเสนอของอีกฝ่ายเลย (QA 2026-09-26)
+		if not slot then continue end
 		local item = ItemCatalog.Get(slot.id)
 		local b = tile(self.bagGrid, {
 			id = slot.id,

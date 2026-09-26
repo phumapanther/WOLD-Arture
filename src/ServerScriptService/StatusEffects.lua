@@ -9,6 +9,7 @@ local RunService = game:GetService("RunService")
 local Vitals = require(game.ServerScriptService.Vitals)
 local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local RescueAccess = require(game.ServerScriptService.RescueAccess)
 
 local StatusEffects = {}
 
@@ -327,6 +328,16 @@ end
 function StatusEffects.IsKnockedDown(player)
 	local state = Active[player]
 	return state ~= nil and state.knockdownUntil ~= nil
+end
+
+-- **ตี/ใช้สกิล/กลิ้ง ได้ไหมตอนนี้** — ด่านเดียวที่ทุกทางถาม (QA 2026-09-26)
+-- เดิมเช็คแค่ "ล้มคลาน" คนที่ถูกจับกุมจึงฟันทหารยามที่ยืนตรงหน้าจนล้มแล้วหนีได้ คนถูกยิงล้ม/มึนหัวก็ยังตีต่อ
+-- ได้ทั้งที่นอนอยู่ และคนที่ถูกอุ้มยิงจากหลังคนอุ้มได้ · ล้มคลานยังเช็คที่ผู้เรียกเหมือนเดิม (Vitals เป็นเจ้าของ)
+function StatusEffects.CanFight(player)
+	if StatusEffects.IsKnockedDown(player) or StatusEffects.IsDizzy(player) then return false end
+	if player:GetAttribute("WOLD_Arrested") then return false end
+	if RescueAccess.IsCarried and RescueAccess.IsCarried(player) then return false end
+	return true
 end
 
 --------------------------------------------------------------------------------
