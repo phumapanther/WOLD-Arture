@@ -45,21 +45,25 @@ function BeastGait.Attach(model, opts)
 	-- ระยะยกตัวเป็นของเรา ไม่ให้เอนจิ้นคำนวณเองจากโครงกระดูก (คำนวณได้ 0 กับโครงที่เชื่อมเอง แล้วตัวจมดิน)
 	humanoid.AutomaticScalingEnabled = false
 	local scale = model:GetScale()
-	Gaits[model] = {
+	local gait = {
 		humanoid = humanoid, root = root, joints = joints, phase = math.random() * math.pi * 2,
 		rate = (model:GetAttribute("StrideRate") or 0.55) / scale,
 		bob = (model:GetAttribute("Bob") or 0.12) * scale,
 		hip = (model:GetAttribute("BaseHipHeight") or humanoid.HipHeight / scale) * scale,
 	}
-	humanoid.HipHeight = Gaits[model].hip
+	Gaits[model] = gait
+	humanoid.HipHeight = gait.hip
 
 	if opts and opts.wander then
 		local radius = model:GetAttribute("WanderRadius") or 0
 		if radius > 0 then
 			local home = root.Position
+			-- วงเดินเล่นเป็นของ Attach ครั้งนี้เท่านั้น: Detach หรือ Attach ใหม่ (อุ้มแล้ววาง) = วงเก่าจบเอง
+			-- (QA 2026-09-26: เดิมไม่เช็ค อุ้ม-วางทีละรอบ วงซ้อนกันเรื่อยๆ สัตว์เดินพล่านรอบจุดวางเก่า)
 			task.spawn(function()
-				while model.Parent and humanoid.Health > 0 do
+				while model.Parent and humanoid.Health > 0 and Gaits[model] == gait do
 					task.wait(math.random(model:GetAttribute("WanderMin") or 4, model:GetAttribute("WanderMax") or 9))
+					if Gaits[model] ~= gait then break end
 					local a, r = math.random() * math.pi * 2, math.sqrt(math.random()) * radius
 					humanoid:MoveTo(home + Vector3.new(math.cos(a) * r, 0, math.sin(a) * r))
 					humanoid.MoveToFinished:Wait()
