@@ -29,7 +29,8 @@ end
 while workspace:GetAttribute("IsLobby") == nil do
 	task.wait()
 end
-if workspace:GetAttribute("IsLobby") then return end -- commands only exist in channel servers
+-- ล็อบบี้ก็มีคอนโซลแล้ว (ผู้ใช้สั่ง 2026-09-26) — คำสั่งชุดที่ใช้ได้ในล็อบบี้ตัดสินที่ AdminCommands (LOBBY_OK)
+local LOBBY = workspace:GetAttribute("IsLobby") == true
 
 -- The box is drawn for anyone who has SOMETHING to type: an admin, or a player holding an advanced class,
 -- which is what grants /announce. Everyone else never sees it, and F2 does nothing for them.
@@ -414,6 +415,49 @@ ContextActionService:BindActionAtPriority("WOLD_ConsoleHistory", function(_, sta
 end, false, Enum.ContextActionPriority.High.Value + 1, Enum.KeyCode.Up, Enum.KeyCode.Down)
 
 append("พิมพ์ /admin เพื่อดูคำสั่งทั้งหมด", ACCENT)
+
+-- ล็อบบี้บนเครื่องที่ไม่มีคีย์บอร์ด: กด F2 ไม่ได้และแชทถูกซ่อน → ปุ่ม 🛠️ เฉพาะแอดมิน ข้างปุ่มหินเวท (มุมขวาล่าง)
+-- ลูปถามใหม่ (สิทธิ์แอดมินได้/ถูกถอนกลางเซสชันได้) และหลบจอดำตอนกด JOIN แบบเดียวกับปุ่มหินเวท
+if LOBBY and not UserInputService.KeyboardEnabled then
+	local holder = Instance.new("ScreenGui")
+	holder.Name = "WOLD_LobbyAdmin"
+	holder.ResetOnSpawn = false
+	holder.IgnoreGuiInset = true
+	holder.DisplayOrder = 25
+	holder.Enabled = false
+	holder.Parent = player:WaitForChild("PlayerGui")
+	local button = Instance.new("TextButton")
+	button.AnchorPoint = Vector2.new(1, 1)
+	button.Position = UDim2.new(1, -84, 1, -24) -- ซ้ายมือของ 🔮 (ขวาสุด -24 กว้าง 52) เว้น 8
+	button.Size = UDim2.fromOffset(52, 52)
+	button.BackgroundColor3 = BG
+	button.BackgroundTransparency = 0.25
+	button.TextScaled = true
+	button.Text = "🛠️"
+	button.Parent = holder
+	local round = Instance.new("UICorner")
+	round.CornerRadius = UDim.new(1, 0)
+	round.Parent = button
+	local rim = Instance.new("UIStroke")
+	rim.Color = ACCENT
+	rim.Thickness = 1.5
+	rim.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rim.Parent = button
+	local pad = Instance.new("UIPadding")
+	for _, side in ipairs({ "PaddingTop", "PaddingBottom", "PaddingLeft", "PaddingRight" }) do
+		pad[side] = UDim.new(0.18, 0)
+	end
+	pad.Parent = button
+	button.Activated:Connect(function() setOpen(not gui.Enabled) end)
+	task.spawn(function()
+		while holder.Parent do
+			local lobbyGui = player.PlayerGui:FindFirstChild("ChannelSelectGui")
+			local blackout = lobbyGui and lobbyGui:FindFirstChild("Blackout", true)
+			holder.Enabled = isAdmin() and not (blackout and blackout.Visible)
+			task.wait(0.5)
+		end
+	end)
+end
 
 --------------------------------------------------------------------------------
 -- Flight

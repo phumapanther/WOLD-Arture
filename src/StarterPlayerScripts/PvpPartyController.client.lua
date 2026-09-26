@@ -13,18 +13,13 @@ if workspace:GetAttribute("IsLobby") ~= true then return end
 local Remotes = require(ReplicatedStorage.Remotes)
 local player = Players.LocalPlayer
 
--- หน้าต่างถูกสร้างโดย `ChannelSelectController` ซึ่งอาจยังไม่เสร็จตอนสคริปต์นี้เริ่ม
-local gui
-local t0 = os.clock()
-while os.clock() - t0 < 30 do
-	gui = _G.WOLD_PvpPartyGui
-	if gui then break end
-	task.wait(0.25)
-end
-if not gui then
-	warn("[PvpParty] หาหน้าปาร์ตี้ไม่เจอ — แท็บ PVP จะไม่ตอบสนอง")
-	return
-end
+-- หน้าปาร์ตี้ตัวปัจจุบัน — **ไม่ใช่ตัวแรกที่เจอ** (บั๊กมือถือ 2026-09-26: สามช่องเป็น + ทั้งหมด กดเล่นไม่ได้)
+-- `ChannelSelectController` สร้างหน้าจอล็อบบี้ใหม่ทั้งชุดทุกครั้งที่จอพลิกแนวตั้ง↔แนวนอน (มันบังคับ LandscapeSensor
+-- โทรศัพท์ที่เปิดมาแนวตั้งจึงโดนสร้างใหม่อย่างน้อยหนึ่งรอบเสมอ) → `_G.WOLD_PvpPartyGui` เป็นตัวใหม่ ของเดิมจับตัวแรกไว้
+-- ครั้งเดียว: วาดลงตัวที่ถูกลบไปแล้ว และปุ่มของตัวใหม่ไม่มีใครฟัง · คอมไม่เคยหมุนจอ เทสใน Studio จึงผ่าน
+local gui = nil
+local lastSnapshot = nil
+local lastFriends = nil
 
 --------------------------------------------------------------------------------
 -- รูปอวตาร: ขอทีละคน แล้วแคชไว้ (ยิงซ้ำทุกวินาทีตอนค้นหาห้องคือการรีเควสต์ทิ้ง)
@@ -43,10 +38,9 @@ local function avatarFor(userId)
 	return false
 end
 
-local lastSnapshot = nil
-
 local function draw(snap)
 	lastSnapshot = snap
+	if not gui then return end -- ยังไม่มีหน้าจอ: เก็บไว้ ลูปข้างล่างวาดให้ทันทีที่หน้าจอมา
 	gui:Render(snap)
 	for i, member in ipairs(snap.members or {}) do
 		local content = avatarFor(member.userId)
@@ -54,16 +48,31 @@ local function draw(snap)
 	end
 end
 
--- รูปที่มาถึงทีหลังต้องได้วาด — ลูปเบาๆ ที่ไล่เติมรูปให้ช่องที่ยังว่าง
+-- ลูปเดียวทำสองอย่าง: (1) หน้าจอเปลี่ยนตัว → ผูกปุ่มกับตัวใหม่แล้ววาดภาพล่าสุดลงไป
+-- (2) รูปอวตารที่มาถึงทีหลังต้องได้วาด · ถามใหม่ทุกรอบ ไม่ผูกครั้งเดียว (กฎเหล็กเดิมของโปรเจ็ค)
 task.spawn(function()
+	local warned = false
+	local started = os.clock()
 	while true do
-		task.wait(0.5)
-		if lastSnapshot then
+		local current = _G.WOLD_PvpPartyGui
+		if current and current ~= gui then
+			gui = current
+			gui:OnAction(function(action, arg)
+				Remotes.RequestPvpParty:FireServer(action, arg)
+			end)
+			if lastSnapshot then draw(lastSnapshot) end
+			if lastFriends then gui:RenderFriends(lastFriends) end
+		elseif not current and not warned and os.clock() - started > 30 then
+			warned = true
+			warn("[PvpParty] หาหน้าปาร์ตี้ไม่เจอ — แท็บ PVP จะไม่ตอบสนอง")
+		end
+		if gui and lastSnapshot then
 			for i, member in ipairs(lastSnapshot.members or {}) do
 				local content = avatarCache[member.userId]
 				if content then gui:SetSlotAvatar(i, content) end
 			end
 		end
+		task.wait(0.25)
 	end
 end)
 
@@ -72,14 +81,11 @@ Remotes.PvpPartyUpdate.OnClientEvent:Connect(function(data)
 	if not data then return end
 	-- ข้อความสองชนิดมาทางเดียวกัน: ภาพปาร์ตี้ กับรายชื่อเพื่อนที่เพิ่งขอ
 	if data.friends then
-		gui:RenderFriends(data.friends)
+		lastFriends = data.friends
+		if gui then gui:RenderFriends(data.friends) end
 	else
 		draw(data)
 	end
-end)
-
-gui:OnAction(function(action, arg)
-	Remotes.RequestPvpParty:FireServer(action, arg)
 end)
 
 -- ขอภาพแรกทันที · ถ้าเข้ามาก่อนเซิร์ฟเวอร์พร้อม ลูปข้างล่างจะถามซ้ำให้เอง

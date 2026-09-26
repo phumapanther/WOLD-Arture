@@ -13,7 +13,11 @@
 local Players = game:GetService("Players")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 
-if ServerConfig.IsLobby then return end -- nothing to administer in the lobby
+-- ล็อบบี้ (ผู้ใช้สั่ง 2026-09-26): รันด้วย แต่ใช้ได้เฉพาะคำสั่งที่ไม่ต้องใช้โปรไฟล์ของคนในเซิร์ฟนี้ — ล็อบบี้ห้ามเปิด
+-- เซสชันโปรไฟล์ใคร (แย่งล็อกกับเซิร์ฟที่เขาเล่นอยู่) เงิน/กระเป๋า/เลือด/เลเวลจึงไม่มีให้แก้ · ส่งของ (/mail) กับ VIP
+-- (/givevip) ไปทางข้อความ ProfileStore ได้ตอนเข้าเซิร์ฟเกมครั้งถัดไป · ตัวที่เหลือในรายการแตะแค่ตัวละคร/รายชื่อแอดมิน
+local LOBBY_OK = { admin = true, items = true, admins = true, setadmin = true, unadmin = true,
+	mail = true, givevip = true, tpto = true, bring = true, ["goto"] = true, fly = true, land = true }
 
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local ClassConfig = require(game.ReplicatedStorage.ClassConfig)
@@ -268,8 +272,16 @@ Commands.givevip = function(admin, args)
 
 	local given, skipped = {}, {}
 	for _, target in ipairs(targets) do
+		-- ล็อบบี้ไม่ได้โหลดโปรไฟล์ใคร → ฝากผ่านข้อความ ได้ตอนเข้าเซิร์ฟเกมครั้งถัดไป (มี VIP อยู่แล้ว = ข้ามตอนรับ
+		-- ด้วย onlyIfNone กติกาเดียวกับข้างล่าง)
+		if ServerConfig.IsLobby then
+			if Vip.SendAsync(target.UserId, days, true) then
+				given[#given + 1] = target.Name .. " (ฝากไว้ ได้ตอนเข้าเกม)"
+			else
+				skipped[#skipped + 1] = target.Name .. " (DataStore ไม่ตอบ)"
+			end
 		-- **ด่านนี้คือทั้งหมดของคำสั่ง**: มีอยู่แล้วไม่แตะเลย ไม่ใช่ทบให้สั้นลง
-		if Vip.Has(target) then
+		elseif Vip.Has(target) then
 			skipped[#skipped + 1] = ("%s (เหลือ %d วัน)")
 				:format(target.Name, math.floor(Vip.SecondsLeft(target) / 86400 + 0.5))
 		elseif Vip.Grant(target, days) then
@@ -284,7 +296,7 @@ Commands.givevip = function(admin, args)
 
 	local parts = {}
 	if #given > 0 then parts[#parts + 1] = ("แจก VIP %d วัน -> %s"):format(days, table.concat(given, ", ")) end
-	if #skipped > 0 then parts[#parts + 1] = ("ข้าม (มี VIP อยู่แล้ว): %s"):format(table.concat(skipped, ", ")) end
+	if #skipped > 0 then parts[#parts + 1] = ("ข้าม: %s"):format(table.concat(skipped, ", ")) end
 	reply(admin, #parts > 0 and table.concat(parts, " · ") or "ไม่มีใครให้แจก")
 end
 
@@ -1101,6 +1113,13 @@ local function dispatch(player, message)
 	-- that non-admins have commands of their own -- but it still happens before the command is looked up, so
 	-- a non-admin typing "/gold" gets exactly the silence they got before.
 	local command = isAdmin(player) and Commands[name] or nil
+	if command and ServerConfig.IsLobby and not LOBBY_OK[name] then
+		local ok = {}
+		for key in pairs(LOBBY_OK) do ok[#ok + 1] = "/" .. key end
+		table.sort(ok)
+		return reply(player, ("/%s ใช้ได้ในเซิร์ฟเกมเท่านั้น (ล็อบบี้ไม่ได้โหลดข้อมูลตัวละคร)\nในล็อบบี้ใช้ได้: %s")
+			:format(name, table.concat(ok, " ")))
+	end
 
 	if not command then
 		-- A noble runs the ADMIN implementation of the seven commands of state, rather than a copy of its

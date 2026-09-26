@@ -56,10 +56,11 @@ end
 -- **เขียนโปรไฟล์ของคนอื่นตรงๆ ไม่ได้** มันถูกล็อกเซสชันไว้ (ซึ่งเป็นสิ่งที่กันข้อมูลหายมาตั้งแต่ต้น)
 -- ทางฝากข้อความจึงเป็นทางเดียวที่ปลอดภัย · คืน true เมื่อฝากสำเร็จ
 function Vip.SendAsync(userId, days, onlyIfNone)
-	if not ProfileAccess.MessageAsync then return false end
-	return ProfileAccess.MessageAsync(userId, {
+	-- ผ่าน Mail.Transport: ใช้ ProfileAccess.MessageAsync ถ้ามี · ล็อบบี้/สนามไม่มี (ไม่เปิดเซสชัน) → มันเปิด store
+	-- ส่งข้อความเอง · require ตอนเรียก ไม่ใช่หัวไฟล์ — Mail โหลดทีหลังได้ ไม่ต้องลุ้นลำดับ
+	return require(script.Parent.Mail).Transport(userId, {
 		kind = "vip", days = days, onlyIfNone = onlyIfNone and true or nil,
-	}) and true or false
+	}) == true
 end
 
 -- ถามแทนคนที่ **ไม่ได้อยู่ในเซิร์ฟนี้** หรืออยู่แต่โปรไฟล์ไม่ได้โหลด (ล็อบบี้) — ยิง DataStore หนึ่งครั้ง
