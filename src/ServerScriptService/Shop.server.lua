@@ -178,11 +178,13 @@ local function snapshot(player)
 	for index, entry in ipairs(SELLS) do
 		local item = ItemCatalog.Get(entry.id)
 		if item then
+			-- เฟส 2a: ราคาสองสกุลจากกฎเดียว (ShopConfig.PricesOf) · ร้านเกมหลักได้แต่เหรียญ (gems = nil)
+			local coins, gems = ShopConfig.PricesOf(entry)
 			table.insert(sells, {
 				index = index, id = entry.id,
 				name = item.name .. (SPOT_TAG[item.spot] or ""),
-				icon = item.icon, price = entry.price,
-				currency = entry.currency, -- nil = เหรียญ · "gems" = เพชร
+				icon = item.icon, coins = coins, gems = gems,
+				category = entry.category, -- แท็บในหน้าร้าน (เฉพาะร้านเกาะ)
 				-- **จำนวนที่ได้ต่อหนึ่งครั้งที่กด** (ผู้ใช้สั่ง 2026-09-24: เมล็ด 250 ได้ 3 เม็ด)
 				-- nil/1 = ทีละชิ้นเหมือนเดิม จึงไม่ต้องแตะแถวอื่นในคอนฟิกเลย
 				count = (entry.count or 1) > 1 and entry.count or nil,
@@ -206,11 +208,15 @@ local function snapshot(player)
 		table.sort(buys, function(a, b) return a.slot < b.slot end)
 	end
 
+	local island = SELLS == ShopConfig.IslandSells
 	return {
 		sells = sells,
 		buys = buys,
 		gold = state and state.gold or 0,
 		rerollIn = math.max(0, NextRerollAt - os.time()),
+		-- ร้านเกาะเท่านั้น: แท็บ + เพชรที่มี (ร้านเกมหลักไม่มีทั้งสองอย่าง หน้าจอจึงหน้าตาเดิม)
+		categories = island and ShopConfig.IslandCategories or nil,
+		gems = island and (PremiumAccess.GetGems and PremiumAccess.GetGems(player) or 0) or nil,
 	}
 end
 
@@ -236,7 +242,7 @@ end)
 -- `amount` is optional. On a sell, nil means the whole stack and a number means that many; on a buy, nil
 -- means one. Validated here rather than trusted -- a request to sell 1000 of a stack of 3 sells 3, and a
 -- request to buy more than the purse holds buys what it can afford.
-Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, amount)
+Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, amount, currency)
 	if type(action) ~= "string" then return end
 	if not canTrade(player) then return end
 	if action ~= "sellall" and type(index) ~= "number" then return end
@@ -260,15 +266,21 @@ Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, 
 			want = math.clamp(math.floor(amount), 1, MAX_BUY)
 		end
 
-		-- **จ่ายด้วยเพชรหรือเหรียญ ตามที่แถวนั้นบอก** (ผู้ใช้กำหนด 2026-09-22)
-		local gems = entry.currency == "gems"
+		-- **จ่ายด้วยสกุลที่ผู้เล่นกดเลือก** (เฟส 2a · ปุ่ม 💎/💰 ทุกแถว) — ราคามาจากกฎเดียวกับหน้าจอ ไม่เชื่อตัวเลขจากไคลเอนต์
+		-- สกุลแปลกๆ = ปฏิเสธเงียบ · ขอเพชรกับแถวร้านเกมหลัก = ไม่มีราคา ปฏิเสธพร้อมบอกเหตุผล
+		if currency ~= nil and currency ~= "gems" and currency ~= "coins" then return end
+		local unitPrice = ShopConfig.PriceFor(entry, currency)
+		if not unitPrice then
+			return Remotes.SocialNotify:FireClient(player, "error", "ของชิ้นนี้ซื้อด้วยสกุลนี้ไม่ได้")
+		end
+		local gems = currency == "gems"
 		-- ระบบเพชรยังไม่ตั้ง (PremiumStore โหลดไม่ขึ้น) = ปฏิเสธ (QA 2026-09-26: เดิมตกไปอ่านเหรียญแทนเพชร
 		-- แล้วเรียก SpendGems ที่เป็น nil หลังให้ของไปแล้ว = ได้ของฟรี)
 		if gems and not (PremiumAccess.GetGems and PremiumAccess.SpendGems) then
 			return Remotes.SocialNotify:FireClient(player, "error", "ร้านเพชรยังไม่พร้อม ลองใหม่อีกครั้ง")
 		end
 		local purse = gems and PremiumAccess.GetGems(player) or state.gold
-		local affordable = math.floor(purse / entry.price)
+		local affordable = math.floor(purse / unitPrice)
 		if affordable < 1 then
 			return Remotes.SocialNotify:FireClient(player, "error", gems and "เพชรไม่พอ" or "เงินไม่พอ")
 		end
@@ -294,23 +306,23 @@ Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, 
 		if gems then
 			-- **หักหลังของเข้ากระเป๋าแล้ว** เหมือนทางเหรียญ — กระเป๋าเต็มกลางคันจะได้จ่ายเท่าที่ได้จริง
 			-- หักไม่ผ่าน = ถอดของที่เพิ่งใส่คืน (RemoveById ทั้งหมดหรือไม่เอาเลย) · ปกติไม่เกิด ไม่มี yield คั่นจากตอนเช็ค
-			if not PremiumAccess.SpendGems(player, entry.price * bought) then
+			if not PremiumAccess.SpendGems(player, unitPrice * bought) then
 				Inventory.RemoveById(player, entry.id, got)
 				return Remotes.SocialNotify:FireClient(player, "error", "เพชรไม่พอ")
 			end
 		else
-			Inventory.AddGold(player, -entry.price * bought)
+			Inventory.AddGold(player, -unitPrice * bought)
 		end
 
 		local item = ItemCatalog.Get(entry.id)
 		local name = item and item.name or entry.id
-		local unit = gems and " เพชร" or ""
+		local unit = gems and " เพชร" or " เหรียญ"
 		if bought < want then
 			Remotes.SocialNotify:FireClient(player, "info",
-				("ซื้อ %s x%d ราคา %d%s (ได้ไม่ครบ %d)"):format(name, got, entry.price * bought, unit, want * per))
+				("ซื้อ %s x%d ราคา %d%s (ได้ไม่ครบ %d)"):format(name, got, unitPrice * bought, unit, want * per))
 		else
 			Remotes.SocialNotify:FireClient(player, "info",
-				("ซื้อ %s x%d ราคา %d%s"):format(name, got, entry.price * bought, unit))
+				("ซื้อ %s x%d ราคา %d%s"):format(name, got, unitPrice * bought, unit))
 		end
 
 	elseif action == "sell" then
