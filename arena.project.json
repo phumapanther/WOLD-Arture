@@ -50,6 +50,7 @@
     "src/ServerScriptService/WorldBoss.server.lua",
     "src/ServerScriptService/WorldEvents.server.lua",
     "src/ServerScriptService/Island/IslandBuild.server.lua",
+    "src/ServerScriptService/Island/IslandFarm.server.lua",
     "src/ServerScriptService/Island/IslandGuests.server.lua",
     "src/ServerScriptService/Island/IslandNodes.server.lua",
     "src/ServerScriptService/Island/IslandPets.server.lua",
@@ -64,7 +65,10 @@
     "src/StarterPlayerScripts/VehicleRepairController.client.lua",
     "src/StarterPlayerScripts/IslandBadgeController.client.lua",
     "src/StarterPlayerScripts/IslandBuildController.client.lua",
-    "src/StarterPlayerScripts/IslandPenController.client.lua"
+    "src/StarterPlayerScripts/IslandPenController.client.lua",
+    "src/StarterPlayerScripts/ExportController.client.lua",
+    "src/StarterPlayerScripts/FarmLevelController.client.lua",
+    "src/StarterPlayerScripts/IslandSeedController.client.lua"
   ],
   "tree": {
     "$className": "DataModel",

@@ -138,6 +138,38 @@ function Inventory.RemoveById(player, id, count)
 end
 
 
+-- **ของขอบทองชนิดนี้กี่ชิ้น** (เฟส 2c ใบส่งออกขอบทอง) — คู่ตรงข้ามของ CountOf ที่ข้ามของทอง
+-- ของทองไม่สแตค (หนึ่งช่องหนึ่งชิ้น) อยู่ช่วง VIP เสมอ
+function Inventory.CountGold(player, id)
+	local state = States[player]
+	if not state then return 0 end
+	local total = 0
+	for i = InventoryConfig.VipSlotStart, InventoryConfig.VipSlotEnd do
+		local slot = state.slots[i]
+		if slot and slot.id == id and isGold(slot.meta) then total += slot.count or 1 end
+	end
+	return total
+end
+
+-- เอาของขอบทองชนิดนี้ออก `count` ชิ้น · **ทั้งหมดหรือไม่เอาเลย** (ทางเดียวที่ของทองออกจากกระเป๋าได้นอกจากขายบนเกาะ:
+-- ส่งออกกับรถส่งออก — สเปก 2b "ส่งออกได้")
+function Inventory.RemoveGold(player, id, count)
+	local state = States[player]
+	if not state or type(count) ~= "number" or count < 1 then return false end
+	if Inventory.CountGold(player, id) < count then return false end
+	local left = count
+	for i = InventoryConfig.VipSlotEnd, InventoryConfig.VipSlotStart, -1 do
+		if left <= 0 then break end
+		local slot = state.slots[i]
+		if slot and slot.id == id and isGold(slot.meta) then
+			local take = math.min(left, slot.count or 1)
+			Inventory.RemoveFromSlot(player, i, take)
+			left -= take
+		end
+	end
+	return left <= 0
+end
+
 -- ยังรับของชิ้นนี้ได้อีกกี่ชิ้นก่อนชนเพดานพกติดตัว · nil = ไม่มีเพดาน (ของส่วนใหญ่ในเกม)
 function Inventory.RoomUnderLimit(player, id)
 	local limit = ItemCatalog.BagLimit(id)

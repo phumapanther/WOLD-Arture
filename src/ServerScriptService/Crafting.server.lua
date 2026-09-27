@@ -25,6 +25,17 @@ local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 local Achievements = require(game.ServerScriptService.Achievements)
 local Announce = require(game.ServerScriptService.Announce)
+local IslandAccess = require(game.ServerScriptService.Island.IslandAccess)
+
+-- เลเวลฟาร์มที่ล็อกสูตรของเครื่องบนเกาะ (เฟส 2c) · nil = ไม่ล็อก (นอกเกาะไม่มีสูตรที่มี level อยู่แล้ว)
+local function farmLevel()
+	return ServerConfig.IsFarm and IslandAccess.FarmLevel() or nil
+end
+
+-- สูตรนี้ทำทีละหลายรอบได้ไหม (เฟส 2c) — เฉพาะสูตรที่ติด batch และสำเร็จแน่นอน (ล้มเหลวทีเดียวเสียทั้ง 10 รอบไม่ยุติธรรม)
+local function batchOf(recipe)
+	return recipe.batch == true and (recipe.chance or 1) >= 1 and CraftConfig.MaxBatch or 1
+end
 
 local TAG = "WOLD_Npc"
 local RANGE = 12
@@ -233,6 +244,7 @@ local function snapshot(player)
 	local station = stationOf(player)
 
 	local recipes = {}
+	local level = farmLevel()
 	for index, recipe in ipairs(CraftConfig.Recipes) do
 		local item = ItemCatalog.Get(recipe.id)
 		-- สูตรของสถานีโชว์เฉพาะที่สถานีนั้น ช่างตีเหล็กโชว์เฉพาะสูตรที่ไม่มี station
@@ -256,6 +268,15 @@ local function snapshot(player)
 			-- had already decided to refuse.
 			local fee = recipe.gold or 0
 			if purse < fee then affordable = false end
+			-- เฟส 2c: สูตรเครื่องบนเกาะที่ยังไม่ปลด = 🔒 กดไม่ได้ (RequestCraft ตรวจซ้ำ)
+			local lockLevel = level and recipe.level and recipe.level > level and recipe.level or nil
+			if lockLevel then affordable = false end
+			-- ทำได้กี่รอบจากของที่มี (ไคลเอนต์ใช้หนีบปุ่ม −/+) · อย่างน้อย 1 ให้แถวยังกดได้เมื่อพอหนึ่งรอบ
+			local maxTimes = batchOf(recipe)
+			if maxTimes > 1 then
+				for _, m in ipairs(materials) do maxTimes = math.min(maxTimes, math.floor(m.have / m.need)) end
+				maxTimes = math.max(1, maxTimes)
+			end
 
 			-- The odds and the fee ride down with the row for the same reason the have-counts do: the player is
 			-- being asked to gamble materials and coin, and the numbers they read before pressing have to be
@@ -267,6 +288,10 @@ local function snapshot(player)
 				-- So the row can say "x8" before the player commits, rather than the batch being a surprise
 				-- that only shows up in the bag afterwards.
 				yields = recipe.yields or 1,
+				-- เฟส 2c: เวลาต่อรอบ · ทำได้สูงสุดกี่รอบ (nil = ทีละรอบ) · ล็อกเลเวลฟาร์ม
+				seconds = recipe.seconds or CraftConfig.CraftSeconds,
+				batch = batchOf(recipe) > 1 and maxTimes or nil,
+				lockLevel = lockLevel,
 			})
 		end
 	end
@@ -287,6 +312,7 @@ local function snapshot(player)
 
 	local src = Source[player]
 	return { tabs = tabs, recipes = recipes, station = station,
+		title = CraftConfig.StationTitles[station or ""], farmLevel = level,
 		busy = busy and { index = busy.index, remaining = remaining, seconds = busy.seconds } or nil,
 		stationPosition = src and src.model.Parent and src.model:GetPivot().Position or nil }
 end
@@ -394,7 +420,7 @@ local function resolveJob(player, data, job)
 end
 
 
-Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
+Remotes.RequestCraft.OnServerEvent:Connect(function(player, index, times)
 	if type(index) ~= "number" then return end
 	if not canCraft(player) then return end
 	-- Re-checked on every craft, not just on opening: a player could walk away with the window still up.
@@ -412,9 +438,24 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 	local state = Inventory.Get(player)
 	if not state then return end
 
+	-- เฟส 2c: สูตรเครื่องบนเกาะล็อกตามเลเวลฟาร์ม
+	local level = farmLevel()
+	if level and recipe.level and recipe.level > level then
+		return Remotes.SocialNotify:FireClient(player, "error",
+			("🔒 สูตรนี้ปลดที่เลเวลฟาร์ม %d (ตอนนี้ Lv%d)"):format(recipe.level, level))
+	end
+
+	-- **ทำหลายรอบในงานเดียว** (เฟส 2c ผู้ใช้เลือก 2026-09-27) — วัตถุดิบ เวลา และของที่ได้คูณตามรอบ
+	-- สูตรที่ไม่ติด batch = 1 เสมอ ไม่ว่าไคลเอนต์ส่งอะไรมา
+	local rounds = 1
+	if batchOf(recipe) > 1 and type(times) == "number" and times == times then
+		rounds = math.clamp(math.floor(times), 1, batchOf(recipe))
+	end
+
 	-- Every material checked before ANY is taken. Taking as we go and stopping halfway would eat the
 	-- materials for a craft that never happened.
-	for material, need in pairs(recipe.cost) do
+	for material, per in pairs(recipe.cost) do
+		local need = per * rounds
 		if countMaterial(state, material) < need then
 			local entry = ItemCatalog.Get(material)
 			return Remotes.SocialNotify:FireClient(player, "error",
@@ -424,7 +465,7 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 
 	-- The smith's fee, checked in the same breath as the materials so a player short of coin is told before
 	-- anything is spent rather than after.
-	local fee = recipe.gold or 0
+	local fee = (recipe.gold or 0) * rounds
 	if fee > 0 and (state.gold or 0) < fee then
 		return Remotes.SocialNotify:FireClient(player, "error",
 			("เงินไม่พอ ต้องมี %d"):format(fee))
@@ -439,7 +480,7 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 	-- nowhere to put the sword.
 	-- How many this recipe makes. Read from the recipe rather than assumed to be one, and checked for room
 	-- at its full size: a batch of eight bullets needs somewhere to put eight.
-	local yields = recipe.yields or 1
+	local yields = (recipe.yields or 1) * rounds
 
 	if not Inventory.HasRoomFor(player, recipe.id, yields) then
 		return Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม")
@@ -457,13 +498,13 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index)
 	end
 
 	-- สูตรกำหนดเวลาเองได้ (สเต็ก 15 นาที น้ำแอปเปิล 5 นาที) ที่เหลือใช้ค่ากลางของช่างตีเหล็ก
-	local seconds = recipe.seconds or CraftConfig.CraftSeconds
+	local seconds = (recipe.seconds or CraftConfig.CraftSeconds) * rounds
 	Busy[player][key] = { index = index, finishAt = os.clock() + seconds, seconds = seconds }
 
 	-- Taken NOW rather than after the wait, so walking away or logging out mid-swing cannot dodge the cost.
 	-- The fee goes with them: the smith is paid for the attempt, not for the result.
-	for material, need in pairs(recipe.cost) do
-		takeMaterial(player, state, material, need)
+	for material, per in pairs(recipe.cost) do
+		takeMaterial(player, state, material, per * rounds)
 	end
 	if fee > 0 then
 		Inventory.AddGold(player, -fee)

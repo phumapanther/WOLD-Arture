@@ -151,7 +151,8 @@ local function spawnAt(kind, cx, cz, glow)
 	-- จึงต้องทอยเองตรงนี้ **ครั้งเดียวตอนโผล่ครั้งแรก** แล้วจำไว้ (QA 2026-09-26: เดิมทอยใหม่ทุกครั้งที่เซิร์ฟเปิด
 	-- = ออกเข้าใหม่จนได้สีที่อยากได้)
 	-- แสงแดง (เฟส 2b) เฉพาะสายแร่ที่ให้ของขอบทองได้ · ต้นไม้/พุ่ม/หิน/ถ่านหินทอยแค่ฟ้ากับทอง
-	if glow == nil then glow = IslandConfig.RollGlow(GoldBorder.NodeCanGold(kind)) or false end
+	-- ทอยผ่าน IslandAccess = เฉพาะสีที่ปลดตามเลเวลฟาร์ม (เฟส 2c)
+	if glow == nil then glow = IslandAccess.RollGlow(GoldBorder.NodeCanGold(kind)) or false end
 	model:SetAttribute("Glow", glow or nil)
 	local gs = glowStore()
 	if gs then gs[IslandGrid.key(cx, cz)] = glow end

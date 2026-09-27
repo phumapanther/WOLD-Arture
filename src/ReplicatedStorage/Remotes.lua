@@ -185,6 +185,14 @@ local EVENTS = {
 	-- IslandPenClose: ไคลเอนต์บอกว่าปิดหน้าต่างแล้ว เซิร์ฟเวอร์จะได้เลิกส่งภาพใหม่ทุก 3 วิ
 	-- IslandPenRelease: ปล่อยฝูงทิ้งเพื่อเปลี่ยนชนิดสัตว์ที่เลี้ยง (คอกที่มีสัตว์อยู่เก็บคืนไม่ได้)
 	"IslandPenOpen", "IslandPenBuy", "IslandPenClose", "IslandPenRelease",
+	-- เฟส 2c รถส่งออก: เซิร์ฟเวอร์ส่งภาพรวมทั้งก้อน (ExportOpen · `open = true` เฉพาะตอนกด E) ไคลเอนต์ตอบแค่
+	-- RequestExport(action, slot) — "ship" / "reroll" / "close" · ไม่เคยส่งของหรือราคา
+	"ExportOpen", "RequestExport",
+	-- ฉลองเลเวลฟาร์ม: เซิร์ฟ → { from, to } · ไคลเอนต์ → "ready" (จอโหลดจบ) / "seen", to (เห็นแบนเนอร์แล้ว)
+	"FarmCelebrate",
+	-- เลือกเมล็ด (มีเมล็ดมากกว่าหนึ่งชนิด): เซิร์ฟ → IslandSeedChoice(uid, ตัวเลือก) · ไคลเอนต์ → IslandPlantSeed(uid, seedId)
+	-- ไคลเอนต์ → IslandSeedChoice("clear") = เลิกจำเมล็ดที่เลือกไว้ (ปุ่ม "เปลี่ยน")
+	"IslandSeedChoice", "IslandPlantSeed",
 	-- กล่องจดหมายในหินเวท: คำขอเดียวเข้า (op + อาร์กิวเมนต์) ภาพกล่องทั้งก้อนออก — ทรงเดียวกับตลาด/คลัง
 	"RequestMail", "MailUpdate",
 }

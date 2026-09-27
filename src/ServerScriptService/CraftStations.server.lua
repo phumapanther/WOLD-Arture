@@ -36,6 +36,11 @@ local STATIONS = {
 	Stove = { station = "stove", action = "ทำอาหาร", object = "เตาทำอาหาร", needs = "Spatula", fire = true },
 	SteamBlender = { station = "blender", action = "ปั่นเครื่องดื่ม", object = "เครื่องปั่นไอน้ำ", needs = "Spatula" },
 	AlchemyStill = { station = "still", action = "ต้มยา", object = "เครื่องต้มยา" },
+	-- เครื่องคราฟขั้นสูง (เฟส 2c) — **บนเกาะเท่านั้น** (`farmOnly`): ชื่อพวกนี้อาจซ้ำกับของตกแต่งในแมพหลัก
+	-- (บ้านช่างทอมีกี่ทอ) ถ้าต่อสายที่นั่นด้วย สูตรส่งออกจะคราฟได้ในเมืองโดยไม่มีเลเวลฟาร์มคุม
+	BakeryOven = { station = "bakery", action = "อบขนม", object = "เตาอบขนมปัง", fire = true, farmOnly = true },
+	MetalBench = { station = "metal", action = "ตีเหล็ก", object = "โต๊ะช่างเหล็ก", farmOnly = true },
+	Loom = { station = "loom", action = "ทอผ้า", object = "กี่ทอผ้าไอน้ำ", farmOnly = true },
 }
 
 -- ตู้เก็บของ: ส่งต่อให้ StorageChests.server ผ่านแท็ก + แอตทริบิวต์
@@ -188,6 +193,7 @@ task.spawn(function()
 		for _, d in ipairs(workspace:GetDescendants()) do
 			if d:IsA("Model") and not wired[d] and (STATIONS[d.Name] or STORAGE[d.Name]) and not decorative(d) then
 				local spec = STATIONS[d.Name]
+				if spec and spec.farmOnly and not ServerConfig.IsFarm then spec = nil end
 				if spec then wireStation(d, spec) end
 				local store = STORAGE[d.Name]
 				if store then wireStorage(d, store) end

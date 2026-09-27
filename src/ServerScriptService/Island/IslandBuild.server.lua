@@ -16,6 +16,7 @@ local FUNCTIONAL = {
 	Stove = true, SteamBlender = true, AlchemyStill = true,
 	IceBox = true, ApothecaryCabinet = true,
 	DistillSet = true, Reactor = true, Boxs = true,
+	BakeryOven = true, MetalBench = true, Loom = true, -- เครื่องคราฟขั้นสูง (เฟส 2c)
 }
 
 -- ในนั้น สามอันนี้ต้องติดแท็ก `WOLD_Farm` เพิ่มด้วย

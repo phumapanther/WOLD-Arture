@@ -476,6 +476,15 @@ end
 -- ของจริงตื่นเองสองทุ่มเวลาไทยและอยู่ 59 นาที (`EventConfig.Events.worldboss`) คำสั่งนี้มีไว้เทส
 -- โดยไม่ต้องรอถึงเวลา · `rank` คือสิ่งเดียวที่คำสั่งอีเวนต์ตัวอื่นไม่มี: ระหว่างสู้ต้องเห็นว่ายอดเดินอยู่จริง
 -- ไม่งั้นจะรู้ว่าการนับดาเมจพังก็ตอนจบอีเวนต์ซึ่งสายไปแล้ว
+-- /farm [exp <n> | level <n> | ship | orders | reroll | gems | reset] -- เลเวลฟาร์ม/รถส่งออก (เฟส 2c เทสในเกม)
+-- ใช้บนเกาะของตัวเอง · ไม่ใส่อะไร = ดูสถานะ · `ship` = รถกลับทันที · `level` = กระโดดไปเลเวลนั้น (ขึ้น = ได้ฉลอง)
+Commands.farm = function(admin, args)
+	if not ServerConfig.IsFarm then return reply(admin, "ใช้ได้บนเกาะฟาร์มเท่านั้น") end
+	local IslandAccess = require(game.ServerScriptService.Island.IslandAccess)
+	if not IslandAccess.FarmAdmin then return reply(admin, "ระบบเลเวลฟาร์มยังไม่พร้อม") end
+	reply(admin, IslandAccess.FarmAdmin(admin, args))
+end
+
 Commands.worldboss = function(admin, args)
 	local sub = (args[1] or ""):lower()
 	if sub == "rank" or sub == "top" then

@@ -49,4 +49,36 @@ end
 
 IslandAccess.FixtureDenied = "ของชิ้นนี้ใช้ได้เฉพาะเจ้าของเกาะ"
 
+--------------------------------------------------------------------------------
+-- เลเวลฟาร์ม (เฟส 2c) — อ่านจากโปรไฟล์เจ้าของเกาะตรงๆ ไม่ใช่ช่องที่สคริปต์อื่นเติม
+--------------------------------------------------------------------------------
+-- เขียนเป็นฟังก์ชันจริงในโมดูลนี้ (ไม่ใช่ `= nil` รอ IslandFarm เติม) เพราะคนเรียกมีหลายสคริปต์ที่เริ่มคนละจังหวะ
+-- ถ้ารอเติม สคริปต์ที่ทอยแสงก่อน IslandFarm โหลดเสร็จจะได้ nil แล้วต้องเดาเอง
+-- **โปรไฟล์ยังไม่โหลด/เจ้าของไม่อยู่ = Lv1** (ล็อกมากสุด) — ไม่มีทางได้ของเกินเลเวลจากจังหวะบูต
+local FarmLevelConfig = require(game.ReplicatedStorage.FarmLevelConfig)
+local IslandConfig = require(game.ReplicatedStorage.IslandConfig)
+
+function IslandAccess.FarmExp()
+	local data = IslandAccess.Data and IslandAccess.Data()
+	local farm = data and data.farm
+	return type(farm) == "table" and tonumber(farm.exp) or 0
+end
+
+function IslandAccess.FarmLevel()
+	return (FarmLevelConfig.LevelFromExp(IslandAccess.FarmExp()))
+end
+
+-- **ทุกที่ที่ทอยแสงบนเกาะต้องเรียกตัวนี้** (Gathering · IslandNodes · IslandZones · IslandPlots) — สีที่ยังไม่ปลดไม่ขึ้น
+function IslandAccess.RollGlow(canGold)
+	return IslandConfig.RollGlow(canGold, FarmLevelConfig.GlowAllowed(IslandAccess.FarmLevel()))
+end
+
+-- ของขอบทองปลดหรือยัง (Lv4) — ทุกที่ที่ทอยขอบทองถามก่อน (แสงแดงปลดทีหลังขอบทองเสมอ จึงไม่ชนกัน)
+function IslandAccess.GoldAllowed()
+	return FarmLevelConfig.GoldAllowed(IslandAccess.FarmLevel())
+end
+
+-- ตั้งโดย IslandFarm
+IslandAccess.FarmAdmin = nil -- (player, words) -> text · คำสั่งแอดมิน /farm (เทสในเกม)
+
 return IslandAccess

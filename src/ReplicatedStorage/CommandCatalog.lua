@@ -24,6 +24,7 @@ CommandCatalog.Commands = {
 	{ name = "mail", args = "<ชื่อ> <ไอเทม> [จำนวน]", desc = "ส่งของเข้ากล่องจดหมาย (ออฟไลน์ก็ได้)", scope = "admin" },
 	{ name = "boss", args = "[ระยะ]", desc = "เสกบอสฟอร์จวอร์เดน", scope = "admin" },
 	{ name = "worldboss", args = "[off|rank]", desc = "บอสโลก: เริ่ม/จบ/ดูตารางดาเมจ", scope = "admin" },
+	{ name = "farm", args = "[exp <n>|level <n>|ship|orders|reroll|gems|reset]", desc = "เลเวลฟาร์ม/รถส่งออก (บนเกาะ)", scope = "admin" },
 	{ name = "tpto", args = "<คน>", desc = "วาปไปหา", scope = "admin" },
 	{ name = "bring", args = "<คน>", desc = "ดึงมาหา", scope = "admin" },
 	{ name = "goto", args = "<x> <y> <z>", desc = "วาปไปพิกัด", scope = "admin" },

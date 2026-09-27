@@ -97,7 +97,7 @@ function ShopGui.new()
 	local purse = Instance.new("TextLabel")
 	purse.Name = "Purse"
 	purse.AnchorPoint = Vector2.new(1, 0)
-	purse.Size = UDim2.fromOffset(220, 24)
+	purse.Size = UDim2.fromOffset(320, 24)
 	purse.Position = UDim2.new(1, -46, 0, 15)
 	purse.BackgroundTransparency = 1
 	purse.Font = Enum.Font.GothamBold
@@ -232,7 +232,7 @@ function ShopGui:OnSellAll(callback) self.onSellAll = callback end
 -- just left of them. `extra` is the width the caller will put there, so the name shrinks to make room.
 -- `priceText` nil = no price line: a two-price row already carries both prices on its buttons, and the name
 -- gets both lines instead -- on a phone the name area is narrow and a second line keeps it readable.
-local function row(parent, order, icon, name, priceText, buttons, extra)
+local function row(parent, order, icon, name, priceText, buttons, extra, priceColor)
 	local frame = Instance.new("Frame")
 	frame.Name = "Row"
 	frame.LayoutOrder = order
@@ -292,7 +292,8 @@ local function row(parent, order, icon, name, priceText, buttons, extra)
 		price.BackgroundTransparency = 1
 		price.Font = Enum.Font.Gotham
 		price.TextSize = 11
-		price.TextColor3 = GOLD
+		price.TextColor3 = priceColor or GOLD
+		price.TextTruncate = Enum.TextTruncate.AtEnd
 		price.TextXAlignment = Enum.TextXAlignment.Left
 		price.Text = priceText
 		price.Parent = frame
@@ -412,7 +413,9 @@ function ShopGui:Show(snapshot)
 
 	-- The island shop pays in two currencies, so both purses show. The main-game shop stays as it was.
 	if snapshot.gems ~= nil then
-		self.purse.Text = ("💰 %s · 💎 %s"):format(commas(snapshot.gold or 0), commas(snapshot.gems))
+		-- เฟส 2c: บอกเลเวลฟาร์มที่หัวร้าน — ของที่ล็อกอยู่ขึ้นเลเวลที่ต้องไปถึง จะได้เทียบได้ทันที
+		local level = snapshot.farmLevel and ("🌾 Lv %d · "):format(snapshot.farmLevel) or ""
+		self.purse.Text = ("%s💰 %s · 💎 %s"):format(level, commas(snapshot.gold or 0), commas(snapshot.gems))
 	else
 		self.purse.Text = ("เงิน %d"):format(snapshot.gold or 0)
 	end
@@ -433,7 +436,15 @@ function ShopGui:Show(snapshot)
 			-- เฟส 2a: สองปุ่มทุกแถวที่มีสองราคา (ผู้ใช้เลือก 2026-09-27) · ปุ่มบอกราคาในตัว ไม่ต้องมีบรรทัดราคา
 			-- เพชรฟ้า/เหรียญทอง แยกกันด้วยสีและไอคอน ไม่งั้น "250" ของสัตว์เลี้ยงดูถูกกว่าบ้าน 20,000
 			local buttons, priceText
-			if entry.gems and entry.coins then
+			if entry.lock then
+				-- เฟส 2c: ยังไม่ปลด/บ้านเต็ม — ปุ่ม 🔒 ปุ่มเดียว บรรทัดล่างบอกเหตุผล (แตะ = ขึ้นเหตุผลเต็มที่ท้ายร้าน)
+				local frame = row(self.sellList, entry.index, entry.icon, label, entry.lock, {
+					{ name = "Locked", text = "🔒", color = Color3.fromRGB(70, 74, 84), width = 58, onClick = function()
+						self:Note(entry.lock)
+					end },
+				}, nil, Color3.fromRGB(214, 150, 110))
+				frame.BackgroundTransparency = 0.35
+			elseif entry.gems and entry.coins then
 				buttons = {
 					{ name = "BuyCoins", text = "💰 " .. commas(entry.coins), color = GOLD, width = 74, onClick = buy("coins") },
 					{ name = "BuyGems", text = "💎 " .. commas(entry.gems), color = GEM, width = 52, onClick = buy("gems") },
@@ -444,8 +455,10 @@ function ShopGui:Show(snapshot)
 				priceText = ("ราคา %d"):format(entry.coins or 0)
 				buttons = { { name = "Buy", text = "ซื้อ", color = Color3.fromRGB(150, 200, 140), width = 58, onClick = buy(nil) } }
 			end
-			local frame, used = row(self.sellList, entry.index, entry.icon, label, priceText, buttons, 38 + 4)
-			amountBox(frame, function(n) want = n end, used)
+			if buttons then
+				local frame, used = row(self.sellList, entry.index, entry.icon, label, priceText, buttons, 38 + 4)
+				amountBox(frame, function(n) want = n end, used)
+			end
 		end
 	end
 
@@ -483,6 +496,21 @@ function ShopGui:Show(snapshot)
 	self.hint.Text = ("ราคารับซื้อเปลี่ยนใหม่ใน %d นาที"):format(math.max(0, left // 60))
 
 	self.gui.Enabled = true
+end
+
+-- ข้อความสั้นที่ท้ายร้านชั่วคราว (เหตุผลที่ของล็อก) แล้วกลับเป็นบรรทัดเวลาราคาเหมือนเดิม
+function ShopGui:Note(text)
+	self.hint.Text = text
+	self.hint.TextColor3 = Color3.fromRGB(236, 190, 120)
+	local token = os.clock()
+	self.noteToken = token
+	task.delay(4, function()
+		if self.noteToken ~= token then return end
+		self.hint.TextColor3 = TEXT_MUTED
+		if self.last then
+			self.hint.Text = ("ราคารับซื้อเปลี่ยนใหม่ใน %d นาที"):format(math.max(0, (self.last.rerollIn or 0) // 60))
+		end
+	end)
 end
 
 function ShopGui:Hide()

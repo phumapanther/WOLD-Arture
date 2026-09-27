@@ -182,10 +182,11 @@ local function setSpent(node, spent)
 	-- คูลดาวน์หมด · ตราวันใหม่ปลดให้ · `IslandZones` ปลดสัตว์ตอนเซิร์ฟบูต — ทุกทางเดินผ่าน `setSpent`
 	-- เสมอ จึงไม่ต้องไปไล่ทอยทีละที่ให้เพี้ยนกันเอง
 	if not spent and ServerConfig.IsFarm then
-		local IslandConfig = require(game.ReplicatedStorage.IslandConfig)
+		local IslandAccess = require(game.ServerScriptService.Island.IslandAccess)
 		local GoldBorder = require(game.ReplicatedStorage.GoldBorder)
 		-- แสงแดง (เฟส 2b) ขึ้นเฉพาะโหนดที่ให้ของขอบทองได้ (สัตว์คอก · สายแร่ที่ไม่ใช่ถ่านหิน/หิน)
-		node:SetAttribute("Glow", IslandConfig.RollGlow(GoldBorder.NodeCanGold(node:GetAttribute("NodeKind"))))
+		-- ทอยผ่าน IslandAccess = เฉพาะสีที่ปลดตามเลเวลฟาร์มของเจ้าของเกาะ (เฟส 2c)
+		node:SetAttribute("Glow", IslandAccess.RollGlow(GoldBorder.NodeCanGold(node:GetAttribute("NodeKind"))))
 	end
 
 	-- สัตว์เลี้ยงไม่จาง: มันยังยืนอยู่ตรงนั้นจริงๆ แค่รีดนม/เก็บไข่ซ้ำไม่ได้ชั่วคราว
@@ -388,7 +389,9 @@ local function gather(node, player)
 	local withGold = false
 	if ServerConfig.IsFarm then
 		local GoldBorder = require(game.ReplicatedStorage.GoldBorder)
-		withGold = GoldBorder.GatherItems[itemId] == true and GoldBorder.Roll(glow)
+		local IslandAccess = require(game.ServerScriptService.Island.IslandAccess)
+		-- ขอบทองปลดที่เลเวลฟาร์ม 4 (เฟส 2c) · แสงแดงปลดทีหลัง (Lv10) จึงไม่มีทางได้แดงก่อนปลดขอบทอง
+		withGold = GoldBorder.GatherItems[itemId] == true and IslandAccess.GoldAllowed() and GoldBorder.Roll(glow)
 	end
 	local given, goldResult = Inventory.AddHarvest(player, itemId, count, withGold)
 	if not given then

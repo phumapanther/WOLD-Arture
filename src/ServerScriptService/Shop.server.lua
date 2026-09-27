@@ -21,6 +21,8 @@ local Vitals = require(game.ServerScriptService.Vitals)
 local MarketAccess = require(game.ServerScriptService.MarketAccess)
 local EventState = require(game.ServerScriptService.EventState)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local FarmLevelConfig = require(game.ReplicatedStorage.FarmLevelConfig)
+local Vault = require(game.ServerScriptService.Vault)
 
 local TAG = "WOLD_Npc"
 local RANGE = 12
@@ -165,6 +167,58 @@ local function nearShop(player)
 end
 
 --------------------------------------------------------------------------------
+-- เลเวลฟาร์ม (เฟส 2c) — ร้านเกาะขายเฉพาะของที่ปลดแล้ว · บ้านมีเพดานจำนวน
+--------------------------------------------------------------------------------
+
+local ISLAND = SELLS == ShopConfig.IslandSells
+
+-- บ้านที่เจ้าของเกาะมีทั้งหมด: วางอยู่บนเกาะ + ในกระเป๋า + ในคลัง (ไม่งั้นซื้อแล้วฝากคลังวนเกินเพดานได้)
+local function housesOwned(player)
+	local n = 0
+	local data = IslandAccess.Data and IslandAccess.Data()
+	for _, entry in ipairs(data and data.placed or {}) do
+		if FarmLevelConfig.IsHouse(entry.id) then n += 1 end
+	end
+	for _, holder in ipairs({ Inventory.Get(player), Vault.Get(player) }) do
+		for _, slot in pairs(holder and holder.slots or {}) do
+			if slot and FarmLevelConfig.IsHouse(slot.id) then n += slot.count or 1 end
+		end
+	end
+	return n
+end
+
+-- เลเวลแรกที่เพดานบ้านมากกว่าตอนนี้ (บอกผู้เล่นว่าต้องไปถึงไหน)
+local function nextHouseLevel(level)
+	local cap = FarmLevelConfig.HouseCap(level)
+	for l = level + 1, level + 30 do
+		if FarmLevelConfig.HouseCap(l) > cap then return l end
+	end
+	return nil
+end
+
+-- แถวนี้ซื้อได้ไหมที่เลเวลนี้ · คืน (ข้อความที่จะบอก, จำนวนที่ยังซื้อได้ | nil = ไม่จำกัด)
+-- ร้านเกมหลักไม่มีเลเวล คืน nil เสมอ
+local function farmGate(player, entry)
+	if not ISLAND then return nil, nil end
+	local level = IslandAccess.FarmLevel()
+	local need = FarmLevelConfig.ShopRowLevel(entry)
+	if need > level then
+		return ("🔒 ปลดที่เลเวลฟาร์ม %d (ตอนนี้ Lv%d) — ส่งของกับรถส่งออกเพื่อเก็บ EXP"):format(need, level), 0
+	end
+	if FarmLevelConfig.IsHouse(entry.id) then
+		local cap = FarmLevelConfig.HouseCap(level)
+		local owned = housesOwned(player)
+		if owned >= cap then
+			local at = nextHouseLevel(level)
+			return ("🏠 บ้านเต็มแล้ว (%d/%d หลัง)%s"):format(owned, cap,
+				at and (" — เลเวลฟาร์ม %d มีได้ %d หลัง"):format(at, FarmLevelConfig.HouseCap(at)) or ""), 0
+		end
+		return nil, cap - owned
+	end
+	return nil, nil
+end
+
+--------------------------------------------------------------------------------
 -- Opening the counter
 --------------------------------------------------------------------------------
 
@@ -185,10 +239,13 @@ local function snapshot(player)
 		if item then
 			-- เฟส 2a: ราคาสองสกุลจากกฎเดียว (ShopConfig.PricesOf) · ร้านเกมหลักได้แต่เหรียญ (gems = nil)
 			local coins, gems = ShopConfig.PricesOf(entry)
+			-- เฟส 2c: แถวที่ยังไม่ปลด/บ้านเต็ม โชว์ 🔒 พร้อมเหตุผล ปุ่มซื้อปิด (เซิร์ฟตรวจซ้ำตอนซื้ออยู่ดี)
+			local lockText = farmGate(player, entry)
 			table.insert(sells, {
 				index = index, id = entry.id,
 				name = item.name .. (SPOT_TAG[item.spot] or ""),
 				icon = item.icon, coins = coins, gems = gems,
+				lock = lockText,
 				category = entry.category, -- แท็บในหน้าร้าน (เฉพาะร้านเกาะ)
 				-- **จำนวนที่ได้ต่อหนึ่งครั้งที่กด** (ผู้ใช้สั่ง 2026-09-24: เมล็ด 250 ได้ 3 เม็ด)
 				-- nil/1 = ทีละชิ้นเหมือนเดิม จึงไม่ต้องแตะแถวอื่นในคอนฟิกเลย
@@ -223,6 +280,7 @@ local function snapshot(player)
 		-- ร้านเกาะเท่านั้น: แท็บ + เพชรที่มี (ร้านเกมหลักไม่มีทั้งสองอย่าง หน้าจอจึงหน้าตาเดิม)
 		categories = island and ShopConfig.IslandCategories or nil,
 		gems = island and (PremiumAccess.GetGems and PremiumAccess.GetGems(player) or 0) or nil,
+		farmLevel = island and IslandAccess.FarmLevel() or nil, -- เฟส 2c: หัวร้านบอกเลเวลฟาร์ม
 	}
 end
 
@@ -271,6 +329,13 @@ Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, 
 		if type(amount) == "number" and amount == amount then
 			want = math.clamp(math.floor(amount), 1, MAX_BUY)
 		end
+
+		-- **เลเวลฟาร์ม** (เฟส 2c): ของที่ยังไม่ปลดซื้อไม่ได้ · บ้านซื้อได้ไม่เกินเพดานที่เหลือ
+		local lockText, room = farmGate(player, entry)
+		if lockText then
+			return Remotes.SocialNotify:FireClient(player, "error", lockText)
+		end
+		if room then want = math.min(want, room) end
 
 		-- **จ่ายด้วยสกุลที่ผู้เล่นกดเลือก** (เฟส 2a · ปุ่ม 💎/💰 ทุกแถว) — ราคามาจากกฎเดียวกับหน้าจอ ไม่เชื่อตัวเลขจากไคลเอนต์
 		-- สกุลแปลกๆ = ปฏิเสธเงียบ · ขอเพชรกับแถวร้านเกมหลัก = ไม่มีราคา ปฏิเสธพร้อมบอกเหตุผล

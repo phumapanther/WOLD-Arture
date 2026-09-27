@@ -16,11 +16,11 @@ local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local gui = CraftGui.new()
 
-gui:OnCraft(function(index)
+gui:OnCraft(function(index, times)
 	-- The index is the whole request: the server holds the recipe and works out the cost from it. Nothing is
 	-- shown yet -- the bar starts on CraftStarted, which only comes back for an attempt the server took the
-	-- materials for.
-	Remotes.RequestCraft:FireServer(index)
+	-- materials for. `times` = จำนวนรอบ (เครื่องบนเกาะ เฟส 2c) — เซิร์ฟหนีบเองตามกติกาของสูตร
+	Remotes.RequestCraft:FireServer(index, times)
 end)
 
 -- ตีบวก: ส่งช่องของอาวุธ ("equipped" หรือเลขช่อง) — เซิร์ฟเวอร์ตรวจทุกอย่างซ้ำ

@@ -232,6 +232,8 @@ SoundscapeConfig.Interface = {
 		-- length of an action rather than firing once, and at the common level it went missing under the
 		-- world while the player stood there waiting for it.
 		Craft = 0.6,
+		-- แตรฉลองเลเวลฟาร์ม (เฟส 2c) — เกิดนานๆ ครั้ง ต้องดังพอให้รู้สึกว่าเป็นช่วงเวลาพิเศษ
+		FarmLevelUp = 0.5,
 	},
 
 	-- Placing a call, and being called. The ringtone repeats while the caller waits for an answer; the
@@ -303,6 +305,11 @@ SoundscapeConfig.Interface = {
 	-- it, so a player who has the interface hidden still hears the city break down.
 	EventSlime = "rbxassetid://96435027172919",
 	EventBlackout = "rbxassetid://114222303730351",
+
+	-- เฟส 2c เลเวลฟาร์ม: แตรฉลองตอนแบนเนอร์ขึ้น ("Success Fanfare Medieval Trumpets" · PreloadAsync ผ่าน 2026-09-27)
+	-- และหวูดรถตอนส่งของขึ้นรถ (ไฟล์เดียวกับหวูดรถยนต์ของระบบพาหนะ — ผู้เล่นรู้จักเสียงนี้อยู่แล้ว)
+	FarmLevelUp = "rbxassetid://125367748123159",
+	ExportShip = "rbxassetid://129823389217678",
 }
 
 --------------------------------------------------------------------------------

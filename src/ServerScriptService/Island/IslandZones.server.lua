@@ -144,8 +144,11 @@ end
 local function penSnapshot(model)
 	local entry = IslandAccess.EntryOf(model)
 	local rows = {}
+	-- เฟส 2c: สัตว์ที่ยังไม่ปลดโชว์ 🔒 พร้อมเลเวล (ปุ่มซื้อปิด · penBuy ตรวจซ้ำ) · สัตว์ที่อยู่ในคอกแล้วเลี้ยงต่อได้เสมอ
+	local farmLevel = IslandAccess.FarmLevel()
 	for _, a in ipairs(IslandConfig.PenAnimals) do
-		table.insert(rows, { kind = a.kind, name = a.name, price = a.price, gems = ShopConfig.GemsFor(a.price) })
+		table.insert(rows, { kind = a.kind, name = a.name, price = a.price, gems = ShopConfig.GemsFor(a.price),
+			emoji = a.emoji, lockLevel = (a.level or 1) > farmLevel and a.level or nil })
 	end
 	-- **สถานะรายตัว** (ผู้ใช้สั่ง 2026-09-23: "กดดูได้ด้วยว่าอีกนานไหมกว่าสัตว์แต่ละตัวจะเก็บผลผลิตได้")
 	--
@@ -237,6 +240,11 @@ local function penBuy(player, model, kind, count, currency)
 	local spec
 	for _, a in ipairs(IslandConfig.PenAnimals) do if a.kind == kind then spec = a break end end
 	if not spec then return false, "ไม่มีสัตว์ชนิดนั้น" end
+	-- เฟส 2c: ซื้อได้เฉพาะสัตว์ที่ปลดตามเลเวลฟาร์ม (ตัวที่อยู่ในคอกแล้วไม่ถูกแตะ)
+	local farmLevel = IslandAccess.FarmLevel()
+	if (spec.level or 1) > farmLevel then
+		return false, ("🔒 %s ปลดที่เลเวลฟาร์ม %d (ตอนนี้ Lv%d)"):format(spec.name, spec.level, farmLevel)
+	end
 
 	count = math.clamp(math.floor(tonumber(count) or 1), 1, IslandConfig.PenMax)
 	-- **นับจากตัวที่ยืนอยู่จริงในคอก** (ผู้ใช้สั่ง) ไม่มีคิวให้ค้าง ซื้อเท่าไหร่ก็โผล่เท่านั้นทันที
@@ -345,7 +353,7 @@ local function tickPen(model, entry)
 			animal:SetAttribute("ReadyAgainAt", nil)
 			-- รอบใหม่ = ทอยของเรืองแสงใหม่ (ผู้ใช้สั่ง 2026-09-23) · ทางนี้เป็นทางของเซิร์ฟที่เพิ่งบูต
 			-- ส่วนทางปกติคือ `Gathering.setSpent(node, false)` ซึ่งทอยให้เองอยู่แล้ว
-			animal:SetAttribute("Glow", IslandConfig.RollGlow(true))
+			animal:SetAttribute("Glow", IslandAccess.RollGlow(true))
 			-- ต้องเปิดปุ่มเองด้วย — ปกติ `Gathering.setSpent(node, false)` เป็นคนเปิด แต่นั่นคือ
 			-- `task.delay` ที่ตายไปกับเซิร์ฟเวอร์เก่า ล้างแค่แอตทริบิวต์จะได้สัตว์ที่กดไม่ได้ตลอดไป
 			for _, d in ipairs(animal:GetDescendants()) do
@@ -356,7 +364,7 @@ local function tickPen(model, entry)
 		if not animal:GetAttribute("Grown") and readyAt <= now then
 			animal:SetAttribute("Grown", true)
 			animal:SetAttribute("Spent", nil)
-			animal:SetAttribute("Glow", IslandConfig.RollGlow(true)) -- โตเสร็จ = รอบแรกของมัน (ทอยตอนเก็บได้พอดี)
+			animal:SetAttribute("Glow", IslandAccess.RollGlow(true)) -- โตเสร็จ = รอบแรกของมัน (ทอยตอนเก็บได้พอดี)
 			for _, d in ipairs(animal:GetDescendants()) do
 				if d:IsA("ProximityPrompt") then d.Enabled = true end
 			end
@@ -397,15 +405,22 @@ local function rockFolder(model)
 	return f
 end
 
+-- **เฉพาะก้อนที่ปลดแล้วตามเลเวลฟาร์ม** (เฟส 2c) — หิน/เหล็กเลเวล 1 เสมอ โซนแร่ที่วางไว้ก่อนมีระบบเลเวลจึงยังขุดได้
 local function rollRock()
-	local total = 0
-	for _, r in ipairs(IslandConfig.MineRocks) do total += r.weight end
-	local pick = math.random() * total
+	local level = IslandAccess.FarmLevel()
+	local pool, total = {}, 0
 	for _, r in ipairs(IslandConfig.MineRocks) do
+		if (r.level or 1) <= level then
+			pool[#pool + 1] = r
+			total += r.weight
+		end
+	end
+	local pick = math.random() * total
+	for _, r in ipairs(pool) do
 		pick -= r.weight
 		if pick <= 0 then return r.kind end
 	end
-	return IslandConfig.MineRocks[1].kind
+	return (pool[1] or IslandConfig.MineRocks[1]).kind
 end
 
 -- ก้อนแร่: ใช้ต้นแบบ Deco_Crate ไม่ได้ (คนละเรื่อง) ปั้นก้อนหินง่ายๆ ตรงนี้ แล้วให้ Gathering แจกของ
@@ -458,7 +473,7 @@ local function spawnRock(model, kind)
 	rock:SetAttribute("OneShot", true)
 	rock:SetAttribute("Uid", "mine:" .. HttpService:GenerateGUID(false))
 	-- ก้อนในโซนแร่ติดแสงได้เหมือนแร่อื่น (QA 2026-09-26: เดิมไม่เคยทอย — ก้อน OneShot ไม่เคยผ่าน setSpent)
-	rock:SetAttribute("Glow", IslandConfig.RollGlow(GoldBorder.NodeCanGold(kind)))
+	rock:SetAttribute("Glow", IslandAccess.RollGlow(GoldBorder.NodeCanGold(kind)))
 	CollectionService:AddTag(rock, NODE_TAG)
 	rock.Parent = rockFolder(model)
 end

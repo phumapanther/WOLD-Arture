@@ -91,6 +91,7 @@ function CraftGui.new()
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Text = "โรงตีเหล็ก"
 	title.Parent = panel
+	self.title = title
 
 	local close = Instance.new("TextButton")
 	close.AnchorPoint = Vector2.new(1, 0)
@@ -157,6 +158,8 @@ function CraftGui.new()
 	self.activeTab = nil
 	self.snapshot = nil
 	self.onCraft = nil
+	-- จำนวนรอบที่เลือกไว้ต่อสูตร (เฟส 2c) อยู่ข้ามการวาดใหม่ · ล้างตอนปิดหน้าต่าง
+	self.times = {}
 	return self
 end
 
@@ -249,7 +252,18 @@ end
 -- Sized by the material count rather than fixed, so a five-material recipe is not squeezed into the same
 -- height as a two-material one. The odds-and-fee line and the progress bar each add their own fixed strip on
 -- the bottom, so a row is as tall as what it actually has to show.
-local function recipeRow(parent, order, entry, onClick)
+-- "3 นาที" / "1 ชม. 30 นาที" / "45 วินาที" — เวลาของเครื่องบนเกาะยาวเป็นชั่วโมง
+local function duration(seconds)
+	seconds = math.floor(seconds or 0)
+	if seconds < 60 then return ("%d วินาที"):format(seconds) end
+	local h, m = seconds // 3600, (seconds % 3600) // 60
+	if h > 0 then return m > 0 and ("%d ชม. %d นาที"):format(h, m) or ("%d ชม."):format(h) end
+	return ("%d นาที"):format(m)
+end
+
+-- `times` = จำนวนรอบที่เลือกไว้ (เครื่องบนเกาะทำได้ 1-10 รอบต่องาน · เฟส 2c) · `onTimes(n)` เปลี่ยนจำนวน
+local function recipeRow(parent, order, entry, onClick, times, onTimes)
+	times = times or 1
 	local materialsBottom = 26 + #entry.materials * 16
 	local height = materialsBottom + 22
 
@@ -279,10 +293,15 @@ local function recipeRow(parent, order, entry, onClick)
 	label.TextTruncate = Enum.TextTruncate.AtEnd
 	-- A batch says so on the row. Without it the only clue that one press makes eight bullets is counting
 	-- them in the bag afterwards.
-	label.Text = (entry.yields or 1) > 1
-		and ("%s  x%d"):format(entry.name, entry.yields)
-		or entry.name
+	local made = (entry.yields or 1) * times
+	label.Text = made > 1 and ("%s  x%d"):format(entry.name, made) or entry.name
 	label.Parent = frame
+
+	-- ของที่ต้องใช้ตามจำนวนรอบ (หน้าต่างคิดเพื่อวาดเท่านั้น เซิร์ฟตรวจเองตอนกด)
+	local affordable = entry.affordable
+	for _, material in ipairs(entry.materials) do
+		if material.have < material.need * times then affordable = false end
+	end
 
 	for i, material in ipairs(entry.materials) do
 		local y = 26 + (i - 1) * 16
@@ -299,7 +318,8 @@ local function recipeRow(parent, order, entry, onClick)
 		ItemIcon.Apply(pip, material.icon)
 		-- Faded with the text when the player is short, so the whole line reads as one state rather than a
 		-- bright picture next to a red number.
-		pip.ImageTransparency = material.have >= material.need and 0 or 0.45
+		local need = material.need * times
+		pip.ImageTransparency = material.have >= need and 0 or 0.45
 		pip.Parent = frame
 
 		local line = Instance.new("TextLabel")
@@ -310,10 +330,10 @@ local function recipeRow(parent, order, entry, onClick)
 		line.TextSize = 11
 		-- Coloured per material, not per recipe: when a craft is refused, this says WHICH ingredient is the
 		-- one still missing rather than only that something is.
-		line.TextColor3 = material.have >= material.need and ENOUGH or SHORT
+		line.TextColor3 = material.have >= need and ENOUGH or SHORT
 		line.TextXAlignment = Enum.TextXAlignment.Left
 		line.TextTruncate = Enum.TextTruncate.AtEnd
-		line.Text = ("%s %d/%d"):format(material.name, material.have, material.need)
+		line.Text = ("%s %d/%d"):format(material.name, material.have, need)
 		line.Parent = frame
 	end
 
@@ -333,9 +353,20 @@ local function recipeRow(parent, order, entry, onClick)
 	odds.RichText = true
 	local fee = entry.gold or 0
 	local feeColor = (entry.goldHave or 0) >= fee and ENOUGH or SHORT
-	if entry.note then
+	if entry.lockLevel then
+		-- เฟส 2c: สูตรเครื่องบนเกาะที่ยังไม่ปลด
+		odds.Text = ("<font color=\"#%s\">🔒 ปลดที่เลเวลฟาร์ม %d — ส่งของกับรถส่งออกเพื่อเก็บ EXP</font>"):format(
+			Color3.fromRGB(214, 170, 120):ToHex(), entry.lockLevel)
+	elseif entry.note then
 		-- แถวตีบวก: เซิร์ฟเวอร์เขียนบรรทัดนี้มาเอง (โอกาส · ดาเมจก่อน→หลัง · ผลของการแตก)
 		odds.Text = entry.note
+	elseif (entry.chance or 1) >= 1 and fee <= 0 and (entry.seconds or 0) >= 10 then
+		-- เครื่องที่ใช้เวลาจริง (ครัว · เครื่องบนเกาะ): บอกเวลารวมตามจำนวนรอบ แทน "แลกได้แน่นอน"
+		local total = (entry.seconds or 0) * times
+		odds.Text = times > 1
+			and ("⏱ %s × %d = <font color=\"#%s\">%s</font> · สำเร็จแน่นอน"):format(duration(entry.seconds), times,
+				ENOUGH:ToHex(), duration(total))
+			or ("⏱ %s · สำเร็จแน่นอน · เดินไปทำอย่างอื่นได้"):format(duration(total))
 	elseif (entry.chance or 1) >= 1 and fee <= 0 then
 		-- A straight exchange, which is what the unlucky page is. Printing "100% · 0 เหรียญ" would dress a
 		-- certainty up as a bet and invite the player to read odds that are not there.
@@ -373,13 +404,15 @@ local function recipeRow(parent, order, entry, onClick)
 	button.Size = UDim2.fromOffset(64, 28)
 	-- A button the player cannot use yet is greyed rather than hidden: the recipe is still worth seeing, and
 	-- a row that only appears once you can afford it never tells you what to go and gather.
-	button.BackgroundColor3 = entry.affordable and ENOUGH or Color3.fromRGB(70, 74, 84)
-	button.AutoButtonColor = entry.affordable
+	button.BackgroundColor3 = affordable and ENOUGH or Color3.fromRGB(70, 74, 84)
+	button.AutoButtonColor = affordable
 	button.BorderSizePixel = 0
 	button.Font = Enum.Font.GothamBold
 	button.TextSize = 12
-	button.TextColor3 = entry.affordable and Color3.fromRGB(24, 26, 32) or TEXT_MUTED
-	button.Text = entry.action or (((entry.chance or 1) >= 1 and (entry.gold or 0) <= 0) and "แลก" or "สร้าง")
+	button.TextColor3 = affordable and Color3.fromRGB(24, 26, 32) or TEXT_MUTED
+	button.Text = entry.lockLevel and ("🔒 Lv%d"):format(entry.lockLevel)
+		or entry.action or (((entry.chance or 1) >= 1 and (entry.gold or 0) <= 0)
+			and ((entry.seconds or 0) >= 10 and "ทำ" or "แลก") or "สร้าง")
 	button.Parent = frame
 	corner(button, UDim.new(0, 5))
 	button.Activated:Connect(function()
@@ -389,10 +422,58 @@ local function recipeRow(parent, order, entry, onClick)
 		-- The busy test is read off the button itself rather than passed in, because greying it out happens
 		-- long after this closure was made -- the lock has to be a thing the row can be PUT INTO, not a value
 		-- captured when it was drawn.
-		if not entry.affordable or button:GetAttribute("Busy") then return end
+		if not affordable or button:GetAttribute("Busy") then return end
 		UiSound.Play("Click")
 		onClick()
 	end)
+
+	-- **ปุ่ม −/+ จำนวนรอบ** (เฟส 2c ผู้ใช้เลือก 2026-09-27) — เฉพาะสูตรที่เซิร์ฟบอกว่าทำหลายรอบได้ (`entry.batch`
+	-- = รอบสูงสุดที่ของในกระเป๋าพอ) · ซ่อนตอนล็อกเลเวล
+	if entry.batch and not entry.lockLevel and onTimes then
+		local box = Instance.new("Frame")
+		box.Name = "Times"
+		box.AnchorPoint = Vector2.new(1, 0.5)
+		box.Position = UDim2.new(1, -76, 0.5, 0)
+		box.Size = UDim2.fromOffset(92, 28)
+		box.BackgroundColor3 = STONE_DEEP
+		box.BorderSizePixel = 0
+		box.Parent = frame
+		corner(box, UDim.new(0, 5))
+		local function stepper(text, x, delta)
+			local b = Instance.new("TextButton")
+			b.Position = UDim2.fromOffset(x, 0)
+			b.Size = UDim2.fromOffset(28, 28)
+			b.BackgroundColor3 = Color3.fromRGB(70, 74, 84)
+			b.BorderSizePixel = 0
+			b.Font = Enum.Font.GothamBold
+			b.TextSize = 16
+			b.TextColor3 = TEXT_LIGHT
+			b.Text = text
+			b.Parent = box
+			corner(b, UDim.new(0, 5))
+			b.Activated:Connect(function()
+				if button:GetAttribute("Busy") then return end
+				local nextTimes = math.clamp(times + delta, 1, math.max(1, entry.batch))
+				if nextTimes == times then return end
+				UiSound.Play("Click")
+				onTimes(nextTimes)
+			end)
+		end
+		stepper("−", 0, -1)
+		stepper("+", 64, 1)
+		local count = Instance.new("TextLabel")
+		count.BackgroundTransparency = 1
+		count.Position = UDim2.fromOffset(28, 0)
+		count.Size = UDim2.fromOffset(36, 28)
+		count.Font = Enum.Font.GothamBold
+		count.TextSize = 13
+		count.TextColor3 = RUNE
+		count.Text = ("x%d"):format(times)
+		count.Parent = box
+		-- ชื่อ/บรรทัดโอกาสหดให้พ้นกล่องปุ่ม
+		label.Size = UDim2.new(1, -212, 0, 18)
+		odds.Size = UDim2.new(1, -212, 0, 15)
+	end
 
 	-- The pieces the window has to reach back into once the row is drawn: the bar to fill, the button to put
 	-- to sleep while another row is busy, and the odds line to swap for the outcome and back. The row's own
@@ -414,13 +495,22 @@ function CraftGui:Render()
 	for _, entry in ipairs(self.snapshot.recipes or {}) do
 		if entry.tab == self.activeTab then
 			shown += 1
+			-- จำนวนรอบ: หนีบกับที่ของพอในภาพล่าสุด (ของหมดไประหว่างนั้น = ลดลงเอง)
+			local times = 1
+			if entry.batch then
+				times = math.clamp(self.times[entry.index] or 1, 1, math.max(1, entry.batch))
+				self.times[entry.index] = times
+			end
 			self.rows[entry.index] = recipeRow(self.list, shown, entry, function()
 				-- แถวตีบวกขอ "ตีอาวุธช่องนี้" ไม่ใช่ "ทำสูตรลำดับนี้"
 				if entry.enhance then
 					if self.onEnhance then self.onEnhance(entry.enhance.slot) end
 				elseif self.onCraft then
-					self.onCraft(entry.index)
+					self.onCraft(entry.index, times)
 				end
+			end, times, function(n)
+				self.times[entry.index] = n
+				self:Render()
 			end)
 		end
 	end
@@ -458,6 +548,9 @@ end
 
 function CraftGui:Show(snapshot)
 	self.snapshot = snapshot
+	-- ชื่อหน้าต่างตามเครื่องที่เปิด (เตาอบ/โต๊ะช่าง/กี่ทอ/ครัว) ไม่มี = โรงตีเหล็ก
+	self.title.Text = snapshot.title or "โรงตีเหล็ก"
+	if snapshot.farmLevel then self.title.Text ..= ("   ·   🌾 เลเวลฟาร์ม %d"):format(snapshot.farmLevel) end
 
 	-- งานที่ค้างอยู่มาจาก **สแนปช็อต** ไม่ใช่ความจำของหน้าต่าง
 	--
@@ -530,6 +623,7 @@ function CraftGui:Hide()
 	-- show them to. Reopening draws whatever the server says by then.
 	self.busyIndex = nil
 	self.outcomeIndex = nil
+	self.times = {}
 end
 
 function CraftGui:IsOpen()

@@ -162,8 +162,26 @@ local function row(index, animal, snap)
 	name.TextSize = 16
 	name.TextColor3 = TEXT
 	name.TextXAlignment = Enum.TextXAlignment.Left
-	name.Text = animal.name
+	name.Text = (animal.emoji and (animal.emoji .. " ") or "") .. animal.name
 	name.Parent = frame
+
+	-- เฟส 2c: ยังไม่ปลดตามเลเวลฟาร์ม = ป้าย 🔒 แทนปุ่มซื้อ (เซิร์ฟปฏิเสธอยู่แล้ว ไม่ชวนให้กดแล้วโดนดุ)
+	if animal.lockLevel then
+		frame.BackgroundTransparency = 0.35
+		name.TextColor3 = MUTED
+		local lock = Instance.new("TextLabel")
+		lock.AnchorPoint = Vector2.new(1, 0.5)
+		lock.Position = UDim2.new(1, -10, 0.5, 0)
+		lock.Size = UDim2.new(0, 150, 0, 30)
+		lock.BackgroundColor3 = Color3.fromRGB(58, 56, 62)
+		lock.Font = Enum.Font.GothamBold
+		lock.TextSize = 14
+		lock.TextColor3 = Color3.fromRGB(214, 170, 120)
+		lock.Text = ("🔒 เลเวลฟาร์ม %d"):format(animal.lockLevel)
+		lock.Parent = frame
+		local lc = Instance.new("UICorner"); lc.CornerRadius = UDim.new(0, 7); lc.Parent = lock
+		return
+	end
 
 	-- เฟส 2a: สองปุ่มทุกแถว 💎 / 💰 (ผู้ใช้เลือก 2026-09-27) กดหนึ่งครั้ง = หนึ่งตัว
 	-- ปุ่ม "เต็มคอก" เดิมถูกถอด: คอกจุแค่ 3 ตัว และสี่ปุ่มในแถวเดียวไม่พอที่บนมือถือ

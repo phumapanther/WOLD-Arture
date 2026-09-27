@@ -27,7 +27,15 @@ local REASON_TEXT = {
 	ownerleft = "เจ้าของเกาะไม่อยู่ เก็บของไม่ได้",
 	full = "กระเป๋าเต็ม",
 	missing = "ไม่พบแปลงนี้แล้ว",
+	seedlocked = "เมล็ดชนิดนี้ยังปลูกไม่ได้ (ปลดตามเลเวลฟาร์ม)",
+	far = "อยู่ไกลแปลงเกินไป",
 }
+
+-- **เลือกเมล็ด** (เฟส 2c — เมล็ดฝ้ายแยกจากเมล็ดสุ่ม ผู้ใช้เลือก 2026-09-27)
+-- มีเมล็ดที่ปลูกได้ชนิดเดียว = กด E หยอดเลย (เหมือนเดิม) · มีหลายชนิด = ขึ้นให้เลือกครั้งแรก แล้ว **จำไว้ 90 วินาที**
+-- (ต่ออายุทุกครั้งที่หยอด) เดินหยอดทั้งแถวได้โดยไม่ต้องเลือกซ้ำ · ปุ่ม "เปลี่ยน" บนจอล้างที่จำไว้
+local CHOICE_SECONDS = 90
+local Choice = {} -- [player] = { seed = id, at = os.clock() }
 
 local function notify(player, reason)
 	Remotes.SocialNotify:FireClient(player, "error", REASON_TEXT[reason] or reason)
@@ -38,15 +46,33 @@ local function cropSpec(item)
 	return nil
 end
 
-local function rollCrop()
+-- สุ่มจากพืชที่เมล็ดนี้ให้ได้ (IslandConfig.CropsFor — กรองเลเวลฟาร์มแล้ว) · น้ำหนักรวมเป็น 0 (เมล็ดเฉพาะชนิด) = ตัวแรก
+local function rollCrop(crops)
 	local total = 0
-	for _, c in ipairs(IslandConfig.Crops) do total += c.weight end
+	for _, c in ipairs(crops) do total += c.weight or 0 end
+	if total <= 0 then return crops[1] end
 	local pick = math.random() * total
-	for _, c in ipairs(IslandConfig.Crops) do
-		pick -= c.weight
+	for _, c in ipairs(crops) do
+		pick -= c.weight or 0
 		if pick <= 0 then return c end
 	end
-	return IslandConfig.Crops[#IslandConfig.Crops]
+	return crops[#crops]
+end
+
+-- เลเวลฟาร์มที่เมล็ดนี้เริ่มปลูกได้ (พืชเลเวลต่ำสุดที่มันให้) · nil = ไม่ใช่เมล็ด
+local function seedLevel(seedId)
+	local best
+	for _, c in ipairs(IslandConfig.CropsFor(seedId, nil)) do
+		best = math.min(best or math.huge, c.level or 1)
+	end
+	return best
+end
+
+local function isSeed(id)
+	for _, s in ipairs(IslandConfig.SeedItems) do
+		if s == id then return true end
+	end
+	return false
 end
 
 -- เวลาที่พืชชนิดนี้ต้องใช้ **หลังหักโบนัส** — สัตว์เลี้ยงบนเกาะทำให้โตเร็วขึ้น 10% (ผู้ใช้สั่ง)
@@ -106,15 +132,20 @@ end
 -- ปลูก / เก็บเกี่ยว
 --------------------------------------------------------------------------------
 
-local function plant(player, model)
+-- `seedId` nil = เมล็ดสุ่ม (ทางเดิม · เทสเก่าเรียกแบบนี้)
+local function plant(player, model, seedId)
 	if not IslandAccess.IsOwner(player) then return false, "notowner" end
 	local entry = IslandAccess.EntryOf(model)
 	if not entry then return false, "missing" end
 	if entry.crop then return false, "planted" end
-	local slot = Inventory.FindSlotById(player, IslandConfig.SeedItem)
+	seedId = seedId or IslandConfig.SeedItem
+	if not isSeed(seedId) then return false, "noseed" end
+	local crops = IslandConfig.CropsFor(seedId, IslandAccess.FarmLevel())
+	if #crops == 0 then return false, "seedlocked" end
+	local slot = Inventory.FindSlotById(player, seedId)
 	if not slot then return false, "noseed" end
 	if not Inventory.RemoveFromSlot(player, slot, 1) then return false, "noseed" end
-	local spec = rollCrop()
+	local spec = rollCrop(crops)
 	entry.crop, entry.at = spec.item, os.time()
 	-- แสงยังไม่ทอยตอนหยอด — ทอยตอนสุก (ripen ข้างล่าง · ผู้ใช้สั่ง 2026-09-25)
 	entry.glow = nil
@@ -130,8 +161,8 @@ end
 -- ตอนที่สามารถเก็บได้") · จดใน `entry.glow` (false = ทอยแล้วไม่ติด) ออก-เข้าเกาะจึงทอยใหม่ไม่ได้
 -- เรียกซ้ำได้: ทอยครั้งเดียวต่อรอบปลูก แล้วแค่คืนแอตทริบิวต์ให้ตรงกับโปรไฟล์ (หลังเซิร์ฟบูต)
 local function ripen(model, entry)
-	-- ผลผลิตแปลงผักทุกชนิดมีขอบทองได้ แสงแดงจึงขึ้นได้ทุกแปลง (เฟส 2b)
-	if entry.glow == nil then entry.glow = IslandConfig.RollGlow(true) or false end
+	-- ผลผลิตแปลงผักทุกชนิดมีขอบทองได้ แสงแดงจึงขึ้นได้ทุกแปลง (เฟส 2b) · สีที่ยังไม่ปลดไม่ขึ้น (เฟส 2c)
+	if entry.glow == nil then entry.glow = IslandAccess.RollGlow(true) or false end
 	local tone = entry.glow or nil
 	if model:GetAttribute("Glow") ~= tone then model:SetAttribute("Glow", tone) end
 end
@@ -160,7 +191,8 @@ local function harvest(player, model)
 	amount = math.floor(amount * IslandConfig.GlowYield(glow) + 0.5)
 
 	-- **ของขอบทอง** (เฟส 2b) หนึ่งชิ้นในกองนี้ · กระเป๋า VIP เต็ม = ได้เป็นของธรรมดา (AddHarvest)
-	local withGold = GoldBorder.CropItems[entry.crop] == true and GoldBorder.Roll(glow)
+	-- ขอบทองปลดที่เลเวลฟาร์ม 4 (เฟส 2c)
+	local withGold = GoldBorder.CropItems[entry.crop] == true and IslandAccess.GoldAllowed() and GoldBorder.Roll(glow)
 	if not Inventory.HasRoomFor(player, entry.crop, amount) then return false, "full" end
 	local given, goldResult = Inventory.AddHarvest(player, entry.crop, amount, withGold)
 	if not given then return false, "full" end
@@ -239,6 +271,52 @@ end
 -- ลูป: ใส่ปุ่มให้แปลงที่ยังไม่มี · อัปเดตพืชและป้ายทุกแปลง
 --------------------------------------------------------------------------------
 
+-- เมล็ดที่ผู้เล่นมีและปลูกได้ที่เลเวลนี้ · คืน (รายการ, เมล็ดที่มีแต่ยังล็อก)
+local function usableSeeds(player)
+	local level = IslandAccess.FarmLevel()
+	local usable, locked = {}, nil
+	for _, seedId in ipairs(IslandConfig.SeedItems) do
+		local count = Inventory.CountOf(player, seedId)
+		if count > 0 then
+			if #IslandConfig.CropsFor(seedId, level) > 0 then
+				local item = ItemCatalog.Get(seedId)
+				usable[#usable + 1] = { id = seedId, count = count, name = item and item.name or seedId,
+					icon = item and item.icon or "" }
+			else
+				locked = locked or seedId
+			end
+		end
+	end
+	return usable, locked
+end
+
+-- กด E ที่แปลงว่าง: เมล็ดชนิดเดียว = หยอด · หลายชนิด = ใช้ที่เลือกไว้ (ภายใน 90 วิ) ไม่งั้นถามก่อน
+local function plantFromPrompt(player, model)
+	if not IslandAccess.IsOwner(player) then return false, "notowner" end
+	local usable, locked = usableSeeds(player)
+	if #usable == 0 then
+		if locked then
+			local item = ItemCatalog.Get(locked)
+			return false, ("%s ปลูกได้ที่เลเวลฟาร์ม %d"):format(item and item.name or locked, seedLevel(locked) or 1)
+		end
+		return false, "noseed"
+	end
+	if #usable == 1 then return plant(player, model, usable[1].id) end
+	local choice = Choice[player]
+	if choice and os.clock() - choice.at <= CHOICE_SECONDS then
+		for _, s in ipairs(usable) do
+			if s.id == choice.seed then
+				choice.at = os.clock()
+				Remotes.IslandSeedChoice:FireClient(player, "active", s.id, CHOICE_SECONDS)
+				return plant(player, model, s.id)
+			end
+		end
+	end
+	local entry = IslandAccess.EntryOf(model)
+	Remotes.IslandSeedChoice:FireClient(player, "ask", entry and entry.uid, usable)
+	return true
+end
+
 local function ensurePrompt(model)
 	local soil = model:FindFirstChild("Soil")
 	if not soil then return nil end
@@ -253,7 +331,7 @@ local function ensurePrompt(model)
 		local entry = IslandAccess.EntryOf(model)
 		if not entry then return end
 		local ok, reason
-		if entry.crop then ok, reason = harvest(player, model) else ok, reason = plant(player, model) end
+		if entry.crop then ok, reason = harvest(player, model) else ok, reason = plantFromPrompt(player, model) end
 		if not ok then notify(player, reason) end
 	end)
 	return prompt
@@ -318,6 +396,31 @@ task.spawn(function()
 		if not ok then warn("[IslandPlots] " .. tostring(err)) end
 		task.wait(TICK)
 	end
+end)
+
+-- เลือกเมล็ดจากหน้าต่างเล็ก (ไคลเอนต์ส่ง uid ของแปลง + เมล็ดที่เลือก) → จำไว้ 90 วิ แล้วหยอดแปลงนั้นเลย
+Remotes.IslandPlantSeed.OnServerEvent:Connect(function(player, uid, seedId)
+	if type(seedId) ~= "string" or not isSeed(seedId) then return end
+	local model = IslandAccess.ModelOf and IslandAccess.ModelOf(tonumber(uid) or -1)
+	if not model or model:GetAttribute("ItemId") ~= "FarmPlot" then return notify(player, "missing") end
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if not root or (model:GetPivot().Position - root.Position).Magnitude > 18 then return notify(player, "far") end
+	local ok, reason = plant(player, model, seedId)
+	if ok then
+		Choice[player] = { seed = seedId, at = os.clock() }
+		Remotes.IslandSeedChoice:FireClient(player, "active", seedId, CHOICE_SECONDS)
+	elseif reason then
+		notify(player, reason)
+	end
+end)
+
+-- ปุ่ม "เปลี่ยน" บนแถบเมล็ด = ลืมที่เลือกไว้ แปลงถัดไปจะถามใหม่
+Remotes.IslandSeedChoice.OnServerEvent:Connect(function(player, what)
+	if what == "clear" then Choice[player] = nil end
+end)
+
+game:GetService("Players").PlayerRemoving:Connect(function(player)
+	Choice[player] = nil
 end)
 
 IslandAccess.Plant = plant

@@ -106,3 +106,5 @@ if elapsed < 1 then
 	task.wait(1 - elapsed)
 end
 gui:Destroy()
+-- ธงท้องถิ่น (ไม่ replicate) ว่าจอโหลดจบแล้ว — แบนเนอร์ฉลองเลเวลฟาร์มรอธงนี้ก่อนขึ้น (เฟส 2c)
+Players.LocalPlayer:SetAttribute("WOLD_Loaded", true)
