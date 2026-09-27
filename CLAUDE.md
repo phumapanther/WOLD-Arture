@@ -33,7 +33,7 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 - `RequestShopAction("buy", index, amount, currency)` · `IslandPenBuy(uid, kind, count, currency)` · สัตว์ในคอกราคาเพชร = `ShopConfig.GemsFor(price)`
 - `ShopGui.new()` แขวน PlayerGui เฉพาะตอนเกมรัน (Edit เทสได้ `shop_gui_test`) · แท็บที่เลือกอยู่รอดข้ามการวาดใหม่หลังซื้อ
 
-**เฟส 2b (ของขอบทอง + แสงสามสี + กระเป๋า VIP 36) เสร็จ 2026-09-27 — ดันครบสามเพลส (mismatches 0) · รอผู้ใช้เทส** แผน `docs/superpowers/plans/2026-09-27-phase2b-gold-border.md`
+**เฟส 2b (ของขอบทอง + แสงสามสี + กระเป๋า VIP 36) เสร็จ 2026-09-27 — ดันครบสามเพลส (mismatches 0) · ผู้ใช้แจ้งว่าเทสแล้ว 2026-09-27** แผน `docs/superpowers/plans/2026-09-27-phase2b-gold-border.md`
 - ⚠️ **ของขอบทอง = `meta.gold = true` · ถามผ่าน `ItemCatalog.IsGoldBorder(meta)` เท่านั้น** (ยกเว้น `BagRanges` ที่เขียนเงื่อนไขซ้ำไว้เพราะเทส Edit)
   โอน/ฝาก/ทิ้ง/ส่งเมล/เทรด/ให้/ยึด ไม่ได้ทุกทาง: `IsMailable/IsStorable/IsDroppable(id, meta)` **ผู้เรียกต้องส่ง slot.meta** ·
   เทรด/ให้ของ/จับกุม เช็ค `IsGoldBorder` เอง · **ระบบใหม่ที่ย้ายของออกจากกระเป๋าคนหนึ่ง ต้องเช็คด้วย**
@@ -45,6 +45,28 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 - ช่องทองในกระเป๋า = แสงวิ่งรอบกรอบ (UIGradient หมุนบน UIStroke) + พื้นช่องเรืองทอง + ประกายสองจุด (ผู้ใช้เลือก 2026-09-27)
   ⚠️ **✦ ขึ้นเป็นกล่องเปล่าในเกมจริง** (ผู้ใช้เห็นแล้ว) ห้ามใช้สัญลักษณ์ตัวอักษร ใช้ Frame หรืออีโมจิสี (🌟 💎) แทน ·
   ScreenGui ที่สร้างด้วยโค้ดเป็น ZIndex **Global** (วัดแล้ว) Frame ที่ตั้ง ZIndex 0 จะจมใต้ช่อง · หน้าต่างคอกมีเสียงคลิก + เหรียญตอนซื้อสำเร็จ
+
+**เฟส 2c (เลเวลฟาร์ม + รถส่งออก + คราฟขั้นสูง) เสร็จ 2026-09-27 — ดันครบสามเพลส (mismatches 0) · รอผู้ใช้เทส**
+แผน `docs/superpowers/plans/2026-09-27-phase2c-farm-level.md` · **ตัวเลขทั้งหมด** `docs/superpowers/specs/2026-09-27-phase2c-farm-level-design.md`
+- ข้อมูล `profile.Data.Island.farm` เจ้าของคนเดียวคือ `Island/IslandFarm.server.lua` (EXP · ใบสั่ง 3 ใบ · งานส่ง `ship` · ตัวนับเพชร วัน/เดือน ·
+  `celebrated`) · **EXP ฟาร์มเข้าทางเดียวคือจบงานส่งออก** และจบได้ที่ลูป 1 วิของไฟล์นั้นเท่านั้น (ล้าง `ship` ก่อนแจก ไม่มี yield = ไม่ซ้ำ)
+- ⚠️ **ทอยแสงบนเกาะต้องผ่าน `IslandAccess.RollGlow(canGold)` · ขอบทองถาม `IslandAccess.GoldAllowed()`** (ปลดตามเลเวล:
+  ฟ้า Lv2 · ขอบทอง Lv4 · ทอง Lv7 · แดง Lv10) · `IslandAccess.FarmLevel()` อ่านโปรไฟล์ตรง ไม่ได้รอสคริปต์เติม (ยังไม่โหลด = Lv1)
+- ⚠️ **ของบนเกาะทุกชิ้นมี `level` ที่คอนฟิกของมันเอง** — แถวร้านเกาะ · `PenAnimals` · `Crops` · `MineRocks` · สูตรเครื่องบนเกาะ
+  (`farm_level_test` จับแถวที่ลืม) · ตารางปลดสำหรับหน้าจอประกอบเองจากคอนฟิกพวกนี้ (`FarmLevelConfig.UnlocksAt`) ไม่มีตารางที่สอง
+- ล็อกแค่ **ซื้อใหม่/ของที่สุ่มออก** (ร้าน · คอก · ก้อนในโซนแร่ · พืชจากเมล็ด · แสง · ขอบทอง · สูตร) ของที่มีอยู่แล้วใช้ต่อได้หมด ·
+  เพดานบ้านนับ วาง+กระเป๋า+คลัง ตอนซื้อ (Lv4 = 1 · Lv9 = 2 · Lv14 = 3 +1 ทุก 5) · เกาะใหม่ไม่แจกบ้านแล้ว
+- รถ = `Car_Cargo` ในแมพ (หาจากชื่อ ติดแท็ก `WOLD_ExportTruck`) ปุ่ม E ที่ `Tailgate` · แอตทริบิวต์ `ShipStart/ShipEnd` บนรถ (ป้าย+ควัน
+  ฝั่งไคลเอนต์ ทุกคนเห็น) · `FarmLevel/FarmExpInto/FarmExpNeed/FarmShipEnd` บนตัวเจ้าของ (ป้าย 🌾 มุมซ้ายบน `FarmLevelController`)
+- ใบสั่ง/เพชร = `ExportOrders` (ข้อมูลล้วน เทสได้) · ใบขอบทองกินเฉพาะชิ้นทอง `Inventory.CountGold/RemoveGold` (ใหม่) · ใบธรรมดาข้ามชิ้นทองเหมือนเดิม
+- ฉลอง: ไคลเอนต์ส่ง `FarmCelebrate("ready")` หลังจอโหลดจบ (แอตทริบิวต์ท้องถิ่น `WOLD_Loaded` จาก `LoadingController`) → เซิร์ฟส่ง
+  `{from,to}` → แบนเนอร์ → `"seen"` → จด `celebrated` + พลุ (ทุกคนเห็น) · แตรฉลอง `UiSound "FarmLevelUp"`
+- เครื่องใหม่ `BakeryOven/MetalBench/Loom` = สถานี `bakery/metal/loom` ใน `CraftStations` **`farmOnly`** (ชื่อซ้ำของตกแต่งในแมพหลักได้) ·
+  สูตรต่อท้าย `CraftConfig` มี `level` + `batch` (ทำ 1-10 รอบ: `RequestCraft(index, times)`) · ต้นแบบโมเดล `mapgen/102_farm_machines.lua` (`Manual`)
+- เมล็ด: `IslandConfig.SeedItems` + `CropsFor(seed, level)` · มีเมล็ดที่ปลูกได้ >1 ชนิด = กล่องเลือก (`IslandSeedController`) แล้วจำ 90 วิ
+- ของคราฟใหม่ 19 ชิ้น + ฝ้าย/เมล็ดฝ้าย/3 เครื่อง ยังเป็น ⌛ (`docs/items-without-icons.md`)
+- **คำสั่งเทส `/farm [exp <n> | level <n> | ship | orders | reroll | gems | reset]`** (บนเกาะของตัวเอง) — `ship` = รถกลับทันที
+- **`tools/verify.js <project.json> [--push]`** (ใหม่) เทียบแฮชทุกสคริปต์ที่เพลสควรมีกับ Studio · `--push` ดันที่ไม่ตรง — ใช้แทน dump_all+cmp
 
 ## โมเดลจากโค้ด (modelkit)
 ชุดสร้างโมเดลด้วยโค้ดอยู่ที่ `modelkit/` + `models/` — **อ่าน `docs/modelkit-reference.md` ก่อนแตะ**

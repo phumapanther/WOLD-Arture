@@ -44,13 +44,13 @@ chipGui.DisplayOrder = 6
 chipGui.Enabled = false
 chipGui.Parent = playerGui
 
--- กล่องมุมซ้ายบน ข้างปุ่มเมนู Roblox · ย่อตามจอแบบเดียวกับปุ่มมุมขวาบน (มือถือไม่ย่อ)
+-- กล่องมุมซ้ายบน ข้างปุ่มเมนู Roblox · **ขนาดคงที่ ไม่ย่อตามจอ** — UIScale ย่อจากมุมซ้ายบน ตำแหน่งจะหดเข้าไป
+-- ทับปุ่มเมนูของ Roblox (ซึ่งไม่ย่อตาม) · ป้ายกว้าง 214 px พอดีทุกจอตั้งแต่มือถือ
 local group = Instance.new("Frame")
 group.BackgroundTransparency = 1
 group.Position = UDim2.fromOffset(0, 0)
 group.Size = UDim2.fromOffset(300, 60)
 group.Parent = chipGui
-Responsive.Scale(group, Responsive.CornerMinScale())
 
 local chip = Instance.new("Frame")
 chip.Position = UDim2.fromOffset(62, 10)

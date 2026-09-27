@@ -81,9 +81,17 @@ end
 
 -- งานส่งที่โหลดมายังอ่านได้ไหม (ข้อมูลเสีย = ทิ้ง · ของออกจากกระเป๋าไปแล้วก็จริง แต่ไม่มีทางรู้ว่าต้องจ่ายเท่าไหร่)
 local function shipValid(ship)
-	return type(ship) == "table" and type(ship.order) == "table" and type(ship.endAt) == "number"
+	if not (type(ship) == "table" and type(ship.order) == "table" and type(ship.endAt) == "number"
 		and type(ship.startAt) == "number" and tonumber(ship.order.coins) and tonumber(ship.order.exp)
 		and type(ship.slot) == "number" and ship.slot >= 1 and ship.slot <= ExportConfig.OrderSlots
+		and type(ship.order.lines) == "table") then
+		return false
+	end
+	-- หน้าต่างวาดบรรทัดของใบที่กำลังส่งด้วย — บรรทัดเสียจะทำให้ภาพพังทั้งหน้าต่าง
+	for _, line in ipairs(ship.order.lines) do
+		if type(line) ~= "table" or type(line.item) ~= "string" or type(line.qty) ~= "number" then return false end
+	end
+	return true
 end
 
 -- ใบสั่งครบ 3 ช่องเสมอ (อาร์เรย์ไม่มีรู — DataStore เก็บเป็น JSON array ได้ตรงๆ) · ใบเสีย/ขาด = สุ่มใหม่
