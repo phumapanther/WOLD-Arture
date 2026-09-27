@@ -196,7 +196,7 @@ local function snapshot(player, farm, open)
 	end
 	return {
 		open = open == true,
-		level = level, into = into, need = need,
+		level = level, into = into, need = need, max = FarmLevelConfig.IsMax(level),
 		gemsToday = farm.gemDayCount, gemsDayCap = ExportConfig.Gems.perDay,
 		rerollLeft = farm.rerollDay == day and 0 or ExportConfig.FreeRerollsPerDay,
 		ship = farm.ship and { slot = farm.ship.slot, startAt = farm.ship.startAt, endAt = farm.ship.endAt } or nil,
@@ -354,7 +354,9 @@ local function resolve(owner, farm)
 	ExportOrders.ResetCounters(farm, os.time())
 	-- ระบบเพชรไม่พร้อม (ไม่ควรเกิด) = ไม่นับเข้าเพดาน ดีกว่านับว่าให้ไปแล้วทั้งที่ไม่ได้
 	local gems = PremiumAccess.AddGems and ExportOrders.RollGems(farm, order, rng) or 0
-	farm.exp += exp
+	local wasMax = FarmLevelConfig.IsMax(levelOf(farm))
+	-- เพดานเลเวล (ผู้ใช้สั่ง 2026-09-27: ตัน Lv19) — AddExp หยุดนับที่เส้นเพดานเอง (หรือสะสมไว้ ตาม BankExpAtMax)
+	farm.exp = FarmLevelConfig.AddExp(farm.exp, exp)
 	farm.gemDayOrders += 1
 	farm.gemDayCount += gems
 	farm.gemMonthCount += gems
@@ -366,7 +368,8 @@ local function resolve(owner, farm)
 	flush(owner)
 	publish(farm)
 
-	local text = ("🚚 รถส่งออกกลับมาแล้ว! +%s เหรียญ · +%s EXP ฟาร์ม"):format(commas(coins), commas(exp))
+	local text = wasMax and ("🚚 รถส่งออกกลับมาแล้ว! +%s เหรียญ · ฟาร์มเลเวลสูงสุดแล้ว"):format(commas(coins))
+		or ("🚚 รถส่งออกกลับมาแล้ว! +%s เหรียญ · +%s EXP ฟาร์ม"):format(commas(coins), commas(exp))
 	if gems > 0 then text ..= (" · +%d 💎"):format(gems) end
 	notify(owner, "info", text)
 	push(owner, farm, false)
@@ -508,11 +511,6 @@ end)
 -- คำสั่งแอดมิน /farm (เทสในเกม) — AdminCommands เรียกผ่าน IslandAccess.FarmAdmin
 --------------------------------------------------------------------------------
 
-local function expForLevel(level)
-	local total = 0
-	for l = 1, level - 1 do total += FarmLevelConfig.ExpToNext(l) end
-	return total
-end
 
 IslandAccess.FarmAdmin = function(admin, args)
 	local farm = farmData()
@@ -521,9 +519,12 @@ IslandAccess.FarmAdmin = function(admin, args)
 	local n = tonumber(args[2])
 	if sub == "exp" and n then
 		farm.exp = math.max(0, farm.exp + math.floor(n))
+		if not FarmLevelConfig.BankExpAtMax then
+			farm.exp = math.min(farm.exp, FarmLevelConfig.ExpForLevel(FarmLevelConfig.MaxLevel))
+		end
 	elseif sub == "level" and n then
-		local target = math.clamp(math.floor(n), 1, 200)
-		farm.exp = expForLevel(target)
+		local target = math.clamp(math.floor(n), 1, FarmLevelConfig.MaxLevel)
+		farm.exp = FarmLevelConfig.ExpForLevel(target)
 		-- ลดเลเวล (เทส) = ถือว่าฉลองถึงตรงนั้นแล้ว ไม่งั้นขึ้นใหม่ครั้งหน้าจะไม่มีแบนเนอร์
 		if target < farm.celebrated then farm.celebrated = target end
 	elseif sub == "ship" then

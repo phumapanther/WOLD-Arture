@@ -33,14 +33,26 @@ local ok, err = pcall(function()
 	----------------------------------------------------------------- เส้น EXP
 	local mono = true
 	for i = 2, #F.ExpTable do if F.ExpTable[i] <= F.ExpTable[i - 1] then mono = false end end
-	check(mono and F.ExpTable[1] == 100 and #F.ExpTable == 14, "ตาราง EXP 14 ขั้น เพิ่มขึ้นเสมอ เริ่ม 100")
+	check(mono and #F.ExpTable >= F.MaxLevel, "ตาราง EXP เพิ่มขึ้นเสมอ ยาวถึงเพดาน")
 	local l, into, need = F.LevelFromExp(0)
-	check(l == 1 and into == 0 and need == 100, "EXP 0 = Lv1 0/100")
-	check(F.LevelFromExp(99) == 1 and F.LevelFromExp(100) == 2 and F.LevelFromExp(300) == 3, "เส้นแบ่ง Lv2 ที่ 100 · Lv3 ที่ 300")
-	check(F.LevelFromExp(8699) == 9 and F.LevelFromExp(8700) == 10, "Lv10 ที่ EXP สะสม 8,700")
-	check(F.ExpToNext(15) == 6050 and F.ExpToNext(16) == 6800, "เลยตาราง +750 ต่อเลเวล")
+	check(l == 1 and into == 0 and need == F.ExpTable[1], "EXP 0 = Lv1 เริ่มศูนย์")
+	check(F.LevelFromExp(F.ExpForLevel(2) - 1) == 1 and F.LevelFromExp(F.ExpForLevel(2)) == 2 and F.LevelFromExp(F.ExpForLevel(3)) == 3, "เส้นแบ่งเลเวลตรงกับ ExpForLevel")
+	check(F.LevelFromExp(F.ExpForLevel(10) - 1) == 9 and F.LevelFromExp(F.ExpForLevel(10)) == 10, "Lv10 ที่ EXP สะสมของมันพอดี")
+	local n = #F.ExpTable
+	check(F.ExpToNext(n + 1) == F.ExpTable[n] + F.ExpStepAfter, "เลยตารางใช้สูตรต่อ")
+	-- เพดานเลเวล (ผู้ใช้สั่ง 2026-09-27: ตัน Lv19 ไปก่อน)
+	check(F.MaxLevel == 19 and F.IsMax(19) and not F.IsMax(18), "เพดานเลเวล 19")
+	local capExp = F.ExpForLevel(F.MaxLevel)
+	local ml, mi, mn = F.LevelFromExp(capExp * 3)
+	check(ml == 19 and mi == mn, "EXP เกินเพดาน = Lv19 หลอดเต็ม")
+	check(F.LevelFromExp(capExp - 1) == 18 and F.LevelFromExp(capExp) == 19, "ถึง Lv19 ที่ EXP สะสมของมันพอดี")
+	if not F.BankExpAtMax then
+		check(F.AddExp(capExp - 10, 500) == capExp and F.AddExp(capExp, 500) == capExp, "ตันแล้ว EXP หยุดที่เส้นเพดาน")
+	end
+	check(F.AddExp(100, 50) == 150 and F.AddExp(capExp * 2, 10) >= capExp * 2, "AddExp ไม่มีวันลด")
+	check(F.LastUnlockLevel() <= F.MaxLevel, "ตารางปลดไม่เกินเพดาน")
 	check(F.LevelFromExp(-5) == 1 and F.LevelFromExp(0 / 0) == 1 and F.LevelFromExp("x") == 1, "EXP แปลกๆ = Lv1")
-	check(F.LevelFromExp(1e15) <= 1000, "EXP มหาศาลไม่วนไม่จบ (เพดานลูป 1000)")
+	check(F.LevelFromExp(1e15) == F.MaxLevel, "EXP มหาศาลไม่วนไม่จบ")
 
 	----------------------------------------------------------------- สิ่งที่ปลด
 	check(F.HouseCap(1) == 0 and F.HouseCap(3) == 0 and F.HouseCap(4) == 1 and F.HouseCap(8) == 1
@@ -174,14 +186,15 @@ local ok, err = pcall(function()
 			local seen = {}
 			for _, line in ipairs(o.lines) do
 				local good = ExportConfig.Get(line.item)
-				if good.level > level or line.qty > good.max or seen[line.item] then
+				if good.level > level or line.qty > EO.MaxQty(good, level) or seen[line.item] then
 					orderProblems[#orderProblems + 1] = ("Lv%d:%s x%d"):format(level, line.item, line.qty) break
 				end
 				seen[line.item] = true
 				if good.final then finals += 1 end
 				coins += good.coins * line.qty
 			end
-			if coins ~= o.coins or o.exp ~= math.ceil(coins / ExportConfig.ExpDivisor) or finals > 1 then
+			if coins ~= o.coins or o.exp ~= math.ceil(coins / ExportConfig.ExpDivisor)
+				or finals > (level >= 10 and ExportConfig.FinalsFrom10 or 1) then
 				orderProblems[#orderProblems + 1] = "Lv" .. level .. ":เหรียญ/EXP/ของขั้นสุดท้ายเกิน" break
 			end
 			if level == 1 and o.lines[1].item ~= "Wheat" and o.lines[1].item ~= "Vegetable" then
@@ -196,6 +209,53 @@ local ok, err = pcall(function()
 	avg1, avg10 = avg1 / 200, avg10 / 200
 	check(avg1 >= 40 and avg1 <= 100 and avg10 >= 200 and avg10 <= 450,
 		("EXP เฉลี่ยต่อใบ Lv1 %.0f (≈2 ใบถึง Lv2) · Lv10 %.0f"):format(avg1, avg10))
+
+	-- **จังหวะเลเวล** (ผู้ใช้สั่ง 2026-09-27): 3 เลเวลแรกขึ้นง่าย · หลัง Lv5 ยากขึ้น · ถึงเพดานใช้ 1-3 เดือน
+	-- จำลองส่งทีละใบ (เลือกสุ่มจาก 3 ใบ ใบที่ส่งถูกแทนด้วยใบใหม่) 60 รอบ เฉลี่ยจำนวนใบที่ต้องส่งถึงแต่ละเลเวล
+	local reach = { [2] = 0, [3] = 0, [4] = 0, [5] = 0, [19] = 0 }
+	local TRIALS = 60
+	for trial = 1, TRIALS do
+		local r = Random.new(trial * 131)
+		local exp, count = 0, 0
+		local slots = { EO.NewOrder(1, r, 1), EO.NewOrder(1, r, 2), EO.NewOrder(1, r, 3) }
+		local got = {}
+		while not got[19] and count < 5000 do
+			local pick = r:NextInteger(1, 3)
+			exp = F.AddExp(exp, slots[pick].exp)
+			count += 1
+			local lv = F.LevelFromExp(exp)
+			for target in pairs(reach) do if not got[target] and lv >= target then got[target] = count end end
+			local others = {}
+			for s = 1, 3 do if s ~= pick then others[#others + 1] = slots[s] end end
+			slots[pick] = EO.Fresh(lv, r, count + 3, others)
+		end
+		for target in pairs(reach) do reach[target] += (got[target] or 5000) / TRIALS end
+	end
+	check(reach[2] <= 3 and reach[3] <= 6 and reach[4] <= 11 and reach[5] <= 18,
+		("3 เลเวลแรกขึ้นง่าย: Lv2 %.1f · Lv3 %.1f · Lv4 %.1f · Lv5 %.1f ใบ"):format(reach[2], reach[3], reach[4], reach[5]))
+	local days8 = reach[19] / 8
+	check(reach[19] >= 450 and reach[19] <= 620 and days8 >= 30 and days8 <= 90,
+		("ถึง Lv19 ใช้ %.0f ใบ = วันละ 8 ใบ %.0f วัน · วันละ 16 ใบ %.0f วัน"):format(reach[19], days8, reach[19] / 16))
+
+	-- ของยากขึ้นตามเลเวล: Lv10 ข้าว/ผัก/ไข่ แทบไม่ออก · Lv15 ของขั้นสุดท้ายออกบ่อยกว่า Lv5
+	local function mix(level)
+		local r, basic, finals, lines = Random.new(level * 17), 0, 0, 0
+		for i = 1, 1500 do
+			for _, line in ipairs(EO.NewOrder(level, r, i).lines) do
+				local g = ExportConfig.Get(line.item)
+				lines += 1
+				if g.level <= 2 then basic += 1 end
+				if g.final then finals += 1 end
+			end
+		end
+		return basic / lines, finals / lines
+	end
+	local b5, f5 = mix(5)
+	local b10 = mix(10)
+	local b19, f19 = mix(19)
+	check(b10 < 0.05 and b19 < 0.05 and f19 > f5,
+		("ของพื้นฐาน Lv5 %.0f%% → Lv10 %.0f%% → Lv19 %.0f%% · ขั้นสุดท้าย Lv5 %.0f%% → Lv19 %.0f%%"):format(
+			b5 * 100, b10 * 100, b19 * 100, f5 * 100, f19 * 100))
 
 	check(EO.NewGoldOrder(3, rng, 1) == nil, "ใบขอบทองยังไม่มีที่ Lv3")
 	local goldProblems = {}

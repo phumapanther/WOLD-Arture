@@ -23,17 +23,31 @@ function ExportOrders.Pool(level)
 	return pool
 end
 
--- ของที่ปลดทีหลังออกบ่อยกว่านิดหน่อย (ใบสั่งพาไปหาของใหม่) แต่ของพื้นฐานยังออกเรื่อยๆ
-local function weightOf(good)
-	return 1 + (good.level or 1) * 0.5
+-- **ของที่เพิ่งปลดออกบ่อยสุด ของพื้นฐานค่อยๆ หายไปตามเลเวล** (ผู้ใช้สั่ง 2026-09-27: ของในใบต้องยากขึ้นเรื่อยๆ)
+-- เลเวลของชิ้นที่ปลดช้าที่สุดในกองส่งออกตอนนี้ (Lv11 — เพชร) · เลเวลฟาร์มเกินนี้ = ไม่มีของใหม่ให้ขอแล้ว
+local TOP = 1
+for _, good in ipairs(ExportConfig.Goods) do TOP = math.max(TOP, good.level or 1) end
+
+-- วัด "ความเก่า" เทียบกับของใหม่สุดที่ปลดได้ ไม่ใช่เทียบกับเลเวลตรงๆ — ไม่งั้นเลยเลเวลที่มีของใหม่ไปแล้ว ทุกชิ้นเก่าลง
+-- พร้อมกันจนชนพื้น แล้วข้าว/ผักกลับมาออกบ่อยอีก (วัดแล้ว: Lv19 ของพื้นฐาน 9% แทน 2%) · ความยากช่วงนั้นมาจากจำนวน
+function ExportOrders.WeightOf(good, level)
+	local W = ExportConfig.Weighting
+	local ref = math.min(clampLevel(level), TOP)
+	return math.max(W.floor, math.exp(-(ref - (good.level or 1)) / W.decay))
 end
 
-local function pickWeighted(list, rng)
+-- จำนวนสูงสุดต่อบรรทัดที่เลเวลนี้ (โตตามเลเวลที่เลยจุดปลดของชิ้นนั้นมา)
+function ExportOrders.MaxQty(good, level)
+	local over = math.max(0, clampLevel(level) - (good.level or 1))
+	return math.max(1, math.floor(good.max * (1 + ExportConfig.QtyGrowth * over) + 0.5))
+end
+
+local function pickWeighted(list, rng, level)
 	local total = 0
-	for _, good in ipairs(list) do total += weightOf(good) end
+	for _, good in ipairs(list) do total += ExportOrders.WeightOf(good, level) end
 	local roll = rng:NextNumber() * total
 	for _, good in ipairs(list) do
-		roll -= weightOf(good)
+		roll -= ExportOrders.WeightOf(good, level)
 		if roll <= 0 then return good end
 	end
 	return list[#list]
@@ -57,21 +71,22 @@ function ExportOrders.NewOrder(level, rng, id)
 	local pool = ExportOrders.Pool(level)
 	local lineCount = ExportOrders.LineCount(level, rng)
 	local share = ExportOrders.Target(level) / lineCount
-	local picked, usedFinal = {}, false
+	local finalsLeft = level >= 10 and ExportConfig.FinalsFrom10 or 1
+	local picked = {}
 	local order = { id = id, lines = {}, coins = 0 }
 	for _ = 1, lineCount do
 		local candidates = {}
 		for _, good in ipairs(pool) do
 			if not picked[good.id] and good.coins <= share * ExportConfig.OverShare
-				and not (good.final and usedFinal) then
+				and not (good.final and finalsLeft <= 0) then
 				candidates[#candidates + 1] = good
 			end
 		end
 		if #candidates == 0 then break end
-		local good = pickWeighted(candidates, rng)
+		local good = pickWeighted(candidates, rng, level)
 		picked[good.id] = true
-		if good.final then usedFinal = true end
-		local qty = math.clamp(math.floor(share / good.coins + 0.5), 1, good.max)
+		if good.final then finalsLeft -= 1 end
+		local qty = math.clamp(math.floor(share / good.coins + 0.5), 1, ExportOrders.MaxQty(good, level))
 		table.insert(order.lines, { item = good.id, qty = qty })
 		order.coins += good.coins * qty
 	end
@@ -100,7 +115,7 @@ function ExportOrders.NewGoldOrder(level, rng, id)
 	if not FarmLevelConfig.GoldAllowed(level) then return nil end
 	local pool = ExportOrders.GoldPool(level)
 	if #pool == 0 then return nil end
-	local good = pickWeighted(pool, rng)
+	local good = pickWeighted(pool, rng, level)
 	local G = ExportConfig.Gold
 	local qty = level >= G.twoFrom and rng:NextInteger(1, 2) or 1
 	local coins = good.coins * G.perUnit * qty + G.bonus

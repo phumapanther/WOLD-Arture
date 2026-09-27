@@ -18,10 +18,22 @@ local FarmLevelConfig = {}
 -- เส้น EXP — EXP ได้จากการส่งออกอย่างเดียว ไม่มีวันลด ไม่มีเพดาน
 --------------------------------------------------------------------------------
 
--- EXP ที่ต้องใช้ "จากเลเวลนี้ไปเลเวลถัดไป" · ส่งเฉลี่ยวันละ ~8 ใบ → Lv10 ใน ~6 วัน
-FarmLevelConfig.ExpTable = { 100, 200, 350, 550, 800, 1100, 1450, 1850, 2300, 2800, 3350, 3950, 4600, 5300 }
--- เลยตารางไปแล้ว เลเวลละ +750 จากตัวสุดท้าย
-FarmLevelConfig.ExpStepAfter = 750
+-- EXP ที่ต้องใช้ "จากเลเวลนี้ไปเลเวลถัดไป" (ปรับ 2026-09-27 ตามที่ผู้ใช้สั่ง: "ตันต้องใช้เวลา 1-3 เดือน ·
+-- ช่วงแรก 3 เลเวลขึ้นง่าย · หลังเลเวล 5 ยากขึ้นอีก")
+--
+-- ตั้งจาก **จำนวนใบสั่งที่ต้องส่งต่อเลเวล** × EXP เฉลี่ยต่อใบของเลเวลนั้น (วัดจาก ExportOrders จริง 4,000 ใบต่อเลเวล):
+--   ใบ/เลเวล  Lv1-4: 2 · 3 · 4 · 6   ·   Lv5-18: 10 → 62 (+4 ต่อเลเวล)   ·   Lv19→20: 66
+--   รวมถึง Lv19 (เพดานตอนนี้) ≈ 519 ใบ = วันละ 16 ใบ ~1 เดือน · วันละ 8 ใบ ~2 เดือน · วันละ 6 ใบ ~3 เดือน
+-- เปลี่ยนสูตรใบสั่ง (ExportOrders/ExportConfig) เมื่อไหร่ต้องวัด EXP เฉลี่ยใหม่แล้วแก้ตารางนี้ตาม (เทส farm_level_test จับ)
+FarmLevelConfig.ExpTable = {
+	120, 240, 450, 780, -- Lv1-4: ขึ้นเร็ว (ใบละ ~60-130 EXP)
+	1450, 2250, 3750, 5150, 7050, -- Lv5-9
+	9150, 11400, 13250, 16150, 18750, -- Lv10-14
+	22050, 24500, 27150, 30150, -- Lv15-18
+	32250, -- Lv19 → 20 (ใช้วันที่ปลดเพดานเพิ่ม)
+}
+-- เลยตารางไปแล้ว เลเวลละ +2,000 จากตัวสุดท้าย
+FarmLevelConfig.ExpStepAfter = 2000
 
 function FarmLevelConfig.ExpToNext(level)
 	local t = FarmLevelConfig.ExpTable
@@ -30,19 +42,47 @@ function FarmLevelConfig.ExpToNext(level)
 	return t[#t] + (level - #t) * FarmLevelConfig.ExpStepAfter
 end
 
+-- **เพดานเลเวลตอนนี้ = 19** (ผู้ใช้สั่ง 2026-09-27: "ล็อคให้ตันไปที่เวล 19 ไปก่อน เดี๋ยวเพิ่มของใหม่ วัตถุดิบใหม่
+-- ของคราฟใหม่ แล้วค่อยมาปลดล็อคต่อ") · ปลดเพิ่มวันหน้า = ขยับเลขนี้ตัวเดียว (ตาราง EXP ต่อไปได้เองจากสูตร)
+FarmLevelConfig.MaxLevel = 19
+-- EXP ที่ได้ตอนตันแล้ว · true = สะสมไว้ (วันปลดเพดาน ขึ้นเลเวลตามที่สะสมทันที) · false = หยุดนับที่เส้นเลเวล 19
+FarmLevelConfig.BankExpAtMax = false
+
+-- EXP สะสมที่ต้องใช้ถึงเลเวลนี้ (Lv1 = 0)
+function FarmLevelConfig.ExpForLevel(level)
+	local total = 0
+	for l = 1, math.max(1, math.floor(level)) - 1 do total += FarmLevelConfig.ExpToNext(l) end
+	return total
+end
+
+function FarmLevelConfig.IsMax(level)
+	return (tonumber(level) or 1) >= FarmLevelConfig.MaxLevel
+end
+
 -- EXP สะสม → (เลเวล, EXP ที่เข้าไปแล้วในเลเวลนี้, EXP ที่เลเวลนี้ต้องการ)
+-- ถึงเพดานแล้ว = (MaxLevel, need, need) หลอดเต็ม — ผู้เรียกถาม IsMax เพื่อเขียน "สูงสุด" แทนตัวเลข
 function FarmLevelConfig.LevelFromExp(exp)
 	exp = tonumber(exp) or 0
 	if exp ~= exp or exp < 0 then exp = 0 end
 	exp = math.floor(math.min(exp, 1e12))
 	local level = 1
-	while level < 1000 do
+	while level < FarmLevelConfig.MaxLevel do
 		local need = FarmLevelConfig.ExpToNext(level)
 		if exp < need then return level, exp, need end
 		exp -= need
 		level += 1
 	end
-	return level, 0, FarmLevelConfig.ExpToNext(level)
+	local need = FarmLevelConfig.ExpToNext(level)
+	return level, need, need
+end
+
+-- EXP ใหม่หลังได้ `gain` · ตันแล้วและไม่สะสม = หยุดที่เส้นเลเวลสูงสุด (ไม่มีวันลด)
+function FarmLevelConfig.AddExp(exp, gain)
+	local total = math.max(0, math.floor(tonumber(exp) or 0)) + math.max(0, math.floor(tonumber(gain) or 0))
+	if not FarmLevelConfig.BankExpAtMax then
+		total = math.min(total, math.max(FarmLevelConfig.ExpForLevel(FarmLevelConfig.MaxLevel), tonumber(exp) or 0))
+	end
+	return total
 end
 
 --------------------------------------------------------------------------------
@@ -141,10 +181,10 @@ function FarmLevelConfig.UnlocksAt(level)
 	return out
 end
 
--- เลเวลสูงสุดที่ตารางยังมีของปลด (หน้าจอวาดถึงตรงนี้ + อีกหนึ่งเลเวลว่าง)
+-- เลเวลสูงสุดที่ตารางยังมีของปลด **ไม่เกินเพดาน** (เพดานบ้าน +1 ทุก 5 เลเวลไปเรื่อยๆ ถ้าไม่หนีบ ตารางจะยาวถึง Lv39)
 function FarmLevelConfig.LastUnlockLevel()
 	local last = 1
-	for level = 1, 40 do
+	for level = 1, FarmLevelConfig.MaxLevel do
 		if #FarmLevelConfig.UnlocksAt(level) > 0 then last = level end
 	end
 	return last

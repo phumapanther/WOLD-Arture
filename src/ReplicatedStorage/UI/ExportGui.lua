@@ -331,6 +331,7 @@ function ExportGui:DrawCard(order, snap)
 
 	-- ขนาดแถว: มือถือแนวนอนเตี้ยมาก ใบสั่งสามบรรทัดต้องพอดีการ์ดโดยไม่ต้องเลื่อน
 	local compact = self.compact
+	local expText = snap.max and "MAX" or commas(order.exp)
 	local rowH, step, top = compact and 26 or 32, compact and 29 or 36, compact and 28 or 34
 
 	local head = label(frame, {
@@ -376,12 +377,12 @@ function ExportGui:DrawCard(order, snap)
 	if compact then
 		label(rewards, {
 			text = ("<font color=\"#%s\">💰 %s</font>  <font color=\"#%s\">⭐ %s</font>  <font color=\"#%s\">%s</font>"):format(
-				GOLD:ToHex(), commas(order.coins), EXP:ToHex(), commas(order.exp), GEM:ToHex(), order.gems or ""),
+				GOLD:ToHex(), commas(order.coins), EXP:ToHex(), expText, GEM:ToHex(), order.gems or ""),
 			rich = true, size = 12, dim = UDim2.fromScale(1, 1),
 		})
 	else
 		label(rewards, { text = "💰 " .. commas(order.coins), size = 14, color = GOLD, dim = UDim2.new(0.5, 0, 0, 20) })
-		label(rewards, { text = "⭐ " .. commas(order.exp) .. " EXP", size = 13, color = EXP,
+		label(rewards, { text = snap.max and "⭐ เลเวลสูงสุด" or ("⭐ " .. expText .. " EXP"), size = 13, color = EXP,
 			pos = UDim2.new(0.5, 0, 0, 0), dim = UDim2.new(0.5, 0, 0, 20), align = Enum.TextXAlignment.Right })
 		label(rewards, { text = order.gems or "", size = 12, color = GEM, pos = UDim2.fromOffset(0, 22),
 			dim = UDim2.new(1, 0, 0, 18) })
@@ -480,7 +481,7 @@ function ExportGui:DrawUnlocks(snap)
 		if child:IsA("Frame") then child:Destroy() end
 	end
 	local current = snap.level or 1
-	local last = math.max(FarmLevelConfig.LastUnlockLevel(), current + 1)
+	local last = math.min(FarmLevelConfig.MaxLevel, math.max(FarmLevelConfig.LastUnlockLevel(), current + 1))
 	local focus
 	for level = 1, last do
 		local rows = FarmLevelConfig.UnlocksAt(level)
@@ -506,7 +507,7 @@ function ExportGui:DrawUnlocks(snap)
 			list.Parent = section
 
 			local status = done and "✓ ปลดแล้ว" or (now and "◀ เลเวลตอนนี้" or "🔒")
-			if level == current + 1 then
+			if level == current + 1 and not snap.max then
 				status = ("🔒 อีก %s EXP"):format(commas(math.max(0, (snap.need or 0) - (snap.into or 0))))
 			end
 			local head = label(section, {
@@ -590,7 +591,10 @@ function ExportGui:Show(snap)
 	TweenService:Create(self.expFill, TweenInfo.new(firstOpen and 0 or 0.4), {
 		Size = UDim2.fromScale(math.clamp((snap.into or 0) / need, 0, 1), 1),
 	}):Play()
-	self.expText.Text = ("%s / %s EXP ฟาร์ม"):format(commas(snap.into or 0), commas(need))
+	-- เพดานเลเวล (ผู้ใช้สั่ง 2026-09-27: ตัน Lv19 ไปก่อน) — หลอดเต็มสีทอง บอกว่ารอเปิดเพิ่ม ไม่โชว์ตัวเลขที่ไม่มีความหมาย
+	self.expFill.BackgroundColor3 = snap.max and RUNE or EXP
+	self.expText.Text = snap.max and "เลเวลสูงสุด · รอเปิดเพิ่มในอัปเดตหน้า"
+		or ("%s / %s EXP ฟาร์ม"):format(commas(snap.into or 0), commas(need))
 	self.gemsText.Text = ("💎 วันนี้ %d/%d   ·   🔄 สุ่มใหม่ฟรี %s"):format(snap.gemsToday or 0, snap.gemsDayCap or 5,
 		(snap.rerollLeft or 0) > 0 and "เหลือ 1" or "ใช้แล้ว")
 

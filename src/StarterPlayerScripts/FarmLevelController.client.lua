@@ -113,7 +113,9 @@ local function drawChip()
 	local level = player:GetAttribute("FarmLevel")
 	chipGui.Enabled = type(level) == "number"
 	if not chipGui.Enabled then return end
-	levelText.Text = ("🌾 Lv %d"):format(level)
+	local max = FarmLevelConfig.IsMax(level)
+	levelText.Text = max and ("🌾 Lv %d MAX"):format(level) or ("🌾 Lv %d"):format(level)
+	barFill.BackgroundColor3 = max and RUNE or EXP
 	local into, need = player:GetAttribute("FarmExpInto") or 0, math.max(1, player:GetAttribute("FarmExpNeed") or 1)
 	barFill.Size = UDim2.fromScale(math.clamp(into / need, 0, 1), 1)
 	local shipEnd = player:GetAttribute("FarmShipEnd")
