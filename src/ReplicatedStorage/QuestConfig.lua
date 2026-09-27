@@ -66,6 +66,30 @@ QuestConfig.MaxActive = 3
 
 QuestConfig.Boards = {
 	{
+		-- **บอร์ดประจำเมืองหลวง** (ผู้ใช้สั่ง 2026-09-27) — โมเดล `QuestBoard_FirstTown` ที่ผู้ใช้วางข้างจุดเกิดเอง
+		-- (เฟส 68 ตั้ง BoardId ให้) · งานพื้นฐานของคนเพิ่งเริ่ม: วัตถุดิบแถวเมือง + ล่ามอนสามชนิดรอบๆ
+		-- **กติกาผู้ใช้: ทุกวันต้องมีงานสไลม์หนึ่งใบเสมอ (ล่าสไลม์ หรือ ส่งเมือกสไลม์) และสองใบนี้ไม่ออกพร้อมกันเด็ดขาด**
+		-- → `mustHave = "slime"` + `group = "slime"` บนสองงานนั้น (Quests.server หยิบจากกลุ่มหนึ่งใบก่อน แล้วตัดทั้งกลุ่มทิ้ง)
+		-- จำนวน/ความยากของงานที่มีในบอร์ดอื่นใช้เลขเดียวกับบอร์ดนั้น · งานใหม่ (เมือก กระดูก เส้นใย ล่าสไลม์ ล่าโครงกระดูก) ผมตั้ง
+		id = "Brasshaven", name = "บราสเฮเวน", where = Vector3.new(2080, 48, 3760),
+		blurb = "เมืองหลวง",
+		mustHave = "slime",
+		pool = {
+			{ kind = "gather", item = "WoodScrap", min = 15, max = 30, gold = 260, xp = 30 },
+			{ kind = "gather", item = "Stone", min = 15, max = 30, gold = 250, xp = 30 },
+			{ kind = "gather", item = "IronOre", min = 8, max = 15, gold = 380, xp = 50 },
+			{ kind = "gather", item = "Crystal", min = 3, max = 6, gold = 650, xp = 85 }, -- "ควอส" (ผู้ใช้ยืนยัน = คริสตัล)
+			{ kind = "gather", item = "Coal", min = 10, max = 20, gold = 340, xp = 45 },
+			{ kind = "gather", item = "Slime", min = 8, max = 15, gold = 280, xp = 35, group = "slime" },
+			{ kind = "gather", item = "Bone", min = 8, max = 15, gold = 300, xp = 40 },
+			{ kind = "gather", item = "Fiber", min = 10, max = 20, gold = 260, xp = 30 },
+			{ kind = "gather", item = "Herb", min = 6, max = 12, gold = 300, xp = 40 },
+			{ kind = "hunt", mob = "โครงกระดูก", min = 3, max = 6, gold = 600, xp = 100 },
+			{ kind = "hunt", mob = "สไลม์เขียว", min = 5, max = 10, gold = 350, xp = 60, group = "slime" },
+			{ kind = "hunt", mob = "แมงมุมยักษ์", min = 4, max = 8, gold = 460, xp = 80 },
+		},
+	},
+	{
 		id = "Goldmeadow", name = "โกลด์เมโดว์", where = Vector3.new(-960, 154, 960),
 		blurb = "หมู่บ้านเกษตร",
 		pool = {

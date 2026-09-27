@@ -169,10 +169,10 @@ end
 -- แบทเทิลพาส
 --------------------------------------------------------------------------------
 
--- ซีซัน: เปลี่ยนเลขแล้วความคืบหน้าของทุกคนเริ่มใหม่ (ของที่รับไปแล้วไม่หาย)
+-- **พาสรายเดือน** (ผู้ใช้สั่ง 2026-09-27): ซีซัน = เดือนปฏิทิน (เวลาไทย) เปลี่ยนเองทุกวันที่ 1 — ความคืบหน้าเริ่มใหม่ ·
+-- ปลดพรีเมียมใหม่ทุกเดือน · ของที่รับไปแล้วไม่หาย · เลขซีซันคิดจากปฏิทิน ทุกเซิร์ฟได้เลขเดียวกันโดยไม่ต้องคุยกัน
+-- (เดิม `season = 1` ตั้งมือ) · กันยายน 2026 = ซีซัน 1 ความคืบหน้าที่เก็บไว้ตอนนั้นจึงอยู่ต่อถึงสิ้นเดือน
 PremiumConfig.Pass = {
-	season = 1,
-	name = "ซีซัน 1 — ยุครุ่งอรุณ",
 	tiers = 30,
 	xpPerTier = 1000,
 	-- XP พาส = EXP ที่ได้ในเกม × ตัวคูณนี้ (ส่งเควส ฆ่ามอน เก็บของ ตกปลา ล้วนผ่าน Progression.AwardExp)
@@ -212,6 +212,64 @@ PremiumConfig.Pass.Premium = {
 	-- ขั้นสุดท้ายสายพรีเมียม: กล่องเวทมนตร์ 10 ใบ (หีบทอง 20 ใบที่เคยอยู่ขั้นนี้ย้ายไปขั้น 29)
 	[26] = item("Blueprint", 5), [27] = gold(8000), [28] = item("Insignia", 10), [29] = item("Chest_Gold", 20), [30] = item("MagicBox", 10),
 }
+
+-- **ของประจำเดือนสายพรีเมียม** (ผู้ใช้สั่ง 2026-09-27): ขั้นท้าย = สกินอาวุธ · ครึ่งทาง = ออร่า · สุ่มใหม่ทุกเดือน
+-- **ได้เพิ่มจากของเดิมของขั้นนั้น** (ผู้ใช้เลือก — ขั้น 15 หีบเงิน 10 + ออร่า · ขั้น 30 กล่องเวท 10 + สกิน)
+-- สระ = ของหลักในตู้กาชาชนิดนั้น (เพิ่มสกิน/ออร่าเข้าตู้เมื่อไหร่ ก็เข้ามาหมุนในพาสเอง)
+PremiumConfig.Pass.Monthly = { [15] = "aura", [30] = "weapon" }
+
+local THAI_MONTHS = { "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม",
+	"กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม" }
+local TZ = 7 * 3600 -- เวลาไทย (ตัวเดียวกับที่ QuestConfig ใช้พลิกวัน)
+PremiumConfig.PassBaseMonth = 2026 * 12 + 8 -- เดือนที่นับจากปี 0 (มกราคม = 0) · กันยายน 2026 = ซีซัน 1
+
+-- ซีซันของเวลา `now` (os.time) — เดือนไทยที่เท่าไหร่นับจากกันยายน 2026
+function PremiumConfig.PassSeason(now)
+	local t = os.date("!*t", math.floor(tonumber(now) or os.time()) + TZ)
+	return (t.year * 12 + (t.month - 1)) - PremiumConfig.PassBaseMonth + 1
+end
+
+local function monthOf(season)
+	local m = PremiumConfig.PassBaseMonth + (math.floor(season) - 1)
+	return math.floor(m / 12), m % 12 + 1
+end
+
+-- os.time ที่ซีซันนี้จบ = เที่ยงคืนวันที่ 1 ของเดือนถัดไป เวลาไทย
+function PremiumConfig.PassSeasonEnds(season)
+	local year, month = monthOf(season + 1)
+	return os.time({ year = year, month = month, day = 1, hour = 0, min = 0, sec = 0 }) - TZ
+end
+
+function PremiumConfig.PassName(season)
+	local year, month = monthOf(season)
+	return ("พาสเดือน%s %d"):format(THAI_MONTHS[month], year + 543)
+end
+
+-- ของประจำเดือนชนิดหนึ่ง: สับสระด้วยเมล็ดคงที่แล้วเดินทีละเดือน = เดือนติดกันไม่ซ้ำ และวนครบทุกชิ้นก่อนซ้ำ
+-- (คิดจากเลขซีซันล้วน ทุกเซิร์ฟ/ทุกเครื่องได้ชิ้นเดียวกัน)
+function PremiumConfig.PassMonthlyItem(season, kind)
+	local banner = PremiumConfig.GachaById(kind)
+	local pool = banner and banner.pool or {}
+	if #pool == 0 then return nil end
+	local order = table.clone(pool)
+	local rng = Random.new(#kind * 7919 + #pool)
+	for i = #order, 2, -1 do
+		local j = rng:NextInteger(1, i)
+		order[i], order[j] = order[j], order[i]
+	end
+	return order[((math.floor(season) - 1) % #order) + 1]
+end
+
+-- ของทั้งหมดของขั้นหนึ่ง (รายการ) — ของประจำขั้น + ของประจำเดือน (สายพรีเมียม) · ว่าง = ขั้นนั้นไม่มีของสายนี้
+function PremiumConfig.PassRewards(season, track, tier)
+	local out = {}
+	local base = (track == "premium" and PremiumConfig.Pass.Premium or PremiumConfig.Pass.Free)[tier]
+	if base then out[#out + 1] = base end
+	local kind = track == "premium" and PremiumConfig.Pass.Monthly[tier]
+	local id = kind and PremiumConfig.PassMonthlyItem(season, kind)
+	if id then out[#out + 1] = { item = id, count = 1, monthly = true } end
+	return out
+end
 
 --------------------------------------------------------------------------------
 -- กล่องเวทมนตร์: สุ่ม "ทุกอย่างที่มีในเซิร์ฟ" ตามเรทที่ผู้ใช้กำหนด สระแต่ละหมวดสร้างจาก ItemCatalog ตอนใช้

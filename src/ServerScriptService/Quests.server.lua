@@ -22,6 +22,7 @@ local TownAccess = require(game.ServerScriptService.TownAccess)
 local ClanConfig = require(game.ReplicatedStorage.ClanConfig)
 local PremiumAccess = require(game.ServerScriptService.PremiumAccess)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local QuestRoll = require(game.ReplicatedStorage.QuestRoll)
 
 local BOARD_TAG = "WOLD_QuestBoard"
 local PROMPT_DISTANCE = 12
@@ -33,39 +34,9 @@ local PROMPT_DISTANCE = 12
 -- [boardId] = { quests = {...}, day = เลขวันที่สุ่มไว้ }
 local Posted = {}
 
--- `extra` = จำนวนครั้งที่ **คนคนนั้น** รีบอร์ดด้วยเพชรวันนี้ (0 = ชุดประจำวันที่ทุกคนเห็นเหมือนกัน)
+-- สุ่มงานของบอร์ด (กติกาทั้งหมดอยู่ที่ `QuestRoll` — ยกออกไปให้เทสใน Edit ได้) · แคชไว้ต่อบอร์ด/ครั้งที่รี/วัน
 local function rollBoard(board, day, extra)
-	-- สุ่มหยิบจากคลังโดยไม่ซ้ำ: คัดลอกคลังแล้วหยิบออกทีละอัน
-	local pool = {}
-	for _, spec in ipairs(board.pool) do pool[#pool + 1] = spec end
-
-	-- **เมล็ดสุ่มจากวันที่และชื่อบอร์ด ไม่ใช่สุ่มลอยๆ**
-	--
-	-- ทุกเซิร์ฟเวอร์ต้องเห็นบอร์ดชุดเดียวกันในวันเดียวกัน ไม่งั้นย้ายช่องแล้วงานเปลี่ยน และรีสตาร์ทเซิร์ฟ
-	-- จะกลายเป็นปุ่มสุ่มงานใหม่ — เมล็ดที่คำนวณได้จากวันที่ทำให้ทุกเซิร์ฟเวอร์ได้ผลเดียวกันโดยไม่ต้องคุยกัน
-	--
-	-- **การรีด้วยเพชรบวกเข้าไปในเมล็ด ไม่ได้สุ่มลอยๆ** (ผู้ใช้สั่ง 2026-09-24) — ชุดที่ N ของคนคนหนึ่ง
-	-- จึงคำนวณซ้ำได้เสมอ เซิร์ฟรีสตาร์ทกลางคันก็ยังเห็นชุดเดิม ไม่ใช่ชุดที่สี่ที่เขาไม่ได้จ่าย
-	local seed = day
-	for i = 1, #board.id do seed += board.id:byte(i) * i end
-	seed += (extra or 0) * 7919
-	local rng = Random.new(seed)
-
-	local quests = {}
-	for _ = 1, math.min(QuestConfig.SlotsPerBoard, #pool) do
-		local pick = table.remove(pool, rng:NextInteger(1, #pool))
-		-- จำนวนถูกสุ่มตอนโพสต์ ไม่ใช่ตอนรับ — ทุกคนที่เห็นบอร์ดนี้จึงเห็นเลขเดียวกัน
-		local need = rng:NextInteger(pick.min, pick.max)
-		quests[#quests + 1] = {
-			kind = pick.kind,
-			item = pick.item,
-			mob = pick.mob,
-			need = need,
-			gold = pick.gold,
-			xp = pick.xp,
-			board = board.id,
-		}
-	end
+	local quests = QuestRoll.Roll(board, day, extra)
 	Posted[board.id .. "#" .. tostring(extra or 0)] = { quests = quests, day = day }
 	return quests
 end

@@ -1,5 +1,6 @@
--- VipGiftPrompt: ปุ่ม E "รับ VIP 30 วัน" บนหุ่นฟางข้างจุดเกิดแรก (`Dummy_Spawn` จาก mapgen/training_dummies.lua)
--- กติกาทั้งหมดอยู่ที่ `VipGift` · ซ่อนปุ่มรายคนที่ `VipGiftController.client` (เซิร์ฟเวอร์ห้ามแตะ Enabled หลังสร้าง)
+-- VipGiftPrompt: ปุ่ม E "รับของขวัญ" บนหุ่นฟางข้างจุดเกิดแรก (`Dummy_Spawn` จาก mapgen/training_dummies.lua)
+-- กติกาทั้งหมดอยู่ที่ `VipGift` (150 เพชรบัญชีใหม่ · VIP 30 วันที่ Lv.5 · ออร่าสุ่มเมื่อมีเพื่อน 5 คน)
+-- ป้ายปุ่ม/ซ่อนปุ่มรายคนทำที่ `VipGiftController.client` จากแอตทริบิวต์ที่ไฟล์นี้ประกาศ (เซิร์ฟเวอร์ห้ามแตะ Enabled หลังสร้าง)
 -- เกมหลักเท่านั้น: อยู่ใน globIgnorePaths ของ farming/arena
 local CollectionService = game:GetService("CollectionService")
 local Players = game:GetService("Players")
@@ -10,32 +11,92 @@ if ServerConfig.IsLobby then return end -- ล็อบบี้ไม่โห�
 local ProfileAccess = require(script.Parent.ProfileAccess)
 local Vip = require(script.Parent.Vip)
 local VipGift = require(script.Parent.VipGift)
+local Progression = require(script.Parent.Progression)
+local Friends = require(script.Parent.Friends)
+local Inventory = require(script.Parent.Inventory)
+local PremiumAccess = require(script.Parent.PremiumAccess)
+local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 local MESSAGES = {
-	closed = "หมดเขตแจก VIP แล้ว",
+	closed = "หมดเขตแจกของขวัญแล้ว",
 	loading = "ข้อมูลตัวละครยังโหลดไม่เสร็จ ลองใหม่อีกครั้ง",
-	claimed = "บัญชีนี้รับ VIP จากหุ่นฟางไปแล้ว (รับได้บัญชีละครั้ง)",
-	active = "มี VIP อยู่แล้ว — กลับมารับได้หลัง VIP หมดอายุ",
 }
 
--- ไคลเอนต์อ่านธงนี้คู่กับ `VipUntil` (Vip.Publish) เพื่อซ่อนปุ่ม
+-- ออร่าทุกชิ้นที่มีในเกมตอนนี้ (ผู้ใช้สั่ง "สุ่มออร่าที่มีในปัจจุบัน") — อ่านจากแคตตาล็อก ออร่าใหม่เข้าสระเอง
+local AURAS = {}
+for id, item in pairs(ItemCatalog.Items) do
+	if type(item) == "table" and item.kind == "aura" then AURAS[#AURAS + 1] = id end
+end
+table.sort(AURAS)
+
+local rng = Random.new()
+
+local function friendCount(player)
+	local state = Friends.Get(player)
+	local n = 0
+	for _ in pairs(state and state.friends or {}) do n += 1 end
+	return n
+end
+
+-- ไคลเอนต์อ่านสองค่านี้: เหลือของให้รับอีกกี่อย่าง (0 = ซ่อนปุ่ม) กับป้ายบนปุ่มของคนคนนี้
 local function publish(player)
 	local data = ProfileAccess.Get(player)
-	if data then player:SetAttribute("WOLD_VipGiftClaimed", data.VipGiftClaimed == true) end
+	if not data then return end
+	local s = VipGift.Summary(data, os.time(), Progression.GetLevel(player), friendCount(player), AURAS)
+	local left = #s.ready + #s.waiting
+	local text = #s.ready > 0 and ("รับ " .. table.concat(s.ready, " + ")) or "ดูของขวัญ"
+	if player:GetAttribute("WOLD_GiftLeft") ~= left then player:SetAttribute("WOLD_GiftLeft", left) end
+	if player:GetAttribute("WOLD_GiftText") ~= text then player:SetAttribute("WOLD_GiftText", text) end
 end
 
 local function onTriggered(player)
-	local ok, reason = VipGift.Claim(ProfileAccess.Get(player), os.time())
-	if ok then
-		Vip.Publish(player)
-		publish(player)
-		print(("[VipGift] %s (%d) รับ VIP %d วัน"):format(player.Name, player.UserId, VipGift.Days))
-		Remotes.SocialNotify:FireClient(player, "info",
-			("ได้รับ VIP %d วัน! เข้าเกาะฟาร์มได้จากล็อบบี้"):format(VipGift.Days))
-	else
-		Remotes.SocialNotify:FireClient(player, "error", MESSAGES[reason] or "รับไม่ได้")
+	local data = ProfileAccess.Get(player)
+	if not VipGift.Enabled or not data then
+		return Remotes.SocialNotify:FireClient(player, "error", MESSAGES[VipGift.Enabled and "loading" or "closed"])
 	end
+	local now, level, friends = os.time(), Progression.GetLevel(player), friendCount(player)
+	local got = {}
+
+	-- 150 เพชร (บัญชีใหม่)
+	local gemsOk = VipGift.ClaimGems(data, function(n)
+		return PremiumAccess.AddGems ~= nil and PremiumAccess.AddGems(player, n) == true
+	end)
+	if gemsOk then got[#got + 1] = ("💎 %d เพชร"):format(VipGift.Gems) end
+
+	-- VIP 30 วัน (Lv.5)
+	if VipGift.Claim(data, now, level) then
+		Vip.Publish(player)
+		got[#got + 1] = ("VIP %d วัน (เข้าเกาะฟาร์มได้จากล็อบบี้)"):format(VipGift.Days)
+	end
+
+	-- ออร่าสุ่ม (เพื่อน 5 คน) · กระเป๋าเต็ม = ยังไม่เสียสิทธิ์
+	local bagFull = false
+	local auraOk, auraId = VipGift.ClaimAura(data, friends, AURAS, rng, function(id)
+		if not Inventory.HasRoomFor(player, id, 1) then return false end
+		return Inventory.AddItem(player, id, 1) == true
+	end)
+	if auraOk then
+		local item = ItemCatalog.Get(auraId)
+		got[#got + 1] = ("✨ %s"):format(item and item.name or auraId)
+	elseif auraId == "full" then
+		bagFull = true
+	end
+
+	local after = VipGift.Summary(data, now, level, friends, AURAS)
+	if #got > 0 then
+		print(("[SpawnGift] %s (%d) รับ %s"):format(player.Name, player.UserId, table.concat(got, ", ")))
+		Remotes.SocialNotify:FireClient(player, "info", "ได้รับ " .. table.concat(got, " · "))
+	end
+	if bagFull then
+		Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม — เคลียร์ช่องแล้วกลับมารับออร่า")
+	end
+	if #after.waiting > 0 then
+		Remotes.SocialNotify:FireClient(player, #got > 0 and "info" or "warn", "ของขวัญที่ยังรอ: " .. table.concat(after.waiting, " · "))
+	elseif #got == 0 and not bagFull then
+		Remotes.SocialNotify:FireClient(player, "info", "รับของขวัญจากหุ่นฟางครบแล้ว")
+	end
+	publish(player)
 end
 
 local function wire(dummy)
@@ -44,8 +105,8 @@ local function wire(dummy)
 	if not anchor or anchor:FindFirstChild("VipGiftPrompt") then return end
 	local prompt = Instance.new("ProximityPrompt")
 	prompt.Name = "VipGiftPrompt"
-	prompt.ActionText = ("รับ VIP %d วัน"):format(VipGift.Days)
-	prompt.ObjectText = "ของขวัญผู้มาใหม่"
+	prompt.ActionText = "รับของขวัญ"
+	prompt.ObjectText = "ของขวัญหุ่นฟาง"
 	prompt.KeyboardKeyCode = Enum.KeyCode.E
 	prompt.MaxActivationDistance = 10
 	prompt.RequiresLineOfSight = false
@@ -54,7 +115,8 @@ local function wire(dummy)
 	prompt.Triggered:Connect(onTriggered)
 end
 
--- ถามใหม่เรื่อยๆ: หุ่นถูกสร้างใหม่ได้ถ้ารันเฟส training_dummies ซ้ำ · โปรไฟล์โหลดเสร็จไม่พร้อมกัน
+-- ถามใหม่เรื่อยๆ: หุ่นถูกสร้างใหม่ได้ถ้ารันเฟส training_dummies ซ้ำ · โปรไฟล์โหลดเสร็จไม่พร้อมกัน ·
+-- เลเวล/จำนวนเพื่อนเปลี่ยนระหว่างเล่น (ป้ายปุ่มตามทันภายใน 3 วิ)
 task.spawn(function()
 	while true do
 		for _, dummy in ipairs(CollectionService:GetTagged("WOLD_Dummy")) do

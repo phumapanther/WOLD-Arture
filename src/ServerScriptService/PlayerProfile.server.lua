@@ -87,6 +87,11 @@ local ProfileTemplate = {
 	StarterKit = nil,
 	-- true = รับ VIP ฟรีจากหุ่นฟางจุดเกิดไปแล้ว — บัญชีละครั้ง ดู VipGift
 	VipGiftClaimed = nil,
+	-- ของขวัญหุ่นฟางอีกสองอย่าง (2026-09-27) ดู VipGift: true = บัญชีใหม่มีสิทธิ์รับ 150 เพชร · true = รับเพชรแล้ว ·
+	-- id ออร่าที่ได้จากการมีเพื่อน 5 คน (มีค่า = รับแล้ว)
+	NewbieGems = nil,
+	NewbieGemsClaimed = nil,
+	FriendAuraClaimed = nil,
 	-- One-off test grant. Recorded in the profile so it happens once per player, ever, rather than on every
 	-- rejoin. Bumping the number re-runs it for everyone; leave it alone to stop granting.
 	TestGrant = 0,

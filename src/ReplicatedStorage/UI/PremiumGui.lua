@@ -183,7 +183,6 @@ function PremiumGui:SetTab(tab)
 		b.BackgroundColor3 = id == tab and RUNE or GREY
 		b.TextColor3 = id == tab and Color3.fromRGB(38, 28, 16) or TEXT_LIGHT
 	end
-	self.title.Text = tab == "shop" and "ร้านค้าพรีเมียม" or tab == "gacha" and "กาชา" or PremiumConfig.Pass.name
 	self:Render(self.data)
 end
 
@@ -439,12 +438,36 @@ local function rewardText(reward)
 	if reward.gold then return ("เงิน %d"):format(reward.gold) end
 	if reward.gems then return ("💎 %d"):format(reward.gems) end
 	local item = ItemCatalog.Get(reward.item)
+	-- ของประจำเดือน (สกิน/ออร่าที่หมุนทุกเดือน) ขึ้นดาวนำหน้าให้เห็นว่าเดือนหน้าไม่ใช่ชิ้นนี้แล้ว
+	if reward.monthly then return ("✨ %s (ประจำเดือน)"):format(item and item.name or reward.item) end
 	return ("%s x%d"):format(item and item.name or reward.item, reward.count or 1)
+end
+
+-- ของทั้งขั้น (รายการ) → ข้อความเดียว
+local function rewardsText(rewards)
+	if #rewards == 0 then return "—" end
+	local parts = {}
+	for _, reward in ipairs(rewards) do parts[#parts + 1] = rewardText(reward) end
+	return table.concat(parts, " + ")
+end
+
+-- ชื่อพาสเดือนนี้ + เวลาที่เหลือ (ซีซันมาจากเซิร์ฟ ไม่คิดจากนาฬิกาเครื่องนี้)
+local function passTitle(pass)
+	local season = pass and pass.season or PremiumConfig.PassSeason(os.time())
+	local name = PremiumConfig.PassName(season)
+	local ends = pass and pass.endsAt
+	if not ends then return name end
+	local left = ends - workspace:GetServerTimeNow()
+	if left <= 0 then return name end
+	local days = math.floor(left / 86400)
+	if days >= 1 then return ("%s · เหลือ %d วัน"):format(name, days) end
+	return ("%s · เหลือ %d ชม."):format(name, math.max(1, math.floor(left / 3600)))
 end
 
 function PremiumGui:renderPass()
 	local pass = self.data.pass or { xp = 0, tier = 0, premium = false, claimedFree = {}, claimedPremium = {} }
 	local cfg = PremiumConfig.Pass
+	local season = pass.season or PremiumConfig.PassSeason(os.time())
 
 	-- แถบความคืบหน้า + ปุ่มปลดพรีเมียม
 	local top = Instance.new("Frame")
@@ -492,7 +515,8 @@ function PremiumGui:renderPass()
 	local list = scrollList(holder, 4)
 
 	local function cell(parent, tier, track, claimed)
-		local reward = (track == "premium" and cfg.Premium or cfg.Free)[tier]
+		local rewards = PremiumConfig.PassRewards(season, track, tier)
+		local reward = rewards[1]
 		local reached = tier <= pass.tier
 		local locked = track == "premium" and not pass.premium
 		local f = Instance.new("Frame")
@@ -500,7 +524,7 @@ function PremiumGui:renderPass()
 		f.BorderSizePixel = 0
 		f.Parent = parent
 		corner(f, UDim.new(0, 6))
-		local t = label(f, rewardText(reward), 11, (reward and not locked) and TEXT_LIGHT or TEXT_MUTED)
+		local t = label(f, rewardsText(rewards), 11, (reward and not locked) and TEXT_LIGHT or TEXT_MUTED)
 		t.Position = UDim2.new(0, 8, 0, 0)
 		t.Size = UDim2.new(1, -90, 1, 0)
 		if reward and not claimed then
@@ -532,7 +556,8 @@ function PremiumGui:renderPass()
 	for tier = 1, cfg.tiers do
 		local row = Instance.new("Frame")
 		row.LayoutOrder = tier
-		row.Size = UDim2.new(1, -6, 0, 34)
+		-- ขั้นที่มีของประจำเดือน (สองชิ้น) สูงกว่า ข้อความจะได้ไม่ถูกตัด
+		row.Size = UDim2.new(1, -6, 0, cfg.Monthly[tier] and 46 or 34)
 		row.BackgroundTransparency = 1
 		row.Parent = list
 		local n = label(row, tostring(tier), 13, tier <= pass.tier and RUNE or TEXT_MUTED, Enum.TextXAlignment.Center)
@@ -551,6 +576,7 @@ end
 function PremiumGui:Render(data)
 	self.data = data or self.data
 	self.gems.Text = ("💎 %d"):format(self.data.gems or 0)
+	self.title.Text = self.tab == "shop" and "ร้านค้าพรีเมียม" or self.tab == "gacha" and "กาชา" or passTitle(self.data.pass)
 	clear(self.body)
 	if self.tab == "shop" then self:renderShop()
 	elseif self.tab == "gacha" then self:renderGacha()

@@ -33,11 +33,13 @@ local PROTOTYPE_NAME = "Guild_QuestBoard"
 local MAIN_BOARD_NAME = "MainGuild_QuestBoard"
 local MAIN_BOARD_ID = "MainGuild"
 
+-- **หาแบบเจาะลึก** ผู้ใช้ย้ายบอร์ดทั้งหมดเข้าโฟลเดอร์ `WOLD.QuestBoard` แล้ว (พบ 2026-09-27) — หาแค่ลูกตรงของ workspace
+-- = ไม่เจอต้นแบบ แล้วเฟสจบก่อนติดแท็กอะไรเลย
 local function prototype()
-	local m = workspace:FindFirstChild(PROTOTYPE_NAME)
+	local m = workspace:FindFirstChild(PROTOTYPE_NAME, true)
 	if m and m:IsA("Model") then return m end
 	-- ผู้ใช้เปลี่ยนชื่อต้นแบบเป็นบอร์ดรวมแล้ว ใช้ตัวนั้นเป็นต้นแบบต่อได้ รูปทรงเหมือนกัน
-	m = workspace:FindFirstChild(MAIN_BOARD_NAME)
+	m = workspace:FindFirstChild(MAIN_BOARD_NAME, true)
 	if m and m:IsA("Model") then return m end
 	return nil
 end
@@ -46,7 +48,7 @@ end
 --
 -- **ไม่ได้สร้างใหม่ ใช้โมเดลที่ผู้ใช้วางไว้เอง** แค่ติดแท็กกับ BoardId ให้ — ตำแหน่งเป็นของผู้ใช้
 local function tagMainBoard()
-	local m = workspace:FindFirstChild(MAIN_BOARD_NAME)
+	local m = workspace:FindFirstChild(MAIN_BOARD_NAME, true)
 	if not m or not m:IsA("Model") then
 		warn("[Quests] ไม่เจอ " .. MAIN_BOARD_NAME .. " — ข้ามบอร์ดรวม")
 		return false
@@ -119,6 +121,24 @@ local function existing(id)
 		if m:GetAttribute("BoardId") == id then return m end
 	end
 	return nil
+end
+
+-- **บอร์ดประจำเมืองที่ผู้ใช้วางเอง** (ผู้ใช้สั่ง 2026-09-27: `QuestBoard_FirstTown` ข้างจุดเกิด = บอร์ดบราสเฮเวน)
+-- ไม่สร้าง ไม่ย้าย แค่ตั้ง BoardId + แท็ก · ⚠️ ตัวนี้ผู้ใช้คัดลอกมาจากบอร์ดแอสตราเวล จึงติด BoardId เดิมมาด้วย
+-- (โชว์งานของแอสตราเวล) — ตั้งทับทุกครั้งที่รัน · ทำก่อนด่านต้นแบบ บอร์ดที่วางเองไม่ต้องใช้ต้นแบบ
+local USER_BOARDS = {
+	{ name = "QuestBoard_FirstTown", id = "Brasshaven" },
+}
+for _, u in ipairs(USER_BOARDS) do
+	local m = workspace:FindFirstChild(u.name, true)
+	if m and m:IsA("Model") then
+		m:SetAttribute("BoardId", u.id)
+		if not CollectionService:HasTag(m, BOARD_TAG) then CollectionService:AddTag(m, BOARD_TAG) end
+		local p = m:GetPivot().Position
+		print(("[Quests] บอร์ด %s = %s ที่ (%.0f, %.0f, %.0f)"):format(u.name, u.id, p.X, p.Y, p.Z))
+	else
+		warn("[Quests] ไม่เจอ " .. u.name .. " — ข้าม")
+	end
 end
 
 local source = prototype()

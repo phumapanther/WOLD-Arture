@@ -80,12 +80,15 @@ PremiumAccess.SpendGems = spendGems
 local PASS = PremiumConfig.Pass
 
 -- สถานะพาสของซีซันนี้ ซีซันเปลี่ยน = เริ่มใหม่ (ของเก่าที่รับแล้วก็รับไปแล้ว ไม่มีอะไรต้องคืน)
+-- **ซีซัน = เดือนไทย** (PremiumConfig.PassSeason · ผู้ใช้สั่ง 2026-09-27) — ถามใหม่ทุกครั้ง ข้ามเที่ยงคืนวันที่ 1 กลางเซสชัน
+-- ก็เริ่มซีซันใหม่ให้เองตอนได้ XP/เปิดหน้าต่างครั้งถัดไป
 local function passOf(player)
 	local data = ProfileAccess.Get(player)
 	if not data then return nil end
+	local season = PremiumConfig.PassSeason(os.time())
 	local bp = data.BattlePass
-	if not bp or bp.season ~= PASS.season then
-		bp = { season = PASS.season, xp = 0, premium = false, claimedFree = {}, claimedPremium = {} }
+	if not bp or bp.season ~= season then
+		bp = { season = season, xp = 0, premium = false, claimedFree = {}, claimedPremium = {} }
 		data.BattlePass = bp
 	end
 	return bp
@@ -133,6 +136,22 @@ local function rewardName(reward)
 	return ("%s x%d"):format(item and item.name or reward.item, reward.count or 1)
 end
 
+-- รางวัลหลายชิ้นในขั้นเดียว (ขั้นที่มีของประจำเดือน) · **ทั้งหมดหรือไม่เอาเลย**: ชิ้นหลังใส่ไม่ลง = ถอดชิ้นก่อนหน้าคืน
+-- (HasRoomFor ถามทีละชิ้น ไม่รู้ว่าสองชิ้นรวมกันพอไหม — ลองให้จริงแล้วย้อนกลับถ้าพลาด)
+local function giveAll(player, rewards)
+	local given = {}
+	for _, reward in ipairs(rewards) do
+		if not give(player, reward) then
+			for _, done in ipairs(given) do
+				if done.item then Inventory.RemoveById(player, done.item, done.count or 1) end
+			end
+			return false
+		end
+		given[#given + 1] = reward
+	end
+	return true
+end
+
 --------------------------------------------------------------------------------
 -- ภาพที่ส่งให้ไคลเอนต์
 --------------------------------------------------------------------------------
@@ -149,6 +168,7 @@ local function snapshot(player)
 		robuxEnabled = next(PremiumConfig.Products) ~= nil,
 		pass = bp and {
 			season = bp.season,
+			endsAt = PremiumConfig.PassSeasonEnds(bp.season),
 			xp = bp.xp,
 			tier = tierOf(bp),
 			premium = bp.premium == true,
@@ -322,17 +342,22 @@ local function claim(player, tier, track)
 	end
 	local claimed = premium and bp.claimedPremium or bp.claimedFree
 	if claimed[tostring(tier)] then return end
-	local reward = (premium and PASS.Premium or PASS.Free)[tier]
-	if not reward then return end
-	if not canHold(player, reward) then
-		return Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม")
+	-- ของประจำขั้น + ของประจำเดือน (สายพรีเมียมขั้น 15/30) — ซีซันของตัวพาส ไม่ใช่เดือนตอนนี้ (กันเส้นเที่ยงคืนวันที่ 1)
+	local rewards = PremiumConfig.PassRewards(bp.season, premium and "premium" or "free", tier)
+	if #rewards == 0 then return end
+	for _, reward in ipairs(rewards) do
+		if not canHold(player, reward) then
+			return Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม")
+		end
 	end
 	claimed[tostring(tier)] = true
-	if not give(player, reward) then
+	if not giveAll(player, rewards) then
 		claimed[tostring(tier)] = nil
-		return Remotes.SocialNotify:FireClient(player, "error", "รับของไม่สำเร็จ")
+		return Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม — รับของไม่สำเร็จ")
 	end
-	Remotes.SocialNotify:FireClient(player, "info", ("รับ %s (ขั้น %d)"):format(rewardName(reward), tier))
+	local names = {}
+	for _, reward in ipairs(rewards) do names[#names + 1] = rewardName(reward) end
+	Remotes.SocialNotify:FireClient(player, "info", ("รับ %s (ขั้น %d)"):format(table.concat(names, " + "), tier))
 	push(player)
 end
 
