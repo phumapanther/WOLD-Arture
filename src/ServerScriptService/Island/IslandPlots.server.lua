@@ -9,6 +9,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Inventory = require(game.ServerScriptService.Inventory)
 local IslandAccess = require(script.Parent.IslandAccess)
 local IslandConfig = require(ReplicatedStorage.IslandConfig)
+local GoldBorder = require(ReplicatedStorage.GoldBorder)
 local Progression = require(game.ServerScriptService.Progression)
 local GatherConfig = require(ReplicatedStorage.GatherConfig)
 local ItemCatalog = require(ReplicatedStorage.ItemCatalog)
@@ -129,7 +130,8 @@ end
 -- ตอนที่สามารถเก็บได้") · จดใน `entry.glow` (false = ทอยแล้วไม่ติด) ออก-เข้าเกาะจึงทอยใหม่ไม่ได้
 -- เรียกซ้ำได้: ทอยครั้งเดียวต่อรอบปลูก แล้วแค่คืนแอตทริบิวต์ให้ตรงกับโปรไฟล์ (หลังเซิร์ฟบูต)
 local function ripen(model, entry)
-	if entry.glow == nil then entry.glow = IslandConfig.RollGlow() or false end
+	-- ผลผลิตแปลงผักทุกชนิดมีขอบทองได้ แสงแดงจึงขึ้นได้ทุกแปลง (เฟส 2b)
+	if entry.glow == nil then entry.glow = IslandConfig.RollGlow(true) or false end
 	local tone = entry.glow or nil
 	if model:GetAttribute("Glow") ~= tone then model:SetAttribute("Glow", tone) end
 end
@@ -155,19 +157,25 @@ local function harvest(player, model)
 	-- **ของเรืองแสง** (ผู้ใช้สั่ง 2026-09-23) ฟ้า = วัตถุดิบ ×2 · ทอง = EXP ×2
 	-- คูณ **ก่อน** ถามกระเป๋า เพื่อให้กระเป๋าที่ใส่ไม่ครบปฏิเสธทั้งกอง ไม่ใช่รับครึ่งเดียวเงียบๆ
 	local glow = entry.glow or nil
-	local G = IslandConfig.Glow
-	if glow == "blue" then amount = math.floor(amount * G.yield + 0.5) end
+	amount = math.floor(amount * IslandConfig.GlowYield(glow) + 0.5)
 
+	-- **ของขอบทอง** (เฟส 2b) หนึ่งชิ้นในกองนี้ · กระเป๋า VIP เต็ม = ได้เป็นของธรรมดา (AddHarvest)
+	local withGold = GoldBorder.CropItems[entry.crop] == true and GoldBorder.Roll(glow)
 	if not Inventory.HasRoomFor(player, entry.crop, amount) then return false, "full" end
-	if not Inventory.AddItem(player, entry.crop, amount) then return false, "full" end
+	local given, goldResult = Inventory.AddHarvest(player, entry.crop, amount, withGold)
+	if not given then return false, "full" end
 	local item = ItemCatalog.Get(entry.crop)
-	Remotes.SocialNotify:FireClient(player, "info", ("เก็บเกี่ยวได้ %s x%d"):format(item and item.name or entry.crop, amount))
+	Remotes.SocialNotify:FireClient(player, "info", ("เก็บเกี่ยวได้ %s x%d%s"):format(item and item.name or entry.crop, amount,
+		goldResult == "given" and " (✦ขอบทอง 1)" or ""))
+	if goldResult == "lost" then
+		Remotes.SocialNotify:FireClient(player, "error", "กระเป๋า VIP เต็ม — ขอบทองกลายเป็นของธรรมดา")
+	end
 
 	-- ของแถมประจำพืช (`spec.bonus`) — ตอนนี้คือแร่เวทมนตร์ที่ติดมากับต้นเวทมนตร์
 	-- แยกจากหนอนข้างล่างที่เป็นของแถมของ **ดิน** ซึ่งติดมาได้กับทุกพืช
 	if spec and spec.bonus and math.random() < (spec.bonus.chance or 0.5) then
 		local extra = math.random(spec.bonus.min or 1, spec.bonus.max or 1)
-		if glow == "blue" then extra = math.floor(extra * G.yield + 0.5) end
+		extra = math.floor(extra * IslandConfig.GlowYield(glow) + 0.5)
 		if Inventory.HasRoomFor(player, spec.bonus.item, extra) and Inventory.AddItem(player, spec.bonus.item, extra) then
 			local bi = ItemCatalog.Get(spec.bonus.item)
 			Remotes.SocialNotify:FireClient(player, "info",
@@ -188,7 +196,7 @@ local function harvest(player, model)
 	local seeds = IslandConfig.SeedBonus
 	if seeds and math.random() < seeds.chance then
 		local n = math.random(seeds.min, seeds.max)
-		if glow == "blue" then n = math.floor(n * G.yield + 0.5) end
+		n = math.floor(n * IslandConfig.GlowYield(glow) + 0.5)
 		if Inventory.HasRoomFor(player, IslandConfig.SeedItem, n) and Inventory.AddItem(player, IslandConfig.SeedItem, n) then
 			Remotes.SocialNotify:FireClient(player, "info", ("ได้เมล็ดพันธุ์ติดมา x%d"):format(n))
 		end
@@ -206,7 +214,7 @@ local function harvest(player, model)
 	-- **EXP จากการเก็บเกี่ยว** — แปลงผักไม่เคยให้มาก่อน ซึ่งทำให้แสงสีทองไม่มีความหมายเลย
 	-- ตัวคูณของเกาะ (สัตว์เลี้ยง/ของตกแต่ง) ใช้ตัวเดียวกับที่ `Gathering` ถาม
 	local xp = IslandConfig.CropExp or 0
-	if glow == "gold" then xp = math.floor(xp * G.exp + 0.5) end
+	xp = math.floor(xp * IslandConfig.GlowExp(glow) + 0.5)
 	if IslandAccess.FarmExpMultiplier then
 		xp = math.floor(xp * IslandAccess.FarmExpMultiplier() + 0.5)
 	end
@@ -214,7 +222,8 @@ local function harvest(player, model)
 
 	if glow then
 		Remotes.SocialNotify:FireClient(player, "info",
-			glow == "gold" and "✨ แสงทอง: EXP สองเท่า" or "💠 แสงฟ้า: วัตถุดิบสองเท่า")
+			glow == "red" and "🔥 แสงแดง: ขอบทอง + วัตถุดิบและ EXP สองเท่า"
+				or glow == "gold" and "✨ แสงทอง: EXP สองเท่า" or "💠 แสงฟ้า: วัตถุดิบสองเท่า")
 	end
 
 	entry.crop, entry.at, entry.glow = nil, nil, nil

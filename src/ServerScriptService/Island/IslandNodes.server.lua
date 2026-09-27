@@ -18,6 +18,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ServerStorage = game:GetService("ServerStorage")
 
 local IslandConfig = require(ReplicatedStorage.IslandConfig)
+local GoldBorder = require(ReplicatedStorage.GoldBorder) -- เฟส 2b: แสงแดงเฉพาะสายแร่ที่ให้ของขอบทองได้
 local IslandGrid = require(ReplicatedStorage.IslandGrid)
 local IslandAccess = require(script.Parent.IslandAccess)
 
@@ -149,7 +150,8 @@ local function spawnAt(kind, cx, cz, glow)
 	-- ของเรืองแสง (ผู้ใช้สั่ง 2026-09-23) — จุดที่เพิ่งโผล่ไม่เคยผ่าน `Gathering.setSpent(node, false)`
 	-- จึงต้องทอยเองตรงนี้ **ครั้งเดียวตอนโผล่ครั้งแรก** แล้วจำไว้ (QA 2026-09-26: เดิมทอยใหม่ทุกครั้งที่เซิร์ฟเปิด
 	-- = ออกเข้าใหม่จนได้สีที่อยากได้)
-	if glow == nil then glow = IslandConfig.RollGlow() or false end
+	-- แสงแดง (เฟส 2b) เฉพาะสายแร่ที่ให้ของขอบทองได้ · ต้นไม้/พุ่ม/หิน/ถ่านหินทอยแค่ฟ้ากับทอง
+	if glow == nil then glow = IslandConfig.RollGlow(GoldBorder.NodeCanGold(kind)) or false end
 	model:SetAttribute("Glow", glow or nil)
 	local gs = glowStore()
 	if gs then gs[IslandGrid.key(cx, cz)] = glow end

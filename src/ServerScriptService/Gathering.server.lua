@@ -183,7 +183,9 @@ local function setSpent(node, spent)
 	-- เสมอ จึงไม่ต้องไปไล่ทอยทีละที่ให้เพี้ยนกันเอง
 	if not spent and ServerConfig.IsFarm then
 		local IslandConfig = require(game.ReplicatedStorage.IslandConfig)
-		node:SetAttribute("Glow", IslandConfig.RollGlow())
+		local GoldBorder = require(game.ReplicatedStorage.GoldBorder)
+		-- แสงแดง (เฟส 2b) ขึ้นเฉพาะโหนดที่ให้ของขอบทองได้ (สัตว์คอก · สายแร่ที่ไม่ใช่ถ่านหิน/หิน)
+		node:SetAttribute("Glow", IslandConfig.RollGlow(GoldBorder.NodeCanGold(node:GetAttribute("NodeKind"))))
 	end
 
 	-- สัตว์เลี้ยงไม่จาง: มันยังยืนอยู่ตรงนั้นจริงๆ แค่รีดนม/เก็บไข่ซ้ำไม่ได้ชั่วคราว
@@ -331,7 +333,10 @@ local function gather(node, player)
 	-- `roll` (การขุด) มาก่อน `alt`: มันไม่ใช่ "ของหลักหรือของสำรอง" แต่เป็นตารางที่ครอบทุกผลลัพธ์อยู่แล้ว
 	-- ตั้งแต่หินยันเพชร ของหลัก `config.item` เหลือเป็นแค่ตัวสำรองถ้าตารางสุ่มพลาด (ดู GatherConfig.roll)
 	local itemId, minCount, maxCount = config.item, config.min, config.max
-	if config.roll then
+	-- **ของเรืองแสง** (เกาะเท่านั้น · ธงถูกทอยไว้ตั้งแต่โหนดเริ่มรอบนี้) อ่านก่อนสุ่มของ เพราะแสงแดงบนสายแร่
+	-- **ข้ามการสุ่มหิน/ถ่านหิน** ได้แร่ของสายนั้นแน่นอน (ผู้ใช้เลือก 2026-09-27) ไม่งั้น "ขอบทองแน่นอน" ไม่แน่นอนจริง
+	local glow = ServerConfig.IsFarm and node:GetAttribute("Glow") or nil
+	if config.roll and glow ~= "red" then
 		-- หารด้วยผลรวมจริง ไม่ใช่สมมติว่าเป็น 1 พอดี — ตารางถูกประกอบจากการหารเศษ ผลบวกทศนิยมจึง
 		-- อาจขาดไปเศษเสี้ยว และการสุ่มที่ตกร่องนั้นจะเงียบๆ คืนของผิดทุกครั้งที่เกิด
 		local total = 0
@@ -372,15 +377,20 @@ local function gather(node, player)
 		if cap then count = math.min(count, cap) end
 	end
 
-	-- **ของเรืองแสง** (เกาะเท่านั้น · ธงถูกทอยไว้ตั้งแต่โหนดเริ่มรอบนี้) ฟ้า = วัตถุดิบ ×2 · ทอง = EXP ×2
-	-- คูณ **ก่อน** `AddItem` เพื่อให้กระเป๋าที่ใส่ไม่ครบปฏิเสธทั้งกอง ไม่ใช่รับครึ่งเดียวเงียบๆ
-	local glow = ServerConfig.IsFarm and node:GetAttribute("Glow") or nil
-	local GlowCfg = glow and require(game.ReplicatedStorage.IslandConfig).Glow or nil
-	if glow == "blue" then count = math.floor(count * GlowCfg.yield + 0.5) end
+	-- แสงฟ้า/แดง = วัตถุดิบ ×2 · ทอง/แดง = EXP ×2 (IslandConfig.GlowYield/GlowExp) · คูณ **ก่อน** แจก
+	-- เพื่อให้กระเป๋าที่ใส่ไม่ครบปฏิเสธทั้งกอง ไม่ใช่รับครึ่งเดียวเงียบๆ
+	local IslandCfg = glow and require(game.ReplicatedStorage.IslandConfig) or nil
+	if IslandCfg then count = math.floor(count * IslandCfg.GlowYield(glow) + 0.5) end
 	-- The merchant's sharp eye. Doubled before the bag is asked, so a full bag refuses the whole doubled
 	-- amount rather than quietly handing over half of it.
 	count = ClassPerks.HarvestFor(player, count)
-	local given = Inventory.AddItem(player, itemId, count)
+	-- **ของขอบทอง** (เฟส 2b · เกาะเท่านั้น) หนึ่งชิ้นในกองนี้ — ผลผลิตสัตว์คอก/แร่ที่ไม่ใช่ถ่านหินหิน · แสงฟ้าไม่คูณชิ้นทอง
+	local withGold = false
+	if ServerConfig.IsFarm then
+		local GoldBorder = require(game.ReplicatedStorage.GoldBorder)
+		withGold = GoldBorder.GatherItems[itemId] == true and GoldBorder.Roll(glow)
+	end
+	local given, goldResult = Inventory.AddHarvest(player, itemId, count, withGold)
 	if not given then
 		Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม")
 		-- Still spent: the node was struck. Letting a full bag leave it fresh would make "stand at a full
@@ -393,7 +403,7 @@ local function gather(node, player)
 		-- ตัวคูณอยู่กับ `IslandPets` ซึ่งเป็นเจ้าของคำถาม "ตอนนี้เกาะมีอะไรอยู่บ้าง" — ไฟล์นี้แค่ถาม
 		-- นอกเพลสเกาะ ช่องนี้เป็น nil ตัวคูณจึงเป็น 1 และเกมหลักไม่เปลี่ยนแปลงอะไรเลย
 		local xp = config.xp
-		if glow == "gold" then xp = math.floor(xp * GlowCfg.exp + 0.5) end
+		if IslandCfg then xp = math.floor(xp * IslandCfg.GlowExp(glow) + 0.5) end
 		local IslandAccess = ServerConfig.IsFarm
 			and require(game.ServerScriptService.Island.IslandAccess) or nil
 		if IslandAccess and IslandAccess.FarmExpMultiplier then
@@ -416,7 +426,7 @@ local function gather(node, player)
 	local bonus = config.bonus
 	if bonus and math.random() < (bonus.chance or 0.25) then
 		local amount = ClassPerks.HarvestFor(player, math.random(bonus.min or 1, bonus.max or 1))
-		if glow == "blue" then amount = math.floor(amount * GlowCfg.yield + 0.5) end
+		if IslandCfg then amount = math.floor(amount * IslandCfg.GlowYield(glow) + 0.5) end
 		if Inventory.AddItem(player, bonus.item, amount) then
 			bonusId, bonusCount = bonus.item, amount
 		end
@@ -428,7 +438,11 @@ local function gather(node, player)
 		local extra = ItemCatalog.Get(bonusId)
 		text ..= (" + %s x%d"):format(extra and extra.name or bonusId, bonusCount)
 	end
+	if goldResult == "given" then text ..= " (✦ขอบทอง 1)" end
 	Remotes.SocialNotify:FireClient(player, "info", text)
+	if goldResult == "lost" then
+		Remotes.SocialNotify:FireClient(player, "error", "กระเป๋า VIP เต็ม — ขอบทองกลายเป็นของธรรมดา")
+	end
 
 	task.delay(respawn, function()
 		if node.Parent then setSpent(node, false) end
