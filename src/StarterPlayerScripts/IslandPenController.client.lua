@@ -155,23 +155,27 @@ local function row(index, animal, snap)
 	name.TextSize = 16
 	name.TextColor3 = TEXT
 	name.TextXAlignment = Enum.TextXAlignment.Left
-	name.Text = ("%s  ·  %d เหรียญ"):format(animal.name, animal.price)
+	name.Text = animal.name
 	name.Parent = frame
 
-	-- ซื้อทีละ 1 หรือเต็มคอก — เพดานแค่ห้าตัว ปุ่มสองปุ่มพอ ไม่ต้องมีช่องพิมพ์เลข
-	-- (เซิร์ฟเวอร์ตัดจำนวนให้พอดีที่ว่างอยู่แล้ว กด "เต็มคอก" ตอนมีอยู่ 3 จึงซื้อแค่ 2)
+	-- เฟส 2a: สองปุ่มทุกแถว 💎 / 💰 (ผู้ใช้เลือก 2026-09-27) กดหนึ่งครั้ง = หนึ่งตัว
+	-- ปุ่ม "เต็มคอก" เดิมถูกถอด: คอกจุแค่ 3 ตัว และสี่ปุ่มในแถวเดียวไม่พอที่บนมือถือ
 	local x = 0
-	for _, n in ipairs({ 1, snap.max }) do
+	for _, pay in ipairs({
+		{ currency = "coins", text = ("💰 %d"):format(animal.price), color = Color3.fromRGB(150, 120, 52), width = 84 },
+		{ currency = "gems", text = ("💎 %d"):format(animal.gems or 0), color = Color3.fromRGB(58, 102, 140), width = 60 },
+	}) do
 		local b = Instance.new("TextButton")
+		b.Name = pay.currency == "gems" and "BuyGems" or "BuyCoins"
 		b.AnchorPoint = Vector2.new(1, 0.5)
 		b.Position = UDim2.new(1, -10 - x, 0.5, 0)
-		b.Size = UDim2.new(0, 56, 0, 30)
-		b.BackgroundColor3 = Color3.fromRGB(72, 104, 78)
+		b.Size = UDim2.new(0, pay.width, 0, 30)
+		b.BackgroundColor3 = pay.color
 		b.BorderSizePixel = 0
 		b.Font = Enum.Font.GothamBold
 		b.TextSize = 15
 		b.TextColor3 = TEXT
-		b.Text = n == 1 and "+1" or "เต็มคอก"
+		b.Text = pay.text
 		b.Parent = frame
 		local bc = Instance.new("UICorner"); bc.CornerRadius = UDim.new(0, 7); bc.Parent = b
 		-- คอกที่มีสัตว์ชนิดอื่นอยู่แล้ว: ปิดปุ่มไว้เลย ดีกว่ากดแล้วโดนปฏิเสธ
@@ -182,9 +186,9 @@ local function row(index, animal, snap)
 		end
 		b.MouseButton1Click:Connect(function()
 			if blocked or not currentUid then return end
-			Remotes.IslandPenBuy:FireServer(currentUid, animal.kind, n)
+			Remotes.IslandPenBuy:FireServer(currentUid, animal.kind, 1, pay.currency)
 		end)
-		x += 62
+		x += pay.width + 6
 	end
 end
 

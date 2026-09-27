@@ -14,6 +14,8 @@ local HttpService = game:GetService("HttpService")
 local Inventory = require(game.ServerScriptService.Inventory)
 local IslandAccess = require(script.Parent.IslandAccess)
 local IslandConfig = require(ReplicatedStorage.IslandConfig)
+local ShopConfig = require(ReplicatedStorage.ShopConfig) -- เฟส 2a: ราคาเพชรของสัตว์ในคอก (GemsFor ตัวเดียวกับร้านเกาะ)
+local PremiumAccess = require(game.ServerScriptService.PremiumAccess)
 local IslandGrid = require(ReplicatedStorage.IslandGrid)
 local Remotes = require(ReplicatedStorage.Remotes)
 
@@ -142,7 +144,7 @@ local function penSnapshot(model)
 	local entry = IslandAccess.EntryOf(model)
 	local rows = {}
 	for _, a in ipairs(IslandConfig.PenAnimals) do
-		table.insert(rows, { kind = a.kind, name = a.name, price = a.price })
+		table.insert(rows, { kind = a.kind, name = a.name, price = a.price, gems = ShopConfig.GemsFor(a.price) })
 	end
 	-- **สถานะรายตัว** (ผู้ใช้สั่ง 2026-09-23: "กดดูได้ด้วยว่าอีกนานไหมกว่าสัตว์แต่ละตัวจะเก็บผลผลิตได้")
 	--
@@ -221,7 +223,13 @@ end
 local saveHerd
 
 -- ซื้อสัตว์ n ตัว: เกิดในคอกทันที หักเงินตามจำนวนที่เกิดจริง (ผู้ใช้สั่ง "ซื้อแล้วนับสัตว์ในคอกเลย")
-local function penBuy(player, model, kind, count)
+-- currency "gems"/"coins"/nil(=เหรียญ) — เฟส 2a สองปุ่มทุกแถว · ราคาเพชร = ShopConfig.GemsFor(ราคาเหรียญ)
+local function penBuy(player, model, kind, count, currency)
+	if currency ~= nil and currency ~= "gems" and currency ~= "coins" then return false, "สกุลเงินไม่ถูกต้อง" end
+	local gems = currency == "gems"
+	if gems and not (PremiumAccess.GetGems and PremiumAccess.SpendGems) then
+		return false, "ร้านเพชรยังไม่พร้อม ลองใหม่อีกครั้ง"
+	end
 	if not IslandAccess.IsOwner(player) then return false, "เฉพาะเจ้าของเกาะ" end
 	local entry = IslandAccess.EntryOf(model)
 	if not entry then return false, "ไม่พบคอกนี้" end
@@ -236,20 +244,38 @@ local function penBuy(player, model, kind, count)
 	count = math.min(count, room)
 
 	local state = Inventory.Get(player)
-	local cost = spec.price * count
-	if not state or state.gold < cost then return false, "เงินไม่พอ" end
+	local unit = gems and ShopConfig.GemsFor(spec.price) or spec.price
+	local cost = unit * count
+	if not state then return false, "เงินไม่พอ" end
+	if gems then
+		if PremiumAccess.GetGems(player) < cost then return false, "เพชรไม่พอ" end
+	elseif state.gold < cost then
+		return false, "เงินไม่พอ"
+	end
 
 	-- คอกหนึ่งเลี้ยงชนิดเดียว: ซื้อชนิดใหม่ทับของเดิมไม่ได้ · คอกที่ว่างแล้วเปลี่ยนชนิดได้เลย
 	if entry.animal and entry.animal ~= kind and penCount(model) > 0 then
 		return false, "คอกนี้มีสัตว์ชนิดอื่นอยู่ รอเก็บให้หมดก่อน"
 	end
 
+	-- จำตัวที่ยืนอยู่ก่อน: ถ้าหักเพชรไม่ผ่านหลังปล่อยสัตว์แล้ว จะได้เก็บเฉพาะตัวที่เพิ่งเกิดคืน
+	local before = {}
+	for _, a in ipairs(penFolder(model):GetChildren()) do before[a] = true end
 	local born = 0
 	for _ = 1, count do
 		if spawnAnimal(model, kind) then born += 1 end
 	end
 	if born == 0 then return false, "ปล่อยสัตว์ลงคอกไม่สำเร็จ" end
-	Inventory.AddGold(player, -spec.price * born)
+	if gems then
+		if not PremiumAccess.SpendGems(player, unit * born) then
+			for _, a in ipairs(penFolder(model):GetChildren()) do
+				if not before[a] then a:Destroy() end
+			end
+			return false, "เพชรไม่พอ"
+		end
+	else
+		Inventory.AddGold(player, -unit * born)
+	end
 	entry.animal = kind
 	saveHerd(model, entry) -- จดทันที ไม่รอรอบ tick ถัดไป (ผู้เล่นอาจออกเกมภายในวินาทีนั้น)
 	notify(player, "info", ("ซื้อ%s %d ตัว — โตพอให้เก็บใน %d นาที"):format(spec.name, born, IslandConfig.PenGrowSeconds / 60))
@@ -559,10 +585,10 @@ Remotes.IslandPenRelease.OnServerEvent:Connect(function(player, uid)
 	Remotes.IslandPenOpen:FireClient(player, after)
 end)
 
-Remotes.IslandPenBuy.OnServerEvent:Connect(function(player, uid, kind, count)
+Remotes.IslandPenBuy.OnServerEvent:Connect(function(player, uid, kind, count, currency)
 	local model = IslandAccess.ModelOf(tonumber(uid) or -1)
 	if not model or model:GetAttribute("ItemId") ~= IslandConfig.PenItem then return end
-	local ok, why = penBuy(player, model, tostring(kind), count)
+	local ok, why = penBuy(player, model, tostring(kind), count, currency)
 	if not ok then
 		notify(player, "error", why)
 	end
