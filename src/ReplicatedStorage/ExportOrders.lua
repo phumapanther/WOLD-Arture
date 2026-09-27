@@ -54,7 +54,11 @@ local function pickWeighted(list, rng, level)
 end
 
 function ExportOrders.Target(level)
-	return ExportConfig.TargetBase + ExportConfig.TargetPerLevel * (clampLevel(level) - 1)
+	level = clampLevel(level)
+	local knee = ExportConfig.TargetKnee or math.huge
+	local early = math.min(level, knee) - 1
+	local late = math.max(0, level - knee)
+	return ExportConfig.TargetBase + ExportConfig.TargetPerLevel * early + (ExportConfig.TargetPerLevelAfter or 0) * late
 end
 
 function ExportOrders.LineCount(level, rng)

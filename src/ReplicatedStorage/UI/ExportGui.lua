@@ -477,6 +477,10 @@ end
 
 -- ตารางปลด: ทุกเลเวลจนถึงเลเวลสุดท้ายที่มีของ · ผ่านแล้ว ✓ · ตอนนี้ ◀ · ยัง 🔒
 function ExportGui:DrawUnlocks(snap)
+	-- ตาราง 50 เลเวล = ~700 ชิ้น UI · วาดใหม่เฉพาะตอนเลเวล/EXP เปลี่ยน ไม่ใช่ทุกภาพที่เซิร์ฟส่งมา (มือถือกระตุก)
+	local key = ("%s:%s:%s:%s"):format(tostring(snap.level), tostring(snap.into), tostring(snap.need), tostring(snap.max))
+	if self.unlocksKey == key then return end -- ส่วนเลเวลถูกลบที่นี่ที่เดียว คีย์เดิม = ของบนหน้ายังครบ
+	self.unlocksKey = key
 	for _, child in ipairs(self.unlocksPage:GetChildren()) do
 		if child:IsA("Frame") then child:Destroy() end
 	end
@@ -591,7 +595,7 @@ function ExportGui:Show(snap)
 	TweenService:Create(self.expFill, TweenInfo.new(firstOpen and 0 or 0.4), {
 		Size = UDim2.fromScale(math.clamp((snap.into or 0) / need, 0, 1), 1),
 	}):Play()
-	-- เพดานเลเวล (ผู้ใช้สั่ง 2026-09-27: ตัน Lv19 ไปก่อน) — หลอดเต็มสีทอง บอกว่ารอเปิดเพิ่ม ไม่โชว์ตัวเลขที่ไม่มีความหมาย
+	-- เพดานเลเวล (FarmLevelConfig.MaxLevel = 50) — หลอดเต็มสีทอง บอกว่ารอเปิดเพิ่ม ไม่โชว์ตัวเลขที่ไม่มีความหมาย
 	self.expFill.BackgroundColor3 = snap.max and RUNE or EXP
 	self.expText.Text = snap.max and "เลเวลสูงสุด · รอเปิดเพิ่มในอัปเดตหน้า"
 		or ("%s / %s EXP ฟาร์ม"):format(commas(snap.into or 0), commas(need))

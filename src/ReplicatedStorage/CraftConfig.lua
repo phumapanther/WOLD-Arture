@@ -191,6 +191,7 @@ CraftConfig.Recipes = {
 	--
 	-- ⚠️ **ต่อท้ายเท่านั้น** — ลำดับในตารางนี้คือเลขที่ไคลเอนต์ส่งกลับมา แทรกกลางเมื่อไหร่งานที่ค้างอยู่ชี้ผิดสูตร
 	-- สำเร็จ 100% ไม่มีค่าจ้าง · `level` = เลเวลฟาร์มที่ปลดสูตร (ต่ำกว่านั้นโชว์ 🔒) · `batch` = ทำได้ 1-10 รอบต่องาน
+	-- เลเวลกระจายตามตาราง 50 เลเวล (ผู้ใช้อนุมัติ 2026-09-27) · **แก้เลเวลสูตรต้องแก้ `ExportConfig.Goods` ชิ้นเดียวกันด้วย** (เทสตรวจ)
 	-- ขั้นสุดท้าย (★) ส่งออกอย่างเดียว ไม่เป็นวัตถุดิบของสูตรไหน (เทส farm_level_test ตรวจ) · ยาวสุด 2 ชม.
 	----------------------------------------------------------------------------
 	-- เตาอบขนมปัง
@@ -199,43 +200,43 @@ CraftConfig.Recipes = {
 	{ id = "Dough", tab = "bakery", station = "bakery", chance = 1, gold = 0, seconds = 10 * 60,
 		level = 3, batch = true, cost = { Flour = 2, Egg = 1 } }, -- ไม่ใช้น้ำ: น้ำพกได้แค่ 5 ขวด ทำ 10 รอบไม่ได้
 	{ id = "SpecialBread", tab = "bakery", station = "bakery", chance = 1, gold = 0, seconds = 30 * 60,
-		level = 4, batch = true, cost = { Dough = 2, Milk = 2 } },
+		level = 8, batch = true, cost = { Dough = 2, Milk = 2 } },
 	{ id = "MeatPie", tab = "bakery", station = "bakery", chance = 1, gold = 0, seconds = 60 * 60,
-		level = 5, batch = true, cost = { Dough = 2, Meat = 3, Vegetable = 2 } },
+		level = 9, batch = true, cost = { Dough = 2, Meat = 3, Vegetable = 2 } },
 	{ id = "CreamCake", tab = "bakery", station = "bakery", chance = 1, gold = 0, seconds = 90 * 60,
-		level = 7, batch = true, cost = { Dough = 3, Egg = 4, Milk = 3 } },
+		level = 15, batch = true, cost = { Dough = 3, Egg = 4, Milk = 3 } },
 
 	-- โต๊ะช่างเหล็ก
 	{ id = "IronIngot", tab = "metal", station = "metal", chance = 1, gold = 0, seconds = 5 * 60,
-		level = 5, batch = true, cost = { IronOre = 3, Coal = 1 } },
+		level = 6, batch = true, cost = { IronOre = 3, Coal = 1 } },
 	{ id = "Nails", tab = "metal", station = "metal", chance = 1, gold = 0, yields = 5, seconds = 5 * 60,
-		level = 5, batch = true, cost = { IronIngot = 1 } },
+		level = 7, batch = true, cost = { IronIngot = 1 } },
 	{ id = "Hinge", tab = "metal", station = "metal", chance = 1, gold = 0, seconds = 15 * 60,
-		level = 6, batch = true, cost = { IronIngot = 2, Nails = 2 } },
+		level = 18, batch = true, cost = { IronIngot = 2, Nails = 2 } },
 	{ id = "SilverIngot", tab = "metal", station = "metal", chance = 1, gold = 0, seconds = 10 * 60,
-		level = 7, batch = true, cost = { SilverOre = 3, Coal = 1 } },
+		level = 16, batch = true, cost = { SilverOre = 3, Coal = 1 } },
 	{ id = "MechGear", tab = "metal", station = "metal", chance = 1, gold = 0, yields = 2, seconds = 20 * 60,
-		level = 7, batch = true, cost = { IronIngot = 1, SilverIngot = 1 } },
+		level = 19, batch = true, cost = { IronIngot = 1, SilverIngot = 1 } },
 	{ id = "Padlock", tab = "metal", station = "metal", chance = 1, gold = 0, seconds = 45 * 60,
-		level = 7, batch = true, cost = { IronIngot = 2, Hinge = 1, Nails = 3 } },
+		level = 24, batch = true, cost = { IronIngot = 2, Hinge = 1, Nails = 3 } },
 	{ id = "GoldIngot", tab = "metal", station = "metal", chance = 1, gold = 0, seconds = 15 * 60,
-		level = 9, batch = true, cost = { GoldOre = 3, Coal = 1 } },
+		level = 33, batch = true, cost = { GoldOre = 3, Coal = 1 } },
 	{ id = "PocketWatch", tab = "metal", station = "metal", chance = 1, gold = 0, seconds = 90 * 60,
-		level = 9, batch = true, cost = { GoldIngot = 1, MechGear = 3, Crystal = 1 } },
+		level = 37, batch = true, cost = { GoldIngot = 1, MechGear = 3, Crystal = 1 } },
 	{ id = "MagicCompass", tab = "metal", station = "metal", chance = 1, gold = 0, seconds = 120 * 60,
-		level = 10, batch = true, cost = { SilverIngot = 2, MagicOre = 2, MechGear = 1 } },
+		level = 42, batch = true, cost = { SilverIngot = 2, MagicOre = 2, MechGear = 1 } },
 
 	-- กี่ทอผ้า
 	{ id = "Thread", tab = "loom", station = "loom", chance = 1, gold = 0, yields = 2, seconds = 5 * 60,
-		level = 6, batch = true, cost = { Cotton = 3 } },
+		level = 10, batch = true, cost = { Cotton = 3 } },
 	{ id = "Cloth", tab = "loom", station = "loom", chance = 1, gold = 0, seconds = 20 * 60,
-		level = 6, batch = true, cost = { Thread = 4 } },
+		level = 11, batch = true, cost = { Thread = 4 } },
 	{ id = "Yarn", tab = "loom", station = "loom", chance = 1, gold = 0, yields = 2, seconds = 5 * 60,
-		level = 6, batch = true, cost = { Wool = 3 } },
+		level = 13, batch = true, cost = { Wool = 3 } },
 	{ id = "WoolCloth", tab = "loom", station = "loom", chance = 1, gold = 0, seconds = 20 * 60,
-		level = 6, batch = true, cost = { Yarn = 4 } },
+		level = 14, batch = true, cost = { Yarn = 4 } },
 	{ id = "FineFabric", tab = "loom", station = "loom", chance = 1, gold = 0, seconds = 120 * 60,
-		level = 8, batch = true, cost = { Cloth = 2, WoolCloth = 1, Herb = 3 } },
+		level = 29, batch = true, cost = { Cloth = 2, WoolCloth = 1, Herb = 3 } },
 }
 
 return CraftConfig

@@ -41,59 +41,83 @@ ShopConfig.Sells = {
 ShopConfig.IslandSells = {
 	-- บ้าน: ของชิ้นใหญ่ที่เก็บเงินทั้งเกมมาซื้อ
 	{ id = "House_StoneCottage", category = "house", level = 4, coins = 20000 },
-	{ id = "House_Roundhouse", category = "house", level = 7, coins = 25000 },
-	{ id = "House_Longhouse", category = "house", level = 9, coins = 30000 },
-	{ id = "House_PipeWorker", category = "house", level = 10, coins = 40000 },
-	{ id = "House_Townhouse", category = "house", level = 11, coins = 50000 },
+	{ id = "House_Roundhouse", category = "house", level = 12, coins = 25000 },
+	{ id = "House_Longhouse", category = "house", level = 20, coins = 30000 },
+	{ id = "House_PipeWorker", category = "house", level = 26, coins = 40000 },
+	{ id = "House_Townhouse", category = "house", level = 36, coins = 50000 },
 
 	-- ของตกแต่ง
 	{ id = "Deco_PathTile", category = "decor", level = 1, gems = 2 },
 	{ id = "Deco_Rock", category = "decor", level = 1, gems = 3 },
-	{ id = "Deco_Bush", category = "decor", level = 1, gems = 4 },
-	{ id = "Deco_Stump", category = "decor", level = 1, gems = 4 },
+	{ id = "Deco_Bush", category = "decor", level = 3, gems = 4 },
+	{ id = "Deco_Stump", category = "decor", level = 3, gems = 4 },
 	{ id = "Deco_Fence", category = "decor", level = 1, gems = 4 },
-	{ id = "Deco_FlowerPot", category = "decor", level = 1, gems = 8 },
-	{ id = "Deco_Crate", category = "decor", level = 1, gems = 10 },
-	{ id = "Deco_Barrel", category = "decor", level = 1, gems = 10 },
-	{ id = "Deco_Signpost", category = "decor", level = 2, gems = 12 },
-	{ id = "Deco_RockBig", category = "decor", level = 2, gems = 14 },
-	{ id = "Deco_Lantern", category = "decor", level = 2, gems = 15 },
-	{ id = "Deco_Bench", category = "decor", level = 3, gems = 18 },
-	{ id = "Deco_Lamp", category = "decor", level = 3, gems = 22 },
-	{ id = "Deco_Tree", category = "decor", level = 5, gems = 30 },
-	{ id = "Deco_Well", category = "decor", level = 3, gems = 60 },
+	{ id = "Deco_FlowerPot", category = "decor", level = 4, gems = 8 },
+	{ id = "Deco_Crate", category = "decor", level = 5, gems = 10 },
+	{ id = "Deco_Barrel", category = "decor", level = 5, gems = 10 },
+	{ id = "Deco_Signpost", category = "decor", level = 7, gems = 12 },
+	{ id = "Deco_RockBig", category = "decor", level = 9, gems = 14 },
+	{ id = "Deco_Lantern", category = "decor", level = 7, gems = 15 },
+	{ id = "Deco_Bench", category = "decor", level = 9, gems = 18 },
+	{ id = "Deco_Lamp", category = "decor", level = 18, gems = 22 },
+	{ id = "Deco_Tree", category = "decor", level = 19, gems = 30 },
+	{ id = "Deco_Well", category = "decor", level = 25, gems = 60 },
 
 	-- ของป่าจากเกมหลัก: วางแล้วเก็บเกี่ยวได้วันละครั้ง (ราคาผมตั้งเอง ผู้ใช้ให้มาแค่กติกา)
-	{ id = "Wild_Rock", category = "decor", level = 3, gems = 25 },
-	{ id = "Wild_Herb", category = "decor", level = 3, gems = 25 },
-	{ id = "Wild_Tree", category = "decor", level = 3, gems = 35 },
-	{ id = "Wild_Pine", category = "decor", level = 3, gems = 35 },
-	{ id = "Wild_Coal", category = "decor", level = 5, gems = 45 },
-	{ id = "Wild_IronOre", category = "decor", level = 5, gems = 60 },
-	{ id = "Wild_SilverOre", category = "decor", level = 7, gems = 90 },
-	{ id = "Wild_Crystal", category = "decor", level = 8, gems = 110 },
-	{ id = "Wild_GoldOre", category = "decor", level = 9, gems = 130 },
-	{ id = "Wild_MagicOre", category = "decor", level = 10, gems = 180 },
-	{ id = "Wild_DiamondOre", category = "decor", level = 11, gems = 250 },
+	{ id = "Wild_Rock", category = "decor", level = 11, gems = 25 },
+	{ id = "Wild_Herb", category = "decor", level = 12, gems = 25 },
+	{ id = "Wild_Tree", category = "decor", level = 12, gems = 35 },
+	{ id = "Wild_Pine", category = "decor", level = 14, gems = 35 },
+	{ id = "Wild_Coal", category = "decor", level = 6, gems = 45 },
+	{ id = "Wild_IronOre", category = "decor", level = 13, gems = 60 },
+	{ id = "Wild_SilverOre", category = "decor", level = 15, gems = 90 },
+	{ id = "Wild_Crystal", category = "decor", level = 22, gems = 110 },
+	{ id = "Wild_GoldOre", category = "decor", level = 30, gems = 130 },
+	{ id = "Wild_MagicOre", category = "decor", level = 40, gems = 180 },
+	{ id = "Wild_DiamondOre", category = "decor", level = 45, gems = 250 },
 
 	-- ของใช้: เฟอร์นิเจอร์ในบ้าน (ใช้งานได้จริง)
-	{ id = "IceBox", category = "utility", level = 6, gems = 120 },
-	{ id = "ApothecaryCabinet", category = "utility", level = 6, gems = 120 },
-	{ id = "Stove", category = "utility", level = 7, gems = 180 },
-	{ id = "SteamBlender", category = "utility", level = 8, gems = 220 },
-	{ id = "AlchemyStill", category = "utility", level = 8, gems = 220 },
+	{ id = "IceBox", category = "utility", level = 14, gems = 120 },
+	{ id = "ApothecaryCabinet", category = "utility", level = 18, gems = 120 },
+	{ id = "Stove", category = "utility", level = 23, gems = 180 },
+	{ id = "SteamBlender", category = "utility", level = 27, gems = 220 },
+	{ id = "AlchemyStill", category = "utility", level = 35, gems = 220 },
 	-- ของผิดกฎหมาย: แพงที่สุดเพราะมันพิมพ์เงินได้
-	{ id = "Boxs", category = "utility", level = 9, gems = 400 },
-	{ id = "DistillSet", category = "utility", level = 10, gems = 500 },
-	{ id = "Reactor", category = "utility", level = 10, gems = 500 },
+	{ id = "Boxs", category = "utility", level = 38, gems = 400 },
+	{ id = "DistillSet", category = "utility", level = 43, gems = 500 },
+	{ id = "Reactor", category = "utility", level = 48, gems = 500 },
 	-- เครื่องคราฟขั้นสูง (เฟส 2c) — ของที่ทำได้ส่งออกกับรถส่งออกเท่านั้น
 	{ id = "BakeryOven", category = "utility", level = 3, gems = 120 },
-	{ id = "MetalBench", category = "utility", level = 5, gems = 180 },
-	{ id = "Loom", category = "utility", level = 6, gems = 220 },
+	{ id = "MetalBench", category = "utility", level = 6, gems = 180 },
+	{ id = "Loom", category = "utility", level = 10, gems = 220 },
 
 	-- สัตว์: สัตว์เลี้ยง (บัพให้ทั้งฟาร์มขณะอยู่บนเกาะ) + คอก · สัตว์ในคอกซื้อในหน้าต่างคอก (IslandConfig.PenAnimals)
 	{ id = "Pet_Cat", category = "animal", level = 4, gems = 250 },
 	{ id = "Pet_Dog", category = "animal", level = 4, gems = 250 },
+	-- สัตว์เลี้ยงเฟส 2d (ผู้ใช้อนุมัติราคา + ตาราง 50 เลเวล 2026-09-27) · ตัวที่ให้วัตถุดิบเดียวกันปลดเลเวลเดียวกัน
+	-- (และเลเวลเดียวกับสัตว์ชนิดนั้นในคอก) · จำนวนที่มีได้ = `FarmLevelConfig.PetCap` · ข้อมูลตัวสัตว์อยู่ `IslandConfig.PetSpecies`
+	{ id = "Pet_Chicken", category = "animal", level = 2, coins = 5000 },
+	{ id = "Pet_Duck", category = "animal", level = 2, coins = 6000 },
+	{ id = "Pet_Pig", category = "animal", level = 5, coins = 10000 },
+	{ id = "Pet_Boar", category = "animal", level = 5, gems = 220 },
+	{ id = "Pet_GreenSlime", category = "animal", level = 7, gems = 100 },
+	{ id = "Pet_Goat", category = "animal", level = 8, coins = 12000 },
+	{ id = "Pet_Cow", category = "animal", level = 8, coins = 20000 },
+	{ id = "Pet_Bat", category = "animal", level = 11, gems = 150 },
+	{ id = "Pet_Sheep", category = "animal", level = 13, coins = 15000 },
+	{ id = "Pet_Spider", category = "animal", level = 15, gems = 260 },
+	{ id = "Pet_Deer", category = "animal", level = 17, coins = 25000 },
+	{ id = "Pet_Horse", category = "animal", level = 17, coins = 30000 },
+	{ id = "Pet_Wolf", category = "animal", level = 19, gems = 260 },
+	{ id = "Pet_SteamSlime", category = "animal", level = 21, gems = 180 },
+	{ id = "Pet_PlasmaSlime", category = "animal", level = 21, gems = 300 },
+	{ id = "Pet_BioSlime", category = "animal", level = 21, gems = 320 },
+	{ id = "Pet_Skeleton", category = "animal", level = 25, gems = 350 },
+	{ id = "Pet_Bandit", category = "animal", level = 30, gems = 400 },
+	{ id = "Pet_Ghoul", category = "animal", level = 34, gems = 450 },
+	{ id = "Pet_ClockworkSentry", category = "animal", level = 39, gems = 450 },
+	{ id = "Pet_Wraith", category = "animal", level = 44, gems = 500 },
+	{ id = "Pet_StoneGolem", category = "animal", level = 50, gems = 600 },
 	{ id = "AnimalPen", category = "animal", level = 2, coins = 15000 }, -- ผู้ใช้กำหนด 2026-09-25 (เดิม 35,000)
 
 	-- เพาะปลูก
@@ -104,8 +128,8 @@ ShopConfig.IslandSells = {
 	-- เก็บผักแล้วมีโอกาสได้เมล็ดคืน
 	{ id = "Seed", category = "farm", level = 1, coins = 250, count = 3 },
 	-- เมล็ดฝ้าย (เฟส 2c ผู้ใช้เลือก 2026-09-27): แยกจากเมล็ดสุ่ม หยอดแล้วได้ฝ้ายแน่นอน · ราคาเท่าเมล็ดสุ่ม
-	{ id = "CottonSeed", category = "farm", level = 6, coins = 250, count = 3 },
-	{ id = "MineZone", category = "farm", level = 5, coins = 30000 }, -- ผู้ใช้กำหนด 2026-09-25 (เดิม 50,000)
+	{ id = "CottonSeed", category = "farm", level = 10, coins = 250, count = 3 },
+	{ id = "MineZone", category = "farm", level = 6, coins = 30000 }, -- ผู้ใช้กำหนด 2026-09-25 (เดิม 50,000)
 }
 
 -- เฟส 2a (ผู้ใช้กำหนด 2026-09-26): ทุกชิ้นในร้านเกาะสองราคา · 1 เพชร = 250 เหรียญ · เพชรปัดขึ้น ขั้นต่ำ 1

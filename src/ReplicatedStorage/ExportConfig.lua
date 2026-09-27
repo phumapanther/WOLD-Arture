@@ -7,10 +7,14 @@ local ExportConfig = {}
 ExportConfig.ShipSeconds = 30 * 60
 ExportConfig.OrderSlots = 3
 
--- มูลค่าเป้าต่อใบ = Base + PerLevel × (เลเวล − 1) เหรียญ (Lv1 300 · Lv5 780 · Lv10 1,380)
+-- มูลค่าเป้าต่อใบ = Base + PerLevel × (เลเวล − 1) เหรียญ (Lv1 300 · Lv5 780 · Lv10 1,380 · Lv20 2,580)
+-- **เลย TargetKnee ไปแล้วโตช้าลงเหลือ PerLevelAfter** (ขยายเป็น 50 เลเวล 2026-09-27) — ไม่งั้น Lv50 ขอของ 6,000 เหรียญ
+-- ต่อใบ = ครึ่งวันเล่นต่อใบเดียว แล้ววันละ 8 ใบที่ใช้ตั้งเส้น EXP ก็เป็นไปไม่ได้ (Lv50 = 3,780)
 -- แบ่งเท่าๆ กันให้แต่ละบรรทัด แล้วคิดจำนวนจากราคาต่อชิ้น · **EXP = เหรียญ ÷ ExpDivisor**
 ExportConfig.TargetBase = 300
 ExportConfig.TargetPerLevel = 120
+ExportConfig.TargetKnee = 20
+ExportConfig.TargetPerLevelAfter = 40
 ExportConfig.ExpDivisor = 5
 -- ของชิ้นเดียวที่แพงเกินส่วนแบ่งของบรรทัดเท่านี้ ไม่ออกในบรรทัดนั้น (กันใบ Lv3 ขอนาฬิกาพก)
 ExportConfig.OverShare = 2.5
@@ -23,8 +27,9 @@ ExportConfig.LineBands = {
 
 -- **ของในใบยากขึ้นตามเลเวล** (ผู้ใช้สั่ง 2026-09-27: "วัตถุดิบก็ขออะไรที่ยากขึ้นเรื่อยๆตามเลเวลด้วย")
 -- น้ำหนักของแต่ละชิ้น = e^(−(เลเวลฟาร์ม − เลเวลที่ของชิ้นนั้นปลด) / Decay) ไม่ต่ำกว่า Floor
--- = ของที่เพิ่งปลดออกบ่อยสุด ของพื้นฐานค่อยๆ หายไป (Lv10 ข้าว/ผักเหลือราว 5% ของบรรทัด ที่เหลือเป็นของคราฟ/แร่หายาก)
-ExportConfig.Weighting = { decay = 3, floor = 0.03 }
+-- = ของที่เพิ่งปลดออกบ่อยสุด ของพื้นฐานค่อยๆ หายไป · ตาราง 50 เลเวล (2026-09-27) ของปลดห่างกันขึ้น จึงยืด decay 3 → 8
+-- (วัดแล้ว: Lv30+ ของพื้นฐาน ~1% · ใบ Lv40-50 ขอของ ~7 ชนิดคละกัน แทนที่จะเป็นแร่เวท/เพชรเกือบทั้งใบ)
+ExportConfig.Weighting = { decay = 8, floor = 0.01 }
 -- จำนวนสูงสุดต่อบรรทัดโตตามเลเวลที่เลยจุดปลดของชิ้นนั้นมา: max × (1 + QtyGrowth × ส่วนต่าง) (นาฬิกาพก Lv19 ขอได้ 2 เรือน)
 ExportConfig.QtyGrowth = 0.08
 -- ของขั้นสุดท้าย (★) ต่อใบ: ต่ำกว่า Lv10 ไม่เกิน 1 บรรทัด · Lv10 ขึ้นไป 2
@@ -60,44 +65,44 @@ ExportConfig.Goods = {
 	{ id = "Wheat", coins = 30, max = 25, level = 1 },
 	{ id = "Vegetable", coins = 28, max = 25, level = 1 },
 	{ id = "Egg", coins = 12, max = 30, level = 2 },
-	{ id = "Herb", coins = 30, max = 20, level = 3 },
-	{ id = "Milk", coins = 16, max = 25, level = 4 },
-	{ id = "Meat", coins = 20, max = 25, level = 4 },
-	{ id = "IronOre", coins = 15, max = 25, level = 5 },
-	{ id = "Cotton", coins = 30, max = 20, level = 6 },
-	{ id = "Wool", coins = 22, max = 20, level = 6 },
-	{ id = "SilverOre", coins = 50, max = 12, level = 7 },
-	{ id = "Leather", coins = 30, max = 15, level = 8 },
-	{ id = "Crystal", coins = 30, max = 10, level = 8 },
-	{ id = "MagicBranch", coins = 60, max = 8, level = 8 },
-	{ id = "GoldOre", coins = 90, max = 6, level = 9 },
-	{ id = "MagicOre", coins = 120, max = 4, level = 10 },
-	{ id = "Diamond", coins = 200, max = 3, level = 11 },
+	{ id = "Herb", coins = 30, max = 20, level = 6 },
+	{ id = "Milk", coins = 16, max = 25, level = 8 },
+	{ id = "Meat", coins = 20, max = 25, level = 5 },
+	{ id = "IronOre", coins = 15, max = 25, level = 6 },
+	{ id = "Cotton", coins = 30, max = 20, level = 10 },
+	{ id = "Wool", coins = 22, max = 20, level = 13 },
+	{ id = "SilverOre", coins = 50, max = 12, level = 15 },
+	{ id = "Leather", coins = 30, max = 15, level = 17 },
+	{ id = "Crystal", coins = 30, max = 10, level = 22 },
+	{ id = "MagicBranch", coins = 60, max = 8, level = 28 },
+	{ id = "GoldOre", coins = 90, max = 6, level = 30 },
+	{ id = "MagicOre", coins = 120, max = 4, level = 40 },
+	{ id = "Diamond", coins = 200, max = 3, level = 45 },
 
 	-- เตาอบขนมปัง
 	{ id = "Flour", coins = 60, max = 15, level = 3 },
 	{ id = "Dough", coins = 180, max = 6, level = 3 },
-	{ id = "SpecialBread", coins = 560, max = 3, level = 4, final = true },
-	{ id = "MeatPie", coins = 680, max = 2, level = 5, final = true },
-	{ id = "CreamCake", coins = 980, max = 2, level = 7, final = true },
+	{ id = "SpecialBread", coins = 560, max = 3, level = 8, final = true },
+	{ id = "MeatPie", coins = 680, max = 2, level = 9, final = true },
+	{ id = "CreamCake", coins = 980, max = 2, level = 15, final = true },
 
 	-- โต๊ะช่างเหล็ก
-	{ id = "IronIngot", coins = 70, max = 12, level = 5 },
-	{ id = "Nails", coins = 18, max = 40, level = 5 },
-	{ id = "Hinge", coins = 230, max = 4, level = 6 },
-	{ id = "SilverIngot", coins = 210, max = 5, level = 7 },
-	{ id = "MechGear", coins = 180, max = 6, level = 7 },
-	{ id = "Padlock", coins = 600, max = 2, level = 7, final = true },
-	{ id = "GoldIngot", coins = 365, max = 3, level = 9 },
-	{ id = "PocketWatch", coins = 1400, max = 1, level = 9, final = true },
-	{ id = "MagicCompass", coins = 1600, max = 1, level = 10, final = true },
+	{ id = "IronIngot", coins = 70, max = 12, level = 6 },
+	{ id = "Nails", coins = 18, max = 40, level = 7 },
+	{ id = "Hinge", coins = 230, max = 4, level = 18 },
+	{ id = "SilverIngot", coins = 210, max = 5, level = 16 },
+	{ id = "MechGear", coins = 180, max = 6, level = 19 },
+	{ id = "Padlock", coins = 600, max = 2, level = 24, final = true },
+	{ id = "GoldIngot", coins = 365, max = 3, level = 33 },
+	{ id = "PocketWatch", coins = 1400, max = 1, level = 37, final = true },
+	{ id = "MagicCompass", coins = 1600, max = 1, level = 42, final = true },
 
 	-- กี่ทอผ้า
-	{ id = "Thread", coins = 60, max = 15, level = 6 },
-	{ id = "Cloth", coins = 310, max = 4, level = 6 },
-	{ id = "Yarn", coins = 45, max = 20, level = 6 },
-	{ id = "WoolCloth", coins = 235, max = 4, level = 6 },
-	{ id = "FineFabric", coins = 1400, max = 1, level = 8, final = true },
+	{ id = "Thread", coins = 60, max = 15, level = 10 },
+	{ id = "Cloth", coins = 310, max = 4, level = 11 },
+	{ id = "Yarn", coins = 45, max = 20, level = 13 },
+	{ id = "WoolCloth", coins = 235, max = 4, level = 14 },
+	{ id = "FineFabric", coins = 1400, max = 1, level = 29, final = true },
 }
 
 ExportConfig.ById = {}

@@ -172,29 +172,29 @@ end
 
 local ISLAND = SELLS == ShopConfig.IslandSells
 
--- บ้านที่เจ้าของเกาะมีทั้งหมด: วางอยู่บนเกาะ + ในกระเป๋า + ในคลัง (ไม่งั้นซื้อแล้วฝากคลังวนเกินเพดานได้)
-local function housesOwned(player)
+-- ของชนิดนี้ที่เจ้าของเกาะมีทั้งหมด: วางอยู่บนเกาะ + ในกระเป๋า + ในคลัง (ไม่งั้นซื้อแล้วฝากคลังวนเกินเพดานได้)
+-- `isKind` = FarmLevelConfig.IsHouse / IsPet
+local function ownedCount(player, isKind)
 	local n = 0
 	local data = IslandAccess.Data and IslandAccess.Data()
 	for _, entry in ipairs(data and data.placed or {}) do
-		if FarmLevelConfig.IsHouse(entry.id) then n += 1 end
+		if isKind(entry.id) then n += 1 end
 	end
 	for _, holder in ipairs({ Inventory.Get(player), Vault.Get(player) }) do
 		for _, slot in pairs(holder and holder.slots or {}) do
-			if slot and FarmLevelConfig.IsHouse(slot.id) then n += slot.count or 1 end
+			if slot and isKind(slot.id) then n += slot.count or 1 end
 		end
 	end
 	return n
 end
 
--- เลเวลแรกที่เพดานบ้านมากกว่าตอนนี้ (บอกผู้เล่นว่าต้องไปถึงไหน)
-local function nextHouseLevel(level)
-	local cap = FarmLevelConfig.HouseCap(level)
-	for l = level + 1, level + 30 do
-		if FarmLevelConfig.HouseCap(l) > cap then return l end
-	end
-	return nil
-end
+-- เพดานจำนวนของเกาะ (บ้าน เฟส 2c · สัตว์เลี้ยง เฟส 2d) · ตัวเลขเพดานตามเลเวลอยู่ FarmLevelConfig
+local CAPS = {
+	{ is = FarmLevelConfig.IsHouse, cap = FarmLevelConfig.HouseCap, levels = FarmLevelConfig.HouseCapLevels,
+		full = "🏠 บ้านเต็มแล้ว (%d/%d หลัง)", more = " — เลเวลฟาร์ม %d มีได้ %d หลัง" },
+	{ is = FarmLevelConfig.IsPet, cap = FarmLevelConfig.PetCap, levels = FarmLevelConfig.PetCapLevels,
+		full = "🐾 สัตว์เลี้ยงเต็มแล้ว (%d/%d ตัว)", more = " — เลเวลฟาร์ม %d มีได้ %d ตัว" },
+}
 
 -- แถวนี้ซื้อได้ไหมที่เลเวลนี้ · คืน (ข้อความที่จะบอก, จำนวนที่ยังซื้อได้ | nil = ไม่จำกัด)
 -- ร้านเกมหลักไม่มีเลเวล คืน nil เสมอ
@@ -205,15 +205,16 @@ local function farmGate(player, entry)
 	if need > level then
 		return ("🔒 ปลดที่เลเวลฟาร์ม %d (ตอนนี้ Lv%d) — ส่งของกับรถส่งออกเพื่อเก็บ EXP"):format(need, level), 0
 	end
-	if FarmLevelConfig.IsHouse(entry.id) then
-		local cap = FarmLevelConfig.HouseCap(level)
-		local owned = housesOwned(player)
-		if owned >= cap then
-			local at = nextHouseLevel(level)
-			return ("🏠 บ้านเต็มแล้ว (%d/%d หลัง)%s"):format(owned, cap,
-				at and (" — เลเวลฟาร์ม %d มีได้ %d หลัง"):format(at, FarmLevelConfig.HouseCap(at)) or ""), 0
+	for _, rule in ipairs(CAPS) do
+		if rule.is(entry.id) then
+			local cap = rule.cap(level)
+			local owned = ownedCount(player, rule.is)
+			if owned >= cap then
+				local at = FarmLevelConfig.NextCapLevel(rule.levels, level)
+				return rule.full:format(owned, cap) .. (at and rule.more:format(at, rule.cap(at)) or ""), 0
+			end
+			return nil, cap - owned
 		end
-		return nil, cap - owned
 	end
 	return nil, nil
 end
@@ -363,9 +364,11 @@ Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, 
 		-- one bundle at a time until it fits: a part-filled bag still buys what fits, and pays for exactly that.
 		-- **หนึ่งครั้งที่กดอาจได้หลายชิ้น** (`entry.count`) — จ่ายตามชุดที่ได้จริงเสมอ
 		local per = math.max(1, math.floor(entry.count or 1))
+		-- **สัตว์เลี้ยงที่ซื้อใหม่เกิดมาตัวเล็ก** (เฟส 2d): `meta.pats = 0` · ตัวที่ไม่มีค่านี้ = หมา/แมวรุ่นก่อนเฟส 2d (โตแล้ว)
+		local meta = FarmLevelConfig.IsPet(entry.id) and { pats = 0 } or nil
 		local bought = 0
 		for n = count, 1, -1 do
-			if Inventory.AddItem(player, entry.id, n * per) then
+			if Inventory.AddItem(player, entry.id, n * per, nil, meta) then
 				bought = n
 				break
 			end

@@ -16,7 +16,7 @@ const kit = args.includes("--kit")
   : "";
 // --models loads the building generators in register-only mode, so a phase can call K.place("Village_Tavern", ...)
 const models = args.includes("--models")
-  ? `K.REGISTER_ONLY = true\n${["village", "houses", "city", "castle", "castle_parts", "npcs", "animals"].map((n) => read(`models/${n}.lua`)).join("\n")}\nK.REGISTER_ONLY = false\n`
+  ? `K.REGISTER_ONLY = true\n${["village", "houses", "city", "castle", "castle_parts", "npcs", "animals", "monsters"].map((n) => read(`models/${n}.lua`)).join("\n")}\nK.REGISTER_ONLY = false\n`
   : "";
 // --skins embeds the skin/fashion builders from assets/models-from-factory (each file is `return function() ... end`)
 // into _G.WOLD_SKIN_BUILDERS so a phase can call them by name. These models were placed by hand in the main

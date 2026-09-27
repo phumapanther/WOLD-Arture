@@ -381,9 +381,15 @@ local function place(player, slotIndex, cx, cz, r)
 	local w, d = footprintOf(proto)
 	local ok, reason = IslandGrid.canPlace(Occupied, noBuildZones(), cx, cz, w, d, r, slot.id)
 	if not ok then return false, reason end
+	local meta = slot.meta -- จับไว้ก่อนหักออกจากช่อง
 	if not Inventory.RemoveFromSlot(player, slotIndex, 1) then return false, "noitem" end
 
 	local entry = { uid = Data.nextUid, id = slot.id, x = cx, z = cz, r = r }
+	-- **สัตว์เลี้ยงพกความโตกับคูลดาวน์ลูบหัวมากับไอเทม** (เฟส 2d · ดู pickup) · ไม่มี meta = ตัวรุ่นเก่า (IslandPets ตัดสินเอง)
+	if IslandConfig.Pets[slot.id] and type(meta) == "table" then
+		entry.pats = tonumber(meta.pats)
+		entry.pat = tonumber(meta.pat)
+	end
 	-- จดแบบที่สุ่มได้ เฉพาะตอนที่มันไม่ใช่แบบแรก (โปรไฟล์จะได้ไม่บวมด้วยค่าที่เดาได้อยู่แล้ว)
 	if proto.Name ~= slot.id then entry.variant = proto.Name end
 	Data.nextUid += 1
@@ -410,8 +416,14 @@ local function pickup(player, uid)
 	if model:GetAttribute("HarvestedDay") == QuestConfig.DayNumber() then
 		return false, "harvestedtoday"
 	end
-	if not Inventory.HasRoomFor(player, entry.id, 1) then return false, "full" end
-	if not Inventory.AddItem(player, entry.id, 1) then return false, "full" end
+	-- **สัตว์เลี้ยง: ความโต (`pats`) กับเวลาที่ลูบล่าสุด (`pat`) ไปกับไอเทม** (เฟส 2d) — ไม่งั้นเก็บแล้ววางใหม่
+	-- = กลับเป็นตัวเล็ก (เสียการลูบหลายสัปดาห์) หรือกลับกัน คูลดาวน์ลูบหัวรีเซ็ต = ลูบรัวได้ของ/โตไวไม่จำกัด
+	local meta = nil
+	if IslandConfig.Pets[entry.id] and (entry.pats ~= nil or entry.pat ~= nil) then
+		meta = { pats = entry.pats, pat = entry.pat }
+	end
+	if not Inventory.HasRoomFor(player, entry.id, 1, meta) then return false, "full" end
+	if not Inventory.AddItem(player, entry.id, 1, nil, meta) then return false, "full" end
 	for i, e in ipairs(Data.placed) do
 		if e == entry then table.remove(Data.placed, i) break end
 	end

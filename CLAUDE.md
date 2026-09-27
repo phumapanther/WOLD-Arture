@@ -47,19 +47,22 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
   ScreenGui ที่สร้างด้วยโค้ดเป็น ZIndex **Global** (วัดแล้ว) Frame ที่ตั้ง ZIndex 0 จะจมใต้ช่อง · หน้าต่างคอกมีเสียงคลิก + เหรียญตอนซื้อสำเร็จ
 
 **เฟส 2c (เลเวลฟาร์ม + รถส่งออก + คราฟขั้นสูง) เสร็จ 2026-09-27 — ดันครบสามเพลส (mismatches 0) · ผู้ใช้เทสผ่าน 2026-09-27**
-- ⚠️ **เพดานเลเวลฟาร์ม `FarmLevelConfig.MaxLevel = 19`** (ผู้ใช้สั่ง: ตันไว้ก่อน รอวัตถุดิบ/ของคราฟใหม่แล้วค่อยปลด) · ตันแล้ว EXP หยุด
-  (`BankExpAtMax = false`) · EXP เข้าผ่าน `FarmLevelConfig.AddExp` เท่านั้น · ถึง Lv19 ≈ 526 ใบ (วันละ 8 ใบ ~2 เดือน)
+- ⚠️ **เพดานเลเวลฟาร์ม `FarmLevelConfig.MaxLevel = 50`** (เฟส 2d ผู้ใช้สั่งขยายจาก 19 · Lv50 ≈ 1,180 ใบ ≈ 5 เดือนที่วันละ 8 ใบ ·
+  ช่วงแรกง่าย) · ตันแล้ว EXP หยุด (`BankExpAtMax = false`) · EXP เข้าผ่าน `FarmLevelConfig.AddExp` เท่านั้น
 - ⚠️ **ตาราง EXP ตั้งจาก EXP เฉลี่ยต่อใบที่วัดจาก `ExportOrders`** — แก้สูตรใบสั่งเมื่อไหร่ รัน `farm_level_test` (มันจำลองจังหวะเลเวลให้)
-  แล้วแก้ `ExpTable` ตามถ้าจังหวะหลุด · ของในใบยากขึ้นตามเลเวล (`ExportOrders.WeightOf/MaxQty`)
+  แล้วแก้ `ExpTable` ตามถ้าจังหวะหลุด 4-6 เดือน · ของในใบยากขึ้นตามเลเวล (`ExportOrders.WeightOf/MaxQty` decay 8)
+- ⚠️ **ตารางปลด 50 เลเวล (ผู้ใช้อนุมัติ): ทุกเลเวลปลด 1-6 อย่าง** · สัตว์ปลดทีละกลุ่มวัตถุดิบ (ตัวที่ให้ของเดียวกันปลดเลเวลเดียวกัน
+  ทั้งคอกและสัตว์เลี้ยง) · เพดานบ้าน/สัตว์เลี้ยงเป็นรายการเลเวล `HouseCapLevels/PetCapLevels` (สูงสุด 5) · **เปลี่ยนเลเวลของชิ้นไหน
+  ต้องแก้ `ExportConfig.Goods` ชิ้นเดียวกันด้วย** (`farm_level_test` จับทั้งของดิบกับสูตร) · ตารางเต็ม `…/specs/2026-09-27-phase2d-pets-design.md`
 แผน `docs/superpowers/plans/2026-09-27-phase2c-farm-level.md` · **ตัวเลขทั้งหมด** `docs/superpowers/specs/2026-09-27-phase2c-farm-level-design.md`
 - ข้อมูล `profile.Data.Island.farm` เจ้าของคนเดียวคือ `Island/IslandFarm.server.lua` (EXP · ใบสั่ง 3 ใบ · งานส่ง `ship` · ตัวนับเพชร วัน/เดือน ·
   `celebrated`) · **EXP ฟาร์มเข้าทางเดียวคือจบงานส่งออก** และจบได้ที่ลูป 1 วิของไฟล์นั้นเท่านั้น (ล้าง `ship` ก่อนแจก ไม่มี yield = ไม่ซ้ำ)
 - ⚠️ **ทอยแสงบนเกาะต้องผ่าน `IslandAccess.RollGlow(canGold)` · ขอบทองถาม `IslandAccess.GoldAllowed()`** (ปลดตามเลเวล:
-  ฟ้า Lv2 · ขอบทอง Lv4 · ทอง Lv7 · แดง Lv10) · `IslandAccess.FarmLevel()` อ่านโปรไฟล์ตรง ไม่ได้รอสคริปต์เติม (ยังไม่โหลด = Lv1)
+  ฟ้า Lv2 · ขอบทอง Lv4 · ทอง Lv9 · แดง Lv20 — ตาราง 50 เลเวล) · `IslandAccess.FarmLevel()` อ่านโปรไฟล์ตรง ไม่ได้รอสคริปต์เติม (ยังไม่โหลด = Lv1)
 - ⚠️ **ของบนเกาะทุกชิ้นมี `level` ที่คอนฟิกของมันเอง** — แถวร้านเกาะ · `PenAnimals` · `Crops` · `MineRocks` · สูตรเครื่องบนเกาะ
   (`farm_level_test` จับแถวที่ลืม) · ตารางปลดสำหรับหน้าจอประกอบเองจากคอนฟิกพวกนี้ (`FarmLevelConfig.UnlocksAt`) ไม่มีตารางที่สอง
 - ล็อกแค่ **ซื้อใหม่/ของที่สุ่มออก** (ร้าน · คอก · ก้อนในโซนแร่ · พืชจากเมล็ด · แสง · ขอบทอง · สูตร) ของที่มีอยู่แล้วใช้ต่อได้หมด ·
-  เพดานบ้านนับ วาง+กระเป๋า+คลัง ตอนซื้อ (Lv4 = 1 · Lv9 = 2 · Lv14 = 3 +1 ทุก 5) · เกาะใหม่ไม่แจกบ้านแล้ว
+  เพดานบ้าน/สัตว์เลี้ยงนับ วาง+กระเป๋า+คลัง ตอนซื้อ (บ้าน Lv4/16/26/36/46 · สัตว์เลี้ยง Lv2/10/20/32/49 · สูงสุดอย่างละ 5) · เกาะใหม่ไม่แจกบ้านแล้ว
 - รถ = `Car_Cargo` ในแมพ (หาจากชื่อ ติดแท็ก `WOLD_ExportTruck`) ปุ่ม E ที่ `Tailgate` · แอตทริบิวต์ `ShipStart/ShipEnd` บนรถ (ป้าย+ควัน
   ฝั่งไคลเอนต์ ทุกคนเห็น) · `FarmLevel/FarmExpInto/FarmExpNeed/FarmShipEnd` บนตัวเจ้าของ (ป้าย 🌾 มุมซ้ายบน `FarmLevelController`)
 - ใบสั่ง/เพชร = `ExportOrders` (ข้อมูลล้วน เทสได้) · ใบขอบทองกินเฉพาะชิ้นทอง `Inventory.CountGold/RemoveGold` (ใหม่) · ใบธรรมดาข้ามชิ้นทองเหมือนเดิม
@@ -71,6 +74,23 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 - ของคราฟใหม่ 19 ชิ้น + ฝ้าย/เมล็ดฝ้าย/3 เครื่อง ยังเป็น ⌛ (`docs/items-without-icons.md`)
 - **คำสั่งเทส `/farm [exp <n> | level <n> | ship | orders | reroll | gems | reset]`** (บนเกาะของตัวเอง) — `ship` = รถกลับทันที
 - **`tools/verify.js <project.json> [--push]`** (ใหม่) เทียบแฮชทุกสคริปต์ที่เพลสควรมีกับ Studio · `--push` ดันที่ไม่ตรง — ใช้แทน dump_all+cmp
+
+**เฟส 2d (สัตว์เลี้ยง 24 ชนิด + เลเวลฟาร์ม 50) เขียนเสร็จ 2026-09-27 — ดันครบสามเพลส (mismatches 0) · รอผู้ใช้เทสในเกม**
+แผน `docs/superpowers/plans/2026-09-27-phase2d-pets.md` · ตัวเลข `docs/superpowers/specs/2026-09-27-phase2d-pets-design.md`
+- ข้อมูลสัตว์ `IslandConfig.PetSpecies` (group → ลูบถึงโต 20/50/100/200 · motion beast/humanoid/slime · `mob`/`produce`) ·
+  ของที่ได้ตอนลูบ `PetRules` (ข้อมูลล้วน อ่านตารางดรอปของ GatherConfig ตรงๆ เฉพาะ kind "junk") · 1-5 ชิ้นทุกขนาด
+- ⚠️ **ความโต = `entry.pats` · ลูบล่าสุด = `entry.pat`** ในโปรไฟล์ → **ไปกับไอเทมเป็น `meta.pats/pat` ตอนเก็บคืนกระเป๋า** (`IslandBuild`)
+  ไม่งั้นเก็บ-วางใหม่ = คูลดาวน์ 30 นาทีรีเซ็ต (ลูบรัวได้ของไม่จำกัด) · ซื้อใหม่ได้ `meta.pats = 0` · **ไม่มีค่า = หมา/แมวรุ่นเก่า = โตเต็มวัย**
+- ⚠️ **ย่อ/ขยายรอบพื้นใต้ตัวสัตว์ ไม่ใช่รอบ Root** — Root ตรึงอยู่จุดวาง สัตว์เดินไปไกลแล้ว ScaleTo รอบ Root = วาร์ปตัวสัตว์ ·
+  `IslandPets.applySize` ย้าย Root ไปใต้ตัวชั่วคราวแล้วคืน · `BeastGait.Detach` คืนท่ายืนก่อนปล่อย (ไม่งั้นท่าพักเอียงสะสมทุกครั้งที่โต)
+- ต้นแบบ `mapgen/103_island_pets.lua` (เพลสเกาะ `--kit --models`) ติด **`Manual = true`** (เฟส 90 ลบต้นแบบที่ไม่ Manual) ·
+  `models/monsters.lua` + `models/animals.lua` พอร์ตจากโรงงานครบชุดแล้ว (`--models` โหลด monsters ด้วย) · R15 แปลงข้อต่อเป็น Motor6D ·
+  สไลม์: ลูกบอลแกนเป็น HumanoidRootPart + Humanoid (ทรงเดียวกับ `Mobs.buildSlime`) · ถอดสคริปต์/ปุ่ม/ป้ายชื่อ/แท็กทุกตัว
+- ท่าเดิน humanoid = ท่ามาตรฐาน R15 เล่นจาก Animator ฝั่งเซิร์ฟ · slime = MoveTo + กระโดดเป็นจังหวะ · เซิร์ฟตั้ง `SetNetworkOwner(nil)` ทุก 2 วิ (ยกเว้นตอนอุ้ม)
+- ป้าย `PetTag` เหนือหัว (ชื่อ · โต N% / ✨ โตเต็มวัย) สร้างฝั่งเซิร์ฟ ขนาดเป็นสตัด ใต้ป้าย ❤️ · หน้าต่างรถวาดตารางปลดใหม่เฉพาะตอนเลเวล/EXP เปลี่ยน
+- เทส: `farm_level_test` (ตาราง/จังหวะ/กฎกลุ่มวัตถุดิบ/ของดรอป) · `island_pet_models_test` (Edit เพลสเกาะ: ต้นแบบ 24 ตัว) ·
+  `island_pets_test` (Play: เกิด 30% → โต → ลูบได้ของ → คูลดาวน์ → เก็บ-วางความโตตามมา · **ยังไม่ได้รัน** ผมกด Play ไม่ได้)
+- ⌛ สัตว์เลี้ยงใหม่ 22 ตัวยังไม่มีรูป (`docs/items-without-icons.md` 47 จาก 206)
 
 ## โมเดลจากโค้ด (modelkit)
 ชุดสร้างโมเดลด้วยโค้ดอยู่ที่ `modelkit/` + `models/` — **อ่าน `docs/modelkit-reference.md` ก่อนแตะ**

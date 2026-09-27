@@ -58,9 +58,9 @@ IslandConfig.Crops = {
 	-- เวลาโต **10-35 นาที** (ผู้ใช้สั่ง 2026-09-23 "ทำให้ผักโตช้ากว่านี้") ของเดิมคือ 10/15/20
 	{ item = "Wheat", weight = 50, seconds = 15 * 60, min = 3, max = 5, level = 1 },
 	{ item = "Vegetable", weight = 35, seconds = 25 * 60, min = 2, max = 4, level = 1 },
-	{ item = "Herb", weight = 15, seconds = 35 * 60, min = 2, max = 3, level = 3 },
+	{ item = "Herb", weight = 15, seconds = 35 * 60, min = 2, max = 3, level = 6 },
 	-- ฝ้าย (เฟส 2c) ไว้ป้อนกี่ทอผ้า · มีขอบทองได้เหมือนผักอื่น (GoldBorder อ่านจากตารางนี้เอง)
-	{ item = "Cotton", seed = "CottonSeed", weight = 0, seconds = 30 * 60, min = 2, max = 4, level = 6 },
+	{ item = "Cotton", seed = "CottonSeed", weight = 0, seconds = 30 * 60, min = 2, max = 4, level = 10 },
 
 	-- **ต้นเวทมนตร์** (ผู้ใช้สั่ง 2026-09-23: "เพิ่มโมเดลในแปลงผักสำหรับสุ่มปลูก เพื่อให้ได้กิ่งเวทมนตร์
 	-- ด้วย โดยพอเก็บจะสุ่มกิ่งเวทมนตร์และแร่เวทมนตร์")
@@ -69,7 +69,7 @@ IslandConfig.Crops = {
 	-- `bonus` = แร่เวทมนตร์ที่ติดมาครึ่งหนึ่งของครั้ง (กติกาเดียวกับหนอนในดิน: ได้ **เพิ่ม** ไม่ใช่ **แทน**)
 	-- **ตัวเลขทั้งหมดผมตั้งเอง** ผู้ใช้ให้มาแค่ "สุ่มได้ทั้งกิ่งและแร่"
 	{
-		item = "MagicBranch", weight = 8, seconds = 60 * 60, min = 1, max = 2, level = 8,
+		item = "MagicBranch", weight = 8, seconds = 60 * 60, min = 1, max = 2, level = 28,
 		bonus = { item = "MagicOre", chance = 0.5, min = 1, max = 2 },
 	},
 }
@@ -114,8 +114,72 @@ IslandConfig.TreeItem = "Deco_Tree"
 -- สัตว์เลี้ยง + โบนัสจากการตกแต่ง (ผู้ใช้กำหนด 2026-09-22)
 --------------------------------------------------------------------------------
 
--- สัตว์เลี้ยง: หมา/แมว เดินเล่นทั่วฟาร์ม ลูบหัวได้ (E) อุ้มย้ายที่ได้ (F)
-IslandConfig.Pets = { Pet_Cat = true, Pet_Dog = true }
+-- สัตว์เลี้ยง: เดินเล่นทั่วฟาร์ม ลูบหัวได้ (E) อุ้มย้ายที่ได้ (F)
+--
+-- **เฟส 2d (ผู้ใช้อนุมัติ 2026-09-27)** — มอนทุกตัวยกเว้นบอส + สัตว์ฟาร์ม 8 ชนิด + หมา/แมวเดิม
+-- · เกิดมาที่ **30% ของตัวเต็มวัย** (ตัวเต็มวัย = สูงเท่าคน) โตตาม **จำนวนครั้งที่ลูบ** (`pats`) ถึงเต็มวัย
+--   หมา/แมว/สไลม์ 20 · สัตว์ฟาร์ม 50 · มอนสัตว์ป่า 100 · มอนแบบคน 200 (มอนคน = เป้าหลายสัปดาห์ ตั้งใจ)
+-- · ลูบได้ตัวละครั้งต่อ 30 นาที (PetPatSeconds) · ทุกครั้งได้ EXP + **ของ 1-5 ชิ้นเท่ากันทุกขนาด** (ผู้ใช้เลือก)
+--   `mob` = ตารางดรอปของมอนตัวนั้นใน GatherConfig.Mobs (เฉพาะของ kind "junk" = วัตถุดิบ ไม่มีอาวุธ/หีบ/เครื่องราง)
+--   `produce` = ผลผลิตของสัตว์ชนิดนั้นใน GatherConfig.Nodes (ตัวเดียวกับในคอก) · ไม่มีทั้งคู่ = ไม่ดรอป (หมา/แมว)
+-- · `motion`: "beast" = BeastGait (สี่ขา แมงมุม ค้างคาว) · "humanoid" = R15 + ท่าเดินมาตรฐาน · "slime" = กระโดด
+-- · หมา/แมวที่มีอยู่ก่อนเฟสนี้ (ไม่มี `pats` ในโปรไฟล์/meta) = **โตเต็มวัยแล้ว** (ผู้ใช้เลือก) · `legacyGrown`
+-- · ต้นแบบโมเดล `WOLD_Placeables.<id>` สร้างที่ `mapgen/103_island_pets.lua` (ตัวเต็มวัย + แอตทริบิวต์ `FullScale`)
+IslandConfig.PetGrowth = { dogcat = 20, slime = 20, farm = 50, wild = 100, humanoid = 200 }
+IslandConfig.PetStartScale = 0.3
+IslandConfig.PetSpecies = {
+	Pet_Dog = { group = "dogcat", motion = "beast", legacyGrown = true },
+	Pet_Cat = { group = "dogcat", motion = "beast", legacyGrown = true },
+	Pet_Chicken = { group = "farm", motion = "beast", produce = "Chicken" },
+	Pet_Duck = { group = "farm", motion = "beast", produce = "Duck" },
+	Pet_Pig = { group = "farm", motion = "beast", produce = "Pig" },
+	Pet_Goat = { group = "farm", motion = "beast", produce = "Goat" },
+	Pet_Sheep = { group = "farm", motion = "beast", produce = "Sheep" },
+	Pet_Cow = { group = "farm", motion = "beast", produce = "Cow" },
+	Pet_Deer = { group = "farm", motion = "beast", produce = "Deer" },
+	Pet_Horse = { group = "farm", motion = "beast", produce = "Horse" },
+	Pet_GreenSlime = { group = "slime", motion = "slime", mob = "GreenSlime" },
+	Pet_SteamSlime = { group = "slime", motion = "slime", mob = "SteamSlime" },
+	Pet_PlasmaSlime = { group = "slime", motion = "slime", mob = "PlasmaSlime" },
+	Pet_BioSlime = { group = "slime", motion = "slime", mob = "BioSlime" },
+	Pet_Bat = { group = "wild", motion = "beast", mob = "Bat" },
+	Pet_Boar = { group = "wild", motion = "beast", mob = "Boar" },
+	Pet_Wolf = { group = "wild", motion = "beast", mob = "Wolf" },
+	Pet_Spider = { group = "wild", motion = "beast", mob = "Spider" },
+	Pet_Skeleton = { group = "humanoid", motion = "humanoid", mob = "Skeleton" },
+	Pet_Bandit = { group = "humanoid", motion = "humanoid", mob = "Bandit" },
+	Pet_Ghoul = { group = "humanoid", motion = "humanoid", mob = "Ghoul" },
+	Pet_ClockworkSentry = { group = "humanoid", motion = "humanoid", mob = "ClockworkSentry" },
+	Pet_Wraith = { group = "humanoid", motion = "humanoid", mob = "Wraith" },
+	Pet_StoneGolem = { group = "humanoid", motion = "humanoid", mob = "StoneGolem" },
+}
+IslandConfig.Pets = {}
+for id in pairs(IslandConfig.PetSpecies) do IslandConfig.Pets[id] = true end
+
+-- ลูบกี่ครั้งถึงโตเต็มวัย
+function IslandConfig.PetPatsToGrow(id)
+	local spec = IslandConfig.PetSpecies[id]
+	return spec and IslandConfig.PetGrowth[spec.group] or 20
+end
+
+-- จำนวนครั้งที่ลูบของตัวนี้ · `pats` nil = ตัวเก่าก่อนเฟส 2d (หมา/แมว = โตแล้ว · ตัวอื่น = เพิ่งเกิด)
+function IslandConfig.PetPats(id, pats)
+	local n = tonumber(pats)
+	if n and n == n then return math.max(0, math.floor(n)) end
+	local spec = IslandConfig.PetSpecies[id]
+	return (spec and spec.legacyGrown) and IslandConfig.PetPatsToGrow(id) or 0
+end
+
+-- ความโต 0..1 (0 = เพิ่งเกิด · 1 = เต็มวัย)
+function IslandConfig.PetGrowth01(id, pats)
+	return math.clamp(IslandConfig.PetPats(id, pats) / IslandConfig.PetPatsToGrow(id), 0, 1)
+end
+
+-- สเกลเทียบตัวเต็มวัย (0.3 → 1)
+function IslandConfig.PetSizeFraction(id, pats)
+	local s = IslandConfig.PetStartScale
+	return s + (1 - s) * IslandConfig.PetGrowth01(id, pats)
+end
 
 -- **ลูบหัว = EXP ทุกครั้ง แต่ตัวละครั้งต่อ 30 นาที** (ผู้ใช้สั่ง 2026-09-25) · คูลดาวน์เป็นของ **ตัวสัตว์** ไม่ใช่ของคนลูบ
 -- (ใครลูบก่อนได้ก่อน) และเซฟลงโปรไฟล์ ออก-เข้าเกาะใหม่ไม่รีเซ็ต · ระหว่างคูลดาวน์ปุ่ม E ถูกซ่อน
@@ -230,15 +294,17 @@ IslandConfig.YieldCap = 5
 -- ราคาเป็นเหรียญ Claude ตั้งไว้ก่อน ไล่ตามค่าของที่มันให้ (ไข่ถูกสุด หนังแพงสุด)
 
 -- `level` = เลเวลฟาร์มที่ปลดให้ซื้อ (เฟส 2c) · สัตว์ที่ยืนอยู่ในคอกแล้วเลี้ยงต่อได้เสมอ · `emoji` ไว้ให้ตารางปลดวาด
+-- **ปลดทีละกลุ่มวัตถุดิบ** (ผู้ใช้สั่ง 2026-09-27 ตอนขยายเป็น 50 เลเวล): ตัวที่ให้ของเดียวกันปลดเลเวลเดียวกัน
+-- (ไข่ ไก่/เป็ด 2 · เนื้อ หมู 5 · นม แพะ/วัว 8 · ขนแกะ 13 · หนัง กวาง/ม้า 17) · สัตว์เลี้ยงชนิดเดียวกันปลดพร้อมกัน
 IslandConfig.PenAnimals = {
 	{ kind = "Chicken", name = "ไก่", price = 400, level = 2, emoji = "🐔" },
 	{ kind = "Duck", name = "เป็ด", price = 500, level = 2, emoji = "🦆" },
-	{ kind = "Pig", name = "หมู", price = 900, level = 4, emoji = "🐷" },
-	{ kind = "Goat", name = "แพะ", price = 1100, level = 4, emoji = "🐐" },
-	{ kind = "Sheep", name = "แกะ", price = 1400, level = 6, emoji = "🐑" },
-	{ kind = "Cow", name = "วัว", price = 1800, level = 7, emoji = "🐄" },
-	{ kind = "Deer", name = "กวาง", price = 2400, level = 8, emoji = "🦌" },
-	{ kind = "Horse", name = "ม้า", price = 3000, level = 9, emoji = "🐴" },
+	{ kind = "Pig", name = "หมู", price = 900, level = 5, emoji = "🐷" },
+	{ kind = "Goat", name = "แพะ", price = 1100, level = 8, emoji = "🐐" },
+	{ kind = "Sheep", name = "แกะ", price = 1400, level = 13, emoji = "🐑" },
+	{ kind = "Cow", name = "วัว", price = 1800, level = 8, emoji = "🐄" },
+	{ kind = "Deer", name = "กวาง", price = 2400, level = 17, emoji = "🦌" },
+	{ kind = "Horse", name = "ม้า", price = 3000, level = 17, emoji = "🐴" },
 }
 
 --------------------------------------------------------------------------------
@@ -293,10 +359,10 @@ IslandConfig.MinePerRoundMax = 2
 IslandConfig.MineRocks = {
 	{ kind = "Rock", weight = 45, level = 1 },
 	{ kind = "IronOre", weight = 22, level = 1 },
-	{ kind = "SilverOre", weight = 13, level = 7 },
-	{ kind = "GoldOre", weight = 9, level = 9 },
-	{ kind = "MagicOre", weight = 6, level = 10 },
-	{ kind = "DiamondOre", weight = 5, level = 11 },
+	{ kind = "SilverOre", weight = 13, level = 16 },
+	{ kind = "GoldOre", weight = 9, level = 31 },
+	{ kind = "MagicOre", weight = 6, level = 41 },
+	{ kind = "DiamondOre", weight = 5, level = 47 },
 }
 
 --------------------------------------------------------------------------------

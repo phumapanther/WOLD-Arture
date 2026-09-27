@@ -694,6 +694,30 @@ ItemCatalog.Items = {
 	-- `stackSize = 1` เพราะแต่ละตัวเป็นตัวของมันเอง ไม่ใช่ของที่กองรวมกันได้
 	Pet_Cat = { icon = "rbxassetid://99681747716275", name = "แมว", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
 	Pet_Dog = { icon = "rbxassetid://125840282304682", name = "สุนัข", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	-- เฟส 2d (ผู้ใช้อนุมัติ 2026-09-27): สัตว์ฟาร์ม 8 + มอน 14 · ⌛ ยังไม่มีรูป · ตัวสัตว์/การโต/ของที่ได้อยู่ `IslandConfig.PetSpecies`
+	-- สัตว์ฟาร์มต่อท้ายชื่อ "(สัตว์เลี้ยง)" ไม่งั้นอ่านปนกับตัวในคอกในตารางปลด · **`meta.pats`** = จำนวนครั้งที่ลูบ (ติดตัวข้ามการเก็บ/วาง)
+	Pet_Chicken = { icon = "", name = "ไก่ (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Duck = { icon = "", name = "เป็ด (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Pig = { icon = "", name = "หมู (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Goat = { icon = "", name = "แพะ (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Sheep = { icon = "", name = "แกะ (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Cow = { icon = "", name = "วัว (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Deer = { icon = "", name = "กวาง (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Horse = { icon = "", name = "ม้า (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_GreenSlime = { icon = "", name = "สไลม์เขียว", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_SteamSlime = { icon = "", name = "สไลม์ไอน้ำ", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_PlasmaSlime = { icon = "", name = "สไลม์พลาสมา", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_BioSlime = { icon = "", name = "สไลม์ชีวะ", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Bat = { icon = "", name = "ค้างคาว", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Boar = { icon = "", name = "หมูป่า", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Wolf = { icon = "", name = "หมาป่า", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Spider = { icon = "", name = "แมงมุม", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Skeleton = { icon = "", name = "โครงกระดูก", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Bandit = { icon = "", name = "โจร", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Ghoul = { icon = "", name = "ผีดิบ", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_ClockworkSentry = { icon = "", name = "ทหารจักรกล", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Wraith = { icon = "", name = "วิญญาณ", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_StoneGolem = { icon = "", name = "โกเลมหิน", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
 
 	-- ฟาร์มผิดกฎหมาย — วางในบ้านแล้วเป็นจุดฟาร์มจริง (กฎของ IllegalFarm ยังใช้ครบ)
 	DistillSet = { icon = "rbxassetid://109416282689187", name = "ชุดกลั่น", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },

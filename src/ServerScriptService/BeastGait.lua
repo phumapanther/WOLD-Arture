@@ -74,8 +74,16 @@ function BeastGait.Attach(model, opts)
 	return true
 end
 
+-- เลิกขับ · **คืนข้อต่อกับระยะยกตัวกลับท่ายืนปกติ** — `Attach` ครั้งถัดไปจดท่าตอนนั้นเป็น "ท่าพัก" (`rest`)
+-- ถ้าปล่อยค้างกลางก้าว ท่าพักจะเอียงสะสมทุกครั้งที่ Detach→Attach (อุ้มแล้ววาง · สัตว์เลี้ยงโตทีละขั้น เฟส 2d)
 function BeastGait.Detach(model)
+	local g = Gaits[model]
 	Gaits[model] = nil
+	if not g then return end
+	for _, e in ipairs(g.joints) do
+		if e.j.Parent then e.j.C0 = e.rest end
+	end
+	if g.humanoid.Parent then g.humanoid.HipHeight = g.hip end
 end
 
 RunService.Heartbeat:Connect(function(dt)

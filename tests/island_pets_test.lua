@@ -16,7 +16,7 @@ local function Pet(op, ...) return P:Invoke(op, ...) end
 local player = assert(Players:GetPlayers()[1], "ไม่มีผู้เล่น")
 local out = {}
 
-local CLEAN = { "Pet_Cat", "Pet_Dog", "Deco_Rock", "Deco_Tree", "Deco_Bush" }
+local CLEAN = { "Pet_Cat", "Pet_Dog", "Pet_GreenSlime", "Deco_Rock", "Deco_Tree", "Deco_Bush", "Slime" }
 local function sweep()
 	local d = A("Data")
 	for i = #d.placed, 1, -1 do
@@ -123,6 +123,45 @@ task.wait(0.3)
 assert(Pet("CarriedBy", dog) == nil, "วางลงแล้วต้องไม่มีคนอุ้ม")
 Pet("Pat", dog, player)
 table.insert(out, "อุ้ม → ติดตัวคนอุ้ม → วางลง → ลูบหัว ✓")
+
+----------------------------------------------------------------- 4b) โตตามการลูบ (เฟส 2d)
+-- สุนัขที่เสกผ่าน Grant ไม่มี meta = ตัวรุ่นเก่า = โตเต็มวัยแล้ว (ผู้ใช้เลือก) · สไลม์เสกเปล่าๆ = เพิ่งเกิด 30%
+local dogScale, dogFull = Pet("Scale", dog)
+assert(math.abs(dogScale - dogFull) < 0.01, ("สุนัขรุ่นเก่าต้องโตเต็มวัย: %.3f / %.3f"):format(dogScale, dogFull))
+assert(A("Grant", player, "Pet_GreenSlime", 1), "เสกสไลม์เขียว")
+local sSlot = assert(A("FindSlot", player, "Pet_GreenSlime"))
+local sx, sz = freeCell(2, 2, "Pet_GreenSlime")
+ok, why = A("Place", player, sSlot, sx, sz, 0)
+assert(ok, ("วางสไลม์: %s"):format(tostring(why)))
+local slime = assert(A("ModelOf", A("Data").placed[#A("Data").placed].uid))
+t0 = os.clock()
+while os.clock() - t0 < 10 and not (slime:FindFirstChild("HumanoidRootPart") and slime.HumanoidRootPart:FindFirstChild("PetTag")) do
+	task.wait(0.3)
+end
+local s0, sFull = Pet("Scale", slime)
+assert(sFull and math.abs(s0 - sFull * IslandConfig.PetStartScale) < 0.01, ("เพิ่งเกิดต้อง 30%%: %.3f / %s"):format(s0, tostring(sFull)))
+local s10 = Pet("SetPats", slime, 10)
+assert(math.abs(s10 - sFull * IslandConfig.PetSizeFraction("Pet_GreenSlime", 10)) < 0.01, ("ลูบ 10/20 ต้อง 65%%: %.3f"):format(s10))
+Pet("ResetPat", slime)
+local slimeBefore = A("Count", player, "Slime") or 0
+Pet("Pat", slime, player)
+assert(Pet("Pats", slime) == 11, "ลูบแล้วนับเพิ่ม 1 · ได้ " .. tostring(Pet("Pats", slime)))
+local gotSlime = (A("Count", player, "Slime") or 0) - slimeBefore
+assert(gotSlime >= 1 and gotSlime <= 5, "ลูบสไลม์ต้องได้เมือก 1-5 ได้ " .. tostring(gotSlime))
+Pet("Pat", slime, player)
+assert(Pet("Pats", slime) == 11, "ติดคูลดาวน์ 30 นาที ลูบซ้ำไม่นับ")
+local tag = slime.HumanoidRootPart:FindFirstChild("PetTag")
+assert(tag and tag.Text.Text:find("โต 55", 1, true), "ป้ายเหนือหัวบอกความโต " .. (tag and tag.Text.Text or "ไม่มีป้าย"))
+-- เก็บคืนกระเป๋าแล้ววางใหม่ ความโตกับคูลดาวน์ต้องตามไป (meta.pats/pat)
+local sUid = A("Data").placed[#A("Data").placed].uid
+assert(A("Pickup", player, sUid), "เก็บสไลม์คืน")
+sSlot = assert(A("FindSlot", player, "Pet_GreenSlime"))
+ok = A("Place", player, sSlot, sx, sz, 0)
+assert(ok, "วางสไลม์กลับ")
+local back = A("Data").placed[#A("Data").placed]
+assert(back.pats == 11 and back.pat and back.pat > 0, "เก็บแล้ววางใหม่ ความโต/คูลดาวน์ต้องตามมา")
+table.insert(out, ("โตตามการลูบ: เกิด %.2f → ลูบ 10 ครั้ง %.2f · ลูบได้เมือก %d · คูลดาวน์กันลูบซ้ำ · เก็บ-วางความโตตามมา ✓")
+	:format(s0 / sFull, s10 / sFull, gotSlime))
 
 ----------------------------------------------------------------- 5) บัพ
 assert(Pet("Count") >= 1, "ต้องนับสัตว์เลี้ยงได้")

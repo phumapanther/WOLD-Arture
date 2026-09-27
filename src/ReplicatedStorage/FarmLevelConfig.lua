@@ -18,19 +18,21 @@ local FarmLevelConfig = {}
 -- เส้น EXP — EXP ได้จากการส่งออกอย่างเดียว ไม่มีวันลด ไม่มีเพดาน
 --------------------------------------------------------------------------------
 
--- EXP ที่ต้องใช้ "จากเลเวลนี้ไปเลเวลถัดไป" (ปรับ 2026-09-27 ตามที่ผู้ใช้สั่ง: "ตันต้องใช้เวลา 1-3 เดือน ·
--- ช่วงแรก 3 เลเวลขึ้นง่าย · หลังเลเวล 5 ยากขึ้นอีก")
+-- EXP ที่ต้องใช้ "จากเลเวลนี้ไปเลเวลถัดไป" · **ตาราง 50 เลเวล (ผู้ใช้อนุมัติ 2026-09-27: "Lv50 ประมาณ 4-6 เดือน
+-- และช่วงแรกๆ ต้องง่ายเข้าไว้")**
 --
--- ตั้งจาก **จำนวนใบสั่งที่ต้องส่งต่อเลเวล** × EXP เฉลี่ยต่อใบของเลเวลนั้น (วัดจาก ExportOrders จริง 4,000 ใบต่อเลเวล):
---   ใบ/เลเวล  Lv1-4: 2 · 3 · 4 · 6   ·   Lv5-18: 10 → 62 (+4 ต่อเลเวล)   ·   Lv19→20: 66
---   รวมถึง Lv19 (เพดานตอนนี้) ≈ 519 ใบ = วันละ 16 ใบ ~1 เดือน · วันละ 8 ใบ ~2 เดือน · วันละ 6 ใบ ~3 เดือน
+-- ตั้งจาก **จำนวนใบสั่งที่ต้องส่งต่อเลเวล** × EXP เฉลี่ยต่อใบของเลเวลนั้น (วัดจาก ExportOrders จริง 5,000 ใบต่อเลเวล
+-- ทำให้ไม่ลดลงด้วย running max):
+--   ใบ/เลเวล  Lv1-19: เท่าเลขเลเวล (Lv2 หลังใบแรก · Lv5 ~10 ใบ · Lv10 ~45 ใบ)  ·  Lv20-49: 20 → 46 (+0.9 ต่อเลเวล)
+--   รวมถึง Lv50 ≈ 1,180 ใบ = วันละ 8 ใบ ~5 เดือน · วันละ 10 ใบ ~4 เดือน · วันละ 6-7 ใบ ~6 เดือน
 -- เปลี่ยนสูตรใบสั่ง (ExportOrders/ExportConfig) เมื่อไหร่ต้องวัด EXP เฉลี่ยใหม่แล้วแก้ตารางนี้ตาม (เทส farm_level_test จับ)
 FarmLevelConfig.ExpTable = {
-	120, 240, 450, 780, -- Lv1-4: ขึ้นเร็ว (ใบละ ~60-130 EXP)
-	1450, 2250, 3750, 5150, 7050, -- Lv5-9
-	9150, 11400, 13250, 16150, 18750, -- Lv10-14
-	22050, 24500, 27150, 30150, -- Lv15-18
-	32250, -- Lv19 → 20 (ใช้วันที่ปลดเพดานเพิ่ม)
+	60, 160, 330, 520, -- Lv1-4: ใบเดียว/สองใบก็ขึ้น
+	700, 920, 1350, 1700, 2150, -- Lv5-9
+	2600, 3000, 3500, 3950, 4500, 5150, 5800, 6250, 6950, 7650, -- Lv10-19
+	8500, 9150, 9550, 9900, 10400, 10900, 11450, 12250, 12650, 13400, -- Lv20-29
+	13800, 14250, 15150, 15800, 16550, 17150, 18300, 19700, 20450, 20950, -- Lv30-39
+	21450, 22000, 23650, 24200, 25000, 25550, 26100, 26650, 27750, 28300, -- Lv40-49 → 50
 }
 -- เลยตารางไปแล้ว เลเวลละ +2,000 จากตัวสุดท้าย
 FarmLevelConfig.ExpStepAfter = 2000
@@ -42,10 +44,10 @@ function FarmLevelConfig.ExpToNext(level)
 	return t[#t] + (level - #t) * FarmLevelConfig.ExpStepAfter
 end
 
--- **เพดานเลเวลตอนนี้ = 19** (ผู้ใช้สั่ง 2026-09-27: "ล็อคให้ตันไปที่เวล 19 ไปก่อน เดี๋ยวเพิ่มของใหม่ วัตถุดิบใหม่
--- ของคราฟใหม่ แล้วค่อยมาปลดล็อคต่อ") · ปลดเพิ่มวันหน้า = ขยับเลขนี้ตัวเดียว (ตาราง EXP ต่อไปได้เองจากสูตร)
-FarmLevelConfig.MaxLevel = 19
--- EXP ที่ได้ตอนตันแล้ว · true = สะสมไว้ (วันปลดเพดาน ขึ้นเลเวลตามที่สะสมทันที) · false = หยุดนับที่เส้นเลเวล 19
+-- **เพดานเลเวล = 50** (ผู้ใช้สั่ง 2026-09-27: "ปรับไปตันสักเลเวล 50 ... กระจายของปลด 3-6 อย่างต่อเลเวล") ·
+-- เดิมตันที่ 19 · ปลดเพิ่มวันหน้า = ขยับเลขนี้ + ต่อ ExpTable (เลยตารางไปใช้ ExpStepAfter)
+FarmLevelConfig.MaxLevel = 50
+-- EXP ที่ได้ตอนตันแล้ว · true = สะสมไว้ (วันปลดเพดาน ขึ้นเลเวลตามที่สะสมทันที) · false = หยุดนับที่เส้นเลเวลสูงสุด
 FarmLevelConfig.BankExpAtMax = false
 
 -- EXP สะสมที่ต้องใช้ถึงเลเวลนี้ (Lv1 = 0)
@@ -89,30 +91,54 @@ end
 -- ของที่ไม่ใช่ไอเทม
 --------------------------------------------------------------------------------
 
--- แสง (เฟส 2b) ปลดทีละสี: ฟ้า → (ขอบทอง) → ทอง → แดง
-FarmLevelConfig.GlowLevels = { blue = 2, gold = 7, red = 10 }
+-- แสง (เฟส 2b) ปลดทีละสี: ฟ้า → (ขอบทอง) → ทอง → แดง · เลเวลตามตาราง 50 เลเวล (ผู้ใช้อนุมัติ 2026-09-27)
+FarmLevelConfig.GlowLevels = { blue = 2, gold = 9, red = 20 }
 FarmLevelConfig.GoldBorderLevel = 4
 FarmLevelConfig.TruckLevel = 1
 
--- เพดานจำนวนบ้าน (นับบ้านที่วางอยู่ + ในกระเป๋า + ในคลัง ตอนซื้อ) · Lv4 = 1 · Lv9 = 2 · Lv14 = 3 แล้ว +1 ทุก 5 เลเวล
-FarmLevelConfig.HouseCapLevels = { 4, 9 }
-FarmLevelConfig.HouseCapEvery = 5
+-- เพดานจำนวนบ้าน (นับบ้านที่วางอยู่ + ในกระเป๋า + ในคลัง ตอนซื้อ) · แต่ละเลขในรายการ = เลเวลที่มีบ้านได้เพิ่ม 1 หลัง
+-- Lv4 = 1 · Lv16 = 2 · Lv26 = 3 · Lv36 = 4 · Lv46 = 5 (เดิม +1 ทุก 5 เลเวลไม่รู้จบ — ผู้ใช้อนุมัติตาราง 2026-09-27)
+FarmLevelConfig.HouseCapLevels = { 4, 16, 26, 36, 46 }
+
+-- **เพดานจำนวนสัตว์เลี้ยง** (เฟส 2d · นับแบบเดียวกับบ้าน) · Lv2 = 1 · Lv10 = 2 · Lv20 = 3 · Lv32 = 4 · Lv49 = 5
+-- ตัวแรกปลดพร้อมสัตว์เลี้ยงชุดแรก (ไก่/เป็ด) จึงไม่ขึ้นเป็นแถวแยกในตารางปลด
+FarmLevelConfig.PetCapLevels = { 2, 10, 20, 32, 49 }
+
+local function countAt(list, level)
+	level = tonumber(level) or 1
+	local n = 0
+	for _, at in ipairs(list) do
+		if level >= at then n += 1 end
+	end
+	return n
+end
 
 function FarmLevelConfig.HouseCap(level)
+	return countAt(FarmLevelConfig.HouseCapLevels, level)
+end
+
+function FarmLevelConfig.PetCap(level)
+	return countAt(FarmLevelConfig.PetCapLevels, level)
+end
+
+-- เลเวลแรกที่เพดานในรายการนี้มากกว่าตอนนี้ (บอกผู้เล่นว่าต้องไปถึงไหน) · nil = เต็มเพดานสุดท้ายแล้ว
+function FarmLevelConfig.NextCapLevel(list, level)
 	level = tonumber(level) or 1
-	local cap = 0
-	for _, at in ipairs(FarmLevelConfig.HouseCapLevels) do
-		if level >= at then cap += 1 end
+	for _, at in ipairs(list) do
+		if at > level then return at end
 	end
-	local last = FarmLevelConfig.HouseCapLevels[#FarmLevelConfig.HouseCapLevels]
-	local nextAt = last + FarmLevelConfig.HouseCapEvery
-	if level >= nextAt then cap += 1 + math.floor((level - nextAt) / FarmLevelConfig.HouseCapEvery) end
-	return cap
+	return nil
 end
 
 -- ไอเทมไหนนับเป็น "บ้าน" (ใช้กับเพดาน)
 function FarmLevelConfig.IsHouse(id)
 	return type(id) == "string" and id:sub(1, 6) == "House_"
+end
+
+-- ไอเทมไหนนับเป็น "สัตว์เลี้ยง" (ใช้กับเพดาน) — ถามจากแคตตาล็อก ตัวใหม่ที่ติด `pet = true` เข้าเพดานเอง
+function FarmLevelConfig.IsPet(id)
+	local item = type(id) == "string" and ItemCatalog.Get(id)
+	return item ~= nil and item ~= false and item.pet == true
 end
 
 function FarmLevelConfig.GlowAllowed(level)
@@ -159,6 +185,8 @@ function FarmLevelConfig.UnlocksAt(level)
 	if level == g.red then add({ text = "แสงแดง (ขอบทอง + ×2 ทุกอย่าง)", emoji = "🔥" }) end
 	local cap, before = FarmLevelConfig.HouseCap(level), FarmLevelConfig.HouseCap(level - 1)
 	if cap > before then add({ text = ("มีบ้านได้ %d หลัง"):format(cap), emoji = "🏠" }) end
+	local pets, petsBefore = FarmLevelConfig.PetCap(level), FarmLevelConfig.PetCap(level - 1)
+	if pets > petsBefore and pets > 1 then add({ text = ("สัตว์เลี้ยงได้ %d ตัว"):format(pets), emoji = "🐾" }) end
 
 	for _, row in ipairs(ShopConfig.IslandSells) do
 		if FarmLevelConfig.ShopRowLevel(row) == level then add(itemRow(row.id)) end
@@ -181,7 +209,7 @@ function FarmLevelConfig.UnlocksAt(level)
 	return out
 end
 
--- เลเวลสูงสุดที่ตารางยังมีของปลด **ไม่เกินเพดาน** (เพดานบ้าน +1 ทุก 5 เลเวลไปเรื่อยๆ ถ้าไม่หนีบ ตารางจะยาวถึง Lv39)
+-- เลเวลสูงสุดที่ตารางยังมีของปลด **ไม่เกินเพดาน** (ของที่ตั้งเลเวลเกินเพดานไว้ล่วงหน้าจะไม่โผล่ในหน้าจอ)
 function FarmLevelConfig.LastUnlockLevel()
 	local last = 1
 	for level = 1, FarmLevelConfig.MaxLevel do
