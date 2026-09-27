@@ -575,7 +575,7 @@ local function vaultPut(player, bagIndex, count)
 	local state = Inventory.Get(player)
 	local slot = state and state.slots[bagIndex]
 	if not slot then return end
-	if not ItemCatalog.IsStorable(slot.id) then
+	if not ItemCatalog.IsStorable(slot.id, slot.meta) then
 		return Remotes.SocialNotify:FireClient(player, "warn", "ของชิ้นนี้ฝากคลังไม่ได้")
 	end
 	count = math.clamp(math.floor(tonumber(count) or 1), 1, slot.count or 1)

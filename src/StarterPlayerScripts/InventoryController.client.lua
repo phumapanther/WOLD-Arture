@@ -244,7 +244,7 @@ gui:OnSlotClicked(function(index)
 
 	-- ไม่มีปุ่ม "ให้" สำหรับของประจำตำแหน่ง (ตะหลิวเชฟ แหวนแคลน) ด้วยเหตุผลเดียวกับปุ่มทิ้งของกุญแจรถ
 	-- ข้างล่าง: เซิร์ฟเวอร์ปฏิเสธอยู่แล้ว แต่ปุ่มที่กดแล้วได้คำว่า "ไม่ได้" แย่กว่าปุ่มที่ไม่มี
-	if not ItemCatalog.IsBound(slot.id) then
+	if not ItemCatalog.IsBound(slot.id) and not ItemCatalog.IsGoldBorder(slot.meta) then
 		table.insert(entries, { label = "ให้", onClick = function()
 			local nearby = nearbyPlayers()
 			if #nearby == 0 then
@@ -277,7 +277,7 @@ gui:OnSlotClicked(function(index)
 	-- No "throw away" for a vehicle key. The server refuses it anyway, but offering a red button that says no
 	-- is worse than not offering it: the player has to press it to find out, and the thing they were trying
 	-- to do is one they should never have been invited to attempt.
-	if ItemCatalog.IsDroppable(slot.id) then
+	if ItemCatalog.IsDroppable(slot.id, slot.meta) then
 		table.insert(entries, {
 			label = "ทิ้ง",
 			color = Color3.fromRGB(214, 84, 74), -- red: it is the one choice that destroys the item

@@ -128,7 +128,8 @@ local function completeTrade(session)
 				or seenThen.meta ~= slot.meta then
 				return nil
 			end
-			if ItemCatalog.IsBound(slot.id) then return nil end -- ของประจำตำแหน่งเทรดไม่ได้
+			-- ของประจำตำแหน่ง + ของขอบทอง (เฟส 2b) เทรดไม่ได้
+			if ItemCatalog.IsBound(slot.id) or ItemCatalog.IsGoldBorder(slot.meta) then return nil end
 			table.insert(taking, { index = index, id = slot.id, count = slot.count or 1,
 				durability = slot.durability, meta = slot.meta })
 		end
@@ -304,7 +305,8 @@ Remotes.RequestTradeOffer.OnServerEvent:Connect(function(player, slots, gold)
 	local clean, seen, snap = {}, {}, {}
 	for _, index in ipairs(slots) do
 		local slot = type(index) == "number" and state.slots[index]
-		if slot and not seen[index] then
+		-- ของขอบทอง (เฟส 2b) ไม่ถูกรับเข้าข้อเสนอเลย ดีกว่าปล่อยให้ไปพังตอนสรุปแล้วเทรดทั้งก้อนล่ม
+		if slot and not seen[index] and not ItemCatalog.IsGoldBorder(slot.meta) then
 			seen[index] = true
 			table.insert(clean, index)
 			-- จำของชิ้นนั้นไว้ ตอนสรุปต้องยังเป็นชิ้นเดิม (ดู collect)

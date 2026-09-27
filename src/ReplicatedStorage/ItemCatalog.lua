@@ -843,7 +843,9 @@ function ItemCatalog.IsBound(id)
 	return item ~= nil and item.bound == true
 end
 
-function ItemCatalog.IsDroppable(id)
+function ItemCatalog.IsDroppable(id, meta)
+	-- ของขอบทอง (เฟส 2b) ออกจากมือเจ้าของไม่ได้ทุกทาง — ถามที่นี่ที่เดียว ผู้เรียกต้องส่ง slot.meta มาด้วย
+	if ItemCatalog.IsGoldBorder(meta) then return false end
 	local item = ItemCatalog.Items[id]
 	if not item then return false end
 	if item.bound then return false end
@@ -864,7 +866,9 @@ end
 -- a key locked in a warehouse is a car nobody can reach. And the boot does not store items, it stores
 -- COUNTS: `record.trunk[itemId] = n`, with no room for the slot's meta -- so a key put in a boot would come
 -- out as a key to nothing, its plate gone, exactly the "คข 8660" problem that broke Baron Vane's garage.
-function ItemCatalog.IsStorable(id)
+function ItemCatalog.IsStorable(id, meta)
+	-- ของขอบทอง (เฟส 2b) ออกจากมือเจ้าของไม่ได้ทุกทาง — ถามที่นี่ที่เดียว ผู้เรียกต้องส่ง slot.meta มาด้วย
+	if ItemCatalog.IsGoldBorder(meta) then return false end
 	local item = ItemCatalog.Items[id]
 	if not item then return false end
 	if item.bound then return false end
@@ -893,7 +897,9 @@ end
 -- สกิน ออร่า ชุดแฟชั่น ได้จากกาชา/พาส (จ่ายเพชร) จึงกันด้วยชนิด
 local GemKinds = { skin = true, aura = true, fashion = true }
 
-function ItemCatalog.IsMailable(id)
+function ItemCatalog.IsMailable(id, meta)
+	-- ของขอบทอง (เฟส 2b) ออกจากมือเจ้าของไม่ได้ทุกทาง — ถามที่นี่ที่เดียว ผู้เรียกต้องส่ง slot.meta มาด้วย
+	if ItemCatalog.IsGoldBorder(meta) then return false end
 	local item = ItemCatalog.Items[id]
 	if not item then return false end
 	if item.bound or item.kind == "key" then return false end

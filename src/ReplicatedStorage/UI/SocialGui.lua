@@ -2002,7 +2002,7 @@ function SocialGui:RenderCompose()
 	end
 	local any = false
 	for index, slot in ipairs(self.bagSlots or {}) do
-		if slot and ItemCatalog.IsMailable(slot.id) then
+		if slot and ItemCatalog.IsMailable(slot.id, slot.meta) then
 			any = true
 			local cell = Instance.new("ImageButton")
 			cell.LayoutOrder = index

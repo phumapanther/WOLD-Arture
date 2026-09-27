@@ -167,7 +167,9 @@ Remotes.RequestArrestTake.OnServerEvent:Connect(function(guard, slots, fine)
 
 	local clean, seen = {}, {}
 	for _, index in ipairs(slots) do
-		if type(index) == "number" and state.slots[index] and not seen[index] then
+		-- ของขอบทอง (เฟส 2b) ยึดไม่ได้: การยึดคือการย้ายของไปที่ทหาร ซึ่งของขอบทองออกจากมือเจ้าของไม่ได้
+		if type(index) == "number" and state.slots[index] and not seen[index]
+			and not ItemCatalog.IsGoldBorder(state.slots[index].meta) then
 			seen[index] = true
 			table.insert(clean, index)
 			if #clean >= ClassActionConfig.Arrest.confiscateSlots then break end
@@ -206,7 +208,7 @@ local function settle(guard, session)
 	local taking = {}
 	for _, index in ipairs(session.taking) do
 		local slot = state.slots[index]
-		if slot then
+		if slot and not ItemCatalog.IsGoldBorder(slot.meta) then
 			table.insert(taking, { index = index, id = slot.id, count = slot.count or 1,
 				durability = slot.durability, meta = slot.meta })
 		end

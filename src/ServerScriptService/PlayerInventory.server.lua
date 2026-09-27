@@ -232,8 +232,10 @@ Remotes.RequestDropItem.OnServerEvent:Connect(function(player, index)
 	-- has to live here too: the menu is the client's, and this remote can be fired without it.
 	local state = Inventory.Get(player)
 	local slot = state and state.slots[index]
-	if slot and not ItemCatalog.IsDroppable(slot.id) then
-		return Remotes.SocialNotify:FireClient(player, "error", "กุญแจทิ้งไม่ได้ — ทิ้งแล้วรถจะหายจากโรงรถด้วย")
+	if slot and not ItemCatalog.IsDroppable(slot.id, slot.meta) then
+		return Remotes.SocialNotify:FireClient(player, "error", ItemCatalog.IsGoldBorder(slot.meta)
+			and "ของขอบทองทิ้งไม่ได้ — ขายบนเกาะหรือส่งออกได้"
+			or "กุญแจทิ้งไม่ได้ — ทิ้งแล้วรถจะหายจากโรงรถด้วย")
 	end
 
 	-- Dropping destroys the item for now; world pickups arrive with the gathering sub-project.

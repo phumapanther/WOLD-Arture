@@ -39,9 +39,9 @@ local function slotsOf(model)
 end
 
 -- ของชิ้นนี้ใส่ตู้นี้ได้ไหม (ตู้เย็นรับ food ตู้ยารับ medicine หีบธรรมดารับทุกอย่างที่ฝากได้)
-local function accepts(model, id)
+local function accepts(model, id, meta)
 	local item = ItemCatalog.Get(id)
-	if not item or not ItemCatalog.IsStorable(id) then return false end
+	if not item or not ItemCatalog.IsStorable(id, meta) then return false end
 	local want = model:GetAttribute("StorageAccepts")
 	if not want then return true end
 	return item[want] == true
@@ -159,7 +159,7 @@ local function put(player, model, bagIndex, count)
 	count = math.clamp(math.floor(tonumber(count) or 1), 1, slot.count or 1)
 	if count ~= count then return end -- NaN (ไม่งั้นตู้ได้กองที่ไม่มีวันหมด ส่วนกระเป๋าไม่ถูกหัก)
 
-	if not accepts(model, slot.id) then
+	if not accepts(model, slot.id, slot.meta) then
 		local want = model:GetAttribute("StorageAccepts")
 		return Remotes.SocialNotify:FireClient(player, "warn",
 			want == "food" and "ตู้เย็นเก็บได้เฉพาะอาหาร" or want == "medicine" and "ตู้ยาเก็บได้เฉพาะยา" or "ของชิ้นนี้ฝากไม่ได้")

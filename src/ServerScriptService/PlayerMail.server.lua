@@ -70,7 +70,7 @@ local function send(player, toUserId, slotIndex, count, body)
 	local state = Inventory.Get(player)
 	local slot = state and slotIndex and state.slots[slotIndex]
 	if not slot then return false, "ไม่มีของในช่องนั้น" end
-	if not ItemCatalog.IsMailable(slot.id) then return false, "ของชิ้นนี้ส่งทางเมลไม่ได้ (ส่งได้เฉพาะวัตถุดิบ)" end
+	if not ItemCatalog.IsMailable(slot.id, slot.meta) then return false, "ของชิ้นนี้ส่งทางเมลไม่ได้ (ส่งได้เฉพาะวัตถุดิบ)" end
 	-- เขียนเป็น "ต้องอยู่ในช่วง" ไม่ใช่ "ห้ามออกนอกช่วง": ไคลเอนต์ส่ง NaN (0/0) มาได้ และ NaN ตอบ false กับทุกการ
 	-- เปรียบเทียบ — แบบเดิมจึงปล่อยผ่าน แล้วช่องกลายเป็น NaN ที่ผ่านทุกด่านตลอดไป = ปั๊มของ
 	if not (count >= 1 and count <= (slot.count or 1)) then return false, "จำนวนไม่ถูกต้อง" end
@@ -87,7 +87,7 @@ local function send(player, toUserId, slotIndex, count, body)
 
 		-- ตัวกรอง yield → ของในช่องอาจเปลี่ยนไปแล้ว (ใช้ ทิ้ง ย้าย) ตรวจใหม่ก่อนหัก
 		slot = state.slots[slotIndex]
-		if not slot or not ItemCatalog.IsMailable(slot.id) or not (count <= (slot.count or 1)) then
+		if not slot or not ItemCatalog.IsMailable(slot.id, slot.meta) or not (count <= (slot.count or 1)) then
 			return { false, "ของในช่องเปลี่ยนไประหว่างส่ง" }
 		end
 		local item = { id = slot.id, count = count, durability = slot.durability, meta = slot.meta }

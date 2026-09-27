@@ -192,7 +192,7 @@ Remotes.RequestVaultAction.OnServerEvent:Connect(function(player, action, index,
 		-- a car its owner can never reach again.
 		local state = Inventory.Get(player)
 		local slot = state and state.slots[index]
-		if slot and not ItemCatalog.IsStorable(slot.id) then
+		if slot and not ItemCatalog.IsStorable(slot.id, slot.meta) then
 			Remotes.SocialNotify:FireClient(player, "error", "กุญแจเก็บในคลังไม่ได้ — ต้องพกติดตัวไว้")
 			Remotes.VaultOpen:FireClient(player, snapshot(player))
 			return
