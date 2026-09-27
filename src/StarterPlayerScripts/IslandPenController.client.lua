@@ -9,6 +9,13 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Remotes = require(ReplicatedStorage.Remotes)
 local Responsive = require(ReplicatedStorage.UI.Responsive)
+local UiSound = require(ReplicatedStorage.UI.UiSound)
+
+-- **เสียงซื้อ** (ผู้ใช้แจ้ง 2026-09-27: ซื้อสัตว์แล้วเงียบ) — กดปุ่ม = เสียงคลิก · เหรียญดังเมื่อเซิร์ฟเวอร์ยืนยันจริง
+-- ดูจากจำนวนสัตว์ในคอกที่เพิ่มขึ้น เพราะภาพคอกมาทั้งตอนซื้อสำเร็จ/ไม่สำเร็จ และทุก 3 วิจากการอัปเดตแถบโต
+-- (ภาพอัปเดตที่มาก่อนผลซื้อจึงไม่ล้างการรอ · รอไม่เกิน 3 วิ) ทรงเดียวกับร้านที่ดังตอนได้ภาพยืนยัน
+local lastCount = 0
+local pendingBuy = nil -- { from = จำนวนก่อนกด, at = os.clock() }
 
 local player = Players.LocalPlayer
 local PANEL = Color3.fromRGB(26, 24, 30)
@@ -186,6 +193,8 @@ local function row(index, animal, snap)
 		end
 		b.MouseButton1Click:Connect(function()
 			if blocked or not currentUid then return end
+			UiSound.Play("Click")
+			pendingBuy = { from = lastCount, at = os.clock() }
 			Remotes.IslandPenBuy:FireServer(currentUid, animal.kind, 1, pay.currency)
 		end)
 		x += pay.width + 6
@@ -270,5 +279,16 @@ local function draw(snap)
 	if snap.open then gui.Enabled = true end
 end
 
-Remotes.IslandPenOpen.OnClientEvent:Connect(draw)
+Remotes.IslandPenOpen.OnClientEvent:Connect(function(snap)
+	if pendingBuy then
+		if (snap.count or 0) > pendingBuy.from then
+			UiSound.Play("Coin")
+			pendingBuy = nil
+		elseif os.clock() - pendingBuy.at > 3 then
+			pendingBuy = nil
+		end
+	end
+	lastCount = snap.count or 0
+	draw(snap)
+end)
 player.CharacterRemoving:Connect(shut)

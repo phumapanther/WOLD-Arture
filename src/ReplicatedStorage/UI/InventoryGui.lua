@@ -43,6 +43,77 @@ end
 
 local GOLD_BORDER = Color3.fromRGB(255, 200, 60) -- กรอบของขอบทอง (เฟส 2b)
 
+-- **ของขอบทองในช่องกระเป๋า** (ผู้ใช้เลือก 2026-09-27 "แสงวิ่งรอบกรอบ + ประกาย")
+-- กรอบทองหนา + แสงขาววิ่งวนรอบกรอบ + พื้นช่องเรืองแสงทอง (หายใจเข้าออก) + ประกายระยิบสองจุดที่มุม
+-- ⚠️ วาดด้วยกรอบ/Frame ล้วน ห้ามใช้ตัวอักษรสัญลักษณ์ — ✦ ที่เคยใส่ขึ้นเป็นกล่องเปล่าในเกม (ฟอนต์ Roblox วาดไม่ได้)
+-- สร้างครั้งเดียวต่อช่องที่เป็นทอง แล้ว Render รอบถัดไปปล่อยไว้ (แอนิเมชันเดินต่อ ไม่กระตุกทุกครั้งที่กระเป๋าอัปเดต)
+-- ช่องที่เลิกเป็นทอง (ย้าย/ขาย) = ล้างทิ้งพร้อมหยุด tween
+local TweenService = game:GetService("TweenService")
+local GOLD_SWEEP = ColorSequence.new({
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(214, 146, 28)),
+	ColorSequenceKeypoint.new(0.40, Color3.fromRGB(255, 200, 60)),
+	ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 252, 226)),
+	ColorSequenceKeypoint.new(0.60, Color3.fromRGB(255, 200, 60)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(214, 146, 28)),
+})
+local SPARKLE = Color3.fromRGB(255, 246, 204)
+local GOLD_BG_DIM = Color3.fromRGB(64, 46, 14)
+local GOLD_BG_BRIGHT = Color3.fromRGB(122, 90, 26)
+
+local function removeGoldFx(entry)
+	local fx = entry.goldFx
+	if not fx then return end
+	for _, t in ipairs(fx.tweens) do t:Cancel() end
+	for _, obj in ipairs(fx.objects) do obj:Destroy() end
+	-- คืนพื้นช่องเป็นแบบปกติ (ค่าเดียวกับตอนสร้างช่อง)
+	entry.button.BackgroundColor3 = SLOT_BG
+	entry.button.BackgroundTransparency = 0.25
+	entry.goldFx = nil
+end
+
+local function addGoldFx(entry)
+	if entry.goldFx then return end
+	local fx = { objects = {}, tweens = {} }
+	entry.goldFx = fx
+	local function loop(obj, props, info)
+		local t = TweenService:Create(obj, info, props)
+		t:Play()
+		table.insert(fx.tweens, t)
+	end
+
+	-- แสงวิ่งรอบกรอบ: ไล่สีบนตัวกรอบแล้วหมุนไม่หยุด (สีกรอบต้องเป็นขาว ไล่สีจึงออกมาตามจริง)
+	local sweep = Instance.new("UIGradient")
+	sweep.Color = GOLD_SWEEP
+	sweep.Parent = entry.stroke
+	table.insert(fx.objects, sweep)
+	loop(sweep, { Rotation = 360 }, TweenInfo.new(2.4, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1))
+
+	-- พื้นช่องเรืองแสงทอง หายใจเข้าออกช้าๆ — ใช้พื้นของปุ่มเอง เพราะ ScreenGui นี้เป็น ZIndex แบบ Global
+	-- (ค่าเริ่มต้น) Frame แสงแยกที่ตั้ง ZIndex ต่ำจะไปจมใต้ช่อง ส่วนพื้นปุ่มอยู่หลังไอคอนเสมอ
+	entry.button.BackgroundColor3 = GOLD_BG_DIM
+	entry.button.BackgroundTransparency = 0.1
+	loop(entry.button, { BackgroundColor3 = GOLD_BG_BRIGHT },
+		TweenInfo.new(1.6, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true))
+
+	-- ประกายระยิบ: สี่เหลี่ยมเล็กหมุน 45° (เพชร) โผล่-หายสลับกันที่สองมุม · ZIndex 3 = เหนือไอคอน (Global)
+	for i, spot in ipairs({ Vector2.new(0.2, 0.22), Vector2.new(0.8, 0.78) }) do
+		local star = Instance.new("Frame")
+		star.Name = "GoldSparkle"
+		star.AnchorPoint = Vector2.new(0.5, 0.5)
+		star.Position = UDim2.fromScale(spot.X, spot.Y)
+		star.Size = UDim2.fromOffset(2, 2)
+		star.Rotation = 45
+		star.BackgroundColor3 = SPARKLE
+		star.BackgroundTransparency = 1
+		star.BorderSizePixel = 0
+		star.ZIndex = 3
+		star.Parent = entry.button
+		table.insert(fx.objects, star)
+		loop(star, { BackgroundTransparency = 0, Size = UDim2.fromOffset(7, 7) },
+			TweenInfo.new(0.9, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true, (i - 1) * 0.9))
+	end
+end
+
 local function stroke(parent, color, transparency, thickness)
 	local s = Instance.new("UIStroke")
 	s.Color = color or GLASS
@@ -518,13 +589,14 @@ function InventoryGui:Render(data)
 				or (item and KIND_TINT[item.kind] or GLASS)
 			entry.stroke.Transparency = 0.35
 			entry.stroke.Thickness = 1
-			-- ของขอบทอง (เฟส 2b): กรอบทองหนา + ✦ ที่มุม — ไม่สแตค มุมนั้นจึงว่างจากตัวเลขอยู่แล้ว
+			-- ของขอบทอง (เฟส 2b): แสงวิ่งรอบกรอบ + พื้นเรืองทอง + ประกาย (addGoldFx) — ไม่มีตัวอักษรที่มุม
 			if ItemCatalog.IsGoldBorder(slot.meta) then
-				entry.stroke.Color = GOLD_BORDER
+				entry.stroke.Color = Color3.new(1, 1, 1) -- ขาว: สีจริงมาจากไล่สีที่วิ่งรอบกรอบ
 				entry.stroke.Thickness = 2.5
 				entry.stroke.Transparency = 0
-				entry.count.Text = "✦"
-				entry.count.TextColor3 = GOLD_BORDER
+				addGoldFx(entry)
+			else
+				removeGoldFx(entry)
 			end
 		else
 			entry.icon.Image = ""
@@ -537,6 +609,7 @@ function InventoryGui:Render(data)
 			entry.stroke.Color = GLASS
 			entry.stroke.Transparency = 0.85
 			entry.stroke.Thickness = 1
+			removeGoldFx(entry) -- ของขอบทองย้ายออก/ขายไปแล้ว ช่องว่างต้องไม่มีแสงค้าง
 		end
 	end
 

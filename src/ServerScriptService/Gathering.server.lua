@@ -438,7 +438,7 @@ local function gather(node, player)
 		local extra = ItemCatalog.Get(bonusId)
 		text ..= (" + %s x%d"):format(extra and extra.name or bonusId, bonusCount)
 	end
-	if goldResult == "given" then text ..= " (✦ขอบทอง 1)" end
+	if goldResult == "given" then text ..= " (🌟 ขอบทอง 1 ชิ้น)" end
 	Remotes.SocialNotify:FireClient(player, "info", text)
 	if goldResult == "lost" then
 		Remotes.SocialNotify:FireClient(player, "error", "กระเป๋า VIP เต็ม — ขอบทองกลายเป็นของธรรมดา")

@@ -166,7 +166,7 @@ local function harvest(player, model)
 	if not given then return false, "full" end
 	local item = ItemCatalog.Get(entry.crop)
 	Remotes.SocialNotify:FireClient(player, "info", ("เก็บเกี่ยวได้ %s x%d%s"):format(item and item.name or entry.crop, amount,
-		goldResult == "given" and " (✦ขอบทอง 1)" or ""))
+		goldResult == "given" and " (🌟 ขอบทอง 1 ชิ้น)" or ""))
 	if goldResult == "lost" then
 		Remotes.SocialNotify:FireClient(player, "error", "กระเป๋า VIP เต็ม — ขอบทองกลายเป็นของธรรมดา")
 	end
