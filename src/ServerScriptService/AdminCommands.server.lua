@@ -485,6 +485,13 @@ Commands.farm = function(admin, args)
 	reply(admin, IslandAccess.FarmAdmin(admin, args))
 end
 
+-- /story [cutscene | memory | step <n> | done | reset] -- เนื้อเรื่องบทบราสเฮเวน (เพลสหลัก · Story.server)
+Commands.story = function(admin, args)
+	local StoryAccess = require(game.ServerScriptService.StoryAccess)
+	if not StoryAccess.Admin then return reply(admin, "เนื้อเรื่องมีเฉพาะเพลสหลัก") end
+	reply(admin, StoryAccess.Admin(admin, args))
+end
+
 Commands.worldboss = function(admin, args)
 	local sub = (args[1] or ""):lower()
 	if sub == "rank" or sub == "top" then

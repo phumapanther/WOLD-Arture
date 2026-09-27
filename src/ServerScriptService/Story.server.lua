@@ -314,6 +314,44 @@ Players.PlayerRemoving:Connect(function(player)
 	LastPushed[player] = nil
 end)
 
+-- คำสั่งแอดมิน /story (AdminCommands) — ผู้ทดสอบเป็นคนเก่าเลเวลสูง จึงไม่มีวันเห็นคัทซีนคนใหม่ถ้าไม่มีทางนี้
+-- /story = ดูสถานะ · cutscene = เล่นคัทซีน · memory = ภาพความทรงจำ · step <n> = กระโดดไปขั้นนั้น · done = จบบท (ได้รางวัล) · reset = ล้างทั้งหมด
+StoryAccess.Admin = function(player, args)
+	local sub = (args[1] or ""):lower()
+	local s = storyOf(player)
+	if not s then return "ยังโหลดโปรไฟล์ไม่เสร็จ" end
+	local ch, p = current(s)
+	if sub == "cutscene" then
+		startCutscene(player)
+		return "เล่นคัทซีนแล้ว (ข้ามได้มุมขวาบน)"
+	elseif sub == "memory" then
+		Remotes.StoryPlay:FireClient(player, "memory", "m1")
+		return "เล่นภาพความทรงจำ m1"
+	elseif sub == "reset" then
+		local data = ProfileAccess.Get(player)
+		data.Story = nil
+		LastPushed[player] = nil
+		push(player, true)
+		return "ล้างเนื้อเรื่องแล้ว — กลับไปขั้น 1 (คัทซีนสั่งเองด้วย /story cutscene)"
+	elseif sub == "step" then
+		if not ch then return "จบทุกบทแล้ว — /story reset ก่อน" end
+		local n = math.clamp(math.floor(tonumber(args[2]) or 1), 1, #ch.steps)
+		p.step, p.got = n, 0
+		push(player, true)
+		return ("ไปขั้น %d/%d: %s"):format(n, #ch.steps, ch.steps[n].goal)
+	elseif sub == "done" then
+		if not ch then return "จบทุกบทแล้ว" end
+		p.step = #ch.steps
+		advance(player, s, ch, p)
+		return "จบบทแล้ว (ได้รางวัล + ฉายา)"
+	end
+	if not ch then return "จบทุกบทแล้ว · เมืองที่ปลด: " .. table.concat((function()
+		local t = {} for k in pairs(s.towns) do t[#t + 1] = k end return t end)(), ", ") end
+	local step = ch.steps[p.step]
+	return ("บท %s ขั้น %d/%d: %s (%d/%s) · คัทซีนเห็นแล้ว: %s"):format(ch.name, p.step, #ch.steps, step.goal,
+		p.got or 0, tostring(step.need or "-"), tostring(s.cut == true))
+end
+
 -- ช่องเทสใน Studio (sandbox ของ execute_luau require ได้สำเนาใหม่ของโมดูล — ทรงเดียวกับ QuestTest)
 if game:GetService("RunService"):IsStudio() then
 	local bf = Instance.new("BindableFunction")

@@ -118,7 +118,7 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
   `ArenaAccess.TrapsAllowed` = ช่วงสู้เท่านั้น (นอกช่วง = เก็บกับดักทิ้งหมด) · สูตรต่อท้าย `CraftConfig` (ลำดับคือสัญญากับไคลเอนต์)
 - **เนื้อเรื่อง** `StoryConfig` (บทพูด/ขั้น/คัทซีน ข้อมูลล้วน) · `Story.server` (เพลสหลักเท่านั้น) · `StoryGui` + `StoryController` · `StoryAccess.RecordKill` (Mobs) ·
   ข้อมูล `profile.Data.Story` · ⚠️ **ต้องรัน `mapgen/110_story_brasshaven.lua --kit --models --no-lib` ในเพลสหลักก่อน** (วงเวท + ไลรา + หมุดความทรงจำ ลากย้ายได้)
-  · คนใหม่ = เลเวล 1 ตอนจอโหลดจบ → คัทซีน · ฉายาเมือง `story_*` ผ่าน Achievements extras · ช่องเทส `ServerStorage.StoryTest`
+  · คนใหม่ = เลเวล 1 ตอนจอโหลดจบ → คัทซีน · ฉายาเมือง `story_*` ผ่าน Achievements extras · ช่องเทส `ServerStorage.StoryTest` · **คำสั่งเทส `/story [cutscene | memory | step <n> | done | reset]`** (คนเก่าเลเวลสูงไม่มีวันเห็นคัทซีนเองถ้าไม่สั่ง)
 - **ล็อกบอร์ด** `QuestConfig.TownOpen` ที่เดียว: บราสเฮเวนเปิด · เมืองอื่นต้อง VIP หรือจบบทเมืองนั้น (`Story.towns`) · เกาะไม่ล็อก · งานที่ถืออยู่ส่งได้เสมอ
 - **เครื่องมือใหม่ (ใช้ได้ตอน MCP หลุด)**: `bash tools/offline-check.sh [ไฟล์]` = คอมไพล์ + หา "ตัวแปรใช้ก่อนประกาศ" ด้วย Luau CLI portable
   (`~/tools/luau` จาก release luau-lang) · `node tools/offline-test.js tests/x_test.lua` = รันเทสข้อมูลล้วนบนตัวจำลอง Roblox ขนาดเล็ก
