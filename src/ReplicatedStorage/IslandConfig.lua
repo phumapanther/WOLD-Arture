@@ -327,14 +327,15 @@ IslandConfig.Badges = {
 -- **ทอยตอนของชิ้นนั้น "เริ่มรอบใหม่"** ไม่ใช่ตอนเก็บ — หยอดเมล็ด · สัตว์พ้นคูลดาวน์ · แร่โผล่ใหม่
 -- ผู้เล่นจึงเห็นก่อนว่าอันไหนพิเศษ แล้วเดินไปเก็บ · ใช้แล้วธงถูกล้าง รอบหน้าทอยใหม่
 IslandConfig.Glow = {
-	-- โอกาสต่อ "รอบ" ของของชิ้นหนึ่ง · **ตัวเลขทั้งหมดผมตั้งเอง ผู้ใช้ไม่ได้กำหนด**
-	chance = 0.10,
-	goldShare = 0.5, -- ในสิบเปอร์เซ็นต์นั้น ครึ่งหนึ่งเป็นทอง ที่เหลือเป็นฟ้า
+	-- โอกาสต่อ "รอบ" ของของชิ้นหนึ่ง (เฟส 2b ผู้ใช้กำหนด 2026-09-26 · รวม 10% เท่าเดิม)
+	-- แดงขึ้นเฉพาะของที่มีขอบทองได้ (GoldBorder) ต้นไม้/พุ่ม/หินทอยแค่ฟ้ากับทอง
+	rates = { blue = 0.07, gold = 0.025, red = 0.005 },
 	exp = 2, -- ทอง: EXP คูณเท่านี้
 	yield = 2, -- ฟ้า: วัตถุดิบคูณเท่านี้ (รวมของแถมด้วย)
 	colors = {
 		gold = Color3.fromRGB(255, 208, 92),
 		blue = Color3.fromRGB(96, 198, 255),
+		red = Color3.fromRGB(255, 84, 84), -- เฟส 2b: ขอบทองแน่นอน + ของ x2 + EXP x2
 	},
 	brightness = 2.4,
 	range = 14,
@@ -344,10 +345,29 @@ IslandConfig.Glow = {
 --
 -- อยู่ในคอนฟิกเพราะมีคนเรียกสี่ที่ (แร่ที่โผล่ · สัตว์พ้นคูลดาวน์ · แปลงที่เพิ่งหยอดเมล็ด ·
 -- ของตกแต่งที่ครบคูลดาวน์) — กฎเดียว ที่เดียว ไม่งั้นสี่ที่นั้นจะเพี้ยนกันเองวันใดวันหนึ่ง
-function IslandConfig.RollGlow()
-	local g = IslandConfig.Glow
-	if not g or math.random() >= g.chance then return nil end
-	return math.random() < g.goldShare and "gold" or "blue"
+-- ทอยแสงตอนของชิ้นนั้นเริ่มรอบใหม่ · `canGold` = ของชิ้นนี้มีขอบทองได้ไหม (แดงขึ้นเฉพาะของแบบนั้น — เฟส 2b)
+-- ของที่มีขอบทองไม่ได้ (ต้นไม้ พุ่ม หิน) ทอยแค่ฟ้ากับทอง โอกาสสองตัวนั้นเท่าเดิม
+function IslandConfig.RollGlow(canGold)
+	local rates = IslandConfig.Glow.rates
+	local r = math.random()
+	if r < rates.blue then return "blue" end
+	r -= rates.blue
+	if r < rates.gold then return "gold" end
+	r -= rates.gold
+	if canGold and r < rates.red then return "red" end
+	return nil
 end
+
+-- แสงแต่ละสีทำอะไร — ทุกที่ที่แจกของ/EXP ถามสองตัวนี้ ไม่เขียน `glow == "blue"` เอง (แดงได้ทั้งสองอย่าง)
+function IslandConfig.GlowYield(glow)
+	return (glow == "blue" or glow == "red") and IslandConfig.Glow.yield or 1
+end
+function IslandConfig.GlowExp(glow)
+	return (glow == "gold" or glow == "red") and IslandConfig.Glow.exp or 1
+end
+
+-- ของขอบทอง (เฟส 2b ผู้ใช้กำหนด 2026-09-26): โอกาสต่อการเก็บหนึ่งครั้ง ได้สูงสุดหนึ่งชิ้น
+-- ปกติ 10% · แสงทอง 40% · แสงแดง = แน่นอน (GoldBorder.Roll)
+IslandConfig.GoldBorder = { chance = 0.10, goldGlow = 0.40 }
 
 return IslandConfig

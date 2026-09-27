@@ -22,16 +22,18 @@ assert(A("Data"), "ข้อมูลเกาะไม่โหลด")
 local function exp() return (A("Exp", player)) end
 
 ----------------------------------------------------------------- 1. การทอย
-local tally = { gold = 0, blue = 0, none = 0 }
+-- เฟส 2b: สามสี ฟ้า 7% · ทอง 2.5% · แดง 0.5% (แดงเฉพาะของที่มีขอบทองได้ — ทอยแบบ canGold) · สถิติละเอียดอยู่ gold_border_test
+local tally = { gold = 0, blue = 0, red = 0, none = 0 }
 for _ = 1, 4000 do
-	local t = C.RollGlow()
+	local t = C.RollGlow(true)
 	tally[t or "none"] += 1
 end
-assert(tally.gold > 0 and tally.blue > 0, "ต้องทอยได้ทั้งสองสี")
-local litRate = (tally.gold + tally.blue) / 4000
-assert(math.abs(litRate - G.chance) < 0.03, ("อัตราเรืองแสงเพี้ยน: %.3f ควรราว %.2f"):format(litRate, G.chance))
-table.insert(out, ("ทอย 4000 ครั้ง: ทอง %d · ฟ้า %d · ไม่ติด %d (อัตรา %.1f%% ตั้งไว้ %.0f%%)")
-	:format(tally.gold, tally.blue, tally.none, litRate * 100, G.chance * 100))
+assert(tally.gold > 0 and tally.blue > 0, "ต้องทอยได้ทั้งฟ้าและทอง")
+local want = G.rates.blue + G.rates.gold + G.rates.red
+local litRate = (tally.gold + tally.blue + tally.red) / 4000
+assert(math.abs(litRate - want) < 0.03, ("อัตราเรืองแสงเพี้ยน: %.3f ควรราว %.2f"):format(litRate, want))
+table.insert(out, ("ทอย 4000 ครั้ง: ทอง %d · ฟ้า %d · แดง %d · ไม่ติด %d (อัตรา %.1f%% ตั้งไว้ %.0f%%)")
+	:format(tally.gold, tally.blue, tally.red, tally.none, litRate * 100, want * 100))
 
 ----------------------------------------------------------------- เตรียมแปลง
 if (A("Count", player, "FarmPlot") or 0) < 1 then A("Grant", player, "FarmPlot", 1) end

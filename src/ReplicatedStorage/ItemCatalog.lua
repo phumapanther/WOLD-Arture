@@ -768,7 +768,17 @@ function ItemCatalog.DisplayName(id, meta)
 			return base .. " (" .. short .. ")"
 		end
 	end
+	-- ของขอบทอง (เฟส 2b): "ไข่ (ขอบทอง)"
+	if ItemCatalog.IsGoldBorder(meta) then
+		return base .. " (ขอบทอง)"
+	end
 	return base
+end
+
+-- **ของขอบทอง** (เฟส 2b ผู้ใช้กำหนด 2026-09-26): `meta.gold = true` · ตัวตัดสินตัวเดียวที่กฎโอน/ฝาก/ทิ้ง/ขาย/
+-- วัตถุดิบ/เควสทุกตัวถาม — ได้เฉพาะบนเกาะ ติดตัวได้แต่ออกจากมือเจ้าของไม่ได้เลย (ขายบนเกาะ/ส่งออกเท่านั้น)
+function ItemCatalog.IsGoldBorder(meta)
+	return type(meta) == "table" and meta.gold == true
 end
 
 function ItemCatalog.Exists(id)
