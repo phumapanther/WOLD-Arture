@@ -41,6 +41,8 @@ local function corner(parent, radius)
 	return c
 end
 
+local GOLD_BORDER = Color3.fromRGB(255, 200, 60) -- กรอบของขอบทอง (เฟส 2b)
+
 local function stroke(parent, color, transparency, thickness)
 	local s = Instance.new("UIStroke")
 	s.Color = color or GLASS
@@ -515,6 +517,15 @@ function InventoryGui:Render(data)
 			entry.stroke.Color = kg and FishingConfig.TierFor(kg).color
 				or (item and KIND_TINT[item.kind] or GLASS)
 			entry.stroke.Transparency = 0.35
+			entry.stroke.Thickness = 1
+			-- ของขอบทอง (เฟส 2b): กรอบทองหนา + ✦ ที่มุม — ไม่สแตค มุมนั้นจึงว่างจากตัวเลขอยู่แล้ว
+			if ItemCatalog.IsGoldBorder(slot.meta) then
+				entry.stroke.Color = GOLD_BORDER
+				entry.stroke.Thickness = 2.5
+				entry.stroke.Transparency = 0
+				entry.count.Text = "✦"
+				entry.count.TextColor3 = GOLD_BORDER
+			end
 		else
 			entry.icon.Image = ""
 			entry.icon.Visible = false
@@ -525,6 +536,7 @@ function InventoryGui:Render(data)
 			entry.count.TextTransparency = 0
 			entry.stroke.Color = GLASS
 			entry.stroke.Transparency = 0.85
+			entry.stroke.Thickness = 1
 		end
 	end
 
