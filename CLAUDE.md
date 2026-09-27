@@ -21,10 +21,17 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 - คราฟล็อก **รายเครื่อง** (`Stove@<Uid>`) จดใน `job.lock` เข้าเกมใหม่ล็อกคืน · PVP ออกไม่กลับ/แอดมินที่เข้าดู = ไม่มีรางวัล
   (`row.noReward`) เข้าใหม่ใช้แถวเดิม · ร้านเพชรหักก่อนไม่ผ่าน = ถอดของคืน · `AddItem` meta สำเนาต่อช่อง
 
-**เฟส 1 (UI PVP) เสร็จ 2026-09-27 — ดันเพลสสนาม+เกาะแล้ว (mismatches 0) · ⚠️ เพลสหลักยังไม่ได้ดัน (ไม่ได้เปิดอยู่) · รอผู้ใช้เทส**
+**เฟส 1 (UI PVP) เสร็จ 2026-09-27 — ดันครบสามเพลส (mismatches 0) · รอผู้ใช้เทส**
 - แถบคะแนนสนาม 260x40 · ไม่มีกล่องซิลเวอร์ซ้าย (เงินดูในร้าน B) · กระสุนอยู่มุมซ้ายล่าง x 16
 - **สนามไม่มีข้อความกลางจอแล้ว** (เตรียมตัว/ชนะรอบ/ตายแล้ว/ชวนเปิดร้าน ถูกถอด) · ป้ายคิล FIRST BLOOD/ACE ยังอยู่
 - `ArenaNotice` ขึ้นในบรรทัดสถานะของร้าน (`ArenaShopGui:Flash`) **เฉพาะตอนร้านเปิด** ร้านปิด = ไม่วาด · เทส `tests/arena_hud_test.lua`
+
+**เฟส 2a (ร้านเกาะ 2 ราคา + 5 หมวด) เสร็จ 2026-09-27 — ดันครบสามเพลส (mismatches 0) · รอผู้ใช้เทส** แผน `docs/superpowers/plans/2026-09-27-phase2a-island-shop.md`
+- ⚠️ **ราคาร้านเกาะถามผ่าน `ShopConfig.PricesOf(row)` / `PriceFor(row, currency)` เท่านั้น** แถวเขียน `coins` หรือ `gems` (หรือทั้งคู่) + `category`
+  อีกสกุลคำนวณให้ 1 เพชร = 250 เหรียญ ปัดขึ้น ขั้นต่ำ 1 · ห้ามกลับไปใช้ `price`/`currency` ในร้านเกาะ · ร้านเกมหลักยังใช้ `price` (เหรียญอย่างเดียว)
+- ของใหม่ในร้านเกาะต้องมี `category` (house/decor/utility/animal/farm) เทส `island_shop_prices_test` ตรวจ · **ของทั้งร้านเกาะส่งเมลไม่ได้ รวมเมล็ด**
+- `RequestShopAction("buy", index, amount, currency)` · `IslandPenBuy(uid, kind, count, currency)` · สัตว์ในคอกราคาเพชร = `ShopConfig.GemsFor(price)`
+- `ShopGui.new()` แขวน PlayerGui เฉพาะตอนเกมรัน (Edit เทสได้ `shop_gui_test`) · แท็บที่เลือกอยู่รอดข้ามการวาดใหม่หลังซื้อ
 
 ## โมเดลจากโค้ด (modelkit)
 ชุดสร้างโมเดลด้วยโค้ดอยู่ที่ `modelkit/` + `models/` — **อ่าน `docs/modelkit-reference.md` ก่อนแตะ**
