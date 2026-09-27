@@ -93,6 +93,11 @@ ArenaConfig.Shop = {
 	{ id = "Spellbook",      price = 1500, slot = "weapon", row = "ranged", col = 4, size = "medium" },
 	-- สไน: **ซื้อแล้วมานาเต็มหลอด** (ผู้ใช้สั่ง 2026-09-25) — มานาในสนามเริ่มที่ 0 ไม่งั้นซื้อมายิงไม่ได้
 	{ id = "Sniper",         price = 3000, slot = "weapon", row = "ranged", col = 5, size = "large", fillMana = true },
+	-- ── กับดัก (เฟส 3 · ผู้ใช้อนุมัติ 2026-09-27) ── กับดักตัวเดียวกับเกมหลัก กระสุนติดมาตามขนาด (`ammoItem`)
+	-- หมดแล้วซื้อใหม่เหมือนปืน · สนามไม่มีลมกระแทก (ล้มกลาง 3v3 นานเกินไป) · `ammoItem` ไม่มี = กระสุนปืน
+	{ id = "TrapSmall",      price = 500,  slot = "weapon", row = "trap", col = 1, size = "small",  ammo = 12, ammoItem = "TrapAmmo_Slow" },
+	{ id = "TrapMedium",     price = 1250, slot = "weapon", row = "trap", col = 2, size = "medium", ammo = 8,  ammoItem = "TrapAmmo_Stun" },
+	{ id = "TrapLarge",      price = 2000, slot = "weapon", row = "trap", col = 3, size = "large",  ammo = 5,  ammoItem = "TrapAmmo_Blast" },
 	-- ── เกราะ ──────────────────────────────────────────────────────────────
 	{ id = "LeatherArmor",   price = 250,  slot = "armor", row = "armor", col = 1 },
 	{ id = "ChainmailArmor", price = 500,  slot = "armor", row = "armor", col = 2 },
@@ -125,6 +130,24 @@ function ArenaConfig.ShopEntry(id)
 	return nil
 end
 
+-- กระสุนที่อาวุธแถวนี้กิน (ปืน = Bullet · กับดัก = TrapAmmo_*) หรือ nil ถ้าไม่กินกระสุน
+function ArenaConfig.AmmoItemOf(entry)
+	return entry and entry.ammo and (entry.ammoItem or "Bullet") or nil
+end
+
+-- กระสุนทุกชนิดที่ร้านแจก — ตายแล้ว/เปลี่ยนอาวุธ ล้างทุกชนิด
+function ArenaConfig.AmmoItems()
+	local out, seen = {}, {}
+	for _, entry in ipairs(ArenaConfig.Shop) do
+		local id = ArenaConfig.AmmoItemOf(entry)
+		if id and not seen[id] then
+			seen[id] = true
+			out[#out + 1] = id
+		end
+	end
+	return out
+end
+
 ArenaConfig.SizeOrder = { small = 1, medium = 2, large = 3 }
 ArenaConfig.SizeLabel = { small = "เล็ก", medium = "กลาง", large = "ใหญ่" }
 
@@ -145,6 +168,28 @@ ArenaConfig.KillSounds = {
 	triple = "rbxassetid://119830932835553",
 }
 ArenaConfig.KillPitch = { kill = 1, first = 1.1, double = 1.2, triple = 1.3, ace = 1.4 }
+
+--------------------------------------------------------------------------------
+-- ยกการ์ด / ปัดป้อง (แพรี่) — เฟส 3 ข้อแรก (ผู้ใช้กำหนด 2026-09-27 · สนามเท่านั้น)
+--------------------------------------------------------------------------------
+-- คลิกขวาค้าง (มือถือ = ปุ่ม 🛡️ กดค้าง) = ยกการ์ด: ดาเมจ **ระยะประชิด** ลดลง · เดินช้า · ตีไม่ได้
+-- ยกการ์ดภายใน `window` วิก่อนโดน = **ปัดสมบูรณ์**: ไม่เสียเลือด + คนตีเซ `stagger` วิ (ขยับ/ตีไม่ได้ = ช่องสวนกลับ)
+-- ยกแล้วไม่มีอะไรมาโดนในช่วงจังหวะ = รอ `parryLock` วิหลังช่วงนั้นจบ ถึงปัดสมบูรณ์ได้อีก (กันกดรัว — ยังลดดาเมจได้ปกติ)
+-- ธนู ปืน สไน สกิล Q ทะลุการ์ด · ถือสไน = คลิกขวาคือเลิกส่องเหมือนเดิม ยกการ์ดไม่ได้ · โล่เก่งสุด (ลดมากกว่า จังหวะกว้างกว่า)
+-- ตัวเลข reduce/shield ผมตั้ง ผู้ใช้กำหนด 50% · ~0.3 วิ · ~0.8 วิ · 1 วิ
+ArenaConfig.Block = {
+	reduce = 0.5, -- ดาเมจที่หายไปตอนยกการ์ด (ทุกอาวุธ)
+	window = 0.3, -- วินาทีหลังยกการ์ดที่ปัดสมบูรณ์ได้
+	shieldReduce = 0.75, -- ถือโล่
+	shieldWindow = 0.45,
+	stagger = 0.8, -- คนตีที่ถูกปัดเซกี่วินาที
+	parryLock = 1.0,
+	-- เสียงเคล้ง: ยังไม่มีเสียงดาบกระทบเฉพาะ ใช้เสียงค้อนตีเหล็ก (SoundscapeConfig.Interface.Hammer) เร่งให้แหลมขึ้น
+	parrySound = "rbxassetid://114020474816962",
+	parryPitch = 1.35,
+	blockSound = "rbxassetid://114020474816962", -- กันได้แต่ไม่สมบูรณ์: ตัวเดียวกันแต่ทุ้มและเบากว่า
+	blockPitch = 0.8,
+}
 
 --------------------------------------------------------------------------------
 -- ของที่ต้องแรงคนละอย่างกับในเกมหลัก

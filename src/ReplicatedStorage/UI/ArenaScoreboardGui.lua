@@ -347,6 +347,12 @@ function ArenaScoreboardGui:Render(result)
 			end
 			if row.bot then pill(frame, "บอท", rgb(70, 72, 84), TEXT, tagX, 36); tagX += 42 end
 			if dead then pill(frame, "ตาย", rgb(110, 50, 48), TEXT, tagX, 34) end
+			-- แต้มแร็งก์ของแมตช์นี้ (ตารางจบเท่านั้น · แมตช์ที่ไม่นับแร็งก์ไม่มีป้าย) เฟส 3
+			if type(row.pvp) == "number" and not self.live then
+				local up = row.pvp >= 0
+				pill(frame, ("แร็งก์ %s%d"):format(up and "+" or "−", math.abs(row.pvp)),
+					up and rgb(52, 110, 64) or rgb(120, 52, 50), TEXT, tagX, 74)
+			end
 
 			-- รูปหีบรางวัล (ตารางจบแมตช์เท่านั้น) — ไม่มีรูปก็ขึ้น ⌛ ตามกติกาเดิม
 			local chestItem = row.chest and ItemCatalog.Items[row.chest]

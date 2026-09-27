@@ -19,6 +19,7 @@ local KitWear = require(game.ServerScriptService.KitWear)
 local MobAccess = require(game.ServerScriptService.MobAccess)
 local ArenaAccess = require(game.ServerScriptService.ArenaAccess)
 local Vitals = require(game.ServerScriptService.Vitals)
+local Blocking = require(game.ServerScriptService.Blocking) -- ปัด/กันท่าประชิดของบอท (เฟส 3)
 local WeaponVisualsAccess = require(game.ServerScriptService.WeaponVisualsAccess)
 
 local ArenaBots = {}
@@ -328,7 +329,21 @@ local function attack(state, targetRoot, spec)
 				or spec.id == "Bow" and Color3.fromRGB(200, 170, 120) or Color3.fromRGB(140, 190, 255), 0.25)
 			if math.random() > RANGED_ACCURACY then return end
 		end
-		if hitTarget(state, targetRoot, spec.damage) then
+		-- **ท่าประชิดของบอทถูกปัด/กันได้เหมือนคน** (เฟส 3 · Blocking) — บอทไม่ยกการ์ดเอง · กระสุนบอททะลุการ์ด
+		local amount = spec.damage
+		local victim = not spec.ranged and Players:GetPlayerFromCharacter(targetRoot.Parent)
+		if victim then
+			local verdict, factor = Blocking.Judge(victim)
+			if verdict == "parry" then
+				ArenaBots.Stun(state.model, ArenaConfig.Block.stagger)
+				Blocking.Fx(targetRoot.Position + targetRoot.CFrame.LookVector * 1.5, true)
+				return
+			elseif verdict == "block" then
+				amount *= factor
+				Blocking.Fx(targetRoot.Position + targetRoot.CFrame.LookVector * 1.5, false)
+			end
+		end
+		if hitTarget(state, targetRoot, amount) then
 			sound(targetRoot, sounds.hit, sounds.hitVolume, sounds.hitSeconds)
 		end
 	end)

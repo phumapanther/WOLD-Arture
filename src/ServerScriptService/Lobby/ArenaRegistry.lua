@@ -37,7 +37,8 @@ local function rewardKey(userId) return "arenareward_" .. userId end
 --
 -- ไม่ได้ทำบน UpdateAsync ด้วยเหตุผลเดียวกับอีกสองทะเบียน: `ReserveServer` เป็นการกระทำจริงที่ย้อนไม่ได้
 -- และ Roblox เรียก transform ของ UpdateAsync ซ้ำได้เองตอนเขียนชนกัน = จองเซิร์ฟทิ้งหลายตัว
-function ArenaRegistry.CreateMatch(mapId, teams, bots)
+-- `admin` = แอดมินกดเริ่มเอง (ไม่นับแร็งก์ · เฟส 3)
+function ArenaRegistry.CreateMatch(mapId, teams, bots, admin)
 	local placeId = arenaPlaceId()
 	if not placeId or placeId == 0 then
 		error("[ArenaRegistry] ยังไม่ได้ตั้ง ServerConfig.ArenaPlaceId", 0)
@@ -52,6 +53,7 @@ function ArenaRegistry.CreateMatch(mapId, teams, bots)
 		mapId = mapId,
 		teams = teams,
 		bots = bots or { A = 0, B = 0 },
+		admin = admin == true or nil,
 		createdAt = os.time(),
 	}
 	local setOk, setErr = pcall(function() store:SetAsync(matchKey(privateServerId), record) end)

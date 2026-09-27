@@ -20,6 +20,12 @@ local player = Players.LocalPlayer
 local gui = nil
 local lastSnapshot = nil
 local lastFriends = nil
+-- แร็งก์ของเรา (เฟส 3 · LobbyRank.server) — จำไว้วาดใส่หน้าจอตัวใหม่ตอนมือถือหมุนจอ
+local lastRank = nil
+Remotes.PvpRankInfo.OnClientEvent:Connect(function(info)
+	lastRank = info
+	if gui then gui:SetRankInfo(info) end
+end)
 
 --------------------------------------------------------------------------------
 -- รูปอวตาร: ขอทีละคน แล้วแคชไว้ (ยิงซ้ำทุกวินาทีตอนค้นหาห้องคือการรีเควสต์ทิ้ง)
@@ -62,6 +68,7 @@ task.spawn(function()
 			end)
 			if lastSnapshot then draw(lastSnapshot) end
 			if lastFriends then gui:RenderFriends(lastFriends) end
+			if lastRank then gui:SetRankInfo(lastRank) end
 		elseif not current and not warned and os.clock() - started > 30 then
 			warned = true
 			warn("[PvpParty] หาหน้าปาร์ตี้ไม่เจอ — แท็บ PVP จะไม่ตอบสนอง")

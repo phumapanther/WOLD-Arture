@@ -33,6 +33,7 @@ local WANT = {
 	Pistol = 750, Bow = 1500, Staff = 1500, Spellbook = 1500, -- ผู้ใช้สั่ง 2026-09-25
 	LeatherArmor = 250, ChainmailArmor = 500, PlateArmor = 1000,
 	HealthPotion = 200, GreatPotion = 500, FirstAidKit = 1000, Water = 50,
+	TrapSmall = 500, TrapMedium = 1250, TrapLarge = 2000, -- กับดัก (เฟส 3 · ผู้ใช้อนุมัติ 2026-09-27)
 }
 local seen = {}
 for _, entry in ipairs(ArenaConfig.Shop) do

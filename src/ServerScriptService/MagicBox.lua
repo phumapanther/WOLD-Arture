@@ -14,7 +14,8 @@ local function poolFor(category)
 	local pool = {}
 	for id, item in pairs(ItemCatalog.Items) do
 		local ok = false
-		if item.bound or item.kind == "key" or id == "MagicBox" or id:match("^Chest_") then
+		-- `arenaOnly` = ของร้านสนาม PVP (กับดักสามขนาด) ไม่มีที่ใช้นอกสนาม
+		if item.bound or item.arenaOnly or item.kind == "key" or id == "MagicBox" or id:match("^Chest_") then
 			ok = false
 		elseif category == "farm" then
 			ok = item.kind == "junk" and item.sellable ~= false and not ILLEGAL[id]

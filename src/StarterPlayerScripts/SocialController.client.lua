@@ -171,6 +171,10 @@ local threads = {} -- [userId] = { messages }
 -- Drawing
 --------------------------------------------------------------------------------
 
+-- สมุดสะสม/อันดับล่าสุด — **ประกาศก่อน redraw** (เดิมอยู่ใต้มัน redraw จึงอ่านเป็น global nil ทุกครั้ง
+-- หน้าสมุด/อันดับเด้งกลับเป็น "กำลังเปิด" ทุกครั้งที่ SocialUpdate มา · เจอด้วย tools/offline-check.sh 2026-09-27)
+local latestCollection, latestRanking = nil, nil
+
 local function redraw()
 	local screen = gui.current
 	if screen == "board" then
@@ -198,7 +202,6 @@ end
 
 -- สมุดสะสมกับตารางอันดับมาคนละทางกับ SocialUpdate เพราะมันไม่ได้เปลี่ยนบ่อยและไม่ต้องส่งให้ทุกคน
 -- ตลอดเวลา — ขอเมื่อเปิดหน้าจอนั้นเท่านั้น
-local latestCollection, latestRanking = nil, nil
 
 Remotes.CollectionUpdate.OnClientEvent:Connect(function(data)
 	latestCollection = data

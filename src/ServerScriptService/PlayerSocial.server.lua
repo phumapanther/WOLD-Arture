@@ -235,6 +235,8 @@ Remotes.RequestShowCard.OnServerEvent:Connect(function(player, showing)
 			class = Classes.Primary(player),
 			birthday = social.Birthday,
 			gender = social.Gender,
+			-- กรอบแร็งก์ PVP แทนกรอบเลเวล สำหรับคนที่เคยเล่นแร็งก์ (เฟส 3 · PvpRankPublisher)
+			pvpTier = player:GetAttribute("WOLD_PvpTier"),
 		})
 
 		local token = os.clock()

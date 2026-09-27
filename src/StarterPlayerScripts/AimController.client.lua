@@ -13,6 +13,7 @@ local UserInputService = game:GetService("UserInputService")
 local TweenService = game:GetService("TweenService")
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
+local TrapConfig = require(game.ReplicatedStorage.TrapConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
 while workspace:GetAttribute("IsLobby") == nil do
@@ -276,9 +277,23 @@ ammoText.TextColor3 = Color3.fromRGB(245, 240, 225)
 ammoText.TextStrokeTransparency = 0.4
 ammoText.Parent = ammoRow
 
+local CASE_COLOR = Color3.fromRGB(214, 172, 82)
 local function drawAmmo(inventory)
 	local weapon = inventory and inventory.equipped and inventory.equipped.weapon
 	local spec = weapon and CombatConfig.Weapons[weapon.id]
+	-- กับดัก (เฟส 3): นับกระสุนชนิดที่เลือกไว้ (`meta.ammo`) ปลอกสีตามชนิด + ชื่อชนิดต่อท้าย
+	if weapon and TrapConfig.IsTrap(weapon.id) then
+		ammoGui.Enabled = true
+		local ammo, count = TrapConfig.SelectedAmmo(weapon.id, weapon.meta, inventory.slots)
+		for i, icon in ipairs(ammoIcons) do
+			icon.Visible = i <= count
+			icon.BackgroundColor3 = ammo and ammo.color or CASE_COLOR
+		end
+		ammoText.Text = not ammo and "ไม่มีกระสุนกับดัก"
+			or count == 0 and (ammo.name .. " หมด") or (" %s %d"):format(ammo.name, count)
+		ammoText.TextColor3 = count == 0 and Color3.fromRGB(235, 110, 100) or Color3.fromRGB(245, 240, 225)
+		return
+	end
 	local ammoId = spec and spec.ammo
 	ammoGui.Enabled = ammoId ~= nil
 	if not ammoId then return end
@@ -286,7 +301,10 @@ local function drawAmmo(inventory)
 	for _, slot in pairs(inventory.slots or {}) do
 		if slot and slot.id == ammoId then count += slot.count or 1 end
 	end
-	for i, icon in ipairs(ammoIcons) do icon.Visible = i <= count end
+	for i, icon in ipairs(ammoIcons) do
+		icon.Visible = i <= count
+		icon.BackgroundColor3 = CASE_COLOR
+	end
 	ammoText.Text = count == 0 and "กระสุนหมด" or (" " .. count)
 	ammoText.TextColor3 = count == 0 and Color3.fromRGB(235, 110, 100) or Color3.fromRGB(245, 240, 225)
 end

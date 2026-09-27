@@ -17,6 +17,7 @@ local RunService = game:GetService("RunService")
 local TouchActionGui = require(game.ReplicatedStorage.UI.TouchActionGui)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local AimAccess = require(game.ReplicatedStorage.UI.AimAccess)
+local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 
 -- Phones and tablets ONLY. TouchEnabled alone is not enough: a touchscreen laptop, a 2-in-1, and Studio's
 -- device emulator all report it true while still having a keyboard and mouse, and those players use Ctrl and
@@ -36,10 +37,24 @@ player:WaitForChild("PlayerGui").ScreenOrientation = Enum.ScreenOrientation.Land
 local gui = TouchActionGui.new()
 gui.gui.Parent = player:WaitForChild("PlayerGui")
 
+-- กับดัก (เฟส 3): ปุ่มโจมตีกดค้าง = เล็ง ปล่อย = เขวี้ยง แตะ = วาง — ส่งต่อให้ TrapController ทางช่องทาง
+-- `WOLD_TrapInput` (ReplicatedStorage · TrapController เป็นเจ้าของ) ไม่ส่งคำขอตี
+local function holdingTrap()
+	local held = CombatConfig.Weapons[player:GetAttribute("WOLD_Weapon") or ""]
+	return held ~= nil and held.trap == true
+end
+
 gui:OnAttack(function()
+	if holdingTrap() then return end
 	-- The same aim point the mouse sends: on touch the camera IS the aim, so a phone player shoots where
 	-- they are looking rather than where their character happens to be facing.
 	Remotes.RequestAttack:FireServer(AimAccess.Point and AimAccess.Point() or nil)
+end)
+
+gui:OnAttackHold(function(phase)
+	if not holdingTrap() then return end
+	local channel = game.ReplicatedStorage:FindFirstChild("WOLD_TrapInput")
+	if channel then channel:Fire(phase) end
 end)
 
 -- The roll/slide button drives the same path as the Ctrl key, through ActionController's BindableEvent, so
@@ -102,6 +117,17 @@ if workspace:GetAttribute("ArenaMode") == true then
 	gui:SetArenaMode(function(action)
 		local channel = game.ReplicatedStorage:FindFirstChild("WOLD_ArenaAction")
 		if channel then channel:Fire(action) else warn("[Touch] ไม่เจอ WOLD_ArenaAction (ArenaController)") end
+	end)
+	-- ปุ่มการ์ดซ่อนตอนถือสไน (สไนใช้การ์ดเป็นสโคป) · อ่านอาวุธในมือจากแอตทริบิวต์ WOLD_Weapon (Inventory.Send ตั้ง)
+	task.spawn(function()
+		local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
+		local me = game:GetService("Players").LocalPlayer
+		while true do
+			local id = me:GetAttribute("WOLD_Weapon")
+			local spec = type(id) == "string" and CombatConfig.Weapons[id]
+			gui:SetBlockVisible(not (spec and spec.scope))
+			task.wait(0.3)
+		end
 	end)
 end
 

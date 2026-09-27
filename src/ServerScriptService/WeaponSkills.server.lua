@@ -19,6 +19,7 @@ local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local EnhanceConfig = require(game.ReplicatedStorage.EnhanceConfig)
 local Consuming = require(game.ServerScriptService.Consuming)
 local StatusEffects = require(game.ServerScriptService.StatusEffects)
+local Blocking = require(game.ServerScriptService.Blocking) -- ยกการ์ด/ปัดป้อง (สนาม · เฟส 3)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
 local Progression = require(game.ServerScriptService.Progression)
@@ -439,6 +440,7 @@ Remotes.RequestSkill.OnServerEvent:Connect(function(player)
 	if not StatusEffects.CanFight(player) then return end -- ถูกจับกุม/ยิงล้ม/มึนหัว/ถูกอุ้ม (QA 2026-09-26)
 	-- Same reason attacks are blocked: both hands are busy holding food.
 	if Consuming.IsConsuming(player) then return end
+	if Blocking.IsBlocking(player) then return end -- ยกการ์ดอยู่ = ใช้สกิลไม่ได้ (สนาม · เฟส 3)
 	local _, _, humanoid = characterParts(player)
 	if not humanoid or humanoid.Health <= 0 then return end
 

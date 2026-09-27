@@ -23,6 +23,7 @@ local ClanConfig = require(game.ReplicatedStorage.ClanConfig)
 local PremiumAccess = require(game.ServerScriptService.PremiumAccess)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local QuestRoll = require(game.ReplicatedStorage.QuestRoll)
+local Vip = require(game.ServerScriptService.Vip)
 
 local BOARD_TAG = "WOLD_QuestBoard"
 local PROMPT_DISTANCE = 12
@@ -167,6 +168,14 @@ local function rerollOf(player, boardId)
 	return t and tonumber(t[boardId]) or 0
 end
 
+-- **เมืองนี้รับงานได้ไหม** (ผู้ใช้สั่ง 2026-09-27) — กติกาอยู่ `QuestConfig.TownOpen` · เกาะ = บอร์ดของ VIP อยู่แล้ว ไม่ล็อก
+local function townOpen(player, townId)
+	if ServerConfig.IsFarm then return true end
+	local data = ProfileAccess.Get(player)
+	local story = data and data.Story
+	return QuestConfig.TownOpen(townId, Vip.Has(player), type(story) == "table" and story.towns or nil)
+end
+
 -- ใบที่ "คนนี้ยังรับได้จริง" ที่บอร์ดนี้ — **ที่เดียว** ใช้ทั้งตอนวาดหน้าจอและตอนกดรับ
 --
 -- สองฝั่งต้องกรองเหมือนกันเป๊ะ เพราะเลขที่ไคลเอนต์ส่งกลับมาคือเลขในรายการ *ที่กรองแล้ว* ของเดิมเขียนตัวกรอง
@@ -214,6 +223,8 @@ local function snapshot(player, boardId)
 			title = (q.kind == "hunt") and q.mob or (item and item.name or q.item),
 			text = QuestConfig.Describe(q, item and item.name),
 			got = progressOf(player, q),
+			-- เมืองนี้ยังล็อกสำหรับคนนี้ (หน้าจอวาดใบเป็นสีเทา + 🔒 · กดรับไม่ได้)
+			locked = not townOpen(player, q.board),
 			-- ชื่อเมืองที่งานนี้มาจาก บอร์ดรวมต้องบอกได้ว่าต้องไปทำที่ไหน
 			from = (function()
 				for _, b in ipairs(QuestConfig.Boards) do
@@ -238,6 +249,9 @@ local function snapshot(player, boardId)
 	for _, q in ipairs(raw) do offered[#offered + 1] = decorate(q) end
 
 	return {
+		-- บอร์ดเมืองที่ล็อกทั้งบอร์ด (บอร์ดรวมไม่ล็อกทั้งบอร์ด ล็อกทีละใบตามเมืองของใบนั้น)
+		locked = not isMain and not townOpen(player, boardId),
+		lockText = QuestConfig.LockedText,
 		-- ส่งครบแล้วกี่ใบวันนี้ หน้าจอใช้แยก "บอร์ดว่าง" ออกจาก "ทำครบแล้ว รอพรุ่งนี้"
 		finishedToday = finished,
 		-- ปุ่มรีบอร์ดต้องรู้สองอย่าง: ราคา กับจำนวนครั้งที่คนนี้รีไปแล้ววันนี้
@@ -276,6 +290,10 @@ local function accept(player, boardId, index)
 
 	local quest = offered[index]
 	if not quest then return end
+	-- เมืองที่ยังล็อก (สายฟรี · ยังไม่จบบทเมืองนั้น) รับงานใหม่ไม่ได้ — งานที่ถืออยู่แล้วยังส่งได้ตามปกติ
+	if not townOpen(player, quest.board) then
+		return Remotes.SocialNotify:FireClient(player, "warn", QuestConfig.LockedText)
+	end
 
 	-- คัดลอก ไม่ได้อ้างถึงตัวเดียวกับบอร์ด: บอร์ดสุ่มใหม่ทุกวัน งานที่รับไปแล้วต้องไม่หายไปด้วย
 	list[#list + 1] = {
@@ -430,6 +448,9 @@ end
 -- **ไม่ล้าง `QuestsDone`** งานที่ส่งไปแล้ววันนี้ยังถูกกรองออกเหมือนเดิม จ่ายเพชรจึงได้ "งานใหม่"
 -- ไม่ใช่ "ทำงานเดิมซ้ำเพื่อเอารางวัลอีกรอบ" ซึ่งเป็นคนละเรื่องกันและเป็นช่องโหว่
 local function reroll(player, boardId)
+	if boardId ~= QuestConfig.MainBoardId and not townOpen(player, boardId) then
+		return Remotes.SocialNotify:FireClient(player, "warn", QuestConfig.LockedText)
+	end
 	local price = QuestConfig.RerollPrice or 0
 	local t = rerollTable(player)
 	if not t then return end

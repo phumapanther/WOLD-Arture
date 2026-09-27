@@ -37,6 +37,7 @@ local Vitals = require(game.ServerScriptService.Vitals)
 local Party = require(game.ServerScriptService.Party)
 local Consuming = require(game.ServerScriptService.Consuming)
 local StatusEffects = require(game.ServerScriptService.StatusEffects)
+local Blocking = require(game.ServerScriptService.Blocking) -- ยกการ์ด/ปัดป้อง (สนาม · เฟส 3)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 
@@ -622,12 +623,24 @@ local function resolveHit(player, state, attack)
 				state.hitThisSwing[other] = true
 				-- Vitals decides what the hit actually does: armor absorbs half, downed and freshly-respawned
 				-- players take nothing, and HP reaching 0 downs them rather than killing.
-				if not Vitals.IsInvulnerable(other) then
+				-- **ยกการ์ด/ปัดป้อง** (สนาม · Blocking) — เฉพาะทางระยะประชิดนี้ (กระสุน/สกิล Q ทะลุการ์ด)
+				-- ปัดสมบูรณ์ = ไม่เสียเลือด ไม่มีผลพ่วง คนตีเซ · กันธรรมดา = ดาเมจลดลง ผลพ่วง (สโลว์ ฯลฯ) ไม่ติด
+				local verdict, factor = Blocking.Judge(other)
+				local otherRoot = otherChar:FindFirstChild("HumanoidRootPart")
+				if verdict == "parry" then
+					StatusEffects.Stagger(player, ArenaConfig.Block.stagger)
+					if otherRoot then Blocking.Fx(otherRoot.Position + otherRoot.CFrame.LookVector * 1.5, true) end
+				elseif not Vitals.IsInvulnerable(other) then
 					local wasDowned = Vitals.IsDowned(other)
-					local landed = Vitals.ApplyDamage(other, dealt, "combat")
-					if landed and ArenaAccess.OnHit then ArenaAccess.OnHit(player, other, dealt) end
+					local amount = dealt * factor
+					local landed = Vitals.ApplyDamage(other, amount, "combat")
+					if landed and ArenaAccess.OnHit then ArenaAccess.OnHit(player, other, amount) end
 					reportHit(player, other)
-					applyEffect(attack, other)
+					if verdict == "block" then
+						if otherRoot then Blocking.Fx(otherRoot.Position + otherRoot.CFrame.LookVector * 1.5, false) end
+					else
+						applyEffect(attack, other)
+					end
 					playHitSound(otherChar, player)
 					-- The blow that puts someone down is the "kill" for EXP purposes: combat downs players
 					-- rather than killing them outright, so there is no later death to hook.
@@ -645,10 +658,13 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	local humanoid = humanoidOf(player)
 	if not state or not humanoid or humanoid.Health <= 0 then return end
 	if Vitals.IsDowned(player) then return end -- can't throw punches while crawling
-	if not StatusEffects.CanFight(player) then return end -- ถูกจับกุม/ยิงล้ม/มึนหัว/ถูกอุ้ม
+	if not StatusEffects.CanFight(player) then return end -- ถูกจับกุม/ยิงล้ม/มึนหัว/ถูกอุ้ม/เซ
+	if Blocking.IsBlocking(player) then return end -- ยกการ์ดอยู่ = ตีไม่ได้ (สนาม · เฟส 3)
 	-- Hands are full: raising a potion to your mouth and swinging a sword are the same two hands. Movement
 	-- is deliberately still allowed -- walking, running, rolling and sliding all stay available.
 	if Consuming.IsConsuming(player) then return end
+	-- กับดัก: คลิกคือเล็ง/เขวี้ยง/วาง ผ่าน RequestTrap (TrapWeapon.server) ไม่ใช่การตี (เฟส 3)
+	if weaponOf(player).trap then return end
 
 	local now = os.clock()
 	if now < state.busyUntil then return end -- still mid-swing; ignore the click rather than queueing it

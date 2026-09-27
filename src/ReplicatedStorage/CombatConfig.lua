@@ -429,8 +429,22 @@ CombatConfig.ProjectileHitRadius = 8
 
 -- เครื่องมือทอง (ร้านพรีเมียม) ตีและส่งเสียงเหมือนตัวธรรมดาทุกประการ — ชี้ไปที่ตารางเดียวกัน ไม่ก๊อป
 -- ตะหลิวเชฟยืมของคันเบ็ดทั้งชุด: ท่าเดียวกัน ดาเมจ 3 เท่ากัน — มันคือของที่ถือไว้ทำงาน ไม่ใช่อาวุธ
+-- กับดัก (เฟส 3): ไม่ผ่านระบบตีเลย — คลิกซ้ายของกับดักคือ เล็ง/เขวี้ยง/วาง ของ `TrapController` → `TrapWeapon.server`
+-- `trap = true` = PlayerCombat ทิ้งคำขอตี · CombatController ไม่ส่งคำขอตี · ตารางท่าว่างไว้ให้ตัวโหลดท่าไม่พัง
+CombatConfig.Weapons.Trap = {
+	trap = true,
+	idleAnimation = "",
+	guardAnimation = "",
+	guardWalkSpeed = 8,
+	idleTimeout = 4,
+	attacks = {},
+	chainResetDelay = 0,
+	chainWindow = 1,
+}
+
 for alias, base in pairs({ GoldAxe = "Axe", GoldPickaxe = "Pickaxe", GoldShovel = "Shovel",
-	GoldFishingRod = "FishingRod", Spatula = "FishingRod" }) do
+	GoldFishingRod = "FishingRod", Spatula = "FishingRod",
+	TrapSmall = "Trap", TrapMedium = "Trap", TrapLarge = "Trap" }) do
 	CombatConfig.Weapons[alias] = CombatConfig.Weapons[base]
 	if CombatConfig.Sounds then CombatConfig.Sounds[alias] = CombatConfig.Sounds[base] end
 end

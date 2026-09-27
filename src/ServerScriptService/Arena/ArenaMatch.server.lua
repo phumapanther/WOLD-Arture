@@ -20,6 +20,8 @@ local ArenaConfig = require(game.ReplicatedStorage.ArenaConfig)
 local ArenaRegistry = require(game.ServerScriptService.Lobby.ArenaRegistry)
 local ArenaRewards = require(script.Parent.ArenaRewards)
 local AdminRoster = require(game.ServerScriptService.AdminRoster)
+local PvpRankStore = require(game.ServerScriptService.PvpRankStore)
+local PvpRankConfig = require(game.ReplicatedStorage.PvpRankConfig)
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local Inventory = require(game.ServerScriptService.Inventory)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
@@ -377,6 +379,16 @@ local function removeAll(player, id)
 	if n > 0 then Inventory.RemoveById(player, id, n) end
 end
 
+-- กระสุนทุกชนิด (ปืน + กับดัก) · อาวุธกินกระสุนได้ชนิดเดียว เปลี่ยนอาวุธ/ตาย = ล้างทุกชนิด
+local AMMO_ITEMS = ArenaConfig.AmmoItems()
+local function removeAllAmmo(player)
+	for _, id in ipairs(AMMO_ITEMS) do removeAll(player, id) end
+end
+-- กระสุนที่อาวุธชิ้นนี้กิน (id อาวุธ → แถวร้าน → ammoItem) · nil = ไม่กินกระสุน
+local function ammoOfWeapon(id)
+	return ArenaConfig.AmmoItemOf(id and ArenaConfig.ShopEntry(id))
+end
+
 -- เกราะรับดาเมจจนหมด = พังหลุดจากตัว (ผู้ใช้สั่ง 2026-09-25) · Vitals เรียกตอนแต้มเกราะแตะศูนย์ครั้งเดียว
 -- (ชิ้นถูกถอดแล้ว ด่าน `state.armor > 0` ไม่ให้เข้ามาซ้ำ) · ล้างช่องเกราะในของติดตัวด้วย ไม่งั้นต้นรอบหน้าสวมให้คืน
 Vitals.OnArmorBroken = function(player)
@@ -394,7 +406,7 @@ local function wipeLoadout(f)
 	for _, held in pairs(f.loadout) do removeAll(player, held) end
 	Inventory.BreakEquipped(player, "weapon")
 	Inventory.BreakEquipped(player, "armor")
-	removeAll(player, "Bullet")
+	removeAllAmmo(player)
 	f.loadout = {}
 	Vitals.SetMana(player, 0)
 	Vitals.SyncArmorFromEquipment(player)
@@ -488,12 +500,12 @@ local function dropWeapon(f)
 		local _, entry = Inventory.EquippedWeapon(player)
 		local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 		if not (entry and root) then return end
-		local gun = ArenaConfig.ShopEntry(entry.id)
-		local ammo = gun and gun.ammo and Inventory.CountOf(player, "Bullet") or nil
+		local ammoItem = ammoOfWeapon(entry.id)
+		local ammo = ammoItem and Inventory.CountOf(player, ammoItem) or nil
 		ArenaDrops.Drop(root.Position, entry.id, entry.meta, ammo)
 		Inventory.BreakEquipped(player, "weapon")
 		removeAll(player, entry.id)
-		if ammo then removeAll(player, "Bullet") end
+		if ammo then removeAllAmmo(player) end
 		f.loadout.weapon = nil
 		Inventory.Send(player)
 	else
@@ -524,15 +536,17 @@ ArenaDrops.Bind(function(player, drop)
 	if not (f and f.alive and State.phase == "live") then return false end
 	local _, entry = Inventory.EquippedWeapon(player)
 	if entry then
-		local gun = ArenaConfig.ShopEntry(entry.id)
-		local ammo = gun and gun.ammo and Inventory.CountOf(player, "Bullet") or nil
+		local ammoItem = ammoOfWeapon(entry.id)
+		local ammo = ammoItem and Inventory.CountOf(player, ammoItem) or nil
 		ArenaDrops.Drop(drop.position, entry.id, entry.meta, ammo)
 		Inventory.BreakEquipped(player, "weapon")
 		removeAll(player, entry.id)
-		if ammo then removeAll(player, "Bullet") end
+		if ammo then removeAllAmmo(player) end
 	end
 	Inventory.AddItem(player, drop.id, 1, nil, drop.meta)
-	if drop.ammo and drop.ammo > 0 then Inventory.AddItem(player, "Bullet", drop.ammo) end
+	-- ชนิดกระสุนตามอาวุธที่หยิบ (ปืน = กระสุนปืน · กับดัก = กระสุนของขนาดนั้น) ไม่ต้องพกชนิดมากับของที่ตก
+	local dropAmmo = ammoOfWeapon(drop.id)
+	if dropAmmo and drop.ammo and drop.ammo > 0 then Inventory.AddItem(player, dropAmmo, drop.ammo) end
 	equipById(player, drop.id)
 	f.loadout.weapon = drop.id
 	Inventory.Send(player)
@@ -596,6 +610,10 @@ end
 ArenaAccess.OnKill = function()
 	-- ในสนามไม่มี EXP และไม่มีหัวแดง · คิลถูกนับตอนร่างตายจริง (`markDead`) ไม่ใช่ตอนล้ม
 end
+-- กับดักใช้ได้เฉพาะช่วงสู้ · นอกช่วงสู้กับดักที่ค้างถูกเก็บหมด (TrapWeapon.server)
+ArenaAccess.TrapsAllowed = function()
+	return State.phase == "live"
+end
 
 ArenaBots.Bind({
 	sideOfPlayer = sideOfPlayer,
@@ -636,7 +654,9 @@ Remotes.RequestArenaBuy.OnServerEvent:Connect(function(player, id)
 		id = id, slot = entry.slot, price = entry.price,
 		previous = before,
 		previousCount = before and Inventory.CountOf(player, before) or 0,
-		bullets = Inventory.CountOf(player, "Bullet"),
+		-- กระสุนของอาวุธที่ถืออยู่ก่อนซื้อ (ชนิดไหน เท่าไหร่) · ยกเลิกแล้วคืนตามนี้
+		ammoItem = ammoOfWeapon(f.loadout.weapon),
+		bullets = ammoOfWeapon(f.loadout.weapon) and Inventory.CountOf(player, ammoOfWeapon(f.loadout.weapon)) or 0,
 		mana = Vitals.ManaOf(player),
 	})
 
@@ -664,8 +684,8 @@ Remotes.RequestArenaBuy.OnServerEvent:Connect(function(player, id)
 	Inventory.AddItem(player, id, 1, nil, skin and { skin = skin } or nil)
 	-- ปืนมากับกระสุนตามแถวร้าน (`entry.ammo` ตอนนี้ 7 นัด) แล้วจบ — ยิงหมดต้องซื้อปืนใหม่ ไม่มีกระสุนขายแยก
 	if entry.ammo then
-		removeAll(player, "Bullet")
-		Inventory.AddItem(player, "Bullet", entry.ammo)
+		removeAllAmmo(player)
+		Inventory.AddItem(player, ArenaConfig.AmmoItemOf(entry), entry.ammo)
 	end
 
 	-- **ซื้อแล้วสวมให้เลย** ไม่ต้องเปิดกระเป๋า (กระเป๋าในสนามใช้ไม่ได้อยู่แล้ว)
@@ -720,8 +740,8 @@ Remotes.RequestArenaRefund.OnServerEvent:Connect(function(player, id)
 		end
 		-- กระสุนกลับเท่าก่อนซื้อ (ปืนมากับกระสุน) · มานากลับเท่าก่อนซื้อ (สไนเติมมานาเต็ม)
 		if entry.ammo then
-			removeAll(player, "Bullet")
-			if r.bullets > 0 then Inventory.AddItem(player, "Bullet", r.bullets) end
+			removeAllAmmo(player)
+			if r.ammoItem and r.bullets > 0 then Inventory.AddItem(player, r.ammoItem, r.bullets) end
 		end
 		if entry.fillMana then Vitals.SetMana(player, r.mana) end
 		f.loadout[r.slot] = r.previous
@@ -856,8 +876,8 @@ local function startRound()
 			-- ปืนรอดข้ามรอบ = กระสุนเติมกลับเต็มทุกรอบ (ผู้ใช้สั่ง 2026-09-25)
 			local gun = f.loadout.weapon and ArenaConfig.ShopEntry(f.loadout.weapon)
 			if gun and gun.ammo then
-				removeAll(f.player, "Bullet")
-				Inventory.AddItem(f.player, "Bullet", gun.ammo)
+				removeAllAmmo(f.player)
+				Inventory.AddItem(f.player, ArenaConfig.AmmoItemOf(gun), gun.ammo)
 			end
 		end
 		-- ต่อเวลา (รอบ 7+): ทุกคนเริ่มรอบด้วยเงินเท่ากัน ทั้งคนและบอท (บอทคัดลอก f.silver ลงแถวของมันข้างล่าง)
@@ -964,6 +984,42 @@ local function finishMatch()
 	ArenaRewards.Grant(rows)
 
 	local winner = State.wins.A > State.wins.B and "A" or (State.wins.B > State.wins.A and "B" or nil)
+
+	-- **แร็งก์** (เฟส 3 · roadmap): นับเฉพาะแมตช์ที่ไม่มีบอทตั้งต้น · แอดมินไม่ได้กดเริ่มเอง · ไม่มีแอดมินเข้ามาดู · ไม่ใช่ Studio
+	-- บอทแทนกลางแมตช์ (มีคนออก) = ไม่นับให้คนที่อยู่จนจบ · **คนที่ออกแล้วไม่กลับมา = แพ้ −18 เสมอ** · เสมอ = ไม่นับ
+	-- เขียน DataStore ของแต่ละคน (PvpRankStore) ตัดซ้ำด้วยรหัสแมตช์ · ใส่ `pvp` ลงแถวให้ตารางจบเกมโชว์
+	local startBots = ((record.bots and record.bots.A) or 0) + ((record.bots and record.bots.B) or 0)
+	local visitors, replaced = false, false
+	for _, f in pairs(Fighters) do
+		if f.kind == "player" and f.visitor then visitors = true end
+	end
+	for _, entry in ipairs(BotRoster) do
+		if entry.replaces then replaced = true end
+	end
+	local ranked = not record.studio and not record.admin and startBots == 0 and not visitors
+	if ranked then
+		local matchId = tostring(game.PrivateServerId) .. ":" .. tostring(record.createdAt or 0)
+		for _, row in ipairs(rows) do
+			local f
+			for _, candidate in pairs(Fighters) do
+				if candidate.kind == "player" and candidate.userId == row.userId then f = candidate end
+			end
+			if f then
+				local delta = nil
+				if f.left then
+					delta = -PvpRankConfig.Loss
+				elseif not replaced and winner then
+					delta = (f.side == winner) and PvpRankConfig.Win or -PvpRankConfig.Loss
+				end
+				if delta then
+					row.pvp = delta -- (`rank` คือลำดับที่บนตารางอยู่แล้ว ห้ามทับ)
+					task.spawn(PvpRankStore.RecordMatch, f.userId, matchId, delta)
+				end
+			end
+		end
+	end
+	print(("[Arena] แร็งก์: %s (บอทตั้งต้น %d · แอดมินเริ่ม %s · มีคนดู %s · บอทแทน %s)"):format(
+		ranked and "นับ" or "ไม่นับ", startBots, tostring(record.admin == true), tostring(visitors), tostring(replaced)))
 	beginPhase("matchEnd", ArenaConfig.Phase.matchEnd)
 	Remotes.ArenaMatchEnd:FireAllClients({ rows = rows, winner = winner, wins = State.wins })
 

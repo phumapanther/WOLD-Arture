@@ -16,6 +16,7 @@ local ContextActionService = game:GetService("ContextActionService")
 local UserInputService = game:GetService("UserInputService")
 local InventoryGui = require(game.ReplicatedStorage.UI.InventoryGui)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
+local TrapConfig = require(game.ReplicatedStorage.TrapConfig)
 
 -- How close someone must be to be offered in the "give" list. Arm's length, matching the class actions --
 -- handing something over should mean walking to them.
@@ -138,6 +139,21 @@ end
 
 -- ปุ่ม "ติดตั้งสกิน" (เปิดรายการสกินที่ใส่ได้) และ "ถอดสกิน" บนอาวุธ/เกราะ target = "bag:<i>" | "equipped:<kind>"
 addSkinEntries = function(entries, anchorButton, title, target, entry)
+	-- กับดัก (เฟส 3): เลือกกระสุนที่จะใช้ (`meta.ammo`) · กับดักสนามกระสุนติดมาแล้ว ไม่มีให้เลือก
+	local trap = TrapConfig.Traps[entry.id]
+	if trap and not trap.fixedAmmo then
+		local current = TrapConfig.SelectedAmmo(entry.id, entry.meta, latest.slots)
+		table.insert(entries, { label = ("กระสุน: %s (เปลี่ยน)"):format(current and current.name or "ยังไม่มี"), onClick = function()
+			local picks = {}
+			for _, ammo in ipairs(TrapConfig.Ammo) do
+				local _, count = TrapConfig.SelectedAmmo(entry.id, { ammo = ammo.id }, latest.slots)
+				table.insert(picks, { label = ("%s (%d)"):format(ammo.name, count), onClick = function()
+					Remotes.RequestTrapAmmo:FireServer(target, ammo.id)
+				end })
+			end
+			gui:ShowItemMenu(anchorButton, picks, "เลือกกระสุนกับดัก")
+		end })
+	end
 	local options = skinsFor(entry)
 	if #options > 0 then
 		table.insert(entries, { label = ("ติดตั้งสกิน (%d)"):format(#options), onClick = function()

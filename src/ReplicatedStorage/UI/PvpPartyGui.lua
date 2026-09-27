@@ -138,6 +138,25 @@ function PvpPartyGui.new(parent)
 	title.Parent = panel
 	self.title = title
 
+	-- แร็งก์ของเรา (เฟส 3) ใต้หัวข้อ: ขั้น + แต้ม + ระยะถึงขั้นถัดไป · บรรทัดเล็กบอกผลแมตช์ล่าสุด/ตกขั้น (ไม่มีเอฟเฟกต์)
+	local rankLine = Instance.new("TextLabel")
+	rankLine.Size = UDim2.new(0, 520, 0, 22)
+	rankLine.BackgroundTransparency = 1
+	rankLine.Font = Enum.Font.GothamBold
+	rankLine.TextSize = 16
+	rankLine.TextColor3 = TEXT_LIGHT
+	rankLine.TextXAlignment = Enum.TextXAlignment.Left
+	rankLine.RichText = true
+	rankLine.Text = ""
+	rankLine.Parent = panel
+	self.rankLine = rankLine
+	local rankNote = rankLine:Clone()
+	rankNote.Font = Enum.Font.Gotham
+	rankNote.TextSize = 13
+	rankNote.TextColor3 = Color3.fromRGB(180, 176, 166)
+	rankNote.Parent = panel
+	self.rankNote = rankNote
+
 	-- แถวช่องสามช่อง กลางจอ
 	local row = Instance.new("Frame")
 	row.Name = "Slots"
@@ -394,6 +413,37 @@ function PvpPartyGui.new(parent)
 	return self
 end
 
+-- ข้อมูลแร็งก์จาก LobbyRank.server (PvpRankInfo) · nil = ยังไม่รู้ (ว่างไว้)
+function PvpPartyGui:SetRankInfo(info)
+	if not info then
+		self.rankLine.Text, self.rankNote.Text = "", ""
+		return
+	end
+	local PvpRankConfig = require(script.Parent.Parent.PvpRankConfig)
+	if not info.played then
+		self.rankLine.Text = "🔩 ยังไม่มีแร็งก์"
+		self.rankNote.Text = "ชนะแมตช์ที่ไม่มีบอทเพื่อเก็บแต้ม (+25 · แพ้ −18)"
+		return
+	end
+	local tier = PvpRankConfig.Tier(info.tier)
+	local nextTier = PvpRankConfig.Tiers[(info.tier or 1) + 1]
+	local line = ('%s <font color="#%s">%s</font> · %d แต้ม'):format(tier.emoji, tier.color:ToHex(), tier.name, info.points or 0)
+	if nextTier and info.next then line ..= (" · อีก %d ถึง%s"):format(info.next - (info.points or 0), nextTier.name) end
+	self.rankLine.Text = line
+	local notes = {}
+	local last = info.last
+	if last and last.kind == "season" then
+		notes[#notes + 1] = ("จบซีซัน: แร็งก์ลดลง 2 ขั้น (%d แต้ม)"):format(last.d or 0)
+	elseif last and last.d then
+		notes[#notes + 1] = ("แมตช์ล่าสุด %s%d"):format((last.d or 0) >= 0 and "+" or "−", math.abs(last.d or 0))
+	end
+	if info.endsAt then
+		local days = math.max(0, math.floor((info.endsAt - workspace:GetServerTimeNow()) / 86400))
+		notes[#notes + 1] = ("ซีซัน %d เหลือ %d วัน"):format(info.season or 1, days)
+	end
+	self.rankNote.Text = table.concat(notes, " · ")
+end
+
 function PvpPartyGui:OnAction(callback)
 	self.onAction = callback
 end
@@ -424,6 +474,17 @@ function PvpPartyGui:_layout()
 		slot.avatar.Size = UDim2.fromOffset(sw - 12, sh - 86)
 	end
 	self.title.Position = mode == "wide" and UDim2.new(0, 26, 0, 18) or UDim2.new(0, 20, 0, 8)
+	-- คอม: สองบรรทัดใต้หัวข้อ · มือถือ (แผงเตี้ย/แนวตั้ง): บรรทัดเดียวข้างหัวข้อ ไม่งั้นทับแถวการ์ด · บรรทัดเล็กซ่อน
+	if mode == "wide" then
+		self.rankLine.Position = UDim2.new(0, 26, 0, 58)
+		self.rankLine.TextSize = 16
+		self.rankNote.Position = UDim2.new(0, 26, 0, 80)
+		self.rankNote.Visible = true
+	else
+		self.rankLine.Position = UDim2.new(0, 120, 0, 17)
+		self.rankLine.TextSize = 13
+		self.rankNote.Visible = false
+	end
 	self.searchLabel.Size = UDim2.new(0, mode == "short" and 240 or 420, 0, 26)
 	if mode == "wide" then
 		self.row.AnchorPoint, self.row.Position = Vector2.new(0.5, 0.5), UDim2.fromScale(0.5, 0.46)

@@ -9,7 +9,7 @@ local StarterGui = game:GetService("StarterGui")
 local ProximityPromptService = game:GetService("ProximityPromptService")
 
 -- WOLD_LobbyStone = ปุ่มหินเวทในล็อบบี้ (SocialController) ทางออกของมือถือตอนอยู่ล็อบบี้
-local KEEP = { TouchGui = true, TouchActionGui = true, WOLD_LobbyStone = true }
+local KEEP = { TouchGui = true, TouchActionGui = true, WOLD_LobbyStone = true, WOLD_Story = true } -- WOLD_Story = คัทซีนเนื้อเรื่องใช้โหมดนี้ซ่อน UI อื่น
 
 local PhotoMode = {}
 local on = false

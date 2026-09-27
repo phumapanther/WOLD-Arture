@@ -75,7 +75,7 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 - **คำสั่งเทส `/farm [exp <n> | level <n> | ship | orders | reroll | gems | reset | pets ready | pets <n>]`** (บนเกาะของตัวเอง) — `ship` = รถกลับทันที · `pets ready` = ลูบได้ทันทีทุกตัว · `pets <n>` = ตั้งจำนวนครั้งที่ลูบ (เฟส 2d)
 - **`tools/verify.js <project.json> [--push]`** (ใหม่) เทียบแฮชทุกสคริปต์ที่เพลสควรมีกับ Studio · `--push` ดันที่ไม่ตรง — ใช้แทน dump_all+cmp
 
-**เฟส 2d (สัตว์เลี้ยง 24 ชนิด + เลเวลฟาร์ม 50) เขียนเสร็จ 2026-09-27 — ดันครบสามเพลส (mismatches 0) · รอผู้ใช้เทสในเกม**
+**เฟส 2d (สัตว์เลี้ยง 24 ชนิด + เลเวลฟาร์ม 50) เขียนเสร็จ 2026-09-27 — ดันครบสามเพลส (mismatches 0) · ผู้ใช้เทสผ่าน 2026-09-27**
 แผน `docs/superpowers/plans/2026-09-27-phase2d-pets.md` · ตัวเลข `docs/superpowers/specs/2026-09-27-phase2d-pets-design.md`
 - ข้อมูลสัตว์ `IslandConfig.PetSpecies` (group → ลูบถึงโต 20/50/100/200 · motion beast/humanoid/slime · `mob`/`produce`) ·
   ของที่ได้ตอนลูบ `PetRules` (ข้อมูลล้วน อ่านตารางดรอปของ GatherConfig ตรงๆ เฉพาะ kind "junk") · 1-5 ชิ้นทุกขนาด
@@ -92,7 +92,7 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
   `island_pets_test` (Play: เกิด 30% → โต → ลูบได้ของ → คูลดาวน์ → เก็บ-วางความโตตามมา · **ยังไม่ได้รัน** ผมกด Play ไม่ได้)
 - ⌛ สัตว์เลี้ยงใหม่ 22 ตัวยังไม่มีรูป (`docs/items-without-icons.md` 47 จาก 206)
 
-**รอบแก้ 2026-09-27 (ผู้ใช้สั่งแทรกก่อนเทส 2d) — บอร์ดบราสเฮเวน · ของขวัญหุ่นฟาง · พาสรายเดือน · ดันสามเพลส 0 ไม่ตรง · รอเทสในเกม**
+**รอบแก้ 2026-09-27 (ผู้ใช้สั่งแทรกก่อนเทส 2d) — บอร์ดบราสเฮเวน · ของขวัญหุ่นฟาง · พาสรายเดือน · ดันสามเพลส 0 ไม่ตรง · ผู้ใช้เทสผ่าน 2026-09-27**
 - **บอร์ดเควสบราสเฮเวน** `QuestConfig.Boards` id `Brasshaven` (โมเดล `QuestBoard_FirstTown` ข้างจุดเกิดที่ผู้ใช้วางเอง —
   ⚠️ คัดลอกมาจากบอร์ดแอสตราเวลจึงติด BoardId เดิม เฟส 68 ตั้งทับให้แล้ว) · 12 งาน · **`mustHave = "slime"`**: ทุกวันมีงานสไลม์
   หนึ่งใบเสมอ (ล่าสไลม์ หรือ ส่งเมือก) ไม่ออกคู่กัน · กติกาสุ่มย้ายไป `QuestRoll.lua` (ข้อมูลล้วน) เทส `quest_roll_test` (2 ปี × รี 4 ครั้ง)
@@ -104,6 +104,26 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
   สายพรีเมียม **ขั้น 15 = หีบเงิน 10 + ออร่าประจำเดือน · ขั้น 30 = กล่องเวท 10 + สกินอาวุธประจำเดือน** (`Pass.Monthly` ·
   `PassRewards` คืนรายการ · สุ่มจากสระกาชาด้วยลำดับคงที่ เดือนติดกันไม่ซ้ำ) · รับของหลายชิ้นทั้งหมดหรือไม่เอาเลย (`giveAll`) ·
   หัวหน้าต่างบอกเดือน + เวลาที่เหลือ · เทส `pass_monthly_test`
+
+**เฟส 3 (ปัดป้อง + แร็งก์ + กับดัก) + บทบราสเฮเวน + ล็อกบอร์ดเมือง — เขียนเสร็จ 2026-09-27 · ⚠️ ยังไม่ได้ดันเข้าเพลส (Studio MCP หลุดทั้งรอบ) · ยังไม่ได้เทสในเกม**
+แผน/สถานะ `docs/superpowers/plans/2026-09-27-phase3-parry-rank-trap-story.md` · บท `docs/story/01-brasshaven.md` · **บ้านบนเกาะ (2e) ผู้ใช้สั่งพักไว้**
+- **ปัดป้อง (สนามเท่านั้น)** `Blocking.lua` (ตัดสินล้วน) + `BlockGuard.server` + `BlockController.client` · คลิกขวาค้าง/ปุ่ม 🛡️ มือถือ ·
+  ตัวเลข `ArenaConfig.Block` · ผู้ตีถูกปัด = `StatusEffects.Stagger` (เซ ไม่มีดาว) · ⚠️ **"การ์ด" เดิมใน PlayerCombat = ท่าเตรียมตี** ของใหม่ชื่อ `Blocking`/`WOLD_Blocking`
+- **แร็งก์ PVP 6 ขั้น** `PvpRankConfig` (ข้อมูลล้วน) · ⚠️ **แต้มอยู่ DataStore `WOLD_PvpRank_v1` คีย์ `u_<userId>` ไม่ใช่โปรไฟล์** (`PvpRankStore`)
+  เพราะล็อบบี้ไม่เปิดเซสชันโปรไฟล์ · ซีซัน = ไตรมาสไทย (ซีซัน 1 ถึง 31 ธ.ค. 2026) จบซีซันลด 2 ขั้นตอนอ่าน · ฉลองในล็อบบี้ `LobbyRank.server` +
+  `PvpRankController` · ฉายา `pvprank_*` + กรอบการ์ด (`PvpRankPublisher` ตั้ง `WOLD_PvpTier`) · แมตช์มีบอท/แอดมิน/Studio = ไม่นับ
+- **กับดัก** `TrapConfig` (กติกา+วิถี ใช้ร่วมไคลเอนต์/เซิร์ฟ) · `TrapWeapon.server` · `TrapController.client` · กดค้าง=เล็ง ปล่อย=เขวี้ยง แตะ=วาง ·
+  กระสุนเลือกที่ `meta.ammo` (เมนูไอเทม) · ⚠️ **`CombatConfig.Weapons.Trap.trap = true` = ระบบตีข้าม** (PlayerCombat · CombatController · ปุ่มมือถือส่งต่อ `WOLD_TrapInput`)
+  · สนาม: แถวร้าน `ammoItem` (ไม่มี = Bullet) — **ArenaMatch ถามชนิดกระสุนผ่าน `ammoOfWeapon`/`AmmoItemOf` ห้ามเขียน "Bullet" ตรงๆ อีก** ·
+  `ArenaAccess.TrapsAllowed` = ช่วงสู้เท่านั้น (นอกช่วง = เก็บกับดักทิ้งหมด) · สูตรต่อท้าย `CraftConfig` (ลำดับคือสัญญากับไคลเอนต์)
+- **เนื้อเรื่อง** `StoryConfig` (บทพูด/ขั้น/คัทซีน ข้อมูลล้วน) · `Story.server` (เพลสหลักเท่านั้น) · `StoryGui` + `StoryController` · `StoryAccess.RecordKill` (Mobs) ·
+  ข้อมูล `profile.Data.Story` · ⚠️ **ต้องรัน `mapgen/110_story_brasshaven.lua --kit --models --no-lib` ในเพลสหลักก่อน** (วงเวท + ไลรา + หมุดความทรงจำ ลากย้ายได้)
+  · คนใหม่ = เลเวล 1 ตอนจอโหลดจบ → คัทซีน · ฉายาเมือง `story_*` ผ่าน Achievements extras · ช่องเทส `ServerStorage.StoryTest`
+- **ล็อกบอร์ด** `QuestConfig.TownOpen` ที่เดียว: บราสเฮเวนเปิด · เมืองอื่นต้อง VIP หรือจบบทเมืองนั้น (`Story.towns`) · เกาะไม่ล็อก · งานที่ถืออยู่ส่งได้เสมอ
+- **เครื่องมือใหม่ (ใช้ได้ตอน MCP หลุด)**: `bash tools/offline-check.sh [ไฟล์]` = คอมไพล์ + หา "ตัวแปรใช้ก่อนประกาศ" ด้วย Luau CLI portable
+  (`~/tools/luau` จาก release luau-lang) · `node tools/offline-test.js tests/x_test.lua` = รันเทสข้อมูลล้วนบนตัวจำลอง Roblox ขนาดเล็ก
+  (`tools/offline-test-prelude.lua` — ไม่มี JSON/DataStore/Players · เทสที่รอ `task.wait` วนค้าง · `prompt_stack` ข้อเรียง Enum ต่างจาก Studio)
+  · สแกนทั้ง src เจอบั๊ก "ใช้ก่อนประกาศ" จริงอีกหนึ่ง: `SocialController` หน้าสมุด/อันดับเด้งกลับ "กำลังเปิด" ทุกครั้งที่ SocialUpdate มา (แก้แล้ว)
 
 ## โมเดลจากโค้ด (modelkit)
 ชุดสร้างโมเดลด้วยโค้ดอยู่ที่ `modelkit/` + `models/` — **อ่าน `docs/modelkit-reference.md` ก่อนแตะ**

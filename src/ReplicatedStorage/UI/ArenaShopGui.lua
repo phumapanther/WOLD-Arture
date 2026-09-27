@@ -22,6 +22,7 @@ local TOUCH_ONLY = UserInputService.TouchEnabled and not UserInputService.Keyboa
 local ArenaConfig = require(script.Parent.Parent.ArenaConfig)
 local CombatConfig = require(script.Parent.Parent.CombatConfig)
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
+local TrapConfig = require(script.Parent.Parent.TrapConfig)
 local ItemIcon = require(script.Parent.ItemIcon)
 
 local ArenaShopGui = {}
@@ -40,6 +41,7 @@ local RED = rgb(226, 110, 100)
 local SECTIONS = {
 	{ row = "melee", title = "อาวุธระยะใกล้" },
 	{ row = "ranged", title = "อาวุธระยะไกล" },
+	{ row = "trap", title = "กับดัก" }, -- เฟส 3
 	{ row = "armor", title = "เกราะ" },
 	{ row = "use", title = "ของใช้" },
 }
@@ -108,6 +110,23 @@ local function statsOf(entry)
 			lines[#lines + 1] = ("ใช้มานา %d เม็ดต่อนัด · ซื้อแล้วมานาเต็ม"):format(spec.manaCost or 1)
 			return lines
 		end
+		-- กับดัก (เฟส 3): บอกผลของกระสุนที่ติดมา
+		local trap = TrapConfig.Traps[entry.id]
+		local ammo = trap and TrapConfig.AmmoById[trap.fixedAmmo]
+		if ammo then
+			if ammo.kind == "slow" then
+				lines[#lines + 1] = ("หนืด: ช้าลง %d%% นาน %d วิ"):format(math.floor((1 - ammo.factor) * 100 + 0.5), ammo.seconds)
+			elseif ammo.kind == "stun" then
+				lines[#lines + 1] = ("ช็อต: เซขยับไม่ได้ %s วิ"):format(tostring(ammo.seconds))
+			elseif ammo.kind == "damage" then
+				lines[#lines + 1] = ("ระเบิด: ดาเมจ %d ในวง %d สตัด"):format(ammo.damage, TrapConfig.EffectRadius)
+			end
+			lines[#lines + 1] = ("กับดัก %d อัน · วางค้างได้ %d อัน"):format(entry.ammo or 0, TrapConfig.MaxPerOwner)
+			lines[#lines + 1] = TOUCH_ONLY and "กดปุ่มโจมตีค้าง = เล็ง · ปล่อย = เขวี้ยง · แตะ = วาง"
+				or "คลิกค้าง = เล็ง · ปล่อย = เขวี้ยง · คลิกสั้น = วาง"
+			lines[#lines + 1] = "ซื้อทับ = ของเก่าหาย · ตายแล้วต้องซื้อใหม่"
+			return lines
+		end
 		local dmg = damageOf(entry.id)
 		if dmg then lines[#lines + 1] = ("ดาเมจต่อครั้ง  %d"):format(dmg) end
 		if entry.ammo then lines[#lines + 1] = ("กระสุน  %d นัด (หมดแล้วต้องซื้อปืนใหม่)"):format(entry.ammo) end
@@ -144,7 +163,9 @@ end
 -- คืน ViewportFrame ที่มีโมเดลแล้ว หรือ nil ถ้าโมเดลยังไม่มา (WeaponPrefabs สร้างตอนเซิร์ฟบูต — ถามใหม่ทีหลังได้)
 local function makeViewport(parent, id)
 	local folder = ReplicatedStorage:FindFirstChild("WOLD_Weapons")
-	local source = folder and folder:FindFirstChild(id)
+	-- กับดักสนามสามขนาดใช้รูปทรงเดียวกัน (`prefab = "Trap"`)
+	local item = ItemCatalog.Items[id]
+	local source = folder and folder:FindFirstChild(item and item.prefab or id)
 	if not source then return nil end
 	local vpf = Instance.new("ViewportFrame")
 	vpf.BackgroundTransparency = 1

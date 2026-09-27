@@ -25,4 +25,8 @@ ArenaAccess.OnHit = nil
 -- จึงส่งต่อให้ที่นี่แล้วจบ ไม่ใช่ทำทั้งสองอย่าง
 ArenaAccess.OnKill = nil
 
+-- ตั้งโดย `Arena/ArenaMatch.server` · () → true เฉพาะช่วงสู้ (เฟส 3 กับดัก) · false = เขวี้ยงไม่ได้และ
+-- `TrapWeapon.server` เก็บกับดักที่ค้างทิ้งทั้งหมด (ช่วงซื้อของเขวี้ยงไปดักจุดเกิดศัตรูไม่ได้ · รอบใหม่สนามสะอาด)
+ArenaAccess.TrapsAllowed = nil
+
 return ArenaAccess

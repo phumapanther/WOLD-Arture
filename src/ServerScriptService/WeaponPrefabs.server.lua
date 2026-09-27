@@ -495,6 +495,30 @@ end
 
 -- A steampunk flintlock: brass barrel, wooden stock, a little boiler drum where a hammer would be. Built to
 -- the same convention as the rest -- muzzle at the origin, grip out along +Y -- so it takes SWORD_GRIP.
+-- กับดักไอน้ำ (เฟส 3): ตลับทองเหลืองแบนขนาดฝ่ามือ ฟันกรามรอบขอบ ไฟหลอดกลางฝา (เซิร์ฟย้อมสีตามกระสุน
+-- ไคลเอนต์ทำให้กะพริบ) เฟืองข้างตัว · **ผังต่างจากอาวุธถือ**: ตัวตลับอยู่ที่จุดกำเนิดเลย ไม่มีด้าม
+-- PrimaryPart = `Core` กล่องไม่หมุนซ่อนในตัวตลับ (Motor6D ขับชิ้นนี้ ห้ามเป็นทรงกระบอกที่ถูก roll)
+-- ชิ้นชื่อ `Lamp` คือหลอดไฟ — `TrapWeapon.server` / `TrapController` หาจากชื่อนี้
+function Builders.Trap()
+	local b = {}
+	local core = box(b, "Core", CFrame.new(), Vector3.new(0.7, 0.3, 0.7), DARK_STEEL, Enum.Material.Metal)
+	cyl(b, "Body", CFrame.new(), 0.55, 0.32, GOLD, Enum.Material.Metal)
+	cyl(b, "BaseRing", CFrame.new(0, -0.14, 0), 0.6, 0.08, DARK_STEEL, Enum.Material.Metal)
+	cyl(b, "TopPlate", CFrame.new(0, 0.18, 0), 0.42, 0.06, GOLD_DARK, Enum.Material.Metal)
+	-- ฟันกราม 10 ซี่ เอนเข้าหากลาง
+	for i = 1, 10 do
+		local a = (i / 10) * math.pi * 2
+		box(b, "Tooth", yaw(a) * CFrame.new(0, 0.26, -0.48) * pitch(deg(18)),
+			Vector3.new(0.09, 0.2, 0.06), STEEL, Enum.Material.Metal)
+	end
+	cyl(b, "LampCollar", CFrame.new(0, 0.23, 0), 0.16, 0.08, DARK_STEEL, Enum.Material.Metal)
+	ball(b, "Lamp", CFrame.new(0, 0.32, 0), 0.26, Color3.fromRGB(255, 190, 90), Enum.Material.Neon)
+	gear(b, "Gear", CFrame.new(0.58, 0, 0), 0.18, 8, 0.05, GOLD_DARK)
+	cyl(b, "Valve", CFrame.new(-0.62, 0.04, 0) * roll(deg(90)), 0.06, 0.2, DARK_STEEL, Enum.Material.Metal)
+	ball(b, "ValveCap", CFrame.new(-0.74, 0.04, 0), 0.12, GOLD, Enum.Material.Metal)
+	return assembleBag("Trap", core, b)
+end
+
 function Builders.Pistol()
 	local b = {}
 	-- ลำกล้องแปดเหลี่ยม: กล่องสองใบซ้อนโดยใบหนึ่งหมุน 45 องศา (ของเดิมเป็นกล่องเหลี่ยมใบเดียว)

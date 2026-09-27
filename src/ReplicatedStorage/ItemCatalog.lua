@@ -161,6 +161,28 @@ ItemCatalog.Items = {
 		damage = 0, range = 6,
 		maxDurability = 120,
 	},
+	-- กับดัก (เฟส 3 · ผู้ใช้อนุมัติสูตร 2026-09-27) — ถือแล้วกดค้าง = เล็ง ปล่อย = เขวี้ยง แตะ = วางหน้าเท้า
+	-- ตัวกับดักไม่สึก (`unbreakable`) ของที่หมดคือกระสุน `TrapAmmo_*` · เลือกกระสุนเก็บที่ `meta.ammo` · กติกาทั้งหมด `TrapConfig`
+	-- ไม่มีสกิล Q · ไม่อยู่ใน EnhanceConfig (ตีบวกไม่ได้)
+	Trap = {
+		icon = "",
+		name = "กับดัก", kind = "weapon", weight = 3, stackSize = 1,
+		damage = 0, range = 6, unbreakable = true,
+	},
+	-- กับดักของสนาม PVP สามขนาด — ตัวเดียวกับกับดักเกมหลัก (`prefab`) กระสุนติดมาตามขนาด (`TrapConfig.Traps`)
+	-- `arenaOnly` = ไม่ออกจากกล่องเวท/หีบ ไม่มีสูตร (มีแค่ในร้านสนาม)
+	TrapSmall = {
+		icon = "", name = "กับดักเล็ก (หนืด)", kind = "weapon", weight = 3, stackSize = 1,
+		damage = 0, range = 6, unbreakable = true, prefab = "Trap", arenaOnly = true,
+	},
+	TrapMedium = {
+		icon = "", name = "กับดักกลาง (ช็อต)", kind = "weapon", weight = 3, stackSize = 1,
+		damage = 0, range = 6, unbreakable = true, prefab = "Trap", arenaOnly = true,
+	},
+	TrapLarge = {
+		icon = "", name = "กับดักใหญ่ (ระเบิด)", kind = "weapon", weight = 3, stackSize = 1,
+		damage = 0, range = 6, unbreakable = true, prefab = "Trap", arenaOnly = true,
+	},
 	FishingRod = {
 		icon = "rbxassetid://108988125515479",
 		name = "คันเบ็ด", kind = "weapon", weight = 3, stackSize = 1,
@@ -371,6 +393,12 @@ ItemCatalog.Items = {
 	-- Pistol ammunition. Sixteen to a stack, as the user asked, so carrying a lot of shots costs real bag
 	-- space rather than one slot holding a war's worth.
 	Bullet = { icon = "rbxassetid://99384118358133", name = "กระสุน", kind = "junk", weight = 0.1, stackSize = 16, value = 3 },
+
+	-- กระสุนกับดัก 4 แบบ (เฟส 3) — คราฟที่หน้า "ไอเทมจิปาถะ" · ผลของแต่ละแบบอยู่ที่ `TrapConfig.Ammo`
+	TrapAmmo_Slow = { icon = "", name = "กระสุนกับดัก · หนืด", kind = "junk", weight = 0.3, stackSize = 20, value = 20 },
+	TrapAmmo_Stun = { icon = "", name = "กระสุนกับดัก · ช็อต", kind = "junk", weight = 0.3, stackSize = 20, value = 30 },
+	TrapAmmo_Knock = { icon = "", name = "กระสุนกับดัก · ลมกระแทก", kind = "junk", weight = 0.3, stackSize = 20, value = 30 },
+	TrapAmmo_Blast = { icon = "", name = "กระสุนกับดัก · ระเบิด", kind = "junk", weight = 0.3, stackSize = 20, value = 40 },
 
 	-- Bait. One is spent per catch, so a stack of worms is how long a session lasts.
 	Worm = { icon = "rbxassetid://91361977777697", name = "หนอน", kind = "junk", weight = 0.05, stackSize = 99, value = 1 },

@@ -26,6 +26,7 @@ local EventState = require(game.ServerScriptService.EventState)
 local MobMotion = require(game.ServerScriptService.MobMotion)
 local Collection = require(game.ServerScriptService.Collection)
 local QuestAccess = require(game.ServerScriptService.QuestAccess)
+local StoryAccess = require(game.ServerScriptService.StoryAccess) -- เนื้อเรื่อง: ขั้นล่ามอน
 
 -- Filled in further down, once eventSpawners is in scope. Declared here because damage() is defined above
 -- that point and has to be able to see the name.
@@ -680,9 +681,10 @@ local function drop(model, config, killer, loot)
 		Progression.AwardExpParty(killer, config.xp * ((loot and loot.xp) or 1))
 	end
 	-- ลงสมุดสะสม บันทึกตามชนิด ไม่ใช่ตามตัว — สมุดตอบว่า "ฆ่าอะไรไปกี่ตัว"
-	Collection.RecordMob(killer, config.name or kind)
+	Collection.RecordMob(killer, config.name or model.Name)
 	-- นับให้เควสล่าด้วย ถ้ามีคนรับงานล่ามอนชนิดนี้ไว้
-	if QuestAccess.RecordKill then QuestAccess.RecordKill(killer, config.name or kind) end
+	if QuestAccess.RecordKill then QuestAccess.RecordKill(killer, config.name or model.Name) end
+	if StoryAccess.RecordKill then StoryAccess.RecordKill(killer, config.name or model.Name) end
 end
 
 local function despawn(model)

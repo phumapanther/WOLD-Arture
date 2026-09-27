@@ -486,6 +486,12 @@ local arenaAction = Instance.new("BindableEvent")
 arenaAction.Name = "WOLD_ArenaAction"
 arenaAction.Parent = game.ReplicatedStorage
 arenaAction.Event:Connect(function(action)
+	-- ปุ่มการ์ด 🛡️ บนมือถือ (เฟส 3) → BlockController (ช่องทางของมันเอง · หยิบตอนกด)
+	if action == "block_down" or action == "block_up" then
+		local block = game.ReplicatedStorage:FindFirstChild("WOLD_BlockAction")
+		if block then block:Fire(action == "block_down") end
+		return
+	end
 	if action == "shop" then
 		toggleShop()
 	elseif action == "potion" then

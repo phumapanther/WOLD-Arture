@@ -11,6 +11,8 @@ local PremiumAccess = require(script.Parent.PremiumAccess)
 local Vip = require(script.Parent.Vip)
 local Classes = require(script.Parent.Classes)
 local AchievementConfig = require(game.ReplicatedStorage.AchievementConfig)
+local PvpRankConfig = require(game.ReplicatedStorage.PvpRankConfig)
+local StoryConfig = require(game.ReplicatedStorage.StoryConfig)
 
 local Achievements = {}
 
@@ -99,9 +101,41 @@ function Achievements.Check(player)
 	return fresh
 end
 
+-- **ฉายาแร็งก์ PVP** (เฟส 3) id = "pvprank_<ขั้น>" · เลือกได้เฉพาะขั้นปัจจุบัน (แอตทริบิวต์ WOLD_PvpTier จาก PvpRankPublisher)
+-- แร็งก์เปลี่ยน = ฉายาที่เลือกไว้ใช้ไม่ได้แล้ว หายจากหัว ต้องเลือกขั้นใหม่เอง (roadmap: "หายเมื่อแร็งก์เปลี่ยน")
+local function rankTitleOf(player)
+	local tierIndex = player:GetAttribute("WOLD_PvpTier")
+	if type(tierIndex) ~= "number" then return nil end
+	local tier = PvpRankConfig.Tier(tierIndex)
+	return { id = "pvprank_" .. tier.id, title = "แร็งก์" .. tier.name, color = tier.color }
+end
+
+-- **ฉายาเมือง** (เนื้อเรื่อง) id = "story_<บท>" · ได้ถาวรเมื่อจบบท (`profile.Data.Story.titles` — Story.server เขียน)
+local function storyTitlesOf(player)
+	local data = ProfileAccess.Get(player)
+	local owned = data and type(data.Story) == "table" and type(data.Story.titles) == "table" and data.Story.titles or {}
+	local list = {}
+	for _, ch in ipairs(StoryConfig.Chapters) do
+		if ch.title and owned[ch.title.id] then
+			list[#list + 1] = { id = ch.title.id, title = ch.title.text, color = ch.title.color, note = "ฉายาเมือง · จบบท " .. ch.name }
+		end
+	end
+	return list
+end
+
 -- ฉายาที่คนนี้เลือกใช้ได้ตอนนี้ไหม
 function Achievements.CanUse(player, id)
 	if id == AchievementConfig.Special.vip.id then return Vip.Has(player) end
+	if type(id) == "string" and id:sub(1, 6) == "story_" then
+		for _, t in ipairs(storyTitlesOf(player)) do
+			if t.id == id then return true end
+		end
+		return false
+	end
+	if type(id) == "string" and id:sub(1, 8) == "pvprank_" then
+		local rank = rankTitleOf(player)
+		return rank ~= nil and rank.id == id
+	end
 	local book = bookOf(ProfileAccess.Get(player))
 	return book ~= nil and AchievementConfig.Get(id) ~= nil and book.unlocked[id] ~= nil
 end
@@ -129,6 +163,10 @@ function Achievements.DisplayTitle(player)
 	local book = bookOf(ProfileAccess.Get(player))
 	local id = book and book.title
 	if not id or not Achievements.CanUse(player, id) then return nil end
+	local rank = rankTitleOf(player)
+	if rank and rank.id == id then return rank.title, rank.color end
+	local story = StoryConfig.Title(id)
+	if story then return story.text, story.color end
 	local def = AchievementConfig.Get(id)
 	local title = def and def.title or AchievementConfig.Special.vip.title
 	return title, AchievementConfig.ColorOf(id)
@@ -155,6 +193,14 @@ function Achievements.Snapshot(player)
 		equipped = book.title,
 		marked = Classes.IsMarked(player),
 		vip = Vip.Has(player) and { id = vip.id, title = vip.title, color = vip.color } or nil,
+		-- ฉายาพิเศษอื่นที่เลือกได้ตอนนี้ (แร็งก์ PVP · ฉายาเมืองในอนาคต) — หน้าจอวาดเป็นแถวแบบเดียวกับ VIP
+		extras = (function()
+			local list = {}
+			local rank = rankTitleOf(player)
+			if rank then list[#list + 1] = { id = rank.id, title = rank.title, color = rank.color, note = "ฉายาแร็งก์ PVP (ตามขั้นตอนนี้)" } end
+			for _, t in ipairs(storyTitlesOf(player)) do list[#list + 1] = t end
+			return list
+		end)(),
 	}
 end
 

@@ -121,7 +121,7 @@ local function userIdsOf(list)
 end
 
 -- คืน true ถ้าส่งไปแล้ว · `reason` มีไว้บอกหน้าจอเวลาไปไม่ได้
-local function launch(entries)
+local function launch(entries, admin)
 	-- ทุกก้อนที่ส่งมาต้องลงทีมได้ครบ (ผู้เรียกหยิบมาด้วย assign อยู่แล้ว · กันไว้เผื่อทางอื่น)
 	local chosenAll, teams = assign(entries)
 	if #chosenAll ~= #entries then return false end
@@ -138,7 +138,7 @@ local function launch(entries)
 	local ok, accessCode = pcall(ArenaRegistry.CreateMatch, map.id, {
 		A = userIdsOf(teams.A),
 		B = userIdsOf(teams.B),
-	}, bots)
+	}, bots, admin)
 	if not ok then
 		warn("[ArenaQueue] จองเซิร์ฟแมตช์ไม่สำเร็จ:", accessCode)
 		return false, "create_failed"
@@ -172,7 +172,7 @@ function ArenaQueue.StartSolo(player, members)
 	if not AdminRoster.IsAdmin(player) then return false, "ไม่ใช่แอดมิน" end
 	if ServerConfig.ArenaPlaceId == 0 then return false, "ยังไม่มีเพลสสนาม" end
 	for _, member in ipairs(members) do ArenaQueue.RemovePlayer(member) end
-	local sent, reason = launch({ { members = members, at = os.clock(), leader = player } })
+	local sent, reason = launch({ { members = members, at = os.clock(), leader = player } }, true)
 	if not sent then return false, reason or "เริ่มแมตช์ไม่สำเร็จ" end
 	return true
 end

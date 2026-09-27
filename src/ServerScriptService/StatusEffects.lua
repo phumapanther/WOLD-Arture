@@ -211,6 +211,7 @@ local function refreshJumping(player)
 	local state = Active[player]
 	local held = state ~= nil and (state.rooted == true
 		or (state.dizzyUntil ~= nil and os.clock() < state.dizzyUntil)
+		or (state.staggerUntil ~= nil and os.clock() < state.staggerUntil)
 		-- A pose counts too: jumping out of a cross-legged sit is the obvious way to break one, and it looks
 		-- absurd. Walking still ends a pose -- that is the deliberate way out -- but not by leaving the ground.
 		or state.posing == true)
@@ -262,6 +263,26 @@ end
 function StatusEffects.IsDizzy(player)
 	local state = Active[player]
 	return state ~= nil and state.dizzyUntil ~= nil and os.clock() < state.dizzyUntil
+end
+
+--------------------------------------------------------------------------------
+-- Stagger (เซ): ถูกปัดป้องสมบูรณ์ (เฟส 3 แพรี่ · Blocking) — ขยับ/ตี/กระโดดไม่ได้ครู่หนึ่ง **ไม่มีดาวมึน**
+--------------------------------------------------------------------------------
+
+-- คนละตัวกับ Dizzy: มึนมีดาวลอยเหนือหัวและท่ากุมหัว ซึ่งอ่านว่า "โดนของ" · เซคือจังหวะสั้นๆ ที่ช่องสวนกลับเปิด
+-- ไคลเอนต์เล่นท่าเสียหลักจาก StatusChanged "stagger"
+function StatusEffects.Stagger(player, seconds)
+	if Vitals.IsDowned(player) then return end
+	local state = stateFor(player)
+	local was = state.staggerUntil ~= nil and os.clock() < state.staggerUntil
+	state.staggerUntil = math.max(state.staggerUntil or 0, os.clock() + seconds)
+	refreshJumping(player)
+	if not was then Remotes.StatusChanged:FireAllClients(player, "stagger", true) end
+end
+
+function StatusEffects.IsStaggered(player)
+	local state = Active[player]
+	return state ~= nil and state.staggerUntil ~= nil and os.clock() < state.staggerUntil
 end
 
 --------------------------------------------------------------------------------
@@ -318,6 +339,7 @@ function StatusEffects.SpeedMultiplier(player)
 	-- someone another state is still holding.
 	if state.rooted then return 0 end
 	if state.dizzyUntil and now < state.dizzyUntil then return 0 end
+	if state.staggerUntil and now < state.staggerUntil then return 0 end
 	-- Below the two that are done TO a player, above the slow: a pose is chosen, so anything forced on them
 	-- outranks it, but it still stops them walking.
 	if state.posing then return 0 end
@@ -335,6 +357,7 @@ end
 -- ได้ทั้งที่นอนอยู่ และคนที่ถูกอุ้มยิงจากหลังคนอุ้มได้ · ล้มคลานยังเช็คที่ผู้เรียกเหมือนเดิม (Vitals เป็นเจ้าของ)
 function StatusEffects.CanFight(player)
 	if StatusEffects.IsKnockedDown(player) or StatusEffects.IsDizzy(player) then return false end
+	if StatusEffects.IsStaggered(player) then return false end -- ถูกปัดป้อง (เฟส 3)
 	if player:GetAttribute("WOLD_Arrested") then return false end
 	if RescueAccess.IsCarried and RescueAccess.IsCarried(player) then return false end
 	return true
@@ -367,6 +390,11 @@ function StatusEffects.Tick()
 			if state.slowUntil and now >= state.slowUntil then
 				state.slowUntil = nil
 				Remotes.StatusChanged:FireAllClients(player, "slow", false)
+			end
+			if state.staggerUntil and now >= state.staggerUntil then
+				state.staggerUntil = nil
+				refreshJumping(player)
+				Remotes.StatusChanged:FireAllClients(player, "stagger", false)
 			end
 			if state.dizzyUntil and now >= state.dizzyUntil then
 				state.dizzyUntil = nil

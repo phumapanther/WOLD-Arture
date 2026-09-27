@@ -286,7 +286,27 @@ local function notice(self, parent, order, quest, noticeImage, accepted, index, 
 	button.Parent = card
 	corner(button, UDim.new(0, 6))
 
-	if not accepted then
+	if not accepted and quest.locked then
+		-- เมืองที่ยังล็อก (ผู้ใช้สั่ง 2026-09-27): ใบเป็นสีเทา + กุญแจ · กดไม่ได้ (เซิร์ฟปฏิเสธซ้ำอยู่แล้ว)
+		button.Text = "🔒 ล็อกอยู่"
+		button.BackgroundColor3 = GREY
+		button.AutoButtonColor = false
+		local veil = Instance.new("Frame")
+		veil.Size = UDim2.fromScale(1, 1)
+		veil.BackgroundColor3 = Color3.fromRGB(70, 70, 76)
+		veil.BackgroundTransparency = 0.35
+		veil.BorderSizePixel = 0
+		veil.ZIndex = 4
+		veil.Parent = card
+		corner(veil, UDim.new(0, 4))
+		local lock = label(veil, "🔒", 34, TEXT_LIGHT)
+		lock.AnchorPoint = Vector2.new(0.5, 0.5)
+		lock.Position = UDim2.fromScale(0.5, 0.42)
+		lock.Size = UDim2.fromOffset(60, 44)
+		lock.TextXAlignment = Enum.TextXAlignment.Center
+		lock.ZIndex = 5
+		button.ZIndex = 6
+	elseif not accepted then
 		button.Text = "รับงาน"
 		button.BackgroundColor3 = RUNE
 		button.TextColor3 = Color3.fromRGB(38, 28, 16)
@@ -370,7 +390,7 @@ function QuestBoardGui:Render(data)
 		return
 	end
 
-	self.title.Text = ("กระดานงาน — %s"):format(data.boardName or "")
+	self.title.Text = ("กระดานงาน — %s%s"):format(data.boardName or "", data.locked and " 🔒" or "")
 	if data.rerollPrice and data.rerollPrice > 0 then
 		self.rerollBtn.Visible = true
 		self.rerollBtn.Text = ("🔄 💎%d"):format(data.rerollPrice)
@@ -380,6 +400,11 @@ function QuestBoardGui:Render(data)
 	self.blurb.Text = ("%s · รับได้ %d/%d งาน%s"):format(
 		data.blurb or "", #(data.active or {}), data.maxActive or 3,
 		(data.rerolls or 0) > 0 and (" · สุ่มใหม่ไปแล้ว %d ครั้ง"):format(data.rerolls) or "")
+	-- บอร์ดเมืองที่ล็อก: บอกเหตุผลแทนบรรทัดปกติ + ซ่อนปุ่มสุ่มใหม่ (สุ่มแล้วก็รับไม่ได้อยู่ดี)
+	if data.locked then
+		self.blurb.Text = data.lockText or "🔒"
+		self.rerollBtn.Visible = false
+	end
 
 	local order = 0
 

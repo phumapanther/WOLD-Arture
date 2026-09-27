@@ -8,6 +8,7 @@
 -- The roll/slide button relabels itself to SLIDE while sprinting; both it and the Ctrl key resolve to the
 -- same action, decided server-side from the player's current speed.
 local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
 local Responsive = require(script.Parent.Responsive)
 
 local TouchActionGui = {}
@@ -282,6 +283,40 @@ function TouchActionGui:SetArenaMode(onAction)
 		emojiButton(column, spec[1], spec[2]).Position = UDim2.new(1, 0, 1, -((i - 1) * (ROLL_SIZE + GAP)))
 	end
 	emojiButton(self.cluster, "🧪", "potion").Position = self.dropButton.Position
+
+	-- **ปุ่มการ์ด 🛡️ กดค้าง** (เฟส 3 แพรี่ · ผู้ใช้ย้ำให้มีบนมือถือ) — ซ้ายของปุ่มกลิ้ง เหนือปุ่มโจมตี (เหนือปุ่มกระโดดพอดี ไม่ทับ)
+	-- ปล่อยนิ้ว = ปล่อยการ์ด **แม้นิ้วเลื่อนออกนอกปุ่มแล้ว** (จับ InputObject ของนิ้วที่กด แล้วรอให้นิ้วนั้นจบ)
+	-- ซ่อนตอนถือสไน (`SetBlockVisible` · TouchActionController) เพราะสไนใช้การ์ดเป็นสโคป
+	local block, blockHolder = circle(self.cluster, ROLL_SIZE, ROLL_COLOR, nil)
+	block.Name = "block"
+	block.AnchorPoint = Vector2.new(1, 1)
+	block.Position = UDim2.new(1, -(ROLL_SIZE + GAP), 1, -(ATTACK_SIZE + GAP))
+	local glyph = Instance.new("TextLabel")
+	glyph.Size = UDim2.fromScale(1, 1)
+	glyph.BackgroundTransparency = 1
+	glyph.TextScaled = true
+	glyph.Text = "🛡️"
+	glyph.Parent = blockHolder
+	local heldInput = nil
+	block.InputBegan:Connect(function(input)
+		if heldInput then return end
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+			heldInput = input
+			onAction("block_down")
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if input == heldInput then
+			heldInput = nil
+			onAction("block_up")
+		end
+	end)
+	self.blockButton = block
+end
+
+-- ปุ่มการ์ด 🛡️ ของสนาม (ไม่มี = ไม่ใช่สนาม เงียบ)
+function TouchActionGui:SetBlockVisible(visible)
+	if self.blockButton and self.blockButton.Visible ~= visible then self.blockButton.Visible = visible end
 end
 
 function TouchActionGui:OnBag(callback)
@@ -337,6 +372,25 @@ end
 
 function TouchActionGui:OnAttack(callback)
 	self.attackButton.MouseButton1Down:Connect(callback)
+end
+
+-- กดค้าง/ปล่อยปุ่มโจมตี (กับดัก · เฟส 3) → callback("down") / callback("up") · ติดตามนิ้วเดียวด้วย InputObject
+-- ปล่อยนอกปุ่มก็นับ (นิ้วเลื่อนออกตอนเล็งเป็นเรื่องปกติ)
+function TouchActionGui:OnAttackHold(callback)
+	local heldInput = nil
+	self.attackButton.InputBegan:Connect(function(input)
+		if heldInput then return end
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+			heldInput = input
+			callback("down")
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if input == heldInput then
+			heldInput = nil
+			callback("up")
+		end
+	end)
 end
 
 function TouchActionGui:OnRoll(callback)

@@ -1380,6 +1380,16 @@ function SocialGui:RenderAchievements(ach)
 		t.Size = UDim2.new(1, -100, 1, 0)
 		useButton(frame, ach.vip.id, true, ach.equipped == ach.vip.id)
 	end
+	-- ฉายาพิเศษอื่น (แร็งก์ PVP ฯลฯ) ทรงเดียวกับแถว VIP
+	for _, extra in ipairs(ach.extras or {}) do
+		local frame = row(34)
+		local t = label(frame, extra.title .. "  —  " .. (extra.note or ""), 13, extra.color)
+		t.Font = Enum.Font.GothamBold
+		t.Position = UDim2.new(0, 10, 0, 0)
+		t.Size = UDim2.new(1, -100, 1, 0)
+		t.TextTruncate = Enum.TextTruncate.AtEnd
+		useButton(frame, extra.id, true, ach.equipped == extra.id)
+	end
 	for _, entry in ipairs(ach.rows or {}) do
 		local frame = row(46)
 		local title = label(frame, entry.title, 13, entry.unlocked and entry.color or TEXT_MUTED)

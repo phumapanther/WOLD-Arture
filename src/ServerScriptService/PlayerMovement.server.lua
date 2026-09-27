@@ -62,6 +62,8 @@ local function applySpeed(state, player)
 	-- อุ้มหมา/แมวอยู่ = เดินช้าเท่าโหมดเดิน วิ่งไม่ได้ (ผู้ใช้สั่ง 2026-09-25) · IslandPets ตั้งแอตทริบิวต์บนตัว Player
 	-- ponytail: กด Shift ค้างระหว่างอุ้มยังกินสตามินาเหมือนวิ่ง (ความเร็วถูกกดไว้) — ตัดการวิ่งทิ้งถ้าเป็นปัญหา
 	if player:GetAttribute("WOLD_CarryingPet") then wanted = math.min(wanted, SPEED.Walk) end
+	-- ยกการ์ดอยู่ (สนาม · Blocking) = เดินช้าเท่าโหมดเดิน วิ่งไม่ได้
+	if player:GetAttribute("WOLD_Blocking") then wanted = math.min(wanted, SPEED.Walk) end
 	if backward then wanted *= BACKWARD_FACTOR end
 	-- "กำลังวิ่ง" เป็นแอตทริบิวต์บนตัว Player (สไลด์เริ่มได้จากการวิ่งเท่านั้น) — ไคลเอนต์ใช้เปลี่ยนปุ่มกลิ้งเป็นสไลด์
 	-- และ PlayerActions ใช้ตัดสิน · ของเดิมเดาจาก WalkSpeed >= 12 ซึ่งพังเมื่อกระเป๋าหนัก/โดนสโลว์จนวิ่งได้ไม่ถึง 12

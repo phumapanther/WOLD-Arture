@@ -96,6 +96,8 @@ local function stopAction(player, state)
 
 	local finished = state.action
 	state.action = nil
+	-- ประกาศว่ากำลังกลิ้ง/สไลด์อยู่ (BlockGuard ปล่อยการ์ด/ห้ามยกการ์ดระหว่างนี้ · เฟส 3)
+	if player.Parent then player:SetAttribute("WOLD_Acting", nil) end
 	if finished then
 		Remotes.MoveStateChanged:FireAllClients(player, finished .. "_end")
 	end
@@ -151,6 +153,7 @@ Remotes.RequestRoll.OnServerEvent:Connect(function(player, direction)
 
 	local now = os.clock()
 	state.action = "roll"
+	player:SetAttribute("WOLD_Acting", "roll")
 	state.endsAt = now + cfg.duration
 	state.nextAllowedAt = now + cfg.cooldown
 	-- Face the roll and hold that facing: turning mid-roll would fight the animation.
@@ -195,6 +198,7 @@ Remotes.RequestSlide.OnServerEvent:Connect(function(player)
 
 	local now = os.clock()
 	state.action = "slide"
+	player:SetAttribute("WOLD_Acting", "slide")
 	state.endsAt = now + duration
 	state.nextAllowedAt = now + duration + cfg.cooldown
 	local penalty = Inventory.IsHeavilyLoaded(player) and InventoryConfig.HeavyActionPenalty or 1

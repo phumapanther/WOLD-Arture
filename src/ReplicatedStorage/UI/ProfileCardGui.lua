@@ -5,6 +5,7 @@
 -- players introducing themselves simply looks like a crowd of cards.
 local Players = game:GetService("Players")
 local SocialConfig = require(script.Parent.Parent.SocialConfig)
+local PvpRankConfig = require(script.Parent.Parent.PvpRankConfig)
 local ClassConfig = require(script.Parent.Parent.ClassConfig)
 local AvatarThumbnails = require(script.Parent.AvatarThumbnails)
 
@@ -70,11 +71,23 @@ function ProfileCardGui.Show(data)
 	corner.Parent = panel
 
 	local rank = SocialConfig.RankFor(data.level)
+	-- **กรอบแร็งก์ PVP แทนกรอบเลเวล** สำหรับคนที่เคยเล่นแร็งก์ (เฟส 3 · roadmap) — สีแร่ของขั้น หนากว่าเล็กน้อย ขั้นสูงเรือง
+	local pvpTier = type(data.pvpTier) == "number" and PvpRankConfig.Tier(data.pvpTier) or nil
 	local stroke = Instance.new("UIStroke")
-	stroke.Color = rank.color
-	stroke.Transparency = rank.glow and 0.05 or 0.4
-	stroke.Thickness = 2
+	stroke.Color = pvpTier and pvpTier.color or rank.color
+	stroke.Transparency = (pvpTier and pvpTier.glow or (not pvpTier and rank.glow)) and 0.05 or 0.4
+	stroke.Thickness = pvpTier and 3 or 2
 	stroke.Parent = panel
+	if pvpTier then
+		local badge = Instance.new("TextLabel")
+		badge.AnchorPoint = Vector2.new(1, 0)
+		badge.Position = UDim2.new(1, -6, 0, 4)
+		badge.Size = UDim2.fromOffset(24, 24)
+		badge.BackgroundTransparency = 1
+		badge.TextScaled = true
+		badge.Text = pvpTier.emoji
+		badge.Parent = panel
+	end
 
 	local face = Instance.new("ImageLabel")
 	face.Position = UDim2.new(0, 8, 0, 8)

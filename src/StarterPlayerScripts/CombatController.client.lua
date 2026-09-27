@@ -217,6 +217,9 @@ if player.Character then onCharacterAdded(player.Character) end
 UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	if gameProcessed then return end -- don't punch when the click was consumed by a button
 	if input.UserInputType == Enum.UserInputType.MouseButton1 then
+		-- กับดัก: คลิกซ้ายเป็นของ TrapController (กดค้างเล็ง/ปล่อยเขวี้ยง) ไม่ส่งคำขอตี (เฟส 3)
+		local held = CombatConfig.Weapons[player:GetAttribute("WOLD_Weapon") or ""]
+		if held and held.trap then return end
 		-- The aim point rides along with every attack. The server ignores it for a weapon that does not
 		-- throw anything, so a sword is unaffected by whatever the camera happens to be looking at.
 		Remotes.RequestAttack:FireServer(AimAccess.Point and AimAccess.Point() or nil)

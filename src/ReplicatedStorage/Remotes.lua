@@ -21,7 +21,11 @@ local EVENTS = {
 	-- และหน้าจอที่ประกอบจากอีเวนต์หลายตัวคือหน้าจอที่ค้างผิดสถานะเมื่อมีอีเวนต์ไหนมาไม่ถึง
 	"ArenaState", "RequestArenaBuy", "RequestArenaRefund", "ArenaMatchEnd", "ArenaNotice", "ArenaKillBanner",
 	"SetSprintIntent", "ToggleWalk", -- movement (client intent in; stamina goes out via VitalsUpdate)
-	"RequestAttack", "CombatStateChanged", "RequestUnscope", -- combat (click intent in, guard/attack playback out)
+	"RequestAttack", "CombatStateChanged", "RequestUnscope", "RequestBlock", "PvpRankInfo", "PvpRankUp", "PvpRankSeen", -- combat (click intent in, guard/attack playback out) · ยกการ์ด + แร็งก์ PVP (เฟส 3)
+	-- กับดัก (เฟส 3): เขวี้ยง/วาง · เลือกกระสุน · ภาพ (เขวี้ยง/ระเบิด) ถึงทุกเครื่อง
+	"RequestTrap", "RequestTrapAmmo", "TrapEvent",
+	-- เนื้อเรื่อง (ผู้มากับแสงวิบวับ): ภาพความคืบหน้า · บทพูด/คัทซีน/ความทรงจำ · ready/cutscene_done จากไคลเอนต์
+	"StoryState", "StoryPlay", "RequestStory",
 	"VitalsUpdate", "DownedStateChanged", "RequestRespawn", -- vitals (hp/hunger/stamina/armor out, downed UI, respawn in)
 	"RequestRoll", "RequestSlide", "MoveStateChanged", -- roll/slide (client intent in, animation playback out)
 	"RequestRevive", "RequestCarry", "RequestDrop", "CarryStateChanged", -- reviving and carrying a downed player

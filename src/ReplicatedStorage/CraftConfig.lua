@@ -237,6 +237,22 @@ CraftConfig.Recipes = {
 		level = 14, batch = true, cost = { Yarn = 4 } },
 	{ id = "FineFabric", tab = "loom", station = "loom", chance = 1, gold = 0, seconds = 120 * 60,
 		level = 29, batch = true, cost = { Cloth = 2, WoolCloth = 1, Herb = 3 } },
+
+	----------------------------------------------------------------------------
+	-- กับดัก (เฟส 3 · ผู้ใช้อนุมัติสูตร 2026-09-27) — ต่อท้ายตามกติกาเดิม
+	-- ตัวกับดักอยู่หน้าอาวุธ (ลุ้น 50% เท่าดาบ) · กระสุน 4 แบบอยู่หน้าจิปาถะ 95% ทำทีละชุดเหมือนกระสุนปืน
+	----------------------------------------------------------------------------
+	{ id = "Trap", tab = "weapon", chance = 0.5, gold = 8000,
+		cost = { IronOre = 15, GearSpare = 6, Chemical = 4, Coal = 15, Blueprint = 2, WoodScrap = 10, Silver = 500 } },
+	{ id = "Trap", tab = "unlucky", chance = 1, gold = 0, cost = { Insignia = 15 } },
+	{ id = "TrapAmmo_Slow", tab = "misc", chance = 0.95, gold = 200, yields = 5,
+		cost = { Slime = 10, Herb = 5, IronOre = 2 } },
+	{ id = "TrapAmmo_Stun", tab = "misc", chance = 0.95, gold = 300, yields = 5,
+		cost = { Crystal = 3, GearSpare = 2, Coal = 4, IronOre = 2 } },
+	{ id = "TrapAmmo_Knock", tab = "misc", chance = 0.95, gold = 300, yields = 5,
+		cost = { Chemical = 2, Coal = 5, Stone = 10, IronOre = 2 } },
+	{ id = "TrapAmmo_Blast", tab = "misc", chance = 0.95, gold = 400, yields = 4,
+		cost = { Chemical = 3, Coal = 6, IronOre = 4, Bone = 6 } },
 }
 
 return CraftConfig
