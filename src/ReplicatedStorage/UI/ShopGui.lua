@@ -4,6 +4,7 @@
 -- computes a price, never decides what is affordable, and holds no state between snapshots -- every redraw
 -- is a fresh picture of what the server currently says.
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
 local ItemIcon = require(script.Parent.ItemIcon)
@@ -14,6 +15,18 @@ local TEXT_LIGHT = Color3.fromRGB(232, 232, 238)
 local TEXT_MUTED = Color3.fromRGB(150, 152, 162)
 local RUNE = Color3.fromRGB(244, 197, 66)
 local GOLD = Color3.fromRGB(238, 200, 96)
+local GEM = Color3.fromRGB(128, 190, 240) -- ปุ่มจ่ายเพชร: ฟ้า แยกจากปุ่มเหรียญสีทองได้ทันที
+local INK = Color3.fromRGB(24, 26, 32)
+
+-- 62500 -> "62,500" · ราคาบ้าน/ของผิดกฎหมายเป็นหลักหมื่น-แสน อ่านไม่ออกถ้าไม่มีจุลภาค
+local function commas(n)
+	local s = tostring(math.floor(n))
+	repeat
+		local k
+		s, k = s:gsub("^(-?%d+)(%d%d%d)", "%1,%2")
+	until k == 0
+	return s
+end
 
 local ShopGui = {}
 ShopGui.__index = ShopGui
@@ -43,7 +56,10 @@ function ShopGui.new()
 	gui.IgnoreGuiInset = true
 	gui.DisplayOrder = 17
 	gui.Enabled = false
-	gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+	-- นอกเกม (เทสใน Edit) ไม่มี PlayerGui ให้รอ WaitForChild จะค้างตลอดกาล — สร้างหน้าร้านไว้เฉยๆ ไม่ต้องแขวน
+	if RunService:IsRunning() then
+		gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+	end
 	self.gui = gui
 
 	local backdrop = Instance.new("Frame")
@@ -148,6 +164,23 @@ function ShopGui.new()
 		return list
 	end
 
+	-- แท็บหมวดของร้านเกาะ (เฟส 2a) · สร้างปุ่มใน Show จากหมวดที่เซิร์ฟเวอร์ส่งมา · ร้านเกมหลักไม่มีหมวด แถบนี้จึงซ่อน
+	-- อยู่ในช่องว่างระหว่างหัวร้าน (y 12-42) กับสองคอลัมน์ (เริ่ม y 74) พอดี
+	local tabs = Instance.new("Frame")
+	tabs.Name = "Tabs"
+	tabs.Position = UDim2.new(0, 12, 0, 44)
+	tabs.Size = UDim2.new(1, -24, 0, 26)
+	tabs.BackgroundTransparency = 1
+	tabs.Visible = false
+	tabs.Parent = panel
+	local tabLayout = Instance.new("UIListLayout")
+	tabLayout.FillDirection = Enum.FillDirection.Horizontal
+	tabLayout.Padding = UDim.new(0, 4)
+	tabLayout.SortOrder = Enum.SortOrder.LayoutOrder
+	tabLayout.Parent = tabs
+	self.tabs = tabs
+	self.tab = nil -- หมวดที่เลือกอยู่ อยู่ข้ามการวาดใหม่ (เซิร์ฟเวอร์ส่งภาพใหม่หลังทุกการซื้อ)
+
 	self.sellList = column(0, "ของขาย")
 	self.buyList = column(0.5, "ร้านรับซื้อ")
 
@@ -192,9 +225,16 @@ function ShopGui:OnBuy(callback) self.onBuy = callback end
 function ShopGui:OnSell(callback) self.onSell = callback end
 function ShopGui:OnSellAll(callback) self.onSellAll = callback end
 
--- One row: icon, name, price, and the button that acts on it.
-local function row(parent, order, icon, name, priceText, buttonText, buttonColor, onClick)
+-- One row: icon, name, price, and the buttons that act on it.
+--
+-- `buttons` go right to left from the edge: { name, text, color, width, onClick }. Returns the frame and how
+-- many pixels the buttons took from the right edge, so the caller can put the amount box or the "x1" button
+-- just left of them. `extra` is the width the caller will put there, so the name shrinks to make room.
+-- `priceText` nil = no price line: a two-price row already carries both prices on its buttons, and the name
+-- gets both lines instead -- on a phone the name area is narrow and a second line keeps it readable.
+local function row(parent, order, icon, name, priceText, buttons, extra)
 	local frame = Instance.new("Frame")
+	frame.Name = "Row"
 	frame.LayoutOrder = order
 	frame.Size = UDim2.new(1, -4, 0, 38)
 	frame.BackgroundColor3 = Color3.fromRGB(44, 46, 56)
@@ -209,58 +249,67 @@ local function row(parent, order, icon, name, priceText, buttonText, buttonColor
 	ItemIcon.Apply(image, icon)
 	image.Parent = frame
 
+	local x = 6
+	for _, spec in ipairs(buttons) do
+		local button = Instance.new("TextButton")
+		button.Name = spec.name
+		button.AnchorPoint = Vector2.new(1, 0.5)
+		button.Position = UDim2.new(1, -x, 0.5, 0)
+		button.Size = UDim2.fromOffset(spec.width, 26)
+		button.BackgroundColor3 = spec.color
+		button.BorderSizePixel = 0
+		button.Font = Enum.Font.GothamBold
+		button.TextSize = 12
+		button.TextColor3 = INK
+		button.Text = spec.text
+		button.Parent = frame
+		corner(button, UDim.new(0, 5))
+		button.Activated:Connect(function()
+			UiSound.Play("Click")
+			spec.onClick()
+		end)
+		x += spec.width + 4
+	end
+	local reserve = 40 + x + (extra or 0)
+
 	local label = Instance.new("TextLabel")
 	label.Position = UDim2.fromOffset(40, 4)
-	label.Size = UDim2.new(1, -142, 0, 16)
+	label.Size = UDim2.new(1, -reserve, 0, priceText and 16 or 30)
 	label.BackgroundTransparency = 1
 	label.Font = Enum.Font.GothamBold
 	label.TextSize = 12
 	label.TextColor3 = TEXT_LIGHT
 	label.TextXAlignment = Enum.TextXAlignment.Left
+	label.TextWrapped = priceText == nil
 	label.TextTruncate = Enum.TextTruncate.AtEnd
 	label.Text = name
 	label.Parent = frame
 
-	local price = Instance.new("TextLabel")
-	price.Position = UDim2.fromOffset(40, 20)
-	price.Size = UDim2.new(1, -142, 0, 14)
-	price.BackgroundTransparency = 1
-	price.Font = Enum.Font.Gotham
-	price.TextSize = 11
-	price.TextColor3 = GOLD
-	price.TextXAlignment = Enum.TextXAlignment.Left
-	price.Text = priceText
-	price.Parent = frame
-
-	local button = Instance.new("TextButton")
-	button.AnchorPoint = Vector2.new(1, 0.5)
-	button.Position = UDim2.new(1, -6, 0.5, 0)
-	button.Size = UDim2.fromOffset(58, 26)
-	button.BackgroundColor3 = buttonColor
-	button.BorderSizePixel = 0
-	button.Font = Enum.Font.GothamBold
-	button.TextSize = 12
-	button.TextColor3 = Color3.fromRGB(24, 26, 32)
-	button.Text = buttonText
-	button.Parent = frame
-	corner(button, UDim.new(0, 5))
-	button.Activated:Connect(function()
-		UiSound.Play("Click")
-		onClick()
-	end)
-	return frame
+	if priceText then
+		local price = Instance.new("TextLabel")
+		price.Position = UDim2.fromOffset(40, 20)
+		price.Size = UDim2.new(1, -reserve, 0, 14)
+		price.BackgroundTransparency = 1
+		price.Font = Enum.Font.Gotham
+		price.TextSize = 11
+		price.TextColor3 = GOLD
+		price.TextXAlignment = Enum.TextXAlignment.Left
+		price.Text = priceText
+		price.Parent = frame
+	end
+	return frame, x
 end
 
--- A box to type a quantity into, in the same slot on the row that the small button uses on the sell side.
+-- A box to type a quantity into, just left of the row's buttons (`right` = pixels they took).
 --
 -- Empty means one, which is what the row did before this existed: a player who never touches the box gets
 -- the old behaviour. Anything that is not a number is ignored rather than corrected mid-typing, because
 -- rewriting the box under someone's fingers makes it impossible to clear.
-local function amountBox(frame, onChanged)
+local function amountBox(frame, onChanged, right)
 	local b = Instance.new("TextBox")
 	b.Name = "Amount"
 	b.AnchorPoint = Vector2.new(1, 0.5)
-	b.Position = UDim2.new(1, -68, 0.5, 0)
+	b.Position = UDim2.new(1, -right, 0.5, 0)
 	b.Size = UDim2.fromOffset(38, 26)
 	b.BackgroundColor3 = Color3.fromRGB(30, 32, 40)
 	b.BorderSizePixel = 0
@@ -283,12 +332,12 @@ local function amountBox(frame, onChanged)
 	return b
 end
 
--- A second, smaller button on a row, to the left of the main one. Used for "sell just one" beside "sell
+-- A second, smaller button on a row, just left of the main one. Used for "sell just one" beside "sell
 -- the stack", so a player can part with three of a hundred without emptying the slot.
-local function smallButton(frame, text, onClick)
+local function smallButton(frame, text, onClick, right)
 	local b = Instance.new("TextButton")
 	b.AnchorPoint = Vector2.new(1, 0.5)
-	b.Position = UDim2.new(1, -68, 0.5, 0)
+	b.Position = UDim2.new(1, -right, 0.5, 0)
 	b.Size = UDim2.fromOffset(30, 26)
 	b.BackgroundColor3 = Color3.fromRGB(70, 74, 84)
 	b.BorderSizePixel = 0
@@ -305,30 +354,99 @@ local function smallButton(frame, text, onClick)
 	return b
 end
 
+-- Switch the island shop's category tab and redraw from the last snapshot. The tab survives every redraw,
+-- because the server sends a fresh snapshot after each purchase and jumping back to the first tab each time
+-- would make buying several things from one tab a chore.
+function ShopGui:SelectTab(id)
+	self.tab = id
+	if self.last then self:Show(self.last) end
+end
+
+-- The tab bar. Only the island shop sends categories; without them the bar hides and every row shows, which
+-- is exactly how the main-game shop looked before tabs existed. Returns the category to filter by, or nil.
+function ShopGui:drawTabs(categories)
+	for _, child in ipairs(self.tabs:GetChildren()) do
+		if child:IsA("TextButton") then child:Destroy() end
+	end
+	if not categories or #categories == 0 then
+		self.tabs.Visible = false
+		return nil
+	end
+	local known = false
+	for _, c in ipairs(categories) do
+		if c.id == self.tab then known = true end
+	end
+	if not known then self.tab = categories[1].id end
+	for order, c in ipairs(categories) do
+		local on = c.id == self.tab
+		local b = Instance.new("TextButton")
+		b.Name = "Tab_" .. c.id
+		b.LayoutOrder = order
+		b.Size = UDim2.new(1 / #categories, -4, 1, 0)
+		b.BackgroundColor3 = on and RUNE or STONE_DEEP
+		b.AutoButtonColor = not on
+		b.BorderSizePixel = 0
+		b.Font = Enum.Font.GothamBold
+		b.TextSize = 13
+		b.TextColor3 = on and INK or TEXT_MUTED
+		b.Text = c.label
+		b.Parent = self.tabs
+		corner(b, UDim.new(0, 6))
+		b.Activated:Connect(function()
+			if self.tab == c.id then return end
+			UiSound.Play("Click")
+			self:SelectTab(c.id)
+		end)
+	end
+	self.tabs.Visible = true
+	return self.tab
+end
+
 function ShopGui:Show(snapshot)
+	self.last = snapshot
 	for _, list in ipairs({ self.sellList, self.buyList }) do
 		for _, child in ipairs(list:GetChildren()) do
 			if not child:IsA("UIListLayout") then child:Destroy() end
 		end
 	end
 
-	self.purse.Text = ("เงิน %d"):format(snapshot.gold or 0)
+	-- The island shop pays in two currencies, so both purses show. The main-game shop stays as it was.
+	if snapshot.gems ~= nil then
+		self.purse.Text = ("💰 %s · 💎 %s"):format(commas(snapshot.gold or 0), commas(snapshot.gems))
+	else
+		self.purse.Text = ("เงิน %d"):format(snapshot.gold or 0)
+	end
 
+	local filter = self:drawTabs(snapshot.categories)
 	for _, entry in ipairs(snapshot.sells or {}) do
-		-- The quantity lives in the closure rather than being read off the box at press time, so the row
-		-- keeps working the same way whether the number was typed or left alone.
-		local want = nil
-		-- แถวที่ได้หลายชิ้นต่อการกดหนึ่งครั้งต้องบอกไว้ในชื่อ ไม่งั้น "เมล็ดพันธุ์ 250" อ่านเหมือนแพงขึ้น
-		local label = entry.count and ("%s x%d"):format(entry.name, entry.count) or entry.name
-		local frame = row(self.sellList, entry.index, entry.icon, label,
-			-- เพชรกับเหรียญต้องอ่านต่างกันทันที ไม่งั้น "ราคา 250" ของสัตว์เลี้ยงดูถูกกว่าบ้าน 20,000
-			-- ทั้งที่แพงกว่ามาก (ร้านบนเกาะขายสองสกุล ดู ShopConfig.IslandSells)
-			(entry.currency == "gems" and ("💎 %d"):format(entry.price) or ("ราคา %d"):format(entry.price)),
-			"ซื้อ", Color3.fromRGB(150, 200, 140),
-			function()
-				if self.onBuy then self.onBuy(entry.index, want) end
-			end)
-		amountBox(frame, function(n) want = n end)
+		if not filter or entry.category == filter then
+			-- The quantity lives in the closure rather than being read off the box at press time, so the row
+			-- keeps working the same way whether the number was typed or left alone.
+			local want = nil
+			local function buy(currency)
+				return function()
+					if self.onBuy then self.onBuy(entry.index, want, currency) end
+				end
+			end
+			-- แถวที่ได้หลายชิ้นต่อการกดหนึ่งครั้งต้องบอกไว้ในชื่อ ไม่งั้น "เมล็ดพันธุ์ 250" อ่านเหมือนแพงขึ้น
+			local label = entry.count and ("%s x%d"):format(entry.name, entry.count) or entry.name
+			-- เฟส 2a: สองปุ่มทุกแถวที่มีสองราคา (ผู้ใช้เลือก 2026-09-27) · ปุ่มบอกราคาในตัว ไม่ต้องมีบรรทัดราคา
+			-- เพชรฟ้า/เหรียญทอง แยกกันด้วยสีและไอคอน ไม่งั้น "250" ของสัตว์เลี้ยงดูถูกกว่าบ้าน 20,000
+			local buttons, priceText
+			if entry.gems and entry.coins then
+				buttons = {
+					{ name = "BuyCoins", text = "💰 " .. commas(entry.coins), color = GOLD, width = 74, onClick = buy("coins") },
+					{ name = "BuyGems", text = "💎 " .. commas(entry.gems), color = GEM, width = 52, onClick = buy("gems") },
+				}
+			elseif entry.gems then
+				buttons = { { name = "BuyGems", text = "💎 " .. commas(entry.gems), color = GEM, width = 58, onClick = buy("gems") } }
+			else
+				priceText = ("ราคา %d"):format(entry.coins or 0)
+				buttons = { { name = "Buy", text = "ซื้อ", color = Color3.fromRGB(150, 200, 140), width = 58, onClick = buy(nil) } }
+			end
+			local frame, used = row(self.sellList, entry.index, entry.icon, label, priceText, buttons, 38 + 4)
+			amountBox(frame, function(n) want = n end, used)
+		end
 	end
 
 	if #(snapshot.buys or {}) == 0 then
@@ -342,19 +460,20 @@ function ShopGui:Show(snapshot)
 		empty.Parent = self.buyList
 	end
 	for order, entry in ipairs(snapshot.buys or {}) do
-		local frame = row(self.buyList, order, entry.icon,
+		local stack = entry.count > 1
+		local frame, used = row(self.buyList, order, entry.icon,
 			("%s x%d"):format(entry.name, entry.count),
 			("ชิ้นละ %d — รวม %d"):format(entry.each, entry.total),
-			"ขายหมด", GOLD,
-			function()
+			{ { name = "Sell", text = "ขายหมด", color = GOLD, width = 58, onClick = function()
 				-- nil amount means the whole stack.
 				if self.onSell then self.onSell(entry.slot, nil) end
-			end)
+			end } },
+			stack and 34 or 0)
 		-- Only worth offering on a stack: on a single item "sell 1" and "sell all" are the same press.
-		if entry.count > 1 then
+		if stack then
 			smallButton(frame, "x1", function()
 				if self.onSell then self.onSell(entry.slot, 1) end
-			end)
+			end, used)
 		end
 	end
 

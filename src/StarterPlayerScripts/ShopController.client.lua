@@ -19,10 +19,11 @@ local gui = ShopGui.new()
 -- refused purchase -- not enough gold, full bag, walked away -- stays silent instead of lying about it.
 local pendingCoin = false
 
-gui:OnBuy(function(index, amount)
+gui:OnBuy(function(index, amount, currency)
 	pendingCoin = true
 	-- amount nil means one; the server clamps whatever it is told to what the purse can afford.
-	Remotes.RequestShopAction:FireServer("buy", index, amount)
+	-- currency = "gems"/"coins" จากปุ่มที่กด (ร้านเกาะ) · nil = เหรียญ (ร้านเกมหลักปุ่มเดียว)
+	Remotes.RequestShopAction:FireServer("buy", index, amount, currency)
 end)
 
 gui:OnSell(function(slot, amount)
