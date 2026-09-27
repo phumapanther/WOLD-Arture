@@ -52,7 +52,8 @@ end
 local function countMaterial(state, id)
 	local total = 0
 	for _, slot in pairs(state.slots) do
-		if slot.id == id then total += slot.count or 1 end
+		-- ของขอบทอง (เฟส 2b) ไม่ใช่วัตถุดิบ ทั้งคราฟและตีบวก
+		if slot.id == id and not ItemCatalog.IsGoldBorder(slot.meta) then total += slot.count or 1 end
 	end
 	return total
 end
@@ -67,7 +68,9 @@ end
 local function takeMaterial(player, state, id, count)
 	local found = {}
 	for index, slot in pairs(state.slots) do
-		if slot.id == id then table.insert(found, { index = index, count = slot.count or 1 }) end
+		if slot.id == id and not ItemCatalog.IsGoldBorder(slot.meta) then
+			table.insert(found, { index = index, count = slot.count or 1 })
+		end
 	end
 	for _, entry in ipairs(found) do
 		if count <= 0 then break end

@@ -103,6 +103,14 @@ ShopConfig.IslandSells = {
 -- เฟส 2a (ผู้ใช้กำหนด 2026-09-26): ทุกชิ้นในร้านเกาะสองราคา · 1 เพชร = 250 เหรียญ · เพชรปัดขึ้น ขั้นต่ำ 1
 -- แถวเขียนราคาสกุลเดียวก็พอ อีกสกุลคำนวณที่นี่ที่เดียว (สัตว์ในคอกก็ใช้ GemsFor ตัวเดียวกัน)
 ShopConfig.GemRate = 250
+
+-- ราคาขายของขอบทอง (เฟส 2b ผู้ใช้กำหนด 2026-09-26): บนเกาะเท่านั้น 3 เท่าของราคาตลาดตอนนั้น · ขายทีละชิ้น
+-- nil = ร้านนี้ไม่รับ (ร้านเกมหลัก + พ่อค้าประจำเมือง)
+ShopConfig.GoldSellMultiplier = 3
+function ShopConfig.GoldSellPrice(base, onIsland)
+	if not onIsland then return nil end
+	return math.max(1, math.floor(base * ShopConfig.GoldSellMultiplier + 0.5))
+end
 ShopConfig.IslandCategories = {
 	{ id = "house", label = "บ้าน" },
 	{ id = "decor", label = "ของตกแต่ง" },

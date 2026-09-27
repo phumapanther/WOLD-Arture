@@ -109,6 +109,11 @@ local function buyPrice(id, meta)
 		base += meta.kg * ShopConfig.GoldPerKg * (Multipliers[id] or 1)
 	end
 
+	-- ของขอบทอง (เฟส 2b): ขายบนเกาะเท่านั้น 3 เท่าของราคาตลาดตอนนี้ · ร้านเกมหลักไม่รับ
+	if ItemCatalog.IsGoldBorder(meta) then
+		return ShopConfig.GoldSellPrice(base, ServerConfig.IsFarm)
+	end
+
 	return math.max(1, math.floor(base + 0.5))
 end
 
@@ -351,15 +356,20 @@ Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, 
 		-- Everything the shop will take, in one press. Collected first and sold afterwards, because
 		-- RemoveFromSlot renumbers nothing but the slot it empties -- iterating and removing at the same
 		-- time would still be reading the table it is changing.
-		local sellable = {}
+		local sellable, skippedGold = {}, false
 		for slotIndex, slot in pairs(state.slots) do
 			local price = buyPrice(slot.id, slot.meta)
+			-- ของขอบทองขายทีละชิ้นเท่านั้น (ผู้ใช้กำหนด) ปุ่มขายทั้งหมดข้ามไป
+			if price and ItemCatalog.IsGoldBorder(slot.meta) then
+				skippedGold, price = true, nil
+			end
 			if price then
 				table.insert(sellable, { index = slotIndex, count = slot.count or 1, price = price })
 			end
 		end
 		if #sellable == 0 then
-			return Remotes.SocialNotify:FireClient(player, "error", "ไม่มีของที่ร้านรับซื้อ")
+			return Remotes.SocialNotify:FireClient(player, "error",
+				skippedGold and "ของขอบทองขายทีละชิ้น — กดขายที่แถวของมัน" or "ไม่มีของที่ร้านรับซื้อ")
 		end
 
 		local earned, items = 0, 0

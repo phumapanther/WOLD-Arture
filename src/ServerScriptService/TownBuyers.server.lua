@@ -60,6 +60,8 @@ end
 -- ราคาต่อชิ้น คืน ราคา, โบนัสไหม
 local function priceFor(player, townId, id, meta)
 	if not acceptsItem(townId, id) then return nil end
+	-- ของขอบทอง (เฟส 2b) ขายได้แค่ร้านบนเกาะ
+	if ItemCatalog.IsGoldBorder(meta) then return nil end
 	local item = ItemCatalog.Get(id)
 	if not item or not ItemCatalog.IsSellable(id) then return nil end
 

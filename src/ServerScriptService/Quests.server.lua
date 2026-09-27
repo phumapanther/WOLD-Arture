@@ -148,7 +148,8 @@ local function progressOf(player, quest)
 		if not state then return 0 end
 		local n = 0
 		for _, slot in pairs(state.slots) do
-			if slot.id == quest.item then n += (slot.count or 1) end
+			-- ของขอบทอง (เฟส 2b) ส่งเควสไม่ได้ (ตอนส่ง RemoveById ก็ข้ามมันอยู่แล้ว นับให้ตรงกัน)
+			if slot.id == quest.item and not ItemCatalog.IsGoldBorder(slot.meta) then n += (slot.count or 1) end
 		end
 		return n
 	end
