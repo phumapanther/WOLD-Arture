@@ -78,12 +78,15 @@ local function rangeFor(id, meta)
 	return BagRanges.For(id, meta)
 end
 
-local function isVipItem(id)
-	return (rangeFor(id)) ~= 1
+local function isVipItem(id, meta)
+	return (rangeFor(id, meta)) ~= 1
 end
 
-local function firstFreeSlot(state, id)
-	local from, to = rangeFor(id)
+-- ของขอบทอง (เฟส 2b) ไม่ใช่วัตถุดิบ/ของส่งเควส/ของที่นับหรือหักตามชนิด — ข้ามทุกที่ที่นับ/หัก/หาตาม id
+local isGold = ItemCatalog.IsGoldBorder
+
+local function firstFreeSlot(state, id, meta)
+	local from, to = rangeFor(id, meta)
 	for i = from, to do
 		if state.slots[i] == nil then return i end
 	end
@@ -102,7 +105,7 @@ function Inventory.CountOf(player, id)
 	local from, to = rangeFor(id)
 	for i = from, to do
 		local slot = state.slots[i]
-		if slot and slot.id == id then total += slot.count or 1 end
+		if slot and slot.id == id and not isGold(slot.meta) then total += slot.count or 1 end
 	end
 	return total
 end
@@ -125,7 +128,7 @@ function Inventory.RemoveById(player, id, count)
 	for i = to, from, -1 do -- ไล่จากท้ายมาหน้า การลบทำให้ของในช่องถัดไปไม่ขยับ
 		if left <= 0 then break end
 		local slot = state.slots[i]
-		if slot and slot.id == id then
+		if slot and slot.id == id and not isGold(slot.meta) then
 			local take = math.min(left, slot.count or 1)
 			Inventory.RemoveFromSlot(player, i, take)
 			left -= take
@@ -153,7 +156,7 @@ Inventory.OverflowRoom = nil
 -- กระเป๋ารับของชนิดนี้เพิ่มได้อีกกี่ชิ้น (เติมกองที่ยังไม่เต็ม + ช่องว่าง · เฉพาะฝั่งของมันเอง หลัก/VIP)
 local function bagRoom(state, id, meta)
 	local stackSize = meta and 1 or ItemCatalog.StackSize(id)
-	local from, to = rangeFor(id)
+	local from, to = rangeFor(id, meta)
 	local room = 0
 	for i = from, to do
 		local slot = state.slots[i]
@@ -197,6 +200,8 @@ function Inventory.AddItem(player, id, count, durability, meta)
 		spill += count - fits
 		count = fits
 	end
+	-- ของขอบทองเข้าคลังไม่ได้ (คลัง = การฝาก ซึ่งของขอบทองทำไม่ได้ · เฟส 2b) กระเป๋า VIP เต็ม = ไม่รับเลย
+	if spill > 0 and isGold(meta) then return false end
 	if spill > 0 and not (Inventory.OverflowRoom and Inventory.OverflowRoom(player, id, spill, meta)) then
 		return false
 	end
@@ -204,7 +209,7 @@ function Inventory.AddItem(player, id, count, durability, meta)
 	local stackSize = ItemCatalog.StackSize(id)
 	if meta then stackSize = 1 end
 	if count > 0 and stackSize > 1 then
-		local from, to = rangeFor(id)
+		local from, to = rangeFor(id, meta)
 		for i = from, to do
 			local slot = state.slots[i]
 			if slot and slot.id == id and not slot.meta and slot.count < stackSize then
@@ -221,7 +226,7 @@ function Inventory.AddItem(player, id, count, durability, meta)
 
 	local firstSlot = true
 	while count > 0 do
-		local free = firstFreeSlot(state, id)
+		local free = firstFreeSlot(state, id, meta)
 		if not free then break end -- ไม่เกิด: bagRoom นับไว้แล้ว · กันไว้ไม่ให้วนไม่จบ
 		local put = math.min(stackSize, count)
 		local item = ItemCatalog.Get(id)
@@ -276,6 +281,22 @@ function Inventory.HasRoomFor(player, id, count, meta)
 	return bagRoom(state, id, meta) >= count
 end
 
+-- **แจกผลผลิตจากการเก็บเกี่ยวบนเกาะ** (เฟส 2b) — `count` ชิ้นรวมทั้งหมด ถ้า `withGold` หนึ่งชิ้นในนั้นเป็นขอบทอง
+-- กระเป๋า VIP เต็ม = ชิ้นนั้นเป็นของธรรมดาแทน (ผู้ใช้เลือก 2026-09-27) ไม่เข้าคลัง ไม่หาย
+-- คืน false = ไม่ได้ให้อะไรเลย (ส่วนธรรมดาใส่ไม่ลง) · ผลที่สองบอกชะตาของชิ้นทอง: "given" / "lost" / nil
+-- ถามที่ว่างของชิ้นทองก่อนวางอะไร และไม่มี yield คั่น จึงไม่มีทางได้ส่วนธรรมดาแล้วชิ้นทองหายกลางทาง
+function Inventory.AddHarvest(player, id, count, withGold)
+	if type(count) ~= "number" or count < 1 then return false end
+	local gold = withGold and Inventory.HasRoomFor(player, id, 1, { gold = true }) or false
+	local normal = count - (gold and 1 or 0)
+	if normal > 0 and not Inventory.AddItem(player, id, normal) then return false end
+	if gold then
+		Inventory.AddItem(player, id, 1, nil, { gold = true })
+		return true, "given"
+	end
+	return true, withGold and "lost" or nil
+end
+
 function Inventory.RemoveFromSlot(player, index, count)
 	local state = States[player]
 	local slot = state and state.slots[index]
@@ -307,8 +328,8 @@ function Inventory.MigrateVipSlots(player)
 	local moved = 0
 	for i = 1, InventoryConfig.SlotCount do
 		local slot = state.slots[i]
-		if slot and isVipItem(slot.id) then
-			local free = firstFreeSlot(state, slot.id)
+		if slot and isVipItem(slot.id, slot.meta) then
+			local free = firstFreeSlot(state, slot.id, slot.meta)
 			if not free then break end
 			state.slots[free] = slot
 			state.slots[i] = nil
@@ -556,7 +577,7 @@ function Inventory.FindSlotById(player, id)
 	local state = States[player]
 	if not state or not id then return nil end
 	for index, slot in pairs(state.slots) do
-		if slot and slot.id == id then return index end
+		if slot and slot.id == id and not isGold(slot.meta) then return index end
 	end
 	return nil
 end

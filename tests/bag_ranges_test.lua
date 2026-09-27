@@ -36,4 +36,16 @@ check(BagRanges.SwapFits(vipFull, {}, { { id = "Wheat" } }) == true, "กระ�
 check(BagRanges.SwapFits(vipFull, { { id = "Wheat" } }, { { id = "FarmPlot" } }) == false,
 	"ให้ของหลักไม่ได้ปลดช่อง VIP")
 
+-- เฟส 2b: ของขอบทองอยู่กระเป๋า VIP เสมอ (ไข่ธรรมดาอยู่ช่องหลัก) · กระเป๋า VIP 36 ช่อง (37-72)
+local gf, gt = BagRanges.For("Egg", { gold = true })
+check(gf == vf and gt == vt, "ไข่ขอบทองอยู่ช่อง VIP")
+check((BagRanges.For("Egg")) == 1, "ไข่ธรรมดาอยู่ช่องหลัก")
+local FreshCfg = fresh(game.ReplicatedStorage.InventoryConfig)
+check(FreshCfg.VipSlotCount == 36 and FreshCfg.VipSlotEnd == 72,
+	("กระเป๋า VIP 36 ช่อง 37-72 (ได้ %d ช่อง ถึง %d)"):format(FreshCfg.VipSlotCount, FreshCfg.VipSlotEnd))
+check(BagRanges.SwapFits(vipFull, {}, { { id = "Egg", meta = { gold = true } } }) == false,
+	"กระเป๋า VIP เต็ม รับไข่ขอบทองไม่ได้")
+check(BagRanges.SwapFits(full, {}, { { id = "Egg", meta = { gold = true } } }) == true,
+	"กระเป๋าหลักเต็ม ยังรับไข่ขอบทองได้ (มันไปช่อง VIP)")
+
 return ("%s\n%d fail(s)"):format(table.concat(out, "\n"), fails)

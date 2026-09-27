@@ -3,13 +3,18 @@
 -- ไม่งั้นของจะไปลงช่องที่แท็บนั้นมองไม่เห็น แล้วอ่านเหมือนของหาย
 --
 -- ยกออกจาก Inventory (QA 2026-09-26) ให้เทรดถามที่เดียวกันและเทสได้ (`tests/bag_ranges_test.lua`)
--- `meta` รับไว้ให้เฟส 2b (ของขอบทองไปช่อง VIP)
+-- เฟส 2b: ของขอบทอง (`meta.gold`) ไปช่อง VIP เสมอ ไม่ว่าของชนิดนั้นปกติอยู่ฝั่งไหน
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local InventoryConfig = require(game.ReplicatedStorage.InventoryConfig)
 
 local BagRanges = {}
 
 function BagRanges.For(id, meta)
+	-- เงื่อนไขเดียวกับ ItemCatalog.IsGoldBorder (ตัวนิยาม) เขียนตรงนี้เพราะเทสใน Edit โหลดไฟล์นี้กับ ItemCatalog
+	-- ที่ Studio แคชไว้ (require ด้วยพาธเต็ม) — ถ้าวันไหนเปลี่ยนนิยามขอบทอง ต้องแก้สองที่นี้ด้วยกัน
+	if type(meta) == "table" and meta.gold == true then
+		return InventoryConfig.VipSlotStart, InventoryConfig.VipSlotEnd
+	end
 	local item = ItemCatalog.Get(id)
 	if item and (item.vip == true or item.kind == "placeable") then
 		return InventoryConfig.VipSlotStart, InventoryConfig.VipSlotEnd

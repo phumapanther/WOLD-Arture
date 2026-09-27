@@ -14,7 +14,7 @@ InventoryConfig.SlotCount = 36 -- the personal bag grid, 6 columns x 6 rows
 -- **เป็นช่วงดัชนีที่ต่อท้าย ไม่ใช่ตารางใหม่** — `state.slots` ยังเป็นตารางเดียว มีโค้ด 67 จุดนอก
 -- `Inventory.lua` ที่วน `state.slots` อยู่ (จับกุม ออร่า คลัง คราฟ ตกปลา …) ถ้าแยกเป็นตารางที่สอง
 -- ต้องไล่แก้ทั้งหมดนั้น · ช่วงดัชนีทำให้ของยังอยู่ที่เดิมในสายตาโค้ดเก่า แค่ไม่แย่งช่องกัน
-InventoryConfig.VipSlotCount = 18 -- 6 คอลัมน์ x 3 แถว
+InventoryConfig.VipSlotCount = 36 -- 6 คอลัมน์ x 6 แถว = เท่ากระเป๋าหลัก (เฟส 2b ผู้ใช้กำหนด · ช่อง 37-72 · เซฟเก่า 37-54 ใช้ต่อได้)
 InventoryConfig.VipSlotStart = InventoryConfig.SlotCount + 1
 InventoryConfig.VipSlotEnd = InventoryConfig.SlotCount + InventoryConfig.VipSlotCount
 
