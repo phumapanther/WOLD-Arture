@@ -710,6 +710,46 @@ ItemCatalog.Items = {
 	MineZone = { icon = "rbxassetid://95784879090358", name = "โซนแร่", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false },
 	-- เมล็ดพันธุ์ชนิดเดียว หยอดแล้วค่อยรู้ว่าเป็นอะไร (IslandConfig.Crops) — ไม่ใช่ placeable
 	Seed = { icon = "rbxassetid://121667533959320", name = "เมล็ดพันธุ์", kind = "junk", weight = 0.05, stackSize = 99, value = 0, sellable = false, vip = true },
+
+	--------------------------------------------------------------------------
+	-- เฟส 2c (ผู้ใช้อนุมัติร่าง 2026-09-27): ฝ้าย + เครื่องคราฟขั้นสูง 3 เครื่อง + ของที่เครื่องทำ
+	--
+	-- ฝ้ายเป็นผลผลิตแปลงผักเหมือนข้าว/ผัก (กระเป๋าหลัก ขายร้านได้) · เมล็ดฝ้ายอยู่กระเป๋า VIP เหมือนเมล็ดสุ่ม
+	-- **ของที่เครื่องทำทุกชิ้น: กระเป๋า VIP (ใช้แค่บนเกาะ) · ขายร้านไม่ได้ ส่งเมลไม่ได้ (เป็นของคราฟ) · ส่งออกได้**
+	-- ราคาส่งออกอยู่ที่ ExportConfig.Goods ไม่ใช่ `value` · icon = "" = ⌛ จนกว่าจะอัปโหลดรูป
+	--------------------------------------------------------------------------
+	Cotton = { icon = "", name = "ฝ้าย", kind = "junk", weight = 0.5, stackSize = 99, value = 20 },
+	CottonSeed = { icon = "", name = "เมล็ดฝ้าย", kind = "junk", weight = 0.05, stackSize = 99, value = 0, sellable = false, vip = true },
+
+	-- เครื่อง: ชื่อโมเดลตรงกับ CraftStations.STATIONS (ระบบหาจากชื่อ) · สำเร็จ 100% ไม่มีค่าจ้าง
+	BakeryOven = { icon = "", name = "เตาอบขนมปัง", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "both" },
+	MetalBench = { icon = "", name = "โต๊ะช่างเหล็ก", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "both" },
+	Loom = { icon = "", name = "กี่ทอผ้าไอน้ำ", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "both" },
+
+	-- เตาอบขนมปัง (★ = ขั้นสุดท้าย ส่งออกอย่างเดียว ไม่เป็นวัตถุดิบของอะไร)
+	Flour = { icon = "", name = "แป้งสาลี", kind = "junk", weight = 0.4, stackSize = 99, value = 0, sellable = false, vip = true },
+	Dough = { icon = "", name = "แป้งโด", kind = "junk", weight = 0.6, stackSize = 50, value = 0, sellable = false, vip = true },
+	SpecialBread = { icon = "", name = "ขนมปังเนยสด", kind = "junk", weight = 0.6, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
+	MeatPie = { icon = "", name = "พายเนื้อ", kind = "junk", weight = 0.8, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
+	CreamCake = { icon = "", name = "เค้กครีม", kind = "junk", weight = 1, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
+
+	-- โต๊ะช่างเหล็ก
+	IronIngot = { icon = "", name = "เหล็กแท่ง", kind = "junk", weight = 1.5, stackSize = 50, value = 0, sellable = false, vip = true },
+	Nails = { icon = "", name = "ตะปู", kind = "junk", weight = 0.05, stackSize = 99, value = 0, sellable = false, vip = true },
+	Hinge = { icon = "", name = "บานพับ", kind = "junk", weight = 0.5, stackSize = 50, value = 0, sellable = false, vip = true },
+	SilverIngot = { icon = "", name = "เงินแท่ง", kind = "junk", weight = 1.5, stackSize = 50, value = 0, sellable = false, vip = true },
+	MechGear = { icon = "", name = "เฟืองกลไก", kind = "junk", weight = 0.5, stackSize = 50, value = 0, sellable = false, vip = true },
+	GoldIngot = { icon = "", name = "ทองแท่ง", kind = "junk", weight = 1.5, stackSize = 50, value = 0, sellable = false, vip = true },
+	Padlock = { icon = "", name = "แม่กุญแจเหล็ก", kind = "junk", weight = 1, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
+	PocketWatch = { icon = "", name = "นาฬิกาพกทองคำ", kind = "junk", weight = 0.3, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
+	MagicCompass = { icon = "", name = "เข็มทิศเวท", kind = "junk", weight = 0.5, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
+
+	-- กี่ทอผ้า
+	Thread = { icon = "", name = "ด้ายฝ้าย", kind = "junk", weight = 0.1, stackSize = 99, value = 0, sellable = false, vip = true },
+	Cloth = { icon = "", name = "ผ้าฝ้ายทอ", kind = "junk", weight = 0.5, stackSize = 50, value = 0, sellable = false, vip = true },
+	Yarn = { icon = "", name = "ไหมพรม", kind = "junk", weight = 0.1, stackSize = 99, value = 0, sellable = false, vip = true },
+	WoolCloth = { icon = "", name = "ผ้าขนสัตว์", kind = "junk", weight = 0.6, stackSize = 50, value = 0, sellable = false, vip = true },
+	FineFabric = { icon = "", name = "ผ้าปักลายชั้นดี", kind = "junk", weight = 0.6, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
 }
 
 -- **สายแร่บนเกาะใช้รูปเดียวกับไอเทมแร่ที่มันให้** (ผู้ใช้สั่ง 2026-09-23)

@@ -47,9 +47,11 @@ return inst:GetFullName() .. " len=" .. #inst.Source`;
     if (/attempt to index nil|is not a valid member/.test(text)) {
       const className = /\.server\.lua$/.test(file) ? "Script" : /\.client\.lua$/.test(file) ? "LocalScript" : "ModuleScript";
       const dotted = target.replace(/\["([^"]+)"\]/g, ".$1");
+      // ⚠️ ต้องเป็นหน้าต่างที่ WOLD_PLACE เลือกไว้ (c.studioId) — เดิมใช้ studios[0] ซึ่งตอนเปิด Studio หลายหน้าต่าง
+      // คือหน้าต่างแรกในรายการ (เจอ 2026-09-27: เพลสสนามขึ้นก่อน) สคริปต์ใหม่จะไปเกิดผิดเพลสเงียบๆ
       const studios = JSON.parse(c.text(await c.tool("list_roblox_studios", {}))).studios;
       const made = c.text(await c.tool("multi_edit", {
-        file_path: dotted, className, datamodel_type: "Edit", studio_id: studios[0].id,
+        file_path: dotted, className, datamodel_type: "Edit", studio_id: c.studioId || studios[0].id,
         edits: [{ old_string: "", new_string: src }],
       }));
       text = "created " + className + ": " + made;

@@ -21,8 +21,9 @@ IslandConfig.MaxPlaced = 300 -- กันเซิร์ฟส่วนตัว
 IslandConfig.MinCallGap = 0.2 -- วินาที ระหว่างคำขอวาง/เก็บของคนเดียวกัน
 
 -- เข้าเกาะครั้งแรกได้ชุดนี้ใส่กระเป๋า (ไม่วางให้ ผู้เล่นวางเองตั้งแต่ชิ้นแรก) เมล็ด 5 = พืชรอบแรกฟรี
+-- **ไม่มีบ้านแล้ว** (เฟส 2c สเปกแม่: "เกาะใหม่ แปลงผัก 9 + เมล็ด ไม่มีบ้าน") บ้านปลดที่เลเวลฟาร์ม 4
+-- เกาะที่รับชุดไปแล้ว (Data.starter) ไม่ถูกแตะ — บ้านที่แจกไปก่อนหน้านี้อยู่ครบ
 IslandConfig.StarterKit = {
-	{ id = "House_StoneCottage", count = 1 },
 	{ id = "FarmPlot", count = 9 },
 	{ id = "Deco_Fence", count = 10 },
 	{ id = "Seed", count = 5 },
@@ -48,12 +49,18 @@ IslandConfig.BuildMaterials = {
 IslandConfig.ClearanceHeight = 14
 
 IslandConfig.SeedItem = "Seed"
+-- เมล็ดทุกชนิดที่หยอดลงแปลงได้ (เฟส 2c) — "Seed" สุ่มพืช · ที่เหลือคือเมล็ดของพืชชนิดเดียว (พืชที่มี `seed` ตรงกัน)
+IslandConfig.SeedItems = { "Seed", "CottonSeed" }
 -- หยอดเมล็ดแล้วสุ่มพืชตามน้ำหนัก · seconds = เวลาจนสุก (นับจาก os.time จึงโตต่อตอนออฟไลน์) · ได้ min-max ชิ้น
+-- **`level` = เลเวลฟาร์มที่พืชนี้เริ่มงอกจากเมล็ดสุ่ม** (เฟส 2c) — ต่ำกว่านั้นตัดออกจากกองสุ่ม (น้ำหนักที่เหลือหารใหม่เอง)
+-- **`seed`** = พืชนี้ไม่อยู่ในกองสุ่ม ปลูกจากเมล็ดของมันเองเท่านั้น (ฝ้าย · ผู้ใช้เลือก 2026-09-27)
 IslandConfig.Crops = {
 	-- เวลาโต **10-35 นาที** (ผู้ใช้สั่ง 2026-09-23 "ทำให้ผักโตช้ากว่านี้") ของเดิมคือ 10/15/20
-	{ item = "Wheat", weight = 50, seconds = 15 * 60, min = 3, max = 5 },
-	{ item = "Vegetable", weight = 35, seconds = 25 * 60, min = 2, max = 4 },
-	{ item = "Herb", weight = 15, seconds = 35 * 60, min = 2, max = 3 },
+	{ item = "Wheat", weight = 50, seconds = 15 * 60, min = 3, max = 5, level = 1 },
+	{ item = "Vegetable", weight = 35, seconds = 25 * 60, min = 2, max = 4, level = 1 },
+	{ item = "Herb", weight = 15, seconds = 35 * 60, min = 2, max = 3, level = 3 },
+	-- ฝ้าย (เฟส 2c) ไว้ป้อนกี่ทอผ้า · มีขอบทองได้เหมือนผักอื่น (GoldBorder อ่านจากตารางนี้เอง)
+	{ item = "Cotton", seed = "CottonSeed", weight = 0, seconds = 30 * 60, min = 2, max = 4, level = 6 },
 
 	-- **ต้นเวทมนตร์** (ผู้ใช้สั่ง 2026-09-23: "เพิ่มโมเดลในแปลงผักสำหรับสุ่มปลูก เพื่อให้ได้กิ่งเวทมนตร์
 	-- ด้วย โดยพอเก็บจะสุ่มกิ่งเวทมนตร์และแร่เวทมนตร์")
@@ -62,10 +69,21 @@ IslandConfig.Crops = {
 	-- `bonus` = แร่เวทมนตร์ที่ติดมาครึ่งหนึ่งของครั้ง (กติกาเดียวกับหนอนในดิน: ได้ **เพิ่ม** ไม่ใช่ **แทน**)
 	-- **ตัวเลขทั้งหมดผมตั้งเอง** ผู้ใช้ให้มาแค่ "สุ่มได้ทั้งกิ่งและแร่"
 	{
-		item = "MagicBranch", weight = 8, seconds = 60 * 60, min = 1, max = 2,
+		item = "MagicBranch", weight = 8, seconds = 60 * 60, min = 1, max = 2, level = 8,
 		bonus = { item = "MagicOre", chance = 0.5, min = 1, max = 2 },
 	},
 }
+
+-- พืชที่เมล็ดชนิดนี้ให้ได้ที่เลเวลฟาร์มนี้ (เฟส 2c) — เมล็ดสุ่ม = ทุกพืชที่ไม่มี `seed` และปลดแล้ว · เมล็ดเฉพาะ = พืชของมัน
+-- `level` nil = ไม่ล็อก (นอกเกาะ/ข้อมูลยังไม่โหลด เดิมได้ทุกอย่าง)
+function IslandConfig.CropsFor(seedId, level)
+	local out = {}
+	for _, c in ipairs(IslandConfig.Crops) do
+		local fits = (seedId == IslandConfig.SeedItem and c.seed == nil) or (c.seed ~= nil and c.seed == seedId)
+		if fits and (level == nil or (c.level or 1) <= level) then out[#out + 1] = c end
+	end
+	return out
+end
 
 -- EXP ที่ได้จากการเก็บเกี่ยวแปลงผักหนึ่งครั้ง
 --
@@ -211,15 +229,16 @@ IslandConfig.YieldCap = 5
 -- สัตว์ที่ซื้อได้ · `kind` ต้องตรงกับ GatherConfig.Nodes (เกมหลักเป็นเจ้าของ "กด E ได้อะไร")
 -- ราคาเป็นเหรียญ Claude ตั้งไว้ก่อน ไล่ตามค่าของที่มันให้ (ไข่ถูกสุด หนังแพงสุด)
 
+-- `level` = เลเวลฟาร์มที่ปลดให้ซื้อ (เฟส 2c) · สัตว์ที่ยืนอยู่ในคอกแล้วเลี้ยงต่อได้เสมอ · `emoji` ไว้ให้ตารางปลดวาด
 IslandConfig.PenAnimals = {
-	{ kind = "Chicken", name = "ไก่", price = 400 },
-	{ kind = "Duck", name = "เป็ด", price = 500 },
-	{ kind = "Pig", name = "หมู", price = 900 },
-	{ kind = "Goat", name = "แพะ", price = 1100 },
-	{ kind = "Sheep", name = "แกะ", price = 1400 },
-	{ kind = "Cow", name = "วัว", price = 1800 },
-	{ kind = "Deer", name = "กวาง", price = 2400 },
-	{ kind = "Horse", name = "ม้า", price = 3000 },
+	{ kind = "Chicken", name = "ไก่", price = 400, level = 2, emoji = "🐔" },
+	{ kind = "Duck", name = "เป็ด", price = 500, level = 2, emoji = "🦆" },
+	{ kind = "Pig", name = "หมู", price = 900, level = 4, emoji = "🐷" },
+	{ kind = "Goat", name = "แพะ", price = 1100, level = 4, emoji = "🐐" },
+	{ kind = "Sheep", name = "แกะ", price = 1400, level = 6, emoji = "🐑" },
+	{ kind = "Cow", name = "วัว", price = 1800, level = 7, emoji = "🐄" },
+	{ kind = "Deer", name = "กวาง", price = 2400, level = 8, emoji = "🦌" },
+	{ kind = "Horse", name = "ม้า", price = 3000, level = 9, emoji = "🐴" },
 }
 
 --------------------------------------------------------------------------------
@@ -270,13 +289,14 @@ IslandConfig.MinePerRoundMin = 1
 IslandConfig.MinePerRoundMax = 2
 -- ชนิดที่สุ่มได้ · `kind` ตรงกับ GatherConfig.Nodes เช่นกัน — เรท/จำนวนที่ได้เป็นของเกมหลักทั้งหมด
 -- น้ำหนักนี้คือ "โอกาสที่ก้อนที่โผล่จะเป็นชนิดนั้น" ไม่ใช่ของที่ขุดได้ (อันนั้น GatherConfig ตัดสิน)
+-- **`level` = เลเวลฟาร์มที่ก้อนชนิดนี้เริ่มโผล่ในโซนแร่** (เฟส 2c) · หิน/เหล็ก = 1 เจ้าของโซนแร่เดิมขุดได้เสมอ
 IslandConfig.MineRocks = {
-	{ kind = "Rock", weight = 45 },
-	{ kind = "IronOre", weight = 22 },
-	{ kind = "SilverOre", weight = 13 },
-	{ kind = "GoldOre", weight = 9 },
-	{ kind = "MagicOre", weight = 6 },
-	{ kind = "DiamondOre", weight = 5 },
+	{ kind = "Rock", weight = 45, level = 1 },
+	{ kind = "IronOre", weight = 22, level = 1 },
+	{ kind = "SilverOre", weight = 13, level = 7 },
+	{ kind = "GoldOre", weight = 9, level = 9 },
+	{ kind = "MagicOre", weight = 6, level = 10 },
+	{ kind = "DiamondOre", weight = 5, level = 11 },
 }
 
 --------------------------------------------------------------------------------
@@ -347,14 +367,17 @@ IslandConfig.Glow = {
 -- ของตกแต่งที่ครบคูลดาวน์) — กฎเดียว ที่เดียว ไม่งั้นสี่ที่นั้นจะเพี้ยนกันเองวันใดวันหนึ่ง
 -- ทอยแสงตอนของชิ้นนั้นเริ่มรอบใหม่ · `canGold` = ของชิ้นนี้มีขอบทองได้ไหม (แดงขึ้นเฉพาะของแบบนั้น — เฟส 2b)
 -- ของที่มีขอบทองไม่ได้ (ต้นไม้ พุ่ม หิน) ทอยแค่ฟ้ากับทอง โอกาสสองตัวนั้นเท่าเดิม
-function IslandConfig.RollGlow(canGold)
+-- `allowed` (เฟส 2c) = สีที่ปลดแล้วตามเลเวลฟาร์ม `{ blue, gold, red }` · nil = ทุกสี (นอกเกาะ/เทสเดิม)
+-- สีที่ยังไม่ปลด **ไม่ได้โยกโอกาสไปให้สีอื่น** — ช่องของมันกลายเป็น "ไม่มีแสง" เฉยๆ (ฟ้ายัง 7% เท่าเดิม)
+-- ⚠️ บนเกาะเรียกผ่าน `IslandAccess.RollGlow(canGold)` ซึ่งส่ง `allowed` ของเลเวลเจ้าของเกาะให้ ห้ามเรียกตรงนี้เอง
+function IslandConfig.RollGlow(canGold, allowed)
 	local rates = IslandConfig.Glow.rates
 	local r = math.random()
-	if r < rates.blue then return "blue" end
+	if r < rates.blue then return (allowed == nil or allowed.blue) and "blue" or nil end
 	r -= rates.blue
-	if r < rates.gold then return "gold" end
+	if r < rates.gold then return (allowed == nil or allowed.gold) and "gold" or nil end
 	r -= rates.gold
-	if canGold and r < rates.red then return "red" end
+	if canGold and r < rates.red then return (allowed == nil or allowed.red) and "red" or nil end
 	return nil
 end
 
