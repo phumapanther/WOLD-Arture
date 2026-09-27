@@ -18,7 +18,7 @@ IslandAccess.CanPlaceAt = nil -- (cx, cz, w, d, r, itemId) -> ok, reason (ลอ
 IslandAccess.Grant = nil -- (player, itemId, count) เสกของเข้ากระเป๋า (เทสเท่านั้น)
 
 -- ตั้งโดย IslandZones (คอก/โซนแร่/ต้นไม้)
-IslandAccess.PenBuy = nil -- (player, penModel, kind, count) -> ok, reason
+IslandAccess.PenBuy = nil -- (player, penModel, kind, count, currency?) -> ok, reason · currency "gems"/"coins"/nil=เหรียญ
 IslandAccess.PenRelease = nil -- (player, penModel) -> ok, จำนวนที่ปล่อย · ทางเดียวที่เปลี่ยนชนิดสัตว์ได้
 IslandAccess.PenSnapshot = nil -- (penModel) -> ภาพรวมของคอกสำหรับวาดหน้าจอ
 IslandAccess.ZonesTick = nil -- () รันรอบเดียวทันที (เทส)
