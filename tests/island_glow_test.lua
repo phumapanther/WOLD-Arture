@@ -81,15 +81,15 @@ A("Revoke", player, "Wheat", A("Count", player, "Wheat") or 0)
 local plain, lit = 0, 0
 for _ = 1, 12 do
 	plantAs("Wheat", nil)
-	local before = A("Count", player, "Wheat") or 0
+	local before = A("CountAll", player, "Wheat") or 0
 	assert(A("Harvest", player, plot))
-	plain += (A("Count", player, "Wheat") or 0) - before
+	plain += (A("CountAll", player, "Wheat") or 0) - before
 end
 for _ = 1, 12 do
 	plantAs("Wheat", "blue")
-	local before = A("Count", player, "Wheat") or 0
+	local before = A("CountAll", player, "Wheat") or 0
 	assert(A("Harvest", player, plot))
-	lit += (A("Count", player, "Wheat") or 0) - before
+	lit += (A("CountAll", player, "Wheat") or 0) - before
 end
 assert(lit >= plain * 1.8, ("แสงฟ้าต้องได้ราวสองเท่า: ปกติ %d · เรืองแสง %d"):format(plain, lit))
 assert(plot:GetAttribute("Glow") == nil, "เก็บแล้วธงต้องถูกล้าง")
@@ -127,8 +127,8 @@ for _ = 1, 20 do
 	plantAs("MagicBranch", nil)
 	assert(A("Harvest", player, plot))
 end
-local branch = A("Count", player, "MagicBranch") or 0
-local ore = A("Count", player, "MagicOre") or 0
+local branch = A("CountAll", player, "MagicBranch") or 0
+local ore = A("CountAll", player, "MagicOre") or 0
 assert(branch >= 20, ("เก็บ 20 ครั้งต้องได้กิ่งอย่างน้อย 20 ได้ %d"):format(branch))
 assert(ore > 0, "ต้องได้แร่เวทมนตร์ติดมาบ้าง")
 -- โมเดลจริงต้องถูกปลูกลงแปลง ไม่ใช่แค่ตัวเลข
@@ -163,7 +163,7 @@ local possible = { [cfg.item] = true }
 for _, e in ipairs(cfg.roll or {}) do possible[e.item] = true end
 local function bagTotal()
 	local n = 0
-	for id in pairs(possible) do n += (A("Count", player, id) or 0) end
+	for id in pairs(possible) do n += (A("CountAll", player, id) or 0) end
 	return n
 end
 target:SetAttribute("Glow", "blue")
@@ -180,7 +180,7 @@ table.insert(out, ("แร่เรืองแสงฟ้า: ฐานตร�
 A("Unequip", player, "weapon")
 A("Revoke", player, "Pickaxe", A("Count", player, "Pickaxe") or 0)
 for id in pairs(possible) do
-	local n = A("Count", player, id) or 0
+	local n = A("CountAll", player, id) or 0
 	if n > 0 then A("Revoke", player, id, n) end
 end
 A("NodeClear")

@@ -85,11 +85,11 @@ table.insert(out, "โตแล้วปุ่มเก็บเปิด ✓ (�
 -- ⚠️ **ล้างธงแสงก่อนวัด** — ของเรืองแสงฟ้าให้วัตถุดิบสองเท่า (ผู้ใช้สั่ง 2026-09-23) ซึ่งถูกต้อง
 -- แต่เทสข้อนี้วัด `PenYield` ไม่ได้วัดแสง · ไม่ล้างแล้วมันจะตกเป็นครั้งคราวแบบหาสาเหตุยาก
 chick:SetAttribute("Glow", nil)
-local eggBefore = A("Count", player, "Egg") or 0
+local eggBefore = A("CountAll", player, "Egg") or 0
 local gathered = A("Gather", player, chick)
 assert(gathered, "เก็บไข่ไม่สำเร็จ")
 assert(chick.Parent ~= nil, "เก็บแล้วสัตว์ต้องยังอยู่ ไม่ใช่หายไป")
-local gained = (A("Count", player, "Egg") or 0) - eggBefore
+local gained = (A("CountAll", player, "Egg") or 0) - eggBefore
 assert(gained >= 1 and gained <= 5, ("ได้ไข่ %d ฟอง ต้องอยู่ในช่วง 1-5"):format(gained))
 assert(chick:GetAttribute("Spent") == true, "เก็บแล้วต้องติดคูลดาวน์")
 A("ZonesTick")

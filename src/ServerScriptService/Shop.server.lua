@@ -205,7 +205,8 @@ local function snapshot(player)
 			if price then
 				local item = ItemCatalog.Get(slot.id)
 				table.insert(buys, {
-					slot = slotIndex, id = slot.id, name = item.name, icon = item.icon,
+					-- DisplayName: ของขอบทองอ่านว่า "ไข่ (ขอบทอง)" ไม่ใช่ "ไข่" ซ้ำกับแถวธรรมดา (เฟส 2b)
+					slot = slotIndex, id = slot.id, name = ItemCatalog.DisplayName(slot.id, slot.meta), icon = item.icon,
 					count = slot.count or 1, each = price, total = price * (slot.count or 1),
 				})
 			end

@@ -13,7 +13,8 @@ IslandAccess.ModelOf = nil -- (uid) -> model
 IslandAccess.Place = nil -- (player, slotIndex, cx, cz, r) -> ok, reason
 IslandAccess.Pickup = nil -- (player, uid) -> ok, reason
 IslandAccess.FindSlot = nil -- (player, itemId) -> slotIndex   (ให้สคริปต์ทดสอบ ซึ่ง require Inventory ไม่ได้)
-IslandAccess.Count = nil -- (player, itemId) -> n
+IslandAccess.Count = nil -- (player, itemId) -> n (ไม่นับของขอบทอง)
+IslandAccess.CountAll = nil -- (player, itemId) -> n รวมของขอบทอง (เทสวัดผลเก็บเกี่ยว)
 IslandAccess.CanPlaceAt = nil -- (cx, cz, w, d, r, itemId) -> ok, reason (ลองดูเฉยๆ ไม่วางจริง)
 IslandAccess.Grant = nil -- (player, itemId, count) เสกของเข้ากระเป๋า (เทสเท่านั้น)
 

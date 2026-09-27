@@ -600,6 +600,17 @@ IslandAccess.Place = place
 IslandAccess.Pickup = pickup
 IslandAccess.FindSlot = Inventory.FindSlotById
 IslandAccess.Count = Inventory.CountOf
+-- เทสวัดของที่ได้จากการเก็บเกี่ยว: นับรวมของขอบทองด้วย (Count ข้ามของขอบทองตามกฎวัตถุดิบ — เฟส 2b)
+-- Count ยังใช้คู่กับ Revoke ได้ตรงกัน เพราะ Revoke (RemoveById) ก็ข้ามของขอบทองเหมือนกัน
+IslandAccess.CountAll = function(player, id)
+	local state = Inventory.Get(player)
+	if not state then return 0 end
+	local n = 0
+	for _, slot in pairs(state.slots) do
+		if slot and slot.id == id then n += slot.count or 1 end
+	end
+	return n
+end
 -- เงินในกระเป๋า (เทสเท่านั้น) — `require(Inventory)` ใน sandbox คืนสำเนาว่าง เลขจึงเป็นศูนย์เสมอ
 IslandAccess.Gold = function(player)
 	local state = Inventory.Get(player)

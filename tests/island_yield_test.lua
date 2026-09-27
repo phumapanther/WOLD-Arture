@@ -52,7 +52,7 @@ local function bagOf(cfg)
 	local ids = { [cfg.item] = true }
 	for _, e in ipairs(cfg.roll or {}) do ids[e.item] = true end
 	local n = 0
-	for id in pairs(ids) do n += (A("Count", player, id) or 0) end
+	for id in pairs(ids) do n += (A("CountAll", player, id) or 0) end
 	return n, ids
 end
 
@@ -137,9 +137,9 @@ for _ = 1, 8 do
 	cow:SetAttribute("Spent", nil)
 	cow:SetAttribute("ReadyAgainAt", nil)
 	cow:SetAttribute("Glow", nil)
-	local before = A("Count", player, "Milk") or 0
+	local before = A("CountAll", player, "Milk") or 0
 	if A("Gather", player, cow) == true then
-		most = math.max(most, (A("Count", player, "Milk") or 0) - before)
+		most = math.max(most, (A("CountAll", player, "Milk") or 0) - before)
 	end
 	task.wait(0.1)
 end
@@ -171,9 +171,9 @@ for _ = 1, 10 do
 	A("SetEntry", plotUid, "at", os.time() - 99999)
 	A("SetEntry", plotUid, "glow", false) -- ปิดแสง (อยู่ในโปรไฟล์แปลง ไม่ใช่แอตทริบิวต์แล้ว)
 	A("Tick")
-	local before = A("Count", player, "Wheat") or 0
+	local before = A("CountAll", player, "Wheat") or 0
 	assert(A("Harvest", player, plot))
-	cropMost = math.max(cropMost, (A("Count", player, "Wheat") or 0) - before)
+	cropMost = math.max(cropMost, (A("CountAll", player, "Wheat") or 0) - before)
 end
 assert(cropMost <= CAP, ("ผักที่ได้ต้องไม่เกิน %d ได้ %d"):format(CAP, cropMost))
 table.insert(out, ("แปลงผัก: เก็บ 10 ครั้ง ได้มากสุด %d (เพดาน %d)"):format(cropMost, CAP))
@@ -182,7 +182,7 @@ table.insert(out, ("แปลงผัก: เก็บ 10 ครั้ง ไ�
 A("Unequip", player, "weapon")
 A("Revoke", player, "Pickaxe", A("Count", player, "Pickaxe") or 0)
 for _, id in ipairs({ "Stone", "Coal", "IronOre", "SilverOre", "GoldOre", "MagicOre", "DiamondOre", "Crystal", "Wheat", "Worm", "Milk" }) do
-	local n = A("Count", player, id) or 0
+	local n = A("CountAll", player, id) or 0
 	if n > 0 then A("Revoke", player, id, n) end
 end
 A("SetEntry", plotUid, "crop", nil)

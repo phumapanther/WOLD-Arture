@@ -193,7 +193,9 @@ Remotes.RequestVaultAction.OnServerEvent:Connect(function(player, action, index,
 		local state = Inventory.Get(player)
 		local slot = state and state.slots[index]
 		if slot and not ItemCatalog.IsStorable(slot.id, slot.meta) then
-			Remotes.SocialNotify:FireClient(player, "error", "กุญแจเก็บในคลังไม่ได้ — ต้องพกติดตัวไว้")
+			Remotes.SocialNotify:FireClient(player, "error", ItemCatalog.IsGoldBorder(slot.meta)
+				and "ของขอบทองฝากไม่ได้ — ขายบนเกาะหรือส่งออกได้"
+				or "กุญแจเก็บในคลังไม่ได้ — ต้องพกติดตัวไว้")
 			Remotes.VaultOpen:FireClient(player, snapshot(player))
 			return
 		end

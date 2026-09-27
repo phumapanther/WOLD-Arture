@@ -60,7 +60,7 @@ local possible = { [cfg.item] = true }
 for _, e in ipairs(cfg.roll or {}) do possible[e.item] = true end
 local function bagTotal()
 	local n = 0
-	for id in pairs(possible) do n += (A("Count", player, id) or 0) end
+	for id in pairs(possible) do n += (A("CountAll", player, id) or 0) end
 	return n
 end
 local before = bagTotal()
@@ -72,7 +72,7 @@ task.wait(0.4) -- OneShot ลบในเฟรมถัดไป
 assert(target.Parent == nil, "เก็บแล้วต้องหายไปเลย ไม่ใช่รอเกิดใหม่ที่เดิม")
 table.insert(out, ("%s: มือเปล่าไม่ได้ · อีเต้อได้ %s x%d · แล้วหายไปเลย"):format(kind, item, gained))
 for id in pairs(possible) do
-	local n = (A("Count", player, id) or 0) - (id == cfg.item and 0 or 0)
+	local n = (A("CountAll", player, id) or 0) - (id == cfg.item and 0 or 0)
 	if n > 0 then A("Revoke", player, id, n) end -- โปรไฟล์จริง ไม่ทิ้งของเทสไว้
 end
 
