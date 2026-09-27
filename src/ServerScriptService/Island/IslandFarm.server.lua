@@ -544,8 +544,11 @@ IslandAccess.FarmAdmin = function(admin, args)
 		for key in pairs(farm) do farm[key] = nil end
 		farmData()
 		Offered[admin] = nil
+	elseif sub == "pets" then
+		-- สัตว์เลี้ยงเป็นของ IslandPets (เฟส 2d) · ไม่แตะข้อมูลฟาร์ม จึงตอบกลับเลยไม่ต้องส่งภาพรถใหม่
+		return IslandAccess.PetAdmin and IslandAccess.PetAdmin(args[2]) or "ระบบสัตว์เลี้ยงยังไม่พร้อม"
 	elseif sub ~= nil and sub ~= "" then
-		return "ใช้: /farm [exp <n> | level <n> | ship | orders | reroll | gems | reset]"
+		return "ใช้: /farm [exp <n> | level <n> | ship | orders | reroll | gems | reset | pets ready|<n>]"
 	end
 	Offered[admin] = nil
 	publish(farm)

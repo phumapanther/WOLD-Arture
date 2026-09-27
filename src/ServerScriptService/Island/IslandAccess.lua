@@ -80,5 +80,6 @@ end
 
 -- ตั้งโดย IslandFarm
 IslandAccess.FarmAdmin = nil -- (player, words) -> text · คำสั่งแอดมิน /farm (เทสในเกม)
+IslandAccess.PetAdmin = nil -- ("ready" | จำนวนครั้ง) -> text · /farm pets (ตั้งโดย IslandPets เฟส 2d)
 
 return IslandAccess

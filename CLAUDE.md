@@ -72,7 +72,7 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
   สูตรต่อท้าย `CraftConfig` มี `level` + `batch` (ทำ 1-10 รอบ: `RequestCraft(index, times)`) · ต้นแบบโมเดล `mapgen/102_farm_machines.lua` (`Manual`)
 - เมล็ด: `IslandConfig.SeedItems` + `CropsFor(seed, level)` · มีเมล็ดที่ปลูกได้ >1 ชนิด = กล่องเลือก (`IslandSeedController`) แล้วจำ 90 วิ
 - ของคราฟใหม่ 19 ชิ้น + ฝ้าย/เมล็ดฝ้าย/3 เครื่อง ยังเป็น ⌛ (`docs/items-without-icons.md`)
-- **คำสั่งเทส `/farm [exp <n> | level <n> | ship | orders | reroll | gems | reset]`** (บนเกาะของตัวเอง) — `ship` = รถกลับทันที
+- **คำสั่งเทส `/farm [exp <n> | level <n> | ship | orders | reroll | gems | reset | pets ready | pets <n>]`** (บนเกาะของตัวเอง) — `ship` = รถกลับทันที · `pets ready` = ลูบได้ทันทีทุกตัว · `pets <n>` = ตั้งจำนวนครั้งที่ลูบ (เฟส 2d)
 - **`tools/verify.js <project.json> [--push]`** (ใหม่) เทียบแฮชทุกสคริปต์ที่เพลสควรมีกับ Studio · `--push` ดันที่ไม่ตรง — ใช้แทน dump_all+cmp
 
 **เฟส 2d (สัตว์เลี้ยง 24 ชนิด + เลเวลฟาร์ม 50) เขียนเสร็จ 2026-09-27 — ดันครบสามเพลส (mismatches 0) · รอผู้ใช้เทสในเกม**

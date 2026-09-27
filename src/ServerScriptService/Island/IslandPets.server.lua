@@ -712,6 +712,30 @@ task.spawn(function()
 	end
 end)
 
+-- คำสั่งแอดมิน `/farm pets ready | <n>` (ผ่าน IslandFarm.FarmAdmin) — ลูบได้ทันทีทุกตัว / ตั้งจำนวนครั้งที่ลูบทุกตัวแล้วย่อขยายตาม
+-- มีไว้ให้เทสในเกมจริง: คูลดาวน์ 30 นาทีต่อการลูบ ทำให้ดูการโตแบบปกติไม่ได้เลย
+IslandAccess.PetAdmin = function(arg)
+	local n = tonumber(arg)
+	if arg ~= "ready" and not n then return "ใช้: /farm pets ready (ลูบได้ทันทีทุกตัว) | /farm pets <จำนวนครั้งที่ลูบ>" end
+	local count = 0
+	for model, state in pairs(Live) do
+		local saved = entryOf(model)
+		if model.Parent and saved then
+			saved.pat = 0
+			model:SetAttribute("PatAt", 0)
+			if n then
+				saved.pats = math.max(0, math.floor(n))
+				model:SetAttribute("Pats", saved.pats)
+				if not state.carriedBy then applySize(model, state, false) end
+			end
+			refreshPrompts(model)
+			count += 1
+		end
+	end
+	if n then return ("ตั้งการลูบของสัตว์เลี้ยง %d ตัวเป็น %d ครั้ง (ลูบได้ทันที)"):format(count, math.max(0, math.floor(n))) end
+	return ("สัตว์เลี้ยง %d ตัวลูบได้ทันที"):format(count)
+end
+
 -- ช่องเทสใน Studio (ทรงเดียวกับ IslandTest)
 if RunService:IsStudio() then
 	local bf = Instance.new("BindableFunction")
