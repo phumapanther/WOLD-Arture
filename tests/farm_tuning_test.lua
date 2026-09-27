@@ -92,7 +92,7 @@ local wb = GatherConfig.WormBonus
 check(wb.min == 3 and wb.max == 5 and wb.chance == 0.4 and GatherConfig.Nodes.Herb.bonus == wb, "หนอน 3-5 โอกาส 40% (รวมเกมหลัก)")
 local price = {}
 for _, row in ipairs(ShopConfig.IslandSells) do
-	if row.currency ~= "gems" then price[row.id] = row.price end
+	price[row.id] = (ShopConfig.PricesOf(row)) -- เฟส 2a: ทุกแถวสองราคา ค่าแรก = เหรียญ
 end
 check(price.AnimalPen == 15000 and price.MineZone == 30000 and price.FarmPlot == 10000,
 	("ราคา คอก %s · โซนแร่ %s · แปลงดิน %s"):format(tostring(price.AnimalPen), tostring(price.MineZone), tostring(price.FarmPlot)))

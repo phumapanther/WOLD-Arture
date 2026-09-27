@@ -877,7 +877,8 @@ for _, row in ipairs(PremiumConfig.Shop) do
 	if row.item then GemBought[row.item] = true end
 end
 for _, row in ipairs(ShopConfig.IslandSells or {}) do
-	if row.currency == "gems" then GemBought[row.id] = true end
+	-- เฟส 2a: ทุกแถวในร้านเกาะซื้อด้วยเพชรได้ จึงส่งเมลไม่ได้ทั้งร้าน รวมเมล็ด (ผู้ใช้เลือก 2026-09-27)
+	if select(2, ShopConfig.PricesOf(row)) then GemBought[row.id] = true end
 end
 -- สกิน ออร่า ชุดแฟชั่น ได้จากกาชา/พาส (จ่ายเพชร) จึงกันด้วยชนิด
 local GemKinds = { skin = true, aura = true, fashion = true }

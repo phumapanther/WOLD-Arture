@@ -30,81 +30,105 @@ ShopConfig.Sells = {
 }
 
 -- ร้านบนเกาะฟาร์ม — Shop.server เลือกตารางนี้เมื่อ ServerConfig.Mode == "Farming" (สต็อกเกมหลักไม่เปลี่ยน)
--- ราคาทั้งหมด Claude ตั้งไว้ก่อน ผู้ใช้ยังไม่ได้กำหนด (2026-09-22)
--- **สองสกุลเงิน** (ผู้ใช้กำหนด 2026-09-22)
 --
---   `currency = "gems"`  เพชร — ของตกแต่ง สัตว์เลี้ยง ของผิดกฎหมาย และแปลงผักส่วนที่ซื้อเพิ่ม
---   ไม่ใส่ (ดีฟอลต์)     เหรียญของเกมหลัก — เมล็ด บ้าน
---
--- แปลงผักมี **สองแถว** คือสิ่งเดียวที่ซื้อได้ทั้งสองสกุล: จ่ายเพชรถูก หรือจ่ายเหรียญแพงมาก
--- (ผู้ใช้สั่ง "ซื้อเพิ่มใช้เพชร และใช้เงินเกมหลักได้ แต่แพงมาก") — 9 แปลงแรกยังแจกฟรีในชุดเริ่มต้น
+-- **ทุกชิ้นซื้อได้สองสกุล** (เฟส 2a ผู้ใช้กำหนด 2026-09-26): 1 เพชร = 250 เหรียญ · เพชรปัดขึ้น ขั้นต่ำ 1
+-- แถวเขียนราคาสกุลที่ตั้งมาแต่เดิม (`coins` หรือ `gems`) อีกสกุลคำนวณที่ ShopConfig.PricesOf ที่เดียว ·
+-- เขียนทั้งสองได้ถ้าอยากกำหนดเอง (แปลงผัก) · `category` = แท็บในหน้าร้าน (ShopConfig.IslandCategories)
+-- **ของทั้งร้านส่งเมลไม่ได้ รวมเมล็ด** (ผู้ใช้เลือก 2026-09-27 · กฎของที่ซื้อด้วยเพชรใน ItemCatalog.IsMailable)
+-- เรียงตามแท็บ · ลำดับแถวไม่ได้เซฟที่ไหน (index ที่ไคลเอนต์ส่งกลับมาอ่านจากตารางเดียวกันตอนรัน) จึงสลับได้
 ShopConfig.IslandSells = {
-	-- ราคาเมล็ดขึ้นเป็นหลักร้อย (ผู้ใช้สั่ง 2026-09-23) · เก็บผักแล้วมีโอกาสได้เมล็ดคืน 1-3 เมล็ด
-	-- **250 เหรียญต่อ 3 เม็ด** (ผู้ใช้สั่ง 2026-09-24) เดิม 300 ต่อเม็ด — ต่อเม็ดจึงตกจาก
-	-- 300 เหลือ 83 · `count` คือจำนวนต่อหนึ่งครั้งที่กด ช่องจำนวนก็คูณขึ้นตามปกติ
-	{ id = "Seed", price = 250, count = 3 },
+	-- บ้าน: ของชิ้นใหญ่ที่เก็บเงินทั้งเกมมาซื้อ
+	{ id = "House_StoneCottage", category = "house", coins = 20000 },
+	{ id = "House_Roundhouse", category = "house", coins = 25000 },
+	{ id = "House_Longhouse", category = "house", coins = 30000 },
+	{ id = "House_PipeWorker", category = "house", coins = 40000 },
+	{ id = "House_Townhouse", category = "house", coins = 50000 },
 
-	-- แปลงผัก: แจกฟรี 9 แปลงตอนเข้าเกาะครั้งแรก · ซื้อเพิ่มได้สองทาง
-	{ id = "FarmPlot", price = 40, currency = "gems" },
-	{ id = "FarmPlot", price = 10000 }, -- ผู้ใช้กำหนด 2026-09-25 (เดิม 25,000)
-
-	-- บ้าน: เหรียญเกมหลัก (ของชิ้นใหญ่ที่เก็บเงินทั้งเกมมาซื้อ)
-	{ id = "House_StoneCottage", price = 20000 },
-	{ id = "House_Roundhouse", price = 25000 },
-	{ id = "House_Longhouse", price = 30000 },
-	{ id = "House_PipeWorker", price = 40000 },
-	{ id = "House_Townhouse", price = 50000 },
-
-	-- ของตกแต่ง: เพชรทั้งหมด
-	{ id = "Deco_PathTile", price = 2, currency = "gems" },
-	{ id = "Deco_Rock", price = 3, currency = "gems" },
-	{ id = "Deco_Bush", price = 4, currency = "gems" },
-	{ id = "Deco_Stump", price = 4, currency = "gems" },
-	{ id = "Deco_Fence", price = 4, currency = "gems" },
-	{ id = "Deco_FlowerPot", price = 8, currency = "gems" },
-	{ id = "Deco_Crate", price = 10, currency = "gems" },
-	{ id = "Deco_Barrel", price = 10, currency = "gems" },
-	{ id = "Deco_Signpost", price = 12, currency = "gems" },
-	{ id = "Deco_RockBig", price = 14, currency = "gems" },
-	{ id = "Deco_Lantern", price = 15, currency = "gems" },
-	{ id = "Deco_Bench", price = 18, currency = "gems" },
-	{ id = "Deco_Lamp", price = 22, currency = "gems" },
-	{ id = "Deco_Tree", price = 30, currency = "gems" },
-	{ id = "Deco_Well", price = 60, currency = "gems" },
+	-- ของตกแต่ง
+	{ id = "Deco_PathTile", category = "decor", gems = 2 },
+	{ id = "Deco_Rock", category = "decor", gems = 3 },
+	{ id = "Deco_Bush", category = "decor", gems = 4 },
+	{ id = "Deco_Stump", category = "decor", gems = 4 },
+	{ id = "Deco_Fence", category = "decor", gems = 4 },
+	{ id = "Deco_FlowerPot", category = "decor", gems = 8 },
+	{ id = "Deco_Crate", category = "decor", gems = 10 },
+	{ id = "Deco_Barrel", category = "decor", gems = 10 },
+	{ id = "Deco_Signpost", category = "decor", gems = 12 },
+	{ id = "Deco_RockBig", category = "decor", gems = 14 },
+	{ id = "Deco_Lantern", category = "decor", gems = 15 },
+	{ id = "Deco_Bench", category = "decor", gems = 18 },
+	{ id = "Deco_Lamp", category = "decor", gems = 22 },
+	{ id = "Deco_Tree", category = "decor", gems = 30 },
+	{ id = "Deco_Well", category = "decor", gems = 60 },
 
 	-- ของป่าจากเกมหลัก: วางแล้วเก็บเกี่ยวได้วันละครั้ง (ราคาผมตั้งเอง ผู้ใช้ให้มาแค่กติกา)
-	{ id = "Wild_Rock", price = 25, currency = "gems" },
-	{ id = "Wild_Herb", price = 25, currency = "gems" },
-	{ id = "Wild_Tree", price = 35, currency = "gems" },
-	{ id = "Wild_Pine", price = 35, currency = "gems" },
-	{ id = "Wild_Coal", price = 45, currency = "gems" },
-	{ id = "Wild_IronOre", price = 60, currency = "gems" },
-	{ id = "Wild_SilverOre", price = 90, currency = "gems" },
-	{ id = "Wild_Crystal", price = 110, currency = "gems" },
-	{ id = "Wild_GoldOre", price = 130, currency = "gems" },
-	{ id = "Wild_MagicOre", price = 180, currency = "gems" },
-	{ id = "Wild_DiamondOre", price = 250, currency = "gems" },
+	{ id = "Wild_Rock", category = "decor", gems = 25 },
+	{ id = "Wild_Herb", category = "decor", gems = 25 },
+	{ id = "Wild_Tree", category = "decor", gems = 35 },
+	{ id = "Wild_Pine", category = "decor", gems = 35 },
+	{ id = "Wild_Coal", category = "decor", gems = 45 },
+	{ id = "Wild_IronOre", category = "decor", gems = 60 },
+	{ id = "Wild_SilverOre", category = "decor", gems = 90 },
+	{ id = "Wild_Crystal", category = "decor", gems = 110 },
+	{ id = "Wild_GoldOre", category = "decor", gems = 130 },
+	{ id = "Wild_MagicOre", category = "decor", gems = 180 },
+	{ id = "Wild_DiamondOre", category = "decor", gems = 250 },
 
-	-- เฟอร์นิเจอร์ในบ้าน (ใช้งานได้จริง): เพชร
-	{ id = "IceBox", price = 120, currency = "gems" },
-	{ id = "ApothecaryCabinet", price = 120, currency = "gems" },
-	{ id = "Stove", price = 180, currency = "gems" },
-	{ id = "SteamBlender", price = 220, currency = "gems" },
-	{ id = "AlchemyStill", price = 220, currency = "gems" },
+	-- ของใช้: เฟอร์นิเจอร์ในบ้าน (ใช้งานได้จริง)
+	{ id = "IceBox", category = "utility", gems = 120 },
+	{ id = "ApothecaryCabinet", category = "utility", gems = 120 },
+	{ id = "Stove", category = "utility", gems = 180 },
+	{ id = "SteamBlender", category = "utility", gems = 220 },
+	{ id = "AlchemyStill", category = "utility", gems = 220 },
+	-- ของผิดกฎหมาย: แพงที่สุดเพราะมันพิมพ์เงินได้
+	{ id = "Boxs", category = "utility", gems = 400 },
+	{ id = "DistillSet", category = "utility", gems = 500 },
+	{ id = "Reactor", category = "utility", gems = 500 },
 
-	-- สัตว์เลี้ยง (ไม่ใช่สัตว์ฟาร์ม): เพชร · บัพให้ทั้งฟาร์มขณะอยู่บนเกาะ
-	{ id = "Pet_Cat", price = 250, currency = "gems" },
-	{ id = "Pet_Dog", price = 250, currency = "gems" },
+	-- สัตว์: สัตว์เลี้ยง (บัพให้ทั้งฟาร์มขณะอยู่บนเกาะ) + คอก · สัตว์ในคอกซื้อในหน้าต่างคอก (IslandConfig.PenAnimals)
+	{ id = "Pet_Cat", category = "animal", gems = 250 },
+	{ id = "Pet_Dog", category = "animal", gems = 250 },
+	{ id = "AnimalPen", category = "animal", coins = 15000 }, -- ผู้ใช้กำหนด 2026-09-25 (เดิม 35,000)
 
-	-- ของผิดกฎหมาย: เพชร แพงที่สุดเพราะมันพิมพ์เงินได้
-	{ id = "Boxs", price = 400, currency = "gems" },
-	{ id = "DistillSet", price = 500, currency = "gems" },
-	{ id = "Reactor", price = 500, currency = "gems" },
-
-	-- คอก/โซนแร่: เหรียญเกมหลัก (เป็นเครื่องมือหาของ ไม่ใช่ของตกแต่ง)
-	{ id = "AnimalPen", price = 15000 }, -- ผู้ใช้กำหนด 2026-09-25 (เดิม 35,000)
-	{ id = "MineZone", price = 30000 }, -- ผู้ใช้กำหนด 2026-09-25 (เดิม 50,000)
+	-- เพาะปลูก
+	-- แปลงผัก: แจกฟรี 9 แปลงตอนเข้าเกาะครั้งแรก · ซื้อเพิ่มสองราคากำหนดเอง (40 x 250 = 10,000 พอดี ·
+	-- เหรียญผู้ใช้กำหนด 2026-09-25 เดิม 25,000)
+	{ id = "FarmPlot", category = "farm", gems = 40, coins = 10000 },
+	-- เมล็ด **250 เหรียญต่อ 3 เม็ด** (ผู้ใช้สั่ง 2026-09-24) · `count` คือจำนวนต่อหนึ่งครั้งที่กด ช่องจำนวนคูณขึ้นตามปกติ
+	-- เก็บผักแล้วมีโอกาสได้เมล็ดคืน
+	{ id = "Seed", category = "farm", coins = 250, count = 3 },
+	{ id = "MineZone", category = "farm", coins = 30000 }, -- ผู้ใช้กำหนด 2026-09-25 (เดิม 50,000)
 }
+
+-- เฟส 2a (ผู้ใช้กำหนด 2026-09-26): ทุกชิ้นในร้านเกาะสองราคา · 1 เพชร = 250 เหรียญ · เพชรปัดขึ้น ขั้นต่ำ 1
+-- แถวเขียนราคาสกุลเดียวก็พอ อีกสกุลคำนวณที่นี่ที่เดียว (สัตว์ในคอกก็ใช้ GemsFor ตัวเดียวกัน)
+ShopConfig.GemRate = 250
+ShopConfig.IslandCategories = {
+	{ id = "house", label = "บ้าน" },
+	{ id = "decor", label = "ของตกแต่ง" },
+	{ id = "utility", label = "ของใช้" },
+	{ id = "animal", label = "สัตว์" },
+	{ id = "farm", label = "เพาะปลูก" },
+}
+
+function ShopConfig.GemsFor(coins)
+	return math.max(1, math.ceil(coins / ShopConfig.GemRate))
+end
+
+-- ราคาสองสกุลของแถวร้าน · แถวร้านเกมหลัก (`price`) = เหรียญอย่างเดียว เพชรเป็น nil
+function ShopConfig.PricesOf(row)
+	if row.price then return row.price, nil end
+	local coins = row.coins or (row.gems and row.gems * ShopConfig.GemRate)
+	local gems = row.gems or (row.coins and ShopConfig.GemsFor(row.coins))
+	return coins, gems
+end
+
+-- ราคาในสกุลที่ขอ · nil = แถวนี้ขายสกุลนั้นไม่ได้ · "gems" = เพชร อย่างอื่น/ไม่ระบุ = เหรียญ
+function ShopConfig.PriceFor(row, currency)
+	local coins, gems = ShopConfig.PricesOf(row)
+	if currency == "gems" then return gems end
+	return coins
+end
 
 -- What the shopkeeper buys, and for how much of the catalog `value`. Well under 1 on purpose: the gap
 -- between what a thing sells for and what it costs to buy back is the only thing stopping "buy low from

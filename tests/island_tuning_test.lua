@@ -133,7 +133,7 @@ end
 ----------------------------------------------------------------- 6. ราคา
 local price = {}
 for _, row in ipairs(ShopConfig.IslandSells) do
-	if not price[row.id] then price[row.id] = row.price end
+	price[row.id] = price[row.id] or (ShopConfig.PricesOf(row)) -- เฟส 2a: ค่าแรก = เหรียญ
 end
 assert(price.Seed >= 100 and price.Seed < 1000, ("เมล็ดต้องหลักร้อย ได้ %d"):format(price.Seed))
 assert(price.AnimalPen >= 10000, ("คอกต้องหลักหมื่น ได้ %d"):format(price.AnimalPen))

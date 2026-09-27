@@ -38,22 +38,24 @@ assert(InventoryGui.InTab("Pet_Dog", "farm"), "สัตว์เลี้ยง
 table.insert(out, "แท็บกระเป๋า: แยกขาดสองแท็บ ไม่มี 'ทั้งหมด' ✓")
 
 ----------------------------------------------------------------- 2) สองสกุลเงิน
-local gemRows, goldRows, plotRows = 0, 0, 0
+-- เฟส 2a: ทุกแถวซื้อได้สองสกุล (ShopConfig.PricesOf) · แปลงผักเหลือแถวเดียวที่มีสองราคาในตัว
+local rows, plotRows = 0, 0
 local byId = {}
 for _, row in ipairs(ShopConfig.IslandSells) do
-	if row.currency == "gems" then gemRows += 1 else goldRows += 1 end
+	local coins, gems = ShopConfig.PricesOf(row)
+	assert(coins and gems, row.id .. " ต้องมีทั้งสองราคา")
+	rows += 1
 	if row.id == "FarmPlot" then plotRows += 1 end
 	byId[row.id] = byId[row.id] or row
 end
-assert(plotRows == 2, "แปลงผักต้องซื้อได้สองสกุล ได้ " .. plotRows)
+assert(plotRows == 1, "แปลงผักแถวเดียว ได้ " .. plotRows)
 for _, id in ipairs({ "Deco_Rock", "Pet_Cat", "Reactor", "Stove" }) do
-	assert(byId[id].currency == "gems", id .. " ต้องจ่ายเพชร")
+	assert(byId[id].gems, id .. " ตั้งราคาเป็นเพชร")
 end
 for _, id in ipairs({ "Seed", "House_StoneCottage" }) do
-	assert(byId[id].currency == nil, id .. " ต้องจ่ายเหรียญเกมหลัก")
+	assert(byId[id].coins, id .. " ตั้งราคาเป็นเหรียญเกมหลัก")
 end
-table.insert(out, ("ร้านเกาะ: จ่ายเพชร %d แถว · เหรียญ %d แถว · แปลงผักซื้อได้ทั้งสองทาง ✓")
-	:format(gemRows, goldRows))
+table.insert(out, ("ร้านเกาะ: %d แถว สองราคาครบทุกแถว · แปลงผักแถวเดียว ✓"):format(rows))
 
 ----------------------------------------------------------------- 3) สัตว์เลี้ยงเดินได้จริง
 local G = require(game.ReplicatedStorage.IslandGrid)

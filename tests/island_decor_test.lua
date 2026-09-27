@@ -25,7 +25,7 @@ local NEW = {
 }
 local protos = game.ReplicatedStorage:WaitForChild("WOLD_Placeables")
 local inShop = {}
-for _, row in ipairs(ShopConfig.IslandSells) do inShop[row.id] = row.price end
+for _, row in ipairs(ShopConfig.IslandSells) do inShop[row.id] = true end
 for _, id in ipairs(NEW) do
 	assert(protos:FindFirstChild(id), "ไม่มีต้นแบบ " .. id)
 	local item = ItemCatalog.Get(id)
