@@ -38,6 +38,7 @@ local Party = require(game.ServerScriptService.Party)
 local Consuming = require(game.ServerScriptService.Consuming)
 local StatusEffects = require(game.ServerScriptService.StatusEffects)
 local Blocking = require(game.ServerScriptService.Blocking) -- ยกการ์ด/ปัดป้อง (สนาม · เฟส 3)
+local Deny = require(game.ServerScriptService.Deny) -- บอกเหตุผลเมื่อทำไม่ได้ (QA 2026-09-28)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 
@@ -657,12 +658,12 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	local state = States[player]
 	local humanoid = humanoidOf(player)
 	if not state or not humanoid or humanoid.Health <= 0 then return end
-	if Vitals.IsDowned(player) then return end -- can't throw punches while crawling
-	if not StatusEffects.CanFight(player) then return end -- ถูกจับกุม/ยิงล้ม/มึนหัว/ถูกอุ้ม/เซ
-	if Blocking.IsBlocking(player) then return end -- ยกการ์ดอยู่ = ตีไม่ได้ (สนาม · เฟส 3)
+	-- ล้ม/ถูกจับกุม/ยิงล้ม/มึนหัว/ถูกอุ้ม/เซ/กำลังกินยา = ตีไม่ได้ **และบอกเหตุผล** (QA 2026-09-28 · เดิมเงียบ)
 	-- Hands are full: raising a potion to your mouth and swinging a sword are the same two hands. Movement
 	-- is deliberately still allowed -- walking, running, rolling and sliding all stay available.
-	if Consuming.IsConsuming(player) then return end
+	local blocked = Deny.Blocked(player, "โจมตี")
+	if blocked then return Deny.Tell(player, blocked) end
+	if Blocking.IsBlocking(player) then return end -- ยกการ์ดอยู่ = ตีไม่ได้ (สนาม · เฟส 3)
 	-- กับดัก: คลิกคือเล็ง/เขวี้ยง/วาง ผ่าน RequestTrap (TrapWeapon.server) ไม่ใช่การตี (เฟส 3)
 	if weaponOf(player).trap then return end
 

@@ -190,7 +190,10 @@ end
 -- Named rather than inline so the hotbar can equip through exactly the same path a click in the bag takes.
 -- Two copies of "wear this" would be two places to keep the armor sync and the sound in step.
 local function doEquip(player, index)
-	if type(index) ~= "number" or not canAct(player) then return end
+	if type(index) ~= "number" then return end
+	if not canAct(player) then
+		return require(game.ServerScriptService.Deny).Tell(player, "สวมของไม่ได้ขณะล้มอยู่")
+	end
 	if Inventory.Equip(player, index) then
 		syncArmor(player)
 		playEquipSound(player)
@@ -247,10 +250,16 @@ Remotes.RequestDropItem.OnServerEvent:Connect(function(player, index)
 end)
 
 local function doUseItem(player, index)
-	if type(index) ~= "number" or not canAct(player) then return end
+	if type(index) ~= "number" then return end
+	-- ล้ม/กำลังใช้ของอื่นอยู่ = บอกเหตุผล (QA 2026-09-28 · เดิมเงียบ)
+	if not canAct(player) then
+		return require(game.ServerScriptService.Deny).Tell(player, "ใช้ของไม่ได้ขณะล้มอยู่")
+	end
 	-- One at a time: a second potion while the first is going down would otherwise stack two effects for
 	-- one wait.
-	if Consuming.IsConsuming(player) then return end
+	if Consuming.IsConsuming(player) then
+		return require(game.ServerScriptService.Deny).Tell(player, "กำลังใช้ของอยู่ รอให้เสร็จก่อน")
+	end
 
 	local state = Inventory.Get(player)
 	local slot = state and state.slots[index]

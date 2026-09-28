@@ -10,6 +10,7 @@
 local TweenService = game:GetService("TweenService")
 local Responsive = require(script.Parent.Responsive)
 local StoryConfig = require(script.Parent.Parent.StoryConfig)
+local UiSound = require(script.Parent.UiSound)
 
 local StoryGui = {}
 StoryGui.__index = StoryGui
@@ -113,8 +114,14 @@ function StoryGui.new(parent)
 	dialogue.Name = "Dialogue"
 	dialogue.AutoButtonColor = false
 	dialogue.Text = ""
-	dialogue.AnchorPoint = Vector2.new(0.5, 1)
-	dialogue.Position = UDim2.new(0.5, 0, 1, -28)
+	-- มือถือ: กล่องคุยอยู่ **บนจอ** (QA 2026-09-28) — ล่างจอคือจอยกับปุ่ม แตะโดนจอยในกรอบกล่อง = ข้ามบทพูดแทนเดิน
+	if Responsive.IsTouchOnly() then
+		dialogue.AnchorPoint = Vector2.new(0.5, 0)
+		dialogue.Position = UDim2.new(0.5, 0, 0, 70)
+	else
+		dialogue.AnchorPoint = Vector2.new(0.5, 1)
+		dialogue.Position = UDim2.new(0.5, 0, 1, -28)
+	end
 	dialogue.Size = UDim2.fromOffset(760, 150)
 	dialogue.BackgroundColor3 = PANEL
 	dialogue.BackgroundTransparency = 0.08
@@ -318,12 +325,18 @@ function StoryGui:_show(line)
 	task.spawn(function()
 		local total = utf8.len(self.line.Text) or #self.line.Text
 		local started = os.clock()
+		local blipped = -99
 		while self.typing == token do
 			local n = math.floor((os.clock() - started) * TYPE_SPEED)
 			if n >= total then
 				self.line.MaxVisibleGraphemes = -1
 				self.typing = nil
 				break
+			end
+			-- เสียงตัวอักษรเบาๆ ทุก 4 ตัว (QA 2026-09-28 · บทพูดไม่เงียบ)
+			if n - blipped >= 4 then
+				blipped = n
+				UiSound.Play("Blip")
 			end
 			self.line.MaxVisibleGraphemes = n
 			task.wait()

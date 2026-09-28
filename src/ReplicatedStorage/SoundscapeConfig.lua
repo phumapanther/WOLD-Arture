@@ -232,6 +232,8 @@ SoundscapeConfig.Interface = {
 		-- length of an action rather than firing once, and at the common level it went missing under the
 		-- world while the player stood there waiting for it.
 		Craft = 0.6,
+		-- ชุด QA 2026-09-28: ตัวอักษรบทพูดเบามาก (ขึ้นถี่) · เลเวลขึ้น/กาชาหายาก/ป้ายชื่อเกมดังกว่าปกติ
+		Blip = 0.12, LevelUp = 0.5, GachaLegend = 0.45, CutTitle = 0.45, CutRumble = 0.35, ToastError = 0.25,
 		-- แตรฉลองเลเวลฟาร์ม (เฟส 2c) — เกิดนานๆ ครั้ง ต้องดังพอให้รู้สึกว่าเป็นช่วงเวลาพิเศษ
 		FarmLevelUp = 0.5,
 	},
@@ -310,6 +312,46 @@ SoundscapeConfig.Interface = {
 	-- และหวูดรถตอนส่งของขึ้นรถ (ไฟล์เดียวกับหวูดรถยนต์ของระบบพาหนะ — ผู้เล่นรู้จักเสียงนี้อยู่แล้ว)
 	FarmLevelUp = "rbxassetid://125367748123159",
 	ExportShip = "rbxassetid://129823389217678",
+
+	--------------------------------------------------------------------------
+	-- QA 2026-09-28: "อินเทอแร็กอะไรแล้วต้องไม่เงียบ" — เสียงชุดใหม่ ผมคัดจาก Creator Store (ผู้ใช้เลือก) ·
+	-- ส่วนใหญ่จากคลังที่ Roblox ได้สิทธิ์มา (ProSoundEffects / APM) + ชุด UI ทางการของ Roblox ·
+	-- **PreloadAsync ผ่านทุกตัว 2026-09-28** · อยากเปลี่ยนเสียงไหน แก้ id ตรงนี้ที่เดียว · คลิปยาวถูกตัดที่ `MaxSeconds`
+	--------------------------------------------------------------------------
+	ToastInfo = "rbxassetid://17208361335",   -- Roblox GUI - Notification High (ข้อความทั่วไป)
+	ToastError = "rbxassetid://17208353912",  -- Roblox GUI - Negative (ทำไม่ได้/ถูกปฏิเสธ)
+	ToastReward = "rbxassetid://9116395089",  -- Magic Glows Soft Clusters Of Chiming Hit (ได้ของ/รางวัล)
+	Purchase = "rbxassetid://17208380755",    -- Roblox GUI - Purchase (ซื้อสำเร็จ ร้านเพชร/สนาม)
+	Select = "rbxassetid://17208396156",      -- Roblox GUI - Select (ยกเลิกการซื้อ/เลือก)
+	LevelUp = "rbxassetid://12222253",        -- victory.wav ของ Roblox (เลเวลตัวละครขึ้น)
+	StoryStep = "rbxassetid://15675085146",   -- Roblox_UI_Indicator (ขั้นเควสเนื้อเรื่องใหม่)
+	Blip = "rbxassetid://15675032796",        -- Roblox_UI_Small_Click (ตัวอักษรบทพูดขึ้น)
+	PaperSwipe = "rbxassetid://15675037413",  -- Roblox_UI_Paper_Swipe (รับงานจากบอร์ด)
+	CutRumble = "rbxassetid://9118747853",    -- Rumble Ambience Interior Wind Turbo (เครื่องจักรไอน้ำใต้เมือง)
+	CutMagic = "rbxassetid://9116420454",     -- Magic Tone Tonal Shimmer (รูนสว่าง)
+	CutFlash = "rbxassetid://9125646917",     -- Magic Whooshes Metallic Shimmer (แสงวาบ)
+	CutTitle = "rbxassetid://1839901317",     -- Heavenly sting (APM · ป้ายชื่อเกม)
+	Memory = "rbxassetid://9126213744",       -- Whisper Bursts Eerie (ภาพความทรงจำ)
+	GachaCommon = "rbxassetid://17208204604", -- Roblox GUI - Bubble
+	GachaRare = "rbxassetid://9116418035",    -- Magic Tone Falling Shimmer
+	GachaLegend = "rbxassetid://1836473422",  -- Victory Fanfare Sting (APM)
+	-- เสียงในโลก (ได้ยินตามระยะ — UiSound.PlayAt / WorldSound)
+	TrapThrow = "rbxassetid://9125647212",    -- Magic Whooshes Pass Bys
+	TrapLand = "rbxassetid://9116541944",     -- Metal Clanks 2
+	TrapSlow = "rbxassetid://12222152",       -- splat.wav ของ Roblox
+	TrapStun = "rbxassetid://92090867642655", -- Electric Zap Sound
+	TrapKnock = "rbxassetid://9114057128",    -- Desert Wind Light Gusts (คลิปยาว ตัด 1.5 วิ)
+	Place = "rbxassetid://9126267420",        -- Wood Hit Dull Thud (วางของบนเกาะ)
+	Pickup = "rbxassetid://17208204604",      -- Roblox GUI - Bubble (เก็บของคืนกระเป๋า)
+	Plant = "rbxassetid://9114084044",        -- Dirt Digging With Pick (หยอดเมล็ด)
+	Harvest = "rbxassetid://9114519078",      -- Foliage Rustle (เก็บผัก)
+
+	-- คลิปที่ยาวเกินจังหวะ: ตัดที่วินาทีนี้ (ค่อยๆ เบาลง 0.3 วิสุดท้าย) · ไม่มีชื่อ = เล่นจนจบ
+	MaxSeconds = {
+		ToastInfo = 0.8, ToastReward = 1.4, StoryStep = 1.2, CutMagic = 3, GachaRare = 2.2, GachaLegend = 3.5,
+		TrapThrow = 0.9, TrapLand = 0.8, TrapStun = 0.9, TrapKnock = 1.5, Harvest = 1, Plant = 0.9,
+		Memory = 3, CutTitle = 3.5, CutRumble = 12,
+	},
 }
 
 --------------------------------------------------------------------------------

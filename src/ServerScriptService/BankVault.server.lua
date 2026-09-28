@@ -66,6 +66,9 @@ end
 -- Who is close enough
 --------------------------------------------------------------------------------
 
+-- **ระยะผ่อนผัน +4** (QA 2026-09-28 · N24): ปุ่ม E เปิดที่ 12 แต่หน้าต่างฝั่งไคลเอนต์ปิดเองที่ 16 — เดิมเซิร์ฟตัดที่ 12
+-- ยืนช่วง 12-16 หน้าต่างยังเปิดอยู่แต่กดอะไรก็เงียบ · ตอนนี้สองฝั่งตรงกันที่ 16
+local ACTION_RANGE = RANGE + 4
 local function nearBanker(player)
 	-- แขกบนเกาะของคนอื่นคุยกับ NPC ของเจ้าบ้านไม่ได้ (ผู้ใช้สั่ง 2026-09-23)
 	-- ตอบที่นี่ที่เดียวเพราะทั้งปุ่ม E และ remote ทุกตัวถามผ่านฟังก์ชันนี้ — ปิดประตูบานเดียวพอ
@@ -75,7 +78,7 @@ local function nearBanker(player)
 	for _, npc in ipairs(CollectionService:GetTagged(TAG)) do
 		if npc:GetAttribute("NpcKind") == KIND then
 			local position = npc:IsA("BasePart") and npc.Position or npc:GetPivot().Position
-			if (position - root.Position).Magnitude <= RANGE then return true end
+			if (position - root.Position).Magnitude <= ACTION_RANGE then return true end
 		end
 	end
 	return false

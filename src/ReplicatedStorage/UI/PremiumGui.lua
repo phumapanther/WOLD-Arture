@@ -354,8 +354,15 @@ function PremiumGui:renderGacha()
 	end
 end
 
--- ผลสุ่ม: หน้าต่างซ้อน รายการชิ้นที่ได้พร้อมสีตามความหายาก
+-- เสียงเปิดกาชาตามชิ้นที่หายากที่สุดในรอบนั้น (QA 2026-09-28 · Q15)
+local RARITY_RANK = { common = 1, rare = 2, epic = 3, legendary = 4 }
+local RARITY_SOUND = { "GachaCommon", "GachaRare", "GachaRare", "GachaLegend" }
+
+-- ผลสุ่ม: หน้าต่างซ้อน รายการชิ้นที่ได้พร้อมสีตามความหายาก · การ์ดเด้งขึ้นทีละใบ
 function PremiumGui:ShowResults(results)
+	local best = 1
+	for _, r in ipairs(results) do best = math.max(best, RARITY_RANK[r.rarity or "common"] or 1) end
+	UiSound.Play(RARITY_SOUND[best])
 	local overlay = Instance.new("TextButton")
 	overlay.Name = "GachaResults"
 	overlay.Size = UDim2.fromScale(1, 1)
@@ -404,6 +411,16 @@ function PremiumGui:ShowResults(results)
 		stroke.Color = rarityColour(r.rarity)
 		stroke.Thickness = 2
 		stroke.Parent = card
+		-- เด้งขึ้นทีละใบ (0.05 วิต่อใบ) ของหายากกรอบหนาขึ้น
+		if (RARITY_RANK[r.rarity or "common"] or 1) >= 3 then stroke.Thickness = 3 end
+		local pop = Instance.new("UIScale")
+		pop.Scale = 0.4
+		pop.Parent = card
+		task.delay(0.05 * (order - 1), function()
+			if pop.Parent then
+				game:GetService("TweenService"):Create(pop, TweenInfo.new(0.28, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
+			end
+		end)
 		do
 			local art = Instance.new("ImageLabel")
 			art.AnchorPoint = Vector2.new(0.5, 0)

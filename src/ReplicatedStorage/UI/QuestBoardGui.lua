@@ -306,12 +306,17 @@ local function notice(self, parent, order, quest, noticeImage, accepted, index, 
 		lock.TextXAlignment = Enum.TextXAlignment.Center
 		lock.ZIndex = 5
 		button.ZIndex = 6
+		-- แตะแล้วบอกเหตุผล (QA 2026-09-28 · เดิมเงียบ)
+		button.Activated:Connect(function()
+			local toast = game.ReplicatedStorage:FindFirstChild("WOLD_Toast")
+			if toast then toast:Fire(require(script.Parent.Parent.QuestConfig).LockedText, true) end
+		end)
 	elseif not accepted then
 		button.Text = "รับงาน"
 		button.BackgroundColor3 = RUNE
 		button.TextColor3 = Color3.fromRGB(38, 28, 16)
 		button.Activated:Connect(function()
-			UiSound.Play("Click")
+			UiSound.Play("PaperSwipe") -- ดึงใบประกาศออกจากบอร์ด
 			self:fire("accept", index)
 		end)
 	elseif done then
@@ -326,6 +331,10 @@ local function notice(self, parent, order, quest, noticeImage, accepted, index, 
 		button.Text = ("ยังขาด %d"):format(quest.need - (quest.got or 0))
 		button.BackgroundColor3 = GREY
 		button.AutoButtonColor = false
+		button.Activated:Connect(function()
+			local toast = game.ReplicatedStorage:FindFirstChild("WOLD_Toast")
+			if toast then toast:Fire(("ยังขาดอีก %d — %s"):format(quest.need - (quest.got or 0), quest.text or ""), true) end
+		end)
 	end
 
 	-- งานที่รับไปแล้วยกเลิกได้ ปุ่มแยกของมันเอง กดสองครั้งยืนยัน

@@ -137,8 +137,16 @@ local function applyTo(owner, ammo, target)
 	end
 end
 
-local function removeTrap(model)
+-- `why` = "expired" | "replaced" | nil (ทำงานแล้ว/เจ้าของออก/สนามเก็บ) · สองแบบแรกบอกเจ้าของ
+local function removeTrap(model, why)
 	local info = Traps[model]
+	if info and info.owner.Parent then
+		if why == "expired" then
+			notify(info.owner, ("🪤 กับดัก%sหมดเวลา ไม่มีใครมาโดน"):format(info.ammo.name), "info")
+		elseif why == "replaced" then
+			notify(info.owner, ("🪤 กับดักอันเก่าสุดหายไป (วางค้างได้ %d อัน)"):format(TrapConfig.MaxPerOwner), "info")
+		end
+	end
 	Traps[model] = nil
 	if info then
 		local list = ByOwner[info.owner]
@@ -151,10 +159,18 @@ local function removeTrap(model)
 end
 
 -- ทำงาน: ภาพ + ผลกับทุกคนในวง แล้วหาย
+-- **ไม่เงียบ** (QA 2026-09-28): เจ้าของรู้ว่ากับดักทำงานโดนกี่เป้า · คนที่โดนรู้ว่าโดนกับดักอะไร
 local function fire(owner, ammo, position)
 	Remotes.TrapEvent:FireAllClients("burst", position, ammo.id)
-	for _, target in ipairs(targetsNear(owner, position, TrapConfig.EffectRadius)) do
+	local targets = targetsNear(owner, position, TrapConfig.EffectRadius)
+	for _, target in ipairs(targets) do
 		applyTo(owner, ammo, target)
+		if target.player and target.player ~= owner then
+			Remotes.SocialNotify:FireClient(target.player, "warn", ("🪤 โดนกับดัก%s!"):format(ammo.name))
+		end
+	end
+	if owner.Parent and #targets > 0 then
+		notify(owner, ("🪤 กับดัก%sทำงาน โดน %d เป้า"):format(ammo.name, #targets), "info")
 	end
 end
 
@@ -228,7 +244,7 @@ local function spawnTrap(owner, ammo, position, normal)
 	list[#list + 1] = model
 	-- อันที่ 4 = อันเก่าสุดหาย
 	while #list > TrapConfig.MaxPerOwner do
-		removeTrap(list[1])
+		removeTrap(list[1], "replaced")
 	end
 end
 
@@ -354,7 +370,7 @@ task.spawn(function()
 		local now = os.clock()
 		for model, info in pairs(Traps) do
 			if not ok or not model.Parent or not info.owner.Parent or now >= info.expiresAt then
-				removeTrap(model)
+				removeTrap(model, (ok and model.Parent and now >= info.expiresAt) and "expired" or nil)
 			elseif now >= info.armedAt then
 				local pivot = model:GetPivot().Position
 				if #targetsNear(info.owner, pivot, TrapConfig.TriggerRadius) > 0 then

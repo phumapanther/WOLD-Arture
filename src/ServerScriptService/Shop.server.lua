@@ -151,6 +151,9 @@ end
 -- Who is close enough
 --------------------------------------------------------------------------------
 
+-- **ระยะผ่อนผัน +4** (QA 2026-09-28 · N24): ปุ่ม E เปิดที่ 12 แต่หน้าต่างฝั่งไคลเอนต์ปิดเองที่ 16 — เดิมเซิร์ฟตัดที่ 12
+-- ยืนช่วง 12-16 หน้าต่างยังเปิดอยู่แต่กดอะไรก็เงียบ · ตอนนี้สองฝั่งตรงกันที่ 16
+local ACTION_RANGE = RANGE + 4
 local function nearShop(player)
 	-- แขกบนเกาะของคนอื่นคุยกับ NPC ของเจ้าบ้านไม่ได้ (ผู้ใช้สั่ง 2026-09-23)
 	-- ตอบที่นี่ที่เดียวเพราะทั้งปุ่ม E และ remote ทุกตัวถามผ่านฟังก์ชันนี้ — ปิดประตูบานเดียวพอ
@@ -160,7 +163,7 @@ local function nearShop(player)
 	for _, npc in ipairs(CollectionService:GetTagged(TAG)) do
 		if npc:GetAttribute("NpcKind") == "shop" then
 			local position = npc:IsA("BasePart") and npc.Position or npc:GetPivot().Position
-			if (position - root.Position).Magnitude <= RANGE then return true end
+			if (position - root.Position).Magnitude <= ACTION_RANGE then return true end
 		end
 	end
 	return false
@@ -294,8 +297,19 @@ local function canTrade(player)
 	return EventState.NpcAvailable()
 end
 
+-- เหตุผลที่ค้าขายไม่ได้ตอนนี้ (QA 2026-09-28 · เดิมเงียบ)
+local function whyNotTrade(player)
+	if Vitals.IsDowned(player) then return "ค้าขายไม่ได้ขณะล้มอยู่" end
+	if not EventState.NpcAvailable() then return "ไฟดับทั้งเมือง ร้านปิดชั่วคราว — ช่วยกันซ่อมหม้อแปลงก่อน" end
+	return nil
+end
+
 Remotes.RequestShopOpen.OnServerEvent:Connect(function(player)
-	if not canTrade(player) then return end
+	if not canTrade(player) then
+		local why = whyNotTrade(player)
+		if why then Remotes.SocialNotify:FireClient(player, "warn", why) end
+		return
+	end
 	if not nearShop(player) then return end
 	Remotes.ShopOpen:FireClient(player, snapshot(player))
 end)
@@ -309,7 +323,11 @@ end)
 -- request to buy more than the purse holds buys what it can afford.
 Remotes.RequestShopAction.OnServerEvent:Connect(function(player, action, index, amount, currency)
 	if type(action) ~= "string" then return end
-	if not canTrade(player) then return end
+	if not canTrade(player) then
+		local why = whyNotTrade(player)
+		if why then Remotes.SocialNotify:FireClient(player, "warn", why) end
+		return
+	end
 	if action ~= "sellall" and type(index) ~= "number" then return end
 	-- Re-checked on every action, not just on opening: a player could walk away with the window still up.
 	if not nearShop(player) then

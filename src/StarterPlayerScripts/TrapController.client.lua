@@ -18,6 +18,7 @@ if workspace:GetAttribute("IsLobby") then return end
 
 local TrapConfig = require(ReplicatedStorage.TrapConfig)
 local Remotes = require(ReplicatedStorage.Remotes)
+local UiSound = require(ReplicatedStorage.UI.UiSound)
 
 local player = Players.LocalPlayer
 
@@ -163,6 +164,8 @@ channel.Event:Connect(function(phase)
 	if phase == "down" then press() elseif phase == "up" then release() end
 end)
 
+-- จำลองวิถีทุก 2 เฟรม (QA 2026-09-28) — ~90 เรย์ต่อรอบ ตาเห็นไม่ต่างแต่มือถือเบาลงครึ่ง
+local frame = 0
 RunService.RenderStepped:Connect(function()
 	if not pressedAt then return end
 	-- เปลี่ยนอาวุธกลางทาง = เลิกเล็ง
@@ -171,16 +174,26 @@ RunService.RenderStepped:Connect(function()
 		return hidePreview()
 	end
 	if os.clock() - pressedAt < TrapConfig.TapSeconds then return end
-	drawPreview(powerNow())
+	frame += 1
+	if frame % 2 == 0 then drawPreview(powerNow()) end
 end)
 
 --------------------------------------------------------------------------------
 -- ไฟกะพริบบนกับดักที่ติดอยู่ (ทุกคนเห็น) — ถามแท็กใหม่ทุกเฟรม (StreamingEnabled: กับดักโผล่/หายตลอด)
 --------------------------------------------------------------------------------
+-- จำหลอดไฟของกับดักแต่ละอันไว้ และแตะค่าเฉพาะตอนสลับติด/ดับ (QA 2026-09-28 · เดิมค้นทุกเฟรม)
+local lamps = setmetatable({}, { __mode = "k" })
+local lastOn = nil
 RunService.Heartbeat:Connect(function()
 	local on = (os.clock() % 0.8) < 0.4
+	if on == lastOn then return end
+	lastOn = on
 	for _, model in ipairs(CollectionService:GetTagged("WOLD_Trap")) do
-		local lamp = model:FindFirstChild("Lamp", true)
+		local lamp = lamps[model]
+		if lamp == nil then
+			lamp = model:FindFirstChild("Lamp", true) or false
+			lamps[model] = lamp
+		end
 		if lamp and lamp:IsA("BasePart") then
 			lamp.Transparency = on and 0 or 0.6
 			local light = lamp:FindFirstChild("TrapLight")
@@ -220,20 +233,25 @@ end
 local function animateThrow(origin, velocity, duration, ammo)
 	local model = flyingModel(ammo)
 	local started = os.clock()
+	UiSound.PlayAt("TrapThrow", origin, 0.8, 60)
 	local connection
 	connection = RunService.RenderStepped:Connect(function()
 		local t = os.clock() - started
 		if t >= duration or not model.Parent then
 			connection:Disconnect()
 			model:Destroy()
+			UiSound.PlayAt("TrapLand", TrapConfig.PositionAt(origin, velocity, duration), 1, 60)
 			return
 		end
 		model:PivotTo(CFrame.new(TrapConfig.PositionAt(origin, velocity, t)) * CFrame.Angles(t * 9, t * 5, 0))
 	end)
 end
 
+local BURST_SOUND = { slow = "TrapSlow", stun = "TrapStun", knockdown = "TrapKnock" } -- ระเบิดใช้เสียงของ Explosion เอง
 local function burst(position, ammo)
 	local color = ammo and ammo.color or Color3.fromRGB(255, 190, 90)
+	local sound = ammo and BURST_SOUND[ammo.kind]
+	if sound then UiSound.PlayAt(sound, position, 1.2, 90) end
 	if ammo and ammo.kind == "damage" then
 		-- ระเบิดของ Roblox ที่ไม่ทำอะไรใคร (ของที่ไคลเอนต์สร้างไม่มีผลกับฟิสิกส์ของเซิร์ฟอยู่แล้ว) — ได้ภาพ+เสียงระเบิดฟรี
 		local explosion = Instance.new("Explosion")
@@ -265,6 +283,9 @@ Remotes.TrapEvent.OnClientEvent:Connect(function(kind, a, b, c, d, e)
 		if typeof(b) == "Vector3" and typeof(c) == "Vector3" and type(d) == "number" then
 			animateThrow(b, c, math.min(d, TrapConfig.MaxFlight), TrapConfig.AmmoById[e])
 		end
+	elseif kind == "place" then
+		-- a = userId · b = จุดวาง
+		if typeof(b) == "Vector3" then UiSound.PlayAt("TrapLand", b, 1, 60) end
 	elseif kind == "burst" then
 		-- a = จุด · b = กระสุน
 		if typeof(a) == "Vector3" then burst(a, TrapConfig.AmmoById[b]) end

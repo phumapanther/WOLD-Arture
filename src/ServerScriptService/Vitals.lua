@@ -621,7 +621,9 @@ function Vitals.Recover(player, hpFraction)
 	local state = States[player]
 	if not state or not state.downed then return end
 	clearDowned(player, state)
-	state.hp = VitalsConfig.MaxHP * (hpFraction or 1)
+	-- สัดส่วนของเลือดเต็ม **ของคนนั้น** (QA 2026-09-28 · N13) — เดิมคูณ 100 ตายตัว เลือดเต็มโตตามเลเวล (Lv.100 = 595)
+	-- ชุบ 30% จึงเหลือเลือดจริง 5% ของหลอด
+	state.hp = maxHP(player) * (hpFraction or 1)
 	Vitals.Send(player, true)
 end
 

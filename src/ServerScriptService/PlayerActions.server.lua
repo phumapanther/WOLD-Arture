@@ -130,9 +130,17 @@ local function refuse(player, text)
 end
 Players.PlayerRemoving:Connect(function(player) LastRefusal[player] = nil end)
 
+-- ติดสถานะ (ล้ม มึน เซ ถูกจับ ถูกตรึง) = บอกเหตุผล · ติดคูลดาวน์/กลางอากาศ/กำลังกลิ้งอยู่ = เงียบ (กดรัวเป็นเรื่องปกติ)
+local function explain(player, action)
+	local text = require(game.ServerScriptService.Deny).Blocked(player, action)
+	if not text and StatusEffects.IsRooted(player) then text = action .. "ไม่ได้ตอนนี้" end
+	if text then refuse(player, text) end
+end
+
 Remotes.RequestRoll.OnServerEvent:Connect(function(player, direction)
 	local state = States[player]
-	if not state or not canAct(player, state) then return end
+	if not state then return end
+	if not canAct(player, state) then return explain(player, "กลิ้ง") end
 	if typeof(direction) ~= "Vector3" then return end
 
 	local cfg = ActionConfig.Roll
@@ -173,7 +181,8 @@ end)
 
 Remotes.RequestSlide.OnServerEvent:Connect(function(player)
 	local state = States[player]
-	if not state or not canAct(player, state) then return end
+	if not state then return end
+	if not canAct(player, state) then return explain(player, "สไลด์") end
 
 	local cfg = ActionConfig.Slide
 	local humanoid = humanoidOf(player)

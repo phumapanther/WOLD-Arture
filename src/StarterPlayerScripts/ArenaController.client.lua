@@ -536,6 +536,18 @@ end)
 --------------------------------------------------------------------------------
 -- ข้อความสั้นจากเซิร์ฟเวอร์: ขึ้นในบรรทัดสถานะของร้านเฉพาะตอนร้านเปิด (ผู้ใช้สั่ง 2026-09-26: ไม่มีข้อความกลางจอ)
 -- ร้านปิดอยู่ = ไม่วาด (เกราะพัง/หยิบของ เห็นได้จากตัวเองอยู่แล้ว)
+-- **ทุกข้อความมีเสียง แม้ร้านปิด** (QA 2026-09-28) — ข้อความยังขึ้นเฉพาะในบรรทัดสถานะของร้านตามกติกาเฟส 1
+-- (สนามไม่มีข้อความกลางจอ) แต่หยิบอาวุธ/เกราะพัง/ซื้อ ต้องไม่เงียบ
+local ArenaUiSound = require(game.ReplicatedStorage.UI.UiSound)
+local function noticeSound(kind, text)
+	text = tostring(text or "")
+	if kind == "warn" or kind == "error" or string.find(text, "พัง", 1, true) then return "ToastError" end
+	if string.find(text, "ยกเลิก", 1, true) then return "Select" end
+	if string.find(text, "ซื้อ", 1, true) then return "Purchase" end
+	if string.find(text, "หยิบ", 1, true) then return "Pickup" end
+	return "ToastInfo"
+end
 Remotes.ArenaNotice.OnClientEvent:Connect(function(kind, text)
+	ArenaUiSound.Play(noticeSound(kind, text))
 	if shop:IsVisible() then shop:Flash(text, kind) end
 end)

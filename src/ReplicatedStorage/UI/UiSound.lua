@@ -12,6 +12,19 @@ local SoundscapeConfig = require(script.Parent.Parent.SoundscapeConfig)
 local UiSound = {}
 
 local Config = SoundscapeConfig.Interface
+local TweenService = game:GetService("TweenService")
+
+-- คลิปยาวถูกตัดตาม `Config.MaxSeconds` (ค่อยๆ เบาลงก่อนหยุด ไม่ใช่ตัดกึก) · QA 2026-09-28
+local function limit(sound, name)
+	local max = Config.MaxSeconds and Config.MaxSeconds[name]
+	if type(max) ~= "number" then return end
+	task.delay(math.max(0, max - 0.3), function()
+		if sound.Parent then
+			TweenService:Create(sound, TweenInfo.new(0.3), { Volume = 0 }):Play()
+			Debris:AddItem(sound, 0.35)
+		end
+	end)
+end
 
 -- The level this one plays at: its own, if it has been given one, and the interface's common level otherwise.
 -- Config.Volumes is itself a member of Config, so it would answer a Play("Volumes") -- harmlessly, since a
@@ -36,6 +49,35 @@ function UiSound.Play(name)
 	-- Cleaned up after a generous margin rather than on Ended: a sound that never loads never fires Ended,
 	-- and would sit in SoundService forever.
 	Debris:AddItem(sound, 10)
+	limit(sound, name)
+	return sound
+end
+
+-- เสียงในโลก: ได้ยินตามระยะ (กับดัก · แสงเลเวลขึ้นของคนอื่น) · `where` = Vector3 หรือ BasePart · ฝั่งไคลเอนต์
+-- `volumeScale` คูณเสียงปกติ (ของคนอื่นเบากว่าของตัวเอง) · `maxDistance` ค่าเริ่มต้น 80 สตัด
+function UiSound.PlayAt(name, where, volumeScale, maxDistance)
+	local id = Config[name]
+	if type(id) ~= "string" or id == "" or not where then return end
+	local holder
+	if typeof(where) == "Vector3" then
+		holder = Instance.new("Part")
+		holder.Anchored, holder.CanCollide, holder.CanQuery, holder.CanTouch = true, false, false, false
+		holder.Transparency = 1
+		holder.Size = Vector3.new(0.2, 0.2, 0.2)
+		holder.Position = where
+		holder.Parent = workspace
+		Debris:AddItem(holder, 10)
+	end
+	local sound = Instance.new("Sound")
+	sound.SoundId = id
+	sound.Volume = volumeFor(name) * (volumeScale or 1) * 2 -- เสียงในโลกเบาลงตามระยะ ตั้งต้นดังกว่าเสียงหน้าจอ
+	sound.RollOffMode = Enum.RollOffMode.InverseTapered
+	sound.RollOffMinDistance = 8
+	sound.RollOffMaxDistance = maxDistance or 80
+	sound.Parent = holder or where
+	sound:Play()
+	Debris:AddItem(sound, 10)
+	limit(sound, name)
 	return sound
 end
 

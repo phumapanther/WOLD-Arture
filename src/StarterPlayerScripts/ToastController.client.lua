@@ -15,6 +15,31 @@ local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local UiSound = require(game.ReplicatedStorage.UI.UiSound)
+
+-- **ทุกข้อความมีเสียง** (QA 2026-09-28 "อินเทอแร็กแล้วต้องไม่เงียบ") — ปฏิเสธ = ToastError · ได้ของ/รางวัล = ToastReward ·
+-- อื่นๆ = ToastInfo · ข้อความรัวๆ เล่นเสียงไม่เกินทุก 0.3 วิ (หลายข้อความในเฟรมเดียวไม่ซ้อนกันเป็นเสียงแตก)
+local REWARD_WORDS = { "ได้รับ", "รับรางวัล", "💎", "🎁", "🎫", "ปลดล็อก", "ปลดสาย", "คราฟสำเร็จ", "ตีบวกสำเร็จ", "ส่งงานสำเร็จ",
+	"ขายได้", "ซื้อ", "จบบท" }
+local lastSoundAt = 0
+local function soundFor(message, isError)
+	local now = os.clock()
+	if now - lastSoundAt < 0.3 then return end
+	lastSoundAt = now
+	if isError then return UiSound.Play("ToastError") end
+	-- ซื้อสำเร็จ (ร้าน/ร้านเพชร/คอก/VIP) = เสียงเหรียญ Purchase (Q15) · "ซื้อไม่สำเร็จ" มาเป็น error ไปแล้วข้างบน
+	if (string.find(message, "^ซื้อ") or string.find(message, "เพชร)", 1, true)) and not string.find(message, "ไม่", 1, true) then
+		return UiSound.Play("Purchase")
+	end
+	-- "ไม่ได้/ไม่สำเร็จ" ไม่ใช่รางวัล แม้มีคำเหล่านั้นอยู่
+	local reward = string.sub(message, 1, 1) == "+" and not string.find(message, "ไม่", 1, true)
+	for _, word in ipairs(REWARD_WORDS) do
+		if not reward and string.find(message, word, 1, true) and not string.find(message, "ไม่" .. word, 1, true) then
+			reward = true
+		end
+	end
+	UiSound.Play(reward and "ToastReward" or "ToastInfo")
+end
 
 local player = Players.LocalPlayer
 
@@ -104,11 +129,17 @@ end
 local localToast = game.ReplicatedStorage:FindFirstChild("WOLD_Toast") or Instance.new("BindableEvent")
 localToast.Name = "WOLD_Toast"
 localToast.Parent = game.ReplicatedStorage
-localToast.Event:Connect(function(message, isError)
-	if type(message) == "string" then toast(message, isError == true) end
+-- `silent` = คนส่งเล่นเสียงของตัวเองแล้ว (เช่นขั้นเควสเนื้อเรื่อง) ไม่ต้องซ้อนเสียงข้อความ
+localToast.Event:Connect(function(message, isError, silent)
+	if type(message) == "string" then
+		toast(message, isError == true)
+		if not silent then soundFor(message, isError == true) end
+	end
 end)
 
-Remotes.SocialNotify.OnClientEvent:Connect(function(kind, message)
+-- อาร์กิวเมนต์ที่สาม `silent` = เซิร์ฟเวอร์เล่นเสียงของการกระทำนั้นเองแล้ว (WorldSound) ไม่ต้องซ้อนเสียงข้อความ
+Remotes.SocialNotify.OnClientEvent:Connect(function(kind, message, silent)
 	if not message or HANDLED_ELSEWHERE[kind] then return end
 	toast(message, kind == "error")
+	if silent ~= true then soundFor(tostring(message), kind == "error" or kind == "warn") end
 end)

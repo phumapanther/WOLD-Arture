@@ -62,6 +62,7 @@ local IslandGrid = require(ReplicatedStorage.IslandGrid)
 local ItemCatalog = require(ReplicatedStorage.ItemCatalog)
 local QuestConfig = require(ReplicatedStorage.QuestConfig)
 local Remotes = require(ReplicatedStorage.Remotes)
+local WorldSound = require(game.ServerScriptService.WorldSound) -- เสียงวาง/เก็บ/ย้าย (QA 2026-09-28)
 
 local REASON_TEXT = {
 	notowner = "วางได้เฉพาะเจ้าของเกาะ",
@@ -395,6 +396,7 @@ local function place(player, slotIndex, cx, cz, r)
 	Data.nextUid += 1
 	table.insert(Data.placed, entry)
 	spawnEntry(entry)
+	WorldSound.At("Place", Models[entry.uid] or player.Character, 1, 50)
 	return true
 end
 
@@ -427,6 +429,7 @@ local function pickup(player, uid)
 	for i, e in ipairs(Data.placed) do
 		if e == entry then table.remove(Data.placed, i) break end
 	end
+	WorldSound.At("Pickup", model:GetPivot().Position, 1, 50)
 	despawnEntry(entry)
 	return true
 end
@@ -464,6 +467,7 @@ local function move(player, uid, cx, cz, r)
 	model:SetAttribute("CellX", cx)
 	model:SetAttribute("CellZ", cz)
 	model:SetAttribute("Rot", r)
+	WorldSound.At("Place", model, 1, 50)
 	return true
 end
 

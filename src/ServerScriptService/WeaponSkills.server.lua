@@ -81,6 +81,8 @@ local function damageAndScore(caster, victim, amount)
 		local multiplier = ProgressionConfig.KillMultiplier(
 			Progression.GetLevel(caster), Progression.GetLevel(victim))
 		Progression.AwardExp(caster, math.floor(ProgressionConfig.ExpPerPlayerKill * multiplier + 0.5))
+		-- ฆ่าคนด้วยสกิลก็หัวแดงเหมือนการตีธรรมดาและกับดัก (QA 2026-09-28 · N14 — เดิมเลี่ยงกติกา PK ได้ด้วยสกิล)
+		require(game.ServerScriptService.Classes).Mark(caster, require(game.ReplicatedStorage.ClassConfig).MarkedSecondsKill)
 	end
 	-- คืนว่าโดนจริงไหม — ผลพ่วง (ล้ม/สโลว์) ต้องเกิดเฉพาะเป้าที่โดนจริง ไม่ใช่เพื่อนร่วมทีม/คนที่อมตะอยู่
 	return landed
@@ -436,10 +438,9 @@ local function refuse(player, text)
 end
 
 Remotes.RequestSkill.OnServerEvent:Connect(function(player)
-	if Vitals.IsDowned(player) then return end
-	if not StatusEffects.CanFight(player) then return end -- ถูกจับกุม/ยิงล้ม/มึนหัว/ถูกอุ้ม (QA 2026-09-26)
-	-- Same reason attacks are blocked: both hands are busy holding food.
-	if Consuming.IsConsuming(player) then return end
+	-- ล้ม/ติดสถานะ/กำลังกินยา = ใช้สกิลไม่ได้ **และบอกเหตุผล** (QA 2026-09-28)
+	local blocked = require(game.ServerScriptService.Deny).Blocked(player, "ใช้สกิล")
+	if blocked then return refuse(player, blocked) end
 	if Blocking.IsBlocking(player) then return end -- ยกการ์ดอยู่ = ใช้สกิลไม่ได้ (สนาม · เฟส 3)
 	local _, _, humanoid = characterParts(player)
 	if not humanoid or humanoid.Health <= 0 then return end

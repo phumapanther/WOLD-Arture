@@ -111,9 +111,24 @@ task.spawn(function()
 	end
 end)
 
+local function localToast(text, silent)
+	local channel = ReplicatedStorage:FindFirstChild("WOLD_Toast")
+	if channel then channel:Fire(text, false, silent) end
+end
+
 Remotes.StoryState.OnClientEvent:Connect(function(s)
+	local previous = state
 	state = s
 	gui:SetTracker(s)
+	-- ความคืบหน้าไม่เงียบ (QA 2026-09-28): ขึ้นขั้นใหม่ = เสียง + ข้อความเป้าหมายใหม่ · ล่ามอนได้เพิ่ม = บอกจำนวน
+	if previous and s and not s.done and previous.chapter == s.chapter then
+		if (s.step or 0) > (previous.step or 0) then
+			UiSound.Play("StoryStep")
+			localToast(("📜 %s"):format(s.goal or ""), true)
+		elseif s.kind == "hunt" and (s.got or 0) > (previous.got or 0) then
+			localToast(("📜 %s %d/%d"):format(s.goal or "", s.got or 0, s.need or 0))
+		end
+	end
 end)
 
 --------------------------------------------------------------------------------
@@ -211,10 +226,18 @@ local function runCutscene(info)
 		while os.clock() - t0 < seconds and not skipped do RunService.RenderStepped:Wait() end
 	end
 
+	-- เสียงของคัทซีน (QA 2026-09-28) — เก็บไว้ค่อยๆ ปิดตอนข้าม/จบ
+	local playing = {}
+	local function sfx(name)
+		local sound = UiSound.Play(name)
+		if sound then playing[#playing + 1] = sound end
+	end
+
 	local shots = {
 		black = function(beat)
 			gui:Black(true, 0)
 			gui:Motes(true)
+			sfx("Memory")
 			camera.CFrame = CFrame.lookAt(center + Vector3.new(-80, 50, 80), center)
 		end,
 		rooftops = function(beat)
@@ -223,6 +246,7 @@ local function runCutscene(info)
 			tweenCamera(camera, CFrame.lookAt(center + Vector3.new(-80, 50, 80), center),
 				CFrame.lookAt(center + Vector3.new(-40, 34, 40), center), beat.seconds)
 			steam(12)
+			sfx("CutRumble")
 		end,
 		descend = function(beat)
 			tweenCamera(camera, CFrame.lookAt(center + Vector3.new(-26, 22, 26), center),
@@ -237,15 +261,18 @@ local function runCutscene(info)
 				end)
 			end
 			steam(20)
+			sfx("CutMagic")
 		end,
 		flash = function(beat)
 			gui:Flash(beat.seconds)
+			sfx("CutFlash")
 		end,
 		wake = function(beat)
 			local body = hrp and hrp.Position or center
 			tweenCamera(camera, CFrame.lookAt(body + Vector3.new(7, 5, 9), body),
 				CFrame.lookAt(body + Vector3.new(5, 4, 7), body + Vector3.new(0, 1, 0)), beat.seconds)
 			if sparkles then sparkles.Rate = 40 end
+			sfx("GachaRare")
 			task.delay(1.5, function()
 				local t0 = os.clock()
 				while k > 0 and inCutscene do
@@ -294,6 +321,7 @@ local function runCutscene(info)
 			tweenCamera(camera, CFrame.lookAt(center + Vector3.new(0, 14, 26), center),
 				CFrame.lookAt(center + Vector3.new(0, 24, 34), center), beat.seconds)
 			gui:TitleCard(beat.title, beat.subtitle)
+			sfx("CutTitle")
 		end,
 	}
 
@@ -305,7 +333,13 @@ local function runCutscene(info)
 		wait(beat.seconds or 3)
 	end
 
-	-- คืนทุกอย่าง
+	-- คืนทุกอย่าง · เสียงที่ยังเล่นค่อยๆ เบาลง (ข้ามกลางคัน = ไม่ตัดกึก)
+	for _, sound in ipairs(playing) do
+		if sound.Parent then
+			TweenService:Create(sound, TweenInfo.new(0.6), { Volume = 0 }):Play()
+			game:GetService("Debris"):AddItem(sound, 0.7)
+		end
+	end
 	inCutscene = false
 	skipConn:Disconnect()
 	poseConn:Disconnect()
@@ -347,6 +381,7 @@ Remotes.StoryPlay.OnClientEvent:Connect(function(kind, arg)
 		local beats = StoryConfig.Memories[arg]
 		if not beats then return end
 		afterTalking(function()
+			UiSound.Play("Memory")
 			local blur = Instance.new("BlurEffect")
 			blur.Size = 16
 			blur.Parent = workspace.CurrentCamera
@@ -377,8 +412,13 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 end)
 
 -- จอโหลดจบแล้วค่อยบอกเซิร์ฟ (คัทซีนต้องไม่เล่นใต้จอโหลด)
+-- **ส่งซ้ำทุก 3 วิจนกว่าเซิร์ฟตอบ** (QA 2026-09-28): โปรไฟล์ยังโหลดไม่เสร็จ เซิร์ฟเงียบ — ส่งครั้งเดียวคนใหม่จะพลาดคัทซีน
 task.spawn(function()
 	while player:GetAttribute("WOLD_Loaded") ~= true do task.wait(0.25) end
 	task.wait(0.5)
-	Remotes.RequestStory:FireServer("ready")
+	for _ = 1, 20 do
+		if state ~= nil then break end
+		Remotes.RequestStory:FireServer("ready")
+		task.wait(3)
+	end
 end)

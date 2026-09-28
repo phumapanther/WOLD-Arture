@@ -30,6 +30,8 @@ local EVENTS = {
 	"RequestRoll", "RequestSlide", "MoveStateChanged", -- roll/slide (client intent in, animation playback out)
 	"RequestRevive", "RequestCarry", "RequestDrop", "CarryStateChanged", -- reviving and carrying a downed player
 	"ProgressionUpdate", "LevelUp", -- exp/level out, plus a one-shot for the level-up effect
+	"LevelUpEffect", -- ฉลองเลเวลขึ้นถึงทุกเครื่อง (แสงรอบตัว · แบนเนอร์ของเจ้าตัว · QA 2026-09-28)
+	"WorldSound", -- เสียงในโลกตามระยะ (name, position, volumeScale, maxDistance) ถึงเฉพาะคนในระยะ · QA 2026-09-28
 	-- Inventory: contents out, player intents in (move/equip/use/sort), equipment broadcast so everyone can
 	-- see what each other is holding.
 	"InventoryUpdate", "EquipmentChanged",

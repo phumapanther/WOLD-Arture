@@ -167,6 +167,9 @@ function Progression.AwardExp(player, amount)
 		-- still does NOT refill armor — see Vitals.ResetForRespawn).
 		if Vitals then Vitals.RefillOnLevelUp(player) end
 		Remotes.LevelUp:FireClient(player, state.level)
+		-- ฉลองเลเวลขึ้น (QA 2026-09-28 ผู้ใช้เลือก "แบนเนอร์ + แสงทุกคนเห็น") — แบนเนอร์เฉพาะเจ้าตัว แสง+เสียงรอบตัวทุกคนเห็น
+		-- (LevelUpController) · ในสนามไม่มีเลเวล จึงไม่มีทางมาถึงตรงนี้
+		Remotes.LevelUpEffect:FireAllClients(player, state.level)
 	end
 
 	send(player)

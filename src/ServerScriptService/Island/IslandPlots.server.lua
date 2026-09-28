@@ -14,6 +14,7 @@ local Progression = require(game.ServerScriptService.Progression)
 local GatherConfig = require(ReplicatedStorage.GatherConfig)
 local ItemCatalog = require(ReplicatedStorage.ItemCatalog)
 local Remotes = require(ReplicatedStorage.Remotes)
+local WorldSound = require(game.ServerScriptService.WorldSound) -- เสียงหยอดเมล็ด/เก็บผัก (QA 2026-09-28)
 
 local TICK = 2
 local Plots = {} -- [plotModel] = { prompt = ProximityPrompt, stage = number|nil }
@@ -153,7 +154,8 @@ local function plant(player, model, seedId)
 	local state = Plots[model]
 	if state then state.stage = nil end -- ให้รอบถัดไปวาดใหม่
 	local item = ItemCatalog.Get(spec.item)
-	Remotes.SocialNotify:FireClient(player, "info", ("หยอดเมล็ดแล้ว — ขึ้นเป็น%s ใช้เวลา %d นาที"):format(item and item.name or spec.item, growSeconds(spec) / 60))
+	WorldSound.At("Plant", model, 1, 45)
+	Remotes.SocialNotify:FireClient(player, "info", ("หยอดเมล็ดแล้ว — ขึ้นเป็น%s ใช้เวลา %d นาที"):format(item and item.name or spec.item, growSeconds(spec) / 60), true) -- true = เงียบ (เสียงหยอดเมล็ดดังแล้ว)
 	return true
 end
 
@@ -197,8 +199,9 @@ local function harvest(player, model)
 	local given, goldResult = Inventory.AddHarvest(player, entry.crop, amount, withGold)
 	if not given then return false, "full" end
 	local item = ItemCatalog.Get(entry.crop)
+	WorldSound.At("Harvest", model, 1, 45)
 	Remotes.SocialNotify:FireClient(player, "info", ("เก็บเกี่ยวได้ %s x%d%s"):format(item and item.name or entry.crop, amount,
-		goldResult == "given" and " (🌟 ขอบทอง 1 ชิ้น)" or ""))
+		goldResult == "given" and " (🌟 ขอบทอง 1 ชิ้น)" or ""), true) -- เสียงเก็บผักดังแล้ว
 	if goldResult == "lost" then
 		Remotes.SocialNotify:FireClient(player, "error", "กระเป๋า VIP เต็ม — ขอบทองกลายเป็นของธรรมดา")
 	end
