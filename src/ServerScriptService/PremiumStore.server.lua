@@ -361,6 +361,20 @@ local function claim(player, tier, track)
 	push(player)
 end
 
+-- ของขวัญหุ่นฟาง (บัญชีใหม่ · ผู้ใช้สั่ง 2026-09-28): ปลดสายพรีเมียมของเดือนนี้ฟรี ไม่หักเพชร
+PremiumAccess.HasPremiumPass = function(player)
+	local bp = passOf(player)
+	return bp ~= nil and bp.premium == true
+end
+PremiumAccess.GrantPremiumPass = function(player)
+	local bp = passOf(player)
+	if not bp then return false, "loading" end
+	if bp.premium then return false, "owned" end
+	bp.premium = true
+	push(player)
+	return true
+end
+
 local function unlockPremium(player)
 	local bp = passOf(player)
 	if not bp or bp.premium then return end

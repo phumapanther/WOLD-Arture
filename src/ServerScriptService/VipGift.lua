@@ -4,6 +4,8 @@
 --          = บัญชีที่สร้างหลังอัปเดตนี้เท่านั้น บัญชีเก่าไม่มีธงจึงไม่ได้
 --          · **รับได้หลังจบเควสเนื้อเรื่องเริ่มต้นแล้ว** (ผู้ใช้สั่ง 2026-09-28 · `GemsAfterChapter` = บท "ความทรงจำแรก")
 --   vip  — VIP 30 วัน **เมื่อ Lv.5 ขึ้นไป** (เดิม 2026-09-26 แจกทุกคนทันที) · มี VIP อยู่ = รับไม่ได้และไม่เสียสิทธิ์
+--   pass — **แบทเทิลพาสพรีเมียมของเดือนที่กดรับ ฟรี · บัญชีใหม่เท่านั้น** (ผู้ใช้สั่ง 2026-09-28 · กดได้เลย ไม่ต้องจบเควส)
+--          เดือนนั้นปลดพรีเมียมเองไปแล้ว = รอเดือนถัดไป ไม่เสียสิทธิ์ (ไม่ให้ของขวัญเปล่า)
 --   aura — **ออร่าสุ่ม 1 อัน** จากออร่าที่มีในเกมตอนนั้น เมื่อมี **เพื่อนในเกม 5 คนขึ้นไป**
 --
 -- กดทีเดียวรับทุกอย่างที่ถึงเงื่อนไขแล้ว · ธงอยู่ในโปรไฟล์ (ทั้ง universe = ครั้งเดียวไม่ว่าเซิร์ฟไหน) · ปิดทั้งหมดที่ `Enabled`
@@ -78,6 +80,29 @@ function VipGift.ClaimGems(data, addGems)
 end
 
 --------------------------------------------------------------------------------
+-- แบทเทิลพาสพรีเมียมผู้มาใหม่
+--------------------------------------------------------------------------------
+
+-- `hasPremium` = พาสเดือนนี้ปลดพรีเมียมอยู่แล้วไหม · "closed" | "loading" | "claimed" | "notnew" | "owned"
+function VipGift.CheckPass(data, hasPremium)
+	if not VipGift.Enabled then return false, "closed" end
+	if not data then return false, "loading" end
+	if data.NewbiePassClaimed == true then return false, "claimed" end
+	if data.NewbieGems ~= true then return false, "notnew" end -- ธงบัญชีใหม่ตัวเดียวกับเพชร
+	if hasPremium then return false, "owned" end
+	return true
+end
+
+-- `grant()` คืน true เมื่อปลดแล้ว · ปั๊มธงหลังปลดสำเร็จเท่านั้น
+function VipGift.ClaimPass(data, hasPremium, grant)
+	local ok, reason = VipGift.CheckPass(data, hasPremium)
+	if not ok then return false, reason end
+	if not grant() then return false, "error" end
+	data.NewbiePassClaimed = true
+	return true
+end
+
+--------------------------------------------------------------------------------
 -- ออร่าจากเพื่อน
 --------------------------------------------------------------------------------
 
@@ -105,9 +130,10 @@ end
 -- ป้ายบนปุ่มของคนคนนี้
 --------------------------------------------------------------------------------
 
+-- `hasPremium` (ไม่บังคับ) = พาสเดือนนี้ปลดพรีเมียมอยู่แล้วไหม
 -- { ready = { "150 เพชร", ... }, waiting = { "VIP 30 วัน (Lv.5 · ตอนนี้ Lv.2)", ... } }
 -- ready = กดแล้วได้เลย · waiting = ยังรับได้ในอนาคต (บอกว่าติดอะไร) · ที่รับไปแล้ว/ไม่มีสิทธิ์ถาวรไม่อยู่ในทั้งสองรายการ
-function VipGift.Summary(data, now, level, friends, pool)
+function VipGift.Summary(data, now, level, friends, pool, hasPremium)
 	local ready, waiting = {}, {}
 	if not VipGift.Enabled or not data then return { ready = ready, waiting = waiting } end
 	local gemsOk, gemsWhy = VipGift.CheckGems(data)
@@ -115,6 +141,12 @@ function VipGift.Summary(data, now, level, friends, pool)
 		ready[#ready + 1] = ("%d เพชร"):format(VipGift.Gems)
 	elseif gemsWhy == "story" then
 		waiting[#waiting + 1] = ("%d เพชร (จบเควสเนื้อเรื่อง \"%s\" กับไลราก่อน)"):format(VipGift.Gems, VipGift.GemsAfterName)
+	end
+	local passOk, passWhy = VipGift.CheckPass(data, hasPremium)
+	if passOk then
+		ready[#ready + 1] = "แบทเทิลพาสพรีเมียม"
+	elseif passWhy == "owned" then
+		waiting[#waiting + 1] = "แบทเทิลพาสพรีเมียม (เดือนนี้ปลดแล้ว — รับได้เดือนถัดไป)"
 	end
 	local vipOk, vipWhy = VipGift.Check(data, now, level)
 	local vipName = ("VIP %d วัน"):format(VipGift.Days)

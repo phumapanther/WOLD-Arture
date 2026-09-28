@@ -14,4 +14,9 @@ PremiumAccess.GetGems = nil
 -- SpendGems(player, n) -> true ถ้าพอและหักแล้ว · ร้านบนเกาะใช้ซื้อของตกแต่ง/สัตว์เลี้ยง/ของผิดกฎหมาย
 PremiumAccess.SpendGems = nil
 
+-- GrantPremiumPass(player) -> true เมื่อปลดสายพรีเมียมของพาสเดือนนี้ให้แล้ว · false, "owned" = ปลดอยู่แล้ว (ของขวัญหุ่นฟาง)
+-- HasPremiumPass(player) -> พาสเดือนนี้เป็นพรีเมียมอยู่ไหม
+PremiumAccess.GrantPremiumPass = nil
+PremiumAccess.HasPremiumPass = nil
+
 return PremiumAccess

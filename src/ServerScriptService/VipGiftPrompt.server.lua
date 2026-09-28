@@ -32,6 +32,10 @@ table.sort(AURAS)
 
 local rng = Random.new()
 
+local function hasPremium(player)
+	return PremiumAccess.HasPremiumPass ~= nil and PremiumAccess.HasPremiumPass(player) == true
+end
+
 local function friendCount(player)
 	local state = Friends.Get(player)
 	local n = 0
@@ -43,7 +47,7 @@ end
 local function publish(player)
 	local data = ProfileAccess.Get(player)
 	if not data then return end
-	local s = VipGift.Summary(data, os.time(), Progression.GetLevel(player), friendCount(player), AURAS)
+	local s = VipGift.Summary(data, os.time(), Progression.GetLevel(player), friendCount(player), AURAS, hasPremium(player))
 	local left = #s.ready + #s.waiting
 	local text = #s.ready > 0 and ("รับ " .. table.concat(s.ready, " + ")) or "ดูของขวัญ"
 	if player:GetAttribute("WOLD_GiftLeft") ~= left then player:SetAttribute("WOLD_GiftLeft", left) end
@@ -64,6 +68,12 @@ local function onTriggered(player)
 	end)
 	if gemsOk then got[#got + 1] = ("💎 %d เพชร"):format(VipGift.Gems) end
 
+	-- แบทเทิลพาสพรีเมียมเดือนนี้ (บัญชีใหม่)
+	local passOk = VipGift.ClaimPass(data, hasPremium(player), function()
+		return PremiumAccess.GrantPremiumPass ~= nil and PremiumAccess.GrantPremiumPass(player) == true
+	end)
+	if passOk then got[#got + 1] = "🎫 แบทเทิลพาสพรีเมียมเดือนนี้ (เปิดที่เมนู ⋯ → 🎫 แบทเทิลพาส)" end
+
 	-- VIP 30 วัน (Lv.5)
 	if VipGift.Claim(data, now, level) then
 		Vip.Publish(player)
@@ -83,7 +93,7 @@ local function onTriggered(player)
 		bagFull = true
 	end
 
-	local after = VipGift.Summary(data, now, level, friends, AURAS)
+	local after = VipGift.Summary(data, now, level, friends, AURAS, hasPremium(player))
 	if #got > 0 then
 		print(("[SpawnGift] %s (%d) รับ %s"):format(player.Name, player.UserId, table.concat(got, ", ")))
 		Remotes.SocialNotify:FireClient(player, "info", "ได้รับ " .. table.concat(got, " · "))

@@ -72,6 +72,23 @@ local failing = { NewbieGems = true, Story = { ch = { brasshaven = { done = true
 local failOk = VipGift.ClaimGems(failing, function() return false end)
 check(failOk == false and failing.NewbieGemsClaimed == nil, "เข้าบัญชีไม่สำเร็จ = ไม่เสียสิทธิ์")
 
+----------------------------------------------------------------- แบทเทิลพาสพรีเมียม (บัญชีใหม่ · ผู้ใช้สั่ง 2026-09-28)
+local granted = 0
+local function grant() granted += 1 return true end
+check(select(2, VipGift.ClaimPass({}, false, grant)) == "notnew" and granted == 0, "บัญชีเก่า = ไม่ได้พาส")
+local fresh = { NewbieGems = true } -- ไม่ต้องจบเควสก่อน (ผู้ใช้เลือก "กดได้เลย")
+check(VipGift.ClaimPass(fresh, false, grant) == true and granted == 1 and fresh.NewbiePassClaimed == true, "บัญชีใหม่กด = ได้พาสพรีเมียมทันที")
+check(select(2, VipGift.ClaimPass(fresh, false, grant)) == "claimed" and granted == 1, "กดซ้ำ = ไม่ได้อีก")
+local bought = { NewbieGems = true }
+local bOk, bWhy = VipGift.ClaimPass(bought, true, grant)
+check(bOk == false and bWhy == "owned" and bought.NewbiePassClaimed == nil, "เดือนนี้ปลดพรีเมียมเองแล้ว = รอเดือนหน้า ไม่เสียสิทธิ์")
+local wait = VipGift.Summary(bought, now, 1, 0, {}, true).waiting
+local foundWait = false
+for _, w in ipairs(wait) do if w:find("แบทเทิลพาส") then foundWait = true end end
+check(foundWait, "ป้ายบอกว่าพาสรอเดือนหน้า")
+local failPass = { NewbieGems = true }
+check(VipGift.ClaimPass(failPass, false, function() return false end) == false and failPass.NewbiePassClaimed == nil, "ปลดไม่สำเร็จ = ไม่เสียสิทธิ์")
+
 ----------------------------------------------------------------- ออร่าจากเพื่อน
 local POOL = { "Aura_A", "Aura_B", "Aura_C" }
 local rng = Random.new(3)
@@ -97,10 +114,10 @@ check(seen.Aura_A and seen.Aura_B and seen.Aura_C, "สุ่มได้คร�
 
 ----------------------------------------------------------------- ป้ายปุ่ม
 local s0 = VipGift.Summary({ NewbieGems = true, VipUntil = 0 }, now, 1, 0, POOL)
-check(#s0.ready == 0 and #s0.waiting == 3, "ผู้เล่นใหม่ Lv.1 ยังไม่จบเควสเนื้อเรื่อง: เพชร VIP ออร่ารอทั้งหมด")
+check(#s0.ready == 1 and s0.ready[1] == "แบทเทิลพาสพรีเมียม" and #s0.waiting == 3, "ผู้เล่นใหม่ Lv.1 ยังไม่จบเควส: พาสรับได้เลย · เพชร VIP ออร่ารอ")
 local s1 = VipGift.Summary({ NewbieGems = true, VipUntil = 0, Story = { ch = { brasshaven = { done = true } } } }, now, 1, 0, POOL)
-check(#s1.ready == 1 and s1.ready[1] == "150 เพชร" and #s1.waiting == 2, "ผู้เล่นใหม่ Lv.1 จบเควสแล้ว: รับเพชรได้ · VIP กับออร่ารออยู่")
-local s2 = VipGift.Summary({ NewbieGemsClaimed = true, NewbieGems = true, VipUntil = 0 }, now, 6, 5, POOL)
+check(#s1.ready == 2 and s1.ready[1] == "150 เพชร" and #s1.waiting == 2, "ผู้เล่นใหม่ Lv.1 จบเควสแล้ว: รับเพชร + พาสได้ · VIP กับออร่ารออยู่")
+local s2 = VipGift.Summary({ NewbieGemsClaimed = true, NewbiePassClaimed = true, NewbieGems = true, VipUntil = 0 }, now, 6, 5, POOL)
 check(#s2.ready == 2 and #s2.waiting == 0, "Lv.6 เพื่อน 5: รับ VIP + ออร่าพร้อมกัน")
 local s3 = VipGift.Summary({ NewbieGemsClaimed = true, VipGiftClaimed = true, FriendAuraClaimed = "Aura_A" }, now, 9, 9, POOL)
 check(#s3.ready == 0 and #s3.waiting == 0, "รับครบแล้ว = ไม่เหลืออะไร (ปุ่มซ่อน)")
