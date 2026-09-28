@@ -653,6 +653,14 @@ local function drop(model, config, killer, loot)
 		table.insert(extended, BOSS_EXTRA)
 		drops = extended
 	end
+	-- มอนบุกเกาะ (2026-09-28): `loot.only` = ดรอปแทนทั้งตาราง (บอสเกาะ = กล่องเวท) · `loot.extra` = ต่อท้าย (มอนพิเศษ + หีบทอง)
+	if loot and loot.only then
+		drops = loot.only
+	elseif loot and loot.extra then
+		local extended = table.clone(drops)
+		for _, entry in ipairs(loot.extra) do table.insert(extended, entry) end
+		drops = extended
+	end
 
 	for _, entry in ipairs(drops) do
 		-- `chance` is optional: without one a drop is certain, which is what every material drop is. With
@@ -1376,6 +1384,39 @@ MobAccess.SpawnBoss = function(victim, distance, opts)
 	return model, config.name or kind
 end
 
+-- มอนบุกเกาะตอนกลางคืน (2026-09-28) — `Island/IslandNight.server` เป็นคนเรียก
+-- เกิดตรงจุดที่สั่ง (ช่องดินที่เลือกมาแล้ว) และ **ไล่คนทั้งเกาะ** ไม่ผูกกับคนเดียวแบบ SpawnHunters (`hunt`)
+-- เลือด/ดาเมจไม่คูณกลางคืน (บนเกาะมอนมาตอนกลางคืนเสมอ) · ตกขอบ = วาร์ปกลับจุดเกิด (`home`) ตามกฎเดิมของลูป AI
+-- opts: { hp, power, scale, title, loot = { amount, chance, xp, only, extra }, maxHitFraction, tag }
+MobAccess.SpawnRaid = function(kind, position, target, opts)
+	opts = opts or {}
+	local config = GatherConfig.Mobs[kind]
+	if not config then return nil end
+	local shape = (opts.scale or opts.title) and { scale = opts.scale, title = opts.title } or nil
+	local model = spawnHunter(kind, config, target, position, 0, shape)
+	if not model then return nil end
+	local state = Live[model]
+	local power = opts.power or 1
+	local maxHp = opts.hp or config.hp * power
+	state.hp, state.maxHp, state.damageScale = maxHp, maxHp, power
+	local humanoid = model:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.MaxHealth = maxHp
+		humanoid.Health = maxHp
+	end
+	state.loot = opts.loot -- nil = ดรอปปกติ (ทับค่าของ shape ที่ spawnHunter ตั้งเป็นดรอปบอส)
+	state.maxHitFraction = opts.maxHitFraction
+	state.hunt = nil
+	state.chaseAll = true
+	if opts.tag then CollectionService:AddTag(model, opts.tag) end
+	return model
+end
+
+-- เก็บออกโดยไม่ดรอป (เช้ามาแล้วมอนบุกหายไป)
+MobAccess.Despawn = function(model)
+	if Live[model] then despawn(model) end
+end
+
 -- มีใครยืนอยู่ในระยะนี้ไหม
 --
 -- **เขียนเองแทนการใช้ nearestPlayer** เพราะ nearestPlayer ถูกนิยามทีหลัง serviceSpawner ในไฟล์นี้
@@ -1617,7 +1658,7 @@ RunService.Heartbeat:Connect(function(dt)
 			end
 
 			-- Too far from home: stop chasing and walk back, so a chase cannot drag monsters into town.
-			if not hunted and (position - state.home).Magnitude > config.leashRange then
+			if not hunted and not state.chaseAll and (position - state.home).Magnitude > config.leashRange then
 				state.target = nil
 				humanoid:MoveTo(state.home)
 			else
@@ -1628,9 +1669,11 @@ RunService.Heartbeat:Connect(function(dt)
 				if hunted then
 					-- One target, forever. No aggro range to enter and no leash to escape.
 					state.target, targetRoot = hunted, huntRoot
-				elseif not targetRoot or (targetRoot.Position - position).Magnitude > config.leashRange then
+				elseif not targetRoot or (not state.chaseAll and (targetRoot.Position - position).Magnitude > config.leashRange)
+					or (state.chaseAll and state.target:GetAttribute("WOLD_Downed")) then
 					-- Lost them (left, died, went down, or outran the leash): look for someone else.
-					state.target = nearestPlayer(position, config.aggroRange)
+					-- มอนบุกเกาะ (`chaseAll`) หาคนทั้งเกาะ ไม่มีระยะสนใจ และไม่ยืนเฝ้าคนที่ล้มแล้ว
+					state.target = nearestPlayer(position, state.chaseAll and math.huge or config.aggroRange)
 					targetRoot = state.target and state.target.Character
 						and state.target.Character:FindFirstChild("HumanoidRootPart")
 				end
@@ -1648,7 +1691,12 @@ RunService.Heartbeat:Connect(function(dt)
 							end
 							-- Through Vitals, the one door every kind of damage goes through: armor,
 							-- invulnerability and the downed state are all decided there.
-							local hurt = Vitals.ApplyDamage(state.target, config.damage * (state.damageScale or 1), "combat")
+							local amount = config.damage * (state.damageScale or 1)
+							-- มอนบุกเกาะ: ตีแรงสุดเท่านี้ของเลือดเต็มคนที่โดน (IslandConfig.NightRaid.maxHitFraction)
+							if state.maxHitFraction then
+								amount = math.min(amount, (Vitals.MaxHP(state.target) or 100) * state.maxHitFraction)
+							end
+							local hurt = Vitals.ApplyDamage(state.target, amount, "combat")
 							-- And it should be HEARD -- but only by the person it happened to, and only when it
 							-- cost them something. Built here on the server, the Sound went into the world and
 							-- replicated, so everyone within sixty studs heard every bite taken out of everyone
