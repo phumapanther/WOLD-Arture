@@ -151,31 +151,47 @@ end
 
 -- จังหวะคืน (ลูป 1 วิ) · บูตกลางคืนไม่นับว่าเพิ่งมืด (เซิร์ฟเริ่มตอนเช้าเสมอ StartTime 7)
 local wasNight = nil
-task.spawn(function()
-	while true do
-		task.wait(1)
-		local night = isNight()
-		if wasNight ~= nil and night ~= wasNight then
-			if night then
-				if farmLevel() >= R.minFarmLevel then
-					local night0 = Rules.RollNight()
-					local made = raid(night0)
-					print(("[IslandNight] มืดแล้ว: มอน %d ตัว · พิเศษ %s · พาเหรด %s"):format(
-						made, tostring(night0.special), tostring(night0.parade)))
-				end
-			else
-				local n = dawn()
-				if n > 0 then print(("[IslandNight] เช้าแล้ว: เก็บมอนบุก %d ตัว"):format(n)) end
+local function tick()
+	local night = isNight()
+	local changed = wasNight ~= nil and night ~= wasNight
+	-- จดก่อนทำงาน: งานข้างล่างพังแล้วรอบหน้าต้องไม่ถือว่า "เพิ่งมืด" ซ้ำ (ไม่งั้นปล่อยมอนซ้ำทุกวินาที)
+	wasNight = night
+	if changed then
+		if night then
+			if farmLevel() >= R.minFarmLevel then
+				local night0 = Rules.RollNight()
+				local made = raid(night0)
+				print(("[IslandNight] มืดแล้ว: มอน %d ตัว · พิเศษ %s · พาเหรด %s"):format(
+					made, tostring(night0.special), tostring(night0.parade)))
 			end
+		else
+			local n = dawn()
+			if n > 0 then print(("[IslandNight] เช้าแล้ว: เก็บมอนบุก %d ตัว"):format(n)) end
 		end
-		wasNight = night
-		if Parade and night and os.clock() >= nextParadeAt then
+	end
+	if Parade and night then
+		-- นาฬิกาถูกล็อก/กระโดด (/time) = เวลาถึงเช้าเปลี่ยน → ส่งป้ายใหม่ (รีวิว 2026-09-28)
+		local fixed = Rules.DawnDrift(Parade.endsAt, workspace:GetServerTimeNow(), Lighting.ClockTime)
+		if fixed then
+			Parade.endsAt = fixed
+			publish()
+		end
+		if os.clock() >= nextParadeAt then
 			nextParadeAt = os.clock() + R.paradeEverySeconds
 			if #raiders() < R.paradeMaxAlive then
 				local level = math.max(farmLevel(), R.minFarmLevel)
 				spawn(nil, Rules.Pick(Rules.PoolAt(level, Rules.Progress(Lighting.ClockTime))))
 			end
 		end
+	end
+end
+
+task.spawn(function()
+	while true do
+		task.wait(1)
+		-- รอบหนึ่งพังต้องไม่หยุดทั้งลูป (รีวิว 2026-09-28): ลูปตาย = เช้าไม่มาเก็บมอน มอนไล่ทั้งวัน ป้ายค้าง
+		local ok, err = pcall(tick)
+		if not ok then warn("[IslandNight] " .. tostring(err)) end
 	end
 end)
 
@@ -186,7 +202,7 @@ IslandAccess.NightAdmin = function(_, args)
 	if sub == "raid" then
 		return ("ปล่อยมอนบุก %d ตัว"):format(raid({ special = nil, parade = false }))
 	elseif sub == "parade" then
-		if not isNight() then return "พาเหรดเริ่มได้ตอนกลางคืนเท่านั้น — /time 20 ก่อน" end
+		if not isNight() then return "พาเหรดเริ่มได้ตอนกลางคืนเท่านั้น — /time 20 แล้ว /time auto ก่อน" end
 		startParade()
 		return "เริ่มพาเหรดมอนสเตอร์ถึงเช้า"
 	elseif sub == "boss" or sub == "special" or sub == "leader" then

@@ -71,4 +71,12 @@ function Rules.SecondsToDawn(clockTime)
 	return ((DayNightConfig.DawnHour - clockTime) % 24) * DayNightConfig.DayLengthSeconds / 24
 end
 
+-- ป้ายพาเหรดนับถอยหลังถึงเช้า — นาฬิกาเกมถูกล็อก/กระโดดได้ (/time) จึงเทียบใหม่ทุกวินาที
+-- คืน endsAt ใหม่เมื่อเพี้ยนเกิน 2 วิ · ไม่เพี้ยน = nil (ไม่ต้องส่งภาพใหม่)
+function Rules.DawnDrift(endsAt, serverNow, clockTime)
+	local want = serverNow + Rules.SecondsToDawn(clockTime)
+	if math.abs(want - endsAt) > 2 then return want end
+	return nil
+end
+
 return Rules
