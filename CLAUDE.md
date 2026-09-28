@@ -169,6 +169,13 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
   `IslandConfig.NodeWeightsOpen`) · กลุ่มเต็ม = สุ่มจากกลุ่มที่ว่าง · ของที่เกินอยู่แล้วไม่ลบ · ชนิดใหม่ต้องใส่ `groupOf`
   (เทส `island_node_caps_test`)
 
+**มอนบุกเกาะตอนกลางคืน + พาเหรดมอนสเตอร์ (2026-09-28) — ดันสามเพลส · ยังไม่ได้เทสในเกม** สเปก `docs/superpowers/specs/2026-09-28-island-night-raid-design.md` · แผน `docs/superpowers/plans/2026-09-28-island-night-raid.md`
+- ⚠️ **`Mobs.server` รันบนเพลสเกาะแล้ว** (ถอดจาก denylist) · ต้นแบบมอนบนเกาะมาจาก `mapgen/104_island_mobs.lua` (+82 บอส +86 ท่าถือ) — **ไม่มีต้นแบบ = ทุกตัวเป็นลูกบอลสไลม์เขียวเงียบๆ** (`tests/island_mob_protos_test.lua` ตรวจ)
+- `Island/IslandNight.server` คุมจังหวะ · `IslandNightRules` กติกาล้วน · ตัวเลข `IslandConfig.NightRaid` · `MobAccess.SpawnRaid/Despawn` (ไล่ทั้งเกาะ `chaseAll` · เพดานตี `maxHitFraction` · `loot.only/extra`)
+- ป้ายพาเหรดไม่อยู่ใน `EventConfig.Events` (ไม่งั้น WorldEvents เกมหลักสุ่มเริ่ม) — เกาะยิง `EventStateChanged` เอง + ตอบ `RequestEventState` · เสียงมากับภาพ (`spec.sound`)
+- ⚠️ **ตายบนเกาะไม่เสียเลเวล/อาชีพ/เครื่องราง** (`PlayerProgression` `if ServerConfig.IsFarm then return end`)
+- คำสั่งเทส **`/night [raid | parade | boss | special | leader | clear]`** · ของจริงตอนหัวค่ำ: `/farm level 3` → `/time 18` → `/time auto`
+
 ## โมเดลจากโค้ด (modelkit)
 ชุดสร้างโมเดลด้วยโค้ดอยู่ที่ `modelkit/` + `models/` — **อ่าน `docs/modelkit-reference.md` ก่อนแตะ**
 มีของพร้อมใช้: แลนด์มาร์ก 5 หลัง บ้าน 5 แบบ NPC 12 ตัว (rig R15 เดินได้จริง) ทุกอาคารเข้าไปอยู่ได้
