@@ -49,6 +49,15 @@ end
 FarmLevelConfig.MaxLevel = 50
 -- EXP ที่ได้ตอนตันแล้ว · true = สะสมไว้ (วันปลดเพดาน ขึ้นเลเวลตามที่สะสมทันที) · false = หยุดนับที่เส้นเลเวลสูงสุด
 FarmLevelConfig.BankExpAtMax = false
+-- **เปิดถึงเลเวลนี้ไปก่อน** (ผู้ใช้สั่ง 2026-09-28: "ทำให้ตันตอนเวล 20 ไปก่อน แต่ทุกอย่างเหมือนเดิม แค่เวลเกิน 20 ยังไม่ได้")
+-- ตาราง EXP/ของปลดทั้ง 50 เลเวลอยู่ครบและหน้าจอยังโชว์ (เลเวลที่เกินขึ้น "ยังไม่เปิด") · เปิดเพิ่ม = ขยับเลขนี้ (ไม่เกิน MaxLevel)
+-- ⚠️ ถาม "ตันแล้วไหม / เลเวลจาก EXP" ผ่าน IsMax/LevelFromExp/AddExp เท่านั้น (ใช้เพดานนี้ให้เอง) · ใครมี EXP เกินเส้นอยู่แล้ว
+-- (แอดมินที่เทส) EXP ไม่หาย แค่นับเลเวลได้ถึงเพดาน
+FarmLevelConfig.OpenLevel = 20
+
+function FarmLevelConfig.Ceiling()
+	return math.min(FarmLevelConfig.MaxLevel, FarmLevelConfig.OpenLevel or FarmLevelConfig.MaxLevel)
+end
 
 -- EXP สะสมที่ต้องใช้ถึงเลเวลนี้ (Lv1 = 0)
 function FarmLevelConfig.ExpForLevel(level)
@@ -57,18 +66,20 @@ function FarmLevelConfig.ExpForLevel(level)
 	return total
 end
 
-function FarmLevelConfig.IsMax(level)
-	return (tonumber(level) or 1) >= FarmLevelConfig.MaxLevel
+-- `ceiling` (ไม่บังคับ) = เพดานที่จะใช้ · ไม่ใส่ = เพดานที่เปิดอยู่ตอนนี้ (Ceiling) · เทสตาราง 50 เลเวลส่ง MaxLevel
+function FarmLevelConfig.IsMax(level, ceiling)
+	return (tonumber(level) or 1) >= (ceiling or FarmLevelConfig.Ceiling())
 end
 
 -- EXP สะสม → (เลเวล, EXP ที่เข้าไปแล้วในเลเวลนี้, EXP ที่เลเวลนี้ต้องการ)
 -- ถึงเพดานแล้ว = (MaxLevel, need, need) หลอดเต็ม — ผู้เรียกถาม IsMax เพื่อเขียน "สูงสุด" แทนตัวเลข
-function FarmLevelConfig.LevelFromExp(exp)
+function FarmLevelConfig.LevelFromExp(exp, ceiling)
+	ceiling = ceiling or FarmLevelConfig.Ceiling()
 	exp = tonumber(exp) or 0
 	if exp ~= exp or exp < 0 then exp = 0 end
 	exp = math.floor(math.min(exp, 1e12))
 	local level = 1
-	while level < FarmLevelConfig.MaxLevel do
+	while level < ceiling do
 		local need = FarmLevelConfig.ExpToNext(level)
 		if exp < need then return level, exp, need end
 		exp -= need
@@ -79,10 +90,10 @@ function FarmLevelConfig.LevelFromExp(exp)
 end
 
 -- EXP ใหม่หลังได้ `gain` · ตันแล้วและไม่สะสม = หยุดที่เส้นเลเวลสูงสุด (ไม่มีวันลด)
-function FarmLevelConfig.AddExp(exp, gain)
+function FarmLevelConfig.AddExp(exp, gain, ceiling)
 	local total = math.max(0, math.floor(tonumber(exp) or 0)) + math.max(0, math.floor(tonumber(gain) or 0))
 	if not FarmLevelConfig.BankExpAtMax then
-		total = math.min(total, math.max(FarmLevelConfig.ExpForLevel(FarmLevelConfig.MaxLevel), tonumber(exp) or 0))
+		total = math.min(total, math.max(FarmLevelConfig.ExpForLevel(ceiling or FarmLevelConfig.Ceiling()), tonumber(exp) or 0))
 	end
 	return total
 end

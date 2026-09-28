@@ -514,6 +514,8 @@ function ExportGui:DrawUnlocks(snap)
 			if level == current + 1 and not snap.max then
 				status = ("🔒 อีก %s EXP"):format(commas(math.max(0, (snap.need or 0) - (snap.into or 0))))
 			end
+			-- เลเวลที่เกินเพดานที่เปิดอยู่ (ผู้ใช้สั่ง 2026-09-28 ตันที่ 20 ไปก่อน) — ของยังโชว์ให้เห็นว่ามีอะไรรออยู่
+			if level > FarmLevelConfig.Ceiling() then status = "🔒 ยังไม่เปิด" end
 			local head = label(section, {
 				text = ("เลเวล %d   <font color=\"#%s\">%s</font>"):format(level,
 					(done and ENOUGH or (now and RUNE or TEXT_MUTED)):ToHex(), status),

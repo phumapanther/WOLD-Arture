@@ -271,6 +271,9 @@ local function snapshot(player)
 			-- เฟส 2c: สูตรเครื่องบนเกาะที่ยังไม่ปลด = 🔒 กดไม่ได้ (RequestCraft ตรวจซ้ำ)
 			local lockLevel = level and recipe.level and recipe.level > level and recipe.level or nil
 			if lockLevel then affordable = false end
+			-- ของที่ยังไม่เปิด (ผู้ใช้สั่ง 2026-09-28 · CraftConfig.Closed) = โชว์แต่ 🔒 กดไม่ได้ (RequestCraft ปฏิเสธซ้ำ)
+			local closed = CraftConfig.IsClosed(recipe)
+			if closed then affordable = false end
 			-- ทำได้กี่รอบจากของที่มี (ไคลเอนต์ใช้หนีบปุ่ม −/+) · อย่างน้อย 1 ให้แถวยังกดได้เมื่อพอหนึ่งรอบ
 			local maxTimes = batchOf(recipe)
 			if maxTimes > 1 then
@@ -292,6 +295,7 @@ local function snapshot(player)
 				seconds = recipe.seconds or CraftConfig.CraftSeconds,
 				batch = batchOf(recipe) > 1 and maxTimes or nil,
 				lockLevel = lockLevel,
+				closed = closed or nil,
 			})
 		end
 	end
@@ -437,6 +441,11 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index, times)
 
 	local state = Inventory.Get(player)
 	if not state then return end
+
+	-- ของที่ยังไม่เปิดให้คราฟ (ผู้ใช้สั่ง 2026-09-28) — ไคลเอนต์ส่ง index ของแถวที่ล็อกมาได้ ต้องปฏิเสธที่นี่
+	if CraftConfig.IsClosed(recipe) then
+		return Remotes.SocialNotify:FireClient(player, "warn", "🔒 " .. CraftConfig.ClosedText)
+	end
 
 	-- เฟส 2c: สูตรเครื่องบนเกาะล็อกตามเลเวลฟาร์ม
 	local level = farmLevel()

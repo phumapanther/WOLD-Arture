@@ -520,10 +520,10 @@ IslandAccess.FarmAdmin = function(admin, args)
 	if sub == "exp" and n then
 		farm.exp = math.max(0, farm.exp + math.floor(n))
 		if not FarmLevelConfig.BankExpAtMax then
-			farm.exp = math.min(farm.exp, FarmLevelConfig.ExpForLevel(FarmLevelConfig.MaxLevel))
+			farm.exp = math.min(farm.exp, FarmLevelConfig.ExpForLevel(FarmLevelConfig.Ceiling()))
 		end
 	elseif sub == "level" and n then
-		local target = math.clamp(math.floor(n), 1, FarmLevelConfig.MaxLevel)
+		local target = math.clamp(math.floor(n), 1, FarmLevelConfig.Ceiling()) -- เพดานที่เปิดอยู่ (ตอนนี้ 20)
 		farm.exp = FarmLevelConfig.ExpForLevel(target)
 		-- ลดเลเวล (เทส) = ถือว่าฉลองถึงตรงนั้นแล้ว ไม่งั้นขึ้นใหม่ครั้งหน้าจะไม่มีแบนเนอร์
 		if target < farm.celebrated then farm.celebrated = target end

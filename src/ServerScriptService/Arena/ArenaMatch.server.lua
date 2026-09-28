@@ -996,7 +996,8 @@ local function finishMatch()
 	for _, entry in ipairs(BotRoster) do
 		if entry.replaces then replaced = true end
 	end
-	local ranked = not record.studio and not record.admin and startBots == 0 and not visitors
+	-- แร็งก์ล็อกอยู่ (PvpRankConfig.Enabled = false · ผู้ใช้สั่ง 2026-09-28) = ไม่มีแมตช์ไหนนับ
+	local ranked = PvpRankConfig.Enabled and not record.studio and not record.admin and startBots == 0 and not visitors
 	if ranked then
 		local matchId = tostring(game.PrivateServerId) .. ":" .. tostring(record.createdAt or 0)
 		for _, row in ipairs(rows) do

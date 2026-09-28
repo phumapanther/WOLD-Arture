@@ -9,6 +9,11 @@
 -- · ข้อมูลอยู่ DataStore คีย์ของตัวเอง (`PvpRankStore`) ไม่ใช่โปรไฟล์ — ล็อบบี้ไม่เคยเปิดเซสชันโปรไฟล์แต่ต้องรู้ว่าเพิ่งเลื่อนขั้น
 local PvpRankConfig = {}
 
+-- **ล็อกระบบแร็งก์ไว้ก่อน** (ผู้ใช้สั่ง 2026-09-28) — false = ไม่นับแต้ม ไม่ฉลอง ไม่มีฉายา/กรอบแร็งก์
+-- หน้าปาร์ตี้ PVP โชว์ตราแร็งก์ทุกคนเป็นไอคอนล็อก แตะแล้วบอก `LockedText` · เปิดวันไหนเปลี่ยนเป็น true ที่เดียว
+PvpRankConfig.Enabled = false
+PvpRankConfig.LockedText = "แร็งก์ยังไม่เปิด"
+
 PvpRankConfig.Win = 25
 PvpRankConfig.Loss = 18
 PvpRankConfig.SeasonDrop = 2

@@ -36,6 +36,20 @@ CraftConfig.StationTitles = {
 	bakery = "เตาอบขนมปัง", metal = "โต๊ะช่างเหล็ก", loom = "กี่ทอผ้าไอน้ำ",
 }
 
+-- **ของที่ยังไม่เปิดให้คราฟ** (ผู้ใช้สั่ง 2026-09-28) — แถวยังโชว์ครบ (ให้เห็นว่ามีอะไรกำลังมา) แต่เป็น 🔒 กดไม่ได้
+-- ทุกหน้ารวม "คนดวงซวย" · เซิร์ฟเวอร์ปฏิเสธซ้ำ (Crafting.server) · **เปิดวันไหนลบชื่อออกจากตารางนี้ที่เดียว**
+-- (สนาม PVP ไม่เกี่ยว — ร้านสนามยังขายโล่/ดาบใหญ่/สไน/กับดักตามเดิม)
+CraftConfig.Closed = {
+	Trap = true, TrapAmmo_Slow = true, TrapAmmo_Stun = true, TrapAmmo_Knock = true, TrapAmmo_Blast = true,
+	Shield = true, Greatsword = true, Sniper = true,
+	BoatKey = true, AirshipKey = true,
+}
+CraftConfig.ClosedText = "ยังไม่เปิด"
+
+function CraftConfig.IsClosed(recipe)
+	return type(recipe) == "table" and CraftConfig.Closed[recipe.id] == true
+end
+
 -- **ทำหลายชิ้นในงานเดียว** (เฟส 2c ผู้ใช้เลือก 2026-09-27) — สูตรที่มี `batch = true` เลือกได้ 1..MaxBatch รอบ
 -- วัตถุดิบ เวลา และของที่ได้คูณตามจำนวนรอบ · งานเดียวต่อเครื่องเหมือนเดิม
 CraftConfig.MaxBatch = 10
@@ -253,6 +267,15 @@ CraftConfig.Recipes = {
 		cost = { Chemical = 2, Coal = 5, Stone = 10, IronOre = 2 } },
 	{ id = "TrapAmmo_Blast", tab = "misc", chance = 0.95, gold = 400, yields = 4,
 		cost = { Chemical = 3, Coal = 6, IronOre = 4, Bone = 6 } },
+
+	----------------------------------------------------------------------------
+	-- เรือ + เรือเหาะ (ผู้ใช้สั่ง 2026-09-28: เพิ่มในหน้าพาหนะแต่ **ล็อกไว้ก่อน** — ดู `Closed`)
+	-- ⚠️ วัสดุ/โอกาส/ค่าจ้างเป็นตัวเลขชั่วคราวที่ผมตั้ง (ไล่จากกุญแจรถ) ผู้ใช้ยังไม่ได้กำหนด — ตั้งจริงก่อนเปิด
+	----------------------------------------------------------------------------
+	{ id = "BoatKey", tab = "vehicle", chance = 0.05, gold = 0,
+		cost = { GearSpare = 20, IronOre = 12, WoodScrap = 40, Fiber = 20, Blueprint = 6, Silver = 800 } },
+	{ id = "AirshipKey", tab = "vehicle", chance = 0.03, gold = 0,
+		cost = { GearSpare = 30, IronOre = 20, SilverOre = 10, Crystal = 10, Fiber = 30, Blueprint = 10, Silver = 1500 } },
 }
 
 return CraftConfig

@@ -12,6 +12,12 @@ local PvpRankStore = require(script.Parent.PvpRankStore)
 local PvpRankConfig = require(game.ReplicatedStorage.PvpRankConfig)
 
 local function refresh(player)
+	-- แร็งก์ล็อกอยู่ = ไม่มีฉายา/กรอบแร็งก์ (ล้างแอตทริบิวต์ ทั้งสองระบบอ่านจากตรงนี้)
+	if not PvpRankConfig.Enabled then
+		player:SetAttribute("WOLD_PvpTier", nil)
+		player:SetAttribute("WOLD_PvpPoints", nil)
+		return
+	end
 	local r = PvpRankStore.Read(player.UserId)
 	if not r or not player.Parent then return end
 	local tier = r.played and PvpRankConfig.TierIndex(r.p) or nil

@@ -231,8 +231,38 @@ function PvpPartyGui.new(parent)
 		levelCorner.CornerRadius = UDim.new(0, 12)
 		levelCorner.Parent = level
 
+		-- ตราแร็งก์มุมขวาบนของการ์ดทุกคน (ผู้ใช้สั่ง 2026-09-28) · แร็งก์ยังล็อก = ตราจาง + 🔒 · แตะ = บอกว่ายังไม่เปิด
+		local rankBadge = Instance.new("TextButton")
+		rankBadge.Name = "RankBadge"
+		rankBadge.AnchorPoint = Vector2.new(1, 0)
+		rankBadge.Position = UDim2.new(1, -8, 0, 8)
+		rankBadge.Size = UDim2.fromOffset(40, 40)
+		rankBadge.BackgroundColor3 = Color3.fromRGB(40, 42, 50)
+		rankBadge.BackgroundTransparency = 0.15
+		rankBadge.AutoButtonColor = true
+		rankBadge.TextScaled = true
+		rankBadge.Text = "🔩"
+		rankBadge.TextTransparency = 0.45
+		rankBadge.Visible = false
+		rankBadge.ZIndex = 4
+		rankBadge.Parent = card
+		local badgeCorner = Instance.new("UICorner")
+		badgeCorner.CornerRadius = UDim.new(1, 0)
+		badgeCorner.Parent = rankBadge
+		local badgeLock = Instance.new("TextLabel")
+		badgeLock.Name = "Lock"
+		badgeLock.AnchorPoint = Vector2.new(1, 1)
+		badgeLock.Position = UDim2.new(1, 4, 1, 4)
+		badgeLock.Size = UDim2.fromOffset(20, 20)
+		badgeLock.BackgroundTransparency = 1
+		badgeLock.TextScaled = true
+		badgeLock.Text = "🔒"
+		badgeLock.ZIndex = 5
+		badgeLock.Parent = rankBadge
+
 		local plus = plusSign(card)
-		self.slots[i] = { card = card, avatar = avatar, name = name, plus = plus, level = level, stroke = cardStroke }
+		self.slots[i] = { card = card, avatar = avatar, name = name, plus = plus, level = level, stroke = cardStroke,
+			rankBadge = rankBadge }
 	end
 
 	--------------------------------------------------------------------------------
@@ -398,6 +428,10 @@ function PvpPartyGui.new(parent)
 		if self._inviteFrom then fire("decline", self._inviteFrom) end
 	end)
 	closeFriends.MouseButton1Click:Connect(function() friends.Visible = false end)
+	-- แตะตราแร็งก์ = บอกสถานะ (ตอนนี้ล็อก) · ตัวคุมแสดงเป็นข้อความเด้ง
+	for i = 1, SLOTS do
+		self.slots[i].rankBadge.MouseButton1Click:Connect(function() fire("ranklocked") end)
+	end
 	for i = 2, SLOTS do
 		self.slots[i].card.MouseButton1Click:Connect(function()
 			-- ช่องที่มีคนอยู่แล้วไม่ใช่ปุ่ม — กดได้เฉพาะช่องว่าง
@@ -420,6 +454,11 @@ function PvpPartyGui:SetRankInfo(info)
 		return
 	end
 	local PvpRankConfig = require(script.Parent.Parent.PvpRankConfig)
+	if info.locked then
+		self.rankLine.Text = "🔒 " .. PvpRankConfig.LockedText
+		self.rankNote.Text = "แมตช์ตอนนี้ยังไม่นับแต้มแร็งก์"
+		return
+	end
 	if not info.played then
 		self.rankLine.Text = "🔩 ยังไม่มีแร็งก์"
 		self.rankNote.Text = "ชนะแมตช์ที่ไม่มีบอทเพื่อเก็บแต้ม (+25 · แพ้ −18)"
@@ -537,6 +576,7 @@ function PvpPartyGui:Render(snap)
 		local member = members[i]
 		slot.name.Visible = member ~= nil
 		slot.plus.Visible = member == nil
+		slot.rankBadge.Visible = member ~= nil
 		slot.card.BackgroundColor3 = member and SLOT_BG or SLOT_EMPTY
 		if member then
 			slot.name.Text = member.name .. (member.me and " (คุณ)" or "")

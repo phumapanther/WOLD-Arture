@@ -40,19 +40,28 @@ local ok, err = pcall(function()
 	check(F.LevelFromExp(F.ExpForLevel(10) - 1) == 9 and F.LevelFromExp(F.ExpForLevel(10)) == 10, "Lv10 ที่ EXP สะสมของมันพอดี")
 	local n = #F.ExpTable
 	check(F.ExpToNext(n + 1) == F.ExpTable[n] + F.ExpStepAfter, "เลยตารางใช้สูตรต่อ")
-	-- เพดานเลเวล (ผู้ใช้สั่ง 2026-09-27: ขยายเป็น 50 เลเวล)
-	check(F.MaxLevel == 50 and F.IsMax(50) and not F.IsMax(49) and #F.ExpTable == 49, "เพดานเลเวล 50 · ตาราง EXP 49 ขั้น")
+	-- เพดานเลเวล (ผู้ใช้สั่ง 2026-09-27: ขยายเป็น 50 เลเวล) — ตาราง 50 ขั้นเทสด้วยเพดาน MaxLevel ตรงๆ
+	local MAX = F.MaxLevel
+	check(F.MaxLevel == 50 and F.IsMax(50, MAX) and not F.IsMax(49, MAX) and #F.ExpTable == 49, "เพดานเลเวล 50 · ตาราง EXP 49 ขั้น")
 	local capExp = F.ExpForLevel(F.MaxLevel)
-	local ml, mi, mn = F.LevelFromExp(capExp * 3)
+	local ml, mi, mn = F.LevelFromExp(capExp * 3, MAX)
 	check(ml == 50 and mi == mn, "EXP เกินเพดาน = Lv50 หลอดเต็ม")
-	check(F.LevelFromExp(capExp - 1) == 49 and F.LevelFromExp(capExp) == 50, "ถึง Lv50 ที่ EXP สะสมของมันพอดี")
+	check(F.LevelFromExp(capExp - 1, MAX) == 49 and F.LevelFromExp(capExp, MAX) == 50, "ถึง Lv50 ที่ EXP สะสมของมันพอดี")
 	if not F.BankExpAtMax then
-		check(F.AddExp(capExp - 10, 500) == capExp and F.AddExp(capExp, 500) == capExp, "ตันแล้ว EXP หยุดที่เส้นเพดาน")
+		check(F.AddExp(capExp - 10, 500, MAX) == capExp and F.AddExp(capExp, 500, MAX) == capExp, "ตันแล้ว EXP หยุดที่เส้นเพดาน")
 	end
 	check(F.AddExp(100, 50) == 150 and F.AddExp(capExp * 2, 10) >= capExp * 2, "AddExp ไม่มีวันลด")
 	check(F.LastUnlockLevel() <= F.MaxLevel, "ตารางปลดไม่เกินเพดาน")
 	check(F.LevelFromExp(-5) == 1 and F.LevelFromExp(0 / 0) == 1 and F.LevelFromExp("x") == 1, "EXP แปลกๆ = Lv1")
-	check(F.LevelFromExp(1e15) == F.MaxLevel, "EXP มหาศาลไม่วนไม่จบ")
+	check(F.LevelFromExp(1e15, MAX) == F.MaxLevel, "EXP มหาศาลไม่วนไม่จบ")
+	-- **เปิดถึง Lv20 ไปก่อน** (ผู้ใช้สั่ง 2026-09-28) — ในเกมตันที่ 20 ทั้งที่ตารางยาว 50
+	local open = F.Ceiling()
+	local line = F.ExpForLevel(open)
+	check(open == 20 and F.IsMax(20) and not F.IsMax(19), "เปิดถึง Lv20 (ตัน Lv20 ในเกม)")
+	check(F.LevelFromExp(capExp) == 20 and select(2, F.LevelFromExp(capExp)) == select(3, F.LevelFromExp(capExp)),
+		"EXP เกินเส้น 20 (แอดมินที่เทสไว้) = Lv20 หลอดเต็ม")
+	check(F.AddExp(line - 10, 500) == line and F.AddExp(line, 500) == line, "ถึง Lv20 แล้ว EXP หยุดที่เส้น 20")
+	check(F.AddExp(capExp, 500) == capExp, "EXP ที่มีอยู่เกินเส้นไม่ถูกหักทิ้ง (รอวันเปิดเพิ่ม)")
 
 	----------------------------------------------------------------- สิ่งที่ปลด
 	check(F.HouseCap(1) == 0 and F.HouseCap(3) == 0 and F.HouseCap(4) == 1 and F.HouseCap(15) == 1
@@ -265,9 +274,9 @@ local ok, err = pcall(function()
 		local got = {}
 		while not got[50] and count < 5000 do
 			local pick = r:NextInteger(1, 3)
-			exp = F.AddExp(exp, slots[pick].exp)
+			exp = F.AddExp(exp, slots[pick].exp, F.MaxLevel) -- จำลองตาราง 50 เลเวลเต็ม (ไม่ใช่เพดานที่เปิดตอนนี้)
 			count += 1
-			local lv = F.LevelFromExp(exp)
+			local lv = F.LevelFromExp(exp, F.MaxLevel)
 			for target in pairs(reach) do if not got[target] and lv >= target then got[target] = count end end
 			local others = {}
 			for s = 1, 3 do if s ~= pick then others[#others + 1] = slots[s] end end

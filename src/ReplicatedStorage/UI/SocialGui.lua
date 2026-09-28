@@ -1630,7 +1630,7 @@ end
 --------------------------------------------------------------------------------
 
 function SocialGui:buildProfile()
-	local page = scrollPage(self.body, "profile", 380)
+	local page = scrollPage(self.body, "profile", 420)
 	self.screens.profile = page
 
 	local face = Instance.new("ImageLabel")
@@ -1706,6 +1706,33 @@ function SocialGui:buildProfile()
 		self.profileFields[entry[2]] = value
 	end
 
+	-- แร็งก์ PVP (ผู้ใช้สั่ง 2026-09-28): ทุกคนเริ่มที่ไอร่อน โชว์ไว้พร้อมไอคอนล็อก · แตะ = "แร็งก์ยังไม่เปิด"
+	local rankRow = Instance.new("TextButton")
+	rankRow.Name = "PvpRank"
+	rankRow.Position = UDim2.new(0, 0, 0, 264 + #rows * 36)
+	rankRow.Size = UDim2.new(1, 0, 0, 30)
+	rankRow.BackgroundColor3 = STONE_DEEP
+	rankRow.BackgroundTransparency = 0.45
+	rankRow.BorderSizePixel = 0
+	rankRow.AutoButtonColor = true
+	rankRow.Text = ""
+	rankRow.Parent = page
+	corner(rankRow, UDim.new(0, 8))
+	local rankCaption = label(rankRow, "แร็งก์ PVP", 12, TEXT_MUTED)
+	rankCaption.Position = UDim2.new(0, 12, 0, 0)
+	rankCaption.Size = UDim2.new(0.4, 0, 1, 0)
+	local rankValue = label(rankRow, "🔩 ไอร่อน  🔒", 12, TEXT_LIGHT, Enum.TextXAlignment.Right)
+	rankValue.AnchorPoint = Vector2.new(1, 0)
+	rankValue.Position = UDim2.new(1, -12, 0, 0)
+	rankValue.Size = UDim2.new(0.55, 0, 1, 0)
+	self.profilePvpRank = rankValue
+	rankRow.Activated:Connect(function()
+		local PvpRankConfig = require(script.Parent.Parent.PvpRankConfig)
+		if PvpRankConfig.Enabled then return end
+		local toast = game.ReplicatedStorage:FindFirstChild("WOLD_Toast")
+		if toast then toast:Fire(PvpRankConfig.LockedText) end
+	end)
+
 	-- Raising the card is the point of the screen: it puts your profile over your head for everyone nearby.
 	-- It toggles, because the only way to take a sign down is the same button that put it up.
 	local show = button(page, "แสดงการ์ดโปรไฟล์", 13, Color3.fromRGB(58, 84, 110))
@@ -1761,6 +1788,15 @@ function SocialGui:RenderProfile(data)
 
 	self.profileFields.birthday.Text = data.birthday or "ยังไม่ระบุ"
 	self.profileFields.gender.Text = data.gender or "ยังไม่ระบุ"
+
+	-- แร็งก์ PVP: ล็อกอยู่ = ไอร่อน + 🔒 ทุกคน · เปิดแล้ว = ขั้นจริงจากแอตทริบิวต์ (PvpRankPublisher) ยังไม่เคยเล่น = ไอร่อน
+	if self.profilePvpRank then
+		local PvpRankConfig = require(script.Parent.Parent.PvpRankConfig)
+		local tierIndex = PvpRankConfig.Enabled and player:GetAttribute("WOLD_PvpTier") or 1
+		local tier = PvpRankConfig.Tier(type(tierIndex) == "number" and tierIndex or 1)
+		self.profilePvpRank.Text = ("%s %s%s"):format(tier.emoji, tier.name, PvpRankConfig.Enabled and "" or "  🔒")
+		self.profilePvpRank.TextColor3 = PvpRankConfig.Enabled and tier.color or TEXT_LIGHT
+	end
 end
 
 --------------------------------------------------------------------------------

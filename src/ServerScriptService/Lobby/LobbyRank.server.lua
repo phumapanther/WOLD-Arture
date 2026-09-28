@@ -16,6 +16,14 @@ local Pending = {} -- [player] = ขั้นที่กำลังฉลอ�
 local LastInfo = {} -- [player] = คีย์ของข้อมูลที่ส่งไปล่าสุด (ส่งเฉพาะตอนเปลี่ยน)
 
 local function check(player)
+	-- แร็งก์ล็อกอยู่: บอกหน้าปาร์ตี้ครั้งเดียวว่าล็อก ไม่อ่าน DataStore ไม่ฉลอง
+	if not PvpRankConfig.Enabled then
+		if LastInfo[player] ~= "locked" then
+			LastInfo[player] = "locked"
+			Remotes.PvpRankInfo:FireClient(player, { locked = true })
+		end
+		return
+	end
 	local r = PvpRankStore.Read(player.UserId)
 	if not r or not player.Parent then return end
 	local tier = PvpRankConfig.TierIndex(r.p)

@@ -72,21 +72,36 @@ function ProfileCardGui.Show(data)
 
 	local rank = SocialConfig.RankFor(data.level)
 	-- **กรอบแร็งก์ PVP แทนกรอบเลเวล** สำหรับคนที่เคยเล่นแร็งก์ (เฟส 3 · roadmap) — สีแร่ของขั้น หนากว่าเล็กน้อย ขั้นสูงเรือง
-	local pvpTier = type(data.pvpTier) == "number" and PvpRankConfig.Tier(data.pvpTier) or nil
+	local pvpTier = PvpRankConfig.Enabled and type(data.pvpTier) == "number" and PvpRankConfig.Tier(data.pvpTier) or nil
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = pvpTier and pvpTier.color or rank.color
 	stroke.Transparency = (pvpTier and pvpTier.glow or (not pvpTier and rank.glow)) and 0.05 or 0.4
 	stroke.Thickness = pvpTier and 3 or 2
 	stroke.Parent = panel
-	if pvpTier then
+	-- ตราแร็งก์ PVP ที่มุมล่างขวาของรูปหน้า (เดิมทับตัวอักษรระดับเลเวลที่มุมขวา) · แร็งก์ล็อกอยู่ (ผู้ใช้สั่ง 2026-09-28) =
+	-- ทุกคนโชว์ไอร่อนจางๆ + 🔒 เล็กๆ เฉยๆ
+	do
+		local shown = pvpTier or PvpRankConfig.Tier(1)
 		local badge = Instance.new("TextLabel")
-		badge.AnchorPoint = Vector2.new(1, 0)
-		badge.Position = UDim2.new(1, -6, 0, 4)
-		badge.Size = UDim2.fromOffset(24, 24)
+		badge.AnchorPoint = Vector2.new(0, 0)
+		badge.Position = UDim2.fromOffset(38, 36)
+		badge.Size = UDim2.fromOffset(22, 22)
+		badge.ZIndex = 3
 		badge.BackgroundTransparency = 1
 		badge.TextScaled = true
-		badge.Text = pvpTier.emoji
+		badge.Text = shown.emoji
+		badge.TextTransparency = PvpRankConfig.Enabled and 0 or 0.35
 		badge.Parent = panel
+		if not PvpRankConfig.Enabled then
+			local lock = Instance.new("TextLabel")
+			lock.AnchorPoint = Vector2.new(1, 1)
+			lock.Position = UDim2.new(1, 4, 1, 4)
+			lock.Size = UDim2.fromOffset(13, 13)
+			lock.BackgroundTransparency = 1
+			lock.TextScaled = true
+			lock.Text = "🔒"
+			lock.Parent = badge
+		end
 	end
 
 	local face = Instance.new("ImageLabel")

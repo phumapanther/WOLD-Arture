@@ -64,6 +64,12 @@ task.spawn(function()
 		if current and current ~= gui then
 			gui = current
 			gui:OnAction(function(action, arg)
+				-- แตะตราแร็งก์: ตอนนี้แร็งก์ล็อก (PvpRankConfig.Enabled) ตอบในเครื่องเลย ไม่ต้องถามเซิร์ฟ
+				if action == "ranklocked" then
+					local toast = game.ReplicatedStorage:FindFirstChild("WOLD_Toast")
+					if toast then toast:Fire(require(game.ReplicatedStorage.PvpRankConfig).LockedText) end
+					return
+				end
 				Remotes.RequestPvpParty:FireServer(action, arg)
 			end)
 			if lastSnapshot then draw(lastSnapshot) end

@@ -100,6 +100,14 @@ local function toast(message, isError)
 	end)
 end
 
+-- ข้อความจากฝั่งไคลเอนต์เอง (ไม่ต้องถามเซิร์ฟ เช่น แตะไอคอนแร็งก์ที่ล็อก) — ช่องทางอยู่ ReplicatedStorage (PlayerGui ถูกล้างตอนเกิดใหม่)
+local localToast = game.ReplicatedStorage:FindFirstChild("WOLD_Toast") or Instance.new("BindableEvent")
+localToast.Name = "WOLD_Toast"
+localToast.Parent = game.ReplicatedStorage
+localToast.Event:Connect(function(message, isError)
+	if type(message) == "string" then toast(message, isError == true) end
+end)
+
 Remotes.SocialNotify.OnClientEvent:Connect(function(kind, message)
 	if not message or HANDLED_ELSEWHERE[kind] then return end
 	toast(message, kind == "error")

@@ -353,7 +353,10 @@ local function recipeRow(parent, order, entry, onClick, times, onTimes)
 	odds.RichText = true
 	local fee = entry.gold or 0
 	local feeColor = (entry.goldHave or 0) >= fee and ENOUGH or SHORT
-	if entry.lockLevel then
+	if entry.closed then
+		-- ของที่ยังไม่เปิดให้คราฟ (ผู้ใช้สั่ง 2026-09-28 · CraftConfig.Closed)
+		odds.Text = ("<font color=\"#%s\">🔒 ยังไม่เปิด — เร็วๆ นี้</font>"):format(Color3.fromRGB(214, 170, 120):ToHex())
+	elseif entry.lockLevel then
 		-- เฟส 2c: สูตรเครื่องบนเกาะที่ยังไม่ปลด
 		odds.Text = ("<font color=\"#%s\">🔒 ปลดที่เลเวลฟาร์ม %d — ส่งของกับรถส่งออกเพื่อเก็บ EXP</font>"):format(
 			Color3.fromRGB(214, 170, 120):ToHex(), entry.lockLevel)
@@ -410,7 +413,7 @@ local function recipeRow(parent, order, entry, onClick, times, onTimes)
 	button.Font = Enum.Font.GothamBold
 	button.TextSize = 12
 	button.TextColor3 = affordable and Color3.fromRGB(24, 26, 32) or TEXT_MUTED
-	button.Text = entry.lockLevel and ("🔒 Lv%d"):format(entry.lockLevel)
+	button.Text = entry.closed and "🔒" or entry.lockLevel and ("🔒 Lv%d"):format(entry.lockLevel)
 		or entry.action or (((entry.chance or 1) >= 1 and (entry.gold or 0) <= 0)
 			and ((entry.seconds or 0) >= 10 and "ทำ" or "แลก") or "สร้าง")
 	button.Parent = frame
@@ -422,6 +425,12 @@ local function recipeRow(parent, order, entry, onClick, times, onTimes)
 		-- The busy test is read off the button itself rather than passed in, because greying it out happens
 		-- long after this closure was made -- the lock has to be a thing the row can be PUT INTO, not a value
 		-- captured when it was drawn.
+		-- แถวที่ยังไม่เปิด: แตะไอคอนล็อกแล้วบอกว่ายังไม่เปิด (ข้อความเด้งในเครื่อง ไม่ต้องถามเซิร์ฟ)
+		if entry.closed then
+			local toast = game.ReplicatedStorage:FindFirstChild("WOLD_Toast")
+			if toast then toast:Fire("🔒 ยังไม่เปิด") end
+			return
+		end
 		if not affordable or button:GetAttribute("Busy") then return end
 		UiSound.Play("Click")
 		onClick()
@@ -429,7 +438,7 @@ local function recipeRow(parent, order, entry, onClick, times, onTimes)
 
 	-- **ปุ่ม −/+ จำนวนรอบ** (เฟส 2c ผู้ใช้เลือก 2026-09-27) — เฉพาะสูตรที่เซิร์ฟบอกว่าทำหลายรอบได้ (`entry.batch`
 	-- = รอบสูงสุดที่ของในกระเป๋าพอ) · ซ่อนตอนล็อกเลเวล
-	if entry.batch and not entry.lockLevel and onTimes then
+	if entry.batch and not entry.lockLevel and not entry.closed and onTimes then
 		local box = Instance.new("Frame")
 		box.Name = "Times"
 		box.AnchorPoint = Vector2.new(1, 0.5)
