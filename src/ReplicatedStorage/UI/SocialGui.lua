@@ -1612,13 +1612,28 @@ function SocialGui:RenderMarket(market)
 
 		local name = label(row, entry.name, 13, TEXT_LIGHT)
 		name.Position = UDim2.new(0, 42, 0, 0)
-		name.Size = UDim2.new(1, -130, 1, 0)
+		name.Size = UDim2.new(1, -250, 1, 0)
 		name.TextTruncate = Enum.TextTruncate.AtEnd
 
-		-- In gold, right-aligned, so the column of numbers can be read down without reading the names.
-		local price = label(row, ("%d"):format(entry.price), 14, ACCENT, Enum.TextXAlignment.Right)
-		price.Position = UDim2.new(1, -84, 0, 0)
-		price.Size = UDim2.new(0, 76, 1, 0)
+		-- ขึ้น/ลงจากรอบก่อน (ผู้ใช้สั่ง 2026-09-28): ⬆ เขียว / ⬇ แดง + ส่วนต่าง · ราคาเก่าเทาเข้ม → ราคาใหม่ทอง
+		-- ⬆⬇ ไม่มีตัวเลือกอีโมจิ = ตัวอักษรที่ย้อมสีได้ (ทดสอบในเพลสแล้ว · ▴▾➜ เป็นกล่องเปล่า)
+		-- ราคาใหม่สีทองชิดขวา อ่านไล่ลงได้โดยไม่ต้องอ่านชื่อ · เซิร์ฟรุ่นเก่าไม่ส่ง previous = ราคาเดียว
+		local new = ('<font color="#D8AC54">%d</font>'):format(entry.price)
+		local text = new
+		if entry.previous then
+			local diff = entry.price - entry.previous
+			if diff > 0 then
+				text = ('<font color="#4CD964">⬆ +%d</font>   <font color="#6E6E6E">%d</font> → %s'):format(diff, entry.previous, new)
+			elseif diff < 0 then
+				text = ('<font color="#FF5A5A">⬇ %d</font>   <font color="#6E6E6E">%d</font> → %s'):format(diff, entry.previous, new)
+			else
+				text = ('<font color="#6E6E6E">คงที่</font>   %s'):format(new)
+			end
+		end
+		local price = label(row, text, 14, TEXT_LIGHT, Enum.TextXAlignment.Right)
+		price.RichText = true
+		price.Position = UDim2.new(1, -212, 0, 0)
+		price.Size = UDim2.new(0, 204, 1, 0)
 		price.Font = Enum.Font.GothamBold
 	end
 

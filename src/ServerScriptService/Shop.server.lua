@@ -59,14 +59,25 @@ local function sellableIds()
 	return ids
 end
 
+-- ตัวคูณของช่องเวลาหนึ่ง — ช่องเดียวกันได้เลขเดียวกันทุกเซิร์ฟเสมอ ช่องก่อนหน้าจึงคำนวณย้อนได้โดยไม่ต้องจำ
+local function multipliersFor(bucket)
+	-- คูณเลขคีย์ก่อนส่งเข้า `Random.new` เพื่อให้ช่วงที่ติดกันไม่เกาะกลุ่มกัน
+	local rng = Random.new(bucket * 1013904223 + 1664525)
+	local out = {}
+	for _, id in ipairs(sellableIds()) do
+		out[id] = 1 + (rng:NextNumber() * 2 - 1) * ShopConfig.PriceSwing
+	end
+	return out
+end
+
+-- ราคารอบก่อน ให้หน้า "ราคากลาง" บอกว่าขึ้น/ลงเท่าไหร่ (ผู้ใช้สั่ง 2026-09-28)
+local PrevMultipliers = {}
+
 local function reroll()
 	local period = ShopConfig.RerollSeconds
 	local bucket = math.floor(os.time() / period)
-	-- คูณเลขคีย์ก่อนส่งเข้า `Random.new` เพื่อให้ช่วงที่ติดกันไม่เกาะกลุ่มกัน
-	local rng = Random.new(bucket * 1013904223 + 1664525)
-	for _, id in ipairs(sellableIds()) do
-		Multipliers[id] = 1 + (rng:NextNumber() * 2 - 1) * ShopConfig.PriceSwing
-	end
+	Multipliers = multipliersFor(bucket)
+	PrevMultipliers = multipliersFor(bucket - 1)
 	NextRerollAt = (bucket + 1) * period
 end
 
@@ -87,7 +98,9 @@ end)
 -- Taking meta rather than reading the slot means every caller goes through the same arithmetic: the price
 -- shown in the window, the price paid on a single sell, and the price paid by "sell everything" cannot
 -- drift apart, which they would the moment one of the three computed its own.
-local function buyPrice(id, meta)
+-- `mults` = ตัวคูณชุดไหน (ไม่ส่ง = รอบนี้) · หน้าราคากลางส่ง PrevMultipliers เพื่อหาราคารอบก่อน
+local function buyPrice(id, meta, mults)
+	local m = (mults or Multipliers)[id] or 1
 	local item = ItemCatalog.Get(id)
 	if not item or not ShopConfig.Buys[item.kind] then return nil end
 	-- One item may refuse to be sold even though its whole kind is bought. The steam-age materials do: they
@@ -95,7 +108,7 @@ local function buyPrice(id, meta)
 	-- farming the recipes exist to ask for. Returning nil here is the single gate -- the window, the single
 	-- sell, "sell everything" and the price board all price through this function.
 	if not ItemCatalog.IsSellable(id) then return nil end
-	local base = (item.value or 0) * ShopConfig.BuyFraction * (Multipliers[id] or 1)
+	local base = (item.value or 0) * ShopConfig.BuyFraction * m
 
 	-- A heavy fish is worth more than a small one, because otherwise the weight is decoration: a 45 kg
 	-- legendary and a 1 kg minnow fetched the same coins, and the only reason to keep the big one was to
@@ -108,7 +121,7 @@ local function buyPrice(id, meta)
 		-- Multiplied by the same drift as the base, so a trophy fish rises and falls with the market like
 		-- everything else. Left out of the drift it would have been a fixed floor under the price, and a big
 		-- fish would have been oddly steady on a day when every other catch had moved.
-		base += meta.kg * ShopConfig.GoldPerKg * (Multipliers[id] or 1)
+		base += meta.kg * ShopConfig.GoldPerKg * m
 	end
 
 	-- ของขอบทอง (เฟส 2b): ขายบนเกาะเท่านั้น 3 เท่าของราคาตลาดตอนนี้ · ร้านเกมหลักไม่รับ
@@ -137,7 +150,8 @@ MarketAccess.Quote = function()
 	for id, item in pairs(ItemCatalog.Items) do
 		local price = buyPrice(id, nil)
 		if price then
-			table.insert(prices, { id = id, name = item.name, icon = item.icon, price = price })
+			table.insert(prices, { id = id, name = item.name, icon = item.icon, price = price,
+				previous = buyPrice(id, nil, PrevMultipliers) })
 		end
 	end
 	table.sort(prices, function(a, b)
