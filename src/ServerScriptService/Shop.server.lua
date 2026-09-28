@@ -313,7 +313,8 @@ local function snapshot(player)
 				})
 			end
 		end
-		table.sort(buys, function(a, b) return a.slot < b.slot end)
+		-- ยอดรวมทั้งกองมากสุดก่อน (ผู้ใช้สั่ง 2026-09-28)
+		ShopConfig.SortSellRows(buys)
 	end
 
 	local island = SELLS == ShopConfig.IslandSells

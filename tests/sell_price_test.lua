@@ -71,4 +71,16 @@ check(distinct == 11, ("ช่วง 10-20 ได้ครบทุกค่า 
 check(S.FloorSellPrice("Egg", 2.4) == 10 and S.FloorSellPrice("Shark", 192) == 192, "พ่อค้าเมือง: ต่ำสุด 10 ของแพงเท่าเดิม")
 check(S.FloorSellPrice("Stone", 0.6) == 0.6, "พ่อค้าเมือง: ก้อนหินไม่ยก")
 
+-- 6. รายการขายของในหน้าร้าน: ยอดรวมทั้งกองมากสุดก่อน (ผู้ใช้สั่ง 2026-09-28) · เท่ากัน = ต่อชิ้นแพงก่อน · แล้วเลขช่อง
+local rows = {
+	{ slot = 1, id = "Shark", each = 288, total = 288 },
+	{ slot = 2, id = "Egg", each = 15, total = 750 },
+	{ slot = 3, id = "Milk", each = 12, total = 288 },
+	{ slot = 4, id = "Bone", each = 10, total = 10 },
+	{ slot = 5, id = "Slime", each = 10, total = 10 },
+}
+S.SortSellRows(rows)
+local order = {}
+for i, r in ipairs(rows) do order[i] = r.id end
+check(table.concat(order, ",") == "Egg,Shark,Milk,Bone,Slime", "เรียงยอดรวม: " .. table.concat(order, ","))
 return (fails == 0 and "PASS\n" or ("FAIL x%d\n"):format(fails)) .. table.concat(out, "\n")

@@ -97,11 +97,13 @@ local function snapshot(player, townId)
 					name = ItemCatalog.DisplayName(slot.id, slot.meta) or slot.id,
 					icon = item and item.icon or "",
 					price = price,
+					slot = index, each = price, total = price * (slot.count or 1), -- ให้ SortSellRows เรียง
 				}
 			end
 		end
 	end
-	table.sort(rows, function(a, b) return a.index < b.index end)
+	-- ยอดรวมทั้งกองมากสุดก่อน เหมือนร้านรับซื้อ (ผู้ใช้สั่ง 2026-09-28)
+	ShopConfig.SortSellRows(rows)
 
 	local ownerId, ownerName = TownAccess.OwnerOf(townId)
 	return {

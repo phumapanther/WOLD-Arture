@@ -250,6 +250,17 @@ function ShopConfig.NextSellPrice(u, u2, prev, lo, hi)
 	return aboveBottom + (pick - nBelow)
 end
 
+-- รายการขายของในหน้าร้าน (ผู้ใช้สั่ง 2026-09-28): **ยอดรวมทั้งกองมากสุดก่อน** · เท่ากัน = ต่อชิ้นแพงก่อน · แล้วเลขช่อง
+-- แถว = { slot, each, total } · เรียงในที่ (ใช้ทั้งร้านเกมหลักและร้านเกาะ)
+function ShopConfig.SortSellRows(rows)
+	table.sort(rows, function(a, b)
+		if a.total ~= b.total then return a.total > b.total end
+		if a.each ~= b.each then return a.each > b.each end
+		return a.slot < b.slot
+	end)
+	return rows
+end
+
 -- ราคาคงที่ (พ่อค้าประจำเมือง) หลังยกพื้น 10 · ของยกเว้นไม่ยก
 function ShopConfig.FloorSellPrice(id, price)
 	if ShopConfig.PriceFloorExempt[id] then return price end
