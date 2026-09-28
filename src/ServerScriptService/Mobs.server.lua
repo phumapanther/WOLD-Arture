@@ -95,6 +95,11 @@ local function buildSlime(config)
 		weld.Parent = body
 	end
 
+	-- Roblox wants a HumanoidRootPart to drive a Humanoid; the body doubles as one.
+	-- **ตั้งชื่อก่อนใส่ Humanoid** (ผู้ใช้แจ้ง 2026-09-28 สไลม์เขียวไม่เดินทั้งคอมและมือถือ) — เดิมเปลี่ยนชื่อหลัง Humanoid
+	-- เข้าโมเดลแล้ว ถ้า Humanoid หาชิ้นหลักตอนเข้าโมเดล มันจะไม่เจอ (RootPart = nil) แล้ว MoveTo ไม่มีผลเลย
+	body.Name = "HumanoidRootPart"
+
 	-- A Humanoid so it can walk with MoveTo and be steered like anything else. HP is tracked in Live
 	-- rather than on the Humanoid so nothing outside this file can quietly kill one.
 	local humanoid = Instance.new("Humanoid")
@@ -102,10 +107,12 @@ local function buildSlime(config)
 	humanoid.Health = config.hp
 	humanoid.WalkSpeed = config.walkSpeed
 	humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+	-- ก้อนกลมไม่มีขา: ล้ม/นั่ง/ปีน แล้วลุกเองไม่ได้ = ยืนค้าง · ปิดสถานะพวกนี้ตั้งแต่เกิด (ลูป AI ดึงกลับอีกชั้น)
+	for _, st in ipairs({ Enum.HumanoidStateType.FallingDown, Enum.HumanoidStateType.Ragdoll,
+		Enum.HumanoidStateType.Seated, Enum.HumanoidStateType.Climbing }) do
+		humanoid:SetStateEnabled(st, false)
+	end
 	humanoid.Parent = model
-
-	-- Roblox wants a HumanoidRootPart to drive a Humanoid; the body doubles as one.
-	body.Name = "HumanoidRootPart"
 
 	local health = Instance.new("BillboardGui")
 	health.Name = "Health"
@@ -1529,6 +1536,38 @@ RunService.Heartbeat:Connect(function(dt)
 			end
 			if state.blockedUntil and os.clock() < state.blockedUntil then
 				continue
+			end
+
+			-- **กันมอนค้าง** (ผู้ใช้แจ้ง 2026-09-28 สไลม์เขียวไม่เดิน): สถานะล้ม/ร่างอ่อน/ยืนบนแท่น = ขยับไม่ได้จนลุก
+			-- ซึ่งมอนไม่มีขา (สไลม์) ลุกเองไม่เป็น → ดึงกลับเป็นวิ่ง · ไม่แตะตอนสตัน (ตั้งใจให้หยุด)
+			local hstate = humanoid:GetState()
+			if hstate == Enum.HumanoidStateType.FallingDown or hstate == Enum.HumanoidStateType.Ragdoll
+				or hstate == Enum.HumanoidStateType.PlatformStanding or hstate == Enum.HumanoidStateType.Seated then
+				humanoid.PlatformStand = false
+				humanoid.Sit = false
+				humanoid:ChangeState(Enum.HumanoidStateType.Running)
+			end
+			-- ตั้งใจเดินแต่ไม่ขยับเกิน 3 วิ = ติด → เด้งขึ้นหนึ่งที + บอกเหตุผลลง Output ครั้งเดียวต่อตัว (ไว้ไล่ต้นเหตุต่อ)
+			local walkTo = humanoid.WalkToPoint
+			local wantsToMove = not root.Anchored and (walkTo - position) * Vector3.new(1, 0, 1) ~= Vector3.zero
+				and ((walkTo - position) * Vector3.new(1, 0, 1)).Magnitude > 4
+			local lastPos = state.stuckFrom
+			if wantsToMove and lastPos and ((position - lastPos) * Vector3.new(1, 0, 1)).Magnitude < 0.5 then
+				if os.clock() - (state.stuckSince or os.clock()) > 3 then
+					if not state.stuckWarned then
+						state.stuckWarned = true
+						local ok, owner = pcall(root.GetNetworkOwner, root)
+						warn(("[Mobs] %s ค้าง: state=%s rootPart=%s anchored=%s owner=%s floor=%s hip=%.2f speed=%.1f"):format(
+							model.Name, tostring(hstate), tostring(humanoid.RootPart), tostring(root.Anchored),
+							ok and tostring(owner) or "?", tostring(humanoid.FloorMaterial), humanoid.HipHeight, humanoid.WalkSpeed))
+					end
+					humanoid.Jump = true
+					humanoid:MoveTo(walkTo)
+					state.stuckSince = os.clock()
+				end
+			else
+				state.stuckFrom = position
+				state.stuckSince = os.clock()
 			end
 
 			-- Legs follow the body. Read off the real velocity rather than from each place that calls MoveTo,

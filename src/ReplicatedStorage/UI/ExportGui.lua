@@ -491,11 +491,13 @@ function ExportGui:DrawUnlocks(snap)
 		local rows = FarmLevelConfig.UnlocksAt(level)
 		if #rows > 0 or level == current then
 			local done, now = level < current, level == current
+			-- เกินเพดานที่เปิด (ผู้ใช้สั่ง 2026-09-28 ตันที่ Lv20 ไปก่อน) = กรอบมืดลงเล็กน้อย + 🔒 แต่ยังเห็นของครบ
+			local closed = level > FarmLevelConfig.Ceiling()
 			local section = Instance.new("Frame")
 			section.LayoutOrder = level
 			section.Size = UDim2.new(1, 0, 0, 0)
 			section.AutomaticSize = Enum.AutomaticSize.Y
-			section.BackgroundColor3 = now and Color3.fromRGB(58, 56, 40) or CARD
+			section.BackgroundColor3 = now and Color3.fromRGB(58, 56, 40) or (closed and Color3.fromRGB(22, 22, 28) or CARD)
 			section.BackgroundTransparency = done and 0.35 or 0
 			section.BorderSizePixel = 0
 			section.Parent = self.unlocksPage
@@ -515,7 +517,7 @@ function ExportGui:DrawUnlocks(snap)
 				status = ("🔒 อีก %s EXP"):format(commas(math.max(0, (snap.need or 0) - (snap.into or 0))))
 			end
 			-- เลเวลที่เกินเพดานที่เปิดอยู่ (ผู้ใช้สั่ง 2026-09-28 ตันที่ 20 ไปก่อน) — ของยังโชว์ให้เห็นว่ามีอะไรรออยู่
-			if level > FarmLevelConfig.Ceiling() then status = "🔒 ยังไม่เปิด" end
+			if closed then status = ("🔒 ยังไม่ปลดล็อก · ตอนนี้ตันที่ Lv%d"):format(FarmLevelConfig.Ceiling()) end
 			local head = label(section, {
 				text = ("เลเวล %d   <font color=\"#%s\">%s</font>"):format(level,
 					(done and ENOUGH or (now and RUNE or TEXT_MUTED)):ToHex(), status),
@@ -538,7 +540,7 @@ function ExportGui:DrawUnlocks(snap)
 				local chip = Instance.new("Frame")
 				chip.LayoutOrder = i
 				chip.BackgroundColor3 = STONE_DEEP
-				chip.BackgroundTransparency = level > current and 0.4 or 0
+				chip.BackgroundTransparency = closed and 0.6 or (level > current and 0.4 or 0)
 				chip.BorderSizePixel = 0
 				chip.Parent = grid
 				corner(chip, 6)
@@ -551,7 +553,7 @@ function ExportGui:DrawUnlocks(snap)
 					icon.Size = UDim2.fromOffset(22, 22)
 					icon.Position = UDim2.fromOffset(4, 3)
 					ItemIcon.Apply(icon, row.icon)
-					icon.ImageTransparency = level > current and 0.4 or 0
+					icon.ImageTransparency = closed and 0.55 or (level > current and 0.4 or 0)
 					icon.Parent = chip
 				end
 				label(chip, { text = row.text, size = 12, font = Enum.Font.GothamMedium,
