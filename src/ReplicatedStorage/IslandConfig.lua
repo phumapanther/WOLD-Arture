@@ -365,6 +365,46 @@ function IslandConfig.NodeWeightsOpen(groups)
 	return open
 end
 
+--------------------------------------------------------------------------------
+-- มอนบุกเกาะตอนกลางคืน + พาเหรดมอนสเตอร์ (ผู้ใช้สั่ง 2026-09-28)
+-- สเปก docs/superpowers/specs/2026-09-28-island-night-raid-design.md · กติกา `IslandNightRules` · ตัวคุม `Island/IslandNight.server`
+--------------------------------------------------------------------------------
+IslandConfig.NightRaid = {
+	minFarmLevel = 3,              -- เลเวลฟาร์มของเจ้าของเกาะ (= ชุดแรกใน pools)
+	countMin = 1, countMax = 3,    -- มอนตอนหัวค่ำ
+	-- ทอยครั้งเดียวต่อคืนตามลำดับนี้ สูงสุดหนึ่งตัวพิเศษ (ติดแล้วแทนมอนธรรมดาหนึ่งตัวในคืนนั้น)
+	odds = {
+		{ id = "boss", chance = 0.05 },
+		{ id = "special", chance = 0.05 },
+		{ id = "leader", chance = 0.10 },
+	},
+	paradeChance = 0.05,           -- ทอยแยก คืนพาเหรดก็มีตัวพิเศษได้
+	paradeEverySeconds = 20,
+	paradeMaxAlive = 8,            -- นับรวมมอนตอนหัวค่ำ
+	maxHitFraction = 0.10,         -- ตีแรงสุด 10% ของเลือดเต็มคนที่โดน ทุกตัวรวมบอส
+	spawnMinDistance = 30, spawnMaxDistance = 60,
+	-- ชุดมอนตามเลเวลฟาร์ม สะสมจากขั้นก่อน · ชื่อ = คีย์ใน GatherConfig.Mobs (เทส island_night_rules ตรวจ)
+	pools = {
+		{ level = 3, kinds = { "Bat", "GreenSlime", "Spider", "Boar", "Skeleton" } },
+		{ level = 10, kinds = { "Bandit", "Wolf", "Ghoul" } },
+		{ level = 20, kinds = { "ClockworkSentry", "Wraith", "StoneGolem" } },
+	},
+	specials = { "SteamSlime", "PlasmaSlime", "BioSlime" },
+	specialChest = "Chest_Gold",
+	-- บอสโลกขนาดเดิม แต่ไม่ถึกเท่าเดิม · ดรอปกล่องเวทมนตร์อย่างเดียว (หีบเวทยังไม่มีโมเดล กดใช้แล้วเงียบ)
+	boss = { kind = "Forgewarden", hp = 1500, drop = "MagicBox" },
+	-- หัวหน้าฝูง: ใหญ่ขึ้น 2 เท่า เลือด 3 เท่า (ตัวเลขผมตั้ง) · ดรอปวัตถุดิบ 2 เท่า EXP 2 เท่า (ผู้ใช้กำหนด)
+	leader = { scale = 2, power = 3, amount = 2, xp = 2 },
+	-- ป้ายพาเหรด (ทรงเดียวกับอีเวนต์เกมหลัก) · ไอคอนยืมของอีเวนต์สไลม์ไว้ก่อน
+	banner = {
+		icon = "rbxassetid://139399362647202",
+		message = "🌙 พาเหรดมอนสเตอร์",
+		colour = Color3.fromRGB(170, 130, 255),
+		sound = "EventSlime",
+	},
+	tag = "WOLD_Raid",             -- แท็กบนตัวมอนบุก ให้ IslandNight นับ/เก็บตอนเช้า
+}
+
 IslandConfig.MineItem = "MineZone"
 IslandConfig.MineEverySeconds = 30 * 60 -- รอบเกิดแร่ (ผู้ใช้สั่ง 2026-09-23: "30 นาทีขึ้นไป")
 IslandConfig.MineMax = 6 -- ก้อนที่ค้างอยู่ในโซนได้พร้อมกัน ขุดหมดแล้วรอบหน้าเติมใหม่
