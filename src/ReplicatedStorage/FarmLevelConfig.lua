@@ -198,6 +198,12 @@ function FarmLevelConfig.UnlocksAt(level)
 	if cap > before then add({ text = ("มีบ้านได้ %d หลัง"):format(cap), emoji = "🏠" }) end
 	local pets, petsBefore = FarmLevelConfig.PetCap(level), FarmLevelConfig.PetCap(level - 1)
 	if pets > petsBefore and pets > 1 then add({ text = ("สัตว์เลี้ยงได้ %d ตัว"):format(pets), emoji = "🐾" }) end
+	-- มอนบุกกลางคืน (2026-09-28): ชุดแรกเปิดระบบ ชุดถัดไป = เจอตัวโหดขึ้น
+	for i, tier in ipairs(IslandConfig.NightRaid.pools) do
+		if tier.level == level then
+			add({ text = i == 1 and "มอนบุกตอนกลางคืน" or "มอนกลางคืนโหดขึ้น", emoji = "🌙" })
+		end
+	end
 
 	-- ของที่ร้านเกมหลักขายอยู่แล้ว (อุปกรณ์ เหยื่อ ค้อนซ่อม 2026-09-28) ไม่ใช่ของปลดของฟาร์ม — ไม่นับในตาราง
 	-- (กติกา 1-6 อย่างต่อเลเวลที่ผู้ใช้อนุมัติ · ไม่งั้น Lv1 กลายเป็น 12 อย่าง)
