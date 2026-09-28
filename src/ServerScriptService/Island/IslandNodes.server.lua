@@ -57,13 +57,14 @@ local function rescanSoil()
 	print(("[IslandNodes] ผืนดิน %d ช่อง"):format(#soilCells))
 end
 
--- ชนิดไหนโผล่ · สุ่มตามน้ำหนัก
-local function pickKind()
+-- ชนิดไหนโผล่ · สุ่มตามน้ำหนัก เฉพาะกลุ่มที่ยังไม่ครบเพดาน (แร่/พุ่ม/ต้นไม้ อย่างละ 50 · 2026-09-28)
+local function pickKind(groups)
+	local weights = IslandConfig.NodeWeightsOpen(groups)
 	local total = 0
-	for _, w in pairs(CFG.weights) do total += w end
+	for _, w in pairs(weights) do total += w end
 	if total <= 0 then return nil end
 	local roll = math.random() * total
-	for kind, w in pairs(CFG.weights) do
+	for kind, w in pairs(weights) do
 		roll -= w
 		if roll <= 0 then return kind end
 	end
@@ -186,16 +187,19 @@ function drop(model, key)
 	if gs then gs[key] = nil end
 end
 
+-- คืน (จำนวนรวม, { ore/bush/tree = จำนวน }) — กลุ่มจาก `CFG.groupOf`
 local function countLive()
-	local n = 0
+	local n, groups = 0, {}
 	for model, key in pairs(Live) do
 		if model.Parent then
 			n += 1
+			local g = CFG.groupOf[model:GetAttribute("NodeKind")]
+			if g then groups[g] = (groups[g] or 0) + 1 end
 		else
 			drop(model, key) -- ถูกเก็บไปแล้ว (Gathering ลบทิ้งเพราะ OneShot) บูตหน้าไม่ต้องคืนมาอีก
 		end
 	end
-	return n
+	return n, groups
 end
 
 -- คืนจุดที่เคยโผล่ไว้ ตอนเซิร์ฟบูตใหม่ · ช่องที่ถูกยึดไปแล้ว (ปลูกแปลงทับ) ทิ้งไปเลย
@@ -233,7 +237,9 @@ end
 
 local function spawnOne()
 	if #soilCells == 0 then return false end
-	local kind = pickKind()
+	local live, groups = countLive()
+	if live >= CFG.max then return false end
+	local kind = pickKind(groups)
 	if not kind then return false end
 	-- ลองสุ่มช่องสัก 30 ครั้ง — ดินเต็มไปด้วยแปลงผักก็เป็นไปได้ ไม่ต้องไล่ทั้งผืน
 	for _ = 1, 30 do

@@ -165,6 +165,9 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 - **เงินเริ่มต้น 20,000 เฉพาะบัญชีใหม่** `StarterKit.Gold` ได้พร้อมชุดเปิดตัว (บัญชีเก่าไม่ได้ — ผู้ใช้เลือก)
 - เกาะ: รถส่งออก **18 นาที** (`ExportConfig.ShipSeconds`) · ของสุ่มบนผืนดิน **ทุก 15 นาที ทีละ 2 จุด** (`IslandConfig.NodeSpawn`) ·
   ลูบสัตว์เลี้ยง **ทุก 10 นาที** (`PetPatSeconds`) — ข้อความ 30 นาทีที่อื่นใน CLAUDE.md นี้เป็นค่าเก่า
+- ของสุ่มบนผืนดิน **เพดานรวม 150 · แร่ (รวมก้อนหิน) / พุ่ม / ต้นไม้ อย่างละ 50** (`NodeSpawn.groupOf/groupMax` +
+  `IslandConfig.NodeWeightsOpen`) · กลุ่มเต็ม = สุ่มจากกลุ่มที่ว่าง · ของที่เกินอยู่แล้วไม่ลบ · ชนิดใหม่ต้องใส่ `groupOf`
+  (เทส `island_node_caps_test`)
 
 ## โมเดลจากโค้ด (modelkit)
 ชุดสร้างโมเดลด้วยโค้ดอยู่ที่ `modelkit/` + `models/` — **อ่าน `docs/modelkit-reference.md` ก่อนแตะ**

@@ -334,10 +334,17 @@ IslandConfig.NodeSpawn = {
 	everySeconds = 15 * 60,
 	perRoundMin = 2,
 	perRoundMax = 2,
-	-- เพดาน 250 จุด ≈ 31 ชั่วโมงกว่าจะเต็ม (8 จุด/ชม.) · **ตัวเลขนี้คือเพดานประสิทธิภาพ ไม่ใช่เพดานการออกแบบ**
-	-- ต้นไม้/หิน/พุ่ม 12-25 ชิ้น สายแร่ 31-205 ชิ้น — 250 จุดราว 11,000 พาร์ท ซึ่งเซิร์ฟส่วนตัวรับไหว
-	-- อยากให้รกกว่านี้ค่อยขยับขึ้น แต่ดู FPS ด้วย (ผืนดินมี 1,755 ช่อง ใส่ได้เยอะกว่านี้มากทางทฤษฎี)
-	max = 250,
+	-- **เพดานรวม 150 · แร่ พุ่ม ต้นไม้ อย่างละไม่เกิน 50** (ผู้ใช้สั่ง 2026-09-28 · เดิม 250 ไม่แยกกลุ่ม)
+	-- กลุ่มแร่ = ทุกอย่างที่ขุดด้วยอีเต้อ รวมก้อนหิน (ผู้ใช้เลือก) · กลุ่มเต็ม = สุ่มจากกลุ่มที่ยังว่าง ·
+	-- ของที่เกินอยู่แล้วตอนปรับไม่ลบ แค่หยุดเกิดจนกว่าจะต่ำกว่า · **ชนิดใหม่ต้องใส่ `groupOf`** (เทส island_node_caps)
+	max = 150,
+	groupOf = {
+		Tree = "tree", Herb = "bush",
+		Rock = "ore", Coal = "ore", IronOre = "ore", SilverOre = "ore",
+		Crystal = "ore", GoldOre = "ore", MagicOre = "ore", DiamondOre = "ore",
+	},
+	groupMax = { ore = 50, bush = 50, tree = 50 },
+	-- 150 จุด ≈ 19 ชั่วโมงกว่าจะเต็ม (8 จุด/ชม.) · ต้นไม้/หิน/พุ่ม 12-25 ชิ้น สายแร่ 31-205 ชิ้น
 	-- น้ำหนักการสุ่ม: ของธรรมดาเจอบ่อย ของแพงเจอยาก (รวมกันเท่าไหร่ก็ได้ ระบบหารเอง)
 	weights = {
 		Tree = 26, Rock = 26, Herb = 16,
@@ -347,6 +354,16 @@ IslandConfig.NodeSpawn = {
 	-- สแกนหาช่องดินใหม่ทุกเท่านี้ — ผู้ใช้ระบายดินเพิ่มหรือย้ายที่ได้ตลอดใน Studio
 	rescanSeconds = 10 * 60,
 }
+
+-- น้ำหนักสุ่มเฉพาะชนิดที่กลุ่มยังไม่เต็ม · `groups` = { ore = จำนวนที่มีอยู่, ... } · ว่าง = ครบทุกกลุ่มแล้ว
+function IslandConfig.NodeWeightsOpen(groups)
+	local ns, open = IslandConfig.NodeSpawn, {}
+	for kind, w in pairs(ns.weights) do
+		local g = ns.groupOf[kind]
+		if not g or (groups[g] or 0) < (ns.groupMax[g] or math.huge) then open[kind] = w end
+	end
+	return open
+end
 
 IslandConfig.MineItem = "MineZone"
 IslandConfig.MineEverySeconds = 30 * 60 -- รอบเกิดแร่ (ผู้ใช้สั่ง 2026-09-23: "30 นาทีขึ้นไป")
