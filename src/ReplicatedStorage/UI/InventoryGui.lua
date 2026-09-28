@@ -571,6 +571,8 @@ function InventoryGui:Render(data)
 			local art = item and item.icon or ""
 			-- ไม่มีรูปของตัวเอง = ⌛ เกาะขอบบนของช่อง แล้วชื่อยังขึ้นใต้มันเหมือนเดิม (ItemIcon)
 			ItemIcon.Apply(entry.icon, art)
+			-- ติดสกินอยู่ = รูปสกินเล็กๆ มุมล่างซ้าย (ผู้ใช้สั่ง 2026-09-28)
+			ItemIcon.SetBadge(entry.icon, InventoryGui.SkinIconOf(slot.meta))
 			entry.icon.Visible = true
 			-- The name only shows when there is no artwork, so an icon is never covered by its own label.
 			entry.name.Text = (art == "") and ItemCatalog.DisplayName(slot.id, slot.meta) or ""
@@ -600,6 +602,7 @@ function InventoryGui:Render(data)
 			end
 		else
 			entry.icon.Image = ""
+			ItemIcon.SetBadge(entry.icon, nil)
 			entry.icon.Visible = false
 			entry.icon.ImageTransparency = 0
 			entry.name.Text = ""
@@ -630,6 +633,7 @@ function InventoryGui:Render(data)
 			-- slots do.
 			local art = item and item.icon or ""
 			ItemIcon.Apply(entry.icon, art)
+			ItemIcon.SetBadge(entry.icon, InventoryGui.SkinIconOf(worn.meta))
 			entry.icon.Visible = true
 		else
 			entry.name.Text = "ว่าง"
@@ -637,9 +641,18 @@ function InventoryGui:Render(data)
 			entry.durability.Text = ""
 			entry.stroke.Transparency = 0.8
 			entry.icon.Image = ""
+			ItemIcon.SetBadge(entry.icon, nil)
 			entry.icon.Visible = false
 		end
 	end
+end
+
+-- รูปของสกินที่ติดอยู่บนของชิ้นนี้ (`meta.skin` อาวุธ/ชุดแฟชั่นบนเกราะ) · nil = ไม่มีสกิน · "" = สกินยังไม่มีรูป (ItemIcon ขึ้น 🎨)
+function InventoryGui.SkinIconOf(meta)
+	local skinId = type(meta) == "table" and meta.skin
+	if not skinId then return nil end
+	local skin = ItemCatalog.Get(skinId)
+	return skin and skin.icon or ""
 end
 
 function InventoryGui:OnSlotClicked(callback) self.onSlotClicked = callback end

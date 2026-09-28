@@ -364,6 +364,7 @@ Remotes.StoryPlay.OnClientEvent:Connect(function(kind, arg)
 			end
 			local body = table.concat(lines, " · ")
 			if arg.title then body ..= ("\nได้ฉายา \"%s\" — เลือกใช้ได้ในสมุดสะสม"):format(arg.title) end
+			if arg.gift then body ..= "\n🎁 ไปรับ 150 เพชรที่หุ่นฟางข้างจุดเกิดได้แล้ว" end
 			gui:Banner(("📜 จบบท: %s"):format(arg.name or ""), body, 7)
 		end)
 	end

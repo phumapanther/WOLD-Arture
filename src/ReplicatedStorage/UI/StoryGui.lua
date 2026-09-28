@@ -247,7 +247,7 @@ function StoryGui.new(parent)
 	local banner = Instance.new("Frame")
 	banner.AnchorPoint = Vector2.new(0.5, 0)
 	banner.Position = UDim2.new(0.5, 0, 0, 110)
-	banner.Size = UDim2.fromOffset(520, 112)
+	banner.Size = UDim2.fromOffset(520, 134)
 	banner.BackgroundColor3 = PANEL
 	banner.BackgroundTransparency = 0.05
 	banner.Visible = false
@@ -263,7 +263,7 @@ function StoryGui.new(parent)
 	self.bannerTitle.ZIndex = 61
 	self.bannerBody = label(banner, "", 16, TEXT, Enum.TextXAlignment.Center)
 	self.bannerBody.Position = UDim2.fromOffset(10, 46)
-	self.bannerBody.Size = UDim2.new(1, -20, 0, 56)
+	self.bannerBody.Size = UDim2.new(1, -20, 0, 78)
 	self.bannerBody.ZIndex = 61
 	self.banner = banner
 

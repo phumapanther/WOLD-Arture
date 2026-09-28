@@ -57,11 +57,18 @@ local added = 0
 local function adder(n) added += n return true end
 check(select(2, VipGift.CheckGems({})) == "notnew" and select(2, VipGift.CheckGems({ StarterKit = true })) == "notnew",
 	"บัญชีเก่า (ไม่มีธงบัญชีใหม่) = ไม่ได้เพชร")
-local newbie = { NewbieGems = true }
-check(VipGift.ClaimGems(newbie, adder) == true and added == 150 and newbie.NewbieGemsClaimed == true, "บัญชีใหม่กด = ได้ 150 เพชร + ปั๊มธง")
+-- ต้องจบเควสเนื้อเรื่องเริ่มต้นก่อน (ผู้ใช้สั่ง 2026-09-28)
+local early = { NewbieGems = true, Story = { ch = { brasshaven = { step = 3 } } } }
+local earlyOk, earlyWhy = VipGift.ClaimGems(early, adder)
+check(earlyOk == false and earlyWhy == "story" and added == 0 and early.NewbieGemsClaimed == nil,
+	"บัญชีใหม่ที่ยังไม่จบเควสเนื้อเรื่อง = ยังไม่ได้ ไม่เสียสิทธิ์")
+local waitList = VipGift.Summary(early, now, 1, 0, {}).waiting
+check(#waitList >= 1 and waitList[1]:find("150") ~= nil, "ป้ายบอกว่าเพชรรอจบเควสเนื้อเรื่อง: " .. tostring(waitList[1]))
+local newbie = { NewbieGems = true, Story = { ch = { brasshaven = { step = 5, done = true } } } }
+check(VipGift.ClaimGems(newbie, adder) == true and added == 150 and newbie.NewbieGemsClaimed == true, "บัญชีใหม่จบเควสแล้วกด = ได้ 150 เพชร + ปั๊มธง")
 local twice = VipGift.ClaimGems(newbie, adder)
 check(twice == false and added == 150, "กดซ้ำ = ไม่ได้อีก")
-local failing = { NewbieGems = true }
+local failing = { NewbieGems = true, Story = { ch = { brasshaven = { done = true } } } }
 local failOk = VipGift.ClaimGems(failing, function() return false end)
 check(failOk == false and failing.NewbieGemsClaimed == nil, "เข้าบัญชีไม่สำเร็จ = ไม่เสียสิทธิ์")
 
@@ -89,8 +96,10 @@ end
 check(seen.Aura_A and seen.Aura_B and seen.Aura_C, "สุ่มได้ครบทุกออร่าในสระ")
 
 ----------------------------------------------------------------- ป้ายปุ่ม
-local s1 = VipGift.Summary({ NewbieGems = true, VipUntil = 0 }, now, 1, 0, POOL)
-check(#s1.ready == 1 and s1.ready[1] == "150 เพชร" and #s1.waiting == 2, "ผู้เล่นใหม่ Lv.1: รับเพชรได้ · VIP กับออร่ารออยู่")
+local s0 = VipGift.Summary({ NewbieGems = true, VipUntil = 0 }, now, 1, 0, POOL)
+check(#s0.ready == 0 and #s0.waiting == 3, "ผู้เล่นใหม่ Lv.1 ยังไม่จบเควสเนื้อเรื่อง: เพชร VIP ออร่ารอทั้งหมด")
+local s1 = VipGift.Summary({ NewbieGems = true, VipUntil = 0, Story = { ch = { brasshaven = { done = true } } } }, now, 1, 0, POOL)
+check(#s1.ready == 1 and s1.ready[1] == "150 เพชร" and #s1.waiting == 2, "ผู้เล่นใหม่ Lv.1 จบเควสแล้ว: รับเพชรได้ · VIP กับออร่ารออยู่")
 local s2 = VipGift.Summary({ NewbieGemsClaimed = true, NewbieGems = true, VipUntil = 0 }, now, 6, 5, POOL)
 check(#s2.ready == 2 and #s2.waiting == 0, "Lv.6 เพื่อน 5: รับ VIP + ออร่าพร้อมกัน")
 local s3 = VipGift.Summary({ NewbieGemsClaimed = true, VipGiftClaimed = true, FriendAuraClaimed = "Aura_A" }, now, 9, 9, POOL)

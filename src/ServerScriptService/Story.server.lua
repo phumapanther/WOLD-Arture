@@ -126,8 +126,11 @@ local function complete(player, s, ch, p)
 		Inventory.AddGold(player, reward.gold)
 		Inventory.Send(player)
 	end
+	-- บัญชีใหม่: 150 เพชรที่หุ่นฟางรับได้หลังจบบทแรก (VipGift.GemsAfterChapter) — บอกตรงนี้ว่าไปรับได้แล้ว
+	local data = ProfileAccess.Get(player)
+	local gift = ch.id == "brasshaven" and data and data.NewbieGems == true and data.NewbieGemsClaimed ~= true
 	Remotes.StoryPlay:FireClient(player, "complete", {
-		name = ch.name, exp = reward.exp, gold = reward.gold, title = ch.title and ch.title.text,
+		name = ch.name, exp = reward.exp, gold = reward.gold, title = ch.title and ch.title.text, gift = gift or nil,
 	})
 	print(("[Story] %s จบบท %s"):format(player.Name, ch.id))
 end

@@ -2,6 +2,7 @@
 --
 --   gems — **150 เพชร เฉพาะบัญชีใหม่** (ผู้ใช้เลือก) · ธง `NewbieGems` ตั้งพร้อมชุดเปิดตัว (`PlayerInventory`)
 --          = บัญชีที่สร้างหลังอัปเดตนี้เท่านั้น บัญชีเก่าไม่มีธงจึงไม่ได้
+--          · **รับได้หลังจบเควสเนื้อเรื่องเริ่มต้นแล้ว** (ผู้ใช้สั่ง 2026-09-28 · `GemsAfterChapter` = บท "ความทรงจำแรก")
 --   vip  — VIP 30 วัน **เมื่อ Lv.5 ขึ้นไป** (เดิม 2026-09-26 แจกทุกคนทันที) · มี VIP อยู่ = รับไม่ได้และไม่เสียสิทธิ์
 --   aura — **ออร่าสุ่ม 1 อัน** จากออร่าที่มีในเกมตอนนั้น เมื่อมี **เพื่อนในเกม 5 คนขึ้นไป**
 --
@@ -17,6 +18,15 @@ VipGift.Days = 30
 VipGift.VipLevel = 5
 VipGift.Gems = 150
 VipGift.FriendsForAura = 5
+-- บทเนื้อเรื่องที่ต้องจบก่อนรับเพชร (id ใน StoryConfig.Chapters · ความคืบหน้าอยู่ profile.Data.Story.ch[id].done)
+VipGift.GemsAfterChapter = "brasshaven"
+VipGift.GemsAfterName = "ความทรงจำแรก"
+
+local function chapterDone(data)
+	local story = type(data) == "table" and data.Story
+	local ch = type(story) == "table" and type(story.ch) == "table" and story.ch[VipGift.GemsAfterChapter]
+	return type(ch) == "table" and ch.done == true
+end
 
 --------------------------------------------------------------------------------
 -- VIP
@@ -45,12 +55,13 @@ end
 -- เพชรผู้มาใหม่
 --------------------------------------------------------------------------------
 
--- "closed" | "loading" | "claimed" | "notnew"
+-- "closed" | "loading" | "claimed" | "notnew" | "story" (ยังไม่จบเควสเนื้อเรื่องเริ่มต้น — รอได้ ไม่เสียสิทธิ์)
 function VipGift.CheckGems(data)
 	if not VipGift.Enabled then return false, "closed" end
 	if not data then return false, "loading" end
 	if data.NewbieGemsClaimed == true then return false, "claimed" end
 	if data.NewbieGems ~= true then return false, "notnew" end
+	if not chapterDone(data) then return false, "story" end
 	return true
 end
 
@@ -99,7 +110,12 @@ end
 function VipGift.Summary(data, now, level, friends, pool)
 	local ready, waiting = {}, {}
 	if not VipGift.Enabled or not data then return { ready = ready, waiting = waiting } end
-	if VipGift.CheckGems(data) then ready[#ready + 1] = ("%d เพชร"):format(VipGift.Gems) end
+	local gemsOk, gemsWhy = VipGift.CheckGems(data)
+	if gemsOk then
+		ready[#ready + 1] = ("%d เพชร"):format(VipGift.Gems)
+	elseif gemsWhy == "story" then
+		waiting[#waiting + 1] = ("%d เพชร (จบเควสเนื้อเรื่อง \"%s\" กับไลราก่อน)"):format(VipGift.Gems, VipGift.GemsAfterName)
+	end
 	local vipOk, vipWhy = VipGift.Check(data, now, level)
 	local vipName = ("VIP %d วัน"):format(VipGift.Days)
 	if vipOk then

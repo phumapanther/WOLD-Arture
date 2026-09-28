@@ -54,12 +54,69 @@ function ItemIcon.Apply(image, icon)
 	return image
 end
 
+-- **ป้ายสกินมุมล่างซ้าย** (ผู้ใช้สั่ง 2026-09-28: "ติดตั้งสกินใส่อาวุธแล้วมีไอคอนรูปสกินอยู่ตรงล่างซ้ายของรูปไอเทม")
+-- `badgeIcon` = รูปของสกินที่ติดอยู่ (`meta.skin` → รูปในแคตตาล็อก ผู้เรียกหาให้ — ที่นี่ไม่รู้จักแคตตาล็อก) ·
+-- สกินที่ยังไม่มีรูป ("") ขึ้น 🎨 แทน · nil/false = ไม่มีสกิน ถอดป้ายออก · เรียกซ้ำได้เหมือน Apply (ช่องเดิมถูกวาดทับ)
+local BADGE_NAME = "WOLD_SkinBadge"
+function ItemIcon.SetBadge(image, badgeIcon)
+	if not image then return end
+	local badge = image:FindFirstChild(BADGE_NAME)
+	if badgeIcon == nil or badgeIcon == false then
+		if badge then badge:Destroy() end
+		return
+	end
+	if not badge then
+		badge = Instance.new("Frame")
+		badge.Name = BADGE_NAME
+		badge.AnchorPoint = Vector2.new(0, 1)
+		badge.Position = UDim2.fromScale(-0.04, 1.04)
+		badge.Size = UDim2.fromScale(0.44, 0.44)
+		badge.BackgroundColor3 = Color3.fromRGB(24, 22, 30)
+		badge.BackgroundTransparency = 0.1
+		badge.Parent = image
+		local round = Instance.new("UICorner")
+		round.CornerRadius = UDim.new(1, 0)
+		round.Parent = badge
+		local ring = Instance.new("UIStroke")
+		ring.Color = Color3.fromRGB(232, 196, 110)
+		ring.Thickness = 1.5
+		ring.Parent = badge
+		local art = Instance.new("ImageLabel")
+		art.Name = "Art"
+		art.AnchorPoint = Vector2.new(0.5, 0.5)
+		art.Position = UDim2.fromScale(0.5, 0.5)
+		art.Size = UDim2.fromScale(0.82, 0.82)
+		art.BackgroundTransparency = 1
+		art.ScaleType = Enum.ScaleType.Fit
+		art.Parent = badge
+		local glyph = Instance.new("TextLabel")
+		glyph.Name = "Glyph"
+		glyph.Size = UDim2.fromScale(1, 1)
+		glyph.BackgroundTransparency = 1
+		glyph.TextScaled = true
+		glyph.Text = "🎨"
+		glyph.Parent = badge
+	end
+	local has = ItemIcon.Has(badgeIcon)
+	badge.Art.Image = has and badgeIcon or ""
+	badge.Glyph.Visible = not has
+	-- เหนือรูปไอเทมเสมอ (บางหน้าต่างตั้ง ZIndex ของช่องรูปทีหลัง)
+	badge.ZIndex = image.ZIndex + 1
+	badge.Art.ZIndex = image.ZIndex + 2
+	badge.Glyph.ZIndex = image.ZIndex + 2
+end
+
 -- จางลงพร้อมกับรูป: แถบไอเทมหรี่ช่องที่ของหมดด้วย ImageTransparency ซึ่งไม่แตะข้อความของ ⌛ เลย
 function ItemIcon.SetFade(image, transparency)
 	if not image then return end
 	image.ImageTransparency = transparency
 	local glyph = image:FindFirstChild(GLYPH_NAME)
 	if glyph then glyph.TextTransparency = transparency end
+	local badge = image:FindFirstChild(BADGE_NAME)
+	if badge then
+		badge.Art.ImageTransparency = transparency
+		badge.Glyph.TextTransparency = transparency
+	end
 end
 
 return ItemIcon

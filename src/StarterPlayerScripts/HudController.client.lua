@@ -73,10 +73,20 @@ local function refreshHotbar(inventory)
 				-- How many of it are actually carried. Zero is not empty: the slot keeps the assignment and
 				-- shows dimmed, so drinking your last potion does not lose the arrangement.
 				local count = 0
-				for _, slot in pairs(inventory.slots or {}) do
-					if slot and slot.id == id then count += slot.count or 1 end
+				local skinMeta = nil
+				for _, worn in pairs(inventory.equipped or {}) do
+					if type(worn) == "table" and worn.id == id and worn.meta then skinMeta = worn.meta end
 				end
-				entries[i] = { id = id, count = count, icon = item.icon, name = item.name }
+				for _, slot in pairs(inventory.slots or {}) do
+					if slot and slot.id == id then
+						count += slot.count or 1
+						skinMeta = skinMeta or slot.meta
+					end
+				end
+				-- ติดสกินอยู่ = ป้ายรูปสกินมุมล่างซ้ายเหมือนในกระเป๋า (ผู้ใช้สั่ง 2026-09-28)
+				local skin = type(skinMeta) == "table" and skinMeta.skin and ItemCatalog.Get(skinMeta.skin)
+				entries[i] = { id = id, count = count, icon = item.icon, name = item.name,
+					skinIcon = skin and (skin.icon or "") or nil }
 			end
 		end
 	end
