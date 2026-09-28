@@ -438,7 +438,8 @@ function ShopGui:Show(snapshot)
 			local buttons, priceText
 			if entry.lock then
 				-- เฟส 2c: ยังไม่ปลด/บ้านเต็ม — ปุ่ม 🔒 ปุ่มเดียว บรรทัดล่างบอกเหตุผล (แตะ = ขึ้นเหตุผลเต็มที่ท้ายร้าน)
-				local frame = row(self.sellList, entry.index, entry.icon, label, entry.lock, {
+				-- จมลงใต้ของที่ซื้อได้ทุกแถว ลำดับในกลุ่มเดิม (ผู้ใช้สั่ง 2026-09-28: คอกสัตว์ตกล่างสุดต้องเลื่อนหา)
+				local frame = row(self.sellList, 100000 + entry.index, entry.icon, label, entry.lock, {
 					{ name = "Locked", text = "🔒", color = Color3.fromRGB(70, 74, 84), width = 58, onClick = function()
 						self:Note(entry.lock)
 					end },

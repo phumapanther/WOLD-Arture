@@ -76,6 +76,20 @@ if okNew then
 	check(shop.purse.Text:find("💰") ~= nil and shop.purse.Text:find("💎") ~= nil,
 		"กระเป๋าเงินบอกทั้งสองสกุล: " .. shop.purse.Text)
 
+	-- ของที่ซื้อได้ขึ้นก่อนของ 🔒 ทุกแท็บ (ผู้ใช้สั่ง 2026-09-28: คอกสัตว์ตกไปล่างสุด ต้องเลื่อนหา)
+	if shop.SelectTab then
+		shop:SelectTab("animal")
+		shop:Show({ categories = cats, gold = 0, gems = 0, rerollIn = 0, buys = {}, sells = {
+			{ index = 5, id = "Pet_Wolf", name = "หมาป่า", icon = "", coins = 65000, gems = 260, category = "animal",
+				lock = "🔒 ปลดที่เลเวลฟาร์ม 19" },
+			{ index = 9, id = "AnimalPen", name = "คอกสัตว์", icon = "", coins = 15000, gems = 60, category = "animal" },
+		} })
+		shown = rows(shop.sellList)
+		table.sort(shown, function(a, b) return a.LayoutOrder < b.LayoutOrder end)
+		check(#shown == 2 and shown[1]:FindFirstChild("BuyCoins") ~= nil and shown[2]:FindFirstChild("Locked") ~= nil,
+			"แถวที่ซื้อได้ (คอก index 9) อยู่เหนือแถว 🔒 (หมาป่า index 5)")
+	end
+
 	-- ร้านเกมหลัก: ไม่มีหมวด ไม่มีเพชร
 	shop:Show({ gold = 100, rerollIn = 0, buys = {},
 		sells = { { index = 1, id = "Bread", name = "ขนมปัง", icon = "", coins = 120 } } })
