@@ -63,6 +63,10 @@ PlayerJoin.Each(function(player)
 		-- Vitals.Kill because a player can die by paths that never call it — drowning, the void, falling, or
 		-- being killed by another player — and each of those must cost the level too.
 		humanoid.Died:Connect(function()
+			-- ตายบนเกาะฟาร์มมิ่งไม่เสียอะไร (ผู้ใช้สั่ง 2026-09-28 · มอนบุกกลางคืน) — ไม่ลดเลเวล ไม่ถอดอาชีพ
+			-- ไม่ใช้เครื่องราง · ทุกทางที่ตาย (มอน จมน้ำ ตก) และทุกคนในเซิร์ฟ (เจ้าของ + แขก)
+			if ServerConfig.IsFarm then return end
+
 			-- The charm is spent BEFORE either reset runs, and spending it cancels both. Checked here rather
 			-- than inside ResetOnDeath so the two systems stay ignorant of inventory -- and so there is one
 			-- place that decides what a death costs, which is the whole reason both resets live on this hook.
