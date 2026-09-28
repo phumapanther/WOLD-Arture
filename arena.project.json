@@ -53,6 +53,7 @@
     "src/ServerScriptService/Island/IslandFarm.server.lua",
     "src/ServerScriptService/Island/IslandGuests.server.lua",
     "src/ServerScriptService/Island/IslandNodes.server.lua",
+    "src/ServerScriptService/Island/IslandNight.server.lua",
     "src/ServerScriptService/Island/IslandPets.server.lua",
     "src/ServerScriptService/Island/IslandPlots.server.lua",
     "src/ServerScriptService/Island/IslandZones.server.lua",

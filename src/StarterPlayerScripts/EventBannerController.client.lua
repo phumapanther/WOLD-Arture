@@ -75,7 +75,9 @@ local function apply(events)
 		if not showing[id] then
 			-- New since the last picture: this is the moment the announcement actually happens.
 			local config = EventConfig.Events[id]
-			if config and config.sound then UiSound.Play(config.sound) end
+			-- เกาะส่งเสียงมากับภาพเอง (พาเหรดมอนสเตอร์ไม่อยู่ใน EventConfig — ไม่งั้น WorldEvents เกมหลักจะสุ่มเริ่มมัน)
+			local sound = (config and config.sound) or spec.sound
+			if sound then UiSound.Play(sound) end
 		end
 	end
 

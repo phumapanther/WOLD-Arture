@@ -78,6 +78,11 @@ function IslandAccess.GoldAllowed()
 	return FarmLevelConfig.GoldAllowed(IslandAccess.FarmLevel())
 end
 
+-- มอนบุกกลางคืน (2026-09-28)
+IslandAccess.SoilCells = nil -- () -> { {cx, cz}... } ช่องดินในรั้ว (IslandNodes)
+IslandAccess.SoilCellFree = nil -- (cx, cz) -> bool ช่องดินนี้ว่างให้ของใหม่ไหม (IslandNodes)
+IslandAccess.NightAdmin = nil -- (admin, args) -> ข้อความ · คำสั่ง /night (IslandNight)
+
 -- ตั้งโดย IslandFarm
 IslandAccess.FarmAdmin = nil -- (player, words) -> text · คำสั่งแอดมิน /farm (เทสในเกม)
 IslandAccess.PetAdmin = nil -- ("ready" | จำนวนครั้ง) -> text · /farm pets (ตั้งโดย IslandPets เฟส 2d)

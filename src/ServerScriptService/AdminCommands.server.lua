@@ -485,6 +485,15 @@ Commands.farm = function(admin, args)
 	reply(admin, IslandAccess.FarmAdmin(admin, args))
 end
 
+-- /night [raid | parade | boss | special | leader | clear] -- มอนบุกเกาะตอนกลางคืน (บนเกาะของตัวเอง · 2026-09-28)
+-- ไม่ใส่อะไร = ดูสถานะ · อยากเห็นของจริงตอนหัวค่ำ: /farm level 3 แล้ว /time 18 ตามด้วย /time auto
+Commands.night = function(admin, args)
+	if not ServerConfig.IsFarm then return reply(admin, "ใช้ได้บนเกาะฟาร์มเท่านั้น") end
+	local IslandAccess = require(game.ServerScriptService.Island.IslandAccess)
+	if not IslandAccess.NightAdmin then return reply(admin, "ระบบมอนกลางคืนยังไม่พร้อม") end
+	reply(admin, IslandAccess.NightAdmin(admin, args))
+end
+
 -- /story [cutscene | memory | step <n> | done | reset] -- เนื้อเรื่องบทบราสเฮเวน (เพลสหลัก · Story.server)
 Commands.story = function(admin, args)
 	local StoryAccess = require(game.ServerScriptService.StoryAccess)

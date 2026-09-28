@@ -321,6 +321,10 @@ IslandAccess.NodeSpawnOnce = function()
 	return spawnOne()
 end
 IslandAccess.NodeCount = function() return countLive(), #soilCells end
+-- มอนบุกกลางคืน (IslandNight 2026-09-28): ช่องดินในรั้ว + "ช่องนี้ว่างไหม" กติกาเดียวกับจุดเกิดของสุ่ม
+-- (ไม่มีของสุ่ม ไม่มีของวาง เดินถึงจากจุดเกิด)
+IslandAccess.SoilCells = function() return soilCells end
+IslandAccess.SoilCellFree = freeCell
 IslandAccess.NodeClear = function()
 	local n = 0
 	for model in pairs(Live) do
