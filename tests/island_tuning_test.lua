@@ -58,10 +58,10 @@ assert(C.MinePerRoundMin == 1 and C.MinePerRoundMax == 2, "ต้องเกิ
 table.insert(out, ("โซนแร่: ทุก %d นาที · ทีละ %d-%d ก้อน (เพดาน %d)")
 	:format(C.MineEverySeconds / 60, C.MinePerRoundMin, C.MinePerRoundMax, C.MineMax))
 
------------------------------------------------------------------ 4. ผืนดิน 2 ชิ้นทุก 15 นาที (ผู้ใช้สั่ง 2026-09-28)
+----------------------------------------------------------------- 4. ผืนดิน 3 ชิ้นทุก 15 นาที (ผู้ใช้สั่ง 2026-09-28)
 local NS = C.NodeSpawn
 assert(NS.everySeconds == 15 * 60, ("ผืนดินต้องทุก 15 นาที ได้ %d นาที"):format(NS.everySeconds / 60))
-assert(NS.perRoundMin == 2 and NS.perRoundMax == 2, "ต้องเกิดทีละ 2 ชิ้น")
+assert(NS.perRoundMin == 3 and NS.perRoundMax == 3, "ต้องเกิดทีละ 3 ชิ้น")
 table.insert(out, ("ผืนดิน: ทุก %d นาที · ทีละ %d-%d ชิ้น (เพดาน %d)")
 	:format(NS.everySeconds / 60, NS.perRoundMin, NS.perRoundMax, NS.max))
 
