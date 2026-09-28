@@ -304,7 +304,7 @@ function ExportGui:Tick()
 	else
 		self.stripFill.Visible = false
 		text = ("🚚 รถว่าง — เลือกใบที่ของครบแล้วกด “ส่งของ” (ทีละใบ ใบละ %d นาที)"):format(
-			math.floor((snap.shipSeconds or 1800) / 60))
+			math.floor((snap.shipSeconds or 1080) / 60))
 	end
 	-- ข้อความสั้นจากปุ่ม (Flash) ขึ้นแทนชั่วคราว แถบยังเดินปกติ
 	self.stripText.Text = self.flashText or text
