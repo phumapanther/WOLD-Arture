@@ -39,10 +39,11 @@ PremiumConfig.GemPacks = {
 --
 -- คำโปรยของอาหารต้องตรงกับ `use.seconds` ใน ItemCatalog เสมอ — คนอ่านป้ายก่อนจ่ายเพชร
 PremiumConfig.Shop = {
-	{ id = "gold_axe", item = "GoldAxe", count = 1, price = 250, blurb = "ตัดไม้ได้ตลอดกาล ไม่มีวันพัง" },
+	-- ขวาน/พลั่ว 150 · คันเบ็ด 300 (ผู้ใช้กำหนด 2026-09-28 เดิม 250/200/400) · อีเต้อไม่ได้สั่งเปลี่ยน คง 250
+	{ id = "gold_axe", item = "GoldAxe", count = 1, price = 150, blurb = "ตัดไม้ได้ตลอดกาล ไม่มีวันพัง" },
 	{ id = "gold_pickaxe", item = "GoldPickaxe", count = 1, price = 250, blurb = "ขุดแร่ได้ตลอดกาล ไม่มีวันพัง" },
-	{ id = "gold_shovel", item = "GoldShovel", count = 1, price = 200, blurb = "ขุดสมุนไพรได้ตลอดกาล ไม่มีวันพัง" },
-	{ id = "gold_rod", item = "GoldFishingRod", count = 1, price = 400, blurb = "ตกปลาได้ตลอดกาล ไม่มีวันพัง" },
+	{ id = "gold_shovel", item = "GoldShovel", count = 1, price = 150, blurb = "ขุดสมุนไพรได้ตลอดกาล ไม่มีวันพัง" },
+	{ id = "gold_rod", item = "GoldFishingRod", count = 1, price = 300, blurb = "ตกปลาได้ตลอดกาล ไม่มีวันพัง" },
 	{ id = "feast_hearty", item = "Feast_Hearty", count = 1, price = 60, blurb = "อิ่มทันที + บัพทุกอย่างยกเว้นเลือด 3 นาที" },
 	{ id = "tonic_vigor", item = "Tonic_Vigor", count = 1, price = 30, blurb = "มานา สตามินา ไม่ลด 1 นาที" },
 	{ id = "feast_royal", item = "Feast_Royal", count = 1, price = 80, blurb = "อิ่มทันที + บัพทุกอย่างยกเว้นเลือด 10 นาที" },

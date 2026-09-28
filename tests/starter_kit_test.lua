@@ -42,6 +42,7 @@ for _, entry in ipairs(StarterKit.Items) do
 	end
 end
 check(have.Axe and have.Shovel and have.Pickaxe and have.FishingRod, "มีขวาน พลั่ว อีเต้อ คันเบ็ด ครบ")
+check(StarterKit.Gold == 20000, "เงินเริ่มต้น 20,000 (ผู้ใช้กำหนด 2026-09-28)")
 check(#combat == 0, "ไม่มีอาวุธ/เกราะต่อสู้ในชุด" .. (#combat > 0 and (": " .. table.concat(combat, ",")) or ""))
 
 table.insert(out, fails == 0 and ("ผ่านทั้งหมด %d ข้อ"):format(#out) or ("ตก %d ข้อ"):format(fails))

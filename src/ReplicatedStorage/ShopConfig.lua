@@ -11,16 +11,19 @@ local ShopConfig = {}
 -- **ทุกราคา ×10 จากเดิม ยกเว้นจักรยาน** (ผู้ใช้กำหนด 2026-09-19 — พลั่ว 120→1,200 อีเต้อ 150→1,500
 -- ขวาน 140→1,400 ขนมปัง 12→120 น้ำ 8→80 คันเบ็ด 90→900 หนอน 2→20) เงินที่หาได้จากการขายของยังเท่าเดิม
 -- ตั้งใจให้ของในร้านเป็นเป้าที่ต้องเก็บเงิน ไม่ใช่ของที่ซื้อได้จากกำไรรอบเดียว
+-- **2026-09-28 ผู้ใช้ปรับ**: พลั่ว/ขวาน 900 · อีเต้อ 1,200 · คันเบ็ด 1,500 · เพิ่มค้อนซ่อม 3,000
+-- อุปกรณ์ + เหยื่อ + ค้อนซ่อมขายบนเกาะด้วย ราคาเหรียญอ่านจากตารางนี้ (`mainPrice` ในร้านเกาะ) แก้ที่นี่ที่เดียว
 ShopConfig.Sells = {
-	{ id = "Shovel", price = 1200 },
-	{ id = "Pickaxe", price = 1500 },
-	{ id = "Axe", price = 1400 },
+	{ id = "Shovel", price = 900 },
+	{ id = "Pickaxe", price = 1200 },
+	{ id = "Axe", price = 900 },
 	{ id = "Bread", price = 120 },
 	{ id = "Water", price = 80 },
 	-- Fishing. The rod is a one-off purchase; worms are the running cost, and one is spent per catch, so a
 	-- stack is how long a session at the water lasts.
-	{ id = "FishingRod", price = 900 },
+	{ id = "FishingRod", price = 1500 },
 	{ id = "Worm", price = 20 },
+	{ id = "RepairHammer", price = 3000 },
 	-- จักรยาน ราคาที่ผู้ใช้กำหนด — **คันเดียวในร้านที่ไม่ถูก ×10** (ผู้ใช้สั่งเว้นไว้ 2026-09-19)
 	--
 	-- ยังแพงที่สุดในร้านอยู่ (ถัดมาคืออีเต้อ 1,500) แต่ไม่ได้อยู่คนละชั้นเหมือนเดิมแล้ว: ทุกคนได้ฟรีหนึ่งคัน
@@ -38,6 +41,13 @@ ShopConfig.Sells = {
 -- เรียงตามแท็บ · ลำดับแถวไม่ได้เซฟที่ไหน (index ที่ไคลเอนต์ส่งกลับมาอ่านจากตารางเดียวกันตอนรัน) จึงสลับได้
 -- **`level` = เลเวลฟาร์มที่ปลดให้ซื้อ** (เฟส 2c ผู้ใช้อนุมัติ 2026-09-27) · ของที่ซื้อไปแล้วใช้ต่อได้เสมอ ล็อกแค่การซื้อใหม่
 -- ทุกแถวต้องมี (เทส farm_level_test ตรวจ) · ตารางปลดทั้งหมดดู FarmLevelConfig.UnlocksAt
+local function mainPrice(id)
+	for _, row in ipairs(ShopConfig.Sells) do
+		if row.id == id then return row.price end
+	end
+	error("ShopConfig: " .. id .. " ไม่มีในร้านเกมหลัก")
+end
+
 ShopConfig.IslandSells = {
 	-- บ้าน: ของชิ้นใหญ่ที่เก็บเงินทั้งเกมมาซื้อ
 	{ id = "House_StoneCottage", category = "house", level = 4, coins = 20000 },
@@ -75,6 +85,15 @@ ShopConfig.IslandSells = {
 	{ id = "Wild_GoldOre", category = "decor", level = 30, gems = 130 },
 	{ id = "Wild_MagicOre", category = "decor", level = 40, gems = 180 },
 	{ id = "Wild_DiamondOre", category = "decor", level = 45, gems = 250 },
+
+	-- ของใช้: อุปกรณ์ เหยื่อ ค้อนซ่อม — ราคาเดียวกับร้านเกมหลัก (ผู้ใช้สั่ง 2026-09-28) · ส่งเมลไม่ได้เหมือนทั้งร้าน
+	-- (ผู้ใช้เลือก: ขวาน/หนอน/คันเบ็ด ที่ซื้อในเมืองก็ส่งเมลไม่ได้ตามไปด้วย เพราะด่านถามจาก id)
+	{ id = "Axe", category = "utility", level = 1, coins = mainPrice("Axe") },
+	{ id = "Pickaxe", category = "utility", level = 1, coins = mainPrice("Pickaxe") },
+	{ id = "Shovel", category = "utility", level = 1, coins = mainPrice("Shovel") },
+	{ id = "FishingRod", category = "utility", level = 1, coins = mainPrice("FishingRod") },
+	{ id = "Worm", category = "utility", level = 1, coins = mainPrice("Worm") },
+	{ id = "RepairHammer", category = "utility", level = 1, coins = mainPrice("RepairHammer") },
 
 	-- ของใช้: เฟอร์นิเจอร์ในบ้าน (ใช้งานได้จริง)
 	{ id = "IceBox", category = "utility", level = 14, gems = 120 },

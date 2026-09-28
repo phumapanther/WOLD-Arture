@@ -26,8 +26,12 @@ end
 check(MailConfig.Fee == 500 and MailConfig.FeeItem == "Silver", "ค่าส่ง 500 ซิลเวอร์")
 check(MailConfig.BoxSize == 50, "กล่องจุ 50")
 
-for _, id in ipairs({ "Stone", "IronOre", "Coal", "Herb", "Axe" }) do
+for _, id in ipairs({ "Stone", "IronOre", "Coal", "Herb" }) do
 	check(ItemCatalog.IsMailable(id) == true, id .. " ส่งได้")
+end
+-- อุปกรณ์/เหยื่อ/ค้อนซ่อมขายในร้านเกาะแล้ว = ส่งไม่ได้ทั้งเกม (ผู้ใช้เลือก 2026-09-28)
+for _, id in ipairs({ "Axe", "Pickaxe", "Shovel", "FishingRod", "Worm", "RepairHammer" }) do
+	check(ItemCatalog.IsMailable(id) == false, id .. " ส่งไม่ได้ (ขายในร้านเกาะ)")
 end
 for _, id in ipairs({ "HealthPotion", "Bread", "Chest_Gold", "Greatsword", "Sword", "Chemical", "GearSpare",
 	"Blueprint", "Silver", "Insignia", "CarKey", "Spatula", "ClanRing", "ไม่มีจริง",

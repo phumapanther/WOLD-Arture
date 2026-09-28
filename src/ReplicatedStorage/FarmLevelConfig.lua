@@ -199,8 +199,12 @@ function FarmLevelConfig.UnlocksAt(level)
 	local pets, petsBefore = FarmLevelConfig.PetCap(level), FarmLevelConfig.PetCap(level - 1)
 	if pets > petsBefore and pets > 1 then add({ text = ("สัตว์เลี้ยงได้ %d ตัว"):format(pets), emoji = "🐾" }) end
 
+	-- ของที่ร้านเกมหลักขายอยู่แล้ว (อุปกรณ์ เหยื่อ ค้อนซ่อม 2026-09-28) ไม่ใช่ของปลดของฟาร์ม — ไม่นับในตาราง
+	-- (กติกา 1-6 อย่างต่อเลเวลที่ผู้ใช้อนุมัติ · ไม่งั้น Lv1 กลายเป็น 12 อย่าง)
+	local inTown = {}
+	for _, row in ipairs(ShopConfig.Sells) do inTown[row.id] = true end
 	for _, row in ipairs(ShopConfig.IslandSells) do
-		if FarmLevelConfig.ShopRowLevel(row) == level then add(itemRow(row.id)) end
+		if FarmLevelConfig.ShopRowLevel(row) == level and not inTown[row.id] then add(itemRow(row.id)) end
 	end
 	for _, a in ipairs(IslandConfig.PenAnimals) do
 		if (a.level or 1) == level then add({ text = a.name .. " (คอก)", emoji = a.emoji or "🐾" }) end

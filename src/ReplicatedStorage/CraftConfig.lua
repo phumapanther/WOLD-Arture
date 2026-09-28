@@ -75,7 +75,7 @@ CraftConfig.CraftSeconds = 2.5
 --
 -- `gold` is the smith's fee, in the bands the user set: tens of thousands for a weapon, thousands for
 -- armour, hundreds for everyday goods. Paired with the success rate it is what actually prices a thing --
--- a pistol is 25,000 a go at one-in-four, so it costs 100,000 on average to walk away with one.
+-- a pistol is 15,000 a go at one-in-four, so it costs 60,000 on average to walk away with one.
 CraftConfig.Recipes = {
 	-- ครัว (ผู้ใช้กำหนดสูตร) ไม่มีค่าธรรมเนียม ไม่มีโอกาสล้มเหลว — เตา/เครื่องปั่นไม่ใช่ช่างรับจ้าง
 	{ id = "FriedRice", tab = "food", station = "stove", chance = 1, gold = 0,
@@ -91,7 +91,7 @@ CraftConfig.Recipes = {
 		cost = { Apple = 5, Crystal = 5, Water = 10 } },
 	-- เครื่องต้มยา: ยาน้ำขวด · ยาใหญ่ (เลือดเต็มหลอด) · กล่องปฐมพยาบาล — สูตรตามที่ผู้ใช้กำหนด
 	{ id = "HealthPotion", tab = "medicine", station = "still", chance = 1, gold = 0,
-		cost = { Herb = 15, Crystal = 5 } },
+		cost = { Herb = 7, Crystal = 5 } }, -- ผู้ใช้กำหนด 2026-09-28 (เดิมสมุนไพร 15)
 	{ id = "GreatPotion", tab = "medicine", station = "still", chance = 1, gold = 0,
 		cost = { Herb = 30, Fiber = 15, Bone = 3, WoodScrap = 5 } },
 	{ id = "FirstAidKit", tab = "medicine", station = "still", chance = 1, gold = 0,
@@ -99,10 +99,11 @@ CraftConfig.Recipes = {
 	-- The pistol is the prize of the weapon bench: the strongest thing a player can hold, and one attempt
 	-- in four. The materials are the user's V1 list -- the new ones (gears, blueprints, silver) are what tie
 	-- the weapon bench to the illegal farms, since none of the three can be bought.
-	{ id = "Pistol", tab = "weapon", chance = 0.25, gold = 25000,
+	-- ค่าจ้างปืน 15,000 · ดาบ 3,000 + แบบแปลน 1 สไลม์ 8 ไม้ 7 (ผู้ใช้กำหนด 2026-09-28 เดิม 25,000 / 12,000 · 2 · 15 · 15)
+	{ id = "Pistol", tab = "weapon", chance = 0.25, gold = 15000,
 		cost = { IronOre = 7, Slime = 15, GearSpare = 10, WoodScrap = 15, Blueprint = 5, Silver = 100 } },
-	{ id = "Sword", tab = "weapon", chance = 0.50, gold = 12000,
-		cost = { IronOre = 10, Slime = 15, WoodScrap = 15, Blueprint = 2 } },
+	{ id = "Sword", tab = "weapon", chance = 0.50, gold = 3000,
+		cost = { IronOre = 10, Slime = 8, WoodScrap = 7, Blueprint = 1 } },
 	-- **สูตรรอบ 2026-09-21 (ผู้ใช้กำหนดใหม่ทั้งสองชิ้น)** — ของสองชิ้นนี้เลิกกินสไลม์กับซิลเวอร์แล้ว
 	-- มันกินแร่แทน ซึ่งผูกม้านั่งอาวุธเข้ากับการขุดเหมืองโดยตรง: ไม่มีใครตีดาบใหญ่ได้ถ้ายังไม่เคยลงเหมือง
 	--
@@ -130,7 +131,7 @@ CraftConfig.Recipes = {
 	{ id = "Bullet", tab = "misc", chance = 0.95, gold = 300, yields = 8,
 		cost = { IronOre = 4, GearSpare = 5, Bone = 15, Stone = 15, Silver = 25 } },
 	{ id = "HealthPotion", tab = "misc", chance = 0.95, gold = 500, yields = 2,
-		cost = { Crystal = 10, Herb = 15 } },
+		cost = { Crystal = 5, Herb = 7 } }, -- ผู้ใช้กำหนด 2026-09-28 (เดิม 10/15) เท่าสูตรเครื่องต้มยา
 
 	----------------------------------------------------------------------------
 	-- ชุดเกราะสามชั้น (ผู้ใช้กำหนดสูตรครบทั้งสามเมื่อ 2026-09-21)
@@ -143,7 +144,7 @@ CraftConfig.Recipes = {
 	-- อยากให้ทำง่าย/ยากกว่านี้ แก้สองเลขนี้พอ ไม่ต้องแตะวัสดุ
 	----------------------------------------------------------------------------
 	{ id = "LeatherArmor", tab = "armor", chance = 0.90, gold = 3000,
-		cost = { Leather = 30, Fiber = 15, Slime = 30, Silver = 100 } },
+		cost = { Leather = 15, Fiber = 5, Slime = 15, Silver = 100 } }, -- ผู้ใช้กำหนด 2026-09-28 (เดิม 30/15/30)
 	{ id = "ChainmailArmor", tab = "armor", chance = 0.75, gold = 6000,
 		cost = { IronOre = 10, SilverOre = 10, Fiber = 15, Slime = 15, Silver = 50 } },
 	{ id = "PlateArmor", tab = "armor", chance = 0.60, gold = 12000,

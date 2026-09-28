@@ -70,6 +70,7 @@ PlayerJoin.Each(function(player)
 		for _, entry in ipairs(StarterKit.Items) do
 			Inventory.AddItem(player, entry.id, entry.count)
 		end
+		Inventory.AddGold(player, StarterKit.Gold)
 		-- จดในโปรไฟล์เดียวกับกระเป๋า: เซฟพร้อมกันเสมอ (เซิร์ฟล่มก่อนเซฟ = หายทั้งคู่ ได้ชุดใหม่ครั้งหน้าอย่างถูกต้อง)
 		data.StarterKit = true
 		-- **บัญชีใหม่ = มีสิทธิ์รับ 150 เพชรที่หุ่นฟาง** (ผู้ใช้สั่ง 2026-09-27 เฉพาะคนเข้าใหม่) · ตั้งที่นี่ที่เดียว
