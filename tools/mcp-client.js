@@ -28,11 +28,23 @@ module.exports = async function connect() {
   // work never lands in the WOLD-Models workshop place by accident.
   let studioId = process.env.WOLD_STUDIO_ID || null;
   if (!studioId) {
+    // รายชื่อว่างในวินาทีแรกเสมอ (Studio ยังเกาะ proxy ตัวใหม่ไม่เสร็จ) — เดิมถามครั้งเดียว ได้ [] แล้วยิงคำสั่งโดยไม่มี
+    // studio_id ซึ่งพังทันทีที่เปิด Studio สองหน้าต่าง (เจอ 2026-09-28: ดูเหมือน MCP หลุด ทั้งที่ต่ออยู่) · รอสูงสุด ~10 วิ
     let list = [];
-    try { list = JSON.parse(text(await rawTool("list_roblox_studios", {})) || "{}").studios ?? []; } catch {}
+    for (let t = 0; t < 20 && list.length === 0; t++) {
+      try { list = JSON.parse(text(await rawTool("list_roblox_studios", {})) || "{}").studios ?? []; } catch {}
+      if (list.length === 0) await new Promise((r) => setTimeout(r, 500));
+    }
     if (list.length > 1) {
       const want = process.env.WOLD_PLACE || "88774255487951";
-      const hit = list.find((s) => (s.name || "").includes(want));
+      let hit = list.find((s) => (s.name || "").includes(want));
+      // ชื่อหน้าต่างมาเป็น null/ว่างได้ในวินาทีแรก — ถาม PlaceId จากแต่ละหน้าต่างตรงๆ แทน
+      for (const s of hit ? [] : list) {
+        const r = text(await rawTool("execute_luau", { datamodel_type: "Edit", studio_id: s.id,
+          code: "return tostring(game.PlaceId) .. ' ' .. game.Name" }));
+        s.name = s.name || r;
+        if (r.includes(want)) { hit = s; break; }
+      }
       if (!hit) {
         throw new Error(`several Studio windows are open and none matches "${want}":\n  ` +
           list.map((s) => s.name).join("\n  ") + `\nset WOLD_PLACE to part of the right title, or WOLD_STUDIO_ID to its id`);
