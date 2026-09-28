@@ -165,7 +165,7 @@ ItemCatalog.Items = {
 	-- ตัวกับดักไม่สึก (`unbreakable`) ของที่หมดคือกระสุน `TrapAmmo_*` · เลือกกระสุนเก็บที่ `meta.ammo` · กติกาทั้งหมด `TrapConfig`
 	-- ไม่มีสกิล Q · ไม่อยู่ใน EnhanceConfig (ตีบวกไม่ได้)
 	Trap = {
-		icon = "",
+		icon = "rbxassetid://95174536576033", -- decal 105344819196767
 		name = "กับดัก", kind = "weapon", weight = 3, stackSize = 1,
 		damage = 0, range = 6, unbreakable = true,
 	},
@@ -395,10 +395,10 @@ ItemCatalog.Items = {
 	Bullet = { icon = "rbxassetid://99384118358133", name = "กระสุน", kind = "junk", weight = 0.1, stackSize = 16, value = 3 },
 
 	-- กระสุนกับดัก 4 แบบ (เฟส 3) — คราฟที่หน้า "ไอเทมจิปาถะ" · ผลของแต่ละแบบอยู่ที่ `TrapConfig.Ammo`
-	TrapAmmo_Slow = { icon = "", name = "กระสุนกับดัก · หนืด", kind = "junk", weight = 0.3, stackSize = 20, value = 20 },
-	TrapAmmo_Stun = { icon = "", name = "กระสุนกับดัก · ช็อต", kind = "junk", weight = 0.3, stackSize = 20, value = 30 },
-	TrapAmmo_Knock = { icon = "", name = "กระสุนกับดัก · ลมกระแทก", kind = "junk", weight = 0.3, stackSize = 20, value = 30 },
-	TrapAmmo_Blast = { icon = "", name = "กระสุนกับดัก · ระเบิด", kind = "junk", weight = 0.3, stackSize = 20, value = 40 },
+	TrapAmmo_Slow = { icon = "rbxassetid://82728235115975", name = "กระสุนกับดัก · หนืด", kind = "junk", weight = 0.3, stackSize = 20, value = 20 }, -- decal 89997450272228
+	TrapAmmo_Stun = { icon = "rbxassetid://131413846499444", name = "กระสุนกับดัก · ช็อต", kind = "junk", weight = 0.3, stackSize = 20, value = 30 }, -- decal 71699317926005
+	TrapAmmo_Knock = { icon = "rbxassetid://131606980668463", name = "กระสุนกับดัก · ลมกระแทก", kind = "junk", weight = 0.3, stackSize = 20, value = 30 }, -- decal 112693686546253
+	TrapAmmo_Blast = { icon = "rbxassetid://140566605872944", name = "กระสุนกับดัก · ระเบิด", kind = "junk", weight = 0.3, stackSize = 20, value = 40 }, -- decal 114114809172431
 
 	-- Bait. One is spent per catch, so a stack of worms is how long a session lasts.
 	Worm = { icon = "rbxassetid://91361977777697", name = "หนอน", kind = "junk", weight = 0.05, stackSize = 99, value = 1 },
@@ -503,7 +503,7 @@ ItemCatalog.Items = {
 		use = { stat = "chest", amount = 1, tier = "Chest_Gold" } },
 	-- ⌛ ยังไม่มีรูปของตัวเอง — ยืมรูปหีบทองไปก่อน (เพิ่ม 2026-09-23 พร้อมรางวัลจบแมตช์ PVP)
 	-- อัปโหลดรูปหีบเวทมนตร์เมื่อไหร่ ใส่ id กลับมาที่ `icon` ตรงนี้ที่เดียว แล้วนาฬิกาทรายหายเอง
-	Chest_Magic = { icon = "", name = "หีบเวทมนตร์",
+	Chest_Magic = { icon = "rbxassetid://109077759074113", name = "หีบเวทมนตร์", -- decal 135550912982213
 		kind = "consumable", weight = 10, stackSize = 8, value = 0, sellable = false,
 		use = { stat = "chest", amount = 1, tier = "Chest_Magic" } },
 
@@ -724,28 +724,28 @@ ItemCatalog.Items = {
 	Pet_Dog = { icon = "rbxassetid://125840282304682", name = "สุนัข", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
 	-- เฟส 2d (ผู้ใช้อนุมัติ 2026-09-27): สัตว์ฟาร์ม 8 + มอน 14 · ⌛ ยังไม่มีรูป · ตัวสัตว์/การโต/ของที่ได้อยู่ `IslandConfig.PetSpecies`
 	-- สัตว์ฟาร์มต่อท้ายชื่อ "(สัตว์เลี้ยง)" ไม่งั้นอ่านปนกับตัวในคอกในตารางปลด · **`meta.pats`** = จำนวนครั้งที่ลูบ (ติดตัวข้ามการเก็บ/วาง)
-	Pet_Chicken = { icon = "", name = "ไก่ (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_Duck = { icon = "", name = "เป็ด (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_Pig = { icon = "", name = "หมู (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_Goat = { icon = "", name = "แพะ (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_Sheep = { icon = "", name = "แกะ (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_Cow = { icon = "", name = "วัว (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_Deer = { icon = "", name = "กวาง (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_Horse = { icon = "", name = "ม้า (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_GreenSlime = { icon = "", name = "สไลม์เขียว", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_SteamSlime = { icon = "", name = "สไลม์ไอน้ำ", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_PlasmaSlime = { icon = "", name = "สไลม์พลาสมา", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_BioSlime = { icon = "", name = "สไลม์ชีวะ", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_Bat = { icon = "", name = "ค้างคาว", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_Boar = { icon = "", name = "หมูป่า", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_Wolf = { icon = "", name = "หมาป่า", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Chicken = { icon = "rbxassetid://90357687950932", name = "ไก่ (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 117586660272575
+	Pet_Duck = { icon = "rbxassetid://75599302469865", name = "เป็ด (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 72063288954140
+	Pet_Pig = { icon = "rbxassetid://133192622911518", name = "หมู (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 135765709613123
+	Pet_Goat = { icon = "rbxassetid://116981406857144", name = "แพะ (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 124856213091188
+	Pet_Sheep = { icon = "rbxassetid://114563160134388", name = "แกะ (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 110852086767664
+	Pet_Cow = { icon = "rbxassetid://71441091353043", name = "วัว (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 110042790265902
+	Pet_Deer = { icon = "rbxassetid://74206948807629", name = "กวาง (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 108868072032952
+	Pet_Horse = { icon = "rbxassetid://80047499350823", name = "ม้า (สัตว์เลี้ยง)", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 95466648312244
+	Pet_GreenSlime = { icon = "rbxassetid://133769955684820", name = "สไลม์เขียว", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 120682203493055
+	Pet_SteamSlime = { icon = "rbxassetid://74012694443027", name = "สไลม์ไอน้ำ", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 102347944776769
+	Pet_PlasmaSlime = { icon = "rbxassetid://113922722320123", name = "สไลม์พลาสมา", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 120023460968576
+	Pet_BioSlime = { icon = "rbxassetid://126992892211437", name = "สไลม์ชีวะ", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 137420579410402
+	Pet_Bat = { icon = "rbxassetid://81399704919582", name = "ค้างคาว", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 121609324861793
+	Pet_Boar = { icon = "rbxassetid://131952930091796", name = "หมูป่า", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 101514427469921
+	Pet_Wolf = { icon = "rbxassetid://132262230531432", name = "หมาป่า", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 135431740450602
 	Pet_Spider = { icon = "", name = "แมงมุม", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_Skeleton = { icon = "", name = "โครงกระดูก", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_Bandit = { icon = "", name = "โจร", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_Ghoul = { icon = "", name = "ผีดิบ", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_ClockworkSentry = { icon = "", name = "ทหารจักรกล", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_Wraith = { icon = "", name = "วิญญาณ", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
-	Pet_StoneGolem = { icon = "", name = "โกเลมหิน", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Skeleton = { icon = "rbxassetid://91701785357654", name = "โครงกระดูก", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 81526013629043
+	Pet_Bandit = { icon = "rbxassetid://103057066720672", name = "โจร", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 112424921622580
+	Pet_Ghoul = { icon = "rbxassetid://70508487269303", name = "ผีดิบ", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 88454001866782
+	Pet_ClockworkSentry = { icon = "rbxassetid://119276028698556", name = "ทหารจักรกล", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 73617088384067
+	Pet_Wraith = { icon = "rbxassetid://136265439575164", name = "วิญญาณ", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 140336013864823
+	Pet_StoneGolem = { icon = "rbxassetid://113581561139466", name = "โกเลมหิน", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 80020242642635
 
 	-- ฟาร์มผิดกฎหมาย — วางในบ้านแล้วเป็นจุดฟาร์มจริง (กฎของ IllegalFarm ยังใช้ครบ)
 	DistillSet = { icon = "rbxassetid://109416282689187", name = "ชุดกลั่น", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "in" },
@@ -770,38 +770,38 @@ ItemCatalog.Items = {
 	-- **ของที่เครื่องทำทุกชิ้น: กระเป๋า VIP (ใช้แค่บนเกาะ) · ขายร้านไม่ได้ ส่งเมลไม่ได้ (เป็นของคราฟ) · ส่งออกได้**
 	-- ราคาส่งออกอยู่ที่ ExportConfig.Goods ไม่ใช่ `value` · icon = "" = ⌛ จนกว่าจะอัปโหลดรูป
 	--------------------------------------------------------------------------
-	Cotton = { icon = "", name = "ฝ้าย", kind = "junk", weight = 0.5, stackSize = 99, value = 20 },
-	CottonSeed = { icon = "", name = "เมล็ดฝ้าย", kind = "junk", weight = 0.05, stackSize = 99, value = 0, sellable = false, vip = true },
+	Cotton = { icon = "rbxassetid://112391798683827", name = "ฝ้าย", kind = "junk", weight = 0.5, stackSize = 99, value = 20 }, -- decal 140293553717745
+	CottonSeed = { icon = "rbxassetid://126766678112436", name = "เมล็ดฝ้าย", kind = "junk", weight = 0.05, stackSize = 99, value = 0, sellable = false, vip = true }, -- decal 85650779914209
 
 	-- เครื่อง: ชื่อโมเดลตรงกับ CraftStations.STATIONS (ระบบหาจากชื่อ) · สำเร็จ 100% ไม่มีค่าจ้าง
-	BakeryOven = { icon = "", name = "เตาอบขนมปัง", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "both" },
-	MetalBench = { icon = "", name = "โต๊ะช่างเหล็ก", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "both" },
-	Loom = { icon = "", name = "กี่ทอผ้าไอน้ำ", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "both" },
+	BakeryOven = { icon = "rbxassetid://119192386106988", name = "เตาอบขนมปัง", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "both" }, -- decal 139332824506569
+	MetalBench = { icon = "rbxassetid://77594141893993", name = "โต๊ะช่างเหล็ก", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "both" }, -- decal 116427878500987
+	Loom = { icon = "rbxassetid://135191520786064", name = "กี่ทอผ้าไอน้ำ", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "both" }, -- decal 84432980103039
 
 	-- เตาอบขนมปัง (★ = ขั้นสุดท้าย ส่งออกอย่างเดียว ไม่เป็นวัตถุดิบของอะไร)
-	Flour = { icon = "", name = "แป้งสาลี", kind = "junk", weight = 0.4, stackSize = 99, value = 0, sellable = false, vip = true },
-	Dough = { icon = "", name = "แป้งโด", kind = "junk", weight = 0.6, stackSize = 50, value = 0, sellable = false, vip = true },
-	SpecialBread = { icon = "", name = "ขนมปังเนยสด", kind = "junk", weight = 0.6, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
-	MeatPie = { icon = "", name = "พายเนื้อ", kind = "junk", weight = 0.8, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
-	CreamCake = { icon = "", name = "เค้กครีม", kind = "junk", weight = 1, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
+	Flour = { icon = "rbxassetid://101180497409459", name = "แป้งสาลี", kind = "junk", weight = 0.4, stackSize = 99, value = 0, sellable = false, vip = true }, -- decal 108373956977790
+	Dough = { icon = "rbxassetid://107681652841899", name = "แป้งโด", kind = "junk", weight = 0.6, stackSize = 50, value = 0, sellable = false, vip = true }, -- decal 138827236285957
+	SpecialBread = { icon = "rbxassetid://130707039989139", name = "ขนมปังเนยสด", kind = "junk", weight = 0.6, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
+	MeatPie = { icon = "rbxassetid://105709211562383", name = "พายเนื้อ", kind = "junk", weight = 0.8, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
+	CreamCake = { icon = "rbxassetid://135722273015824", name = "เค้กครีม", kind = "junk", weight = 1, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
 
 	-- โต๊ะช่างเหล็ก
-	IronIngot = { icon = "", name = "เหล็กแท่ง", kind = "junk", weight = 1.5, stackSize = 50, value = 0, sellable = false, vip = true },
-	Nails = { icon = "", name = "ตะปู", kind = "junk", weight = 0.05, stackSize = 99, value = 0, sellable = false, vip = true },
-	Hinge = { icon = "", name = "บานพับ", kind = "junk", weight = 0.5, stackSize = 50, value = 0, sellable = false, vip = true },
-	SilverIngot = { icon = "", name = "เงินแท่ง", kind = "junk", weight = 1.5, stackSize = 50, value = 0, sellable = false, vip = true },
-	MechGear = { icon = "", name = "เฟืองกลไก", kind = "junk", weight = 0.5, stackSize = 50, value = 0, sellable = false, vip = true },
-	GoldIngot = { icon = "", name = "ทองแท่ง", kind = "junk", weight = 1.5, stackSize = 50, value = 0, sellable = false, vip = true },
-	Padlock = { icon = "", name = "แม่กุญแจเหล็ก", kind = "junk", weight = 1, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
-	PocketWatch = { icon = "", name = "นาฬิกาพกทองคำ", kind = "junk", weight = 0.3, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
-	MagicCompass = { icon = "", name = "เข็มทิศเวท", kind = "junk", weight = 0.5, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
+	IronIngot = { icon = "rbxassetid://72306783296755", name = "เหล็กแท่ง", kind = "junk", weight = 1.5, stackSize = 50, value = 0, sellable = false, vip = true }, -- decal 96090703133886
+	Nails = { icon = "rbxassetid://125436595064852", name = "ตะปู", kind = "junk", weight = 0.05, stackSize = 99, value = 0, sellable = false, vip = true }, -- decal 74644975507411
+	Hinge = { icon = "rbxassetid://95594043102455", name = "บานพับ", kind = "junk", weight = 0.5, stackSize = 50, value = 0, sellable = false, vip = true }, -- decal 107765090297023
+	SilverIngot = { icon = "rbxassetid://136999265837671", name = "เงินแท่ง", kind = "junk", weight = 1.5, stackSize = 50, value = 0, sellable = false, vip = true }, -- decal 93187866603903
+	MechGear = { icon = "rbxassetid://92186560761573", name = "เฟืองกลไก", kind = "junk", weight = 0.5, stackSize = 50, value = 0, sellable = false, vip = true }, -- decal 87218580192487
+	GoldIngot = { icon = "rbxassetid://90199239088245", name = "ทองแท่ง", kind = "junk", weight = 1.5, stackSize = 50, value = 0, sellable = false, vip = true }, -- decal 110444403687457
+	Padlock = { icon = "rbxassetid://82899918705917", name = "แม่กุญแจเหล็ก", kind = "junk", weight = 1, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
+	PocketWatch = { icon = "rbxassetid://118931825997887", name = "นาฬิกาพกทองคำ", kind = "junk", weight = 0.3, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
+	MagicCompass = { icon = "rbxassetid://105133617399210", name = "เข็มทิศเวท", kind = "junk", weight = 0.5, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
 
 	-- กี่ทอผ้า
-	Thread = { icon = "", name = "ด้ายฝ้าย", kind = "junk", weight = 0.1, stackSize = 99, value = 0, sellable = false, vip = true },
-	Cloth = { icon = "", name = "ผ้าฝ้ายทอ", kind = "junk", weight = 0.5, stackSize = 50, value = 0, sellable = false, vip = true },
-	Yarn = { icon = "", name = "ไหมพรม", kind = "junk", weight = 0.1, stackSize = 99, value = 0, sellable = false, vip = true },
-	WoolCloth = { icon = "", name = "ผ้าขนสัตว์", kind = "junk", weight = 0.6, stackSize = 50, value = 0, sellable = false, vip = true },
-	FineFabric = { icon = "", name = "ผ้าปักลายชั้นดี", kind = "junk", weight = 0.6, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
+	Thread = { icon = "rbxassetid://96940209263936", name = "ด้ายฝ้าย", kind = "junk", weight = 0.1, stackSize = 99, value = 0, sellable = false, vip = true }, -- decal 85163209486987
+	Cloth = { icon = "rbxassetid://78202093915454", name = "ผ้าฝ้ายทอ", kind = "junk", weight = 0.5, stackSize = 50, value = 0, sellable = false, vip = true }, -- decal 99850240794160
+	Yarn = { icon = "rbxassetid://72844066194321", name = "ไหมพรม", kind = "junk", weight = 0.1, stackSize = 99, value = 0, sellable = false, vip = true }, -- decal 75049706011650
+	WoolCloth = { icon = "rbxassetid://82237491880207", name = "ผ้าขนสัตว์", kind = "junk", weight = 0.6, stackSize = 50, value = 0, sellable = false, vip = true }, -- decal 111105100099504
+	FineFabric = { icon = "rbxassetid://74763847450094", name = "ผ้าปักลายชั้นดี", kind = "junk", weight = 0.6, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
 }
 
 -- **สายแร่บนเกาะใช้รูปเดียวกับไอเทมแร่ที่มันให้** (ผู้ใช้สั่ง 2026-09-23)
@@ -819,6 +819,10 @@ for wild, ore in pairs({
 	Wild_GoldOre = "GoldOre",
 	Wild_MagicOre = "MagicOre",
 	Wild_DiamondOre = "Diamond",
+	-- กับดักสนามสามขนาด = กับดักอันเดียวกันต่างแค่กระสุน ใช้รูปของ Trap (ผู้ใช้เลือก 2026-09-28)
+	TrapSmall = "Trap",
+	TrapMedium = "Trap",
+	TrapLarge = "Trap",
 }) do
 	local a, b = ItemCatalog.Items[wild], ItemCatalog.Items[ore]
 	if a and b then a.icon = b.icon end

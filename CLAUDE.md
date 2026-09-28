@@ -71,7 +71,7 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 - เครื่องใหม่ `BakeryOven/MetalBench/Loom` = สถานี `bakery/metal/loom` ใน `CraftStations` **`farmOnly`** (ชื่อซ้ำของตกแต่งในแมพหลักได้) ·
   สูตรต่อท้าย `CraftConfig` มี `level` + `batch` (ทำ 1-10 รอบ: `RequestCraft(index, times)`) · ต้นแบบโมเดล `mapgen/102_farm_machines.lua` (`Manual`)
 - เมล็ด: `IslandConfig.SeedItems` + `CropsFor(seed, level)` · มีเมล็ดที่ปลูกได้ >1 ชนิด = กล่องเลือก (`IslandSeedController`) แล้วจำ 90 วิ
-- ของคราฟใหม่ 19 ชิ้น + ฝ้าย/เมล็ดฝ้าย/3 เครื่อง ยังเป็น ⌛ (`docs/items-without-icons.md`)
+- ของคราฟใหม่ 19 ชิ้น + ฝ้าย/เมล็ดฝ้าย/3 เครื่อง มีรูปแล้ว (2026-09-28)
 - **คำสั่งเทส `/farm [exp <n> | level <n> | ship | orders | reroll | gems | reset | pets ready | pets <n>]`** (บนเกาะของตัวเอง) — `ship` = รถกลับทันที · `pets ready` = ลูบได้ทันทีทุกตัว · `pets <n>` = ตั้งจำนวนครั้งที่ลูบ (เฟส 2d)
 - **`tools/verify.js <project.json> [--push]`** (ใหม่) เทียบแฮชทุกสคริปต์ที่เพลสควรมีกับ Studio · `--push` ดันที่ไม่ตรง — ใช้แทน dump_all+cmp
 
@@ -90,7 +90,7 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 - ป้าย `PetTag` เหนือหัว (ชื่อ · โต N% / ✨ โตเต็มวัย) สร้างฝั่งเซิร์ฟ ขนาดเป็นสตัด ใต้ป้าย ❤️ · หน้าต่างรถวาดตารางปลดใหม่เฉพาะตอนเลเวล/EXP เปลี่ยน
 - เทส: `farm_level_test` (ตาราง/จังหวะ/กฎกลุ่มวัตถุดิบ/ของดรอป) · `island_pet_models_test` (Edit เพลสเกาะ: ต้นแบบ 24 ตัว) ·
   `island_pets_test` (Play: เกิด 30% → โต → ลูบได้ของ → คูลดาวน์ → เก็บ-วางความโตตามมา · **ยังไม่ได้รัน** ผมกด Play ไม่ได้)
-- ⌛ สัตว์เลี้ยงใหม่ 22 ตัวยังไม่มีรูป (`docs/items-without-icons.md` 47 จาก 206)
+- สัตว์เลี้ยงมีรูปครบแล้วยกเว้นแมงมุม (2026-09-28 · `docs/items-without-icons.md` เหลือ 1 จาก 214)
 
 **รอบแก้ 2026-09-27 (ผู้ใช้สั่งแทรกก่อนเทส 2d) — บอร์ดบราสเฮเวน · ของขวัญหุ่นฟาง · พาสรายเดือน · ดันสามเพลส 0 ไม่ตรง · ผู้ใช้เทสผ่าน 2026-09-27**
 - **บอร์ดเควสบราสเฮเวน** `QuestConfig.Boards` id `Brasshaven` (โมเดล `QuestBoard_FirstTown` ข้างจุดเกิดที่ผู้ใช้วางเอง —
