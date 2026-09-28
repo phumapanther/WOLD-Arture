@@ -214,4 +214,46 @@ ShopConfig.PriceSwing = 0.50
 ShopConfig.GoldPerKg = 3
 ShopConfig.RerollSeconds = 1800 -- half an hour, as asked
 
+-- ราคารับซื้อ (ผู้ใช้กำหนด 2026-09-28): **ต่ำสุด 10** · ของถูกสุ่มได้ถึงอย่างน้อย 20 · สุ่ม ±50% (PriceSwing) เท่าเดิม
+-- · **ทุกรอบ 30 นาทีขยับจากรอบก่อนอย่างน้อย 5** · ก้อนหิน/เศษไม้ใช้สูตรเดิม · พ่อค้าประจำเมืองต่ำสุด 10 ด้วย
+ShopConfig.MinSellPrice = 10
+ShopConfig.MinSellTop = 20 -- เพดานของของถูก: ช่วงกว้าง ≥ 10 จึงขยับ 5 ได้เสมอ
+ShopConfig.MinPriceMove = 5
+ShopConfig.PriceFloorExempt = { Stone = true, WoodScrap = true }
+-- ย้อนประวัติกี่รอบตอนคำนวณราคา (หนึ่งสัปดาห์) — รอบนี้ขึ้นกับรอบก่อน ทุกเซิร์ฟย้อนจากจุดเดียวกันจึงได้ราคาเดียวกัน
+-- และราคา "เดิม" ที่หน้าราคากลางโชว์ตรงกับที่เคยโชว์จริง (ประวัติลืมจุดเริ่มเองในไม่กี่รอบ · เทส sell_price_test)
+ShopConfig.PriceHistorySlots = 336
+
+-- ช่วงราคารับซื้อเป็นจำนวนเต็ม · nil = ใช้สูตรเดิม (ของยกเว้น หรือไม่มีมูลค่า)
+function ShopConfig.SellRange(id, value)
+	if ShopConfig.PriceFloorExempt[id] or not value or value <= 0 then return nil end
+	local centre = value * ShopConfig.BuyFraction
+	local lo = math.max(ShopConfig.MinSellPrice, math.floor(centre * (1 - ShopConfig.PriceSwing) + 0.5))
+	local hi = math.max(ShopConfig.MinSellTop, math.floor(centre * (1 + ShopConfig.PriceSwing) + 0.5))
+	return lo, hi
+end
+
+-- ราคารอบนี้จากเลขสุ่มสองตัว (0..1) กับราคารอบก่อน · สุ่มทั้งช่วงก่อน ห่างรอบก่อนไม่ถึง 5 = สุ่มใหม่
+-- จากค่าที่ห่างพอ (u2) · ห่างพอตั้งแต่แรก = ใช้เลยโดยไม่ดูรอบก่อน ประวัติจึงลืมจุดเริ่มเอง
+function ShopConfig.NextSellPrice(u, u2, prev, lo, hi)
+	local price = lo + math.min(hi - lo, math.floor(u * (hi - lo + 1)))
+	local move = ShopConfig.MinPriceMove
+	if prev == nil or math.abs(price - prev) >= move then return price end
+	local belowTop = math.min(hi, prev - move) -- ค่าที่ต่ำกว่ารอบก่อนพอ: lo..belowTop
+	local aboveBottom = math.max(lo, prev + move) -- ค่าที่สูงกว่าพอ: aboveBottom..hi
+	local nBelow = math.max(0, belowTop - lo + 1)
+	local nAbove = math.max(0, hi - aboveBottom + 1)
+	local n = nBelow + nAbove
+	if n == 0 then return price end -- ช่วงแคบเกิน (ไม่เกิดกับ SellRange)
+	local pick = math.min(n - 1, math.floor(u2 * n))
+	if pick < nBelow then return lo + pick end
+	return aboveBottom + (pick - nBelow)
+end
+
+-- ราคาคงที่ (พ่อค้าประจำเมือง) หลังยกพื้น 10 · ของยกเว้นไม่ยก
+function ShopConfig.FloorSellPrice(id, price)
+	if ShopConfig.PriceFloorExempt[id] then return price end
+	return math.max(ShopConfig.MinSellPrice, price)
+end
+
 return ShopConfig

@@ -65,7 +65,8 @@ local function priceFor(player, townId, id, meta)
 	local item = ItemCatalog.Get(id)
 	if not item or not ItemCatalog.IsSellable(id) then return nil end
 
-	local base = (item.value or 0) * ShopConfig.BuyFraction
+	-- ต่ำสุด 10 เหมือนร้านรับซื้อ (ผู้ใช้กำหนด 2026-09-28) · ก้อนหิน/เศษไม้ไม่ยก
+	local base = ShopConfig.FloorSellPrice(id, (item.value or 0) * ShopConfig.BuyFraction)
 	-- ปลาตัวใหญ่แพงกว่า เหมือนที่ร้านปกติคิด — น้ำหนักติดมากับ meta
 	if meta and meta.kg then
 		base = base * (1 + meta.kg / 50)

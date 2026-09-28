@@ -59,15 +59,42 @@ local function sellableIds()
 	return ids
 end
 
--- ตัวคูณของช่องเวลาหนึ่ง — ช่องเดียวกันได้เลขเดียวกันทุกเซิร์ฟเสมอ ช่องก่อนหน้าจึงคำนวณย้อนได้โดยไม่ต้องจำ
-local function multipliersFor(bucket)
-	-- คูณเลขคีย์ก่อนส่งเข้า `Random.new` เพื่อให้ช่วงที่ติดกันไม่เกาะกลุ่มกัน
-	local rng = Random.new(bucket * 1013904223 + 1664525)
-	local out = {}
-	for _, id in ipairs(sellableIds()) do
-		out[id] = 1 + (rng:NextNumber() * 2 - 1) * ShopConfig.PriceSwing
+-- ตัวคูณของรอบนี้และรอบก่อน (ราคา = มูลค่า × 0.6 × ตัวคูณ) — ช่องเวลาเดียวกันได้เลขสุ่มเดียวกันทุกเซิร์ฟเสมอ
+--
+-- **ราคารอบนี้ขึ้นกับรอบก่อน** (ผู้ใช้กำหนด 2026-09-28: ต่ำสุด 10 · ขยับรอบละ ≥ 5) จึงย้อนประวัติ
+-- `ShopConfig.PriceHistorySlots` รอบจากเลขสุ่มของแต่ละช่อง — ทุกเซิร์ฟได้ราคาเดียวกัน และราคารอบก่อนที่หน้า
+-- "ราคากลาง" โชว์ตรงกับที่เคยโชว์จริง · กติกาล้วนอยู่ `ShopConfig.SellRange/NextSellPrice` (เทส sell_price_test)
+-- ของยกเว้น (ก้อนหิน/เศษไม้) สุ่ม ±50% ของรอบนั้นตรงๆ เหมือนเดิม
+local function multipliersAt(bucket)
+	local ids = sellableIds()
+	local ranges = {}
+	for _, id in ipairs(ids) do
+		local lo, hi = ShopConfig.SellRange(id, ItemCatalog.Items[id].value)
+		if lo then ranges[id] = { lo, hi } end
 	end
-	return out
+	local prices, before, now, beforeMult = {}, {}, {}, {}
+	for slot = bucket - ShopConfig.PriceHistorySlots, bucket do
+		-- คูณเลขคีย์ก่อนส่งเข้า `Random.new` เพื่อให้ช่วงที่ติดกันไม่เกาะกลุ่มกัน
+		local rng = Random.new(slot * 1013904223 + 1664525)
+		for _, id in ipairs(ids) do
+			local u, u2 = rng:NextNumber(), rng:NextNumber()
+			local range = ranges[id]
+			if range then
+				if slot == bucket then before[id] = prices[id] end
+				prices[id] = ShopConfig.NextSellPrice(u, u2, prices[id], range[1], range[2])
+			elseif slot == bucket then
+				now[id] = 1 + (u * 2 - 1) * ShopConfig.PriceSwing
+			elseif slot == bucket - 1 then
+				beforeMult[id] = 1 + (u * 2 - 1) * ShopConfig.PriceSwing
+			end
+		end
+	end
+	for id in pairs(ranges) do
+		local centre = ItemCatalog.Items[id].value * ShopConfig.BuyFraction
+		now[id] = prices[id] / centre
+		beforeMult[id] = before[id] / centre
+	end
+	return now, beforeMult
 end
 
 -- ราคารอบก่อน ให้หน้า "ราคากลาง" บอกว่าขึ้น/ลงเท่าไหร่ (ผู้ใช้สั่ง 2026-09-28)
@@ -76,8 +103,7 @@ local PrevMultipliers = {}
 local function reroll()
 	local period = ShopConfig.RerollSeconds
 	local bucket = math.floor(os.time() / period)
-	Multipliers = multipliersFor(bucket)
-	PrevMultipliers = multipliersFor(bucket - 1)
+	Multipliers, PrevMultipliers = multipliersAt(bucket)
 	NextRerollAt = (bucket + 1) * period
 end
 
@@ -121,7 +147,8 @@ local function buyPrice(id, meta, mults)
 		-- Multiplied by the same drift as the base, so a trophy fish rises and falls with the market like
 		-- everything else. Left out of the drift it would have been a fixed floor under the price, and a big
 		-- fish would have been oddly steady on a day when every other catch had moved.
-		base += meta.kg * ShopConfig.GoldPerKg * m
+		-- เพดาน ×1.5 เท่าเดิม: ของถูกถูกยกพื้นเป็น 10 ตัวคูณจึงสูงถึง 2-4 เท่า ถ้าเอามาคูณกิโลด้วย ปลาถ้วยรางวัลราคาพองเกินจริง
+		base += meta.kg * ShopConfig.GoldPerKg * math.min(m, 1 + ShopConfig.PriceSwing)
 	end
 
 	-- ของขอบทอง (เฟส 2b): ขายบนเกาะเท่านั้น 3 เท่าของราคาตลาดตอนนี้ · ร้านเกมหลักไม่รับ
