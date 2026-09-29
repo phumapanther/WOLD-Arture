@@ -3,15 +3,16 @@
 --   gems — **150 เพชร เฉพาะบัญชีใหม่** (ผู้ใช้เลือก) · ธง `NewbieGems` ตั้งพร้อมชุดเปิดตัว (`PlayerInventory`)
 --          = บัญชีที่สร้างหลังอัปเดตนี้เท่านั้น บัญชีเก่าไม่มีธงจึงไม่ได้
 --          · **รับได้หลังจบเควสเนื้อเรื่องเริ่มต้นแล้ว** (ผู้ใช้สั่ง 2026-09-28 · `GemsAfterChapter` = บท "ความทรงจำแรก")
---   vip  — VIP 30 วัน **เมื่อ Lv.5 ขึ้นไป** (เดิม 2026-09-26 แจกทุกคนทันที) · มี VIP อยู่ = รับไม่ได้และไม่เสียสิทธิ์
+--   vip  — VIP 30 วัน **เมื่อ Lv.5 ขึ้นไป** · มี VIP อยู่ = ทบ +30 วัน (ผู้ใช้สั่ง 2026-09-29 · เควส "เกาะลอยฟ้าแห่งความฝัน")
 --   pass — **แบทเทิลพาสพรีเมียมของเดือนที่กดรับ ฟรี · บัญชีใหม่เท่านั้น** (ผู้ใช้สั่ง 2026-09-28 · กดได้เลย ไม่ต้องจบเควส)
 --          เดือนนั้นปลดพรีเมียมเองไปแล้ว = รอเดือนถัดไป ไม่เสียสิทธิ์ (ไม่ให้ของขวัญเปล่า)
 --   aura — **ออร่าสุ่ม 1 อัน** จากออร่าที่มีในเกมตอนนั้น เมื่อมี **เพื่อนในเกม 5 คนขึ้นไป**
 --
 -- กดทีเดียวรับทุกอย่างที่ถึงเงื่อนไขแล้ว · ธงอยู่ในโปรไฟล์ (ทั้ง universe = ครั้งเดียวไม่ว่าเซิร์ฟไหน) · ปิดทั้งหมดที่ `Enabled`
--- ไม่มี Player ไม่มี remote — `VipGiftPrompt.server` ต่อปุ่มและส่งของ · เทส `tests/vip_gift_test.lua`
+-- ไม่มี Player ไม่มี remote — ทั้งหมดมาเป็นเควสสีฟ้าของออฟาเรียน (`Story.server` TalkOforian · `VipGift.Quests`) · เทส `tests/vip_gift_test.lua`
 -- อ่าน/เขียน VIP ผ่าน `Vip` เท่านั้น (กติกาของ Vip.lua)
 local Vip = require(script.Parent.Vip)
+local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 
 local VipGift = {}
 
@@ -34,13 +35,12 @@ end
 -- VIP
 --------------------------------------------------------------------------------
 
--- คืน true หรือ false + เหตุผล: "closed" | "loading" | "claimed" | "level" | "active"
+-- คืน true หรือ false + เหตุผล: "closed" | "loading" | "claimed" | "level"
 function VipGift.Check(data, now, level)
 	if not VipGift.Enabled then return false, "closed" end
 	if not data then return false, "loading" end
 	if data.VipGiftClaimed == true then return false, "claimed" end
 	if (tonumber(level) or 0) < VipGift.VipLevel then return false, "level" end
-	if Vip.ActiveData(data, now) then return false, "active" end
 	return true
 end
 
@@ -48,7 +48,7 @@ end
 function VipGift.Claim(data, now, level)
 	local ok, reason = VipGift.Check(data, now, level)
 	if not ok then return false, reason end
-	if not Vip.GrantData(data, VipGift.Days, true, now) then return false, "active" end
+	if not Vip.GrantData(data, VipGift.Days, false, now) then return false, "loading" end
 	data.VipGiftClaimed = true
 	return true
 end
@@ -127,43 +127,35 @@ function VipGift.ClaimAura(data, friends, pool, rng, give)
 end
 
 --------------------------------------------------------------------------------
--- ป้ายบนปุ่มของคนคนนี้
+-- เควสสีฟ้าของออฟาเรียน เทพหุ่นฟาง (2026-09-29 · สเปก 2026-09-29-quest-log-oforian)
 --------------------------------------------------------------------------------
 
--- `hasPremium` (ไม่บังคับ) = พาสเดือนนี้ปลดพรีเมียมอยู่แล้วไหม
--- { ready = { "150 เพชร", ... }, waiting = { "VIP 30 วัน (Lv.5 · ตอนนี้ Lv.2)", ... } }
--- ready = กดแล้วได้เลย · waiting = ยังรับได้ในอนาคต (บอกว่าติดอะไร) · ที่รับไปแล้ว/ไม่มีสิทธิ์ถาวรไม่อยู่ในทั้งสองรายการ
-function VipGift.Summary(data, now, level, friends, pool, hasPremium)
-	local ready, waiting = {}, {}
-	if not VipGift.Enabled or not data then return { ready = ready, waiting = waiting } end
-	local gemsOk, gemsWhy = VipGift.CheckGems(data)
-	if gemsOk then
-		ready[#ready + 1] = ("%d เพชร"):format(VipGift.Gems)
-	elseif gemsWhy == "story" then
-		waiting[#waiting + 1] = ("%d เพชร (จบเควสเนื้อเรื่อง \"%s\" กับไลราก่อน)"):format(VipGift.Gems, VipGift.GemsAfterName)
+-- ออร่าทุกชิ้นที่มีในเกมตอนนี้ (ผู้ใช้สั่ง "สุ่มออร่าที่มีในปัจจุบัน") — ออร่าใหม่เข้าสระเอง
+function VipGift.AuraPool()
+	local out = {}
+	for id, item in pairs(ItemCatalog.Items) do
+		if type(item) == "table" and item.kind == "aura" then out[#out + 1] = id end
 	end
+	table.sort(out)
+	return out
+end
+
+-- แถวเควสที่ค้างอยู่ **คำนวณจากธงเดิมทั้งหมด** (ไม่มีที่เก็บใหม่ — สิทธิ์ของขวัญเดิมคือสิทธิ์เดียวกัน)
+-- ก่อนถึงเงื่อนไขไม่มีแถวเลย (ผู้ใช้สั่ง "พอเวล 5 เควสเด้งทันที") ยกเว้นพาสที่ `waiting` รอเดือนหน้า
+-- ลำดับ = ลำดับที่คุยแล้วได้ · **sky ท้ายสุดเสมอ** เพราะจบด้วยการวาป ของอย่างอื่นต้องได้ก่อน
+function VipGift.Quests(data, now, level, friends, pool, hasPremium)
+	local rows = {}
+	if not VipGift.Enabled or not data then return rows end
 	local passOk, passWhy = VipGift.CheckPass(data, hasPremium)
 	if passOk then
-		ready[#ready + 1] = "แบทเทิลพาสพรีเมียม"
+		rows[#rows + 1] = { id = "newcomer", state = "active" }
 	elseif passWhy == "owned" then
-		waiting[#waiting + 1] = "แบทเทิลพาสพรีเมียม (เดือนนี้ปลดแล้ว — รับได้เดือนถัดไป)"
+		rows[#rows + 1] = { id = "newcomer", state = "waiting", reason = "เดือนนี้ปลดพาสพรีเมียมแล้ว — กลับมารับเดือนหน้า" }
 	end
-	local vipOk, vipWhy = VipGift.Check(data, now, level)
-	local vipName = ("VIP %d วัน"):format(VipGift.Days)
-	if vipOk then
-		ready[#ready + 1] = vipName
-	elseif vipWhy == "level" then
-		waiting[#waiting + 1] = ("%s (ต้อง Lv.%d · ตอนนี้ Lv.%d)"):format(vipName, VipGift.VipLevel, tonumber(level) or 1)
-	elseif vipWhy == "active" then
-		waiting[#waiting + 1] = ("%s (รับได้หลัง VIP ที่มีอยู่หมด)"):format(vipName)
-	end
-	local auraOk, auraWhy = VipGift.CheckAura(data, friends, pool)
-	if auraOk then
-		ready[#ready + 1] = "ออร่าสุ่ม"
-	elseif auraWhy == "friends" then
-		waiting[#waiting + 1] = ("ออร่าสุ่ม (ต้องมีเพื่อน %d คน · ตอนนี้ %d)"):format(VipGift.FriendsForAura, tonumber(friends) or 0)
-	end
-	return { ready = ready, waiting = waiting }
+	if VipGift.CheckGems(data) then rows[#rows + 1] = { id = "travel", state = "active" } end
+	if VipGift.CheckAura(data, friends, pool) then rows[#rows + 1] = { id = "friends", state = "active" } end
+	if VipGift.Check(data, now, level) then rows[#rows + 1] = { id = "sky", state = "active" } end
+	return rows
 end
 
 return VipGift

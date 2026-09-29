@@ -32,7 +32,7 @@ check(select(1, can({ VipUntil = 0 })) == true, "Lv.5 ไม่เคยมี V
 check(select(2, can({ VipUntil = 0 }, 4)) == "level" and select(2, VipGift.Check({}, now, nil)) == "level", "ต่ำกว่า Lv.5 (หรือไม่รู้เลเวล) = ยังรับ VIP ไม่ได้")
 check(select(1, can({}, 30)) == true, "เลเวลสูงกว่า 5 ก็รับได้")
 check(select(2, can(nil)) == "loading", "โปรไฟล์ยังไม่โหลด = รับไม่ได้ (จดธงไม่ได้)")
-check(select(2, can({ VipUntil = now + 60 })) == "active", "มี VIP อยู่ = รับไม่ได้")
+check(select(1, can({ VipUntil = now + 60 })) == true, "มี VIP อยู่ = ยังรับได้ (ทบ +30 วัน · ผู้ใช้สั่ง 2026-09-29)")
 check(select(2, can({ VipGiftClaimed = true, VipUntil = 0 })) == "claimed", "รับไปแล้ว = รับไม่ได้อีก")
 check(select(1, can({ VipUntil = now - 60 })) == true, "VIP หมดอายุแล้ว ยังไม่เคยรับ = รับได้")
 check(select(2, can({ VipGiftClaimed = true, VipUntil = now + 60 })) == "claimed",
@@ -49,8 +49,8 @@ local again, reason = VipGift.Claim(data, now + 31 * 86400, LV)
 check(again == false and reason == "claimed" and data.VipUntil == before, "รับซ้ำหลัง VIP หมด = ไม่ได้ และไม่แตะวันหมดอายุ")
 local busy = { VipUntil = now + 100 }
 local okBusy = VipGift.Claim(busy, now, LV)
-check(okBusy == false and busy.VipGiftClaimed == nil and busy.VipUntil == now + 100,
-	"มี VIP อยู่แล้วกด = ไม่เสียสิทธิ์ ไม่แตะวันหมดอายุ")
+check(okBusy == true and busy.VipGiftClaimed == true and busy.VipUntil == now + 100 + 30 * 86400,
+	"มี VIP อยู่แล้วรับ = ทบต่อท้ายเวลาที่เหลือ")
 
 ----------------------------------------------------------------- 150 เพชร
 local added = 0
@@ -62,8 +62,8 @@ local early = { NewbieGems = true, Story = { ch = { brasshaven = { step = 3 } } 
 local earlyOk, earlyWhy = VipGift.ClaimGems(early, adder)
 check(earlyOk == false and earlyWhy == "story" and added == 0 and early.NewbieGemsClaimed == nil,
 	"บัญชีใหม่ที่ยังไม่จบเควสเนื้อเรื่อง = ยังไม่ได้ ไม่เสียสิทธิ์")
-local waitList = VipGift.Summary(early, now, 1, 0, {}).waiting
-check(#waitList >= 1 and waitList[1]:find("150") ~= nil, "ป้ายบอกว่าเพชรรอจบเควสเนื้อเรื่อง: " .. tostring(waitList[1]))
+local earlyQuests = VipGift.Quests(early, now, 1, 0, {}, false)
+check(#earlyQuests == 1 and earlyQuests[1].id == "newcomer", "ยังไม่จบบท = ยังไม่มีเควสของขวัญการเดินทาง")
 local newbie = { NewbieGems = true, Story = { ch = { brasshaven = { step = 5, done = true } } } }
 check(VipGift.ClaimGems(newbie, adder) == true and added == 150 and newbie.NewbieGemsClaimed == true, "บัญชีใหม่จบเควสแล้วกด = ได้ 150 เพชร + ปั๊มธง")
 local twice = VipGift.ClaimGems(newbie, adder)
@@ -82,10 +82,9 @@ check(select(2, VipGift.ClaimPass(fresh, false, grant)) == "claimed" and granted
 local bought = { NewbieGems = true }
 local bOk, bWhy = VipGift.ClaimPass(bought, true, grant)
 check(bOk == false and bWhy == "owned" and bought.NewbiePassClaimed == nil, "เดือนนี้ปลดพรีเมียมเองแล้ว = รอเดือนหน้า ไม่เสียสิทธิ์")
-local wait = VipGift.Summary(bought, now, 1, 0, {}, true).waiting
-local foundWait = false
-for _, w in ipairs(wait) do if w:find("แบทเทิลพาส") then foundWait = true end end
-check(foundWait, "ป้ายบอกว่าพาสรอเดือนหน้า")
+local qb = VipGift.Quests(bought, now, 1, 0, {}, true)
+check(qb[1] ~= nil and qb[1].id == "newcomer" and qb[1].state == "waiting" and (qb[1].reason or ""):find("เดือนหน้า") ~= nil,
+	"พาสเดือนนี้ปลดแล้ว = เควสรอเดือนหน้า")
 local failPass = { NewbieGems = true }
 check(VipGift.ClaimPass(failPass, false, function() return false end) == false and failPass.NewbiePassClaimed == nil, "ปลดไม่สำเร็จ = ไม่เสียสิทธิ์")
 
@@ -112,16 +111,22 @@ for _ = 1, 200 do
 end
 check(seen.Aura_A and seen.Aura_B and seen.Aura_C, "สุ่มได้ครบทุกออร่าในสระ")
 
------------------------------------------------------------------ ป้ายปุ่ม
-local s0 = VipGift.Summary({ NewbieGems = true, VipUntil = 0 }, now, 1, 0, POOL)
-check(#s0.ready == 1 and s0.ready[1] == "แบทเทิลพาสพรีเมียม" and #s0.waiting == 3, "ผู้เล่นใหม่ Lv.1 ยังไม่จบเควส: พาสรับได้เลย · เพชร VIP ออร่ารอ")
-local s1 = VipGift.Summary({ NewbieGems = true, VipUntil = 0, Story = { ch = { brasshaven = { done = true } } } }, now, 1, 0, POOL)
-check(#s1.ready == 2 and s1.ready[1] == "150 เพชร" and #s1.waiting == 2, "ผู้เล่นใหม่ Lv.1 จบเควสแล้ว: รับเพชร + พาสได้ · VIP กับออร่ารออยู่")
-local s2 = VipGift.Summary({ NewbieGemsClaimed = true, NewbiePassClaimed = true, NewbieGems = true, VipUntil = 0 }, now, 6, 5, POOL)
-check(#s2.ready == 2 and #s2.waiting == 0, "Lv.6 เพื่อน 5: รับ VIP + ออร่าพร้อมกัน")
-local s3 = VipGift.Summary({ NewbieGemsClaimed = true, VipGiftClaimed = true, FriendAuraClaimed = "Aura_A" }, now, 9, 9, POOL)
-check(#s3.ready == 0 and #s3.waiting == 0, "รับครบแล้ว = ไม่เหลืออะไร (ปุ่มซ่อน)")
-local s4 = VipGift.Summary({ VipUntil = now + 99 }, now, 10, 1, POOL)
-check(#s4.ready == 0 and #s4.waiting == 2 and s4.waiting[1]:find("หลัง VIP", 1, true), "บัญชีเก่ามี VIP อยู่: รอ VIP หมด + รอเพื่อน")
+----------------------------------------------------------------- เควสสีฟ้าของออฟาเรียน (2026-09-29)
+local function ids(rows)
+	local t = {}
+	for _, r in ipairs(rows) do t[#t + 1] = r.id .. ":" .. r.state end
+	return table.concat(t, ",")
+end
+check(ids(VipGift.Quests({ NewbieGems = true, VipUntil = 0 }, now, 1, 0, POOL)) == "newcomer:active", "ผู้เล่นใหม่ Lv.1 = ของขวัญผู้มาใหม่อย่างเดียว")
+check(ids(VipGift.Quests({ NewbieGems = true, VipUntil = 0, Story = { ch = { brasshaven = { done = true } } } }, now, 1, 0, POOL))
+	== "newcomer:active,travel:active", "จบบทไลรา = ของขวัญการเดินทางโผล่")
+check(ids(VipGift.Quests({ NewbieGemsClaimed = true, NewbiePassClaimed = true, NewbieGems = true, VipUntil = 0 }, now, 6, 5, POOL))
+	== "friends:active,sky:active", "Lv.6 เพื่อน 5 = สายใยมิตรภาพ แล้วเกาะลอยฟ้าท้ายสุด (จบด้วยการวาป)")
+check(ids(VipGift.Quests({ VipUntil = now + 99 }, now, 5, 0, POOL)) == "sky:active", "บัญชีเก่ามี VIP อยู่ Lv.5 = ได้เควสเกาะ (ทบเวลา)")
+check(ids(VipGift.Quests({ NewbieGemsClaimed = true, VipGiftClaimed = true, FriendAuraClaimed = "Aura_A" }, now, 9, 9, POOL)) == "",
+	"รับของขวัญเดิมไปแล้ว = ไม่มีเควสฟ้าเลย")
+check(ids(VipGift.Quests({}, now, 4, 4, POOL)) == "", "บัญชีเก่า Lv.4 เพื่อน 4 = ยังไม่โผล่อะไร")
+check(#VipGift.Quests(nil, now, 9, 9, POOL) == 0, "โปรไฟล์ยังไม่โหลด = ไม่มีแถว")
+check(#VipGift.AuraPool() > 0, "สระออร่าจากแคตตาล็อกไม่ว่าง")
 
 return ("%s\n%d fail(s)"):format(table.concat(out, "\n"), fails)
