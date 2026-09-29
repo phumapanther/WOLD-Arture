@@ -56,6 +56,7 @@
     "src/ServerScriptService/Island/IslandNight.server.lua",
     "src/ServerScriptService/Island/IslandPets.server.lua",
     "src/ServerScriptService/Island/IslandPlots.server.lua",
+    "src/ServerScriptService/Island/IslandWelcome.server.lua",
     "src/ServerScriptService/Island/IslandZones.server.lua",
     "src/ServerScriptService/Lobby/BuildLobbyRoom.server.lua",
     "src/ServerScriptService/Lobby/ChannelServer.server.lua",
@@ -69,7 +70,8 @@
     "src/StarterPlayerScripts/IslandPenController.client.lua",
     "src/StarterPlayerScripts/ExportController.client.lua",
     "src/StarterPlayerScripts/FarmLevelController.client.lua",
-    "src/StarterPlayerScripts/IslandSeedController.client.lua"
+    "src/StarterPlayerScripts/IslandSeedController.client.lua",
+    "src/StarterPlayerScripts/IslandWelcomeController.client.lua"
   ],
   "tree": {
     "$className": "DataModel",
