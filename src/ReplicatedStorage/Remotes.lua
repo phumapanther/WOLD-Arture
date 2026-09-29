@@ -201,6 +201,8 @@ local EVENTS = {
 	"IslandSeedChoice", "IslandPlantSeed",
 	-- กล่องจดหมายในหินเวท: คำขอเดียวเข้า (op + อาร์กิวเมนต์) ภาพกล่องทั้งก้อนออก — ทรงเดียวกับตลาด/คลัง
 	"RequestMail", "MailUpdate",
+	-- แถบเควสรวม (2026-09-29): เซิร์ฟ → QuestLogBoard(แถวงานบอร์ด) · ไคลเอนต์ → RequestQuestNav(key) · เซิร์ฟ → QuestNav(ตำแหน่ง, ชื่อ)
+	"QuestLogBoard", "RequestQuestNav", "QuestNav",
 }
 local FUNCTIONS = { "GetSpawnPosition" } -- DataStore-backed lookups can only run server-side; the client must ask
 
