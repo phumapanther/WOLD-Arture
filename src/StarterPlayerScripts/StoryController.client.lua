@@ -376,8 +376,211 @@ local function runCutscene(info)
 	Remotes.RequestStory:FireServer("cutscene_done")
 end
 
+-- คัทซีนรถคาร์โก้ (StoryConfig.SkyCutscene) → จอขาวค้าง → ให้เซิร์ฟวาป · ภาพทั้งหมดเป็นของเครื่องนี้
+local function whiteVeil()
+	local g = Instance.new("ScreenGui")
+	g.Name = "WOLD_SkyVeil"
+	g.IgnoreGuiInset = true
+	g.DisplayOrder = 1000
+	g.ResetOnSpawn = false
+	local f = Instance.new("Frame")
+	f.Size = UDim2.fromScale(1, 1)
+	f.BackgroundColor3 = Color3.new(1, 1, 1)
+	f.BorderSizePixel = 0
+	f.Parent = g
+	local t = Instance.new("TextLabel")
+	t.BackgroundTransparency = 1
+	t.AnchorPoint = Vector2.new(0.5, 0.5)
+	t.Position = UDim2.fromScale(0.5, 0.5)
+	t.Size = UDim2.fromScale(0.8, 0.12)
+	t.Font = Enum.Font.GothamBlack
+	t.TextScaled = true
+	t.TextColor3 = Color3.fromRGB(170, 130, 60)
+	t.Text = StoryConfig.SkyTitle
+	t.Parent = f
+	return g
+end
+
 local skyRestore = nil -- คืนหน้าจอตอนวาปไม่สำเร็จ
 local function runSkyCutscene(info)
+	local camera = workspace.CurrentCamera
+	local character = player.Character
+	local hrp = character and character:FindFirstChild("HumanoidRootPart")
+	if not (camera and hrp) then
+		Remotes.RequestStory:FireServer("sky_warp")
+		return
+	end
+	inCutscene = true
+	local at = (info and info.at) or hrp.Position
+	PhotoMode.Set(true)
+	local touch = playerGui:FindFirstChild("TouchActionGui")
+	local touchWas = touch and touch.Enabled
+	if touch then touch.Enabled = false end
+	gui:SetCinema(true)
+	local cameraType = camera.CameraType
+	camera.CameraType = Enum.CameraType.Scriptable
+	local skipped = false
+	local skipConn = gui.skipButton.Activated:Connect(function() skipped = true end)
+	local playing = {}
+	local function sfx(name)
+		local sound = UiSound.Play(name)
+		if sound then playing[#playing + 1] = sound end
+	end
+	local function wait(seconds)
+		local t0 = os.clock()
+		while os.clock() - t0 < seconds and not skipped do RunService.RenderStepped:Wait() end
+	end
+
+	-- รถ: ข้างตัวผู้เล่น 10 สตัด บนพื้นจริง หันไปทางเดียวกับผู้เล่น
+	local look = hrp.CFrame.LookVector * Vector3.new(1, 0, 1)
+	look = look.Magnitude > 0.1 and look.Unit or Vector3.new(0, 0, -1)
+	local right = look:Cross(Vector3.yAxis)
+	local params = RaycastParams.new()
+	params.FilterType = Enum.RaycastFilterType.Exclude
+	params.FilterDescendantsInstances = { character }
+	local spot = hrp.Position + right * 10
+	local hit = workspace:Raycast(spot + Vector3.new(0, 30, 0), Vector3.new(0, -80, 0), params)
+	local ground = hit and hit.Position or (spot - Vector3.new(0, 3, 0))
+	local truckCf = CFrame.lookAt(ground, ground + look)
+	local folder = ReplicatedStorage:FindFirstChild("WOLD_Cutscene")
+	local proto = folder and folder:FindFirstChild("CargoTruck")
+	local truck = proto and proto:Clone()
+	local fades = {}
+	if truck then
+		for _, p in ipairs(truck:GetDescendants()) do
+			if p:IsA("BasePart") then
+				fades[p] = p.Transparency
+				p.Transparency = 1
+			end
+		end
+		truck:PivotTo(truckCf)
+		truck.Parent = workspace
+	end
+
+	-- แสงทองของออฟาเรียน
+	local glow = Instance.new("Part")
+	glow.Anchored, glow.CanCollide, glow.CanQuery, glow.CanTouch = true, false, false, false
+	glow.Transparency = 1
+	glow.Size = Vector3.new(1, 1, 1)
+	glow.Position = at + Vector3.new(0, 3, 0)
+	glow.Parent = workspace
+	local light = Instance.new("PointLight")
+	light.Color = Color3.fromRGB(255, 214, 120)
+	light.Range = 18
+	light.Brightness = 0
+	light.Parent = glow
+	local emitter = Instance.new("ParticleEmitter")
+	emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+	emitter.Color = ColorSequence.new(Color3.fromRGB(255, 214, 120))
+	emitter.LightEmission = 1
+	emitter.LightInfluence = 0
+	emitter.Size = NumberSequence.new(0.5, 0)
+	emitter.Lifetime = NumberRange.new(1, 1.8)
+	emitter.Speed = NumberRange.new(1, 3)
+	emitter.SpreadAngle = Vector2.new(180, 180)
+	emitter.Rate = 0
+	emitter.Parent = glow
+
+	local function hideSelf(on)
+		for _, d in ipairs(character:GetDescendants()) do
+			if d:IsA("BasePart") or d:IsA("Decal") then d.LocalTransparencyModifier = on and 1 or 0 end
+		end
+	end
+
+	-- รถลอยขึ้น + กล้องตาม (ใช้ทั้งฉาก rise และ clouds)
+	local follow = nil -- "rise" | "clouds" | nil
+	local riseStart = nil
+	local followConn = RunService.RenderStepped:Connect(function()
+		if not (truck and riseStart) then return end
+		local k = os.clock() - riseStart
+		truck:PivotTo(truckCf + Vector3.new(0, k * k * 6, 0))
+		local pos = truck:GetPivot().Position
+		if follow == "rise" then
+			camera.CFrame = CFrame.lookAt(pos + look * 34 + right * 26 + Vector3.new(0, -6, 0), pos + Vector3.new(0, 4, 0))
+		elseif follow == "clouds" then
+			camera.CFrame = CFrame.lookAt(pos + Vector3.new(24, 70, 24), pos)
+		end
+	end)
+
+	local c = ground + Vector3.new(0, 3, 0)
+	local shots = {
+		glow = function(beat)
+			TweenService:Create(light, TweenInfo.new(1.5), { Brightness = 4 }):Play()
+			emitter.Rate = 30
+			sfx("CutMagic")
+			tweenCamera(camera, CFrame.lookAt(at + right * 6 + look * 8 + Vector3.new(0, 4, 0), at + Vector3.new(0, 3, 0)),
+				CFrame.lookAt(at + right * 10 + look * 14 + Vector3.new(0, 7, 0), at + Vector3.new(0, 3, 0)), beat.seconds)
+		end,
+		truck = function(beat)
+			gui:Flash(0.5)
+			sfx("CutFlash")
+			sfx("CutRumble")
+			for p, t in pairs(fades) do TweenService:Create(p, TweenInfo.new(2), { Transparency = t }):Play() end
+			tweenCamera(camera, CFrame.lookAt(c + look * 22 + right * 14 + Vector3.new(0, 6, 0), c),
+				CFrame.lookAt(c + look * 16 + right * 10 + Vector3.new(0, 4, 0), c), beat.seconds)
+		end,
+		board = function()
+			gui:Black(true, 0.5)
+			task.delay(0.8, function()
+				hideSelf(true)
+				if not skipped then gui:Black(false, 0.6) end
+			end)
+		end,
+		rise = function()
+			sfx("CutRumble")
+			riseStart = os.clock()
+			follow = "rise"
+		end,
+		clouds = function()
+			follow = "clouds"
+		end,
+		flash = function(beat)
+			gui:Flash(beat.seconds)
+			sfx("CutFlash")
+		end,
+		title = function(beat)
+			follow = nil
+			gui:White(true)
+			gui:TitleCard(beat.title, beat.subtitle)
+			sfx("CutTitle")
+		end,
+	}
+
+	for _, beat in ipairs(StoryConfig.SkyCutscene) do
+		if skipped then break end
+		gui:Caption(beat.text, beat.who)
+		local fn = shots[beat.shot]
+		if fn then pcall(fn, beat) end
+		wait(beat.seconds or 3)
+	end
+
+	-- จบ/ข้าม: จอขาวค้าง (ต่อเนื่องไปถึงเกาะด้วย SetTeleportGui) แล้วให้เซิร์ฟวาป
+	for _, sound in ipairs(playing) do
+		if sound.Parent then
+			TweenService:Create(sound, TweenInfo.new(0.6), { Volume = 0 }):Play()
+			game:GetService("Debris"):AddItem(sound, 0.7)
+		end
+	end
+	gui:White(true)
+	local veil = whiteVeil()
+	pcall(function() TeleportService:SetTeleportGui(veil) end)
+	veil.Parent = playerGui
+	followConn:Disconnect()
+	skyRestore = function()
+		inCutscene = false
+		skipConn:Disconnect()
+		hideSelf(false)
+		if truck then truck:Destroy() end
+		glow:Destroy()
+		veil:Destroy()
+		camera.CameraType = cameraType == Enum.CameraType.Scriptable and Enum.CameraType.Custom or cameraType
+		local humanoid = character:FindFirstChildOfClass("Humanoid")
+		if humanoid then camera.CameraSubject = humanoid end
+		gui:White(false)
+		gui:SetCinema(false)
+		PhotoMode.Set(false)
+		if touch and touchWas ~= nil then touch.Enabled = touchWas end
+	end
 	Remotes.RequestStory:FireServer("sky_warp")
 end
 
