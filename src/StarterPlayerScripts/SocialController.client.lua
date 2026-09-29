@@ -60,6 +60,10 @@ end)
 -- map closed. Entirely client-side -- it is a hint for this player, not a fact the server needs.
 local nav = Navigation.new()
 Navigation.Active = nav -- ตัวที่ AutoWalkController (ปุ่ม T) เดินตาม · โมดูลฝั่งไคลเอนต์ใช้ตารางเดียวกันทุกสคริปต์
+-- ทุกทางที่ปักหมุด (แผนที่ · แถบเควส · ปุ่มหาหม้อแปลง) = หมุดบนแผนที่ตรงกันเสมอ
+nav.onChanged = function()
+	map:SetWaypoint(nav.destination)
+end
 
 -- The pose panel the stone opens. Built here rather than in a controller of its own because the stone is the
 -- only thing that opens it, and the stone lives here.

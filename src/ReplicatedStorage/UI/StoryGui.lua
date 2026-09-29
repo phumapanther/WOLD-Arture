@@ -1,7 +1,6 @@
 -- StoryGui: หน้าจอของเนื้อเรื่อง (ผู้มากับแสงวิบวับ) — วาดอย่างเดียว ไม่รู้จัก remote (StoryController ต่อสาย)
 --
 -- ชิ้นในจอเดียว `WOLD_Story` (อยู่ใน KEEP ของ PhotoMode — คัทซีนใช้ PhotoMode ซ่อน UI อื่นทั้งหมด):
---   tracker   ป้ายเควสมุมขวา (ใต้ปุ่มมุม) "📜 ชื่อบท 2/5" + เป้าหมาย · แตะเพื่อย่อ/ขยาย
 --   dialogue  กล่องคุยล่างจอ: ชื่อคนพูด + ข้อความพิมพ์ทีละตัว · แตะ/คลิก/Space = ข้าม/ไปต่อ
 --   cinema    แถบดำบน-ล่างของคัทซีน + คำบรรยาย + ปุ่มข้าม + จอดำ/แสงวาบ + ป้ายชื่อเกม
 --   memory    จอขาวซีดกะพริบของภาพความทรงจำ
@@ -71,43 +70,6 @@ function StoryGui.new(parent)
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Global
 	gui.Parent = parent
 	self.gui = gui
-
-	----------------------------------------------------------------- tracker
-	local trackerHolder = Instance.new("Frame")
-	trackerHolder.AnchorPoint = Vector2.new(1, 0)
-	trackerHolder.Position = UDim2.new(1, -12, 0, 150)
-	trackerHolder.Size = UDim2.fromOffset(260, 64)
-	trackerHolder.BackgroundTransparency = 1
-	trackerHolder.Visible = false
-	trackerHolder.Parent = gui
-	Responsive.Scale(trackerHolder, 0.7)
-	local tracker = Instance.new("TextButton")
-	tracker.AutoButtonColor = false
-	tracker.Text = ""
-	tracker.Size = UDim2.fromScale(1, 1)
-	tracker.BackgroundColor3 = PANEL
-	tracker.BackgroundTransparency = 0.2
-	tracker.ZIndex = 2
-	tracker.Parent = trackerHolder
-	corner(tracker, 10)
-	stroke(tracker, GOLD, 0.5, 1)
-	self.trackerTitle = label(tracker, "", 14, GOLD)
-	self.trackerTitle.Font = Enum.Font.GothamBold
-	self.trackerTitle.Position = UDim2.fromOffset(10, 6)
-	self.trackerTitle.Size = UDim2.new(1, -20, 0, 18)
-	self.trackerTitle.TextWrapped = false
-	self.trackerTitle.TextTruncate = Enum.TextTruncate.AtEnd
-	self.trackerTitle.ZIndex = 3
-	self.trackerGoal = label(tracker, "", 13, TEXT)
-	self.trackerGoal.Position = UDim2.fromOffset(10, 26)
-	self.trackerGoal.Size = UDim2.new(1, -20, 0, 34)
-	self.trackerGoal.ZIndex = 3
-	tracker.Activated:Connect(function()
-		self.collapsed = not self.collapsed
-		self.trackerGoal.Visible = not self.collapsed
-		trackerHolder.Size = UDim2.fromOffset(260, self.collapsed and 30 or 64)
-	end)
-	self.tracker = trackerHolder
 
 	----------------------------------------------------------------- dialogue
 	local dialogue = Instance.new("TextButton")
@@ -275,21 +237,6 @@ function StoryGui.new(parent)
 	self.banner = banner
 
 	return self
-end
-
---------------------------------------------------------------------------------
--- tracker
---------------------------------------------------------------------------------
-function StoryGui:SetTracker(state)
-	if not state or state.done or not state.chapter then
-		self.tracker.Visible = false
-		return
-	end
-	self.tracker.Visible = true
-	self.trackerTitle.Text = ("📜 %s  %d/%d"):format(state.name or "", state.step or 1, state.steps or 1)
-	local goal = state.goal or ""
-	if state.need and state.need > 0 then goal = ("%s (%d/%d)"):format(goal, math.min(state.got or 0, state.need), state.need) end
-	self.trackerGoal.Text = goal
 end
 
 --------------------------------------------------------------------------------
@@ -470,6 +417,60 @@ function StoryGui:Banner(title, body, seconds)
 	task.delay(seconds or 6, function()
 		if self.bannerToken == token then self.banner.Visible = false end
 	end)
+end
+
+--------------------------------------------------------------------------------
+-- กล่องเลือก (รับพรของออฟาเรียน) · จอขาวค้าง (ก่อนวาป)
+--------------------------------------------------------------------------------
+function StoryGui:Choice(question, yesText, noText, onPick)
+	local panel = Instance.new("Frame")
+	panel.Name = "Choice"
+	panel.AnchorPoint = Vector2.new(0.5, 0.5)
+	panel.Position = UDim2.fromScale(0.5, 0.5)
+	panel.Size = UDim2.fromOffset(420, 150)
+	panel.BackgroundColor3 = PANEL
+	panel.BackgroundTransparency = 0.05
+	panel.ZIndex = 70
+	panel.Parent = self.gui
+	corner(panel, 14)
+	stroke(panel, GOLD, 0.1, 2)
+	Responsive.Scale(panel, 0.6)
+	local q = label(panel, question, 18, GOLD, Enum.TextXAlignment.Center)
+	q.Font = Enum.Font.GothamBold
+	q.Position = UDim2.fromOffset(16, 16)
+	q.Size = UDim2.new(1, -32, 0, 56)
+	q.ZIndex = 71
+	local done = false
+	local function button(text, x, color, value)
+		local b = Instance.new("TextButton")
+		b.AnchorPoint = Vector2.new(0.5, 1)
+		b.Position = UDim2.new(x, 0, 1, -16)
+		b.Size = UDim2.fromOffset(160, 44)
+		b.BackgroundColor3 = color
+		b.Font = Enum.Font.GothamBold
+		b.TextSize = 18
+		b.TextColor3 = rgb(24, 20, 12)
+		b.Text = text
+		b.ZIndex = 72
+		b.Parent = panel
+		corner(b, 10)
+		b.Activated:Connect(function()
+			if done then return end
+			done = true
+			UiSound.Play("Click")
+			panel:Destroy()
+			if onPick then onPick(value) end
+		end)
+	end
+	button(yesText, 0.28, GOLD, true)
+	button(noText, 0.72, rgb(150, 152, 164), false)
+end
+
+-- จอขาวเต็มจอค้างไว้ (ปลายคัทซีนรถ ก่อนวาป) · false = ปิด
+function StoryGui:White(on)
+	if on then self.cinema.Visible = true end
+	self.flash.Visible = on
+	self.flash.BackgroundTransparency = 0
 end
 
 return StoryGui

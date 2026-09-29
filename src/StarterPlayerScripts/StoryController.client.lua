@@ -22,6 +22,7 @@ local Remotes = require(ReplicatedStorage.Remotes)
 local StoryGui = require(ReplicatedStorage.UI.StoryGui)
 local PhotoMode = require(ReplicatedStorage.UI.PhotoMode)
 local UiSound = require(ReplicatedStorage.UI.UiSound)
+local TeleportService = game:GetService("TeleportService")
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -102,6 +103,21 @@ local function refreshMarks()
 		ring.Parent = nil
 		ringAnchor.Parent = nil
 	end
+	-- ❗ เหนือออฟาเรียน (หุ่นฟางข้างจุดเกิด) ตอนมีเควสฟ้าพร้อมรับ
+	local sideReady = false
+	for _, row in ipairs(state and state.rows or {}) do
+		if row.color == "side" and row.state == "active" then sideReady = true break end
+	end
+	for _, d in ipairs(CollectionService:GetTagged("WOLD_Dummy")) do
+		if d.Name == "Dummy_Spawn" then
+			local anchor = d:FindFirstChild("Head") or d.PrimaryPart
+			if anchor then
+				local cf, size = d:GetBoundingBox()
+				local b = billboard(anchor, "OforianMark", "❗", (cf.Position.Y + size.Y / 2) - anchor.Position.Y + 2.4)
+				b.Enabled = sideReady and not inCutscene
+			end
+		end
+	end
 end
 
 task.spawn(function()
@@ -119,7 +135,6 @@ end
 Remotes.StoryState.OnClientEvent:Connect(function(s)
 	local previous = state
 	state = s
-	gui:SetTracker(s)
 	-- ความคืบหน้าไม่เงียบ (QA 2026-09-28): ขึ้นขั้นใหม่ = เสียง + ข้อความเป้าหมายใหม่ · ล่ามอนได้เพิ่ม = บอกจำนวน
 	if previous and s and not s.done and previous.chapter == s.chapter then
 		if (s.step or 0) > (previous.step or 0) then
@@ -361,6 +376,11 @@ local function runCutscene(info)
 	Remotes.RequestStory:FireServer("cutscene_done")
 end
 
+local skyRestore = nil -- คืนหน้าจอตอนวาปไม่สำเร็จ
+local function runSkyCutscene(info)
+	Remotes.RequestStory:FireServer("sky_warp")
+end
+
 --------------------------------------------------------------------------------
 -- คำสั่งจากเซิร์ฟ
 --------------------------------------------------------------------------------
@@ -399,9 +419,31 @@ Remotes.StoryPlay.OnClientEvent:Connect(function(kind, arg)
 			end
 			local body = table.concat(lines, " · ")
 			if arg.title then body ..= ("\nได้ฉายา \"%s\" — เลือกใช้ได้ในสมุดสะสม"):format(arg.title) end
-			if arg.gift then body ..= "\n🎁 ไปรับ 150 เพชรที่หุ่นฟางข้างจุดเกิดได้แล้ว" end
+			if arg.gift then body ..= "\n🎁 ออฟาเรียน เทพหุ่นฟางมีของขวัญการเดินทางให้ — ไปพบที่ข้างจุดเกิด" end
 			gui:Banner(("📜 จบบท: %s"):format(arg.name or ""), body, 7)
 		end)
+	elseif kind == "newQuest" then
+		UiSound.Play("StoryStep")
+		localToast(("📜 เควสใหม่: %s — แตะที่แถบเควสเพื่อนำทาง"):format(tostring(arg)), true)
+	elseif kind == "gift" and type(arg) == "table" then
+		afterTalking(function()
+			UiSound.Play("ToastReward")
+			gui:Banner(arg.title or "🎁", arg.body or "", 7)
+		end)
+	elseif kind == "skyOffer" then
+		afterTalking(function()
+			gui:Choice("รับพรจากออฟาเรียน แล้วเดินทางไปเกาะลอยฟ้าแห่งความฝัน?", "รับพร", "ไว้ก่อน", function(yes)
+				if yes then Remotes.RequestStory:FireServer("sky_accept") end
+			end)
+		end)
+	elseif kind == "skyCutscene" then
+		task.spawn(runSkyCutscene, arg)
+	elseif kind == "skyFailed" then
+		if skyRestore then
+			skyRestore()
+			skyRestore = nil
+		end
+		localToast(tostring(arg))
 	end
 end)
 
