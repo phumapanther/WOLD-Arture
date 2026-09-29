@@ -36,6 +36,17 @@ function InventoryConfig.SpeedMultiplier(weight)
 	return math.max(InventoryConfig.MinSpeedMultiplier, 1 / over)
 end
 
+-- 🔧 เหนือหัว (ผู้ใช้สั่ง 2026-09-29): ของที่ใส่/ถืออยู่ชิ้นไหนก็ได้ ความคงทนต่ำกว่านี้ · ของไม่มีวันพัง (ไม่มีค่า) ไม่นับ
+InventoryConfig.WornBelow = 5
+function InventoryConfig.AnyWorn(equipped)
+	for _, entry in pairs(equipped or {}) do
+		if type(entry) == "table" and type(entry.durability) == "number" and entry.durability < InventoryConfig.WornBelow then
+			return true
+		end
+	end
+	return false
+end
+
 function InventoryConfig.IsHeavilyLoaded(weight)
 	return weight > InventoryConfig.MaxWeight * InventoryConfig.HeavyLoadRatio
 end

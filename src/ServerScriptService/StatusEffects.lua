@@ -10,6 +10,7 @@ local Vitals = require(game.ServerScriptService.Vitals)
 local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local RescueAccess = require(game.ServerScriptService.RescueAccess)
+local OverheadMarks = require(game.ServerScriptService.OverheadMarks)
 
 local StatusEffects = {}
 
@@ -74,34 +75,10 @@ end
 --
 -- Built on the SERVER so everyone nearby sees it, the same way a monster's health bar is: a state other
 -- people are meant to react to has to be visible to them.
+-- (วาด + จัดแถวหลายป้ายอยู่ที่ OverheadMarks · 2026-09-29)
 local function setMark(player, name, emoji, colour, on)
 	local character = player and player.Character
-	local head = character and character:FindFirstChild("Head")
-	if not head then return end
-
-	local existing = head:FindFirstChild(name)
-	if not on then
-		if existing then existing:Destroy() end
-		return
-	end
-	if existing then return end
-
-	local gui = Instance.new("BillboardGui")
-	gui.Name = name
-	gui.Size = UDim2.fromOffset(60, 30)
-	gui.StudsOffsetWorldSpace = Vector3.new(0, 1.8, 0)
-	gui.MaxDistance = 60
-	gui.AlwaysOnTop = true
-	gui.Parent = head
-
-	local label = Instance.new("TextLabel")
-	label.Size = UDim2.fromScale(1, 1)
-	label.BackgroundTransparency = 1
-	label.Font = Enum.Font.GothamBold
-	label.TextScaled = true
-	label.TextColor3 = colour
-	label.Text = emoji
-	label.Parent = gui
+	OverheadMarks.Set(character and character:FindFirstChild("Head"), name, emoji, colour, on)
 end
 
 -- The three the user asked for, by the state that causes them rather than by what they look like.
@@ -112,6 +89,9 @@ local MARK_SLOWED = { name = "SlowedMark", emoji = "💦", colour = Color3.fromR
 -- Published so the systems that own each state can raise and clear their own mark. StatusEffects owns the
 -- drawing; it does not own the reasons.
 function StatusEffects.SetTired(player, on) setMark(player, MARK_TIRED.name, MARK_TIRED.emoji, MARK_TIRED.colour, on) end
+-- 🐌 ของหนักเกินขีด · 🔧 ของที่ใส่/ถือใกล้พัง (ผู้ใช้สั่ง 2026-09-29) — PlayerStatusEffects ถามทุกครึ่งวิ
+function StatusEffects.SetHeavy(player, on) setMark(player, "HeavyMark", "🐌", Color3.new(1, 1, 1), on) end
+function StatusEffects.SetWorn(player, on) setMark(player, "WornMark", "🔧", Color3.new(1, 1, 1), on) end
 function StatusEffects.SetAsleep(player, on)
 	setMark(player, MARK_ASLEEP.name, MARK_ASLEEP.emoji, MARK_ASLEEP.colour, on)
 	if not on then return end
@@ -130,35 +110,7 @@ function StatusEffects.SetAsleep(player, on)
 end
 
 local function applyDizzyMark(player, dizzy)
-	local character = player.Character
-	local head = character and character:FindFirstChild("Head")
-	if not head then return end
-
-	local existing = head:FindFirstChild("DizzyMark")
-	if not dizzy then
-		if existing then existing:Destroy() end
-		return
-	end
-	if existing then return end
-
-	-- Built on the server so everyone nearby sees it, the same way a monster's health bar is: being stunned
-	-- in front of other people is part of the cost.
-	local gui = Instance.new("BillboardGui")
-	gui.Name = "DizzyMark"
-	gui.Size = UDim2.fromOffset(60, 30)
-	gui.StudsOffsetWorldSpace = Vector3.new(0, 1.8, 0)
-	gui.MaxDistance = 60
-	gui.AlwaysOnTop = true
-	gui.Parent = head
-
-	local stars = Instance.new("TextLabel")
-	stars.Size = UDim2.fromScale(1, 1)
-	stars.BackgroundTransparency = 1
-	stars.Font = Enum.Font.GothamBold
-	stars.TextScaled = true
-	stars.TextColor3 = Color3.fromRGB(255, 232, 140)
-	stars.Text = "\240\159\146\171" -- the dizzy-symbol emoji
-	stars.Parent = gui
+	setMark(player, "DizzyMark", "💫", Color3.fromRGB(255, 232, 140), dizzy)
 end
 
 -- The pose that goes with the stars: hands to the head, body swaying. Played on the SERVER through the

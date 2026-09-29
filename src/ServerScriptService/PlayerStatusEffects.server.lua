@@ -30,3 +30,20 @@ end)
 RunService.Heartbeat:Connect(function()
 	StatusEffects.Tick()
 end)
+
+-- 🐌 ของหนักเกินขีด (ช้าลง) · 🔧 ของที่ใส่/ถือใกล้พัง (ผู้ใช้สั่ง 2026-09-29) — ถามความจริงใหม่ทุกครึ่งวิ
+-- ไม่ผูกกับเหตุการณ์ (หยิบของ · ขาย · สึก · ซ่อม · เปลี่ยนชุด · เกิดใหม่) ซึ่งมีหลายทางเกินจะไล่ครบ
+local Inventory = require(game.ServerScriptService.Inventory)
+local InventoryConfig = require(game.ReplicatedStorage.InventoryConfig)
+task.spawn(function()
+	while true do
+		task.wait(0.5)
+		for _, player in ipairs(Players:GetPlayers()) do
+			local state = Inventory.Get(player)
+			if state then
+				StatusEffects.SetHeavy(player, Inventory.SpeedMultiplier(player) < 1)
+				StatusEffects.SetWorn(player, InventoryConfig.AnyWorn(state.equipped))
+			end
+		end
+	end
+end)
