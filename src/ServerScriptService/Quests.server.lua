@@ -24,6 +24,9 @@ local PremiumAccess = require(game.ServerScriptService.PremiumAccess)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local QuestRoll = require(game.ReplicatedStorage.QuestRoll)
 local Vip = require(game.ServerScriptService.Vip)
+local QuestLogRules = require(game.ReplicatedStorage.QuestLogRules)
+local QuestNavRules = require(game.ReplicatedStorage.QuestNavRules)
+local QuestNav = require(game.ServerScriptService.QuestNav)
 
 local BOARD_TAG = "WOLD_QuestBoard"
 local PROMPT_DISTANCE = 12
@@ -268,6 +271,28 @@ local function snapshot(player, boardId)
 	}
 end
 
+-- แถบเควสรวม (2026-09-29): งานที่ถืออยู่เป็นแถวสีขาว · ส่งใหม่เฉพาะตอนลายเซ็นเปลี่ยน
+local LastBoardRows = {}
+
+local function boardRowsOf(player)
+	local rows = {}
+	for _, q in ipairs(activeOf(player) or {}) do
+		local item = q.item and ItemCatalog.Get(q.item)
+		local title = (q.kind == "hunt") and q.mob or (item and item.name or q.item)
+		rows[#rows + 1] = QuestLogRules.BoardRow(questKey(q), title, QuestConfig.Describe(q, item and item.name),
+			progressOf(player, q), q.need)
+	end
+	return rows
+end
+
+local function pushBoardRows(player)
+	local rows = boardRowsOf(player)
+	local sig = QuestLogRules.Signature(rows)
+	if LastBoardRows[player] == sig then return end
+	LastBoardRows[player] = sig
+	Remotes.QuestLogBoard:FireClient(player, rows)
+end
+
 --------------------------------------------------------------------------------
 -- รับ / ส่ง / ทิ้ง
 --------------------------------------------------------------------------------
@@ -302,6 +327,7 @@ local function accept(player, boardId, index)
 	}
 	Remotes.SocialNotify:FireClient(player, "info", "รับงานแล้ว")
 	Remotes.QuestUpdate:FireClient(player, snapshot(player, boardId))
+	pushBoardRows(player)
 end
 
 local function abandon(player, boardId, index)
@@ -310,6 +336,7 @@ local function abandon(player, boardId, index)
 	table.remove(list, index)
 	Remotes.SocialNotify:FireClient(player, "info", "ยกเลิกงานแล้ว")
 	Remotes.QuestUpdate:FireClient(player, snapshot(player, boardId))
+	pushBoardRows(player)
 end
 
 local function turnIn(player, boardId, index)
@@ -365,6 +392,7 @@ local function turnIn(player, boardId, index)
 	Remotes.SocialNotify:FireClient(player, "info",
 		("ส่งงานสำเร็จ +%d ซิลเวอร์ +%d เหรียญ +%d EXP"):format(silver, gold, quest.xp or 0))
 	Remotes.QuestUpdate:FireClient(player, snapshot(player, boardId))
+	pushBoardRows(player)
 end
 
 --------------------------------------------------------------------------------
@@ -387,12 +415,37 @@ local function bump(player, kind, key)
 			end
 		end
 	end
+	if changed then pushBoardRows(player) end
 	return changed
 end
 
 QuestAccess.RecordKill = function(player, mobName) bump(player, "hunt", mobName) end
 -- ปลานับจากกระเป๋าแล้ว (progressOf) จึงไม่ต้องนับสะสมอีก คงชื่อไว้ให้ Fishing เรียกได้เหมือนเดิม
 QuestAccess.RecordCatch = function() end
+
+-- จิ้มแถวงานบอร์ด = หาเป้าให้ (แถว "story:"/"side:" เป็นของ Story.server)
+Remotes.RequestQuestNav.OnServerEvent:Connect(function(player, key)
+	if type(key) ~= "string" or key:sub(1, 6) ~= "board:" then return end
+	local wanted = key:sub(7)
+	local quest
+	for _, q in ipairs(activeOf(player) or {}) do
+		if questKey(q) == wanted then quest = q break end
+	end
+	if not quest then return end
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	local from = root.Position
+	if progressOf(player, quest) >= quest.need then
+		return QuestNav.Send(player, QuestNav.Board(quest.board, from), "บอร์ดเควส")
+	end
+	if quest.kind == "hunt" then
+		QuestNav.Send(player, QuestNav.Spawner(QuestNavRules.MobKindsNamed(quest.mob), from), quest.mob)
+	elseif quest.kind == "fish" then
+		QuestNav.Send(player, QuestNav.FishZone(quest.item, from), QuestNav.ItemName(quest.item))
+	else
+		QuestNav.Send(player, QuestNav.ForItem(quest.item, from), QuestNav.ItemName(quest.item))
+	end
+end)
 
 --------------------------------------------------------------------------------
 -- ปุ่มที่บอร์ด
@@ -467,6 +520,11 @@ local function reroll(player, boardId)
 end
 
 Remotes.RequestQuestAction.OnServerEvent:Connect(function(player, action, index)
+	-- แถบเควสขอแถวใหม่ทั้งชุด (หลังจอโหลดจบ) — ไม่ต้องยืนหน้าบอร์ด
+	if action == "log" then
+		LastBoardRows[player] = nil
+		return pushBoardRows(player)
+	end
 	local boardId = Viewing[player]
 	if not boardId then return end
 	-- รีบอร์ดไม่ได้ชี้ไปที่ใบไหน จึงต้องอยู่ก่อนด่าน index
@@ -487,6 +545,7 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	Viewing[player] = nil
+	LastBoardRows[player] = nil
 end)
 
 -- ลูปถามใหม่ กฎเหล็กของโปรเจ็ค: บอร์ดมาถึงคนละรอบกับสคริปต์
@@ -527,6 +586,7 @@ task.spawn(function()
 		task.wait(3)
 		for _, player in ipairs(Players:GetPlayers()) do
 			pcall(publishTurnIn, player)
+			pcall(pushBoardRows, player)
 		end
 	end
 end)
