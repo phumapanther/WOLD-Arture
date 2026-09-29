@@ -189,6 +189,29 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 - ⚠️ **ตายบนเกาะไม่เสียเลเวล/อาชีพ/เครื่องราง** (`PlayerProgression` `if ServerConfig.IsFarm then return end`)
 - คำสั่งเทส **`/night [raid | parade | boss | special | leader | clear]`** · ของจริงตอนหัวค่ำ: `/farm level 3` → `/time 18` → `/time auto`
 
+**แถบเควสรวม + เควสของออฟาเรียน + เกาะลอยฟ้า (2026-09-29) — ดันสามเพลส mismatches 0 · ยังไม่ได้เทสในเกม**
+สเปก `docs/superpowers/specs/2026-09-29-quest-log-oforian-design.md` · แผน `docs/superpowers/plans/2026-09-29-quest-log-oforian.md`
+- **แถบเควสรวม** ขวาบน `WOLD_QuestLog` **DisplayOrder 4** (ใต้ปุ่มมือถือ 5 และทุกหน้าต่าง — แก้ QA U1 · แผง tracker เดิมใน `StoryGui` ถูกถอด) ·
+  ทอง = เควสหลัก · ฟ้า = เควสออฟาเรียน · ขาว = งานบอร์ด · 🔒 ล็อก/รอ · 🧭 กำลังนำทาง · คอมเริ่มขยาย มือถือเริ่มย่อ ·
+  กติกาล้วน `QuestLogRules` · วาด `UI/QuestTrackerGui` · ต่อสาย `QuestTrackerController.client` (เกมหลัก + เกาะ · เกาะมีแต่งานบอร์ด)
+  · แถวมาจาก `StoryState.rows` (Story.server) + `Remotes.QuestLogBoard` (Quests.server · `RequestQuestAction("log")` ขอใหม่)
+- ⚠️ **จิ้มแถว = เซิร์ฟหาเป้า** (`RequestQuestNav(key)` → `QuestNav` → `QuestNav(position,label)`) เพราะ StreamingEnabled ไคลเอนต์มองไม่เห็นของไกล ·
+  prefix `story:`/`side:` = Story.server · `board:<questKey>` = Quests.server · แหล่งของ/มอน/ปลาเป็นกติกาล้วน `QuestNavRules` ·
+  ปักหมุดผ่าน `Navigation.Active` (คอมกด T เดินตาม) · `nav.onChanged` ใน SocialController ทำให้หมุดบนแผนที่ตรงเสมอ
+- **ออฟาเรียน เทพหุ่นฟาง** = หุ่นฟาง `Dummy_Spawn` ปุ่ม E "คุยกับออฟาเรียน" (`VipGiftPrompt.server` → `StoryAccess.TalkOforian`) + ป้ายชื่อ + ❗ ·
+  เควสฟ้าสี่อัน **คำนวณจากธงของขวัญเดิม** (`VipGift.Quests` · ไม่มีที่เก็บใหม่): ผู้มาใหม่ (พาส) · การเดินทาง (150 เพชร หลังจบบทไลรา) ·
+  สายใยมิตรภาพ (ออร่า เพื่อน 5) · เกาะลอยฟ้า (Lv.5 · **sky ท้ายสุดเสมอ** เพราะจบด้วยการวาป) · ⚠️ **`VipGift.Summary` ถูกลบ** ·
+  `VipGiftController.client` ถูกลบ · **VIP จากเควสทบเวลา** (`VipGift.Claim` ไม่ปฏิเสธคนที่มี VIP แล้ว)
+- **รับพร → คัทซีนรถคาร์โก้ → วาปไปเกาะตัวเอง** = ข้อยกเว้นเดียวของกฎ "เปลี่ยนโหมดผ่านล็อบบี้" (ผู้ใช้เลือก) · Story.server `FarmRegistry.GetOrCreate` +
+  `TeleportToPrivateServer` · ไม่สำเร็จ = `skyFailed` คืนหน้าจอ (VIP ได้แล้ว) · รถ `ReplicatedStorage.WOLD_Cutscene.CargoTruck` (เพลสหลัก ·
+  `mapgen/111_story_cargo_truck.lua --no-lib --furniture` จาก `assets/models-from-main/cargo_truck.lua`) · ⚠️ **ต้อง publish ทั้งเพลสหลักและเกาะ** Studio บล็อก TeleportService
+- **ป้ายต้อนรับบนเกาะ** ธง `Story.skyWelcome` (ตั้งตอนรับพร) → `Island/IslandWelcome.server` + `IslandWelcomeController.client` (เจ้าของเกาะเท่านั้น ครั้งเดียว)
+- **บทล็อก** `StoryConfig.Chapters` มี `saltmere` (`locked = true` ไม่มีขั้น) → แถวทองจาง 🔒 · `StoryConfig.Current` หยุดที่บทล็อก ไม่สร้างความคืบหน้า ·
+  **วันที่เขียนบทซอลต์เมียร์จริง แค่ถอด `locked` แล้วใส่ขั้น/NPC**
+- คำสั่งเทส **`/story gifts`** (ทำให้เหมือนบัญชีใหม่ที่ยังไม่รับของขวัญ) · **`/story welcome`** (ตั้งธงป้ายต้อนรับ)
+- เครื่องมือ **`tools/dump-model.js <placeId> "<expr>" <ชื่อ> "<คำอธิบาย>"`** คัดลอกโมเดล Part ล้วนข้ามเพลสเป็น `assets/models-from-main/<ชื่อ>.lua`
+  (ทีละ 60 แถว · จุดหมุน = ก้นกลาง) · เทส: `quest_log_rules` `quest_nav_rules` `story_config` (offline) · `vip_gift` `quest_tracker_gui` (Edit)
+
 ## โมเดลจากโค้ด (modelkit)
 ชุดสร้างโมเดลด้วยโค้ดอยู่ที่ `modelkit/` + `models/` — **อ่าน `docs/modelkit-reference.md` ก่อนแตะ**
 มีของพร้อมใช้: แลนด์มาร์ก 5 หลัง บ้าน 5 แบบ NPC 12 ตัว (rig R15 เดินได้จริง) ทุกอาคารเข้าไปอยู่ได้
