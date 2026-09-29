@@ -97,6 +97,9 @@ IslandConfig.CropExp = 8
 -- **ตัวเลขผมตั้งเอง** — เกิน 50% เมื่อไหร่เมล็ดจะงอกเองจนร้านไม่มีความหมาย
 -- ปรับ 2026-09-25 (ผู้ใช้กำหนด): 1-2 เมล็ด โอกาส 30%
 IslandConfig.SeedBonus = { chance = 0.3, min = 1, max = 2 }
+-- หนอนจากแปลงผักบนเกาะ (ผู้ใช้สั่ง 2026-09-29 ลดครึ่ง: เดิมใช้ GatherConfig.WormBonus 3-5 ตัว 40%)
+-- แยกจากพุ่มสมุนไพร/นาข้าวซึ่งยังใช้ WormBonus เท่าเดิม
+IslandConfig.PlotWormBonus = { item = "Worm", min = 1, max = 3, chance = 0.20 }
 -- ระยะการโต: สัดส่วนเวลา → สเกลของโมเดลพืช (ระยะสุดท้าย = สุก)
 IslandConfig.Stages = {
 	{ at = 0, scale = 0.35 },

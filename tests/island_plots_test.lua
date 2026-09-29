@@ -62,7 +62,7 @@ assert(model.Soil.PlotPrompt.ActionText == "หยอดเมล็ด", "ป�
 -- (ถ้าอยากวัดเรทจริงต้องหลายพันครั้ง ซึ่งไม่คุ้มเวลาในเทสที่รันทุกรอบ)
 -- ⚠️ **คืนของทุกชิ้นที่ลูปนี้ทำให้เกิด** โปรไฟล์นี้เป็นของผู้ใช้จริง — สามสิบรอบทิ้งผักไว้สี่สิบกว่าชิ้น
 -- บวกหนอนบวกเมล็ดที่เสกมา ซึ่งพอให้กระเป๋าเต็มจนเทสรอบหน้าวางของไม่ได้ (เคยเจอมาแล้ว ค้าง 5 ชิ้น)
-local ROUNDS = 30
+local ROUNDS = 40
 local wormsBefore = A("Count", player, "Worm")
 local cropBefore = A("Count", player, cropItem)
 local seedBefore = A("Count", player, "Seed")
@@ -76,7 +76,7 @@ for _ = 1, ROUNDS do
 end
 assert(harvested == ROUNDS, ("เก็บเกี่ยวได้ %d/%d ครั้ง"):format(harvested, ROUNDS))
 local wormsGained = A("Count", player, "Worm") - wormsBefore
-assert(wormsGained > 0, ("เก็บ %d ครั้งไม่ได้หนอนเลย — โอกาสพลาดเองคือ 1 ใน 8,000"):format(ROUNDS))
+assert(wormsGained > 0, ("เก็บ %d ครั้งไม่ได้หนอนเลย — โอกาส 20% · พลาดเองคือ 1 ใน 7,500"):format(ROUNDS))
 
 for _, pair in ipairs({ { "Worm", wormsBefore }, { cropItem, cropBefore }, { "Seed", seedBefore } }) do
 	local extra = A("Count", player, pair[1]) - pair[2]

@@ -89,7 +89,9 @@ check(sc[1] < sc[2] and sc[2] < sc[3] and sc[3] < sc[4] and sc[4] < sc[5] and sc
 local sb = IslandConfig.SeedBonus
 check(sb.chance == 0.3 and sb.min == 1 and sb.max == 2, "เมล็ดติดมา 1-2 โอกาส 30%")
 local wb = GatherConfig.WormBonus
-check(wb.min == 3 and wb.max == 5 and wb.chance == 0.4 and GatherConfig.Nodes.Herb.bonus == wb, "หนอน 3-5 โอกาส 40% (รวมเกมหลัก)")
+check(wb.min == 3 and wb.max == 5 and wb.chance == 0.4 and GatherConfig.Nodes.Herb.bonus == wb, "หนอน 3-5 โอกาส 40% (สมุนไพร/นาข้าว)")
+local pw = IslandConfig.PlotWormBonus
+check(pw and pw.item == "Worm" and pw.min == 1 and pw.max == 3 and pw.chance == 0.2, "แปลงผักบนเกาะ: หนอน 1-3 โอกาส 20% (ผู้ใช้สั่ง 2026-09-29)")
 local price = {}
 for _, row in ipairs(ShopConfig.IslandSells) do
 	price[row.id] = (ShopConfig.PricesOf(row)) -- เฟส 2a: ทุกแถวสองราคา ค่าแรก = เหรียญ

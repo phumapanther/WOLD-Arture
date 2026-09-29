@@ -11,7 +11,6 @@ local IslandAccess = require(script.Parent.IslandAccess)
 local IslandConfig = require(ReplicatedStorage.IslandConfig)
 local GoldBorder = require(ReplicatedStorage.GoldBorder)
 local Progression = require(game.ServerScriptService.Progression)
-local GatherConfig = require(ReplicatedStorage.GatherConfig)
 local ItemCatalog = require(ReplicatedStorage.ItemCatalog)
 local Remotes = require(ReplicatedStorage.Remotes)
 local WorldSound = require(game.ServerScriptService.WorldSound) -- เสียงหยอดเมล็ด/เก็บผัก (QA 2026-09-28)
@@ -220,7 +219,7 @@ local function harvest(player, model)
 
 	-- หนอนติดมากับดิน (ผู้ใช้สั่ง 2026-09-22) — เกณฑ์เดียวกับสมุนไพร/นาข้าวในแมพหลัก
 	--
-	-- ใช้ `GatherConfig.WormBonus` ตัวเดียวกันเลย ไม่ได้ตั้งเลขใหม่ · เป็น **ของแถม** เหมือนที่นั่น
+	-- (เดิมใช้ `GatherConfig.WormBonus` ตัวเดียวกัน · 2026-09-29 แยกเป็น `IslandConfig.PlotWormBonus`) · เป็น **ของแถม** เหมือนที่นั่น
 	-- ไม่ใช่ของที่ได้ *แทน* ผัก (แปลงผักในแมพหลักใช้ `alt` ซึ่งแลกผักทิ้ง — บนเกาะผู้เล่นจ่ายค่าเมล็ด
 	-- กับรอเวลามาแล้ว การเอาผลผลิตของเขาไปทั้งกองเพื่อแจกหนอนไม่ใช่สิ่งที่สั่ง)
 	--
@@ -237,7 +236,8 @@ local function harvest(player, model)
 		end
 	end
 
-	local bonus = GatherConfig.WormBonus
+	-- แปลงผักใช้ตัวเลขของตัวเอง (2026-09-29: 1-3 ตัว 20% · พุ่ม/นาข้าวยังใช้ GatherConfig.WormBonus)
+	local bonus = IslandConfig.PlotWormBonus
 	if bonus and math.random() < bonus.chance then
 		local extra = math.random(bonus.min, bonus.max)
 		if Inventory.HasRoomFor(player, bonus.item, extra) and Inventory.AddItem(player, bonus.item, extra) then
