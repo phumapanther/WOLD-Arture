@@ -1750,8 +1750,10 @@ function SocialGui:buildProfile()
 
 	-- Raising the card is the point of the screen: it puts your profile over your head for everyone nearby.
 	-- It toggles, because the only way to take a sign down is the same button that put it up.
+	-- วางต่อจากแถวสุดท้ายเสมอ (เดิมตายตัวที่ 314 แล้วแถวแร็งก์ที่เพิ่มทีหลังโดนทับ · เทส social_profile_layout_test)
+	local nextY = 264 + (#rows + 1) * 36 + 4
 	local show = button(page, "แสดงการ์ดโปรไฟล์", 13, Color3.fromRGB(58, 84, 110))
-	show.Position = UDim2.new(0, 0, 0, 314)
+	show.Position = UDim2.new(0, 0, 0, nextY)
 	show.Size = UDim2.new(1, 0, 0, 34)
 	self.showCardButton = show
 	self.cardShowing = false
@@ -1763,8 +1765,9 @@ function SocialGui:buildProfile()
 
 	local note = label(page, "แก้ไขโปรไฟล์จะเปิดให้ใช้ในภายหลัง", 11, TEXT_MUTED,
 		Enum.TextXAlignment.Center)
-	note.Position = UDim2.new(0, 0, 0, 352)
+	note.Position = UDim2.new(0, 0, 0, nextY + 38)
 	note.Size = UDim2.new(1, 0, 0, 18)
+	page.CanvasSize = UDim2.new(0, 0, 0, nextY + 38 + 18 + 12)
 end
 
 -- Kept in step with the real state rather than assumed: a respawn drops the card, and the button has to
