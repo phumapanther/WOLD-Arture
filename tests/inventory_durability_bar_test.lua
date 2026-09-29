@@ -37,6 +37,7 @@ local ok, err = pcall(function()
 		{ id = "LeatherArmor", count = 1, durability = 30 }, -- เกราะใช้ armor เป็นเพดาน = 50% เขียว
 		{ id = "Egg", count = 3 }, -- ไม่มีความคงทน
 		{ id = "GoldAxe", count = 1, durability = 100 }, -- ไม่มีวันพัง
+		{ id = "Sword", count = 1, durability = 0, meta = { skin = "Skin_Sword_Royal" } }, -- ติดสกิน พังค้างอยู่
 	} })
 	local function bar(i) return gui.slotButtons[i].durBar end
 	check(bar(1) and bar(1).Visible and bar(1).Fill.BackgroundColor3 == C.good
@@ -48,6 +49,10 @@ local ok, err = pcall(function()
 		and math.abs(bar(5).Fill.Size.X.Scale - 0.5) < 1e-6, "เกราะ: เพดานจาก armor")
 	check(not bar(6).Visible, "ของไม่มีความคงทน = ไม่มีแถบ")
 	check(not bar(7).Visible, "ของไม่มีวันพัง = ไม่มีแถบ")
+	-- พังค้าง (ติดสกิน): แถบว่างทั้งเส้นแต่พื้นแถบเป็นสีแดง ให้เห็นว่าพัง ไม่ใช่ว่าแถบหาย
+	check(bar(8).Visible and bar(8).BackgroundColor3 == C.critical and bar(8).Fill.Size.X.Scale == 0,
+		"ความคงทน 0 = พื้นแถบแดง")
+	check(bar(1).BackgroundColor3 ~= C.critical, "ของดีพื้นแถบไม่แดง")
 
 	gui:Render({ gold = 0, equipped = {}, hotbar = {}, slots = { false, { id = "Egg", count = 1 } } })
 	check(not bar(1).Visible, "ช่องว่างหลังของย้ายออก = ไม่มีแถบค้าง")

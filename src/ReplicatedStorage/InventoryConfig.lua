@@ -47,6 +47,15 @@ function InventoryConfig.AnyWorn(equipped)
 	return false
 end
 
+-- อาวุธติดสกินความคงทนหมด = ไม่หาย ค้างที่ 0 ใช้โจมตี/สกิล/ตีบวกไม่ได้จนกว่าจะซ่อม (ผู้ใช้สั่ง 2026-09-29)
+-- สกินอยู่บนตัวอาวุธ (`meta.skin`) อาวุธหายเมื่อไหร่สกินที่สุ่มด้วยเพชรมาก็หายตาม · ไม่ติดสกิน = พังหายเหมือนเดิม
+function InventoryConfig.KeepsWhenBroken(entry)
+	return type(entry) == "table" and type(entry.meta) == "table" and entry.meta.skin ~= nil
+end
+function InventoryConfig.IsBroken(entry)
+	return type(entry) == "table" and type(entry.durability) == "number" and entry.durability <= 0
+end
+
 function InventoryConfig.IsHeavilyLoaded(weight)
 	return weight > InventoryConfig.MaxWeight * InventoryConfig.HeavyLoadRatio
 end

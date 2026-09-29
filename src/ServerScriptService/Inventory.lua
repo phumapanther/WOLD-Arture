@@ -543,7 +543,12 @@ function Inventory.WearEquipped(player, amount)
 	-- เครื่องมือทองจากร้านพรีเมียม: ไม่มีวันพัง
 	if item.unbreakable then return true end
 	entry.durability -= amount or 1
-	if entry.durability <= 0 then
+	-- ติดสกิน = ไม่หาย ค้างที่ 0 รอซ่อม (InventoryConfig.KeepsWhenBroken) · สนามยกเว้น: สกินที่นั่นยืมมาเฉยๆ
+	-- ของจริงอยู่เกมหลัก และสนามไม่มีค้อนซ่อม อาวุธพังค้างมือจะกันไม่ให้ตกไปใช้หมัด
+	if entry.durability <= 0 and InventoryConfig.KeepsWhenBroken(entry)
+		and not require(game.ServerScriptService.ServerConfig).IsArena then
+		entry.durability = 0
+	elseif entry.durability <= 0 then
 		-- Through BreakEquipped rather than clearing the slot: doing it by hand skips OnWeaponChanged, and
 		-- the broken tool's model stays in the player's hand while the animations fall back to fists.
 		Inventory.BreakEquipped(player, "weapon")

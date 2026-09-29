@@ -26,6 +26,7 @@ local VitalsConfig = require(game.ReplicatedStorage.VitalsConfig)
 local ProgressionConfig = require(game.ReplicatedStorage.ProgressionConfig)
 local Progression = require(game.ServerScriptService.Progression)
 local Inventory = require(game.ServerScriptService.Inventory)
+local InventoryConfig = require(game.ReplicatedStorage.InventoryConfig)
 local ClassPerks = require(game.ServerScriptService.ClassPerks)
 -- Classes requires only ClassConfig and ProfileAccess, so there is no cycle back here -- and ClassPerks
 -- above already pulls it in anyway.
@@ -663,6 +664,10 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	-- is deliberately still allowed -- walking, running, rolling and sliding all stay available.
 	local blocked = Deny.Blocked(player, "โจมตี")
 	if blocked then return Deny.Tell(player, blocked) end
+	-- อาวุธติดสกินพังค้าง (ความคงทน 0) = ตีไม่ได้จนกว่าจะซ่อม (ผู้ใช้สั่ง 2026-09-29)
+	if InventoryConfig.IsBroken(select(2, Inventory.EquippedWeapon(player))) then
+		return Deny.Tell(player, "อาวุธพังแล้ว — ใช้ค้อนซ่อมก่อน")
+	end
 	if Blocking.IsBlocking(player) then return end -- ยกการ์ดอยู่ = ตีไม่ได้ (สนาม · เฟส 3)
 	-- กับดัก: คลิกคือเล็ง/เขวี้ยง/วาง ผ่าน RequestTrap (TrapWeapon.server) ไม่ใช่การตี (เฟส 3)
 	if weaponOf(player).trap then return end

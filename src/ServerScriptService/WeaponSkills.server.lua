@@ -12,6 +12,7 @@ local Players = game:GetService("Players")
 local Debris = game:GetService("Debris")
 local ServerConfig = require(game.ServerScriptService.ServerConfig)
 local Inventory = require(game.ServerScriptService.Inventory)
+local InventoryConfig = require(game.ReplicatedStorage.InventoryConfig)
 local Vitals = require(game.ServerScriptService.Vitals)
 local Party = require(game.ServerScriptService.Party)
 local ArenaAccess = require(game.ServerScriptService.ArenaAccess)
@@ -448,6 +449,7 @@ Remotes.RequestSkill.OnServerEvent:Connect(function(player)
 	local item, entry = Inventory.EquippedWeapon(player)
 	if not item or not entry then return refuse(player, "มือเปล่าไม่มีสกิล — ถืออาวุธก่อน") end
 	if not item.skill then return refuse(player, "ของที่ถืออยู่ไม่มีสกิล") end
+	if InventoryConfig.IsBroken(entry) then return refuse(player, "อาวุธพังแล้ว — ใช้ค้อนซ่อมก่อน") end
 
 	local skill = item.skill
 	local handler = Skills[skill.id]

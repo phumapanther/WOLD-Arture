@@ -15,6 +15,7 @@ if ServerConfig.IsLobby then return end
 local CraftConfig = require(game.ReplicatedStorage.CraftConfig)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local Inventory = require(game.ServerScriptService.Inventory)
+local InventoryConfig = require(game.ReplicatedStorage.InventoryConfig)
 local Vitals = require(game.ServerScriptService.Vitals)
 local CraftAccess = require(game.ServerScriptService.CraftAccess)
 local EventState = require(game.ServerScriptService.EventState)
@@ -647,6 +648,10 @@ Remotes.RequestEnhance.OnServerEvent:Connect(function(player, key)
 		entry = state.slots[bagIndex]
 	end
 	if not entry or not EnhanceConfig.Weapons[entry.id] then return end
+	-- พังค้าง (ติดสกิน) = ซ่อมก่อน · ไม่งั้นตีบวกแตก (ความคงทนขั้นต่ำ 1) กลายเป็นทางซ่อมฟรี
+	if InventoryConfig.IsBroken(entry) then
+		return Remotes.SocialNotify:FireClient(player, "error", "อาวุธพังแล้ว — ใช้ค้อนซ่อมก่อน")
+	end
 
 	local level = EnhanceConfig.LevelOf(entry.meta)
 	local nextLevel = EnhanceConfig.Levels[level + 1]

@@ -61,6 +61,7 @@ local GOLD_BG_DIM = Color3.fromRGB(64, 46, 14)
 local GOLD_BG_BRIGHT = Color3.fromRGB(122, 90, 26)
 
 -- แถบความคงทนในช่อง (ผู้ใช้สั่ง 2026-09-29): เขียว · ต่ำกว่าครึ่ง = เหลือง · ไม่ถึง 5% = แดง
+local DUR_TRACK = Color3.fromRGB(16, 14, 12)
 InventoryGui.DurabilityColours = {
 	good = Color3.fromRGB(88, 204, 104),
 	low = Color3.fromRGB(240, 200, 64),
@@ -77,6 +78,8 @@ local function setDurBar(bar, item, durability)
 	local C = InventoryGui.DurabilityColours
 	bar.Fill.Size = UDim2.fromScale(fraction, 1)
 	bar.Fill.BackgroundColor3 = fraction < 0.05 and C.critical or fraction < 0.5 and C.low or C.good
+	-- 0 = พังค้าง (ของติดสกินไม่หาย) แถบว่างทั้งเส้น จึงแดงที่พื้นแถบแทน
+	bar.BackgroundColor3 = fraction <= 0 and C.critical or DUR_TRACK
 	bar.Visible = true
 end
 
@@ -474,7 +477,7 @@ function InventoryGui.new()
 		durBar.Name = "DurBar"
 		durBar.Size = UDim2.new(1, -12, 0, 4)
 		durBar.Position = UDim2.new(0, 6, 1, -6)
-		durBar.BackgroundColor3 = Color3.fromRGB(16, 14, 12)
+		durBar.BackgroundColor3 = DUR_TRACK
 		durBar.BackgroundTransparency = 0.25
 		durBar.BorderSizePixel = 0
 		durBar.ZIndex = 3
