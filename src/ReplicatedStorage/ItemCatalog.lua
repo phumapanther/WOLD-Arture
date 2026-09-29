@@ -739,7 +739,7 @@ ItemCatalog.Items = {
 	Pet_Bat = { icon = "rbxassetid://81399704919582", name = "ค้างคาว", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 121609324861793
 	Pet_Boar = { icon = "rbxassetid://131952930091796", name = "หมูป่า", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 101514427469921
 	Pet_Wolf = { icon = "rbxassetid://132262230531432", name = "หมาป่า", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 135431740450602
-	Pet_Spider = { icon = "", name = "แมงมุม", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true },
+	Pet_Spider = { icon = "rbxassetid://105619995087756", name = "แมงมุม", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 125787152431022
 	Pet_Skeleton = { icon = "rbxassetid://91701785357654", name = "โครงกระดูก", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 81526013629043
 	Pet_Bandit = { icon = "rbxassetid://103057066720672", name = "โจร", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 112424921622580
 	Pet_Ghoul = { icon = "rbxassetid://70508487269303", name = "ผีดิบ", kind = "placeable", weight = 2, stackSize = 1, value = 0, sellable = false, spot = "both", pet = true }, -- decal 88454001866782
