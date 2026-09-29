@@ -76,7 +76,7 @@ check(Rules.DawnDrift(9999, 100, 22) == 475, "เพี้ยนมาก = แ�
 
 -- 5. ตัวเลขตามสเปก + ทุกชื่อมีจริง
 check(R.maxHitFraction == 0.10 and R.countMin == 1 and R.countMax == 3, "ตีแรงสุด 10% · เกิด 1-3")
-check(R.paradeEverySeconds == 20 and R.paradeMaxAlive == 8, "พาเหรดทุก 20 วิ ไม่เกิน 8")
+check(R.paradeEverySeconds == 10 and R.paradeMaxAlive == 8, "พาเหรดทุก 10 วิ (ผู้ใช้สั่งเร็วขึ้นเท่าตัว 2026-09-29) ไม่เกิน 8")
 check(R.boss.kind == "Forgewarden" and R.boss.hp == 1500 and R.boss.drop == "MagicBox", "บอสเกาะ 1,500 ดรอปกล่องเวท")
 local missing = {}
 local function need(kind) if not GatherConfig.Mobs[kind] then missing[#missing + 1] = kind end end

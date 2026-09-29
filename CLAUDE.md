@@ -162,8 +162,10 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 - ร้านเกาะแท็บ "ของใช้" Lv1: ขวาน อีเต้อ พลั่ว คันเบ็ด หนอน ค้อนซ่อม — ราคาเหรียญอ่านจาก `ShopConfig.Sells` (`mainPrice`) ·
   ⚠️ **ของพวกนี้จึงส่งเมลไม่ได้ทั้งเกม** (ผู้ใช้เลือก — กฎ "ของร้านเกาะส่งเมลไม่ได้" ถามจาก id) ·
   `FarmLevelConfig.UnlocksAt` ข้ามของที่ร้านเมืองขายอยู่แล้ว (ไม่ใช่ของปลดฟาร์ม · กติกา 1-6 อย่างต่อเลเวล)
-- **ราคารับซื้อ: ต่ำสุด 10 · ของถูกสุ่มถึงอย่างน้อย 20 · ทุกรอบ 30 นาทีขยับ ≥ 5** (ยกเว้นก้อนหิน/เศษไม้) · กติกา `ShopConfig.SellRange/NextSellPrice/FloorSellPrice`
-  · ⚠️ **ราคารอบนี้ขึ้นกับรอบก่อน** `Shop.server` `multipliersAt` ย้อนประวัติ 336 รอบจากเลขสุ่มรายช่องเวลา ทุกเซิร์ฟจึงตรงกัน · พ่อค้าเมืองต่ำสุด 10 ด้วย · กิโลปลาถ้วยรางวัลใช้ตัวคูณไม่เกิน ×1.5 · หน้าราคากลางบนหินเวทบอก ⬆/⬇ ส่วนต่าง (เทส `sell_price_test` `social_market_test`)
+- **ราคารับซื้อ (ชุด 2026-09-29): ต่ำสุด 5 · ของถูก lo-25 ขยับรอบละ 3-5 (20 ขึ้นไป ~25% · 25 พอดี ~3%) · ของดรอปมอนล้วน
+  (สไลม์ กระดูก ใยแมงมุม มูลค้างคาว เขี้ยวเล็บ `ShopConfig.MonsterMaterials`) 1-15 ขยับ 3-5 · ของแพง ±50% ขยับ ≥ 5 ไม่มีเพดาน ·
+  ก้อนหิน/เศษไม้ 1-5 สุ่มใหม่ทุกรอบ (1 = 70%)** · กติกา `ShopConfig.SellRange/NextSellPrice/ScrapSellPrice/FloorSellPrice`
+  · ⚠️ **ราคารอบนี้ขึ้นกับรอบก่อน** `Shop.server` `multipliersAt` ย้อนประวัติ 336 รอบจากเลขสุ่มรายช่องเวลา ทุกเซิร์ฟจึงตรงกัน · พ่อค้าเมืองต่ำสุด 5 ด้วย · กิโลปลาถ้วยรางวัลใช้ตัวคูณไม่เกิน ×1.5 · หน้าราคากลางบนหินเวทบอก ⬆/⬇ ส่วนต่าง (เทส `sell_price_test` `social_market_test`)
 - **หนอนจากแปลงผักบนเกาะ 1-3 ตัว โอกาส 20%** (`IslandConfig.PlotWormBonus` · 2026-09-29) · พุ่มสมุนไพร/นาข้าวยัง 3-5 ตัว 40% (`GatherConfig.WormBonus`)
 - **อีโมจิสถานะเหนือหัว** (2026-09-29): 🐌 ของหนักเกินขีด · 🔧 ของที่ใส่/ถือความคงทน < 5 (`InventoryConfig.AnyWorn`) · หลายสถานะ = เรียงข้างกัน (`OverheadMarks` เจ้าของการวาด · ป้ายใหม่ต้องเติมชื่อใน `OverheadMarks.Order`) · ลูป 0.5 วิใน `PlayerStatusEffects` (เทส `overhead_marks_test`)
 - **แถบความคงทนใต้รูปไอเทมในกระเป๋า** (2026-09-29): เขียว · ต่ำกว่าครึ่ง เหลือง · ไม่ถึง 5% แดง · เพดาน = `maxDurability` หรือ `armor` · ของ `unbreakable`/ไม่มีความคงทน = ไม่มีแถบ (`InventoryGui` `setDurBar` · เทส `inventory_durability_bar_test`)
@@ -187,6 +189,7 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 - `Island/IslandNight.server` คุมจังหวะ · `IslandNightRules` กติกาล้วน · ตัวเลข `IslandConfig.NightRaid` · `MobAccess.SpawnRaid/Despawn` (ไล่ทั้งเกาะ `chaseAll` · เพดานตี `maxHitFraction` · `loot.only/extra`)
 - ป้ายพาเหรดไม่อยู่ใน `EventConfig.Events` (ไม่งั้น WorldEvents เกมหลักสุ่มเริ่ม) — เกาะยิง `EventStateChanged` เอง + ตอบ `RequestEventState` · เสียงมากับภาพ (`spec.sound`)
 - ⚠️ **ตายบนเกาะไม่เสียเลเวล/อาชีพ/เครื่องราง** (`PlayerProgression` `if ServerConfig.IsFarm then return end`)
+- พาเหรดเกิดทุก **10 วิ** (ผู้ใช้สั่งเร็วขึ้นเท่าตัว 2026-09-29 · เพดาน 8 ตัวเท่าเดิม `paradeEverySeconds`)
 - คำสั่งเทส **`/night [raid | parade | boss | special | leader | clear]`** · ของจริงตอนหัวค่ำ: `/farm level 3` → `/time 18` → `/time auto`
 
 **แถบเควสรวม + เควสของออฟาเรียน + เกาะลอยฟ้า (2026-09-29) — ดันสามเพลส mismatches 0 · ยังไม่ได้เทสในเกม**

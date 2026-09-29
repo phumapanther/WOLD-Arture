@@ -214,40 +214,67 @@ ShopConfig.PriceSwing = 0.50
 ShopConfig.GoldPerKg = 3
 ShopConfig.RerollSeconds = 1800 -- half an hour, as asked
 
--- ราคารับซื้อ (ผู้ใช้กำหนด 2026-09-28): **ต่ำสุด 10** · ของถูกสุ่มได้ถึงอย่างน้อย 20 · สุ่ม ±50% (PriceSwing) เท่าเดิม
--- · **ทุกรอบ 30 นาทีขยับจากรอบก่อนอย่างน้อย 5** · ก้อนหิน/เศษไม้ใช้สูตรเดิม · พ่อค้าประจำเมืองต่ำสุด 10 ด้วย
-ShopConfig.MinSellPrice = 10
-ShopConfig.MinSellTop = 20 -- เพดานของของถูก: ช่วงกว้าง ≥ 10 จึงขยับ 5 ได้เสมอ
-ShopConfig.MinPriceMove = 5
+-- ราคารับซื้อ (ผู้ใช้กำหนด 2026-09-29 · แทนชุด 2026-09-28): **ต่ำสุด 5** · ของถูก (ช่วง ±50% ไม่ถึง 25) = lo-25
+-- **ขยับรอบละ 3-5** · 20 ขึ้นไปราว 25% ของเวลา 25 พอดีราว 3% (ได้เองจากการเดินสุ่ม — ขอบมีทางเข้าน้อย · เทสวัด) ·
+-- ของดรอปมอน 1-15 ขยับ 3-5 · ของแพงสุ่ม ±50% ขยับ ≥ 5 ไม่มีเพดานเท่าเดิม · ก้อนหิน/เศษไม้ 1-5 (ScrapSellPrice) ·
+-- พ่อค้าประจำเมืองต่ำสุด 5
+ShopConfig.MinSellPrice = 5
+ShopConfig.MinSellTop = 25 -- เพดานของของถูก
+ShopConfig.MinPriceMove = 5 -- ของแพง: ขยับอย่างน้อยเท่านี้ ไม่มีเพดาน
+ShopConfig.CheapPriceMove = { 3, 5 } -- ของถูก + ของมอน: ขยับรอบละ 3-5
+ShopConfig.MonsterSellRange = { 1, 15 }
+-- ของดรอปจากมอนล้วน (ผู้ใช้เลือก) · เนื้อ/คริสตัล/แร่/สมุนไพรที่มอนดรอปด้วยไม่นับ (ได้จากทางอื่นเป็นหลัก)
+ShopConfig.MonsterMaterials = { Slime = true, Bone = true, Fiber = true, BatGuano = true, Claw = true }
 ShopConfig.PriceFloorExempt = { Stone = true, WoodScrap = true }
+ShopConfig.ScrapOneChance = 0.7 -- ก้อนหิน/เศษไม้: 1 = 70% · 2-5 เท่ากันในอีก 30%
+ShopConfig.ScrapTop = 5
 -- ย้อนประวัติกี่รอบตอนคำนวณราคา (หนึ่งสัปดาห์) — รอบนี้ขึ้นกับรอบก่อน ทุกเซิร์ฟย้อนจากจุดเดียวกันจึงได้ราคาเดียวกัน
 -- และราคา "เดิม" ที่หน้าราคากลางโชว์ตรงกับที่เคยโชว์จริง (ประวัติลืมจุดเริ่มเองในไม่กี่รอบ · เทส sell_price_test)
 ShopConfig.PriceHistorySlots = 336
 
--- ช่วงราคารับซื้อเป็นจำนวนเต็ม · nil = ใช้สูตรเดิม (ของยกเว้น หรือไม่มีมูลค่า)
+-- ช่วงราคารับซื้อเป็นจำนวนเต็ม คืน lo, hi, ขยับต่ำสุด, ขยับสูงสุด (nil = ไม่มีเพดาน)
+-- · nil = ไม่ใช้ช่วง (ก้อนหิน/เศษไม้ → ScrapSellPrice · ไม่มีมูลค่า → สูตรเดิม)
 function ShopConfig.SellRange(id, value)
-	if ShopConfig.PriceFloorExempt[id] or not value or value <= 0 then return nil end
+	if ShopConfig.PriceFloorExempt[id] then return nil end
+	local cheap = ShopConfig.CheapPriceMove
+	if ShopConfig.MonsterMaterials[id] then
+		local r = ShopConfig.MonsterSellRange
+		return r[1], r[2], cheap[1], cheap[2]
+	end
+	if not value or value <= 0 then return nil end
 	local centre = value * ShopConfig.BuyFraction
 	local lo = math.max(ShopConfig.MinSellPrice, math.floor(centre * (1 - ShopConfig.PriceSwing) + 0.5))
-	local hi = math.max(ShopConfig.MinSellTop, math.floor(centre * (1 + ShopConfig.PriceSwing) + 0.5))
-	return lo, hi
+	local hi = math.floor(centre * (1 + ShopConfig.PriceSwing) + 0.5)
+	if hi < ShopConfig.MinSellTop then return lo, ShopConfig.MinSellTop, cheap[1], cheap[2] end
+	return lo, hi, ShopConfig.MinPriceMove, nil
 end
 
--- ราคารอบนี้จากเลขสุ่มสองตัว (0..1) กับราคารอบก่อน · สุ่มทั้งช่วงก่อน ห่างรอบก่อนไม่ถึง 5 = สุ่มใหม่
--- จากค่าที่ห่างพอ (u2) · ห่างพอตั้งแต่แรก = ใช้เลยโดยไม่ดูรอบก่อน ประวัติจึงลืมจุดเริ่มเอง
-function ShopConfig.NextSellPrice(u, u2, prev, lo, hi)
+-- ราคารอบนี้จากเลขสุ่มสองตัว (0..1) กับราคารอบก่อน · สุ่มทั้งช่วงก่อน ห่างรอบก่อนตามกติกา (moveMin-moveMax) = ใช้เลย
+-- โดยไม่ดูรอบก่อน ประวัติจึงลืมจุดเริ่มเอง · ไม่ผ่าน = สุ่มใหม่จากค่าที่ผ่าน (u2) · ผลรวมสองทาง = สุ่มเท่ากันในค่าที่ผ่าน
+function ShopConfig.NextSellPrice(u, u2, prev, lo, hi, moveMin, moveMax)
 	local price = lo + math.min(hi - lo, math.floor(u * (hi - lo + 1)))
-	local move = ShopConfig.MinPriceMove
-	if prev == nil or math.abs(price - prev) >= move then return price end
-	local belowTop = math.min(hi, prev - move) -- ค่าที่ต่ำกว่ารอบก่อนพอ: lo..belowTop
-	local aboveBottom = math.max(lo, prev + move) -- ค่าที่สูงกว่าพอ: aboveBottom..hi
-	local nBelow = math.max(0, belowTop - lo + 1)
-	local nAbove = math.max(0, hi - aboveBottom + 1)
+	if prev == nil then return price end
+	moveMin = moveMin or ShopConfig.MinPriceMove
+	moveMax = moveMax or (hi - lo)
+	local d = math.abs(price - prev)
+	if d >= moveMin and d <= moveMax then return price end
+	local belowLo, belowHi = math.max(lo, prev - moveMax), math.min(hi, prev - moveMin)
+	local aboveLo, aboveHi = math.max(lo, prev + moveMin), math.min(hi, prev + moveMax)
+	local nBelow = math.max(0, belowHi - belowLo + 1)
+	local nAbove = math.max(0, aboveHi - aboveLo + 1)
 	local n = nBelow + nAbove
 	if n == 0 then return price end -- ช่วงแคบเกิน (ไม่เกิดกับ SellRange)
 	local pick = math.min(n - 1, math.floor(u2 * n))
-	if pick < nBelow then return lo + pick end
-	return aboveBottom + (pick - nBelow)
+	if pick < nBelow then return belowLo + pick end
+	return aboveLo + (pick - nBelow)
+end
+
+-- ก้อนหิน/เศษไม้: สุ่มใหม่ทุกรอบจากเลขสุ่มตัวเดียว ไม่ขึ้นกับรอบก่อน
+function ShopConfig.ScrapSellPrice(u)
+	local one = ShopConfig.ScrapOneChance
+	if u < one then return 1 end
+	local span = ShopConfig.ScrapTop - 1
+	return 2 + math.min(span - 1, math.floor((u - one) / (1 - one) * span))
 end
 
 -- รายการขายของในหน้าร้าน (ผู้ใช้สั่ง 2026-09-28): **ยอดรวมทั้งกองมากสุดก่อน** · เท่ากัน = ต่อชิ้นแพงก่อน · แล้วเลขช่อง
@@ -261,7 +288,7 @@ function ShopConfig.SortSellRows(rows)
 	return rows
 end
 
--- ราคาคงที่ (พ่อค้าประจำเมือง) หลังยกพื้น 10 · ของยกเว้นไม่ยก
+-- ราคาคงที่ (พ่อค้าประจำเมือง) หลังยกพื้น MinSellPrice (5) · ของยกเว้นไม่ยก
 function ShopConfig.FloorSellPrice(id, price)
 	if ShopConfig.PriceFloorExempt[id] then return price end
 	return math.max(ShopConfig.MinSellPrice, price)

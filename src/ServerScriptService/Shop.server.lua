@@ -61,16 +61,16 @@ end
 
 -- ตัวคูณของรอบนี้และรอบก่อน (ราคา = มูลค่า × 0.6 × ตัวคูณ) — ช่องเวลาเดียวกันได้เลขสุ่มเดียวกันทุกเซิร์ฟเสมอ
 --
--- **ราคารอบนี้ขึ้นกับรอบก่อน** (ผู้ใช้กำหนด 2026-09-28: ต่ำสุด 10 · ขยับรอบละ ≥ 5) จึงย้อนประวัติ
--- `ShopConfig.PriceHistorySlots` รอบจากเลขสุ่มของแต่ละช่อง — ทุกเซิร์ฟได้ราคาเดียวกัน และราคารอบก่อนที่หน้า
--- "ราคากลาง" โชว์ตรงกับที่เคยโชว์จริง · กติกาล้วนอยู่ `ShopConfig.SellRange/NextSellPrice` (เทส sell_price_test)
--- ของยกเว้น (ก้อนหิน/เศษไม้) สุ่ม ±50% ของรอบนั้นตรงๆ เหมือนเดิม
+-- **ราคารอบนี้ขึ้นกับรอบก่อน** (ผู้ใช้กำหนด 2026-09-29: ต่ำสุด 5 · ของถูก/ของมอนขยับรอบละ 3-5 · ของแพง ≥ 5)
+-- จึงย้อนประวัติ `ShopConfig.PriceHistorySlots` รอบจากเลขสุ่มของแต่ละช่อง — ทุกเซิร์ฟได้ราคาเดียวกัน และราคารอบก่อนที่หน้า
+-- "ราคากลาง" โชว์ตรงกับที่เคยโชว์จริง · กติกาล้วนอยู่ `ShopConfig.SellRange/NextSellPrice/ScrapSellPrice` (เทส sell_price_test)
+-- ก้อนหิน/เศษไม้ 1-5 สุ่มใหม่ทุกรอบ ไม่ขึ้นกับรอบก่อน · ของไม่มีมูลค่า สุ่ม ±50% ตรงๆ เหมือนเดิม
 local function multipliersAt(bucket)
 	local ids = sellableIds()
 	local ranges = {}
 	for _, id in ipairs(ids) do
-		local lo, hi = ShopConfig.SellRange(id, ItemCatalog.Items[id].value)
-		if lo then ranges[id] = { lo, hi } end
+		local lo, hi, moveMin, moveMax = ShopConfig.SellRange(id, ItemCatalog.Items[id].value)
+		if lo then ranges[id] = { lo, hi, moveMin, moveMax } end
 	end
 	local prices, before, now, beforeMult = {}, {}, {}, {}
 	for slot = bucket - ShopConfig.PriceHistorySlots, bucket do
@@ -81,7 +81,11 @@ local function multipliersAt(bucket)
 			local range = ranges[id]
 			if range then
 				if slot == bucket then before[id] = prices[id] end
-				prices[id] = ShopConfig.NextSellPrice(u, u2, prices[id], range[1], range[2])
+				prices[id] = ShopConfig.NextSellPrice(u, u2, prices[id], range[1], range[2], range[3], range[4])
+			elseif ShopConfig.PriceFloorExempt[id] and slot >= bucket - 1 then
+				-- ราคาตรงๆ แปลงเป็นตัวคูณ (buyPrice คูณกลับเป็นราคาเดิม)
+				local mult = ShopConfig.ScrapSellPrice(u) / math.max(0.01, (ItemCatalog.Items[id].value or 0) * ShopConfig.BuyFraction)
+				if slot == bucket then now[id] = mult else beforeMult[id] = mult end
 			elseif slot == bucket then
 				now[id] = 1 + (u * 2 - 1) * ShopConfig.PriceSwing
 			elseif slot == bucket - 1 then
@@ -147,7 +151,7 @@ local function buyPrice(id, meta, mults)
 		-- Multiplied by the same drift as the base, so a trophy fish rises and falls with the market like
 		-- everything else. Left out of the drift it would have been a fixed floor under the price, and a big
 		-- fish would have been oddly steady on a day when every other catch had moved.
-		-- เพดาน ×1.5 เท่าเดิม: ของถูกถูกยกพื้นเป็น 10 ตัวคูณจึงสูงถึง 2-4 เท่า ถ้าเอามาคูณกิโลด้วย ปลาถ้วยรางวัลราคาพองเกินจริง
+		-- เพดาน ×1.5 เท่าเดิม: ของถูกถูกยกเพดานเป็น 25 ตัวคูณจึงสูงถึง 5 เท่า ถ้าเอามาคูณกิโลด้วย ปลาถ้วยรางวัลราคาพองเกินจริง
 		base += meta.kg * ShopConfig.GoldPerKg * math.min(m, 1 + ShopConfig.PriceSwing)
 	end
 

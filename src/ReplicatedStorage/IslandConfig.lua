@@ -382,7 +382,7 @@ IslandConfig.NightRaid = {
 		{ id = "leader", chance = 0.10 },
 	},
 	paradeChance = 0.05,           -- ทอยแยก คืนพาเหรดก็มีตัวพิเศษได้
-	paradeEverySeconds = 20,
+	paradeEverySeconds = 10,          -- ผู้ใช้สั่งเร็วขึ้นเท่าตัว 2026-09-29 (เดิม 20) · เพดาน 8 คงเดิม
 	paradeMaxAlive = 8,            -- นับรวมมอนตอนหัวค่ำ
 	maxHitFraction = 0.10,         -- ตีแรงสุด 10% ของเลือดเต็มคนที่โดน ทุกตัวรวมบอส
 	spawnMinDistance = 30, spawnMaxDistance = 60,
