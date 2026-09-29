@@ -9,6 +9,8 @@ local StoryConfig = {}
 StoryConfig.Npcs = {
 	-- NPC ที่ผูกกับเนื้อเรื่อง: แท็ก `WOLD_StoryNpc` + แอตทริบิวต์ `StoryNpc` = id (mapgen/110_story_brasshaven.lua วาง)
 	Lyra = { name = "ไลรา", color = Color3.fromRGB(70, 180, 255) },
+	-- หุ่นฟางข้างจุดเกิดแรก (Dummy_Spawn) · ไม่ใช่ WOLD_StoryNpc — ปุ่มอยู่ VipGiftPrompt.server (2026-09-29)
+	Oforian = { name = "ออฟาเรียน เทพหุ่นฟาง", color = Color3.fromRGB(255, 214, 120) },
 }
 
 --------------------------------------------------------------------------------
@@ -52,6 +54,34 @@ StoryConfig.Dialogues = {
 	done = {
 		{ who = "Lyra", text = "ข้ายังเฝ้าวงเวทนี้อยู่ ถ้าเจ้าได้ข่าวจากซอลต์เมียร์ เล่าให้ข้าฟังด้วย" },
 	},
+	-- ออฟาเรียน เทพหุ่นฟาง (2026-09-29 ผู้ใช้อนุมัติบทพูด)
+	o_idle = {
+		{ who = "Oforian", text = "ทุ่งนายังเขียวดีอยู่… เจ้าเองก็เติบโตต่อไปนะ" },
+	},
+	o_newcomer = {
+		{ who = "Oforian", text = "ข้าคือออฟาเรียน ผู้เฝ้าทุ่งนาแห่งอาร์ตูร์มาตั้งแต่ก่อนเมืองนี้จะมีเครื่องจักรสักตัว" },
+		{ who = "Oforian", text = "ผู้มาใหม่ทุกคนที่ผ่านหน้าข้าไป ข้าจะมอบพรเล็กๆ ติดตัวไว้เสมอ" },
+		{ who = "Oforian", text = "รับม้วนพรแห่งฤดูกาลนี้ไป — ทุกครั้งที่เจ้าเติบโต มันจะตอบแทนเจ้า" },
+	},
+	o_sky = {
+		{ who = "Oforian", text = "ข้าเฝ้ามองเจ้ามาตลอด ตั้งแต่วันแรกที่เจ้าหยิบจอบขึ้นมา" },
+		{ who = "Oforian", text = "ห้าก้าวแห่งการเติบโต… น้อยคนนักจะเดินมาได้ไกลขนาดนี้โดยไม่หยุด" },
+		{ who = "Oforian", text = "เหนือเมฆขึ้นไปมีเกาะที่เหล่าเทพใช้พักผ่อน — เกาะลอยฟ้าแห่งความฝัน" },
+		{ who = "Oforian", text = "ข้าจะมอบสิทธิ์ให้เจ้าครอบครองมันสามสิบวัน ปลูก เลี้ยง สร้างมันตามใจเจ้า" },
+	},
+	o_travel = {
+		{ who = "Oforian", text = "เจ้าช่วยไลราไขความลับของวงเวทได้แล้ว… ข่าวไปถึงหูข้าเร็วกว่าลมเสียอีก" },
+		{ who = "Oforian", text = "การเดินทางของเจ้าเพิ่งเริ่ม รับนี่ไว้เป็นเสบียง — เพชรจากใต้รากทุ่งนาของข้า" },
+	},
+	o_friends = {
+		{ who = "Oforian", text = "ข้าเห็นว่าเจ้าไม่ได้เดินทางคนเดียวอีกแล้ว" },
+		{ who = "Oforian", text = "มิตรภาพเป็นสิ่งที่แม้แต่เทพก็สร้างเองไม่ได้ ข้าจึงอยากให้มันมีแสงให้คนอื่นเห็น" },
+		{ who = "Oforian", text = "รับแสงนี้ไป ให้มันห้อมล้อมเจ้าทุกที่ที่เจ้าไป" },
+	},
+	island_welcome = {
+		{ who = "Oforian", text = "(เสียงของออฟาเรียนลอยมากับลม) ที่นี่เป็นของเจ้าแล้ว ผู้เติบโต" },
+		{ who = "Oforian", text = "ดินผืนนี้ตอบแทนคนที่ดูแลมัน — ปลูก เลี้ยง แล้วส่งผลผลิตไปกับรถคันนั้นเถิด" },
+	},
 }
 
 --------------------------------------------------------------------------------
@@ -73,6 +103,33 @@ StoryConfig.Chapters = {
 		},
 		doneDialogue = "done",
 	},
+	-- บทถัดไปแบบล็อก (2026-09-29): แถวทองจาง + 🔒 ให้รู้ว่ามีต่อ · วันที่เขียนบทจริง ถอด `locked` แล้วใส่ขั้น/NPC
+	{
+		id = "saltmere", town = "Saltmere", locked = true, name = "เส้นทางสู่ซอลต์เมียร์",
+		goal = "หาคำแนะนำจากเจ้าของฟาร์มเพื่อเดินทางไปยังซอลต์เมียร์", steps = {},
+	},
+}
+
+-- เควสรองของออฟาเรียน (สีฟ้า) · ของ/ธง/ลำดับอยู่ที่ `VipGift.Quests` · ที่นี่คือชื่อกับบทพูด
+StoryConfig.SideQuests = {
+	newcomer = { title = "ของขวัญผู้มาใหม่", goal = "ไปพบออฟาเรียน เทพหุ่นฟาง ข้างจุดเกิด", dialogue = "o_newcomer" },
+	travel = { title = "ของขวัญการเดินทาง", goal = "ไปพบออฟาเรียน เทพหุ่นฟาง ข้างจุดเกิด", dialogue = "o_travel" },
+	friends = { title = "สายใยมิตรภาพ", goal = "ไปพบออฟาเรียน เทพหุ่นฟาง ข้างจุดเกิด", dialogue = "o_friends" },
+	sky = { title = "เกาะลอยฟ้าแห่งความฝัน", goal = "ไปพบออฟาเรียน เทพหุ่นฟาง ข้างจุดเกิด", dialogue = "o_sky" },
+}
+StoryConfig.OforianIdle = "o_idle"
+
+-- คัทซีนรถคาร์โก้ (~24.5 วิ · shot ที่ StoryController รู้จัก: glow truck board rise clouds flash title)
+StoryConfig.SkyTitle = "เกาะลอยฟ้าแห่งความฝัน"
+StoryConfig.SkySubtitle = "ของขวัญจากออฟาเรียน · 30 วัน"
+StoryConfig.SkyCutscene = {
+	{ shot = "glow", seconds = 3.5, who = "Oforian", text = "จงไปเถิด ผู้เติบโต…" },
+	{ shot = "truck", seconds = 4.5, text = "ไอน้ำพวยพุ่ง ฟ้าแลบแปลบ — รถคันหนึ่งก่อตัวขึ้นจากแสง" },
+	{ shot = "board", seconds = 2.5, text = "คุณก้าวขึ้นรถ…" },
+	{ shot = "rise", seconds = 5, text = "รถลอยขึ้นเหนือหลังคาบราสเฮเวน" },
+	{ shot = "clouds", seconds = 4, text = "ทะลุผ่านเมฆขึ้นไป…" },
+	{ shot = "flash", seconds = 1 },
+	{ shot = "title", seconds = 4, title = StoryConfig.SkyTitle, subtitle = StoryConfig.SkySubtitle },
 }
 
 --------------------------------------------------------------------------------
@@ -99,6 +156,20 @@ StoryConfig.Memories = {
 		{ seconds = 2.5, text = "มีคนเรียกชื่อคุณ แต่เสียงขาดหายไปก่อนจะได้ยิน" },
 	},
 }
+
+-- บทที่กำลังเล่น + ความคืบหน้า (สร้างให้ถ้ายังไม่มี) · เจอบทที่ `locked` = หยุด ไม่สร้างความคืบหน้า คืนเป็นค่าที่สาม (แถวล็อก)
+function StoryConfig.Current(story)
+	for _, ch in ipairs(StoryConfig.Chapters) do
+		if ch.locked then return nil, nil, ch end
+		local p = story.ch[ch.id]
+		if type(p) ~= "table" then
+			p = { step = 1, got = 0 }
+			story.ch[ch.id] = p
+		end
+		if not p.done then return ch, p, nil end
+	end
+	return nil, nil, nil
+end
 
 function StoryConfig.Chapter(id)
 	for _, ch in ipairs(StoryConfig.Chapters) do
