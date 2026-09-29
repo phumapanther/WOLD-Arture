@@ -60,6 +60,26 @@ local SPARKLE = Color3.fromRGB(255, 246, 204)
 local GOLD_BG_DIM = Color3.fromRGB(64, 46, 14)
 local GOLD_BG_BRIGHT = Color3.fromRGB(122, 90, 26)
 
+-- แถบความคงทนในช่อง (ผู้ใช้สั่ง 2026-09-29): เขียว · ต่ำกว่าครึ่ง = เหลือง · ไม่ถึง 5% = แดง
+InventoryGui.DurabilityColours = {
+	good = Color3.fromRGB(88, 204, 104),
+	low = Color3.fromRGB(240, 200, 64),
+	critical = Color3.fromRGB(232, 72, 60),
+}
+-- เพดาน = maxDurability (อาวุธ/เครื่องมือ) หรือ armor (เกราะ) แบบเดียวกับแผงของที่สวม · ไม่มีวันพัง = ไม่มีแถบ
+local function setDurBar(bar, item, durability)
+	local max = item and not item.unbreakable and (item.maxDurability or item.armor)
+	if not max or type(durability) ~= "number" or max <= 0 then
+		bar.Visible = false
+		return
+	end
+	local fraction = math.clamp(durability / max, 0, 1)
+	local C = InventoryGui.DurabilityColours
+	bar.Fill.Size = UDim2.fromScale(fraction, 1)
+	bar.Fill.BackgroundColor3 = fraction < 0.05 and C.critical or fraction < 0.5 and C.low or C.good
+	bar.Visible = true
+end
+
 local function removeGoldFx(entry)
 	local fx = entry.goldFx
 	if not fx then return end
@@ -449,6 +469,26 @@ function InventoryGui.new()
 		count.Position = UDim2.new(0, 3, 1, -16)
 		count.Font = Enum.Font.GothamBold
 
+		-- แถบความคงทนชิดขอบล่างใต้รูป (ผู้ใช้สั่ง 2026-09-29) · Render ตั้งสี/ความยาว · ZIndex 3 = เหนือไอคอน (Global)
+		local durBar = Instance.new("Frame")
+		durBar.Name = "DurBar"
+		durBar.Size = UDim2.new(1, -12, 0, 4)
+		durBar.Position = UDim2.new(0, 6, 1, -6)
+		durBar.BackgroundColor3 = Color3.fromRGB(16, 14, 12)
+		durBar.BackgroundTransparency = 0.25
+		durBar.BorderSizePixel = 0
+		durBar.ZIndex = 3
+		durBar.Visible = false
+		durBar.Parent = slot
+		corner(durBar, UDim.new(1, 0))
+		local fill = Instance.new("Frame")
+		fill.Name = "Fill"
+		fill.Size = UDim2.fromScale(1, 1)
+		fill.BorderSizePixel = 0
+		fill.ZIndex = 3
+		fill.Parent = durBar
+		corner(fill, UDim.new(1, 0))
+
 		-- Dragging this slot out to the hotbar. Begun here and finished by the controller, which is the only
 		-- part that knows where the hotbar is on screen. Mouse and touch arrive through the same events, so
 		-- dragging works on a phone without a second implementation.
@@ -472,7 +512,7 @@ function InventoryGui.new()
 			if self.onSlotClicked then self.onSlotClicked(index) end
 		end)
 
-		self.slotButtons[i] = { button = slot, name = name, count = count, stroke = slotStroke, icon = icon }
+		self.slotButtons[i] = { button = slot, name = name, count = count, stroke = slotStroke, icon = icon, durBar = durBar }
 	end
 
 	--------------------------------------------------------------------------
@@ -600,7 +640,9 @@ function InventoryGui:Render(data)
 			else
 				removeGoldFx(entry)
 			end
+			setDurBar(entry.durBar, item, slot.durability)
 		else
+			entry.durBar.Visible = false
 			entry.icon.Image = ""
 			ItemIcon.SetBadge(entry.icon, nil)
 			entry.icon.Visible = false
