@@ -219,6 +219,23 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 - เครื่องมือ **`tools/dump-model.js <placeId> "<expr>" <ชื่อ> "<คำอธิบาย>"`** คัดลอกโมเดล Part ล้วนข้ามเพลสเป็น `assets/models-from-main/<ชื่อ>.lua`
   (ทีละ 60 แถว · จุดหมุน = ก้นกลาง) · เทส: `quest_log_rules` `quest_nav_rules` `story_config` (offline) · `vip_gift` `quest_tracker_gui` (Edit)
 
+**ปล่องมังกรหลับ + แลนด์มาร์กบนแผนที่ (2026-09-29) — เฟส 112 รันแล้วในเพลสหลัก · ดันสามเพลส mismatches 0 · ยังไม่ได้เทสในเกม**
+สเปก `docs/superpowers/specs/2026-09-29-wyrmsleep-crater-design.md` · แผน `docs/superpowers/plans/2026-09-29-wyrmsleep-crater.md` · **มังกรซากซอมบี้ = เฟสหน้า**
+(อีเวนต์ตามเวลาแบบบอสโลก · ผู้ใช้หาโมเดลมาวางเอง · หาศูนย์ลานจาก `WyrmsleepConfig`)
+- ⚠️ **เรขาคณิตทั้งหมดอยู่ `ReplicatedStorage.WyrmsleepConfig` ที่เดียว** (`Target(x, z, orig)` ข้อมูลล้วน) — ยอดจริง (3250, -4850)
+  ไม่ใช่พิกัดในผัง · ลาน r108 y2200 · ลาวา r112-140 · ขอบ r180 y2262 · ทางเข้าชี้แอสตราเวล: สะพาน 12 → ช่องแยก y2214 → ลานจอด r265 y2208
+- ⚠️ **ผิว smooth terrain ที่มองเห็นสูงกว่าระดับเติม voxel ราว 2 สตัด** (วัดแล้ว +1.55..+2.22) — เฟส 112 คิดเป็น "ผิวที่เห็น" แล้วลบ `BIAS = 2`
+  ตอนเขียน · รอบแรกไม่ชดเชย ท้องลาวาขึ้นมาเท่าผิวลาวา Neon = ลาวาจมหาย · เทส `wyrmsleep_crater_test` บีบค่าเผื่อ ±1
+- **ไม่ถมโพรงถ้ำ** (ผู้ใช้สั่ง) ใต้ยอดมีโพรงเก่า เขียนแค่เปลือก 16 สตัดใต้ผิว · สำรองเทอร์เรน `ServerStorage.WyrmsleepBackup` (+`Corner`)
+- **ลาวา = Part ติดแท็ก `WOLD_Lava`** → `Lava.server` ไหม้ 10%/วิ (`VitalsConfig.LavaBurnFraction`) ชนิด `burn` ข้ามเกราะ เลือดหมดล้มคลาน ·
+  วางลาวาที่อื่นแค่ติดแท็ก (ต้องเปิด CanQuery) · ชิ้นลาวาห้ามทับสะพาน (`W.OnBridge`)
+- ควัน = โมเดล `Smoke` **Persistent** (เห็นจากไกล) · เสียงคำราม 9112775165 · ลาวาเดือด 318794788 · กระดูก/ป้ายติด `Manual` สร้างครั้งเดียว ·
+  ลาวา/เอฟเฟกต์ `PhaseBuilt` สร้างใหม่ทุกรัน · รันซ้ำไม่ทบ (เทสแล้ว)
+- **เรือเหาะ `maxAlt` 900 → 2600** (เดิมไต่จากแอสตราเวลไม่ได้เลย) · สถานี `WyrmsleepMooring`
+- **แผนที่ M:** ลบหอเวทเอลด์ + ถ้ำคริสตัล · เพิ่ม ปล่องมังกรหลับ (▲ volcano) · เตาหลอม · ป่าหินเวท · ต้นไม้โลก · หอคอยสันโดษ (◆ landmark)
+  · โซนเพลง "Spire of Eld" → "Wyrmsleep" · เทส `wyrmsleep_shape_test` `wyrmsleep_config_test` (offline) · `wyrmsleep_crater_test` (Edit เพลสหลัก)
+- **ต้องทำก่อนใช้จริง: publish เพลสหลัก** (ภูมิประเทศ/ของในเพลสไม่ใช่โค้ด Rojo)
+
 ## โมเดลจากโค้ด (modelkit)
 ชุดสร้างโมเดลด้วยโค้ดอยู่ที่ `modelkit/` + `models/` — **อ่าน `docs/modelkit-reference.md` ก่อนแตะ**
 มีของพร้อมใช้: แลนด์มาร์ก 5 หลัง บ้าน 5 แบบ NPC 12 ตัว (rig R15 เดินได้จริง) ทุกอาคารเข้าไปอยู่ได้
