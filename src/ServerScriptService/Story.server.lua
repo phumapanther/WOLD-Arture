@@ -21,6 +21,16 @@ local Inventory = require(script.Parent.Inventory)
 local Progression = require(script.Parent.Progression)
 local StatusEffects = require(script.Parent.StatusEffects)
 local StoryAccess = require(script.Parent.StoryAccess)
+local VipGift = require(script.Parent.VipGift)
+local Vip = require(script.Parent.Vip)
+local Friends = require(script.Parent.Friends)
+local PremiumAccess = require(script.Parent.PremiumAccess)
+local QuestNav = require(script.Parent.QuestNav)
+local FarmRegistry = require(script.Parent.Lobby.FarmRegistry)
+local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
+local QuestLogRules = require(game.ReplicatedStorage.QuestLogRules)
+local QuestNavRules = require(game.ReplicatedStorage.QuestNavRules)
+local TeleportService = game:GetService("TeleportService")
 
 local NPC_TAG = "WOLD_StoryNpc"
 local MARKER_TAG = "WOLD_StoryMarker"
@@ -29,6 +39,11 @@ local PROMPT_DISTANCE = 10
 
 local InCutscene = {} -- [player] = token (ตรึงตัวอยู่)
 local LastPushed = {} -- [player] = กุญแจของภาพล่าสุด (ส่งซ้ำเฉพาะตอนเปลี่ยน)
+local SkyOffered = {} -- [player] = true ระหว่างถามรับพร (กันยิง sky_accept เอง)
+local SkyPending = {} -- [player] = token ระหว่างคัทซีนรถ (วาปครั้งเดียว)
+local Warping = {} -- [player] = true ระหว่างรอ TeleportService (ไว้บอกตอนวาปไม่สำเร็จ)
+local AURAS = VipGift.AuraPool()
+local rng = Random.new()
 
 local function storyOf(player)
 	local data = ProfileAccess.Get(player)
@@ -44,17 +59,9 @@ local function storyOf(player)
 	return s
 end
 
--- บทที่กำลังเล่น (บทแรกที่ยังไม่จบ) + ความคืบหน้าของบทนั้น
+-- บทที่กำลังเล่น (บทแรกที่ยังไม่จบ) + ความคืบหน้า · ค่าที่สาม = บทล็อกถัดไป (StoryConfig.Current)
 local function current(s)
-	for _, ch in ipairs(StoryConfig.Chapters) do
-		local p = s.ch[ch.id]
-		if type(p) ~= "table" then
-			p = { step = 1, got = 0 }
-			s.ch[ch.id] = p
-		end
-		if not p.done then return ch, p end
-	end
-	return nil, nil
+	return StoryConfig.Current(s)
 end
 
 local function townCenter(townId)
@@ -81,11 +88,58 @@ local function npcModel(npcId)
 	return nil
 end
 
+local function hasPremium(player)
+	return PremiumAccess.HasPremiumPass ~= nil and PremiumAccess.HasPremiumPass(player) == true
+end
+
+local function friendCount(player)
+	local state = Friends.Get(player)
+	local n = 0
+	for _ in pairs(state and state.friends or {}) do n += 1 end
+	return n
+end
+
+local function sideQuestsOf(player)
+	local data = ProfileAccess.Get(player)
+	if not data then return {} end
+	return VipGift.Quests(data, os.time(), Progression.GetLevel(player), friendCount(player), AURAS, hasPremium(player))
+end
+
+-- แถวทอง (บทที่เล่น หรือบทล็อก) + แถวฟ้า — ไคลเอนต์รวมกับงานบอร์ดเอง (QuestLogRules.Merge)
+local function rowsOf(player, s)
+	local rows = {}
+	local ch, p, locked = current(s)
+	if ch then
+		local step = ch.steps[p.step]
+		local got = p.got or 0
+		if step.kind == "deliver" then got = Inventory.CountOf(player, step.item) end
+		rows[#rows + 1] = QuestLogRules.MainRow(ch, step, got)
+	elseif locked then
+		rows[#rows + 1] = QuestLogRules.LockedRow(locked)
+	end
+	for _, q in ipairs(sideQuestsOf(player)) do
+		rows[#rows + 1] = QuestLogRules.SideRow(q, StoryConfig.SideQuests[q.id])
+	end
+	return rows
+end
+
+-- เควสฟ้าโผล่ใหม่ = ข้อความ + เสียง ครั้งเดียวต่อเควส (แถวทองมีเสียงขึ้นขั้นของมันอยู่แล้ว)
+local function announce(player, s, rows)
+	if type(s.pop) ~= "table" then s.pop = {} end
+	for _, row in ipairs(rows) do
+		if row.color == "side" and row.state == "active" and not s.pop[row.key] then
+			s.pop[row.key] = true
+			Remotes.StoryPlay:FireClient(player, "newQuest", row.title)
+		end
+	end
+end
+
 local function stateOf(player)
 	local s = storyOf(player)
 	if not s then return nil end
+	local rows = rowsOf(player, s)
 	local ch, p = current(s)
-	if not ch then return { done = true } end
+	if not ch then return { done = true, rows = rows } end
 	local step = ch.steps[p.step]
 	local got = p.got or 0
 	if step.kind == "deliver" then got = Inventory.CountOf(player, step.item) end
@@ -97,14 +151,18 @@ local function stateOf(player)
 		target = step.kind == "reach" and markerOf(ch) or nil, radius = step.radius,
 		-- ❗ เหนือหัว NPC: มีเรื่องให้คุยจริงตอนนี้
 		ready = step.kind == "talk" or (step.kind == "deliver" and got >= (step.need or 0)),
+		rows = rows,
 	}
 end
 
 local function push(player, force)
 	local state = stateOf(player)
 	if not state then return end
-	local key = state.done and "done" or table.concat({ state.chapter, state.step, state.got or 0,
-		tostring(state.ready), tostring(state.npcAt), tostring(state.target) }, "|")
+	local s = storyOf(player)
+	if s then announce(player, s, state.rows or {}) end
+	local key = (state.done and "done" or table.concat({ state.chapter, state.step, state.got or 0,
+		tostring(state.ready), tostring(state.npcAt), tostring(state.target) }, "|"))
+		.. "#" .. QuestLogRules.Signature(state.rows)
 	if not force and LastPushed[player] == key then return end
 	LastPushed[player] = key
 	Remotes.StoryState:FireClient(player, state)
@@ -148,8 +206,14 @@ local function talk(player, npcId)
 	if not s then return end
 	local ch, p = current(s)
 	if not ch then
-		local last = StoryConfig.Chapters[#StoryConfig.Chapters]
-		if last and last.npc == npcId then play(player, last.doneDialogue) end
+		-- บทล่าสุดที่เปิดแล้ว (ข้ามบทล็อกท้ายตาราง) เป็นคนพูดบทจบ
+		for i = #StoryConfig.Chapters, 1, -1 do
+			local last = StoryConfig.Chapters[i]
+			if not last.locked then
+				if last.npc == npcId then play(player, last.doneDialogue) end
+				break
+			end
+		end
 		return
 	end
 	if ch.npc ~= npcId then return end
@@ -222,6 +286,114 @@ local function startCutscene(player)
 	end)
 end
 
+--------------------------------------------------------------------------------
+-- ออฟาเรียน เทพหุ่นฟาง (เควสสีฟ้า · 2026-09-29) — ปุ่มอยู่ VipGiftPrompt.server
+--------------------------------------------------------------------------------
+
+-- ให้ของของเควสหนึ่งอัน · คืนข้อความของที่ได้ หรือ nil (ไม่ผ่าน = ไม่เสียสิทธิ์ ตามกติกา VipGift)
+local function giveSide(player, data, id)
+	if id == "newcomer" then
+		local ok = VipGift.ClaimPass(data, hasPremium(player), function()
+			return PremiumAccess.GrantPremiumPass ~= nil and PremiumAccess.GrantPremiumPass(player) == true
+		end)
+		return ok and "🎫 แบทเทิลพาสพรีเมียมเดือนนี้ — เปิดที่เมนู ⋯ → 🎫 แบทเทิลพาส" or nil
+	elseif id == "travel" then
+		local ok = VipGift.ClaimGems(data, function(n)
+			return PremiumAccess.AddGems ~= nil and PremiumAccess.AddGems(player, n) == true
+		end)
+		return ok and ("💎 %d เพชร"):format(VipGift.Gems) or nil
+	elseif id == "friends" then
+		local ok, auraId = VipGift.ClaimAura(data, friendCount(player), AURAS, rng, function(itemId)
+			if not Inventory.HasRoomFor(player, itemId, 1) then return false end
+			return Inventory.AddItem(player, itemId, 1) == true
+		end)
+		if ok then
+			Inventory.Send(player)
+			local item = ItemCatalog.Get(auraId)
+			return ("✨ %s (ใส่ได้ที่กระเป๋า)"):format(item and item.name or auraId)
+		end
+		if auraId == "full" then
+			Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม — เคลียร์ช่องแล้วกลับมาหาออฟาเรียน")
+		end
+	end
+	return nil
+end
+
+StoryAccess.TalkOforian = function(player)
+	if InCutscene[player] then return end
+	local data = ProfileAccess.Get(player)
+	if not data then
+		return Remotes.SocialNotify:FireClient(player, "error", "ข้อมูลตัวละครยังโหลดไม่เสร็จ ลองใหม่อีกครั้ง")
+	end
+	local spoke = false
+	for _, q in ipairs(sideQuestsOf(player)) do
+		local def = StoryConfig.SideQuests[q.id]
+		if q.state == "waiting" then
+			if q.reason then Remotes.SocialNotify:FireClient(player, "warn", q.reason) end
+		elseif q.id == "sky" then
+			-- ท้ายสุดเสมอ (VipGift.Quests) · ให้ VIP ตอนกด "รับพร" ไม่ใช่ตอนคุย
+			play(player, def.dialogue)
+			SkyOffered[player] = true
+			Remotes.StoryPlay:FireClient(player, "skyOffer")
+			spoke = true
+		else
+			local got = giveSide(player, data, q.id)
+			if got then
+				play(player, def.dialogue)
+				Remotes.StoryPlay:FireClient(player, "gift", { title = "🎁 " .. def.title, body = "ได้รับ " .. got })
+				print(("[Oforian] %s (%d) ได้ %s"):format(player.Name, player.UserId, got))
+				spoke = true
+			end
+		end
+	end
+	if not spoke then play(player, StoryConfig.OforianIdle) end
+	if ProfileAccess.Flush then ProfileAccess.Flush(player) end
+	push(player, true)
+end
+
+local function skyFailed(player, text)
+	Warping[player] = nil
+	Remotes.StoryPlay:FireClient(player, "skyFailed", text or "วาปไม่สำเร็จ — เข้าเกาะได้จากล็อบบี้ แท็บฟาร์มมิ่ง")
+end
+
+-- ข้อยกเว้นเดียวของกฎ "เปลี่ยนโหมดผ่านล็อบบี้" (ผู้ใช้เลือก 2026-09-29): ครั้งเดียวตอนจบเควสเกาะลอยฟ้า
+local function warpToIsland(player)
+	if ServerConfig.FarmingPlaceId == 0 then return skyFailed(player) end
+	local ok, code = pcall(FarmRegistry.GetOrCreate, player.UserId)
+	if not ok or not code then
+		warn("[Story] จองเกาะไม่สำเร็จ: " .. tostring(code))
+		return skyFailed(player)
+	end
+	if ProfileAccess.Flush then ProfileAccess.Flush(player) end
+	Warping[player] = true
+	local okTp, err = pcall(function()
+		TeleportService:TeleportToPrivateServer(ServerConfig.FarmingPlaceId, code, { player })
+	end)
+	if not okTp then
+		warn("[Story] วาปไม่สำเร็จ: " .. tostring(err))
+		skyFailed(player)
+	end
+end
+
+TeleportService.TeleportInitFailed:Connect(function(player)
+	if Warping[player] then skyFailed(player) end
+end)
+
+local function startSkyCutscene(player)
+	local token = os.clock()
+	InCutscene[player] = token
+	SkyPending[player] = token
+	StatusEffects.SetRooted(player, true)
+	Remotes.StoryPlay:FireClient(player, "skyCutscene", { at = QuestNav.Dummy() })
+	task.delay(StoryConfig.CutsceneMaxSeconds, function()
+		if SkyPending[player] == token then
+			SkyPending[player] = nil
+			endCutscene(player)
+			warpToIsland(player)
+		end
+	end)
+end
+
 Remotes.RequestStory.OnServerEvent:Connect(function(player, action)
 	if action == "ready" then
 		local s = storyOf(player)
@@ -235,6 +407,58 @@ Remotes.RequestStory.OnServerEvent:Connect(function(player, action)
 	elseif action == "cutscene_done" then
 		endCutscene(player)
 		push(player, true)
+	elseif action == "sky_accept" then
+		if not SkyOffered[player] or InCutscene[player] then return end
+		SkyOffered[player] = nil
+		local data = ProfileAccess.Get(player)
+		local s = storyOf(player)
+		if not (data and s) or not VipGift.Claim(data, os.time(), Progression.GetLevel(player)) then
+			return Remotes.SocialNotify:FireClient(player, "warn", "รับพรไม่ได้ตอนนี้ — ลองคุยกับออฟาเรียนอีกครั้ง")
+		end
+		Vip.Publish(player)
+		s.skyWelcome = true
+		if ProfileAccess.Flush then ProfileAccess.Flush(player) end
+		print(("[Oforian] %s (%d) รับพรเกาะลอยฟ้า (VIP +%d วัน)"):format(player.Name, player.UserId, VipGift.Days))
+		push(player, true)
+		startSkyCutscene(player)
+	elseif action == "sky_warp" then
+		if not SkyPending[player] then return end
+		SkyPending[player] = nil
+		endCutscene(player)
+		warpToIsland(player)
+	end
+end)
+
+-- จิ้มแถวเควสทอง/ฟ้า = หาเป้าให้ (แถวบอร์ด "board:" เป็นของ Quests.server)
+Remotes.RequestQuestNav.OnServerEvent:Connect(function(player, key)
+	if type(key) ~= "string" then return end
+	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	if not root then return end
+	local from = root.Position
+	if key:sub(1, 5) == "side:" then
+		return QuestNav.Send(player, QuestNav.Dummy(), StoryConfig.Npcs.Oforian.name)
+	end
+	if key:sub(1, 6) ~= "story:" then return end
+	local s = storyOf(player)
+	if not s then return end
+	local ch, p = current(s)
+	if not ch then return Remotes.SocialNotify:FireClient(player, "warn", "เควสนี้ยังไม่เปิด") end
+	local step = ch.steps[p.step]
+	local npc = npcModel(ch.npc)
+	local npcAt = npc and npc:GetPivot().Position or nil
+	local npcName = StoryConfig.Npcs[ch.npc] and StoryConfig.Npcs[ch.npc].name or ch.npc
+	if step.kind == "talk" then
+		QuestNav.Send(player, npcAt, npcName)
+	elseif step.kind == "deliver" then
+		if Inventory.CountOf(player, step.item) >= (step.need or 0) then
+			QuestNav.Send(player, npcAt, npcName)
+		else
+			QuestNav.Send(player, QuestNav.ForItem(step.item, from), QuestNav.ItemName(step.item))
+		end
+	elseif step.kind == "hunt" then
+		QuestNav.Send(player, QuestNav.Spawner(QuestNavRules.MobKindsNamed(step.mob), from), step.mob)
+	elseif step.kind == "reach" then
+		QuestNav.Send(player, markerOf(ch), step.goal)
 	end
 end)
 
@@ -305,9 +529,9 @@ task.spawn(function()
 						advance(player, s, ch, p)
 					end
 				end
-			elseif s then
-				pcall(push, player)
 			end
+			-- แถวเควส (ทอง/ฟ้า) เปลี่ยนได้ทุกขั้น รวมขั้น reach (เลเวลขึ้น เพื่อนเพิ่ม) — ส่งเมื่อเปลี่ยนเท่านั้น (push เทียบกุญแจเอง)
+			if s then pcall(push, player) end
 		end
 	end
 end)
@@ -315,6 +539,9 @@ end)
 Players.PlayerRemoving:Connect(function(player)
 	InCutscene[player] = nil
 	LastPushed[player] = nil
+	SkyOffered[player] = nil
+	SkyPending[player] = nil
+	Warping[player] = nil
 end)
 
 -- คำสั่งแอดมิน /story (AdminCommands) — ผู้ทดสอบเป็นคนเก่าเลเวลสูง จึงไม่มีวันเห็นคัทซีนคนใหม่ถ้าไม่มีทางนี้
@@ -342,6 +569,17 @@ StoryAccess.Admin = function(player, args)
 		p.step, p.got = n, 0
 		push(player, true)
 		return ("ไปขั้น %d/%d: %s"):format(n, #ch.steps, ch.steps[n].goal)
+	elseif sub == "gifts" then
+		-- ทำให้บัญชีนี้เหมือนบัญชีใหม่ที่ยังไม่เคยรับของขวัญออฟาเรียน (ทดสอบเควสฟ้าทั้งสี่)
+		local data = ProfileAccess.Get(player)
+		data.NewbieGems = true
+		data.NewbieGemsClaimed, data.NewbiePassClaimed, data.VipGiftClaimed, data.FriendAuraClaimed = nil, nil, nil, nil
+		s.pop = nil
+		push(player, true)
+		return "ล้างธงของขวัญแล้ว — เควสฟ้าโผล่ตามเงื่อนไข (Lv.5 = เกาะลอยฟ้า · จบบทไลรา = การเดินทาง · เพื่อน 5 = มิตรภาพ)"
+	elseif sub == "welcome" then
+		s.skyWelcome = true
+		return "ตั้งธงป้ายต้อนรับแล้ว — เข้าเกาะ (จากล็อบบี้) ครั้งถัดไปจะเห็น"
 	elseif sub == "done" then
 		if not ch then return "จบทุกบทแล้ว" end
 		p.step = #ch.steps

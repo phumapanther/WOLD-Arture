@@ -5,4 +5,7 @@ local StoryAccess = {}
 -- RecordKill(player, mobName) — ชื่อมอนเป็นชื่อไทยตาม GatherConfig (เรียกจาก Mobs.server ตัวเดียวกับเควส)
 StoryAccess.RecordKill = nil
 
+-- TalkOforian(player) — ปุ่ม "คุยกับออฟาเรียน" บนหุ่นฟาง (VipGiftPrompt.server เรียก · Story.server ตั้ง)
+StoryAccess.TalkOforian = nil
+
 return StoryAccess
