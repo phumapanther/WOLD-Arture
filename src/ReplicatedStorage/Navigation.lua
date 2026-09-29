@@ -30,6 +30,7 @@ end
 --------------------------------------------------------------------------------
 
 local function clearFolder(self)
+	self.route = nil
 	if self.markers then
 		self.markers:Destroy()
 		self.markers = nil
@@ -53,7 +54,13 @@ end
 -- Lays the trail out along the computed waypoints. Drawn locally, so it exists only for this player.
 function Navigation:draw(waypoints)
 	clearFolder(self)
+	-- จดเส้นทางไว้ให้ปุ่ม T เดินตาม (AutoWalkController) · ตารางใหม่ทุกครั้งที่คำนวณ ผู้เดินจึงรู้ว่าเส้นเปลี่ยน
 	if not waypoints or #waypoints == 0 then return end
+	local route = {}
+	for i, point in ipairs(waypoints) do
+		route[i] = { pos = point.Position, jump = point.Action == Enum.PathWaypointAction.Jump }
+	end
+	self.route = route
 
 	local folder = Instance.new("Folder")
 	folder.Name = "WOLD_NavTrail"

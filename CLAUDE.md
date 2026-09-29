@@ -171,6 +171,10 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
   ตี/สกิล Q/ตีบวก ปฏิเสธพร้อมข้อความ "อาวุธพังแล้ว — ใช้ค้อนซ่อมก่อน" (`InventoryConfig.IsBroken`) · ซ่อมแล้วใช้ได้เหมือนเดิม ·
   แถบในกระเป๋าพื้นแดงตอน 0 · **สนามยกเว้น** (สกินยืมมา ไม่มีค้อนซ่อม) · ไม่ติดสกิน = พังหายเหมือนเดิม · เทส `skin_broken_test`
   · **ระบบใหม่ที่ใช้อาวุธในมือทำดาเมจต้องเช็ค `IsBroken` ด้วย**
+- **กด T เดินอัตโนมัติตามเส้นหมุด (คอมเท่านั้น · 2026-09-29)** `AutoWalkController.client` + `AutoWalk.lua` (กติกาล้วน เทส `auto_walk_test`) ·
+  เส้นมาจาก `Navigation.Active` (SocialController ตั้ง) + `nav.route` ที่ `Navigation:draw` จด · เดินด้วย `Humanoid:Move` ผูก RenderStep
+  ลำดับ Input+1 (ทับ ControlModule) · Shift วิ่งได้ · หยุด: T/WASD/ถึงหมุด/ล้ม/ตาย/นั่ง · ปุ่ม T ของเทรด (ProximityPrompt) ที่โชว์อยู่ได้ T ก่อน ·
+  ป้ายกลางบน y 112 · ติดขอบ 1.2 วิ = กระโดด
 - **เงินเริ่มต้น 20,000 เฉพาะบัญชีใหม่** `StarterKit.Gold` ได้พร้อมชุดเปิดตัว (บัญชีเก่าไม่ได้ — ผู้ใช้เลือก)
 - เกาะ: รถส่งออก **18 นาที** (`ExportConfig.ShipSeconds`) · ของสุ่มบนผืนดิน **ทุก 15 นาที ทีละ 3 จุด** (`IslandConfig.NodeSpawn`) ·
   ลูบสัตว์เลี้ยง **ทุก 10 นาที** (`PetPatSeconds`) — ข้อความ 30 นาทีที่อื่นใน CLAUDE.md นี้เป็นค่าเก่า
