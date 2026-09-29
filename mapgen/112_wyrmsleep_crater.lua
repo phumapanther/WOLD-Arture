@@ -103,17 +103,29 @@ local function run()
 							local mat = MAT[kind]
 							if not mat then
 								-- ด้านนอก: หิมะละลายเป็นบะซอลต์/หินชนวนในรัศมี MeltRadius ขอบสุ่มไม่เป็นเส้นตรง · ไกลกว่านั้นคงวัสดุเดิม
-								if d + math.noise(wx / 45, wz / 45, 7.3) * 28 < W.MeltRadius then
+								if d + math.noise(wx / 45, wz / 45, 7.3) * W.MeltNoise < W.MeltRadius then
 									mat = math.noise(wx / 18, wz / 18, 2.1) > 0.15 and Enum.Material.Slate or Enum.Material.Basalt
 								else
 									mat = topMat
 								end
 							end
-							if math.abs(target - orig) > 0.3 or topMat ~= mat then
+							if math.abs(target - orig) <= 0.3 then
+								-- ความสูงไม่เปลี่ยน (หิมะละลายอย่างเดียว): ทาสีสองช่องบนสุดที่ตัน ไม่แตะความตัน
+								-- (เดิมเขียนเปลือก 16 สตัดทั้งวง = ปิดเพดานโพรงไกลเกินปล่อง และรีเซ็ตผิว — รีวิว 2026-09-29)
+								if topMat ~= mat then
+									touched = true
+									columns += 1
+									for iy = topIy, math.max(1, topIy - 1), -1 do
+										if mats[ix][iy][iz] ~= AIR then mats[ix][iy][iz] = mat end
+									end
+								end
+							else
 								touched = true
 								columns += 1
 								local fill = target - BIAS -- ระดับเติม voxel ที่ให้ผิวที่เห็น = target
-								local shellBottom = fill - W.ShellDepth
+								-- ยกขึ้น: หินใหม่ตันตั้งแต่ผิวเดิมถึงผิวใหม่ (เดิมตันแค่ 16 สตัด ขอบปล่องจึงกลวง) ·
+								-- ขุดลง: เปลือก ShellDepth · ใต้นั้นไม่แตะ (ผู้ใช้สั่งไม่ถมโพรงถ้ำ)
+								local shellBottom = math.min(fill - W.ShellDepth, filled)
 								local clearTop = math.max(filled, fill) + RES
 								for iy = 1, sy do
 									local yb = base.Y + (iy - 1) * RES
@@ -162,12 +174,26 @@ local function run()
 		wyrm.Name = "Wyrmsleep"
 		wyrm.Parent = root
 	end
+	-- ⚠️ ตราอยู่ที่ "ของแต่ละชิ้น" ไม่ใช่ทั้งโฟลเดอร์ — ของที่ผู้ใช้เพิ่มเองในโฟลเดอร์เหล่านี้ (ไม่มีตรา) รอดการรันซ้ำ
+	-- รุ่นแรกประทับตราที่ตัวโฟลเดอร์ Lava/FX/Smoke (ข้างในมีแต่ของเฟส) — ลบทิ้งแล้วสร้างใหม่แบบไม่มีตรา (รีวิว 2026-09-29)
 	for _, child in ipairs(wyrm:GetChildren()) do
 		if child:GetAttribute("PhaseBuilt") and not child:GetAttribute("Manual") then child:Destroy() end
 	end
 	local function built(inst)
 		inst:SetAttribute("PhaseBuilt", true)
 		return inst
+	end
+	local function container(name, className)
+		local c = wyrm:FindFirstChild(name)
+		if not c then
+			c = Instance.new(className or "Folder")
+			c.Name = name
+			c.Parent = wyrm
+		end
+		for _, child in ipairs(c:GetChildren()) do
+			if child:GetAttribute("PhaseBuilt") then child:Destroy() end
+		end
+		return c
 	end
 	local function part(parent, name, size, cf, props)
 		local p = Instance.new("Part")
@@ -185,9 +211,7 @@ local function run()
 	----------------------------------------------------------------------------
 	-- 4) ผิวลาวา: วงแหวน 120 ชิ้น Neon โปร่งนิดๆ เว้นสะพาน · ติดแท็ก WOLD_Lava ให้ Lava.server เผา
 	----------------------------------------------------------------------------
-	local lavaFolder = built(Instance.new("Folder"))
-	lavaFolder.Name = "Lava"
-	lavaFolder.Parent = wyrm
+	local lavaFolder = container("Lava")
 	local SEG = 120
 	local rMid = (W.LavaInner + W.LavaOuter) / 2
 	local width = W.LavaOuter - W.LavaInner
@@ -197,12 +221,12 @@ local function run()
 		local th = i * 2 * math.pi / SEG
 		local px, pz = C.X + math.cos(th) * rMid, C.Z + math.sin(th) * rMid
 		if not W.OnBridge(px, pz, length / 2 + 1) then
-			local p = part(lavaFolder, "LavaSurface",
+			local p = built(part(lavaFolder, "LavaSurface",
 				Vector3.new(width, 1, length),
 				CFrame.new(px, W.LavaSurfaceY - 0.5, pz) * CFrame.Angles(0, -th, 0),
 				-- ทึบ: ชิ้นโปร่งแสงที่วางเหลื่อมกันทึบขึ้นตรงรอยซ้อนเป็นลายเส้นทั้งวง (เห็นในภาพรอบแรก)
 				{ Material = Enum.Material.Neon, Color = LAVA_COLOR, Transparency = 0,
-					CanCollide = false, CanTouch = false, CanQuery = true, CastShadow = false })
+					CanCollide = false, CanTouch = false, CanQuery = true, CastShadow = false }))
 			CollectionService:AddTag(p, "WOLD_Lava")
 			lavaCount += 1
 		end
@@ -212,12 +236,10 @@ local function run()
 	-- 5) บรรยากาศ
 	----------------------------------------------------------------------------
 	-- เสาควัน: Persistent = ไม่ถูกสตรีมทิ้งตามระยะ มองเห็นจากทั่วแมพ
-	local smoke = built(Instance.new("Model"))
-	smoke.Name = "Smoke"
+	local smoke = container("Smoke", "Model")
 	smoke.ModelStreamingMode = Enum.ModelStreamingMode.Persistent
-	smoke.Parent = wyrm
-	local vent = part(smoke, "Vent", Vector3.new(30, 2, 30), CFrame.new(C.X, W.RimY + 10, C.Z),
-		{ Transparency = 1, CanCollide = false, CanTouch = false, CanQuery = false, CastShadow = false })
+	local vent = built(part(smoke, "Vent", Vector3.new(30, 2, 30), CFrame.new(C.X, W.RimY + 10, C.Z),
+		{ Transparency = 1, CanCollide = false, CanTouch = false, CanQuery = false, CastShadow = false }))
 	smoke.PrimaryPart = vent
 	local plume = Instance.new("ParticleEmitter")
 	plume.Name = "Plume"
@@ -238,11 +260,9 @@ local function run()
 	plume.Parent = vent
 
 	-- เสียงคำราม (ProSoundEffects "Earthquake Rumble 1" · PreloadAsync = Success แล้ว)
-	local fx = built(Instance.new("Folder"))
-	fx.Name = "FX"
-	fx.Parent = wyrm
-	local rumbleSource = part(fx, "Rumble", Vector3.new(2, 2, 2), CFrame.new(C.X, W.FloorY + 12, C.Z),
-		{ Transparency = 1, CanCollide = false, CanTouch = false, CanQuery = false, CastShadow = false })
+	local fx = container("FX")
+	local rumbleSource = built(part(fx, "Rumble", Vector3.new(2, 2, 2), CFrame.new(C.X, W.FloorY + 12, C.Z),
+		{ Transparency = 1, CanCollide = false, CanTouch = false, CanQuery = false, CastShadow = false }))
 	local function loop(parent, id, volume, minD, maxD)
 		local s = Instance.new("Sound")
 		s.SoundId = id
@@ -262,8 +282,8 @@ local function run()
 		local th = math.rad(k * 45 + 22.5)
 		local px, pz = C.X + math.cos(th) * rMid, C.Z + math.sin(th) * rMid
 		if not W.OnBridge(px, pz, 10) then
-			local anchor = part(fx, "Ember", Vector3.new(4, 1, 4), CFrame.new(px, W.LavaSurfaceY + 0.5, pz),
-				{ Transparency = 1, CanCollide = false, CanTouch = false, CanQuery = false, CastShadow = false })
+			local anchor = built(part(fx, "Ember", Vector3.new(4, 1, 4), CFrame.new(px, W.LavaSurfaceY + 0.5, pz),
+				{ Transparency = 1, CanCollide = false, CanTouch = false, CanQuery = false, CastShadow = false }))
 			local em = Instance.new("ParticleEmitter")
 			em.Texture = "rbxasset://textures/particles/sparkles_main.dds"
 			em.Color = ColorSequence.new(Color3.fromRGB(255, 190, 80), Color3.fromRGB(255, 60, 20))
@@ -287,13 +307,21 @@ local function run()
 	end
 
 	----------------------------------------------------------------------------
-	-- 6) กระดูก (Manual — สร้างเฉพาะตอนยังไม่มี)
+	-- 6) กระดูก (Manual — สร้างครั้งเดียวตลอดกาล)
 	----------------------------------------------------------------------------
+	-- ธง Built_<ชื่อ> บนโฟลเดอร์ Decor: สร้างไปแล้ว = ไม่สร้างอีก **แม้ผู้ใช้ลบทิ้ง** (ลบ = ตั้งใจไม่เอา)
+	-- อยากได้กลับมาให้ลบแอตทริบิวต์ Built_<ชื่อ> แล้วรันเฟสซ้ำ (รีวิว 2026-09-29: เดิมลบแล้วโผล่กลับ)
 	local decor = wyrm:FindFirstChild("Decor")
 	if not decor then
 		decor = Instance.new("Folder")
 		decor.Name = "Decor"
 		decor.Parent = wyrm
+	end
+	local function once(name, build)
+		if decor:FindFirstChild(name) then decor:SetAttribute("Built_" .. name, true) end -- รุ่นก่อนยังไม่มีธง
+		if decor:GetAttribute("Built_" .. name) then return end
+		build()
+		decor:SetAttribute("Built_" .. name, true)
 	end
 	local function bone(parent, name, size, cf, collide, props)
 		local p = part(parent, name, size, cf, { Material = Enum.Material.Limestone, Color = BONE, CanCollide = collide })
@@ -311,7 +339,7 @@ local function run()
 	local function onGround(v) return Vector3.new(v.X, groundAt(v.X, v.Z), v.Z) end
 
 	-- กะโหลกมังกร: ฝั่งตรงข้ามทางเข้า หันหน้าหาสะพาน ครึ่งจมพื้น
-	if not decor:FindFirstChild("Skull") then
+	once("Skull", function()
 		local m = Instance.new("Model")
 		m.Name = "Skull"
 		local s = onGround(C - axis * 80)
@@ -341,10 +369,10 @@ local function run()
 		m.PrimaryPart = cranium
 		m:SetAttribute("Manual", true)
 		m.Parent = decor
-	end
+	end)
 
 	-- ซี่โครง: กระดูกสันหลังยกสูง 16 ซี่โครง 6 คู่โค้งลงถึงพื้นสองข้าง (เดินลอดได้) + หางเลื้อยต่อบนพื้น
-	if not decor:FindFirstChild("Ribcage") then
+	once("Ribcage", function()
 		local m = Instance.new("Model")
 		m.Name = "Ribcage"
 		local mid = C + side * 70
@@ -384,10 +412,10 @@ local function run()
 		end
 		m:SetAttribute("Manual", true)
 		m.Parent = decor
-	end
+	end)
 
 	-- กระดูกยาวกับกรงเล็บ กระจายรอบลาน (เดินทะลุได้)
-	if not decor:FindFirstChild("Scattered") then
+	once("Scattered", function()
 		local m = Instance.new("Model")
 		m.Name = "Scattered"
 		local rng = Random.new(29)
@@ -419,12 +447,12 @@ local function run()
 		rod(m, "Claw", c2, c3, 0.6, false, BONE_DARK)
 		m:SetAttribute("Manual", true)
 		m.Parent = decor
-	end
+	end)
 
 	----------------------------------------------------------------------------
 	-- 7) ป้ายหน้าช่องแยก (Manual)
 	----------------------------------------------------------------------------
-	if not decor:FindFirstChild("Sign") then
+	once("Sign", function()
 		local m = Instance.new("Model")
 		m.Name = "Sign"
 		-- บนลานจอดข้างปากทางขึ้นช่องแยก (ช่วงระหว่างขอบกับลานจอดเป็นหุบ ผนังสองข้างสูง 30-50 ป้ายบนนั้นจะลอยพ้นสายตา)
@@ -462,7 +490,7 @@ local function run()
 		m.PrimaryPart = board
 		m:SetAttribute("Manual", true)
 		m.Parent = decor
-	end
+	end)
 
 	status(("เสร็จ: ภูมิประเทศ %d คอลัมน์ · ลาวา %d ชิ้น · ศูนย์ปล่อง %.0f, %.0f"):format(columns, lavaCount, C.X, C.Z), true)
 end

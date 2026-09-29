@@ -26,15 +26,22 @@ W.RimY = 2262
 -- ด้านนอก: กรวยลาด "ยกอย่างเดียว" แล้วจางคืนผิวเดิม
 W.OuterSlope = 0.55
 W.FadeFrom = 280
+-- กรวยค่อยๆ จมลงเท่านี้จาก FadeFrom ถึง WorkRadius จนต่ำกว่าผิวเดิมทุกทิศ (กรวยที่ r340 = 2174 − 90 = 2084)
+-- ใช้ "max(ผิวเดิม, กรวยที่จมแล้ว)" ล้วน รันซ้ำจึงได้ผลเดิมเป๊ะ (สูตร lerp เดิมดันแถบนี้สูงขึ้นทุกรอบ — รีวิว 2026-09-29)
+W.FadeDrop = 90
 W.WorkRadius = 340
-W.MeltRadius = 330 -- หิมะละลายในรัศมีนี้ (เฟสสุ่มขอบให้ไม่เป็นเส้นตรง)
+W.MeltRadius = 310 -- หิมะละลายในรัศมีนี้ ± MeltNoise (เฟสสุ่มขอบ) — รวมกันต้องไม่เกิน WorkRadius ไม่งั้นขอบถูกตัดเป็นวงกลม
+W.MeltNoise = 28
 -- เปลือกปล่องหนาเท่านี้ใต้ผิวใหม่ — ไม่ถมโพรงถ้ำที่ลึกกว่านี้ (ผู้ใช้สั่ง 2026-09-29)
 W.ShellDepth = 16
 
 -- ทางเข้า: สะพานข้ามลาวา → ทางลาดผ่าผนัง → ช่องแยกขอบปล่อง → ลานจอดเรือเหาะ
 W.BridgeHalf = 6
 W.PathHalf = 8
-W.Blend = 6
+W.Blend = 6 -- ระยะที่ทางเข้าเริ่มก่อนขอบลาน (a > FloorRadius − Blend)
+-- ตลิ่งข้างทางเดิน/ลานจอด: ระดับถูกบีบให้อยู่ใน "ความสูงทาง ± ตลิ่ง × ระยะเกินขอบ" (clamp ไม่ใช่ lerp — รันซ้ำได้ผลเดิม)
+W.BankCut = 4 -- ด้านที่ขุดลง (ผนังหุบช่องแยก หลังลานจอด) ชันราว 76°
+W.BankFill = 1 -- ด้านที่ถมขึ้นรอบลานจอด ลาด 45° เดินลงเขาได้ · ทางเดิน/สะพานใช้ BankCut ทั้งสองด้าน (ไม่ให้คันทับลาวา)
 W.NotchY = 2214
 W.PadY = 2208
 W.PadDistance = 265
@@ -100,31 +107,27 @@ function W.Target(x, z, orig)
 	elseif d <= W.RimRadius then
 		y, kind = lerp(W.LavaBedY, W.RimY, smooth((d - W.BedOuter) / (W.RimRadius - W.BedOuter))), "wall"
 	else
-		-- ยกอย่างเดียว ไม่ขุด แล้วจางคืนผิวเดิมก่อนถึงขอบรัศมีงาน (กันหน้าผาโผล่ที่ขอบ)
+		-- ยกอย่างเดียว ไม่ขุด · กรวยจมลงหลัง FadeFrom จนต่ำกว่าผิวเดิมก่อนถึงขอบรัศมีงาน (กันหน้าผาโผล่ที่ขอบ)
 		local cone = W.RimY - W.OuterSlope * (d - W.RimRadius)
+			- W.FadeDrop * smooth((d - W.FadeFrom) / (W.WorkRadius - W.FadeFrom))
 		y, kind = math.max(orig, cone), "outer"
-		if d > W.FadeFrom then
-			y = lerp(y, orig, smooth((d - W.FadeFrom) / (W.WorkRadius - W.FadeFrom)))
-		end
 	end
 
-	-- ทางเข้าตามแกน: สะพานกว้าง BridgeHalf×2 ข้ามลาวา แล้วทางกว้าง PathHalf×2 ถึงลานจอด (ขอบเกลี่ย Blend)
+	-- ทางเข้าตามแกน: สะพานกว้าง BridgeHalf×2 ข้ามลาวา แล้วทางกว้าง PathHalf×2 ถึงลานจอด · ข้างทางเป็นตลิ่งชัน
 	local a, p = axial(x, z)
 	if a > W.FloorRadius - W.Blend and a < W.PadDistance then
 		local core = (a <= W.LavaOuter) and W.BridgeHalf or W.PathHalf
-		if p < core + W.Blend then
-			y = lerp(y, pathHeight(a), 1 - smooth((p - core) / W.Blend))
-			if p <= core then kind = "path" end
-		end
+		local hp, k = pathHeight(a), math.max(0, p - core) * W.BankCut
+		y = math.clamp(y, hp - k, hp + k)
+		if p <= core then kind = "path" end
 	end
 
-	-- ลานจอดเรือเหาะ
+	-- ลานจอดเรือเหาะ: ขุดด้านที่สูงกว่าเป็นตลิ่งชัน · ถมด้านที่ต่ำกว่าเป็นลาด 45°
 	local pdx, pdz = x - W.PadCenter.X, z - W.PadCenter.Z
 	local dp = math.sqrt(pdx * pdx + pdz * pdz)
-	if dp < W.PadRadius + W.Blend then
-		y = lerp(y, W.PadY, 1 - smooth((dp - W.PadRadius) / W.Blend))
-		if dp <= W.PadRadius then kind = "pad" end
-	end
+	local over = math.max(0, dp - W.PadRadius)
+	y = math.clamp(y, W.PadY - over * W.BankFill, W.PadY + over * W.BankCut)
+	if dp <= W.PadRadius then kind = "pad" end
 
 	return y, kind, d
 end

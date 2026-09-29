@@ -63,6 +63,20 @@ x, z = at(339.9, 180)
 y = W.Target(x, z, 2150)
 check(near(y, 2150, 0.5), ("ขอบรัศมีงานต่อกับผิวเดิม (ได้ %.2f)"):format(y or -1))
 
+-- 2b. รันซ้ำต้องได้ผลเดิม: Target(Target(orig)) = Target(orig) ทุกจุด (รีวิว 2026-09-29 — แถบจางเคยสูงขึ้นทุกรอบ)
+local drift, driftAt = 0, ""
+for deg = 0, 350, 10 do
+	for d = 0, 340, 2 do
+		x, z = at(d, deg)
+		local o = dome(d) - 30 * math.sin(deg) -- ผิวเดิมไม่สม่ำเสมอ
+		local y1 = W.Target(x, z, o)
+		local y2 = y1 and W.Target(x, z, y1)
+		if y1 and math.abs(y2 - y1) > drift then drift, driftAt = math.abs(y2 - y1), ("%d° r%d"):format(deg, d) end
+	end
+end
+check(drift < 0.01, ("รันซ้ำไม่ทบ: ต่างสุด %.3f ที่ %s"):format(drift, driftAt))
+check(W.MeltNoise ~= nil and W.MeltRadius + W.MeltNoise <= W.WorkRadius, "ขอบหิมะละลาย (รวมสุ่ม) อยู่ในรัศมีงาน ไม่ถูกตัดเป็นวงกลม")
+
 -- 3. ไม่มีหน้าผาโผล่ในแนวรัศมี (นอก ±20 องศาของแกนทางเข้า)
 local worst, worstAt = 0, ""
 for deg = 25, 335, 10 do

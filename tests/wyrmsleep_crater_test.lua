@@ -91,6 +91,37 @@ for d = 0, W.PadDistance, 4 do
 end
 check(worst <= 4, ("ทางเดินจากลานถึงลานจอด ขั้นสูงสุด %.2f ต่อ 4 สตัด (≤ 4)"):format(worst))
 
+-- 2b. ส่วนที่เฟสสร้างต้องตัน (รีวิว 2026-09-29 — ส่วนที่ยกขึ้นเคยกลวง เปิดออกเป็นร่องข้างช่องแยก)
+--   (ก) ใต้ผิว 14 สตัดตันทุกคอลัมน์ (เปลือก ShellDepth) · (ข) แถบขอบ r 180-200 ตันจากผิวลงถึง y 2228 = หินใหม่ล้วน
+--   (ผิวเดิมตรงนั้นสูงสุด ~2227) — โพรงถ้ำเดิมที่ลึกกว่านั้นผู้ใช้สั่งไม่ถม จึงไม่นับ
+--   อ่านทีละ "คอลัมน์ voxel ตรงกริด" (กรอบที่ไม่ตรงกริดขยายไปกินคอลัมน์ข้างๆ ซึ่งบนผนังชันต่ำกว่าเกือบ 10 สตัด)
+--   และนับ (ก) เฉพาะคอลัมน์ที่ผิวเป็นไปตามแบบของเฟส — คอลัมน์ที่ผิวเดิมสูงกว่ากรวยอยู่แล้วเฟสไม่แตะ (โพรงเดิม)
+local function hollowBetween(vx, vz, yTop, yBottom)
+	if yTop - yBottom < 4 then return false end
+	local region = Region3.new(Vector3.new(vx, yBottom, vz), Vector3.new(vx + 4, yTop, vz + 4)):ExpandToGrid(4)
+	local mats, occs = workspace.Terrain:ReadVoxels(region, 4)
+	for iy = 1, mats.Size.Y - 1 do -- ช่องบนสุดคือผิว (เติมไม่เต็มได้) ไม่นับ
+		if mats[1][iy][1] == Enum.Material.Air or occs[1][iy][1] < 0.1 then return true end
+	end
+	return false
+end
+local shallow, rimHollow, sampled = 0, 0, 0
+for deg = 0, 355, 5 do
+	for _, d in ipairs({ 150, 170, 185, 200, 230, 260, 290, 320 }) do
+		x, z = at(d, deg)
+		local vx, vz = math.floor(x / 4) * 4, math.floor(z / 4) * 4
+		local top = surf(vx + 2, vz + 2)
+		local design = W.Target(vx + 2, vz + 2, -math.huge) -- ผิวตามแบบ ไม่สนผิวเดิม
+		if top and design and top <= design + 0.6 then
+			sampled += 1
+			if hollowBetween(vx, vz, top - 2, top - 14) then shallow += 1 end
+			if d >= 180 and d <= 200 and hollowBetween(vx, vz, top - 2, 2228) then rimHollow += 1 end
+		end
+	end
+end
+check(shallow == 0, ("ใต้ผิว 14 สตัดตัน (กลวง %d จาก %d)"):format(shallow, sampled))
+check(rimHollow == 0, ("ขอบปล่องตันถึงหินเดิม (กลวง %d)"):format(rimHollow))
+
 -- 3. หิมะละลายรอบปล่อง
 local melted = 0
 for deg = 30, 330, 40 do
