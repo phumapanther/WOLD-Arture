@@ -402,6 +402,7 @@ local function whiteVeil()
 end
 
 local skyRestore = nil -- คืนหน้าจอตอนวาปไม่สำเร็จ
+local skyFailedEarly = nil -- ข้อความ skyFailed ที่มาถึงก่อนคัทซีนจบ (ยังไม่มี skyRestore)
 local function runSkyCutscene(info)
 	local camera = workspace.CurrentCamera
 	local character = player.Character
@@ -581,7 +582,24 @@ local function runSkyCutscene(info)
 		PhotoMode.Set(false)
 		if touch and touchWas ~= nil then touch.Enabled = touchWas end
 	end
+	-- เซิร์ฟบอกวาปไม่สำเร็จมาก่อนคัทซีนจบ (แอปถูกพับนานเกินเพดานเวลาเซิร์ฟ) = คืนหน้าจอเลย ไม่ค้างจอขาว
+	if skyFailedEarly then
+		local text = skyFailedEarly
+		skyFailedEarly = nil
+		skyRestore()
+		skyRestore = nil
+		localToast(text)
+		return
+	end
 	Remotes.RequestStory:FireServer("sky_warp")
+	-- วาปค้าง (TeleportInitFailed ไม่ยิง) = ยังอยู่ในเกมหลังรอนานพอ → คืนหน้าจอ บอกทางเข้าเกาะจากล็อบบี้
+	task.delay(30, function()
+		if skyRestore then
+			skyRestore()
+			skyRestore = nil
+			localToast("วาปนานเกินไป — เข้าเกาะได้จากล็อบบี้ แท็บฟาร์มมิ่ง (VIP ได้ไปแล้ว)")
+		end
+	end)
 end
 
 --------------------------------------------------------------------------------
@@ -640,13 +658,18 @@ Remotes.StoryPlay.OnClientEvent:Connect(function(kind, arg)
 			end)
 		end)
 	elseif kind == "skyCutscene" then
+		gui:CloseChoice()
 		task.spawn(runSkyCutscene, arg)
 	elseif kind == "skyFailed" then
 		if skyRestore then
 			skyRestore()
 			skyRestore = nil
+			localToast(tostring(arg))
+		elseif inCutscene then
+			skyFailedEarly = tostring(arg) -- คัทซีนยังเล่นอยู่ — คืนหน้าจอตอนจบแทนการวาป
+		else
+			localToast(tostring(arg))
 		end
-		localToast(tostring(arg))
 	end
 end)
 

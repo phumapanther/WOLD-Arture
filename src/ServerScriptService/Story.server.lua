@@ -430,8 +430,11 @@ Remotes.RequestStory.OnServerEvent:Connect(function(player, action)
 end)
 
 -- จิ้มแถวเควสทอง/ฟ้า = หาเป้าให้ (แถวบอร์ด "board:" เป็นของ Quests.server)
+local NavTaps = {} -- [userId] = os.clock ของครั้งล่าสุด (QuestNavRules.TryTap กันจิ้มรัว)
 Remotes.RequestQuestNav.OnServerEvent:Connect(function(player, key)
 	if type(key) ~= "string" then return end
+	if key:sub(1, 5) ~= "side:" and key:sub(1, 6) ~= "story:" then return end
+	if not QuestNavRules.TryTap(NavTaps, player.UserId, os.clock()) then return end
 	local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
 	if not root then return end
 	local from = root.Position

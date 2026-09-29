@@ -72,4 +72,30 @@ function QuestNavRules.FishZones(item)
 	return out
 end
 
+-- จิ้มถี่เกินไป (กันยิงรีโมตรัว — การหาเป้าเดินแท็กทั้งแมพ) · `store` = ตารางของผู้เรียก · คืน true = หาเป้าได้
+-- จิ้มรัวถูกกั้นเงียบๆ ตามกติกาเดิมของเกม ("กดรัว ยังเงียบโดยตั้งใจ")
+QuestNavRules.TapSeconds = 1
+function QuestNavRules.TryTap(store, key, now)
+	local last = store[key]
+	if last and now - last < QuestNavRules.TapSeconds then return false end
+	store[key] = now
+	return true
+end
+
+-- ริมน้ำของเขตตกปลา: ไล่วงรอบ (รัศมี 30→120 ทีละ 15 · 16 ทิศ) คืนจุดแรกที่ `isWaterCell(x, z)` บอกว่าไม่ใช่น้ำ
+-- (Navigation ปฏิเสธจุดหมายที่แผนที่บอกว่าเป็นน้ำ — ถามก่อน ประหยัดเรย์ด้วย) และ `probe(x, z)` คืนตำแหน่งบนพื้นจริง
+function QuestNavRules.PickShore(centre, probe, isWaterCell)
+	for radius = 30, 120, 15 do
+		for i = 0, 15 do
+			local a = i / 16 * math.pi * 2
+			local x, z = centre.X + math.cos(a) * radius, centre.Y + math.sin(a) * radius
+			if not isWaterCell(x, z) then
+				local pos = probe(x, z)
+				if pos then return pos end
+			end
+		end
+	end
+	return nil
+end
+
 return QuestNavRules

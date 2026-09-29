@@ -5,6 +5,7 @@ local Players = game:GetService("Players")
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local QuestNavRules = require(game.ReplicatedStorage.QuestNavRules)
+local MapTerrain = require(game.ReplicatedStorage.MapTerrain)
 
 local QuestNav = {}
 
@@ -58,25 +59,24 @@ function QuestNav.ForItem(item, from)
 	return #mobs > 0 and QuestNav.Spawner(mobs, from) or nil
 end
 
--- ริมน้ำของเขตตกปลาที่ใกล้สุด — กลางเขตเป็นน้ำ และ Navigation ปฏิเสธจุดหมายในน้ำ
+-- ริมน้ำของเขตตกปลาที่ใกล้สุด — กลางเขตเป็นน้ำ และ Navigation ปฏิเสธจุดหมายที่แผนที่ (MapTerrain) บอกว่าเป็นน้ำ
+-- เรย์เคารพ CanCollide: กล่องเขตหมู่บ้าน `Zone_*` สูง 200 สตัดกับพุ่มใบไม้ชนเรย์ได้ แต่ไม่ใช่พื้นให้ยืน (บทเรียน Stations.groundAt)
 function QuestNav.Shore(centre)
 	local params = RaycastParams.new()
 	params.IgnoreWater = false
+	params.RespectCanCollide = true
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	local characters = {}
 	for _, p in ipairs(Players:GetPlayers()) do
 		if p.Character then characters[#characters + 1] = p.Character end
 	end
 	params.FilterDescendantsInstances = characters
-	for radius = 30, 120, 15 do
-		for i = 0, 15 do
-			local a = i / 16 * math.pi * 2
-			local x, z = centre.X + math.cos(a) * radius, centre.Y + math.sin(a) * radius
-			local hit = workspace:Raycast(Vector3.new(x, 2000, z), Vector3.new(0, -4000, 0), params)
-			if hit and hit.Material ~= Enum.Material.Water then return hit.Position end
-		end
-	end
-	return nil
+	return QuestNavRules.PickShore(centre, function(x, z)
+		local hit = workspace:Raycast(Vector3.new(x, 2000, z), Vector3.new(0, -4000, 0), params)
+		return hit and hit.Material ~= Enum.Material.Water and hit.Position or nil
+	end, function(x, z)
+		return MapTerrain.At(x, z) == MapTerrain.Water
+	end)
 end
 
 function QuestNav.FishZone(item, from)

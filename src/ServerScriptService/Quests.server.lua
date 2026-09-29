@@ -424,8 +424,10 @@ QuestAccess.RecordKill = function(player, mobName) bump(player, "hunt", mobName)
 QuestAccess.RecordCatch = function() end
 
 -- จิ้มแถวงานบอร์ด = หาเป้าให้ (แถว "story:"/"side:" เป็นของ Story.server)
+local NavTaps = {} -- [userId] = os.clock ของครั้งล่าสุด (QuestNavRules.TryTap กันจิ้มรัว — เดินแท็กทั้งแมพทุกครั้ง)
 Remotes.RequestQuestNav.OnServerEvent:Connect(function(player, key)
 	if type(key) ~= "string" or key:sub(1, 6) ~= "board:" then return end
+	if not QuestNavRules.TryTap(NavTaps, player.UserId, os.clock()) then return end
 	local wanted = key:sub(7)
 	local quest
 	for _, q in ipairs(activeOf(player) or {}) do

@@ -422,8 +422,18 @@ end
 --------------------------------------------------------------------------------
 -- กล่องเลือก (รับพรของออฟาเรียน) · จอขาวค้าง (ก่อนวาป)
 --------------------------------------------------------------------------------
+-- กล่องเดียวเสมอ: คุยซ้ำ (กด E รัว) = แทนกล่องเก่า ไม่ซ้อนค้างทับคัทซีน
+function StoryGui:CloseChoice()
+	if self.choicePanel then
+		self.choicePanel:Destroy()
+		self.choicePanel = nil
+	end
+end
+
 function StoryGui:Choice(question, yesText, noText, onPick)
+	self:CloseChoice()
 	local panel = Instance.new("Frame")
+	self.choicePanel = panel
 	panel.Name = "Choice"
 	panel.AnchorPoint = Vector2.new(0.5, 0.5)
 	panel.Position = UDim2.fromScale(0.5, 0.5)
@@ -458,7 +468,7 @@ function StoryGui:Choice(question, yesText, noText, onPick)
 			if done then return end
 			done = true
 			UiSound.Play("Click")
-			panel:Destroy()
+			self:CloseChoice()
 			if onPick then onPick(value) end
 		end)
 	end
