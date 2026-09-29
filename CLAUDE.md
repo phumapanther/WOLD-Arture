@@ -166,6 +166,10 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
   (สไลม์ กระดูก ใยแมงมุม มูลค้างคาว เขี้ยวเล็บ `ShopConfig.MonsterMaterials`) 1-15 ขยับ 3-5 · ของแพง ±50% ขยับ ≥ 5 ไม่มีเพดาน ·
   ก้อนหิน/เศษไม้ 1-5 สุ่มใหม่ทุกรอบ (1 = 70%)** · กติกา `ShopConfig.SellRange/NextSellPrice/ScrapSellPrice/FloorSellPrice`
   · ⚠️ **ราคารอบนี้ขึ้นกับรอบก่อน** `Shop.server` `multipliersAt` ย้อนประวัติ 336 รอบจากเลขสุ่มรายช่องเวลา ทุกเซิร์ฟจึงตรงกัน · พ่อค้าเมืองต่ำสุด 5 ด้วย · กิโลปลาถ้วยรางวัลใช้ตัวคูณไม่เกิน ×1.5 · หน้าราคากลางบนหินเวทบอก ⬆/⬇ ส่วนต่าง (เทส `sell_price_test` `social_market_test`)
+- ⚠️ **รูปแมงมุมบนใบประกาศเควสโหลดไม่ขึ้น = decal ต้นทางถูก archive** (2026-09-29) → `123422205393294` (decal 133189115072411) ·
+  เทส `quest_images_test` (Edit) โหลดรูปบนใบประกาศทุกรูปด้วย `CreateEditableImageAsync` · **รูปที่ "ขึ้นแปลกๆ" ให้โหลดจริงก่อน อย่าเทียบแค่เลข**
+- ⚠️ **ป้ายเลเวลฟาร์มมุมซ้ายบนใช้ `ScreenInsets = TopbarSafeInsets`** (Roblox บอกพื้นที่ว่างข้างปุ่มโลโก้/เมนู/ไมค์เอง) · เดิมเดา x = 62
+  แถบบนแบบใหม่บังครึ่งป้าย · **UI ที่ชิดแถบบนของ Roblox ต้องใช้วิธีนี้ ห้ามเดาความกว้างปุ่ม**
 - **หนอนจากแปลงผักบนเกาะ 1-3 ตัว โอกาส 20%** (`IslandConfig.PlotWormBonus` · 2026-09-29) · พุ่มสมุนไพร/นาข้าวยัง 3-5 ตัว 40% (`GatherConfig.WormBonus`)
 - **อีโมจิสถานะเหนือหัว** (2026-09-29): 🐌 ของหนักเกินขีด · 🔧 ของที่ใส่/ถือความคงทน < 5 (`InventoryConfig.AnyWorn`) · หลายสถานะ = เรียงข้างกัน (`OverheadMarks` เจ้าของการวาด · ป้ายใหม่ต้องเติมชื่อใน `OverheadMarks.Order`) · ลูป 0.5 วิใน `PlayerStatusEffects` (เทส `overhead_marks_test`)
 - **แถบความคงทนใต้รูปไอเทมในกระเป๋า** (2026-09-29): เขียว · ต่ำกว่าครึ่ง เหลือง · ไม่ถึง 5% แดง · เพดาน = `maxDurability` หรือ `armor` · ของ `unbreakable`/ไม่มีความคงทน = ไม่มีแถบ (`InventoryGui` `setDurBar` · เทส `inventory_durability_bar_test`)

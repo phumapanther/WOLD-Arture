@@ -39,21 +39,22 @@ end
 local chipGui = Instance.new("ScreenGui")
 chipGui.Name = "FarmLevelChip"
 chipGui.ResetOnSpawn = false
-chipGui.IgnoreGuiInset = true
+-- ⚠️ พื้นที่ของ ScreenGui = แถบบนของ Roblox ส่วนที่ว่าง (ขวาของปุ่มโลโก้/เมนู/ไมค์) — Roblox บอกเองว่าปุ่มมันกว้างเท่าไหร่
+-- เดิมเดาไว้ x = 62 ซึ่งแถบบนแบบใหม่ (โลโก้ + ☰ + ไมค์) บังป้ายครึ่งหนึ่ง (ผู้ใช้เจอ 2026-09-29)
+chipGui.ScreenInsets = Enum.ScreenInsets.TopbarSafeInsets
 chipGui.DisplayOrder = 6
 chipGui.Enabled = false
 chipGui.Parent = playerGui
 
--- กล่องมุมซ้ายบน ข้างปุ่มเมนู Roblox · **ขนาดคงที่ ไม่ย่อตามจอ** — UIScale ย่อจากมุมซ้ายบน ตำแหน่งจะหดเข้าไป
--- ทับปุ่มเมนูของ Roblox (ซึ่งไม่ย่อตาม) · ป้ายกว้าง 214 px พอดีทุกจอตั้งแต่มือถือ
+-- **ขนาดคงที่ ไม่ย่อตามจอ** — ป้ายกว้าง 214 px พอดีทุกจอตั้งแต่มือถือ
 local group = Instance.new("Frame")
 group.BackgroundTransparency = 1
-group.Position = UDim2.fromOffset(0, 0)
-group.Size = UDim2.fromOffset(300, 60)
+group.Size = UDim2.fromScale(1, 1)
 group.Parent = chipGui
 
 local chip = Instance.new("Frame")
-chip.Position = UDim2.fromOffset(62, 10)
+chip.AnchorPoint = Vector2.new(0, 0.5)
+chip.Position = UDim2.new(0, 6, 0.5, 0)
 chip.Size = UDim2.fromOffset(214, 34)
 chip.BackgroundColor3 = Responsive.GlassColor
 chip.BackgroundTransparency = Responsive.GlassTransparency
