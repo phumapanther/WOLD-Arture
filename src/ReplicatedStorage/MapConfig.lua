@@ -62,10 +62,15 @@ MapConfig.Places = {
 	{ name = "Elderwood", th = "เอลเดอร์วูด", pos = { -0.5, 0.02 }, kind = "lumber" },
 	{ name = "Saltmere", th = "ซอลต์เมียร์", pos = { -0.45, 0.62 }, kind = "fishing" },
 	{ name = "Astravale", th = "แอสตราเวล", pos = { 0.48, -0.42 }, kind = "mage" },
-	{ name = "Spire of Eld", th = "หอเวทเอลด์", pos = { 0.45, -0.6 }, kind = "spire" },
 	{ name = "Stonemark Mine", th = "เหมืองสโตนมาร์ก", pos = { -0.14, -0.5 }, kind = "cave" },
-	{ name = "Crystal Cave", th = "ถ้ำคริสตัล", pos = { 0.4, -0.65 }, kind = "cave" },
 	{ name = "Sea Cave", th = "ถ้ำทะเล", pos = { -0.84, 0.1 }, kind = "cave" },
+	-- แลนด์มาร์ก (ผู้ใช้สั่ง 2026-09-29) · พิกัดวัดจากของจริงในเพลสหลัก · เทส wyrmsleep_config_test
+	-- ลบ "หอเวทเอลด์" (ไม่เคยถูกสร้าง ยืนตรงปล่อง) กับ "ถ้ำคริสตัล" (ไม่มีอะไรเหลือในเพลส) ออกแล้ว
+	{ name = "Wyrmsleep Crater", th = "ปล่องมังกรหลับ", pos = { 0.40625, -0.60625 }, kind = "volcano" }, -- WyrmsleepConfig.Center
+	{ name = "Foundry", th = "เตาหลอม", pos = { -0.1326, 0.6646 }, kind = "landmark" }, -- WOLD.BossSpawns.Foundry · บอสฟอร์จวอร์เดน
+	{ name = "Runestone Forest", th = "ป่าหินเวท", pos = { -0.0875, -0.145 }, kind = "landmark" }, -- กลุ่ม Ore_Magic ยักษ์
+	{ name = "World Tree", th = "ต้นไม้โลก", pos = { -0.5188, 0.3075 }, kind = "landmark" }, -- GreatTree_Yggdrasil
+	{ name = "Hermit Tower", th = "หอคอยสันโดษ", pos = { 0.1983, 0.0298 }, kind = "landmark" }, -- Ruin_TowerTall
 }
 
 MapConfig.Kinds = {
@@ -77,8 +82,9 @@ MapConfig.Kinds = {
 	lumber = { color = Color3.fromRGB(120, 168, 108), glyph = "\226\151\143", size = 8 },
 	fishing = { color = Color3.fromRGB(110, 168, 200), glyph = "\226\151\143", size = 8 },
 	mage = { color = Color3.fromRGB(170, 138, 220), glyph = "\226\151\143", size = 8 },
-	spire = { color = Color3.fromRGB(196, 160, 236), glyph = "\226\150\178", size = 10 },
 	cave = { color = Color3.fromRGB(140, 132, 124), glyph = "\226\151\134", size = 7 },
+	volcano = { color = Color3.fromRGB(236, 96, 44), glyph = "\226\150\178", size = 10 }, -- ▲
+	landmark = { color = Color3.fromRGB(226, 196, 120), glyph = "\226\151\134", size = 8 }, -- ◆
 }
 
 -- The river and the roads used to be drawn here: two polylines copied out of the design document. Both are

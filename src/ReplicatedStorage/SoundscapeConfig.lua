@@ -455,9 +455,10 @@ SoundscapeConfig.WorldMusic = {
 				"rbxassetid://1840049555",     -- Bells and Harp -- near-melodyless, sits under NPC chatter
 			},
 		},
-		["Spire of Eld"] = {
+		-- ปล่องมังกรหลับ (2026-09-29) ใช้ชุดมืดเดิมของหอเวทเอลด์ที่ไม่เคยถูกสร้าง (โซนเดิมทับปล่องอยู่)
+		Wyrmsleep = {
 			Tracks = {
-				"rbxassetid://1843291182",     -- Time Sphere Cymbalum -- darker, for the spire rather than the village
+				"rbxassetid://1843291182",     -- Time Sphere Cymbalum -- darker, for the crater rather than the village
 				"rbxassetid://85026511867827", -- Searching for Sorcery
 				"rbxassetid://1840049555",     -- Bells and Harp
 			},
@@ -565,7 +566,7 @@ SoundscapeConfig.Towns = {
 	{ name = "Elderwood", x = -4000, z = 160, radius = 350 },
 	{ name = "Saltmere", x = -3600, z = 4960, radius = 350 },
 	{ name = "Astravale", x = 3840, z = -3360, radius = 350 },
-	{ name = "Spire of Eld", x = 3600, z = -4800, radius = 300 },
+	{ name = "Wyrmsleep", x = 3250, z = -4850, radius = 400 }, -- ปล่องมังกรหลับ = WyrmsleepConfig.Center
 }
 
 return SoundscapeConfig

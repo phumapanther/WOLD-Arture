@@ -50,6 +50,10 @@ VitalsConfig.FallDamagePerStud = 0.6
 -- Below this Y the player has left the map entirely: instant death, no damage curve.
 VitalsConfig.VoidY = -200
 
+-- ยืนในลาวา (Part ติดแท็ก WOLD_Lava) ไหม้เท่านี้ของเลือดเต็มต่อวินาที ชนิด "burn" ข้ามเกราะ (ผู้ใช้กำหนด 2026-09-29)
+-- เลือดหมด = ล้มคลานตามปกติ ไม่ตายทันที · `Lava.server` เป็นคนเผา
+VitalsConfig.LavaBurnFraction = 0.10
+
 VitalsConfig.DownedSeconds = 10 * 60 -- the countdown shown in the centre of the screen
 -- ความเร็วคลาน — ผู้ใช้สั่ง 2026-09-20 ให้ "ช้าแบบเดิน" ซึ่งคือความเร็วโหมดเดินของเกมนี้ (`MovementConfig` = 4)
 VitalsConfig.DownedWalkSpeed = 4
