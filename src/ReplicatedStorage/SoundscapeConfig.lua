@@ -237,7 +237,7 @@ SoundscapeConfig.Interface = {
 		-- แตรฉลองเลเวลฟาร์ม (เฟส 2c) — เกิดนานๆ ครั้ง ต้องดังพอให้รู้สึกว่าเป็นช่วงเวลาพิเศษ
 		FarmLevelUp = 0.5,
 		-- เสียงพากย์สนาม PVP ต้องดังทับเสียงสู้ (2026-10-01)
-		PvpSearch = 0.5, LobbyReturn = 0.5, PvpFound = 0.5, ArenaWelcome = 0.55, ArenaCountdown = 0.5, ArenaFight = 0.6, ArenaVictory = 0.55, ArenaDefeat = 0.55,
+		PvpSearch = 0.7, LobbyReturn = 0.5, PvpFound = 0.5, ArenaWelcome = 0.55, ArenaCountdown = 0.5, ArenaFight = 0.6, ArenaVictory = 0.55, ArenaDefeat = 0.55,
 	},
 
 	-- Placing a call, and being called. The ringtone repeats while the caller waits for an answer; the
@@ -349,7 +349,7 @@ SoundscapeConfig.Interface = {
 	Harvest = "rbxassetid://9114519078",      -- Foliage Rustle (เก็บผัก)
 
 	-- โหมด PVP (ผู้ใช้สั่ง 2026-10-01) · **PreloadAsync ผ่านทุกตัว + ถอดเสียงพูดด้วย whisper ยืนยันแล้ว** (ข้อความในวงเล็บ)
-	PvpSearch = "rbxassetid://9118777141",    -- Scanner Beeps 3 (กดหาห้อง)
+	PvpSearch = "rbxassetid://73684484951222", -- เสียงสวมอาวุธของเกม (= CombatConfig.EquipSound) "ตึก" ตอนกดเล่น (ผู้ใช้เลือก 2026-10-01 · เดิม Scanner Beeps เบาเกิน)
 	PvpFound = "rbxassetid://83718733932056", -- "Match Found" (เจอห้องแล้ว กำลังย้ายเข้าสนาม)
 	ArenaWelcome = "rbxassetid://100223190195749", -- "Let the games begin." (เริ่มแมตช์ ต้นรอบแรก)
 	ArenaCountdown = "rbxassetid://357644762", -- "5, 4, 3, 2, 1" (5 วิสุดท้ายก่อนรอบเริ่ม · คลิป 5.46 วิ)
@@ -364,6 +364,7 @@ SoundscapeConfig.Interface = {
 		ToastInfo = 0.8, ToastReward = 1.4, StoryStep = 1.2, CutMagic = 3, GachaRare = 2.2, GachaLegend = 3.5,
 		TrapThrow = 0.9, TrapLand = 0.8, TrapStun = 0.9, TrapKnock = 1.5, Harvest = 1, Plant = 0.9,
 		Memory = 3, CutTitle = 3.5, CutRumble = 12,
+		PvpSearch = 1.2,
 	},
 }
 

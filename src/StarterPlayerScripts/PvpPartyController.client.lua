@@ -48,6 +48,9 @@ local UiSound = require(ReplicatedStorage.UI.UiSound)
 -- ล็อบบี้ไม่มีจอโหลด: โหลดเสียงของหน้านี้ไว้ก่อน ไม่งั้นกดหาห้องครั้งแรกเงียบ/ช้า
 task.spawn(UiSound.Preload, { "PvpSearch", "PvpFound", "LobbyReturn", "ToastInfo", "ToastError" })
 
+-- คนกด = "ตึก" ทันทีที่กด ไม่รอเซิร์ฟตอบ (ผู้ใช้สั่ง 2026-10-01) · เพื่อนในตี้ได้ยินตอนภาพ "กำลังหา" มาถึง
+local pressedAt = -math.huge
+
 local function draw(snap)
 	-- เสียงตามสถานะที่เปลี่ยน (ผู้ใช้สั่ง 2026-10-01): เริ่มหาห้อง · เจอห้องแล้ว (กำลังย้ายเข้าสนาม)
 	-- เทียบกับภาพก่อนหน้า — ภาพเดิมที่วาดซ้ำตอนมือถือหมุนจอไม่มีอะไรเปลี่ยน จึงไม่ดังซ้ำ
@@ -55,7 +58,7 @@ local function draw(snap)
 	if prev then
 		if snap.launching and not prev.launching then
 			UiSound.Play("PvpFound")
-		elseif snap.searching and not prev.searching then
+		elseif snap.searching and not prev.searching and os.clock() - pressedAt > 2 then
 			UiSound.Play("PvpSearch")
 		end
 	end
@@ -83,6 +86,10 @@ task.spawn(function()
 					local toast = game.ReplicatedStorage:FindFirstChild("WOLD_Toast")
 					if toast then toast:Fire(require(game.ReplicatedStorage.PvpRankConfig).LockedText) end
 					return
+				end
+				if action == "play" or action == "solo" then
+					pressedAt = os.clock()
+					UiSound.Play("PvpSearch")
 				end
 				Remotes.RequestPvpParty:FireServer(action, arg)
 			end)
