@@ -45,6 +45,8 @@ local function avatarFor(userId)
 end
 
 local UiSound = require(ReplicatedStorage.UI.UiSound)
+-- ล็อบบี้ไม่มีจอโหลด: โหลดเสียงของหน้านี้ไว้ก่อน ไม่งั้นกดหาห้องครั้งแรกเงียบ/ช้า
+task.spawn(UiSound.Preload, { "PvpSearch", "PvpFound", "LobbyReturn", "ToastInfo", "ToastError" })
 
 local function draw(snap)
 	-- เสียงตามสถานะที่เปลี่ยน (ผู้ใช้สั่ง 2026-10-01): เริ่มหาห้อง · เจอห้องแล้ว (กำลังย้ายเข้าสนาม)

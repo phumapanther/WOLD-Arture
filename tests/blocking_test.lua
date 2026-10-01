@@ -8,7 +8,12 @@ copy.Parent = SSS
 local ok0, Blocking = pcall(require, copy)
 copy:Destroy()
 assert(ok0, Blocking)
-local B = require(game.ReplicatedStorage.ArenaConfig).Block
+-- โคลนสด: `require` ใน Edit แคชของเก่าข้ามรอบ (แก้ตัวเลขแล้วเทสยังเห็นค่าเดิม)
+local cfg = game.ReplicatedStorage.ArenaConfig:Clone()
+cfg.Name = "ArenaConfig_t" .. math.random(1, 1e9)
+cfg.Parent = game.ReplicatedStorage
+local B = require(cfg).Block
+cfg:Destroy()
 
 local out, fails = {}, 0
 local function check(ok, text)
@@ -17,8 +22,8 @@ local function check(ok, text)
 end
 local function near(a, b) return math.abs(a - b) < 1e-6 end
 
-check(B.windup == 0.1 and B.active == 0.4 and B.window == 0.2 and B.reduce == 0.5 and B.stagger == 1.8,
-	"ตัวเลขผู้ใช้: ยก 0.1 · การ์ด 0.4 (ปัด 0.2 แรก) · ลด 50% · เซ 1.8 วิ")
+check(B.windup == 0.1 and B.active == 0.4 and B.window == 0.2 and B.reduce == 0.5 and B.stagger == 1.5,
+	"ตัวเลขผู้ใช้: ยก 0.1 · การ์ด 0.4 (ปัด 0.2 แรก) · ลด 50% · เซ 1.5 วิ")
 check(select(1, Blocking.JudgeState(nil, 0)) == nil and select(2, Blocking.JudgeState({}, 0)) == 1, "ไม่ได้กด = ดาเมจเต็ม")
 
 local s = {}

@@ -246,8 +246,10 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
   ดึงไฟล์จากแคช Studio `%LOCALAPPDATA%\Roblox\rbx-storage` (หัว RBXH ตามด้วย OggS/ID3) หลัง PreloadAsync · assetdelivery ต้องล็อกอิน)
   · หาห้อง/เจอห้อง = `PvpPartyController.draw` เทียบภาพก่อนหน้า · เริ่มแมตช์/นับ 5 วิ/Fight = เซิร์ฟยิง `Remotes.ArenaCue(name)`
   (`ArenaMatch.beginPhase` + ลูป buy) · ชนะ/แพ้ = `ArenaMatchEnd` เทียบ `snapshot.mySide` (เสมอ = เสียงแพ้) · กลับล็อบบี้ = TeleportData
+  · ⚠️ **ผู้ใช้แจ้งกดหาห้องแล้วเงียบ = ล็อบบี้ไม่มีจอโหลด เสียงไม่เคยถูกโหลด** แล้ว `Play()` ตอนไฟล์ยังไม่มาเงียบไปเลย
+  → `UiSound.Play` เล่นใหม่ตอน `Loaded` (ภายใน 3 วิ) ทุกจุด + `UiSound.Preload` ในล็อบบี้ · **ที่ไหนไม่มีจอโหลดแล้วใช้เสียงใหม่ ให้ Preload**
 - ⚠️ **บล็อกเป็นแบบกดทีละครั้งแล้ว ไม่ใช่ค้าง**: กด = ยก `windup` 0.1 (โดนเต็ม) → ปัด `window` 0.2 → ลด 50% อีก 0.2 → ลงเอง ·
-  กดซ้ำระหว่างนั้นไม่มีผล · **`parryLock` ถูกถอด** (windup คือตัวกันรัว) · โล่ปัด 0.3 ลด 75% (ผมคงไว้) · เซ 0.8 → **1.8 วิ** ·
+  กดซ้ำระหว่างนั้นไม่มีผล · **`parryLock` ถูกถอด** (windup คือตัวกันรัว) · โล่ปัด 0.3 ลด 75% (ผมคงไว้) · เซ 0.8 → 1.8 → **1.5 วิ** (ผู้ใช้ลดเอง) ·
   `Blocking.Press/Drop` (เดิม `Set`) · กดติด = `WorldSound "BlockRaise"` · เทส `blocking_test` (Edit) + ยืนยันใน Play แล้ว
 - **เล่นต่อทันที + ตี้ไม่แตก**: คิวเขียน `record.parties` (ใครมาด้วยกัน) → จบแมตช์ `ArenaMatch.sendPartyHome` ส่ง **ทีละตี้ด้วย
   `TeleportAsync` ก้อนเดียว** + TeleportData `arenaReturn = { party, again }` → `LobbyParty.arrivedFromArena` รวมตี้ใหม่

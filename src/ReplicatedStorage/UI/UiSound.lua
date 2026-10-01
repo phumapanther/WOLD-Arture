@@ -46,11 +46,33 @@ function UiSound.Play(name)
 	sound.Volume = volumeFor(name)
 	sound.Parent = SoundService
 	sound:Play()
+	-- ⚠️ เสียงที่ยังไม่เคยโหลด Play() แล้วเงียบ (เหตุผลเดียวกับ Loop ข้างล่าง) — ในเกมจอโหลดโหลดไว้ให้หมด
+	-- แต่ล็อบบี้ไม่มีจอโหลด เสียงกดหาห้องจึงเงียบ (ผู้ใช้แจ้ง 2026-10-01) · มาช้าเกิน 3 วิ = ไม่เล่นแล้ว (เลยจังหวะ)
+	if not sound.IsLoaded then
+		local asked = os.clock()
+		sound.Loaded:Once(function()
+			if sound.Parent and not sound.IsPlaying and os.clock() - asked < 3 then sound:Play() end
+		end)
+	end
 	-- Cleaned up after a generous margin rather than on Ended: a sound that never loads never fires Ended,
 	-- and would sit in SoundService forever.
 	Debris:AddItem(sound, 10)
 	limit(sound, name)
 	return sound
+end
+
+-- โหลดเสียงไว้ก่อนใช้ (ที่ที่ไม่มีจอโหลด เช่นล็อบบี้) · ชื่อจาก `SoundscapeConfig.Interface` · เรียกใน task.spawn
+function UiSound.Preload(names)
+	local sounds = {}
+	for _, name in ipairs(names) do
+		local id = Config[name]
+		if type(id) == "string" and id ~= "" then
+			local s = Instance.new("Sound")
+			s.SoundId = id
+			sounds[#sounds + 1] = s
+		end
+	end
+	pcall(function() game:GetService("ContentProvider"):PreloadAsync(sounds) end)
 end
 
 -- เสียงในโลก: ได้ยินตามระยะ (กับดัก · แสงเลเวลขึ้นของคนอื่น) · `where` = Vector3 หรือ BasePart · ฝั่งไคลเอนต์

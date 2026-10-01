@@ -237,7 +237,7 @@ SoundscapeConfig.Interface = {
 		-- แตรฉลองเลเวลฟาร์ม (เฟส 2c) — เกิดนานๆ ครั้ง ต้องดังพอให้รู้สึกว่าเป็นช่วงเวลาพิเศษ
 		FarmLevelUp = 0.5,
 		-- เสียงพากย์สนาม PVP ต้องดังทับเสียงสู้ (2026-10-01)
-		PvpFound = 0.5, ArenaWelcome = 0.55, ArenaCountdown = 0.5, ArenaFight = 0.6, ArenaVictory = 0.55, ArenaDefeat = 0.55,
+		PvpSearch = 0.5, LobbyReturn = 0.5, PvpFound = 0.5, ArenaWelcome = 0.55, ArenaCountdown = 0.5, ArenaFight = 0.6, ArenaVictory = 0.55, ArenaDefeat = 0.55,
 	},
 
 	-- Placing a call, and being called. The ringtone repeats while the caller waits for an answer; the
