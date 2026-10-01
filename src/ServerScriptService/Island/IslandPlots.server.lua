@@ -236,7 +236,7 @@ local function harvest(player, model)
 		end
 	end
 
-	-- แปลงผักใช้ตัวเลขของตัวเอง (2026-09-29: 1-3 ตัว 20% · พุ่ม/นาข้าวยังใช้ GatherConfig.WormBonus)
+	-- แปลงผักใช้ตัวเลขของตัวเอง (2026-09-29: 1-3 ตัว 20% · พุ่มบนเกาะใช้ตัวเดียวกันตั้งแต่ 2026-10-01)
 	local bonus = IslandConfig.PlotWormBonus
 	if bonus and math.random() < bonus.chance then
 		local extra = math.random(bonus.min, bonus.max)

@@ -444,6 +444,7 @@ end
 local function stopAuto(reason)
 	if not autoFarming then return end
 	autoFarming = false
+	Remotes.SetAutoFarming:FireServer(false)
 	local humanoid = humanoidOf()
 	if humanoid then humanoid:MoveTo(rootOf() and rootOf().Position or humanoid.RootPart.Position) end
 	if track and track.IsPlaying then track:Stop(0.2) end
@@ -458,6 +459,7 @@ local function startAuto()
 		return
 	end
 	autoFarming = true
+	Remotes.SetAutoFarming:FireServer(true) -- เดินเร็วเกือบวิ่งระหว่างจุด (PlayerMovement · 2026-10-01)
 	-- บอกทางหยุดที่ **เครื่องนี้** ใช้ได้จริง เครื่องที่มีทั้งสองอย่างบอกทั้งสองทาง
 	local how = UserInputService.KeyboardEnabled
 		and (UserInputService.TouchEnabled and "กด F หรือแตะแถบนี้เพื่อหยุด" or "กด F เพื่อหยุด")
@@ -490,7 +492,10 @@ local function startAuto()
 				task.wait(0.3)
 			end
 		end
-		autoFarming = false
+		if autoFarming then
+			autoFarming = false
+			Remotes.SetAutoFarming:FireServer(false)
+		end
 	end)
 end
 

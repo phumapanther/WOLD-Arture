@@ -57,7 +57,7 @@ local function rescanSoil()
 	print(("[IslandNodes] ผืนดิน %d ช่อง"):format(#soilCells))
 end
 
--- ชนิดไหนโผล่ · สุ่มตามน้ำหนัก เฉพาะกลุ่มที่ยังไม่ครบเพดาน (แร่/พุ่ม/ต้นไม้ อย่างละ 50 · 2026-09-28)
+-- ชนิดไหนโผล่ · สุ่มตามน้ำหนัก เฉพาะกลุ่มที่ยังไม่ครบเพดาน (แร่/พุ่ม/ต้นไม้ อย่างละ 25 · 2026-10-01)
 local function pickKind(groups)
 	local weights = IslandConfig.NodeWeightsOpen(groups)
 	local total = 0

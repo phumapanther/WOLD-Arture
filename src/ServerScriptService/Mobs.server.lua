@@ -1408,6 +1408,7 @@ MobAccess.SpawnRaid = function(kind, position, target, opts)
 	state.maxHitFraction = opts.maxHitFraction
 	state.hunt = nil
 	state.chaseAll = true
+	state.keepIn = opts.keepIn -- { inside(pos), clamp(from, to) } กักไว้ในดินในรั้ว (IslandNight · 2026-10-01)
 	if opts.tag then CollectionService:AddTag(model, opts.tag) end
 	return model
 end
@@ -1633,6 +1634,21 @@ RunService.Heartbeat:Connect(function(dt)
 				continue
 			end
 
+			-- มอนบุกเกาะออกนอกดินในรั้วไม่ได้ (ผู้ใช้สั่ง 2026-10-01 · `keepIn` จาก IslandNight): หลุดออก (โดนเตะ
+			-- กระโดดข้ามรั้ว) = เดินกลับจุดเกิดซึ่งอยู่บนดินเสมอ · ค้างนอกเกิน 4 วิ (รั้วขวางทางกลับ) = วาร์ปกลับ
+			local keepIn = state.keepIn
+			if keepIn and not keepIn.inside(position) then
+				state.outsideSince = state.outsideSince or os.clock()
+				if os.clock() - state.outsideSince > 4 then
+					state.outsideSince = nil
+					model:PivotTo(CFrame.new(state.home + Vector3.new(0, 3, 0)))
+				else
+					humanoid:MoveTo(state.home)
+				end
+				continue
+			end
+			state.outsideSince = nil
+
 			-- A HUNTED monster has no home and no leash: it was conjured to chase one person and it does not stop.
 			-- Checked before the leash so it never walks back, and before the retarget so it never picks
 			-- someone closer -- "ตามไม่เลิก" means this one player and no other.
@@ -1713,7 +1729,8 @@ RunService.Heartbeat:Connect(function(dt)
 							if hurt then Remotes.HurtSound:FireClient(state.target) end
 						end
 					else
-						humanoid:MoveTo(targetRoot.Position)
+						-- กักในดิน: คนยืนนอกรั้ว = เดินไปรอที่ขอบ ไม่ตามออกไป
+						humanoid:MoveTo(keepIn and keepIn.clamp(position, targetRoot.Position) or targetRoot.Position)
 						-- The wet slap of something large moving. Only a mob that declares a hop sound makes
 						-- one, and only while it is actually going somewhere: a slime sitting in a field
 						-- should be silent.
@@ -1737,8 +1754,8 @@ RunService.Heartbeat:Connect(function(dt)
 					-- Nobody about: drift slowly around home so the field is not a still life.
 					if math.random() < 0.06 then
 						local angle = math.random() * math.pi * 2
-						humanoid:MoveTo(state.home + Vector3.new(
-							math.cos(angle) * 12, 0, math.sin(angle) * 12))
+						local spot = state.home + Vector3.new(math.cos(angle) * 12, 0, math.sin(angle) * 12)
+						humanoid:MoveTo(keepIn and keepIn.clamp(position, spot) or spot)
 					end
 				end
 			end

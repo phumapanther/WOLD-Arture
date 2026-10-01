@@ -241,6 +241,24 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
   · โซนเพลง "Spire of Eld" → "Wyrmsleep" · เทส `wyrmsleep_shape_test` `wyrmsleep_config_test` (offline) · `wyrmsleep_crater_test` (Edit เพลสหลัก)
 - **ต้องทำก่อนใช้จริง: publish เพลสหลัก** (ภูมิประเทศ/ของในเพลสไม่ใช่โค้ด Rojo)
 
+**รอบแก้ PVP เสียง/บล็อก/เล่นต่อ + เกาะ (ผู้ใช้สั่ง 2026-10-01) — ดันเกาะ+สนาม mismatches 0 · ⚠️ เพลสหลักยังไม่ได้ดัน (ตอนทำไม่ได้เปิดใน Studio) · ยังไม่ได้เทสในเกม**
+- **เสียง PVP 9 ตัว** ใน `SoundscapeConfig.Interface` (PreloadAsync ผ่าน + **ถอดเสียงพูดด้วย faster-whisper ยืนยันข้อความ** —
+  ดึงไฟล์จากแคช Studio `%LOCALAPPDATA%\Roblox\rbx-storage` (หัว RBXH ตามด้วย OggS/ID3) หลัง PreloadAsync · assetdelivery ต้องล็อกอิน)
+  · หาห้อง/เจอห้อง = `PvpPartyController.draw` เทียบภาพก่อนหน้า · เริ่มแมตช์/นับ 5 วิ/Fight = เซิร์ฟยิง `Remotes.ArenaCue(name)`
+  (`ArenaMatch.beginPhase` + ลูป buy) · ชนะ/แพ้ = `ArenaMatchEnd` เทียบ `snapshot.mySide` (เสมอ = เสียงแพ้) · กลับล็อบบี้ = TeleportData
+- ⚠️ **บล็อกเป็นแบบกดทีละครั้งแล้ว ไม่ใช่ค้าง**: กด = ยก `windup` 0.1 (โดนเต็ม) → ปัด `window` 0.2 → ลด 50% อีก 0.2 → ลงเอง ·
+  กดซ้ำระหว่างนั้นไม่มีผล · **`parryLock` ถูกถอด** (windup คือตัวกันรัว) · โล่ปัด 0.3 ลด 75% (ผมคงไว้) · เซ 0.8 → **1.8 วิ** ·
+  `Blocking.Press/Drop` (เดิม `Set`) · กดติด = `WorldSound "BlockRaise"` · เทส `blocking_test` (Edit) + ยืนยันใน Play แล้ว
+- **เล่นต่อทันที + ตี้ไม่แตก**: คิวเขียน `record.parties` (ใครมาด้วยกัน) → จบแมตช์ `ArenaMatch.sendPartyHome` ส่ง **ทีละตี้ด้วย
+  `TeleportAsync` ก้อนเดียว** + TeleportData `arenaReturn = { party, again }` → `LobbyParty.arrivedFromArena` รวมตี้ใหม่
+  (Invite+Accept) เชื่อเฉพาะ `SourcePlaceId == ArenaPlaceId` · `again` = เข้าคิวต่อเอง (รอครบตี้สูงสุด 15 วิ) · ปุ่มเขียวมุมขวาล่าง
+  ตารางจบเกม · ใครในตี้กด = พาไปทั้งตี้ (กติกาเดียวกับปุ่มเล่นในล็อบบี้) · กลับจากสนามล็อบบี้เปิดแท็บ PVP เอง
+  · **ทดสอบใน Studio ไม่ได้** (TeleportService ถูกบล็อก) ต้อง publish ทั้งสามเพลสแล้วเล่นจริงสองบัญชี
+- เกาะ: ของสุ่มบนดิน **75 · อย่างละ 25** · หนอนจากพุ่ม **บนเกาะ** = `PlotWormBonus` 1-3 ตัว 20% (`Gathering` สลับตอน IsFarm · เกมหลักเท่าเดิม)
+- **มอนบุกกลางคืนออกนอกดินในรั้วไม่ได้**: `IslandNight.KEEP_IN` (`inside` + `clamp` ตามเส้นตรงทีละครึ่งช่อง) → `SpawnRaid opts.keepIn` →
+  ลูป AI ใน `Mobs`: หลุดออก = เดินกลับ `home` · ค้างนอก 4 วิ = วาร์ป · ไล่/เดินเล่น = clamp · ยืนยันใน Play: สไลม์ไล่มา 26 สตัดแล้วหยุดที่ขอบดิน
+- **ฟาร์มออโต้เดิน 20** (ปกติ 8 วิ่ง 24) ไม่กินสตามินา · `Remotes.SetAutoFarming` จาก `GatherController` → `PlayerMovement` (สนามไม่รับ)
+
 ## โมเดลจากโค้ด (modelkit)
 ชุดสร้างโมเดลด้วยโค้ดอยู่ที่ `modelkit/` + `models/` — **อ่าน `docs/modelkit-reference.md` ก่อนแตะ**
 มีของพร้อมใช้: แลนด์มาร์ก 5 หลัง บ้าน 5 แบบ NPC 12 ตัว (rig R15 เดินได้จริง) ทุกอาคารเข้าไปอยู่ได้

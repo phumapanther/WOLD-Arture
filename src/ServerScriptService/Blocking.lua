@@ -1,9 +1,10 @@
--- Blocking: ยกการ์ด / ปัดป้อง (แพรี่) ในสนาม PVP — เฟส 3 ข้อแรก (ผู้ใช้กำหนด 2026-09-27 · ตัวเลข ArenaConfig.Block)
+-- Blocking: ยกการ์ด / ปัดป้อง (แพรี่) ในสนาม PVP — เฟส 3 ข้อแรก · **กดทีละครั้ง** (ผู้ใช้สั่ง 2026-10-01 · ตัวเลข ArenaConfig.Block)
 --
 -- ⚠️ **"การ์ด" (`PlayerCombat.state.guarding`) คือท่าถืออาวุธเตรียมตีจากคลิกซ้ายแรก ไม่กันอะไร** — ของใหม่ชื่อ "blocking"
 -- ห้ามปนกัน
 --
--- เซิร์ฟเวอร์ตัดสินทั้งหมด: ไคลเอนต์ส่งแค่ "ยก/ปล่อย" (`BlockGuard.server`) · เวลาเริ่มยกจดตอนเซิร์ฟได้รับ ·
+-- เซิร์ฟเวอร์ตัดสินทั้งหมด: ไคลเอนต์ส่งแค่ "กด" (`BlockGuard.server`) · เวลาเริ่มจดตอนเซิร์ฟได้รับ ·
+-- กดหนึ่งครั้ง = ยก `windup` → กัน `active` (ช่วงแรก `window` ปัดสมบูรณ์ · ที่เหลือลดดาเมจ) → ลงเอง
 -- ตอนดาเมจ **ระยะประชิด** จะลง (`PlayerCombat.resolveHit` คน→คน · `ArenaBots` บอท→คน) ถาม `Judge` → ปัด / ลด / เต็ม
 -- (ช่วงจังหวะวัดที่เซิร์ฟ คนปิงสูงจะรู้สึกแคบกว่า — ข้อจำกัดที่รู้อยู่แล้วใน roadmap)
 --
@@ -12,41 +13,40 @@ local ArenaConfig = require(game.ReplicatedStorage.ArenaConfig)
 
 local Blocking = {}
 
-local States = {} -- [player] = { on, windowUntil, parried, lockUntil, lastWindowUntil, shield }
+local States = {} -- [player] = { startAt, parryUntil, endAt, parried, shield }
 
 --------------------------------------------------------------------------------
 -- ตัดสินจังหวะ (ข้อมูลล้วน)
 --------------------------------------------------------------------------------
 
--- เริ่มยกการ์ดที่เวลา `now` · `shield` = ถือโล่ (ช่วงจังหวะกว้างกว่า)
--- ยกครั้งก่อนเปิดช่วงปัดไว้แล้วไม่มีอะไรมาโดน = ล็อกการปัดไป parryLock วิหลังช่วงนั้นจบ (กันกดรัว)
+-- กดยกการ์ดที่เวลา `now` · `shield` = ถือโล่ · คืน false = การ์ดรอบก่อนยังไม่ลง (กดไม่มีผล)
 function Blocking.Raise(s, now, shield)
+	if s.endAt and now < s.endAt then return false end
 	local B = ArenaConfig.Block
-	if s.lastWindowUntil and not s.parried then
-		s.lockUntil = math.max(s.lockUntil or 0, s.lastWindowUntil + B.parryLock)
-	end
-	s.on = true
+	s.startAt = now + B.windup
+	s.parryUntil = s.startAt + (shield and B.shieldWindow or B.window)
+	s.endAt = s.startAt + B.active
 	s.shield = shield == true
 	s.parried = false
-	if now >= (s.lockUntil or 0) then
-		s.windowUntil = now + (shield and B.shieldWindow or B.window)
-		s.lastWindowUntil = s.windowUntil
-	else
-		-- ยังติดล็อก: ยกการ์ดลดดาเมจได้ แต่ครั้งนี้ไม่มีช่วงปัด (และไม่ต่อเวลาล็อก)
-		s.windowUntil = nil
-		s.lastWindowUntil = nil
-	end
+	return true
 end
 
+-- การ์ดถูกปล่อยก่อนเวลา (ล้ม มึน กลิ้ง เปลี่ยนเป็นสไน)
 function Blocking.Lower(s)
-	s.on = false
+	s.endAt = nil
 end
 
--- ดาเมจระยะประชิดมาถึงที่เวลา `now` → "parry" (ไม่เสียเลือด) | "block" + ตัวคูณดาเมจ | nil (ไม่ได้ยก = เต็ม)
+-- กำลังยกหรือกันอยู่ (นับช่วง windup ด้วย — เดินช้า/ตีไม่ได้ตั้งแต่กด)
+function Blocking.Up(s, now)
+	return s ~= nil and s.endAt ~= nil and now < s.endAt
+end
+
+-- ดาเมจระยะประชิดมาถึงที่เวลา `now` → "parry" (ไม่เสียเลือด) | "block" + ตัวคูณดาเมจ | nil (ไม่ได้กัน = เต็ม)
+-- ปัดได้ทีละครั้งต่อการกด: ไม้ที่สองในช่วงปัด = กันธรรมดา
 function Blocking.JudgeState(s, now)
-	if not s or not s.on then return nil, 1 end
+	if not s or not s.endAt or now < s.startAt or now > s.endAt then return nil, 1 end
 	local B = ArenaConfig.Block
-	if s.windowUntil and now <= s.windowUntil and not s.parried then
+	if now <= s.parryUntil and not s.parried then
 		s.parried = true
 		return "parry", 0
 	end
@@ -60,24 +60,36 @@ end
 local function stateOf(player)
 	local s = States[player]
 	if not s then
-		s = { on = false }
+		s = {}
 		States[player] = s
 	end
 	return s
 end
 
 function Blocking.IsBlocking(player)
-	local s = States[player]
-	return s ~= nil and s.on == true
+	return Blocking.Up(States[player], os.clock())
 end
 
--- แอตทริบิวต์ `WOLD_Blocking` บนตัว Player: PlayerMovement ใช้ลดความเร็ว (ห้ามเขียน WalkSpeed เอง) ·
--- ไคลเอนต์ทุกเครื่องใช้วาดท่ายกการ์ด (BlockController)
-function Blocking.Set(player, on, shield)
+-- แอตทริบิวต์ `WOLD_Blocking` บนตัว Player ตลอด windup+active: PlayerMovement ใช้ลดความเร็ว (ห้ามเขียน WalkSpeed เอง) ·
+-- ไคลเอนต์ทุกเครื่องใช้วาดท่ายกการ์ด (BlockController) · ลบเองตอนการ์ดลง · คืน true = กดติด
+function Blocking.Press(player, shield)
 	local s = stateOf(player)
-	if on == s.on then return end
-	if on then Blocking.Raise(s, os.clock(), shield) else Blocking.Lower(s) end
-	player:SetAttribute("WOLD_Blocking", on or nil)
+	if not Blocking.Raise(s, os.clock(), shield) then return false end
+	player:SetAttribute("WOLD_Blocking", true)
+	local endAt = s.endAt
+	task.delay(endAt - os.clock(), function()
+		-- กดใหม่หลังการ์ดลง = endAt ใหม่ · ถูกปล่อยก่อน = Drop ลบให้แล้ว
+		if States[player] == s and s.endAt == endAt and player.Parent then
+			player:SetAttribute("WOLD_Blocking", nil)
+		end
+	end)
+	return true
+end
+
+function Blocking.Drop(player)
+	local s = States[player]
+	if s then Blocking.Lower(s) end
+	if player.Parent then player:SetAttribute("WOLD_Blocking", nil) end
 end
 
 function Blocking.Judge(player)

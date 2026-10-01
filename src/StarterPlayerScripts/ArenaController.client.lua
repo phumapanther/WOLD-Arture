@@ -21,6 +21,12 @@ local ArenaScoreboardGui = require(game.ReplicatedStorage.UI.ArenaScoreboardGui)
 local ArenaShopGui = require(game.ReplicatedStorage.UI.ArenaShopGui)
 local KillBannerGui = require(game.ReplicatedStorage.UI.KillBannerGui)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local UiSound = require(game.ReplicatedStorage.UI.UiSound)
+
+-- เสียงพากย์ตามจังหวะแมตช์ที่เซิร์ฟสั่ง (เริ่มแมตช์ · นับ 5 วิ · Fight!) — ArenaMatch.beginPhase/matchLoop
+Remotes.ArenaCue.OnClientEvent:Connect(function(name)
+	if type(name) == "string" then UiSound.Play(name) end
+end)
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -524,11 +530,24 @@ Remotes.ArenaMatchEnd.OnClientEvent:Connect(function(result)
 	UserInputService.ModalEnabled = true
 	board:Render(result)
 	board:SetVisible(true)
+	-- เสียงจบแมตช์ (ผู้ใช้สั่ง 2026-10-01): ฝั่งชนะ "Victory!" · ฝั่งแพ้/เสมอ "You failed!"
+	local won = result and result.winner ~= nil and snapshot ~= nil and result.winner == snapshot.mySide
+	UiSound.Play(won and "ArenaVictory" or "ArenaDefeat")
 end)
 
 board:OnBack(function()
 	Remotes.RequestReturnToLobby:FireServer()
 	board.backButton.Text = "กำลังกลับ…"
+end)
+
+-- เล่นต่อทันที: ทั้งตี้กลับล็อบบี้ด้วยกัน รวมตี้ให้ใหม่ แล้วเข้าคิวต่อเอง (ArenaMatch.sendPartyHome → LobbyParty)
+board:OnAgain(function()
+	if board.againButton.Active == false then return end
+	board.againButton.Active = false
+	board.againButton.AutoButtonColor = false
+	board.againButton.Text = "กำลังไปพร้อมตี้…"
+	UiSound.Play("Click")
+	Remotes.RequestArenaAgain:FireServer()
 end)
 
 --------------------------------------------------------------------------------

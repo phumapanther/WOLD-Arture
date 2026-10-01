@@ -4,7 +4,7 @@
 -- `FarmRegistry` เป๊ะ ต่างแค่กุญแจ: ของช่องคือ "ช่องที่ 3 ของโหมด Roleplay" ของเกาะคือ "เกาะของ userId"
 -- ส่วนของนี่คือ **"แมตช์หนึ่งแมตช์"** ซึ่งเกิดมาแล้วตายไปพร้อมเซิร์ฟ ไม่ใช่ห้องถาวร
 --
---   arenamatch_<privateServerId> = { mapId, teams = { A = {userId…}, B = {userId…} }, bots = { A = n, B = n }, createdAt }
+--   arenamatch_<privateServerId> = { mapId, teams = { A = {userId…}, B = {userId…} }, bots = { A = n, B = n }, parties, createdAt }
 --   arenareward_<userId>         = { { gold = n, chest = "Chest_…", at = os.time() }, … }
 --
 -- ⚠️ **เซิร์ฟแมตช์ต้องไม่เชื่อ `TeleportData` เรื่องทีม** (`06-modes-build-plan.md` §4.2)
@@ -38,7 +38,8 @@ local function rewardKey(userId) return "arenareward_" .. userId end
 -- ไม่ได้ทำบน UpdateAsync ด้วยเหตุผลเดียวกับอีกสองทะเบียน: `ReserveServer` เป็นการกระทำจริงที่ย้อนไม่ได้
 -- และ Roblox เรียก transform ของ UpdateAsync ซ้ำได้เองตอนเขียนชนกัน = จองเซิร์ฟทิ้งหลายตัว
 -- `admin` = แอดมินกดเริ่มเอง (ไม่นับแร็งก์ · เฟส 3)
-function ArenaRegistry.CreateMatch(mapId, teams, bots, admin)
+-- `parties` = { {userId…}, … } ใครมาด้วยกัน — ตอนจบสนามส่งกลับล็อบบี้เป็นก้อนตามนี้ ตี้จะได้ไม่แตก (2026-10-01)
+function ArenaRegistry.CreateMatch(mapId, teams, bots, admin, parties)
 	local placeId = arenaPlaceId()
 	if not placeId or placeId == 0 then
 		error("[ArenaRegistry] ยังไม่ได้ตั้ง ServerConfig.ArenaPlaceId", 0)
@@ -54,6 +55,7 @@ function ArenaRegistry.CreateMatch(mapId, teams, bots, admin)
 		teams = teams,
 		bots = bots or { A = 0, B = 0 },
 		admin = admin == true or nil,
+		parties = parties,
 		createdAt = os.time(),
 	}
 	local setOk, setErr = pcall(function() store:SetAsync(matchKey(privateServerId), record) end)

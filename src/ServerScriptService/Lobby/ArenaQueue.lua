@@ -135,10 +135,12 @@ local function launch(entries, admin)
 	local map = ArenaConfig.Maps[math.random(#ArenaConfig.Maps)]
 	local bots = { A = TEAM_SIZE - #teams.A, B = TEAM_SIZE - #teams.B }
 
+	local parties = {}
+	for _, entry in ipairs(entries) do table.insert(parties, userIdsOf(entry.members)) end
 	local ok, accessCode = pcall(ArenaRegistry.CreateMatch, map.id, {
 		A = userIdsOf(teams.A),
 		B = userIdsOf(teams.B),
-	}, bots, admin)
+	}, bots, admin, parties)
 	if not ok then
 		warn("[ArenaQueue] จองเซิร์ฟแมตช์ไม่สำเร็จ:", accessCode)
 		return false, "create_failed"

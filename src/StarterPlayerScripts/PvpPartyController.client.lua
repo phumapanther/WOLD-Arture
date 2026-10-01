@@ -44,7 +44,19 @@ local function avatarFor(userId)
 	return false
 end
 
+local UiSound = require(ReplicatedStorage.UI.UiSound)
+
 local function draw(snap)
+	-- เสียงตามสถานะที่เปลี่ยน (ผู้ใช้สั่ง 2026-10-01): เริ่มหาห้อง · เจอห้องแล้ว (กำลังย้ายเข้าสนาม)
+	-- เทียบกับภาพก่อนหน้า — ภาพเดิมที่วาดซ้ำตอนมือถือหมุนจอไม่มีอะไรเปลี่ยน จึงไม่ดังซ้ำ
+	local prev = lastSnapshot
+	if prev then
+		if snap.launching and not prev.launching then
+			UiSound.Play("PvpFound")
+		elseif snap.searching and not prev.searching then
+			UiSound.Play("PvpSearch")
+		end
+	end
 	lastSnapshot = snap
 	if not gui then return end -- ยังไม่มีหน้าจอ: เก็บไว้ ลูปข้างล่างวาดให้ทันทีที่หน้าจอมา
 	gui:Render(snap)
@@ -98,6 +110,21 @@ Remotes.PvpPartyUpdate.OnClientEvent:Connect(function(data)
 		if gui then gui:RenderFriends(data.friends) end
 	else
 		draw(data)
+	end
+end)
+
+-- กลับจากสนาม = เสียง + ข้อความ "กลับสู่ล็อบบี้แล้ว" (ผู้ใช้สั่ง 2026-10-01) · TeleportData มาจาก ArenaMatch.sendPartyHome
+task.spawn(function()
+	local ok, data = pcall(function() return game:GetService("TeleportService"):GetLocalPlayerTeleportData() end)
+	local back = ok and type(data) == "table" and type(data.arenaReturn) == "table" and data.arenaReturn
+	if not back then return end
+	if not game:IsLoaded() then game.Loaded:Wait() end
+	UiSound.Play("LobbyReturn")
+	local text = back.again and "กลับสู่ล็อบบี้แล้ว — กำลังหาห้องต่อพร้อมตี้" or "กลับสู่ล็อบบี้แล้ว"
+	for _ = 1, 20 do
+		local toast = ReplicatedStorage:FindFirstChild("WOLD_Toast")
+		if toast then return toast:Fire(text, false, true) end -- silent: เสียงของตัวเองดังไปแล้ว
+		task.wait(0.5)
 	end
 end)
 

@@ -18,6 +18,9 @@ local ACTIVE = not ServerConfig.IsLobby
 
 -- วิ่งเร็วขึ้น 50% ตามที่ผู้ใช้สั่ง (16 -> 24) เดินกับปกติคงเดิม
 local SPEED = { Normal = 8, Walk = 4, Run = 24 }
+-- ฟาร์มออโต้เดินระหว่างจุดด้วยความเร็วเกือบวิ่ง (ผู้ใช้สั่ง 2026-10-01) ไม่กินสตามินา · กด Shift ยังวิ่งเต็มได้
+-- ไคลเอนต์บอกผ่าน `SetAutoFarming` (ฟาร์มออโต้อยู่ฝั่งไคลเอนต์) · โกงได้สุดแค่ 20 ซึ่งช้ากว่าวิ่งปกติอยู่แล้ว · สนามไม่รับ
+local AUTO_FARM_SPEED = 20
 local STAMINA_DRAIN_PER_SEC = 20 -- empties in ~5s from full
 -- ฟื้นเร็วขึ้น 50% (33.3 -> 50 ต่อวินาที) เต็มบาร์ใน ~2 วิ จากเดิม ~3 วิ
 local STAMINA_REGEN_PER_SEC = 50
@@ -55,6 +58,7 @@ local function applySpeed(state, player)
 	-- Vitals owns WalkSpeed while downed (crawling pace); don't fight it.
 	if not humanoid or Vitals.IsDowned(player) then return end
 	local base = SPEED[state.state == "ForcedWalk" and "Walk" or state.state]
+	if state.autoFarm and state.state == "Normal" then base = AUTO_FARM_SPEED end
 	local backward = backpedaling(humanoid)
 	if backward then base = math.min(base, SPEED.Normal) end -- ถอยหลังวิ่งไม่ได้
 	-- Carry weight and any slow effect both scale the same base speed, so neither has to know about the other.
@@ -111,6 +115,11 @@ Remotes.SetSprintIntent.OnServerEvent:Connect(function(player, intent)
 	elseif not intent and state.state == "Run" then
 		setState(state, player, "Normal")
 	end
+end)
+
+Remotes.SetAutoFarming.OnServerEvent:Connect(function(player, on)
+	local state = States[player]
+	if state and not ServerConfig.IsArena then state.autoFarm = on == true end
 end)
 
 Remotes.ToggleWalk.OnServerEvent:Connect(function(player)

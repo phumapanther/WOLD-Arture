@@ -200,11 +200,30 @@ function ArenaScoreboardGui.new()
 
 	self.note = text(panel, { text = "หีบ เงิน และ EXP เข้าตัวละครของคุณเมื่อกลับเข้าเกมหลัก", size = 15, colour = MUTED,
 		align = Enum.TextXAlignment.Center, pos = UDim2.new(0, 0, 1, -34), dim = UDim2.new(1, 0, 0, 22) })
+
+	-- เล่นต่อทันที (ผู้ใช้สั่ง 2026-10-01): ทั้งตี้กลับล็อบบี้พร้อมกัน รวมตี้เดิมให้เอง แล้วหาห้องต่อเลย ·
+	-- มุมขวาล่าง เพราะแถวบนเต็มแล้ว (ผล · สกอร์กลาง · ปุ่มกลับ) · โน้ตกลางล่างกว้าง ~400 ไม่ถึงตรงนี้
+	local again = Instance.new("TextButton")
+	again.AnchorPoint = Vector2.new(1, 1)
+	again.Position = UDim2.new(1, -28, 1, -12)
+	again.Size = UDim2.fromOffset(190, 40)
+	again.BackgroundColor3 = rgb(96, 196, 120)
+	again.Font = Enum.Font.GothamBold
+	again.TextSize = 17
+	again.TextColor3 = rgb(16, 32, 20)
+	again.Text = "เล่นต่อทันที"
+	again.Parent = panel
+	corner(again, 20)
+	self.againButton = again
 	return self
 end
 
 function ArenaScoreboardGui:OnBack(callback)
 	self.backButton.MouseButton1Click:Connect(callback)
+end
+
+function ArenaScoreboardGui:OnAgain(callback)
+	self.againButton.MouseButton1Click:Connect(callback)
 end
 
 function ArenaScoreboardGui:SetVisible(visible)
@@ -215,6 +234,7 @@ end
 function ArenaScoreboardGui:SetLive(live)
 	self.live = live
 	self.backButton.Visible = not live
+	self.againButton.Visible = not live
 	self.note.Visible = not live
 	self.dim.BackgroundTransparency = live and 0.75 or 0.45
 	for _, column in ipairs(COLUMNS) do

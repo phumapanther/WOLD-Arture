@@ -532,7 +532,13 @@ function ChannelSelectGui.new()
 
 	self.list = list
 	self.gui = gui
-	self:_selectMode("Roleplay")
+	-- กลับจากสนาม = เปิดแท็บ PVP ไว้เลย ตี้ที่รวมใหม่/การหาห้องต่อจะได้เห็นทันที (2026-10-01) · pcall: ฝั่งเซิร์ฟ (ui-audit) เรียกไม่ได้
+	local fromArena = false
+	pcall(function()
+		local data = game:GetService("TeleportService"):GetLocalPlayerTeleportData()
+		fromArena = type(data) == "table" and data.arenaReturn ~= nil
+	end)
+	self:_selectMode((fromArena and ACTIVE_MODES.PVP) and "PVP" or "Roleplay")
 	for mode, btn in pairs(self.tabs) do
 		btn.MouseButton1Click:Connect(function()
 			if not self._locked and ACTIVE_MODES[mode] then self:_selectMode(mode) end

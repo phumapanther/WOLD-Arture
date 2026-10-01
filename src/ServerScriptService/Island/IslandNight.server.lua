@@ -91,6 +91,39 @@ local function spawnPoint(target)
 	return nil
 end
 
+-- **มอนบุกออกนอกดินในรั้วไม่ได้** (ผู้ใช้สั่ง 2026-10-01) — `Mobs` ถาม `inside` ทุกรอบ AI (หลุดออก = เดินกลับจุดเกิด)
+-- และเดินไล่ด้วย `clamp` = ไกลสุดที่เดินตรงไปหาเป้าได้โดยไม่พ้นดิน (คนยืนนอกรั้ว = มอนรอที่ขอบ)
+-- ช่องดินอ่านจาก IslandNodes (ช่องเดียวกับจุดเกิด) แคช 10 วิ · ยังสแกนไม่เสร็จ (ว่าง) = ไม่กักเลย ดีกว่ากักทุกตัวไว้นอกดิน
+local soilSet, soilAt = {}, -math.huge
+local function soil()
+	if next(soilSet) == nil or os.clock() - soilAt > 10 then
+		local set = {}
+		for _, c in ipairs(IslandAccess.SoilCells and IslandAccess.SoilCells() or {}) do set[IslandGrid.key(c[1], c[2])] = true end
+		soilSet, soilAt = set, os.clock()
+	end
+	return soilSet
+end
+
+local function onSoil(p)
+	local set = soil()
+	return next(set) == nil or set[IslandGrid.key(IslandGrid.cellOf(p.X, p.Z))] == true
+end
+
+local KEEP_IN = {
+	inside = onSoil,
+	clamp = function(from, to)
+		local flat = (to - from) * Vector3.new(1, 0, 1)
+		local steps = math.max(1, math.ceil(flat.Magnitude / (IslandConfig.Cell / 2)))
+		local last = from
+		for i = 1, steps do
+			local p = from + flat * (i / steps)
+			if not onSoil(p) then break end
+			last = p
+		end
+		return last
+	end,
+}
+
 -- ปล่อยหนึ่งตัว · role = nil (ธรรมดา) | "boss" | "special" | "leader" · kind = ชนิดจากชุดตามเลเวล
 local function spawn(role, kind)
 	local list = standing()
@@ -98,7 +131,7 @@ local function spawn(role, kind)
 	local target = list[math.random(#list)]
 	local at = spawnPoint(target)
 	if not at then return nil end
-	local opts = { maxHitFraction = R.maxHitFraction, tag = R.tag }
+	local opts = { maxHitFraction = R.maxHitFraction, tag = R.tag, keepIn = KEEP_IN }
 	if role == "boss" then
 		kind = R.boss.kind
 		opts.hp = R.boss.hp

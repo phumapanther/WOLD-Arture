@@ -254,8 +254,74 @@ ArenaQueue.Start(function(players)
 	for _, player in ipairs(players) do push(player) end
 end)
 
+--------------------------------------------------------------------------------
+-- กลับจากสนาม: ตี้เดิมรวมตัวเอง · มีคนกด "เล่นต่อทันที" = เข้าคิวต่อเลย (ผู้ใช้สั่ง 2026-10-01)
+--------------------------------------------------------------------------------
+-- สนามส่งทั้งตี้มาด้วย TeleportAsync ก้อนเดียวพร้อม `arenaReturn = { party = {userId…}, again }` (ArenaMatch.sendPartyHome)
+-- ⚠️ เชื่อเฉพาะข้อมูลที่มาจากเพลสสนาม (`SourcePlaceId`) และรวมได้เฉพาะคนที่พกรายชื่อชุดเดียวกันเป๊ะ —
+-- ปลอมรายชื่อมาลากคนอื่นเข้าตี้ไม่ได้ เพราะรายชื่อที่อีกฝั่งพกมาเขียนโดยเซิร์ฟสนาม
+local REGROUP_SECONDS = 15 -- รอคนในตี้ที่มาช้าสุดเท่านี้ก่อนเข้าคิว (ส่งก้อนเดียวกันปกติถึงพร้อมกัน)
+local Returning = {} -- [รายชื่อเรียงแล้ว] = { ids, players = {}, again, at, queued }
+
+local function arenaReturnOf(player)
+	local ok, join = pcall(function() return player:GetJoinData() end)
+	if not ok or type(join) ~= "table" or join.SourcePlaceId ~= ServerConfig.ArenaPlaceId then return nil end
+	local data = type(join.TeleportData) == "table" and join.TeleportData.arenaReturn
+	if type(data) ~= "table" or type(data.party) ~= "table" or #data.party > MAX then return nil end
+	local ids, mine = {}, false
+	for _, id in ipairs(data.party) do
+		if type(id) ~= "number" then return nil end
+		ids[#ids + 1] = id
+		if id == player.UserId then mine = true end
+	end
+	if not mine then return nil end
+	table.sort(ids)
+	return ids, data.again == true
+end
+
+local function regroup(group)
+	local here = {}
+	for _, p in ipairs(group.players) do
+		if p.Parent then here[#here + 1] = p end
+	end
+	local leader = here[1]
+	if not leader then return end
+	for i = 2, #here do
+		local p = here[i]
+		if Party.Of(p) == nil and Party.Invite(leader, p) then Party.Accept(p, leader.UserId) end
+	end
+	pushParty(leader)
+	if group.queued or not group.again then return end
+	if #here < #group.ids and os.clock() - group.at < REGROUP_SECONDS then return end
+	group.queued = true
+	ACTIONS.play(leader)
+end
+
+local function arrivedFromArena(player)
+	local ids, again = arenaReturnOf(player)
+	if not ids then return end
+	local key = table.concat(ids, ",")
+	local group = Returning[key]
+	if not group or os.clock() - group.at > 60 then
+		group = { ids = ids, players = {}, at = os.clock() }
+		Returning[key] = group
+		-- คนที่หายไประหว่างทาง (ปิดเกม/เด้ง) ไม่ทำให้คนที่ถึงแล้วรอตลอดไป
+		task.delay(REGROUP_SECONDS + 1, function()
+			if Returning[key] == group then
+				regroup(group)
+				Returning[key] = nil
+			end
+		end)
+	end
+	group.again = group.again or again
+	table.insert(group.players, player)
+	regroup(group)
+end
+
 Players.PlayerAdded:Connect(function(player)
 	task.defer(push, player)
+	-- รอให้หน้าจอล็อบบี้ของเขาพร้อมสักครู่ก่อน ภาพตี้/สถานะค้นหาจะได้ไม่ส่งไปหาจอที่ยังไม่มี (ไคลเอนต์ขอภาพซ้ำเองอยู่แล้ว)
+	task.delay(2, arrivedFromArena, player)
 end)
 
 Players.PlayerRemoving:Connect(function(player)

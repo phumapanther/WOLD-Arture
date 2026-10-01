@@ -236,6 +236,8 @@ SoundscapeConfig.Interface = {
 		Blip = 0.12, LevelUp = 0.5, GachaLegend = 0.45, CutTitle = 0.45, CutRumble = 0.35, ToastError = 0.25,
 		-- แตรฉลองเลเวลฟาร์ม (เฟส 2c) — เกิดนานๆ ครั้ง ต้องดังพอให้รู้สึกว่าเป็นช่วงเวลาพิเศษ
 		FarmLevelUp = 0.5,
+		-- เสียงพากย์สนาม PVP ต้องดังทับเสียงสู้ (2026-10-01)
+		PvpFound = 0.5, ArenaWelcome = 0.55, ArenaCountdown = 0.5, ArenaFight = 0.6, ArenaVictory = 0.55, ArenaDefeat = 0.55,
 	},
 
 	-- Placing a call, and being called. The ringtone repeats while the caller waits for an answer; the
@@ -345,6 +347,17 @@ SoundscapeConfig.Interface = {
 	Pickup = "rbxassetid://17208204604",      -- Roblox GUI - Bubble (เก็บของคืนกระเป๋า)
 	Plant = "rbxassetid://9114084044",        -- Dirt Digging With Pick (หยอดเมล็ด)
 	Harvest = "rbxassetid://9114519078",      -- Foliage Rustle (เก็บผัก)
+
+	-- โหมด PVP (ผู้ใช้สั่ง 2026-10-01) · **PreloadAsync ผ่านทุกตัว + ถอดเสียงพูดด้วย whisper ยืนยันแล้ว** (ข้อความในวงเล็บ)
+	PvpSearch = "rbxassetid://9118777141",    -- Scanner Beeps 3 (กดหาห้อง)
+	PvpFound = "rbxassetid://83718733932056", -- "Match Found" (เจอห้องแล้ว กำลังย้ายเข้าสนาม)
+	ArenaWelcome = "rbxassetid://100223190195749", -- "Let the games begin." (เริ่มแมตช์ ต้นรอบแรก)
+	ArenaCountdown = "rbxassetid://357644762", -- "5, 4, 3, 2, 1" (5 วิสุดท้ายก่อนรอบเริ่ม · คลิป 5.46 วิ)
+	ArenaFight = "rbxassetid://120370970484379", -- "Fight!" (รอบเริ่ม ประตูเปิด)
+	BlockRaise = "rbxassetid://95697785710448", -- shield equip (กดยกการ์ดทุกครั้ง · ในโลก)
+	ArenaVictory = "rbxassetid://6042033782", -- "Victory!" (จบแมตช์ ฝั่งชนะ)
+	ArenaDefeat = "rbxassetid://6042038152",  -- "You failed!" (จบแมตช์ ฝั่งแพ้ · คู่เสียงเดียวกับ Victory)
+	LobbyReturn = "rbxassetid://76843646912123", -- Crystal Chime Teleport Whoosh (กลับถึงล็อบบี้จากสนาม)
 
 	-- คลิปที่ยาวเกินจังหวะ: ตัดที่วินาทีนี้ (ค่อยๆ เบาลง 0.3 วิสุดท้าย) · ไม่มีชื่อ = เล่นจนจบ
 	MaxSeconds = {

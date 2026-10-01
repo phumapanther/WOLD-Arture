@@ -427,6 +427,10 @@ local function gather(node, player)
 	-- ของแถมที่ใส่ไม่ลงจึงหายไปเงียบๆ ไม่ใช่ขึ้น "กระเป๋าเต็ม" สีแดงให้คนที่เพิ่งขุดได้ตกใจเล่น
 	local bonusId, bonusCount = nil, nil
 	local bonus = config.bonus
+	-- บนเกาะ หนอนจากพุ่ม = เท่าแปลงผัก (ผู้ใช้สั่ง 2026-10-01) · เกมหลักยังใช้ WormBonus เดิม
+	if ServerConfig.IsFarm and bonus == GatherConfig.WormBonus then
+		bonus = require(game.ReplicatedStorage.IslandConfig).PlotWormBonus
+	end
 	if bonus and math.random() < (bonus.chance or 0.25) then
 		local amount = ClassPerks.HarvestFor(player, math.random(bonus.min or 1, bonus.max or 1))
 		if IslandCfg then amount = math.floor(amount * IslandCfg.GlowYield(glow) + 0.5) end

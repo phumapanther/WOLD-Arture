@@ -1,5 +1,5 @@
 -- node tools/lua.js tests/island_node_caps_test.lua Edit
--- เพดานของสุ่มบนผืนดิน (ผู้ใช้สั่ง 2026-09-28): รวม 150 · แร่ (รวมหิน) 50 · พุ่ม 50 · ต้นไม้ 50
+-- เพดานของสุ่มบนผืนดิน (ผู้ใช้สั่ง 2026-10-01 ลดครึ่ง): รวม 75 · แร่ (รวมหิน) 25 · พุ่ม 25 · ต้นไม้ 25
 -- กลุ่มเต็ม = สุ่มจากกลุ่มที่ยังว่าง · ของที่เกินอยู่แล้วไม่ลบ แค่หยุดเกิด
 local function fresh(module)
 	local copy = module:Clone()
@@ -19,8 +19,8 @@ local function check(ok, text)
 	if not ok then fails += 1 end
 end
 
-check(NS.max == 150, "เพดานรวม 150")
-check(NS.groupMax.ore == 50 and NS.groupMax.bush == 50 and NS.groupMax.tree == 50, "แร่/พุ่ม/ต้นไม้ อย่างละ 50")
+check(NS.max == 75, "เพดานรวม 75")
+check(NS.groupMax.ore == 25 and NS.groupMax.bush == 25 and NS.groupMax.tree == 25, "แร่/พุ่ม/ต้นไม้ อย่างละ 25")
 
 -- ทุกชนิดที่สุ่มได้ต้องอยู่ในกลุ่มใดกลุ่มหนึ่ง (ชนิดใหม่ที่ลืมใส่กลุ่มจะไม่มีเพดาน)
 local missing = {}
@@ -40,13 +40,13 @@ end
 local all = kinds(C.NodeWeightsOpen({}))
 check(all.Tree and all.Herb and all.Rock and all.DiamondOre, "ยังไม่มีอะไร = สุ่มได้ทุกชนิด")
 
-local noTree = kinds(C.NodeWeightsOpen({ tree = 50 }))
-check(not noTree.Tree and noTree.Herb and noTree.Rock, "ต้นไม้ครบ 50 = ไม่สุ่มต้นไม้ แต่ยังได้พุ่ม/แร่")
+local noTree = kinds(C.NodeWeightsOpen({ tree = 25 }))
+check(not noTree.Tree and noTree.Herb and noTree.Rock, "ต้นไม้ครบ 25 = ไม่สุ่มต้นไม้ แต่ยังได้พุ่ม/แร่")
 
-local noOre = kinds(C.NodeWeightsOpen({ ore = 70 }))
+local noOre = kinds(C.NodeWeightsOpen({ ore = 40 }))
 check(not noOre.Rock and not noOre.Coal and not noOre.GoldOre and noOre.Tree and noOre.Herb,
-	"แร่เกินอยู่แล้ว (70) = ไม่สุ่มหิน/แร่ใดๆ")
+	"แร่เกินอยู่แล้ว (40 จากเพดานเก่า) = ไม่สุ่มหิน/แร่ใดๆ")
 
-check(next(C.NodeWeightsOpen({ ore = 50, bush = 50, tree = 50 })) == nil, "ครบทุกกลุ่ม = ไม่มีอะไรให้สุ่ม")
+check(next(C.NodeWeightsOpen({ ore = 25, bush = 25, tree = 25 })) == nil, "ครบทุกกลุ่ม = ไม่มีอะไรให้สุ่ม")
 
 return (fails == 0 and "PASS\n" or ("FAIL x%d\n"):format(fails)) .. table.concat(out, "\n")

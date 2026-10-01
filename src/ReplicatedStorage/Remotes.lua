@@ -20,7 +20,10 @@ local EVENTS = {
 	-- ส่งทั้งก้อนทุกครั้งแทนที่จะส่งทีละสนาม: แมตช์ยาวสิบกว่านาที ส่งวินาทีละครั้งให้หกคนยังเบามาก
 	-- และหน้าจอที่ประกอบจากอีเวนต์หลายตัวคือหน้าจอที่ค้างผิดสถานะเมื่อมีอีเวนต์ไหนมาไม่ถึง
 	"ArenaState", "RequestArenaBuy", "RequestArenaRefund", "ArenaMatchEnd", "ArenaNotice", "ArenaKillBanner",
+	-- เสียงพากย์ตามจังหวะแมตช์ (ชื่อใน SoundscapeConfig.Interface) · ปุ่ม "เล่นต่อทันที" บนตารางจบเกม (2026-10-01)
+	"ArenaCue", "RequestArenaAgain",
 	"SetSprintIntent", "ToggleWalk", -- movement (client intent in; stamina goes out via VitalsUpdate)
+	"SetAutoFarming", -- ฟาร์มออโต้เปิด/ปิด → PlayerMovement เดินเร็วเกือบวิ่ง (2026-10-01)
 	"RequestAttack", "CombatStateChanged", "RequestUnscope", "RequestBlock", "PvpRankInfo", "PvpRankUp", "PvpRankSeen", -- combat (click intent in, guard/attack playback out) · ยกการ์ด + แร็งก์ PVP (เฟส 3)
 	-- กับดัก (เฟส 3): เขวี้ยง/วาง · เลือกกระสุน · ภาพ (เขวี้ยง/ระเบิด) ถึงทุกเครื่อง
 	"RequestTrap", "RequestTrapAmmo", "TrapEvent",

@@ -793,6 +793,10 @@ local function beginPhase(phase, seconds)
 	if phase ~= "live" then ArenaDrops.Clear() end
 	State.phase = phase
 	State.phaseEndsAt = os.clock() + seconds
+	State.countdownSent = false
+	-- เสียงพากย์ (ผู้ใช้สั่ง 2026-10-01): ต้นแมตช์ "Let the games begin" · ประตูเปิด "Fight!" · นับ 5 วิอยู่ใน matchLoop
+	if phase == "buy" and State.round == 1 then Remotes.ArenaCue:FireAllClients("ArenaWelcome") end
+	if phase == "live" then Remotes.ArenaCue:FireAllClients("ArenaFight") end
 	pushAll()
 end
 
@@ -958,6 +962,45 @@ local function roundWinner()
 	return "draw"
 end
 
+--------------------------------------------------------------------------------
+-- กลับล็อบบี้ทีละตี้ (ผู้ใช้สั่ง 2026-10-01: "ตี้จะได้ไม่แตกและต้องชวนกันใหม่ทุกรอบ")
+--------------------------------------------------------------------------------
+-- `Party.lua` อยู่ในหน่วยความจำของล็อบบี้ ตี้จึงตายตอนเทเลพอร์ตมาที่นี่เสมอ — ส่งกลับเป็นก้อนเดียวด้วย TeleportAsync
+-- (Roblox วางคนที่ส่งพร้อมกันลงเซิร์ฟเดียวกัน) พร้อมรายชื่อตี้เดิมใน TeleportData แล้ว `LobbyParty` รวมตี้ให้ใหม่ ·
+-- `again` = ใครในตี้กด "เล่นต่อทันที" → ล็อบบี้เข้าคิวให้ต่อเลย (ทรงเดียวกับปุ่มเล่นในล็อบบี้: คนที่กดคือคนที่พาไป)
+-- รายชื่อตี้มาจากบันทึกแมตช์ (`record.parties` ที่คิวเขียน) · แมตช์เก่า/Studio ไม่มี = กลับทีละคน
+local SentHome = {} -- [player] = true ส่งไปแล้ว (กดเล่นต่อแล้วไม่ต้องส่งซ้ำตอนหมดเวลาตาราง)
+
+local function partyIdsOf(userId)
+	for _, ids in ipairs(record.parties or {}) do
+		if table.find(ids, userId) then return ids end
+	end
+	return { userId }
+end
+
+local function sendPartyHome(player, again)
+	local ids = partyIdsOf(player.UserId)
+	local group = {}
+	for _, id in ipairs(ids) do
+		local member = Players:GetPlayerByUserId(id)
+		if member and not SentHome[member] then table.insert(group, member) end
+	end
+	if #group == 0 then return end
+	for _, member in ipairs(group) do SentHome[member] = true end
+	local options = Instance.new("TeleportOptions")
+	options:SetTeleportData({ arenaReturn = { party = ids, again = again == true or nil } })
+	local ok, err = pcall(function() TeleportService:TeleportAsync(ServerConfig.MainPlaceId, group, options) end)
+	if not ok then
+		-- ล้มทันที = ปล่อยให้รอบหมดเวลาตารางลองใหม่ · ยังค้างได้อีกทาง = ปุ่ม "กลับสู่ล็อบบี้" (LobbyTravel ลองซ้ำเอง)
+		warn("[Arena] ส่งตี้กลับล็อบบี้ไม่สำเร็จ:", err)
+		for _, member in ipairs(group) do SentHome[member] = nil end
+	end
+end
+
+Remotes.RequestArenaAgain.OnServerEvent:Connect(function(player)
+	if State.over then sendPartyHome(player, true) end
+end)
+
 local function finishMatch()
 	State.over = true
 	freezeAll(true)
@@ -1025,9 +1068,7 @@ local function finishMatch()
 	Remotes.ArenaMatchEnd:FireAllClients({ rows = rows, winner = winner, wins = State.wins })
 
 	task.delay(ArenaConfig.Phase.matchEnd, function()
-		for _, player in ipairs(Players:GetPlayers()) do
-			pcall(function() TeleportService:Teleport(ServerConfig.MainPlaceId, player) end)
-		end
+		for _, player in ipairs(Players:GetPlayers()) do sendPartyHome(player, false) end
 		-- บันทึกแมตช์หมดหน้าที่แล้ว เซิร์ฟนี้กำลังจะว่างและถูกปิด
 		ArenaRegistry.ClearMatch(game.PrivateServerId)
 	end)
@@ -1057,6 +1098,11 @@ local function matchLoop()
 		task.wait(0.25)
 
 		if State.phase == "buy" then
+			-- คลิป "5, 4, 3, 2, 1" ยาว ~5 วิ เริ่มตอนเหลือ 5 วิ = เลข 1 ลงก่อน "Fight!" พอดี (ลูปนี้ละเอียด 0.25 วิ)
+			if not State.countdownSent and State.phaseEndsAt - os.clock() <= 5 then
+				State.countdownSent = true
+				Remotes.ArenaCue:FireAllClients("ArenaCountdown")
+			end
 			if phaseSecondsLeft() <= 0 then
 				freezeAll(false)
 				beginPhase("live", ArenaConfig.Phase.live)
