@@ -82,7 +82,9 @@ TrapConfig.Ammo = {
 	{ id = "TrapAmmo_Slow", kind = "slow", name = "หนืด", color = Color3.fromRGB(110, 230, 120), seconds = 3, factor = 0.5, mobStun = 1 },
 	{ id = "TrapAmmo_Stun", kind = "stun", name = "ช็อต", color = Color3.fromRGB(120, 200, 255), seconds = 1.5, mobStun = 1.5 },
 	{ id = "TrapAmmo_Knock", kind = "knockdown", name = "ลมกระแทก", color = Color3.fromRGB(245, 235, 170), seconds = 2, mobStun = 2 },
-	{ id = "TrapAmmo_Blast", kind = "damage", name = "ระเบิด", color = Color3.fromRGB(255, 120, 70), damage = 35, mobDamage = 80 },
+	-- `arenaFraction` = **ในสนาม** ระเบิดกินเลือด 90% ของเลือดเต็มคนโดน ทะลุเกราะ (ผู้ใช้สั่ง 2026-10-01 "ถึงเกือบตาย") ·
+	-- เลือดเต็มเหลือ 10% · บาดเจ็บอยู่แล้ว = ตาย · เกมหลักยัง 35 ผ่านเกราะเหมือนเดิม
+	{ id = "TrapAmmo_Blast", kind = "damage", name = "ระเบิด", color = Color3.fromRGB(255, 120, 70), damage = 35, mobDamage = 80, arenaFraction = 0.9 },
 }
 TrapConfig.AmmoById = {}
 for order, a in ipairs(TrapConfig.Ammo) do

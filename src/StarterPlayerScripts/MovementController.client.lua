@@ -206,3 +206,23 @@ RunService.Heartbeat:Connect(function()
 	end
 	updateSprintIntent()
 end)
+
+-- **ถอยหลังในสนาม** (เดินช้าลง · PlayerMovement): ตัดสินในเครื่องนี้ แล้วบอกเซิร์ฟเฉพาะตอนเปลี่ยน (2026-10-01 ผู้ใช้แจ้งเดินกระตุก)
+-- เดิมเซิร์ฟเทียบทิศเดินกับทิศตัวเอง ซึ่งสองค่านี้มาถึงเซิร์ฟคนละจังหวะ เดินข้างพลางหมุนกล้อง = ค่าแกว่งข้ามเส้น
+-- ความเร็วสลับเร็ว↔ช้าทุกเฟรม · ที่นี่สองค่ามาจากเฟรมเดียวกัน + มีช่วงกันแกว่ง (เข้า < -0.45 · ออก > -0.15)
+local backpedal = false
+RunService.Heartbeat:Connect(function()
+	if workspace:GetAttribute("ArenaMode") ~= true then return end
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	local root = humanoid and humanoid.RootPart
+	if not root then return end
+	local move = humanoid.MoveDirection * Vector3.new(1, 0, 1)
+	local look = root.CFrame.LookVector * Vector3.new(1, 0, 1)
+	local dot = (move.Magnitude > 0.1 and look.Magnitude > 0.1) and move.Unit:Dot(look.Unit) or 0
+	local want = if backpedal then dot < -0.15 else dot < -0.45
+	if want ~= backpedal then
+		backpedal = want
+		Remotes.SetBackpedal:FireServer(want)
+	end
+end)

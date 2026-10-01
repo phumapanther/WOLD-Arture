@@ -62,6 +62,11 @@ local function requestAction()
 		-- Roll goes where the player is steering; the server re-checks and flattens this.
 		local direction = humanoid.MoveDirection
 		if direction.Magnitude < 0.1 then return end -- standing still: nothing to roll into
+		-- หันหน้าไปทางที่กลิ้งเองในเครื่องนี้ (เราเป็นเจ้าของฟิสิกส์ตัวเอง) — เซิร์ฟเลิกตั้ง CFrame ให้แล้ว (กระตุก · 2026-10-01)
+		-- ถ้าเซิร์ฟปฏิเสธ (สตามินา/คูลดาวน์) ก็แค่หันตัวไปทางที่กำลังเดินอยู่แล้ว
+		local hrp = character:FindFirstChild("HumanoidRootPart")
+		local flat = direction * Vector3.new(1, 0, 1)
+		if hrp and flat.Magnitude > 0.1 then hrp.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + flat.Unit) end
 		Remotes.RequestRoll:FireServer(direction)
 	end
 end

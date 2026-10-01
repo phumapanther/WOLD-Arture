@@ -222,7 +222,8 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 		if held and held.trap then return end
 		-- The aim point rides along with every attack. The server ignores it for a weapon that does not
 		-- throw anything, so a sword is unaffected by whatever the camera happens to be looking at.
-		Remotes.RequestAttack:FireServer(AimAccess.Point and AimAccess.Point() or nil)
+		local aim = AimAccess.Fire or AimAccess.Point
+		Remotes.RequestAttack:FireServer(aim and aim() or nil)
 	elseif input.KeyCode == Enum.KeyCode.Q then
 		-- Which skill this is depends on the equipped weapon; the server resolves that and the mana cost.
 		Remotes.RequestSkill:FireServer()

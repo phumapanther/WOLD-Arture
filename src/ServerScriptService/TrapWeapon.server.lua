@@ -120,8 +120,11 @@ local function applyTo(owner, ammo, target)
 			StatusEffects.Knockdown(victim, ammo.seconds)
 		elseif ammo.kind == "damage" then
 			local wasDowned = Vitals.IsDowned(victim)
-			local landed = Vitals.ApplyDamage(victim, ammo.damage, "combat")
-			if landed and ArenaAccess.OnHit and owner.Parent then ArenaAccess.OnHit(owner, victim, ammo.damage) end
+			-- สนาม: สัดส่วนของเลือดเต็ม ทะลุเกราะ (`arenaFraction`) · เกมหลัก: ตัวเลขตายตัวผ่านเกราะ
+			local arena = ArenaAccess.OnHit ~= nil and ammo.arenaFraction ~= nil
+			local amount = arena and Vitals.MaxHP(victim) * ammo.arenaFraction or ammo.damage
+			local landed = Vitals.ApplyDamage(victim, amount, "combat", arena)
+			if landed and ArenaAccess.OnHit and owner.Parent then ArenaAccess.OnHit(owner, victim, amount) end
 			if landed and owner.Parent and not wasDowned and Vitals.IsDowned(victim) then awardKill(owner, victim) end
 		end
 		Remotes.CombatHit:FireClient(victim)
@@ -130,7 +133,9 @@ local function applyTo(owner, ammo, target)
 		if ammo.kind == "damage" then
 			-- บอทสนามคิดดาเมจแบบคน (ทางเดียวกับอาวุธอื่น: ตัวเลขของคน) · มอนเกมหลักใช้ `mobDamage`
 			local amount = ArenaAccess.OnHit and ammo.damage or ammo.mobDamage
-			if MobAccess.Damage then MobAccess.Damage(mob, amount, owner.Parent and owner or nil) end
+			local humanoid = mob:FindFirstChildOfClass("Humanoid")
+			if ArenaAccess.OnHit and ammo.arenaFraction and humanoid then amount = humanoid.MaxHealth * ammo.arenaFraction end
+			if MobAccess.Damage then MobAccess.Damage(mob, amount, owner.Parent and owner or nil, ArenaAccess.OnHit ~= nil) end
 		elseif MobAccess.Stun then
 			MobAccess.Stun(mob, ammo.mobStun or ammo.seconds or 1)
 		end

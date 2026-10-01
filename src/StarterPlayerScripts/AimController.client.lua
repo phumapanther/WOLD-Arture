@@ -205,6 +205,30 @@ local function refresh(equipped)
 	if equipped ~= nil then currentWeaponId = id end
 end
 
+-- คลิกยิง (ผู้ใช้แจ้ง 2026-10-01 "ยิงไม่ตรง"): คืนจุดเล็งตอนนี้ แล้ว **ส่งจุดเล็งล่าสุดต่อทุก 0.05 วิตลอดช่วงง้าง** —
+-- เซิร์ฟยิงไปที่เป้าเล็ง "ตอนกระสุนออก" (PlayerCombat `AimUpdate`) ไม่ใช่ตอนคลิกเมื่อ 0.35-0.4 วิก่อน ·
+-- หันตัวเข้าหาเป้า **ในเครื่องนี้** (เราเป็นเจ้าของฟิสิกส์ตัวเอง) — เดิมเซิร์ฟตั้ง CFrame ซึ่งดึงตัวกลับไปตำแหน่งเก่าทุกนัด (กระตุก)
+local FOLLOW_SECONDS, FOLLOW_EVERY = 0.6, 0.05
+local followUntil = 0
+AimAccess.Fire = function()
+	local point = aimPoint()
+	if not (gui.Enabled or savedFov) then return point end -- ไม่ได้ถืออาวุธยิง: ส่งแค่จุดเล็งแบบเดิม
+	local hrp = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+	local flat = hrp and (point - hrp.Position) * Vector3.new(1, 0, 1)
+	if flat and flat.Magnitude > 0.5 then hrp.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + flat.Unit) end
+	local running = os.clock() < followUntil
+	followUntil = os.clock() + FOLLOW_SECONDS
+	if not running then
+		task.spawn(function()
+			while os.clock() < followUntil do
+				task.wait(FOLLOW_EVERY)
+				Remotes.AimUpdate:FireServer(aimPoint())
+			end
+		end)
+	end
+	return point
+end
+
 --------------------------------------------------------------------------------
 -- กระสุนที่เหลือ (ผู้ใช้สั่ง 2026-09-25): รูปกระสุนเรียงกลางล่างจอ ตอนถืออาวุธที่กินกระสุน (ปืนเล็ก)
 --------------------------------------------------------------------------------

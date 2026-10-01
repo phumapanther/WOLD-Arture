@@ -165,8 +165,8 @@ Remotes.RequestRoll.OnServerEvent:Connect(function(player, direction)
 	state.endsAt = now + cfg.duration
 	state.nextAllowedAt = now + cfg.cooldown
 	-- Face the roll and hold that facing: turning mid-roll would fight the animation.
-	character.HumanoidRootPart.CFrame = CFrame.lookAt(character.HumanoidRootPart.Position,
-		character.HumanoidRootPart.Position + flat)
+	-- **หันตัวที่ไคลเอนต์** (ActionController ก่อนส่งคำขอ) — เดิมเซิร์ฟตั้ง hrp.CFrame ที่นี่ ซึ่งดึงตัวกลับไปตำแหน่งเก่าที่
+	-- เซิร์ฟเห็น (ช้ากว่าเครื่องผู้เล่นครึ่งปิง) ทุกครั้งที่กลิ้ง = กระตุก (ผู้ใช้แจ้ง 2026-10-01)
 	humanoid.AutoRotate = false
 	-- No jumping out of a roll. The mover already overrides gravity for its duration, so a jump mid-roll
 	-- launched the character instead of hopping, and cancelled the animation into a floating pose.

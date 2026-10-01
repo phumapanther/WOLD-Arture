@@ -107,11 +107,8 @@ end
 local function setGuard(player, state, guarding)
 	if state.guarding == guarding then return end
 	state.guarding = guarding
-	local humanoid = humanoidOf(player)
-	if humanoid then
-		-- PlayerMovement owns WalkSpeed normally; while guarding we clamp it and it restores on guard drop.
-		humanoid.WalkSpeed = guarding and weaponOf(player).guardWalkSpeed or 8
-	end
+	-- ไม่เขียน WalkSpeed ที่นี่แล้ว (2026-10-01): PlayerMovement เขียนทับทุกเฟรมอยู่แล้ว `guardWalkSpeed` จึงไม่เคยมีผล
+	-- เหลือแค่ความเร็วกระตุกหนึ่งเฟรมทุกครั้งที่ยก/ลดการ์ด
 	Remotes.CombatStateChanged:FireAllClients(player, guarding and "guard_start" or "guard_end")
 	-- สไน: การ์ด = ส่อง → ปืนย้ายจากมือขวาไปกลางอกตลอดที่ส่อง (ผู้ใช้สั่ง 2026-09-25 รอบสอง)
 	if WeaponVisualsAccess.OnAim then WeaponVisualsAccess.OnAim(player, guarding) end
@@ -299,6 +296,65 @@ local function characterOf(part)
 	return model
 end
 
+-- ชิ้นที่กระสุนทะลุไป (คืน instance ที่ข้าม หรือ nil = หยุดตรงนี้) — **กติกาเดียวของกระสุนทุกแบบ** (สไน + กระสุนเดินทาง)
+-- ใบไม้ หญ้า หมุดล่องหน (ชนไม่ได้และไม่ใช่ร่างใคร) · ศพ · เพื่อนร่วมตี้/ทีม
+-- (QA 2026-09-26 สไน · 2026-10-01 ขยายให้ปืน/ธนู/สมุดเวท — เดิมกระสุนพวกนี้หยุดที่ใบไม้/กล่องล่องหนแล้วไม่โดนใคร)
+local function shotSkip(player)
+	return function(part)
+		local m = characterOf(part)
+		if not m then return (not part.CanCollide) and part or nil end
+		local hum = m:FindFirstChildOfClass("Humanoid")
+		if hum and hum.Health <= 0 then return m end
+		local v = Players:GetPlayerFromCharacter(m)
+		if v and Party.SameParty(player, v) then return m end
+		if ArenaAccess.Friendly and ArenaAccess.Friendly(player, v or m) then return m end
+		return nil
+	end
+end
+
+-- ผู้ยิงเห็นเป้าช้ากว่าเซิร์ฟเท่าไหร่ (วิ): ปิงไป-กลับของผู้ยิง + ช่วงหน่วงภาพของ Roblox ~0.1
+-- (จุดเล็งที่ส่งมาถึงเซิร์ฟช้าครึ่งปิง และภาพบนจอเขาช้ากว่าเซิร์ฟอีกครึ่งปิง + หน่วงภาพ)
+local function rewindSeconds(player)
+	local ok, ping = pcall(function() return player:GetNetworkPing() end)
+	return math.clamp((ok and ping or 0.1) + 0.1, 0.05, 0.35)
+end
+
+-- สนาม: เป้าแรกที่ช่วงกระสุน `from` → `from + unit * length` ผ่านใกล้ลำตัว ≤ `SHOT_BODY_PAD (+ extra)` สตัด
+-- ตำแหน่งเป้าย้อนไป `rewind` วิตามความเร็ว = ตำแหน่งที่ผู้ยิงเห็นบนจอตอนเล็ง · ลำตัว = กล่องเท้าถึงหัวของ distanceToBody
+-- คืน model, จุดโดน, โดนหัวไหม (จุดโดนสูงกว่าไหล่)
+-- ponytail: ย้อนด้วยความเร็วตอนนี้ (เป้าเลี้ยวหักศอกจะคลาดนิดหน่อย) · แม่นกว่านี้ = เก็บประวัติตำแหน่งราย Heartbeat
+local SHOT_BODY_PAD = 1.0
+local SHOT_SAMPLE = 1.0 -- เช็คทุกกี่สตัดตามแนวกระสุน
+local function sweepTarget(player, from, unit, length, rewind, extra)
+	local targets = {}
+	for _, other in ipairs(Players:GetPlayers()) do
+		local c = other.Character
+		if other ~= player and c and not Party.SameParty(player, other)
+			and not (ArenaAccess.Friendly and ArenaAccess.Friendly(player, other)) then
+			targets[#targets + 1] = c
+		end
+	end
+	for _, mob in ipairs(CollectionService:GetTagged("WOLD_Mob")) do
+		if not (ArenaAccess.Friendly and ArenaAccess.Friendly(player, mob)) then targets[#targets + 1] = mob end
+	end
+	local samples = math.max(1, math.ceil(length / SHOT_SAMPLE))
+	for i = 0, samples do
+		local at = from + unit * (length * i / samples)
+		for _, model in ipairs(targets) do
+			local root = model:FindFirstChild("HumanoidRootPart")
+			local humanoid = model:FindFirstChildOfClass("Humanoid")
+			if root and humanoid and humanoid.Health > 0 then
+				local back = root.AssemblyLinearVelocity * rewind
+				if distanceToBody(at + back, model) <= SHOT_BODY_PAD + extra then
+					local rel = at + back - root.Position
+					return model, at, rel.Y > root.Size.Y * 0.5 * 1.15
+				end
+			end
+		end
+	end
+	return nil
+end
+
 local function fireProjectile(player, attack, aim)
 	local spec = attack.projectile
 	local character = player.Character
@@ -311,7 +367,10 @@ local function fireProjectile(player, attack, aim)
 	-- Chest height by default, which is where a bow is held. A weapon may raise it: the pistol sights just
 	-- above the head, as the user asked, so the shot clears a crowd rather than hitting the first shoulder
 	-- between shooter and target.
-	local muzzle = hrp.Position + Vector3.new(0, spec.muzzleHeight or 1.2, 0)
+	-- **สนาม (มุมบุคคลที่หนึ่ง): ออกจากตา** = เส้นเดียวกับเป้าเล็งกลางจอ (ผู้ใช้แจ้ง 2026-10-01 "ยิงไม่ตรง") —
+	-- ออกจากอก/เหนือหัวแล้วแนวกระสุนไม่ตรงกับเป้าเล็ง ขอบกำแพงที่ตามองข้ามได้กลับกินกระสุน
+	local head = ServerConfig.IsArena and character:FindFirstChild("Head")
+	local muzzle = head and head.Position or (hrp.Position + Vector3.new(0, spec.muzzleHeight or 1.2, 0))
 	local forward = aimDirection(hrp, muzzle, aim)
 	local origin = muzzle + forward * 2.5
 
@@ -345,64 +404,86 @@ local function fireProjectile(player, attack, aim)
 	-- ตีบวก: ดาเมจคูณตามขั้นของอาวุธที่ถือ (EnhanceConfig — ไม่มีขั้น/มือเปล่า = ×1)
 	local dealt = ClassPerks.DamageFor(player, attack.damage) * EnhanceConfig.MultiplierFor(select(2, Inventory.EquippedWeapon(player)))
 
+	local hitThisShot = {}
+	-- ทีละเป้า — ทางเดียวกันทั้งวงระเบิด (damageAt) และกระสุนที่โดนเป้าตรงๆ (สนาม) · `isHead` = โดนหัว (สนามเท่านั้น)
+	local function hitPlayer(other, isHead)
+		-- คนในตี้เดียวกันไม่ใช่เป้า: ลูกธนูทะลุผ่านไปเหมือนไม่มีใครยืนอยู่ตรงนั้น ไม่ใช่ "โดนแต่ 0 ดาเมจ"
+		-- ด่านอยู่ตรงนี้ ไม่ใช่ใน ApplyDamage เพราะ Vitals ไม่รู้ว่าใครเป็นคนตี — มันเห็นแค่คนที่ถูกตี
+		-- ในสนาม PVP ตี้ของล็อบบี้ไม่ได้เดินทางมาด้วย — ทีมของแมตช์คือด่านเดียวที่มีผลที่นั่น
+		if other == player or hitThisShot[other] or Party.SameParty(player, other)
+			or (ArenaAccess.Friendly and ArenaAccess.Friendly(player, other)) or Vitals.IsInvulnerable(other) then
+			return
+		end
+		local otherChar = other.Character
+		if not otherChar then return end
+		hitThisShot[other] = true
+		local amount = dealt
+		if isHead then
+			amount = dealt * ArenaConfig.HeadshotMultiplier
+			if ArenaAccess.OnHeadshot then ArenaAccess.OnHeadshot(player, other) end
+		end
+		local wasDowned = Vitals.IsDowned(other)
+		local landed = Vitals.ApplyDamage(other, amount, "combat")
+		if landed and ArenaAccess.OnHit then ArenaAccess.OnHit(player, other, amount) end
+		reportHit(player, other)
+		applyEffect(attack, other)
+		playHitSound(otherChar, player)
+		if not wasDowned and Vitals.IsDowned(other) then
+			awardKill(player, other)
+			-- 💤 เฉพาะคนที่ถูก "ยิง" ล้ม ตามที่ผู้ใช้สั่ง — บล็อกนี้เป็นทางของกระสุนกับลูกธนู
+			-- เท่านั้น (ระยะประชิดอยู่คนละบล็อก) จึงไม่ต้องถามว่าอาวุธอะไร
+			StatusEffects.SetAsleep(other, true)
+		end
+	end
+	local function hitDummy(dummy)
+		if hitThisShot[dummy] then return end
+		hitThisShot[dummy] = true
+		Progression.AwardExp(player, ProgressionConfig.ExpPerDummyHit)
+		playHitSound(dummy, player)
+	end
+	local function hitMob(mob, isHead)
+		if hitThisShot[mob] then return end
+		hitThisShot[mob] = true
+		local amount = dealt
+		if isHead then
+			amount = dealt * ArenaConfig.HeadshotMultiplier
+			if ArenaAccess.OnHeadshot then ArenaAccess.OnHeadshot(player, mob) end
+		end
+		if MobAccess.Damage and MobAccess.Damage(mob, amount, player) then
+			playHitSound(mob, player)
+			local stun = stunSeconds(attack)
+			if stun and MobAccess.Stun then
+				MobAccess.Stun(mob, stun)
+			end
+		end
+	end
+	local function hitModel(model, isHead)
+		local other = Players:GetPlayerFromCharacter(model)
+		if other then
+			hitPlayer(other, isHead)
+		elseif CollectionService:HasTag(model, "WOLD_Dummy") then
+			hitDummy(model)
+		elseif CollectionService:HasTag(model, "WOLD_Mob") then
+			hitMob(model, isHead)
+		end
+	end
+
 	-- **หนึ่งนัด โดนเป้าเดียวได้ครั้งเดียว** (QA 2026-09-26) — ลำแสงคทาเรียก damageAt ทุก 8 สตัดตามแนว (รัศมีโดน 8)
 	-- เป้าที่ยืนห่าง 12-16 สตัดอยู่ในวงสองสามวง = ดาเมจ 2-3 เท่า สโลว์ซ้อน และยอดดาเมจบอสโลกพอง
-	local hitThisShot = {}
 	-- `headModel` = ร่างที่กระสุนชนหัวพอดี (สนามเท่านั้น ดู headOwner) — คนนั้นโดนคูณ HeadshotMultiplier
 	local function damageAt(position, headModel)
 		for _, other in ipairs(Players:GetPlayers()) do
-			-- คนในตี้เดียวกันไม่ใช่เป้า: ลูกธนูทะลุผ่านไปเหมือนไม่มีใครยืนอยู่ตรงนั้น ไม่ใช่ "โดนแต่ 0 ดาเมจ"
-			-- ด่านอยู่ตรงนี้ ไม่ใช่ใน ApplyDamage เพราะ Vitals ไม่รู้ว่าใครเป็นคนตี — มันเห็นแค่คนที่ถูกตี
-			-- ในสนาม PVP ตี้ของล็อบบี้ไม่ได้เดินทางมาด้วย — ทีมของแมตช์คือด่านเดียวที่มีผลที่นั่น
-			if other ~= player and not hitThisShot[other] and not Party.SameParty(player, other)
-				and not (ArenaAccess.Friendly and ArenaAccess.Friendly(player, other)) then
-				local otherChar = other.Character
-				if otherChar and distanceToBody(position, otherChar) <= CombatConfig.ProjectileHitRadius
-					and not Vitals.IsInvulnerable(other) then
-					hitThisShot[other] = true
-					local amount = dealt
-					if headModel and otherChar == headModel then
-						amount = dealt * ArenaConfig.HeadshotMultiplier
-						if ArenaAccess.OnHeadshot then ArenaAccess.OnHeadshot(player, other) end
-					end
-					local wasDowned = Vitals.IsDowned(other)
-					local landed = Vitals.ApplyDamage(other, amount, "combat")
-					if landed and ArenaAccess.OnHit then ArenaAccess.OnHit(player, other, amount) end
-					reportHit(player, other)
-					applyEffect(attack, other)
-					playHitSound(otherChar, player)
-					if not wasDowned and Vitals.IsDowned(other) then
-						awardKill(player, other)
-						-- 💤 เฉพาะคนที่ถูก "ยิง" ล้ม ตามที่ผู้ใช้สั่ง — บล็อกนี้เป็นทางของกระสุนกับลูกธนู
-						-- เท่านั้น (ระยะประชิดอยู่คนละบล็อก) จึงไม่ต้องถามว่าอาวุธอะไร
-						StatusEffects.SetAsleep(other, true)
-					end
-				end
+			local otherChar = other.Character
+			if otherChar and distanceToBody(position, otherChar) <= CombatConfig.ProjectileHitRadius then
+				hitPlayer(other, headModel ~= nil and otherChar == headModel)
 			end
 		end
 		for _, dummy in ipairs(CollectionService:GetTagged("WOLD_Dummy")) do
-			local root = dummy.PrimaryPart
-			if root and not hitThisShot[dummy] and distanceToBody(position, dummy) <= CombatConfig.ProjectileHitRadius then
-				hitThisShot[dummy] = true
-				Progression.AwardExp(player, ProgressionConfig.ExpPerDummyHit)
-				playHitSound(dummy, player)
-			end
+			if dummy.PrimaryPart and distanceToBody(position, dummy) <= CombatConfig.ProjectileHitRadius then hitDummy(dummy) end
 		end
 		for _, mob in ipairs(CollectionService:GetTagged("WOLD_Mob")) do
-			if not hitThisShot[mob] and distanceToBody(position, mob) <= CombatConfig.ProjectileHitRadius then
-				hitThisShot[mob] = true
-				local amount = dealt
-				if headModel and mob == headModel then
-					amount = dealt * ArenaConfig.HeadshotMultiplier
-					if ArenaAccess.OnHeadshot then ArenaAccess.OnHeadshot(player, mob) end
-				end
-				if MobAccess.Damage and MobAccess.Damage(mob, amount, player) then
-					playHitSound(mob, player)
-					local stun = stunSeconds(attack)
-					if stun and MobAccess.Stun then
-						MobAccess.Stun(mob, stun)
-					end
-				end
+			if distanceToBody(position, mob) <= CombatConfig.ProjectileHitRadius then
+				hitMob(mob, headModel ~= nil and mob == headModel)
 			end
 		end
 	end
@@ -423,21 +504,56 @@ local function fireProjectile(player, attack, aim)
 	end
 
 	-- Travelling shot.
+	-- ⚠️ (ผู้ใช้แจ้ง 2026-10-01 "ยิงไม่ค่อยตรง"):
+	--   · ทะลุใบไม้/ของล่องหน/เพื่อน/ศพ เหมือนสไน (`shotSkip`) — เดิมกระสุนหยุดที่ของพวกนี้แล้วระเบิดวง 8 ตรงนั้น
+	--   · **สนาม: โดนเฉพาะเป้าที่กระสุนผ่านจริง** (`sweepTarget` ไล่ทีละช่วงที่กระสุนเดิน) แทนวง 8 สตัดตรงจุดที่หยุด
+	--     ซึ่งเคยโดนคนที่กระสุนพลาดไปไกล และพลาดคนที่กระสุนเฉียดผ่านไปชนกำแพงข้างหลัง · ลูกเวท (orb) ยังระเบิดเป็นวง
+	--   · ตำแหน่งเป้าย้อนตามเวลาที่ผู้ยิงเห็นช้ากว่าเซิร์ฟ (`rewindSeconds`)
+	-- เกมหลักยังเป็นวง 8 ตรงจุดที่หยุดเหมือนเดิม (ยิงมอนตัวใหญ่ต้องง่าย)
+	local skip = shotSkip(player)
+	local single = ServerConfig.IsArena
+	local rewind = single and rewindSeconds(player) or 0
+	local extra = spec.kind == "orb" and spec.size.X * 0.5 or 0
 	part.CFrame = CFrame.lookAt(origin, origin + forward)
 	task.spawn(function()
+		local pos = muzzle -- จำลองจากตา/ปากกระบอกจริง (ชิดกำแพงยิงทะลุไม่ได้) ภาพเริ่มที่ origin
 		local travelled = 0
 		local maxDistance = spec.speed * spec.life
 		while part.Parent and travelled < maxDistance do
 			local dt = task.wait()
-			local step = forward * (spec.speed * dt)
-			local result = workspace:Raycast(part.Position, step, params)
-			if result then
+			local stepLength = math.min(spec.speed * dt, maxDistance - travelled)
+			local cast = RaycastParams.new()
+			cast.FilterType = Enum.RaycastFilterType.Exclude
+			cast.FilterDescendantsInstances = { character }
+			cast.IgnoreWater = true
+			local result = RayThrough.Cast(pos, forward * stepLength, cast, skip, 12)
+			local reach = result and (result.Position - pos).Magnitude or stepLength
+			if single then
+				local model, at, isHead = sweepTarget(player, pos, forward, reach, rewind, extra)
+				local direct = result and characterOf(result.Instance)
+				if not model and direct and direct ~= character then
+					model, at, isHead = direct, result.Position, headOwner(result.Instance) == direct
+				end
+				if model then
+					if spec.kind == "orb" then damageAt(at, isHead and model or nil) else hitModel(model, isHead) end
+					part:Destroy()
+					return
+				end
+				if result then
+					if spec.kind == "orb" then damageAt(result.Position) end
+					part:Destroy()
+					return
+				end
+			elseif result then
 				damageAt(result.Position, headOwner(result.Instance))
 				part:Destroy()
 				return
 			end
-			part.CFrame = part.CFrame + step
-			travelled += step.Magnitude
+			pos += forward * stepLength
+			travelled += stepLength
+			-- ภาพโผล่ห่างตาอย่างน้อย 2.5 สตัด (origin) — ลูกเวทกว้าง 1.6 ชิดตาจะบังจอทั้งจอ
+			local shown = travelled >= 2.5 and pos or origin
+			part.CFrame = CFrame.lookAt(shown, shown + forward)
 		end
 		if part.Parent then part:Destroy() end
 	end)
@@ -451,25 +567,17 @@ local function fireSniper(player, weapon, attack, aim)
 	local character = player.Character
 	local hrp = character and character:FindFirstChild("HumanoidRootPart")
 	if not hrp then return end
-	local muzzle = hrp.Position + Vector3.new(0, spec.muzzleHeight or 1.5, 0)
+	local head = ServerConfig.IsArena and character:FindFirstChild("Head") -- สนาม: ออกจากตา (ดู fireProjectile)
+	local muzzle = head and head.Position or (hrp.Position + Vector3.new(0, spec.muzzleHeight or 1.5, 0))
 	local forward = aimDirection(hrp, muzzle, aim)
+	local rewind = ServerConfig.IsArena and rewindSeconds(player) or 0
 
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	params.FilterDescendantsInstances = { character }
 	params.IgnoreWater = true
-	-- ทะลุเพื่อนร่วมทีม/ตี้ และศพ (รีวิวจบงาน: เพื่อนยืนขวางแนวยิงเคยกินนัดทิ้งทั้งที่ศัตรูอยู่ข้างหลัง)
-	local function passThrough(part)
-		local m = characterOf(part)
-		-- ใบไม้ หญ้า หมุดล่องหน: ชนไม่ได้และไม่ใช่ร่างใคร = กระสุนทะลุ (QA 2026-09-26 — เดิมกระสุนหยุดที่ใบไม้)
-		if not m then return (not part.CanCollide) and part or nil end
-		local hum = m:FindFirstChildOfClass("Humanoid")
-		if hum and hum.Health <= 0 then return m end
-		local v = Players:GetPlayerFromCharacter(m)
-		if v and Party.SameParty(player, v) then return m end
-		if ArenaAccess.Friendly and ArenaAccess.Friendly(player, v or m) then return m end
-		return nil
-	end
+	-- ทะลุเพื่อนร่วมทีม/ตี้ ศพ ใบไม้ หมุดล่องหน (รีวิวจบงาน + QA 2026-09-26) — กติกาเดียวกับกระสุนทุกแบบ
+	local passThrough = shotSkip(player)
 	-- 12 ชั้น: ป่าทึบมีใบไม้ซ้อนหลายชั้นก่อนถึงเป้า (เดิม 4 = หมดชั้นกลางพุ่มแล้วไม่โดนอะไร)
 	local result = RayThrough.Cast(muzzle, forward * spec.length, params, passThrough, 12)
 	local endPoint = result and result.Position or (muzzle + forward * spec.length)
@@ -482,7 +590,9 @@ local function fireSniper(player, weapon, attack, aim)
 		local function add(m)
 			local r = m:FindFirstChild("HumanoidRootPart") or m.PrimaryPart
 			if r and m ~= character then
-				candidates[#candidates + 1] = { model = m, position = r.Position, pad = m:GetAttribute("WOLD_HitPad") }
+				-- สนาม: ย้อนตำแหน่งไปเท่าที่ผู้ยิงเห็นบนจอ (rewindSeconds)
+				candidates[#candidates + 1] = { model = m, position = r.Position - r.AssemblyLinearVelocity * rewind,
+					pad = m:GetAttribute("WOLD_HitPad") }
 			end
 		end
 		for _, m in ipairs(CollectionService:GetTagged("WOLD_Mob")) do add(m) end
@@ -655,6 +765,13 @@ local function resolveHit(player, state, attack)
 	end
 end
 
+-- จุดเล็งล่าสุดระหว่างง้าง (AimController ส่งทุก 0.05 วิหลังคลิก) — ใช้ตอนกระสุนออก ดูข้างล่าง
+-- ไม่ต้องเชื่อ: aimDirection กรองค่าเพี้ยน และจุดเล็งเปลี่ยนได้แค่ทิศ ไม่ได้ยิงไกล/เร็วขึ้น
+Remotes.AimUpdate.OnServerEvent:Connect(function(player, aim)
+	local state = States[player]
+	if state and typeof(aim) == "Vector3" then state.aim, state.aimAt = aim, os.clock() end
+end)
+
 Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	local state = States[player]
 	local humanoid = humanoidOf(player)
@@ -688,7 +805,10 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 		state.lastAttackAt = now
 		state.chainIndex = 0
 		setGuard(player, state, true)
-		return
+		-- **สนาม: อาวุธยิง (ไม่ใช่สไน) คลิกแรกยิงเลย** (ผู้ใช้แจ้ง 2026-10-01 ยิงไม่ค่อยติด) — การ์ดหลุดเองทุก 4 วิที่ไม่ยิง
+		-- แล้วคลิกถัดไปแค่ยกปืน = นัดหายตอนโผล่จากที่กำบัง · เกมหลัก/ระยะประชิดยังยกการ์ดก่อนเหมือนเดิม
+		local first = held.attacks and held.attacks[1]
+		if not (ServerConfig.IsArena and first and first.projectile and not held.scope) then return end
 	end
 
 	-- A fishing rod casts rather than fights. The swing still plays -- the cast IS a swing, which is what
@@ -788,24 +908,15 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	-- A ranged attack fires a single shot after its windup; only melee keeps a live hitbox.
 	if attack.projectile then
 		state.pendingAttack = nil
-		-- Turn to face the shot as it is loosed, not as it lands. Firing sideways while the body stayed put
-		-- read as a bug: the arrow left from somewhere the character was plainly not pointing.
-		--
-		-- Flattened, so aiming at the sky does not tip the character over backwards -- only the heading
-		-- changes, and only around Y.
-		local turnChar = player.Character
-		local hrp = turnChar and turnChar:FindFirstChild("HumanoidRootPart")
-		if hrp and typeof(aim) == "Vector3" then
-			local flat = (aim - hrp.Position) * Vector3.new(1, 0, 1)
-			if flat.Magnitude > 0.5 then
-				hrp.CFrame = CFrame.lookAt(hrp.Position, hrp.Position + flat.Unit)
-			end
-		end
+		-- หันตัวเข้าหาเป้าทำที่ไคลเอนต์แล้ว (`AimAccess.Fire`) — เดิมเซิร์ฟตั้ง hrp.CFrame ที่นี่ ซึ่ง**ดึงตัวกลับไปตำแหน่งเก่า
+		-- ที่เซิร์ฟเห็น (ช้ากว่าเครื่องผู้เล่นครึ่งปิง) ทุกนัด** = กระตุกตอนยิงขณะเดิน (ผู้ใช้แจ้ง 2026-10-01)
 
-		-- The aim is captured at the click and carried through the windup, so the shot goes where the player
-		-- was pointing when they fired rather than wherever the camera has swung to by the time it leaves.
+		-- **ยิงไปที่เป้าเล็งตอนกระสุนออก** (ผู้ใช้แจ้ง 2026-10-01 "ยิงไม่ตรง"): ไคลเอนต์ส่งจุดเล็งล่าสุดมาตลอดช่วงง้าง
+		-- (`AimUpdate`) — เดิมใช้จุดตอนคลิก กระสุนออกช้ากว่า 0.35-0.4 วิ จึงตกหลังเป้าที่วิ่ง และเล็งตามไม่มีผล
+		local clickedAt = now
 		task.delay(attack.windup, function()
 			if not player.Parent then return end
+			if state.aimAt and state.aimAt >= clickedAt then aim = state.aim end
 			if attack.projectile.kind == "hitscan" then
 				-- ตาย/ล้ม/เปลี่ยนอาวุธระหว่างรอ = ไม่ยิง (มานาที่หักไปแล้วไม่คืน)
 				if weaponOf(player) ~= weapon or Vitals.IsDowned(player) then return end

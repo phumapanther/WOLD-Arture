@@ -48,7 +48,8 @@ gui:OnAttack(function()
 	if holdingTrap() then return end
 	-- The same aim point the mouse sends: on touch the camera IS the aim, so a phone player shoots where
 	-- they are looking rather than where their character happens to be facing.
-	Remotes.RequestAttack:FireServer(AimAccess.Point and AimAccess.Point() or nil)
+	local aim = AimAccess.Fire or AimAccess.Point
+	Remotes.RequestAttack:FireServer(aim and aim() or nil)
 end)
 
 gui:OnAttackHold(function(phase)

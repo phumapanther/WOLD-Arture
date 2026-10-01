@@ -32,7 +32,6 @@ local FORCED_WALK_SECONDS = 2
 -- 2026-09-25 รอบสอง (ผู้ใช้สั่ง): **ถอยหลังวิ่งไม่ได้** (ความเร็วฐานถูกกดไว้ที่เดินปกติ ไม่กินสตามินา) และ
 -- **ช้าลงอีก 25%** จากเดิม 0.6 → 0.6 × 0.75 = 0.45 ของความเร็วเดินปกติ
 local BACKWARD_FACTOR = 0.45
-local BACKWARD_DOT = -0.3
 
 local States = {} -- [player] = { state, sprintIntent, forcedWalkUntil }
 
@@ -41,13 +40,11 @@ local function humanoidOf(player)
 	return character and character:FindFirstChildOfClass("Humanoid")
 end
 
--- เดินสวนทิศที่ตัวหันอยู่ไหม (สนามเท่านั้น)
-local function backpedaling(humanoid)
-	if not ServerConfig.IsArena or not humanoid then return false end
-	local root = humanoid.RootPart
-	local move = humanoid.MoveDirection * Vector3.new(1, 0, 1)
-	local look = root and root.CFrame.LookVector * Vector3.new(1, 0, 1)
-	return look ~= nil and move.Magnitude > 0.1 and look.Magnitude > 0.1 and move.Unit:Dot(look.Unit) < BACKWARD_DOT
+-- เดินสวนทิศที่ตัวหันอยู่ไหม (สนามเท่านั้น) · **ไคลเอนต์บอกมา** (`SetBackpedal` · MovementController 2026-10-01)
+-- เดิมคิดที่นี่จาก MoveDirection กับทิศตัว ซึ่งมาถึงเซิร์ฟคนละจังหวะ เดินข้างพลางหมุนกล้อง = ค่าแกว่งข้ามเส้น
+-- ความเร็วสลับเร็ว↔ช้าทุกเฟรม (เดินกระตุก) · โกงได้แค่ถอยหลังเร็วเท่าเดินหน้า (ไคลเอนต์คุมฟิสิกส์ตัวเองอยู่แล้ว)
+local function backpedaling(state)
+	return ServerConfig.IsArena and state.backpedal == true
 end
 
 -- Applies the current state's speed, scaled by how overloaded the player is. Called on state changes AND
@@ -59,7 +56,7 @@ local function applySpeed(state, player)
 	if not humanoid or Vitals.IsDowned(player) then return end
 	local base = SPEED[state.state == "ForcedWalk" and "Walk" or state.state]
 	if state.autoFarm and state.state == "Normal" then base = AUTO_FARM_SPEED end
-	local backward = backpedaling(humanoid)
+	local backward = backpedaling(state)
 	if backward then base = math.min(base, SPEED.Normal) end -- ถอยหลังวิ่งไม่ได้
 	-- Carry weight and any slow effect both scale the same base speed, so neither has to know about the other.
 	local wanted = base * Inventory.SpeedMultiplier(player) * StatusEffects.SpeedMultiplier(player)
@@ -117,6 +114,11 @@ Remotes.SetSprintIntent.OnServerEvent:Connect(function(player, intent)
 	end
 end)
 
+Remotes.SetBackpedal.OnServerEvent:Connect(function(player, on)
+	local state = States[player]
+	if state then state.backpedal = on == true end
+end)
+
 Remotes.SetAutoFarming.OnServerEvent:Connect(function(player, on)
 	local state = States[player]
 	if state and not ServerConfig.IsArena then state.autoFarm = on == true end
@@ -144,7 +146,7 @@ if ACTIVE then
 			if Vitals.IsDowned(player) or swimming then
 				if state.state ~= "Normal" then setState(state, player, "Normal") end
 			-- ถอยหลังในสนาม = ไม่ได้วิ่งจริง (ความเร็วถูกกด) จึงไม่กินสตามินา ตกไปฟื้นแทน
-			elseif state.state == "Run" and not backpedaling(humanoid) then
+			elseif state.state == "Run" and not backpedaling(state) then
 				local stamina = Vitals.GetStamina(player) - STAMINA_DRAIN_PER_SEC * dt
 				Vitals.SetStamina(player, stamina)
 				if stamina <= 0 then

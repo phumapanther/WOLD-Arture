@@ -24,6 +24,7 @@ local EVENTS = {
 	"ArenaCue", "RequestArenaAgain",
 	"SetSprintIntent", "ToggleWalk", -- movement (client intent in; stamina goes out via VitalsUpdate)
 	"SetAutoFarming", -- ฟาร์มออโต้เปิด/ปิด → PlayerMovement เดินเร็วเกือบวิ่ง (2026-10-01)
+	"AimUpdate", "SetBackpedal", -- จุดเล็งล่าสุดระหว่างง้าง · กำลังถอยหลังไหม (สนาม) — 2026-10-01
 	"RequestAttack", "CombatStateChanged", "RequestUnscope", "RequestBlock", "PvpRankInfo", "PvpRankUp", "PvpRankSeen", -- combat (click intent in, guard/attack playback out) · ยกการ์ด + แร็งก์ PVP (เฟส 3)
 	-- กับดัก (เฟส 3): เขวี้ยง/วาง · เลือกกระสุน · ภาพ (เขวี้ยง/ระเบิด) ถึงทุกเครื่อง
 	"RequestTrap", "RequestTrapAmmo", "TrapEvent",

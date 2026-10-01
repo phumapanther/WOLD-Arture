@@ -9,5 +9,7 @@ local AimAccess = {}
 
 -- Point() -> Vector3, the world point under the middle of the screen.
 AimAccess.Point = nil
+-- Fire() -> Vector3, ใช้ตอนคลิกโจมตี: จุดเล็ง + หันตัวเข้าหา + ส่งจุดเล็งล่าสุดต่อตลอดช่วงง้าง (ถืออาวุธยิงเท่านั้น)
+AimAccess.Fire = nil
 
 return AimAccess
