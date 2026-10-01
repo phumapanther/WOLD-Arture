@@ -241,7 +241,7 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
   · โซนเพลง "Spire of Eld" → "Wyrmsleep" · เทส `wyrmsleep_shape_test` `wyrmsleep_config_test` (offline) · `wyrmsleep_crater_test` (Edit เพลสหลัก)
 - **ต้องทำก่อนใช้จริง: publish เพลสหลัก** (ภูมิประเทศ/ของในเพลสไม่ใช่โค้ด Rojo)
 
-**รอบแก้ PVP เสียง/บล็อก/เล่นต่อ + เกาะ (ผู้ใช้สั่ง 2026-10-01) — ดันเกาะ+สนาม mismatches 0 · ⚠️ เพลสหลักยังไม่ได้ดัน (ตอนทำไม่ได้เปิดใน Studio) · ยังไม่ได้เทสในเกม**
+**รอบแก้ PVP เสียง/บล็อก/เล่นต่อ + เกาะ (ผู้ใช้สั่ง 2026-10-01) — ดันครบสามเพลส mismatches 0 (หลักดัน 2026-10-01 หลังเปิด Studio ใหม่ · 361 ไฟล์) · ยังไม่ได้เทสในเกม**
 - **เสียง PVP 9 ตัว** ใน `SoundscapeConfig.Interface` (PreloadAsync ผ่าน + **ถอดเสียงพูดด้วย faster-whisper ยืนยันข้อความ** —
   ดึงไฟล์จากแคช Studio `%LOCALAPPDATA%\Roblox\rbx-storage` (หัว RBXH ตามด้วย OggS/ID3) หลัง PreloadAsync · assetdelivery ต้องล็อกอิน)
   · หาห้อง/เจอห้อง = `PvpPartyController.draw` เทียบภาพก่อนหน้า · เริ่มแมตช์/นับ 5 วิ/Fight = เซิร์ฟยิง `Remotes.ArenaCue(name)`
@@ -259,7 +259,7 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
   ลูป AI ใน `Mobs`: หลุดออก = เดินกลับ `home` · ค้างนอก 4 วิ = วาร์ป · ไล่/เดินเล่น = clamp · ยืนยันใน Play: สไลม์ไล่มา 26 สตัดแล้วหยุดที่ขอบดิน
 - **ฟาร์มออโต้เดิน 20** (ปกติ 8 วิ่ง 24) ไม่กินสตามินา · `Remotes.SetAutoFarming` จาก `GatherController` → `PlayerMovement` (สนามไม่รับ)
 
-**รอบแก้ยิงไม่ตรง/เดินกระตุก + กับดักระเบิด (ผู้ใช้สั่ง 2026-10-01 · ผู้ใช้เทสเอง ไม่ต้องกด Play)**
+**รอบแก้ยิงไม่ตรง/เดินกระตุก + กับดักระเบิด (ผู้ใช้สั่ง 2026-10-01 · ผู้ใช้เทสเอง ไม่ต้องกด Play) — ดันครบสามเพลส mismatches 0 · ยังไม่ได้เทสในเกม**
 - กับดักระเบิดในสนาม = **90% ของเลือดเต็ม ทะลุเกราะ** (`TrapConfig` `arenaFraction` · คน+บอท) · เกมหลักยัง 35
 - ⚠️ **ยิง = ไปที่เป้าเล็งตอนกระสุนออก ไม่ใช่ตอนคลิก**: `AimAccess.Fire()` (คลิก/ปุ่มมือถือ) ส่ง `AimUpdate` ทุก 0.05 วิ 0.6 วิ
   → `state.aim` ใช้ตอนพ้น windup · เดิมจุดตอนคลิก + ง้าง 0.35-0.4 วิ = ตกหลังเป้าที่วิ่ง
