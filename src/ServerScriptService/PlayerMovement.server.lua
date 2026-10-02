@@ -20,6 +20,8 @@ local ACTIVE = not ServerConfig.IsLobby
 local SPEED = { Normal = 8, Walk = 4, Run = 24 }
 -- ฟาร์มออโต้เดินระหว่างจุดด้วยความเร็วเกือบวิ่ง (ผู้ใช้สั่ง 2026-10-01) ไม่กินสตามินา · กด Shift ยังวิ่งเต็มได้
 -- ไคลเอนต์บอกผ่าน `SetAutoFarming` (ฟาร์มออโต้อยู่ฝั่งไคลเอนต์) · โกงได้สุดแค่ 20 ซึ่งช้ากว่าวิ่งปกติอยู่แล้ว · สนามไม่รับ
+-- เดินอัตโนมัติตามหมุด (T / ปุ่มบนจอ) ใช้ความเร็วเดียวกัน (ผู้ใช้สั่ง 2026-10-02) · ธงแยก `autoWalk` ผ่าน `SetAutoWalking`
+-- ไม่ใช้ธงเดียวกับฟาร์มออโต้ ไม่งั้นหยุดอย่างหนึ่งแล้วอีกอย่างช้าลงด้วย
 local AUTO_FARM_SPEED = 20
 local STAMINA_DRAIN_PER_SEC = 20 -- empties in ~5s from full
 -- ฟื้นเร็วขึ้น 50% (33.3 -> 50 ต่อวินาที) เต็มบาร์ใน ~2 วิ จากเดิม ~3 วิ
@@ -56,7 +58,7 @@ local function applySpeed(state, player)
 	if not humanoid or Vitals.IsDowned(player) then return end
 	local base = SPEED[state.state == "ForcedWalk" and "Walk" or state.state]
 	-- โหมดเดิน (แตะ Shift ตอนยืน) ก็ถูกทับด้วย — ออโต้ต้องเร็วเท่ากันทุกครั้ง (ผู้ใช้สั่ง 2026-10-02) · หมดแรง (ForcedWalk) ยังช้าตามเดิม
-	if state.autoFarm and (state.state == "Normal" or state.state == "Walk") then base = AUTO_FARM_SPEED end
+	if (state.autoFarm or state.autoWalk) and (state.state == "Normal" or state.state == "Walk") then base = AUTO_FARM_SPEED end
 	local backward = backpedaling(state)
 	if backward then base = math.min(base, SPEED.Normal) end -- ถอยหลังวิ่งไม่ได้
 	-- Carry weight and any slow effect both scale the same base speed, so neither has to know about the other.
@@ -93,6 +95,7 @@ PlayerJoin.Each(function(player)
 	States[player] = state
 
 	player.CharacterAdded:Connect(function()
+		state.autoWalk = false -- ตัวใหม่ไม่ได้เดินอัตโนมัติอยู่ (ไคลเอนต์ก็หยุดเองตอนเกิดใหม่ · กันธงค้างถ้าข้อความหาย)
 		-- WalkSpeed doesn't persist across respawns, and setState would no-op (the state name is unchanged),
 		-- so re-apply it directly. Deferred so the new humanoid exists before we write to it.
 		task.defer(applySpeed, state, player)
@@ -123,6 +126,11 @@ end)
 Remotes.SetAutoFarming.OnServerEvent:Connect(function(player, on)
 	local state = States[player]
 	if state and not ServerConfig.IsArena then state.autoFarm = on == true end
+end)
+
+Remotes.SetAutoWalking.OnServerEvent:Connect(function(player, on)
+	local state = States[player]
+	if state and not ServerConfig.IsArena then state.autoWalk = on == true end
 end)
 
 Remotes.ToggleWalk.OnServerEvent:Connect(function(player)

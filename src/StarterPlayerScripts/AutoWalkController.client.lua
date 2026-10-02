@@ -20,6 +20,7 @@ if workspace:GetAttribute("ArenaMode") == true then return end
 local Navigation = require(ReplicatedStorage.Navigation)
 local NavigationConfig = require(ReplicatedStorage.NavigationConfig)
 local AutoWalk = require(ReplicatedStorage.AutoWalk)
+local Remotes = require(ReplicatedStorage:WaitForChild("Remotes"))
 
 local player = Players.LocalPlayer
 local TOGGLE = Enum.KeyCode.T
@@ -92,6 +93,7 @@ end
 local function stop(text)
 	if not walking then return end
 	walking = false
+	Remotes.SetAutoWalking:FireServer(false)
 	route, index = nil, nil
 	local humanoid = humanoidAndRoot()
 	if humanoid then humanoid:Move(Vector3.zero, false) end
@@ -104,6 +106,7 @@ local function start()
 		return toast("ปักหมุดบนแผนที่ก่อน (กด M) แล้วกด T เพื่อเดินอัตโนมัติ")
 	end
 	walking = true
+	Remotes.SetAutoWalking:FireServer(true) -- เร็วเท่าฟาร์มออโต้ (PlayerMovement · 20) · Shift ยังวิ่งเต็มได้
 	route, index = nil, nil
 	lastDestination = nav.destination
 	stuckFrom, stuckAt = nil, os.clock()
