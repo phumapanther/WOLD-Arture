@@ -152,7 +152,7 @@ function CraftGui.new()
 	corner(strip, UDim.new(0, 8))
 	self.fuelStrip = strip
 
-	local RIGHT = 212 -- ความกว้างกลุ่มปุ่มขวา
+	local RIGHT = 272 -- ความกว้างกลุ่มปุ่มขวา (เร่ง · ถ่าน · +1 · จำนวน · เติม)
 	local track = Instance.new("Frame")
 	track.AnchorPoint = Vector2.new(0, 0.5)
 	track.Position = UDim2.new(0, 8, 0.5, 0)
@@ -237,6 +237,27 @@ function CraftGui.new()
 	coal.TextXAlignment = Enum.TextXAlignment.Right
 	coal.Parent = strip
 	self.fuelCoal = coal
+	-- ปุ่มเร่ง (ผู้ใช้เลือก 2026-10-02): ระหว่างเครื่องทำงาน · เผาเชื้อเพลิงทั้งถัง ลดเวลา 1:1 · แตะสองครั้งยืนยัน
+	-- (แตะพลาดครั้งเดียว = ถ่านทั้งถังหาย) · โผล่เฉพาะตอนเครื่องนี้ทำงานอยู่และมีเชื้อเพลิง (Render ตั้ง)
+	local boost
+	boost = fuelButton("⚡ เร่ง", 56, 214, Color3.fromRGB(120, 180, 240), function()
+		if boost:GetAttribute("Armed") then
+			boost:SetAttribute("Armed", nil)
+			boost.Text = "⚡ เร่ง"
+			if self.onBoost then self.onBoost() end
+			return
+		end
+		boost:SetAttribute("Armed", true)
+		boost.Text = "ยืนยัน?"
+		task.delay(3, function()
+			if boost:GetAttribute("Armed") then
+				boost:SetAttribute("Armed", nil)
+				boost.Text = "⚡ เร่ง"
+			end
+		end)
+	end)
+	boost.Visible = false
+	self.boostButton = boost
 
 	local list = Instance.new("ScrollingFrame")
 	list.Position = UDim2.fromOffset(6, 6)
@@ -271,6 +292,7 @@ end
 function CraftGui:OnCraft(callback) self.onCraft = callback end
 function CraftGui:OnEnhance(callback) self.onEnhance = callback end
 function CraftGui:OnFuel(callback) self.onFuel = callback end -- (จำนวนถ่าน) เติมเชื้อเพลิงเครื่องที่เปิดอยู่
+function CraftGui:OnBoost(callback) self.onBoost = callback end -- () เผาเชื้อเพลิงทั้งถัง เร่งงานที่ทำอยู่
 
 -- Puts every button to sleep and runs the bar on the one row that is being made. Split out from Begin because
 -- a redraw arriving mid-swing has to re-apply exactly the same thing to a brand new set of rows, and the bar
@@ -654,6 +676,9 @@ function CraftGui:Render()
 			end, self.fuel)
 		end
 	end
+
+	-- ปุ่มเร่ง: เครื่องนี้ทำงานอยู่ + มีเชื้อเพลิง
+	self.boostButton.Visible = self.fuel ~= nil and self.busyActive == true and (self.fuel.amount or 0) > 0
 
 	-- A craft in flight survives a redraw. The server sends a fresh snapshot the moment the hammer starts --
 	-- that is what makes the materials visibly leave the bag -- and it destroys every row, so without this the

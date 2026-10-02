@@ -391,6 +391,40 @@ Remotes.RequestCraftFuel.OnServerEvent:Connect(function(player, count)
 	Remotes.CraftOpen:FireClient(player, snapshot(player))
 end)
 
+-- ปุ่มเร่ง (ผู้ใช้เลือก 2026-10-02): ระหว่างเครื่องนี้ทำงาน · เผาทั้งถัง เวลาที่เหลือลดเท่าที่เผา (CraftFuel.Boost) ·
+-- เกินเวลาที่เหลือ = เสร็จทันที · readyAt ในโปรไฟล์เลื่อนตาม (ออกเกมแล้วเข้าใหม่ได้เวลาที่เร่งแล้ว)
+Remotes.RequestCraftBoost.OnServerEvent:Connect(function(player)
+	if not nearSource(player) then return end
+	local box = fuelEntry(player)
+	if not box then return end
+	local busy = Busy[player] and Busy[player][lockKeyOf(player)]
+	if not (busy and busy.finish and busy.thread) then
+		return Remotes.SocialNotify:FireClient(player, "warn", "เครื่องนี้ไม่ได้ทำงานอยู่")
+	end
+	local remaining = math.max(0, busy.finishAt - os.clock())
+	local left, burned = CraftFuel.Boost(remaining, box.fuel)
+	if burned <= 0 then
+		return Remotes.SocialNotify:FireClient(player, "warn", "ไม่มีเชื้อเพลิงให้เร่ง — เติมถ่านหินก่อน")
+	end
+	box.fuel = math.max(0, (box.fuel or 0) - burned)
+	pcall(task.cancel, busy.thread)
+	busy.finishAt = os.clock() + left
+	if busy.job then busy.job.readyAt = os.time() + math.ceil(left) end
+	if ProfileAccess.Flush then ProfileAccess.Flush(player) end
+	Remotes.SocialNotify:FireClient(player, "info", left <= 0
+		and ("⚡ เร่งจนเสร็จ · เผาเชื้อเพลิง %d%%"):format(math.ceil(CraftFuel.Percent(burned)))
+		or ("⚡ เร่งแล้ว ลดเวลา %d นาที · เผาเชื้อเพลิง %d%%"):format(
+			math.floor((remaining - left) / 60 + 0.5), math.ceil(CraftFuel.Percent(burned))))
+	if left <= 0 then
+		busy.finish() -- งานปกติส่งผล + หน้าต่างใหม่เอง · งานที่คืนมาไม่ส่ง จึงส่งซ้ำข้างล่าง
+	else
+		busy.thread = task.delay(left, busy.finish)
+		local src = Source[player] -- ไฟในเตาดับตามเวลาใหม่ (lightFire ใช้ token ใหม่ทับของเดิม)
+		if src and CraftAccess.OnCraftStarted then CraftAccess.OnCraftStarted(player, src.station, src.model, left) end
+	end
+	Remotes.CraftOpen:FireClient(player, snapshot(player))
+end)
+
 Remotes.RequestCraftClose.OnServerEvent:Connect(function(player)
 	Source[player] = nil
 end)
@@ -596,7 +630,7 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index, times)
 		end
 	end
 
-	task.delay(seconds, function()
+	local function finish()
 		if Busy[player] then Busy[player][key] = nil end
 		if station then Remotes.CraftPoseChanged:FireAllClients(player, nil) end
 		-- ออกเกมไปแล้ว = งานอยู่ในโปรไฟล์ที่เซฟไปแล้ว ส่งตอนเข้าเกมครั้งหน้า · ส่งไปแล้ว (เข้าใหม่ระหว่างรอ) = ไม่ส่งซ้ำ
@@ -614,7 +648,11 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index, times)
 		-- The window redraws from a fresh snapshot rather than patching itself, so the have-counts on every
 		-- other recipe sharing a material move at the same moment this one's do.
 		Remotes.CraftOpen:FireClient(player, snapshot(player))
-	end)
+	end
+	-- ปุ่มเร่ง (RequestCraftBoost) ยกเลิกนัดนี้แล้วนัดใหม่ได้ · job ติดไปด้วยเพื่อเลื่อน readyAt ในโปรไฟล์
+	local busyEntry = Busy[player][key]
+	busyEntry.job, busyEntry.finish = job, finish
+	busyEntry.thread = task.delay(seconds, finish)
 end)
 
 --------------------------------------------------------------------------------
@@ -784,18 +822,20 @@ PlayerJoin.Each(function(player)
 				-- ล็อกเครื่องเดิมคืนจนงานเสร็จ (QA 2026-09-26): เดิมล็อกหายตอนออกเกม เข้ามาใหม่เริ่มงานซ้อนที่เครื่องเดิมได้
 				-- งานเก่าก่อนมีช่อง `lock` ไม่มีเครื่องให้ล็อก — ส่งของตามเดิมเฉยๆ
 				local left = math.max(0, (tonumber(job.readyAt) or 0) - os.time())
-				if type(job.lock) == "string" then
-					Busy[player] = Busy[player] or {}
-					-- index/seconds = แถบเดินต่อที่แถวเดิมในหน้าต่าง (งานเก่าก่อน 2026-10-02 ไม่มี = หน้าต่างล็อกทุกแถว "รอสักครู่")
-					Busy[player][job.lock] = { index = tonumber(job.index), finishAt = os.clock() + left,
-						seconds = math.max(left, tonumber(job.seconds) or 0) }
-				end
-				task.delay(left, function()
+				local function finish()
 					if Busy[player] and job.lock then Busy[player][job.lock] = nil end
 					if not player.Parent or ProfileAccess.Get(player) ~= data or not takeJob(data, job) then return end
 					resolveJob(player, data, job)
 					if ProfileAccess.Flush then ProfileAccess.Flush(player) end
-				end)
+				end
+				local thread = task.delay(left, finish)
+				if type(job.lock) == "string" then
+					Busy[player] = Busy[player] or {}
+					-- index/seconds = แถบเดินต่อที่แถวเดิมในหน้าต่าง (งานเก่าก่อน 2026-10-02 ไม่มี = หน้าต่างล็อกทุกแถว "รอสักครู่")
+					-- job/finish/thread = ปุ่มเร่งใช้ได้กับงานที่คืนมาด้วย
+					Busy[player][job.lock] = { index = tonumber(job.index), finishAt = os.clock() + left,
+						seconds = math.max(left, tonumber(job.seconds) or 0), job = job, finish = finish, thread = thread }
+				end
 			end
 		end
 	end)

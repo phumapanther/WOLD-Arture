@@ -33,4 +33,12 @@ check(F.Room(7000) == 1, "เหลือที่ไม่ถึงก้อน
 check(F.Add(0, 16) == 7200 and F.Add(7000, 1) == 7200 and F.Add(0, 1) == 450, "เติมแล้วไม่เกิน 100%")
 check(F.Enough(900, 300) and not F.Enough(900, 901), "พอ / ไม่พอ")
 
+-- ปุ่มเร่ง (ผู้ใช้เลือก 2026-10-02): ระหว่างเครื่องทำงาน · เผาทั้งถัง · เชื้อเพลิงแลกเวลา 1:1 · เกินเวลาที่เหลือ = เสร็จทันที ถังก็หมด
+local left, burned = F.Boost(3600, 900)
+check(left == 2700 and burned == 900, "เหลือ 1 ชม. มี 900 วิ (12.5%) = เหลือ 45 นาที เผาหมดถัง")
+left, burned = F.Boost(600, 7200)
+check(left == 0 and burned == 7200, "เหลือ 10 นาที ถังเต็ม = เสร็จทันที ถังหมด")
+left, burned = F.Boost(600, 0)
+check(left == 600 and burned == 0, "ไม่มีเชื้อเพลิง = ไม่เร่ง")
+
 return (fails == 0 and "PASS\n" or ("FAIL x%d\n"):format(fails)) .. table.concat(out, "\n")

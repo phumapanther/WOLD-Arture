@@ -45,4 +45,12 @@ function CraftFuel.Enough(fuel, cost)
 	return (fuel or 0) >= cost
 end
 
+-- ปุ่มเร่ง (ผู้ใช้เลือก 2026-10-02): กดได้ระหว่างเครื่องทำงาน · **เผาทั้งถัง** แล้วเวลาที่เหลือลดเท่าเชื้อเพลิงที่เผา (1:1) ·
+-- เชื้อเพลิงเกินเวลาที่เหลือ = เสร็จทันที ส่วนที่เกินก็หมดไปด้วย · คืน (เวลาที่เหลือใหม่, เชื้อเพลิงที่เผา)
+function CraftFuel.Boost(remaining, fuel)
+	remaining, fuel = math.max(0, remaining or 0), math.max(0, fuel or 0)
+	if fuel <= 0 then return remaining, 0 end
+	return math.max(0, remaining - fuel), fuel
+end
+
 return CraftFuel

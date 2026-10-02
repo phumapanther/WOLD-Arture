@@ -49,6 +49,18 @@ local ok, err = pcall(function()
 	task.wait()
 	check(gui.fuelBox.Text == "1", "ถังเกือบเต็ม = เติมได้แค่ 1 ก้อน: " .. gui.fuelBox.Text)
 
+	-- ปุ่มเร่ง (2026-10-02): โผล่เฉพาะตอนเครื่องนี้ทำงานอยู่และมีเชื้อเพลิง
+	local busySnap = snap({ amount = 900, coal = 5 })
+	busySnap.busy = { index = 1, remaining = 200, seconds = 300 }
+	gui:Show(busySnap)
+	check(gui.boostButton and gui.boostButton.Visible, "เครื่องทำงาน + มีเชื้อเพลิง = มีปุ่มเร่ง")
+	local emptySnap = snap({ amount = 0, coal = 5 })
+	emptySnap.busy = { index = 1, remaining = 200, seconds = 300 }
+	gui:Show(emptySnap)
+	check(gui.boostButton and not gui.boostButton.Visible, "ไม่มีเชื้อเพลิง = ไม่มีปุ่มเร่ง")
+	gui:Show(snap({ amount = 900, coal = 5 }))
+	check(gui.boostButton and not gui.boostButton.Visible, "เครื่องว่าง = ไม่มีปุ่มเร่ง")
+
 	gui:Show(snap(nil))
 	check(not gui.fuelStrip.Visible, "เครื่องที่ไม่ใช้เชื้อเพลิง (ช่างตีเหล็ก/เกมหลัก) = ไม่มีแถบ")
 	check(not gui.rows[2].odds.Text:find("⛽", 1, true) and gui.rows[2].button.AutoButtonColor == true,
