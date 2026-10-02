@@ -106,9 +106,10 @@ ShopConfig.IslandSells = {
 	{ id = "DistillSet", category = "utility", level = 43, gems = 500 },
 	{ id = "Reactor", category = "utility", level = 48, gems = 500 },
 	-- เครื่องคราฟขั้นสูง (เฟส 2c) — ของที่ทำได้ส่งออกกับรถส่งออกเท่านั้น
-	{ id = "BakeryOven", category = "utility", level = 3, gems = 120 },
-	{ id = "MetalBench", category = "utility", level = 6, gems = 180 },
-	{ id = "Loom", category = "utility", level = 10, gems = 220 },
+	-- ราคาเหรียญไล่ 10k/15k/20k (ผู้ใช้สั่ง 2026-10-02 · เดิมเพชร 120/180/220) · เพชรคำนวณให้ 40/60/80
+	{ id = "BakeryOven", category = "utility", level = 3, coins = 10000 },
+	{ id = "MetalBench", category = "utility", level = 6, coins = 15000 },
+	{ id = "Loom", category = "utility", level = 10, coins = 20000 },
 
 	-- สัตว์: สัตว์เลี้ยง (บัพให้ทั้งฟาร์มขณะอยู่บนเกาะ) + คอก · สัตว์ในคอกซื้อในหน้าต่างคอก (IslandConfig.PenAnimals)
 	{ id = "Pet_Cat", category = "animal", level = 4, gems = 250 },
@@ -137,12 +138,13 @@ ShopConfig.IslandSells = {
 	{ id = "Pet_ClockworkSentry", category = "animal", level = 39, gems = 450 },
 	{ id = "Pet_Wraith", category = "animal", level = 44, gems = 500 },
 	{ id = "Pet_StoneGolem", category = "animal", level = 50, gems = 600 },
-	{ id = "AnimalPen", category = "animal", level = 2, coins = 15000 }, -- ผู้ใช้กำหนด 2026-09-25 (เดิม 35,000)
+	-- 7,500 (ผู้ใช้สั่ง 2026-10-02 · เดิม 15,000 · 35,000) · จำนวนคอกที่มีได้ = FarmLevelConfig.PenCap (ชนิดสัตว์ที่ปลดแล้ว)
+	{ id = "AnimalPen", category = "animal", level = 2, coins = 7500 },
 
 	-- เพาะปลูก
 	-- แปลงผัก: แจกฟรี 9 แปลงตอนเข้าเกาะครั้งแรก · ซื้อเพิ่มสองราคากำหนดเอง (40 x 250 = 10,000 พอดี ·
 	-- เหรียญผู้ใช้กำหนด 2026-09-25 เดิม 25,000)
-	{ id = "FarmPlot", category = "farm", level = 1, gems = 40, coins = 10000 },
+	{ id = "FarmPlot", category = "farm", level = 1, coins = 5000 }, -- ผู้ใช้สั่ง 2026-10-02 (เดิม 10,000 / 40 เพชร) · เพชรคำนวณให้ 20
 	-- เมล็ด **250 เหรียญต่อ 3 เม็ด** (ผู้ใช้สั่ง 2026-09-24) · `count` คือจำนวนต่อหนึ่งครั้งที่กด ช่องจำนวนคูณขึ้นตามปกติ
 	-- เก็บผักแล้วมีโอกาสได้เมล็ดคืน
 	{ id = "Seed", category = "farm", level = 1, coins = 250, count = 3 },

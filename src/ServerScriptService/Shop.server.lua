@@ -221,7 +221,7 @@ end
 local ISLAND = SELLS == ShopConfig.IslandSells
 
 -- ของชนิดนี้ที่เจ้าของเกาะมีทั้งหมด: วางอยู่บนเกาะ + ในกระเป๋า + ในคลัง (ไม่งั้นซื้อแล้วฝากคลังวนเกินเพดานได้)
--- `isKind` = FarmLevelConfig.IsHouse / IsPet
+-- `isKind` = FarmLevelConfig.IsHouse / IsPet / IsPen
 local function ownedCount(player, isKind)
 	local n = 0
 	local data = IslandAccess.Data and IslandAccess.Data()
@@ -242,6 +242,8 @@ local CAPS = {
 		full = "🏠 บ้านเต็มแล้ว (%d/%d หลัง)", more = " — เลเวลฟาร์ม %d มีได้ %d หลัง" },
 	{ is = FarmLevelConfig.IsPet, cap = FarmLevelConfig.PetCap, levels = FarmLevelConfig.PetCapLevels,
 		full = "🐾 สัตว์เลี้ยงเต็มแล้ว (%d/%d ตัว)", more = " — เลเวลฟาร์ม %d มีได้ %d ตัว" },
+	{ is = FarmLevelConfig.IsPen, cap = FarmLevelConfig.PenCap, levels = FarmLevelConfig.PenCapLevels,
+		full = "🐄 คอกสัตว์เต็มแล้ว (%d/%d คอก)", more = " — เลเวลฟาร์ม %d มีได้ %d คอก" },
 }
 
 -- แถวนี้ซื้อได้ไหมที่เลเวลนี้ · คืน (ข้อความที่จะบอก, จำนวนที่ยังซื้อได้ | nil = ไม่จำกัด)

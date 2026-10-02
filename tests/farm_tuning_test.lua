@@ -96,7 +96,7 @@ local price = {}
 for _, row in ipairs(ShopConfig.IslandSells) do
 	price[row.id] = (ShopConfig.PricesOf(row)) -- เฟส 2a: ทุกแถวสองราคา ค่าแรก = เหรียญ
 end
-check(price.AnimalPen == 15000 and price.MineZone == 30000 and price.FarmPlot == 10000,
+check(price.AnimalPen == 7500 and price.MineZone == 30000 and price.FarmPlot == 5000, -- 2026-10-02
 	("ราคา คอก %s · โซนแร่ %s · แปลงดิน %s"):format(tostring(price.AnimalPen), tostring(price.MineZone), tostring(price.FarmPlot)))
 
 return (fails == 0 and "PASS\n" or ("FAIL x%d\n"):format(fails)) .. table.concat(out, "\n")

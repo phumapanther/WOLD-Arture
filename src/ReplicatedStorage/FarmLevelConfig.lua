@@ -132,6 +132,23 @@ function FarmLevelConfig.PetCap(level)
 	return countAt(FarmLevelConfig.PetCapLevels, level)
 end
 
+-- **เพดานจำนวนคอกสัตว์** (ผู้ใช้สั่ง 2026-10-02) = จำนวนชนิดสัตว์ในคอกที่ปลดแล้ว — ไก่+เป็ด Lv2 = 2 · หมู Lv5 = 3 ·
+-- แพะ+วัว Lv8 = 5 · แกะ Lv13 = 6 · กวาง+ม้า Lv17 = 8 · คิดจาก IslandConfig.PenAnimals ตรงๆ เพิ่มสัตว์ชนิดใหม่ = เพดานขึ้นเอง ·
+-- นับแบบเดียวกับบ้าน (วาง + กระเป๋า + คลัง ตอนซื้อ) · ไม่ขึ้นแถวแยกในตารางปลด (ขึ้นพร้อมสัตว์ชนิดใหม่เสมอ)
+FarmLevelConfig.PenCapLevels = {}
+for _, animal in ipairs(IslandConfig.PenAnimals) do
+	table.insert(FarmLevelConfig.PenCapLevels, animal.level)
+end
+table.sort(FarmLevelConfig.PenCapLevels)
+
+function FarmLevelConfig.PenCap(level)
+	return countAt(FarmLevelConfig.PenCapLevels, level)
+end
+
+function FarmLevelConfig.IsPen(id)
+	return id == IslandConfig.PenItem
+end
+
 -- เลเวลแรกที่เพดานในรายการนี้มากกว่าตอนนี้ (บอกผู้เล่นว่าต้องไปถึงไหน) · nil = เต็มเพดานสุดท้ายแล้ว
 function FarmLevelConfig.NextCapLevel(list, level)
 	level = tonumber(level) or 1

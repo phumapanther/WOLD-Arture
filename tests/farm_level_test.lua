@@ -70,6 +70,11 @@ local ok, err = pcall(function()
 	check(F.PetCap(1) == 0 and F.PetCap(2) == 1 and F.PetCap(9) == 1 and F.PetCap(10) == 2 and F.PetCap(20) == 3
 		and F.PetCap(32) == 4 and F.PetCap(48) == 4 and F.PetCap(49) == 5 and F.PetCap(50) == 5,
 		"เพดานสัตว์เลี้ยง Lv2 1 → Lv10 2 → Lv20 3 → Lv32 4 → Lv49 5")
+	-- คอกสัตว์ = จำนวนชนิดสัตว์ในคอกที่ปลดแล้ว (ผู้ใช้สั่ง 2026-10-02): ไก่+เป็ด Lv2 · หมู 5 · แพะ+วัว 8 · แกะ 13 · กวาง+ม้า 17
+	check(F.PenCap(1) == 0 and F.PenCap(2) == 2 and F.PenCap(4) == 2 and F.PenCap(5) == 3 and F.PenCap(8) == 5
+		and F.PenCap(13) == 6 and F.PenCap(16) == 6 and F.PenCap(17) == 8 and F.PenCap(50) == 8,
+		"เพดานคอก Lv2 2 → Lv5 3 → Lv8 5 → Lv13 6 → Lv17 8")
+	check(F.IsPen("AnimalPen") and not F.IsPen("FarmPlot") and F.NextCapLevel(F.PenCapLevels, 5) == 8, "รู้จักคอก · เลเวลเพดานคอกถัดไป")
 	check(F.NextCapLevel(F.PetCapLevels, 5) == 10 and F.NextCapLevel(F.HouseCapLevels, 46) == nil, "เลเวลเพดานถัดไป")
 	local g1, g2, g9, g20 = F.GlowAllowed(1), F.GlowAllowed(2), F.GlowAllowed(9), F.GlowAllowed(20)
 	check(not g1.blue and not g1.gold and not g1.red, "Lv1 ไม่มีแสง")

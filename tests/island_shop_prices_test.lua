@@ -51,10 +51,13 @@ if okLoad then
 				("%s = 💰%d / 💎%d (ได้ %s)"):format(id, coins, gems, p and (p[1] .. "/" .. p[2]) or "ไม่มี"))
 		end
 		is("Seed", 250, 1)
-		is("FarmPlot", 10000, 40)
+		is("FarmPlot", 5000, 20) -- ผู้ใช้สั่ง 2026-10-02 (เดิม 10,000)
 		is("Wild_DiamondOre", 62500, 250)
 		is("House_StoneCottage", 20000, 80)
-		is("AnimalPen", 15000, 60)
+		is("AnimalPen", 7500, 30) -- ผู้ใช้สั่ง 2026-10-02 (เดิม 15,000)
+		is("BakeryOven", 10000, 40) -- เครื่องฟาร์มสามตัวไล่ราคา (ผู้ใช้สั่ง 2026-10-02 · เดิมเป็นเพชร)
+		is("MetalBench", 15000, 60)
+		is("Loom", 20000, 80)
 		is("MineZone", 30000, 120)
 		is("Pet_Cat", 62500, 250)
 		check(ShopConfig.GemsFor(400) == 2 and ShopConfig.GemsFor(3000) == 12 and ShopConfig.GemsFor(1) == 1,
