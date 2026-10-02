@@ -142,6 +142,7 @@ if cfg.touch then
 	if not cfg.arena then SYN[#SYN + 1] = { "BuildToggle(ปุ่ม🏗️·เกาะ)", 41, { x = W - 140, y = 7, w = 38, h = 38 }, true }
 		SYN[#SYN + 1] = { "AutoFarmToggle(ปุ่ม🌾·เกาะ)", 41, { x = W - 186, y = 7, w = 38, h = 38 }, true }
 	end
+	if not cfg.arena then SYN[#SYN + 1] = { "AutoWalk(ปุ่มเดินอัตโนมัติ·มือถือ)", 5, { x = W / 2 - 150, y = 112, w = 300, h = 40 }, true } end
 	SYN[#SYN + 1] = { "Unscope(ปุ่มเลิกส่องสไน·สนาม)", 23, { x = W - 80, y = 0.32 * H - 28, w = 56, h = 56 }, true }
 end
 for _, s in ipairs(SYN) do

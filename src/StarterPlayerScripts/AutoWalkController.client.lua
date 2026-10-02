@@ -1,4 +1,5 @@
--- AutoWalkController: กด T เดินอัตโนมัติตามเส้นนำทางของหมุด (ผู้ใช้สั่ง 2026-09-29 · คอมเท่านั้น)
+-- AutoWalkController: กด T เดินอัตโนมัติตามเส้นนำทางของหมุด (ผู้ใช้สั่ง 2026-09-29)
+-- มือถือ (2026-10-02): ป้ายกลางบนเป็น **ปุ่มแตะ** เริ่ม/หยุด · แตะจอยซ้ายล่าง = เลิกเดินเอง (เท่ากับกด WASD บนคอม)
 --
 -- เดินความเร็วปกติ กด Shift ค้างวิ่งเองได้ (ระบบวิ่งเดิมทำงานเพราะนี่คือการเดินปกติ ไม่ใช่การย้ายตัว) · หยุดเมื่อ:
 -- กด T อีกครั้ง · กด WASD/ลูกศร · ถึงหมุด/หมุดถูกลบ · ตาย/ล้ม/นั่ง · กติกาเลือกจุด `AutoWalk` (เทส `auto_walk_test`)
@@ -15,7 +16,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 while workspace:GetAttribute("IsLobby") == nil do task.wait(0.2) end
 if workspace:GetAttribute("IsLobby") == true then return end
 if workspace:GetAttribute("ArenaMode") == true then return end
-if not UserInputService.KeyboardEnabled then return end -- มือถือไม่มีปุ่ม T
 
 local Navigation = require(ReplicatedStorage.Navigation)
 local NavigationConfig = require(ReplicatedStorage.NavigationConfig)
@@ -40,20 +40,29 @@ gui.Name = "WOLD_AutoWalk"
 gui.ResetOnSpawn = false
 gui.DisplayOrder = 5
 gui.Parent = player:WaitForChild("PlayerGui")
-local label = Instance.new("TextLabel")
+-- ปุ่ม ไม่ใช่ป้าย: มือถือแตะเริ่ม/หยุดได้ (คอมกด T เหมือนเดิม) · มือถือสูงขึ้นให้นิ้วแตะถนัด
+local touch = UserInputService.TouchEnabled
+local label = Instance.new("TextButton")
+label.AutoButtonColor = false
 label.AnchorPoint = Vector2.new(0.5, 0)
-label.Position = UDim2.new(0.5, 0, 0, 112) -- ใต้แถบประกาศข้ามเซิร์ฟ (y 78) · กลางล่างเต็มแล้ว (ช่องลัด EXP บัพ ปุ่มเกาะ)
-label.Size = UDim2.fromOffset(300, 26)
+-- y 112 ใต้แถบประกาศข้ามเซิร์ฟ (y 78) และใต้แถบฟาร์มออโต้ (y 74-104 ซึ่งเป็นปุ่มแตะหยุดเหมือนกัน ห้ามซ้อน) ·
+-- กลางล่างเต็มแล้ว (ช่องลัด EXP บัพ ปุ่มเกาะ) · มือถือ: ข้อความเด้งเริ่ม y 118 อาจบังบางส่วนชั่วครู่ แต่เป็นป้าย (ไม่ Active)
+-- นิ้วแตะทะลุถึงปุ่มนี้ได้
+label.Position = UDim2.new(0.5, 0, 0, 112)
+label.Size = UDim2.fromOffset(300, touch and 40 or 26)
 label.BackgroundColor3 = Color3.fromRGB(20, 18, 14)
 label.BackgroundTransparency = 0.35
 label.Font = Enum.Font.GothamBold
-label.TextSize = 14
+label.TextSize = touch and 16 or 14
 label.TextColor3 = Color3.fromRGB(240, 226, 190)
 label.Visible = false
 label.Parent = gui
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(1, 0)
 corner.Parent = label
+
+-- บอกทางที่เครื่องนี้ใช้ได้จริง (ทรงเดียวกับแถบฟาร์มออโต้ของ GatherController)
+local HOW = UserInputService.KeyboardEnabled and (touch and "กด T หรือแตะ " or "กด T ") or "แตะ"
 
 local shownT = {}
 ProximityPromptService.PromptShown:Connect(function(prompt)
@@ -100,6 +109,25 @@ local function start()
 	stuckFrom, stuckAt = nil, os.clock()
 end
 
+label.Activated:Connect(function()
+	if walking then stop() else start() end
+end)
+
+-- มือถือ/จอย: แตะจอยซ้ายล่าง (ครึ่งซ้าย ต่ำกว่า 40% ของจอ — ปุ่มนี้อยู่บนจึงไม่โดน) หรือดันก้านซ้ายจอย = บังคับเอง เลิกเดินให้
+-- ⚠️ ต้องไม่กรอง gameProcessed: จอยมือถือรับนิ้วผ่าน ContextActionService ทุกครั้งเป็น processed = true (บทเรียน MovementController)
+UserInputService.TouchStarted:Connect(function(input)
+	if not walking then return end
+	local camera = workspace.CurrentCamera
+	local size = camera and camera.ViewportSize
+	if size and input.Position.X < size.X / 2 and input.Position.Y > size.Y * 0.4 then stop() end
+end)
+UserInputService.InputChanged:Connect(function(input)
+	if walking and input.KeyCode == Enum.KeyCode.Thumbstick1
+		and Vector2.new(input.Position.X, input.Position.Y).Magnitude > 0.5 then
+		stop()
+	end
+end)
+
 UserInputService.InputBegan:Connect(function(input, processed)
 	if processed then return end -- พิมพ์แชท/ช่องข้อความ
 	if input.KeyCode == TOGGLE then
@@ -114,7 +142,7 @@ RunService:BindToRenderStep("WOLD_AutoWalk", Enum.RenderPriority.Input.Value + 1
 	local nav = Navigation.Active
 	local hasPin = nav ~= nil and nav:HasDestination()
 	label.Visible = walking or hasPin
-	label.Text = walking and "🚶 เดินอัตโนมัติ — กด T เพื่อหยุด" or "กด T เพื่อเดินอัตโนมัติไปหมุด"
+	label.Text = walking and ("🚶 เดินอัตโนมัติ — %sเพื่อหยุด"):format(HOW) or ("🚶 %sเพื่อเดินอัตโนมัติไปหมุด"):format(HOW)
 	if not walking then return end
 
 	if not hasPin then

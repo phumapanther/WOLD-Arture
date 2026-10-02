@@ -66,6 +66,14 @@ gui:OnRoll(function()
 	if bindable then bindable:Fire() end
 end)
 
+-- ปุ่มวิ่ง 🏃 กดค้าง (2026-10-02) → แอตทริบิวต์ท้องถิ่นบนตัวเอง MovementController อ่านทุกเฟรมแล้วส่งเจตนาวิ่ง (ทางเดียวกับ Shift)
+-- แอตทริบิวต์ที่ไคลเอนต์ตั้งบนตัวเองไม่ส่งถึงเซิร์ฟ — เซิร์ฟยังตัดสินสตามินา/ความเร็วเองเหมือนเดิม
+gui:OnSprintHold(function(held)
+	player:SetAttribute("WOLD_SprintButton", held)
+end)
+-- ตายกลางการกด: InputEnded ยังมา แต่กันไว้ไม่ให้วิ่งค้างข้ามร่าง
+player.CharacterAdded:Connect(function() player:SetAttribute("WOLD_SprintButton", false) end)
+
 -- The weapon skill is bound to Q on desktop, which touch cannot press either. Fires the same remote the
 -- keyboard path does, so the server sees one kind of request and the cooldown, the cost and the refusal
 -- messages are all whatever they already were.

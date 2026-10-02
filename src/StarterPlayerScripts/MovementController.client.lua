@@ -4,9 +4,11 @@
 --
 -- Two intent sources:
 --  * Keyboard: hold Shift + move = sprint; tap Shift while idle = walk-toggle.
---  * Analog sticks (gamepad thumbstick, mobile touch thumbstick) — "option B": push to the edge = sprint,
---    light push = walk. "Walk" needs no code here: the engine already scales speed by stick deflection
---    (verified: Humanoid:Move at 0.5 magnitude moves at exactly half WalkSpeed). No walk-toggle on sticks.
+--  * Gamepad thumbstick — "option B": push to the edge = sprint, light push = walk. "Walk" needs no code here:
+--    the engine already scales speed by stick deflection (verified: Humanoid:Move at 0.5 magnitude moves at
+--    exactly half WalkSpeed). No walk-toggle on sticks.
+--  * Touch (มือถือ): **ปุ่มวิ่ง 🏃 กดค้าง** (TouchActionGui · ผู้ใช้สั่ง 2026-10-02 แทนการลากจอยสุดขอบ) —
+--    TouchActionController ตั้งแอตทริบิวต์ท้องถิ่น `WOLD_SprintButton` ที่นี่อ่านทุกเฟรม · จอยมือถือเดินอย่างเดียวแล้ว
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
@@ -20,19 +22,6 @@ local ANALOG_SPRINT_ON = 0.9
 local ANALOG_SPRINT_OFF = 0.7
 local ANALOG_SUSTAIN = 0.25
 
--- Touch needs a much harder push than a gamepad: a thumb resting anywhere past the middle of the ring was
--- tripping the gamepad thresholds constantly ("ลากไปนิดเดียวก็วิ่งแล้ว"). These demand a near-pinned stick
--- held before sprinting, and drop it as soon as the thumb eases off.
---
--- DISTANCE, not time: sprinting on touch is decided purely by how far the stick is dragged. Holding a
--- half-pushed stick must never build up into a sprint no matter how long it is held
--- ("ลากค้างไม่ต้องวิ่ง ต้องลากออกยาวเท่านั้น"), so the sustain window is zero here and the gate is the
--- deflection alone. The stick must be dragged essentially to the rim, and sprint drops the moment it eases
--- back inside TOUCH_SPRINT_OFF.
-local TOUCH_SPRINT_ON = 0.98
-local TOUCH_SPRINT_OFF = 0.90
-local TOUCH_SUSTAIN = 0
-
 local player = Players.LocalPlayer
 
 local shiftHeld = false
@@ -44,69 +33,17 @@ local gamepadMag = 0 -- left-stick deflection 0..1, straight from UserInputServi
 local analogSprint = false
 local analogAboveSince = nil
 
--- Raw touch drag, used only when the DynamicThumbstick (which has no ring to measure) is the active control.
--- Pixels the stock control needs for full speed; it scales the thumbstick with screen size, so this is
--- expressed against the same 1280-wide baseline the GUIs use.
-local DYNAMIC_THUMBSTICK_RADIUS = 70
-local touchDragStart = nil
-local touchDragCurrent = nil
-
 local function humanoidOf(character)
 	return character and character:FindFirstChildOfClass("Humanoid")
 end
 
 local function updateSprintIntent()
-	local next = (shiftHeld and moving) or analogSprint
+	local button = player:GetAttribute("WOLD_SprintButton") == true
+	local next = (shiftHeld and moving) or analogSprint or (button and moving)
 	if next ~= sprintIntent then
 		sprintIntent = next
 		Remotes.SetSprintIntent:FireServer(sprintIntent)
 	end
-end
-
--- Touch thumbstick deflection isn't exposed by the engine: Humanoid.MoveDirection is always a unit vector, and
--- the modern PlayerModule (StarterPlayer.PlayerModule, driven from the CoreScript VM) no longer offers
--- GetControls()/GetMoveVector() — requiring its ControlModule from here builds a dead duplicate and appears to
--- break the real controls (see CLAUDE.md).
---
--- So read the thumbstick's own GUI instead: the stock touch controls draw ThumbstickEnd (the knob) offset from
--- ThumbstickStart (the ring) inside PlayerGui.TouchGui, and that offset in pixels over the ring's radius IS
--- the deflection. This replaced an earlier "horizontal speed / WalkSpeed" estimate, which saturated at 1.0
--- the moment the player reached full speed — so ANY sustained push read as a full-edge push and sprinted.
-local function touchThumbstickMag()
-	if UserInputService:GetLastInputType() ~= Enum.UserInputType.Touch then return 0 end
-	local playerGui = player:FindFirstChildOfClass("PlayerGui")
-	local touchGui = playerGui and playerGui:FindFirstChild("TouchGui")
-	local frame = touchGui and touchGui:FindFirstChild("TouchControlFrame")
-	if not frame then return 0 end
-
-	-- Classic thumbstick: an explicit start ring and end knob.
-	local startRing = frame:FindFirstChild("ThumbstickFrame", true)
-	local knob = startRing and startRing:FindFirstChild("ThumbstickEnd")
-	if startRing and knob then
-		local radius = startRing.AbsoluteSize.X / 2
-		if radius <= 0 then return 0 end
-		local centre = startRing.AbsolutePosition + startRing.AbsoluteSize / 2
-		local knobCentre = knob.AbsolutePosition + knob.AbsoluteSize / 2
-		return math.min(1, (knobCentre - centre).Magnitude / radius)
-	end
-
-	-- DynamicThumbstick draws no persistent ring, so measure the drag ourselves from the raw touch: how far the
-	-- finger has travelled from where it first went down, over the same radius the stock control uses for full
-	-- speed. Humanoid.MoveDirection is NOT usable as a fallback here — it is always a unit vector, so it reads
-	-- 1.0 for any movement at all and every drag would sprint.
-	if touchDragStart and touchDragCurrent then
-		-- Not walking = not a thumbstick drag (a finger scrolling a left-side panel, say), so no sprint request.
-		local humanoid = humanoidOf(player.Character)
-		if not humanoid or humanoid.MoveDirection.Magnitude < 0.1 then return 0 end
-		local delta = touchDragCurrent - touchDragStart
-		-- InputObject.Position is a Vector3 whose Z is unused for touch; drop it or the magnitude is wrong.
-		local pixels = Vector2.new(delta.X, delta.Y).Magnitude
-		-- The stock control sizes itself against the screen, so scale the radius the same way the GUIs do.
-		local camera = workspace.CurrentCamera
-		local widthScale = camera and math.clamp(camera.ViewportSize.X / 1280, 0.5, 1) or 1
-		return math.min(1, pixels / (DYNAMIC_THUMBSTICK_RADIUS * widthScale))
-	end
-	return 0
 end
 
 local function onCharacterAdded(character)
@@ -144,35 +81,6 @@ UserInputService.InputEnded:Connect(function(input, gameProcessed)
 	end
 end)
 
--- Touch: follow ONE finger's drag so the DynamicThumbstick path above has a real distance to measure.
---
--- ⚠️ gameProcessed is NOT a filter here (2026-09-25): the DynamicThumbstick takes its finger through
--- ContextActionService, so that touch arrives with gameProcessed = true every time -- the old guard threw away
--- the very drag it existed to measure, and touch could never sprint (so never slide) on that stick -- which
--- is what a phone gets by default (all three places are DevTouchMovementMode = UserChoice, checked 2026-09-25).
--- The left-half test below keeps our right-hand buttons out instead, and the finger is tracked by its own
--- InputObject so a right thumb turning the camera no longer moves the "drag" either.
-local dragInput = nil
-UserInputService.TouchStarted:Connect(function(input)
-	if dragInput then return end
-	-- Movement lives on the left half of the screen; a touch on the right is the camera or our action buttons.
-	local camera = workspace.CurrentCamera
-	if camera and input.Position.X > camera.ViewportSize.X / 2 then return end
-	dragInput = input
-	touchDragStart = input.Position
-	touchDragCurrent = input.Position
-end)
-
-UserInputService.TouchMoved:Connect(function(input)
-	if input ~= dragInput then return end
-	touchDragCurrent = input.Position
-end)
-
-UserInputService.TouchEnded:Connect(function(input)
-	if input ~= dragInput then return end
-	dragInput, touchDragStart, touchDragCurrent = nil, nil, nil
-end)
-
 -- Gamepad: raw left-stick deflection (Position.X/Y are each -1..1)
 UserInputService.InputChanged:Connect(function(input)
 	if input.KeyCode == Enum.KeyCode.Thumbstick1 then
@@ -186,12 +94,8 @@ end)
 -- Analog sprint decision, evaluated every frame from whichever stick source is active. The server still owns
 -- the state machine — this only decides what intent to report.
 RunService.Heartbeat:Connect(function()
-	local touchMag = touchThumbstickMag()
-	local usingTouch = touchMag > 0 and gamepadMag <= 0
-	local mag = math.max(gamepadMag, touchMag)
-	local on = usingTouch and TOUCH_SPRINT_ON or ANALOG_SPRINT_ON
-	local off = usingTouch and TOUCH_SPRINT_OFF or ANALOG_SPRINT_OFF
-	local sustain = usingTouch and TOUCH_SUSTAIN or ANALOG_SUSTAIN
+	local mag = gamepadMag
+	local on, off, sustain = ANALOG_SPRINT_ON, ANALOG_SPRINT_OFF, ANALOG_SUSTAIN
 
 	if analogSprint then
 		if mag < off then

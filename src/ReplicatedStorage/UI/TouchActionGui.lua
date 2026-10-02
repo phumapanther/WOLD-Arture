@@ -215,6 +215,20 @@ function TouchActionGui.new()
 	skill.Position = UDim2.new(1, 0, 1, -(ATTACK_SIZE + GAP + ROLL_SIZE + GAP))
 	self.skillButton = skill
 
+	-- **วิ่ง 🏃 กดค้าง** (ผู้ใช้สั่ง 2026-10-02 แทนการลากจอยสุดขอบ) — นิ้วกดอยู่ = วิ่ง ปล่อย = เดินปกติ · ซ้ายของปุ่มกลิ้ง
+	-- (ตรงเหนือปุ่มกระโดด) · สนามย้ายขึ้นไปซ้ายของปุ่มสกิล เพราะช่องนี้เป็นของปุ่มการ์ด 🛡️ (SetArenaMode)
+	local sprint, sprintHolder = circle(cluster, ROLL_SIZE, ROLL_COLOR, nil)
+	sprint.Name = "SprintButton"
+	sprint.AnchorPoint = Vector2.new(1, 1)
+	sprint.Position = UDim2.new(1, -(ROLL_SIZE + GAP), 1, -(ATTACK_SIZE + GAP))
+	local sprintGlyph = Instance.new("TextLabel")
+	sprintGlyph.Size = UDim2.fromScale(1, 1)
+	sprintGlyph.BackgroundTransparency = 1
+	sprintGlyph.TextScaled = true
+	sprintGlyph.Text = "🏃"
+	sprintGlyph.Parent = sprintHolder
+	self.sprintButton = sprint
+
 	-- Drop: only visible while carrying someone, so it sits at the TOP of the stack rather than in the
 	-- middle. Putting it below the skill button would make the skill button jump up and down as a carry
 	-- starts and ends, and a control that moves under the thumb is worse than one that is simply higher up.
@@ -283,6 +297,8 @@ function TouchActionGui:SetArenaMode(onAction)
 		emojiButton(column, spec[1], spec[2]).Position = UDim2.new(1, 0, 1, -((i - 1) * (ROLL_SIZE + GAP)))
 	end
 	emojiButton(self.cluster, "🧪", "potion").Position = self.dropButton.Position
+	-- ปุ่มวิ่งขยับขึ้นหนึ่งช่อง (ซ้ายของปุ่มสกิล) ให้ปุ่มการ์ดข้างล่างได้ที่ใกล้นิ้วกว่า
+	self.sprintButton.Position = UDim2.new(1, -(ROLL_SIZE + GAP), 1, -(ATTACK_SIZE + GAP + ROLL_SIZE + GAP))
 
 	-- **ปุ่มการ์ด 🛡️ กดค้าง** (เฟส 3 แพรี่ · ผู้ใช้ย้ำให้มีบนมือถือ) — ซ้ายของปุ่มกลิ้ง เหนือปุ่มโจมตี (เหนือปุ่มกระโดดพอดี ไม่ทับ)
 	-- ปล่อยนิ้ว = ปล่อยการ์ด **แม้นิ้วเลื่อนออกนอกปุ่มแล้ว** (จับ InputObject ของนิ้วที่กด แล้วรอให้นิ้วนั้นจบ)
@@ -393,6 +409,24 @@ function TouchActionGui:OnAttackHold(callback)
 	end)
 end
 
+-- ปุ่มวิ่ง: กดค้าง → callback(true) · ปล่อย → callback(false) — ปล่อยนอกปุ่มก็นับ (นิ้วไถออกระหว่างวิ่งเป็นเรื่องปกติ)
+function TouchActionGui:OnSprintHold(callback)
+	local heldInput = nil
+	self.sprintButton.InputBegan:Connect(function(input)
+		if heldInput then return end
+		if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+			heldInput = input
+			callback(true)
+		end
+	end)
+	UserInputService.InputEnded:Connect(function(input)
+		if input == heldInput then
+			heldInput = nil
+			callback(false)
+		end
+	end)
+end
+
 function TouchActionGui:OnRoll(callback)
 	self.rollButton.MouseButton1Down:Connect(callback)
 end
@@ -413,6 +447,9 @@ function TouchActionGui:SetSprinting(sprinting)
 	setIcon(self.rollIcon, sprinting and "slide" or "roll")
 	local rim = self.rollButton:FindFirstChild("Rim")
 	if rim then rim.Transparency = sprinting and 0.1 or 0.45 end
+	-- ปุ่มวิ่งขอบสว่างตอนวิ่งจริง (ตามเซิร์ฟ — สตามินาหมดแล้วขอบดับแม้นิ้วยังกด)
+	local sprintRim = self.sprintButton:FindFirstChild("Rim")
+	if sprintRim then sprintRim.Transparency = sprinting and 0.1 or 0.45 end
 end
 
 function TouchActionGui:Show()
