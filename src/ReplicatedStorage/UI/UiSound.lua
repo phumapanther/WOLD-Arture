@@ -75,6 +75,17 @@ function UiSound.Preload(names)
 	pcall(function() game:GetService("ContentProvider"):PreloadAsync(sounds) end)
 end
 
+-- หมุดล่องหนในโลกให้เสียงเกาะ (เสียงต้องอยู่ใน BasePart ถึงจะดังตามระยะ)
+local function holderAt(position)
+	local holder = Instance.new("Part")
+	holder.Anchored, holder.CanCollide, holder.CanQuery, holder.CanTouch = true, false, false, false
+	holder.Transparency = 1
+	holder.Size = Vector3.new(0.2, 0.2, 0.2)
+	holder.Position = position
+	holder.Parent = workspace
+	return holder
+end
+
 -- เสียงในโลก: ได้ยินตามระยะ (กับดัก · แสงเลเวลขึ้นของคนอื่น) · `where` = Vector3 หรือ BasePart · ฝั่งไคลเอนต์
 -- `volumeScale` คูณเสียงปกติ (ของคนอื่นเบากว่าของตัวเอง) · `maxDistance` ค่าเริ่มต้น 80 สตัด
 function UiSound.PlayAt(name, where, volumeScale, maxDistance)
@@ -82,12 +93,7 @@ function UiSound.PlayAt(name, where, volumeScale, maxDistance)
 	if type(id) ~= "string" or id == "" or not where then return end
 	local holder
 	if typeof(where) == "Vector3" then
-		holder = Instance.new("Part")
-		holder.Anchored, holder.CanCollide, holder.CanQuery, holder.CanTouch = true, false, false, false
-		holder.Transparency = 1
-		holder.Size = Vector3.new(0.2, 0.2, 0.2)
-		holder.Position = where
-		holder.Parent = workspace
+		holder = holderAt(where)
 		Debris:AddItem(holder, 10)
 	end
 	local sound = Instance.new("Sound")
@@ -105,7 +111,11 @@ end
 
 -- A looping sound that has to be stopped by hand, for the ringtone: it rings until the call is answered or
 -- given up on, which this module cannot know. The caller keeps the returned Sound and destroys it.
-function UiSound.Loop(name)
+--
+-- `where` (Vector3 · ไม่บังคับ) = เสียงอยู่ที่จุดนั้นในโลก ดังเต็มในระยะ 8 สตัด แล้วจางหายที่ `maxDistance`
+-- (ค่าเริ่มต้น 28) — เครื่องคราฟใช้ (ผู้ใช้สั่ง 2026-10-02 "ให้อยู่แค่ใกล้เครื่อง") · ไม่ส่ง = เสียงหน้าจอเหมือนเดิม (เสียงเรียก)
+-- หมุดถูกลบตามเมื่อผู้เรียก Destroy เสียง
+function UiSound.Loop(name, where, maxDistance)
 	local id = Config[name]
 	if type(id) ~= "string" or id == "" then return nil end
 
@@ -113,7 +123,16 @@ function UiSound.Loop(name)
 	sound.SoundId = id
 	sound.Volume = volumeFor(name)
 	sound.Looped = true
-	sound.Parent = SoundService
+	if typeof(where) == "Vector3" then
+		local holder = holderAt(where)
+		sound.RollOffMode = Enum.RollOffMode.InverseTapered
+		sound.RollOffMinDistance = 8
+		sound.RollOffMaxDistance = maxDistance or 28
+		sound.Parent = holder
+		sound.Destroying:Once(function() holder:Destroy() end)
+	else
+		sound.Parent = SoundService
+	end
 	sound:Play()
 
 	-- Play() on a sound Roblox has not finished fetching does nothing, and there is no second attempt: the

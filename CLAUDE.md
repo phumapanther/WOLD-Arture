@@ -355,7 +355,8 @@ VIP เริ่ม/หมดกลางเกม = `Inventory.RefreshWeightLim
   (18 นาที = 💎 4) · `RequestExport("instant")` → `IslandFarm.instant` หักเพชรแล้วเรียก `resolve` ตัวเดียวกับลูป · เทส `export_gui_instant_test` (Edit)
 - **เสียงประจำเครื่อง** (ผู้ใช้สั่ง 2026-10-02): เตาทำอาหาร/เตาอบ = `Cook` (ผัดกระทะ 9114542867) · เครื่องปั่น = `Blend`
   (มอเตอร์ปั่น 9113457453) · เครื่องต้มยา = `Brew` (ของเหลวเดือดในแล็บ APM 1842379744) · ที่เหลือ = ค้อน `Craft` ·
-  ตาราง `CraftController.STATION_SOUND` · ใช้ทั้งเกมหลักและเกาะ
+  ตาราง `CraftController.STATION_SOUND` · ใช้ทั้งเกมหลักและเกาะ · **ดังที่ตัวเครื่อง ไม่ใช่หน้าจอ** (ผู้ใช้สั่ง): `UiSound.Loop(name, where)`
+  เต็มใน 8 สตัด จางหมดที่ 28 · เดินออกจากเครื่องไม่หยุดเสียง (จางตามระยะ งานยังทำต่อ) · ช่างตีเหล็ก = จุดที่ยืนตอนเริ่ม
 
 **สนาม PVP: ช่วงเตรียมตัว/นับถอยหลังยิง-ฟัน-ใช้สกิลไม่ได้** (ผู้ใช้สั่ง 2026-10-02) `ArenaAccess.AttacksAllowed` (phase == live) ถามที่
 `PlayerCombat` RequestAttack + `WeaponSkills` RequestSkill · ไม่ได้ใส่ใน `Deny.Blocked` เพราะสวมอาวุธ/ใช้ของช่วงซื้อต้องทำได้

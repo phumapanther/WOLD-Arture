@@ -82,7 +82,10 @@ Remotes.CraftStarted.OnClientEvent:Connect(function(index, seconds)
 	-- A second craft should not stack a second loop on top of the first.
 	stopForge()
 	local station = gui.snapshot and gui.snapshot.station
-	forgeSound = UiSound.Loop(station and STATION_SOUND[station] or "Craft")
+	-- ดังที่ตัวเครื่อง ไม่ใช่หน้าจอ (ผู้ใช้สั่ง 2026-10-02): เครื่อง = พิกัดสถานี · ช่างตีเหล็ก = จุดที่ยืนตอนเริ่ม
+	local root = Players.LocalPlayer.Character and Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
+	local at = stationPosition or (root and root.Position)
+	forgeSound = UiSound.Loop(station and STATION_SOUND[station] or "Craft", at)
 	gui:Begin(index, seconds)
 end)
 
@@ -121,7 +124,7 @@ task.spawn(function()
 					end
 				end
 				if not near then
-					stopForge()
+					-- เสียงไม่ต้องหยุด: มันอยู่ที่ตัวเครื่องและจางตามระยะเอง (งานยังทำต่อจนเสร็จ)
 					gui:Hide()
 				end
 			end
