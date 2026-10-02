@@ -320,11 +320,12 @@ local function startFishing(player)
 			-- walks away should stop fishing then, not twenty seconds later.
 			-- A fifth of a second, not a whole one: walking is meant to cancel fishing IMMEDIATELY, and a
 			-- one-second sweep let the player take several steps before the line came in.
-			local elapsed = 0
-			while elapsed < wait do
+			-- นับจากนาฬิกาจริง ไม่ใช่บวก 0.2 สะสม (2026-10-02): task.wait เกินทีละเสี้ยวเฟรม + เศษทศนิยมของ 0.2
+			-- ทำให้ปลาแต่ละตัวช้ากว่าที่ตั้งราว 1 วิ — หนอน 40 ตัวต้องหมดใน 15-18 นาทีตามที่ผู้ใช้สั่ง (fishing_bait_test)
+			local deadline = os.clock() + wait
+			while os.clock() < deadline do
 				if Sessions[player] ~= session then return end
 				task.wait(0.2)
-				elapsed += 0.2
 
 				local char = player.Character
 				local root2 = char and char:FindFirstChild("HumanoidRootPart")

@@ -401,7 +401,8 @@ ItemCatalog.Items = {
 	TrapAmmo_Blast = { icon = "rbxassetid://140566605872944", name = "กระสุนกับดัก · ระเบิด", kind = "junk", weight = 0.3, stackSize = 20, value = 40 }, -- decal 114114809172431
 
 	-- Bait. One is spent per catch, so a stack of worms is how long a session lasts.
-	Worm = { icon = "rbxassetid://91361977777697", name = "หนอน", kind = "junk", weight = 0.05, stackSize = 99, value = 1 },
+	-- กองละ 40 พกกองเดียว ที่เกินเข้าคลัง (ผู้ใช้สั่ง 2026-10-02) = ตกปลาได้ราว 16-17 นาทีต่อกอง (tests/fishing_bait_test)
+	Worm = { icon = "rbxassetid://91361977777697", name = "หนอน", kind = "junk", weight = 0.05, stackSize = 40, bagStacks = 1, value = 1 },
 
 	--------------------------------------------------------------------------
 	-- The steam age's own materials (V0.5). Every one of them is `sellable = false`: they are the currency of
