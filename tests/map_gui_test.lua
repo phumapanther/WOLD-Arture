@@ -101,6 +101,42 @@ local ok, err = pcall(function()
 		"ใต้ปุ่มกรองยังแตะแผนที่ได้")
 	map:hover(Vector3.new(centre.X, centre.Y, 0))
 	check(map.tooltip.Visible and map.tooltip.Text == "ร้าน บาร์นาบี", "ชี้เมาส์ที่หมุดย่อย = ชื่อลอย")
+
+	-- รีวิว: หมุดตรงกับจุดบนรูปพื้น (คณิตเดียวกับ canvas) ทุกซูม
+	for _, z in ipairs({ 1, 3, 12 }) do
+		map.zoom = z
+		local s = (map:canvasSize() / map.baseSize) * map.zoom
+		map.offset = Vector2.new(-npc.nx * map.baseSize / 2 * s, -npc.nz * map.baseSize / 2 * s)
+		map:apply()
+		task.wait(0.05)
+		local want = map.canvas.AbsolutePosition + Vector2.new((npc.nx + 1) / 2, (npc.nz + 1) / 2) * map.canvas.AbsoluteSize
+		local c = npc.frame.AbsolutePosition + npc.frame.AbsoluteSize / 2
+		check((want - c).Magnitude < 1.5, ("ซูม %d: หมุดตรงกับพื้น (ห่าง %.2f px)"):format(z, (want - c).Magnitude))
+		-- รูปพื้นซ้อนกันไม่เกิน 1 px บนจอ (เดิม +1 หน่วย canvas ถูกซูมขยายเป็นหลายสิบ px = รูปเลื่อนจากหมุด)
+		local tile = map.canvas:FindFirstChild("LandTile")
+		check(tile.Size.X.Scale == 0.5 and tile.Size.X.Offset * s <= 1.01, ("ซูม %d: แผ่นรูปซ้อนกัน %.2f px"):format(z, tile.Size.X.Offset * s))
+	end
+
+	-- รีวิว: จุด "คุณอยู่ที่นี่" ต้องอยู่เหนือหมุด ไม่จมใต้หมุดเมือง
+	check(map.youPin.Parent == map.pinLayer and map.youPin.ZIndex > npc.frame.ZIndex + 1, "จุดคุณอยู่ที่นี่อยู่บนหมุด")
+
+	-- รีวิว: นำทางอยู่ที่ร้าน แตะหมุดธนาคารที่อยู่ใกล้ๆ = ไปธนาคาร (ไม่ใช่ยกเลิก)
+	map:SetPois({
+		{ id = "npc:1", cat = "npc", emoji = "🛒", label = "ร้าน บาร์นาบี", x = 2135, y = 46, z = 3864 },
+		{ id = "npc:2", cat = "npc", emoji = "🏦", label = "ธนาคาร", x = 2175, y = 46, z = 3864 },
+	})
+	local bank
+	for _, p in ipairs(map.pins) do if p.data.id == "npc:2" then bank = p end end
+	map.zoom = 3
+	local s3 = (map:canvasSize() / map.baseSize) * map.zoom
+	map.offset = Vector2.new(-bank.nx * map.baseSize / 2 * s3, -bank.nz * map.baseSize / 2 * s3)
+	map:apply()
+	map:SetWaypoint(Vector3.new(2135, 46, 3864))
+	task.wait(0.05)
+	got = {}
+	local bc = bank.frame.AbsolutePosition + bank.frame.AbsoluteSize / 2
+	map:pinAt(Vector3.new(bc.X, bc.Y, 0))
+	check(got.poi and got.poi.id == "npc:2" and not got.unpin, "แตะหมุดอื่นใกล้จุดหมาย = นำทางไปหมุดนั้น")
 end)
 if map then map.gui:Destroy() end
 mirror:Destroy()

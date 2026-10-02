@@ -315,7 +315,7 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
   · ⚠️ **`MapConfig.Kinds` (สัญลักษณ์ ★ ◆ ▲) ถูกลบ** ชนิดสถานที่ที่ใช้ได้อยู่ `MapPoiRules.PlaceKinds` · เพิ่ม NpcKind/พาหนะ/แลนด์มาร์กใหม่ = เติมอีโมจิที่ `MapPoiRules`
 - `MapGui`: ชั้นหมุด `Pins` อยู่ใน viewport **นอก canvas** (ไม่โดน UIScale ซูม = ขนาดคงที่ · `apply` วางตำแหน่ง) · หมุดสถานที่ 28 px หมุดย่อย 22 ·
   ชื่อหมู่บ้าน/แลนด์มาร์กขึ้นเมื่อแผนที่วาดกว้าง ≥ 600 px (ชื่อเมืองเสมอ) · ชี้เมาส์ = ชื่อลอย · แถบกรองซ้าย (ScrollingFrame จำในเซสชัน) ·
-  **แตะหมุดตัดสินใน `pinAt` ที่เดียว** (ปุ่มกรอง → ยกเลิกนำทาง → หมุด → พื้น) → `callbacks.poi` → SocialController `nav:SetDestination` · หมุดที่นำทางอยู่ = ขอบทอง
+  **แตะหมุดตัดสินใน `pinAt` ที่เดียว** (ปุ่มกรอง → หมุด [หมุดที่นำทางอยู่ = ยกเลิก] → เพชรจุดหมาย → พื้น) · จุดคุณอยู่ที่นี่อยู่ในชั้นหมุด ZIndex 11 · แผ่นรูปซ้อน 1 px บนจอ (ตั้งใน apply) → `callbacks.poi` → SocialController `nav:SetDestination` · หมุดที่นำทางอยู่ = ขอบทอง
 - เทส: `map_poi_rules_test` (offline) · `map_gui_test` (Edit เพลสหลัก — แขวน StarterGui ชั่วคราวเพื่อเทสแตะจริง)
 
 ## โมเดลจากโค้ด (modelkit)

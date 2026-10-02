@@ -245,6 +245,7 @@ function MapGui:buildTerrain(step)
 	if tiles and #tiles > 0 then
 		self.terrainStep = step
 		if canvas:FindFirstChild("LandTile") then return end
+		self.landTiles = {}
 		for r, row in ipairs(tiles) do
 			for c, image in ipairs(row) do
 				local tile = Instance.new("ImageLabel")
@@ -253,9 +254,10 @@ function MapGui:buildTerrain(step)
 				tile.BorderSizePixel = 0
 				tile.Image = image
 				tile.Position = UDim2.fromScale((c - 1) / #row, (r - 1) / #tiles)
-				tile.Size = UDim2.new(1 / #row, 1, 1 / #tiles, 1) -- +1 กันรอยต่อเส้นผมระหว่างแผ่นตอนซูม
+				tile.Size = UDim2.fromScale(1 / #row, 1 / #tiles) -- ส่วนซ้อนกันรอยต่อตั้งใน apply (1 px บนจอทุกซูม)
 				tile.ZIndex = 1
 				tile.Parent = canvas
+				table.insert(self.landTiles, tile)
 			end
 		end
 		return
@@ -370,6 +372,8 @@ function MapGui:buildPinLayer()
 	layer.ZIndex = 8
 	layer.Parent = self.viewport
 	self.pinLayer = layer
+	self.youPin.Parent = layer -- เหนือหมุด ใต้ชื่อลอย (12) · ขนาดคงที่บนจอเหมือนหมุด
+	self.youPin.ZIndex = 11
 
 	local tip = Instance.new("TextLabel")
 	tip.Name = "Tooltip"
@@ -506,9 +510,13 @@ function MapGui:addPin(data, static)
 end
 
 -- หมุดที่เป็นจุดนำทางอยู่ = ขอบทองหนา (เพชรจุดหมายบน canvas ซ่อนอยู่ใต้หมุด)
-function MapGui:paintPin(pin)
+function MapGui:isSelected(pin)
 	local w = self.waypoint
-	local selected = w ~= nil and (Vector2.new(pin.data.x, pin.data.z) - Vector2.new(w.X, w.Z)).Magnitude < 2
+	return w ~= nil and (Vector2.new(pin.data.x, pin.data.z) - Vector2.new(w.X, w.Z)).Magnitude < 2
+end
+
+function MapGui:paintPin(pin)
+	local selected = self:isSelected(pin)
 	pin.stroke.Color = selected and ACCENT or LIGHT
 	pin.stroke.Thickness = selected and 3 or 1
 	pin.stroke.Transparency = selected and 0 or 0.5
@@ -574,6 +582,10 @@ function MapGui:apply()
 	self.canvasScale.Scale = scale
 	self.canvas.Position = UDim2.new(0.5, self.offset.X, 0.5, self.offset.Y)
 	-- หมุดอยู่นอก canvas (ไม่โดน UIScale ของการซูม) จึงขนาดคงที่บนจอทุกซูม · ตำแหน่ง = จุดเดียวกับที่ canvas วาด
+	-- แผ่นรูปซ้อนกัน 1 px บนจอ กันรอยต่อเส้นผม · เป็นหน่วย canvas ที่ถูกซูมขยาย จึงหารด้วย scale (ไม่งั้นรูปยืดเลื่อนจากหมุด)
+	for _, tile in ipairs(self.landTiles or {}) do
+		tile.Size = UDim2.new(tile.Size.X.Scale, 1 / scale, tile.Size.Y.Scale, 1 / scale)
+	end
 	local half = self.baseSize / 2
 	local roomy = self:canvasSize() * self.zoom >= NAMES_FROM
 	for _, pin in ipairs(self.pins) do
@@ -585,6 +597,16 @@ function MapGui:apply()
 		end
 	end
 	if self.tooltip then self.tooltip.Visible = false end
+	self:placeYou()
+end
+
+-- จุด "คุณอยู่ที่นี่" อยู่ในชั้นหมุดเหนือทุกหมุด (บน canvas มันจมใต้หมุดเมือง) · ตำแหน่งคณิตเดียวกับหมุด
+function MapGui:placeYou()
+	local you, at = self.youPin, self.youAt
+	if not you or not at then return end
+	local scale = (self:canvasSize() / self.baseSize) * self.zoom
+	local half = self.baseSize / 2
+	you.Position = UDim2.new(0.5, self.offset.X + at.X * half * scale, 0.5, self.offset.Y + at.Y * half * scale)
 end
 
 function MapGui:Zoom(delta, focus)
@@ -678,6 +700,18 @@ function MapGui:pinAt(screenPosition)
 	if self:overFilters(screenPosition) then return end
 	local local2d = Vector2.new(screenPosition.X, screenPosition.Y) - canvas.AbsolutePosition
 
+	-- แตะหมุดอีโมจิ = นำทางไปหมุดนั้นทันที · แตะหมุดที่นำทางอยู่ซ้ำ = ยกเลิก · ตัดสินที่นี่ที่เดียวกับการแตะพื้น
+	-- (ไม่ผูก Activated แยก) จึงไม่ปักหมุดพื้นซ้อน · เช็คหมุดก่อนระยะยกเลิกของเพชรจุดหมาย ไม่งั้นแตะหมุดข้างๆ = ยกเลิก
+	local poi = self:pinUnder(screenPosition)
+	if poi then
+		if self:isSelected(poi) then
+			if self.callbacks.unpin then self.callbacks.unpin() end
+		elseif self.callbacks.poi then
+			self.callbacks.poi(poi.data)
+		end
+		return
+	end
+
 	-- Tapping the diamond that is already there takes it back -- what the footer has been promising all
 	-- along. Tested against the pin's drawn rectangle rather than against a distance in studs: the map
 	-- zooms, so a fixed number of studs would be an unmissable target zoomed in and an unhittable one
@@ -692,14 +726,6 @@ function MapGui:pinAt(screenPosition)
 			if self.callbacks.unpin then self.callbacks.unpin() end
 			return
 		end
-	end
-
-	-- แตะหมุดอีโมจิ = นำทางไปหมุดนั้นทันที · ตัดสินที่นี่ที่เดียวกับการแตะพื้น (ไม่ผูก Activated แยก) จึงไม่ปักหมุดพื้นซ้อน
-	-- แตะหมุดที่นำทางอยู่ซ้ำ = เข้าเงื่อนไขยกเลิกข้างบนก่อน (เพชรจุดหมายอยู่ใต้หมุดพอดี)
-	local poi = self:pinUnder(screenPosition)
-	if poi then
-		if self.callbacks.poi then self.callbacks.poi(poi.data) end
-		return
 	end
 
 	local nx = (local2d.X / drawn.X) * 2 - 1
@@ -749,8 +775,8 @@ function MapGui:UpdatePin()
 	-- Off the edge of the map is still worth showing, at the edge, rather than hidden.
 	nx = math.clamp(nx, -1, 1)
 	nz = math.clamp(nz, -1, 1)
-	local x, y = place(self.baseSize, nx, nz)
-	self.youPin.Position = UDim2.fromOffset(x, y)
+	self.youAt = Vector2.new(nx, nz)
+	self:placeYou()
 	if not self.footerOverride then
 		self.footer.Text = ("ตำแหน่ง %.0f, %.0f · แตะหมุดเพื่อนำทาง · ลากเพื่อเลื่อน"):format(
 			root.Position.X, root.Position.Z)
