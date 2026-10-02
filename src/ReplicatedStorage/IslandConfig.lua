@@ -63,7 +63,7 @@ IslandConfig.Crops = {
 	{ item = "Cotton", seed = "CottonSeed", weight = 0, seconds = 30 * 60, min = 2, max = 4, level = 10 },
 	-- ข้าวโพด/อ้อย (ผู้ใช้อนุมัติ 2026-10-02) ปลูกจากเมล็ดของมันเองแบบฝ้าย · ป้อนเตาอบ (เนย ป็อปคอร์น น้ำตาล คาราเมล …)
 	{ item = "Corn", seed = "CornSeed", weight = 0, seconds = 30 * 60, min = 2, max = 4, level = 15 },
-	{ item = "Sugarcane", seed = "SugarcaneSeed", weight = 0, seconds = 35 * 60, min = 2, max = 4, level = 17 },
+	{ item = "Sugarcane", seed = "SugarcaneSeed", weight = 0, seconds = 35 * 60, min = 2, max = 4, level = 20 }, -- 17 → 20 (2026-10-02)
 
 	-- **ต้นเวทมนตร์** (ผู้ใช้สั่ง 2026-09-23: "เพิ่มโมเดลในแปลงผักสำหรับสุ่มปลูก เพื่อให้ได้กิ่งเวทมนตร์
 	-- ด้วย โดยพอเก็บจะสุ่มกิ่งเวทมนตร์และแร่เวทมนตร์")

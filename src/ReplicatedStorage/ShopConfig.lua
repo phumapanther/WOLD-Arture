@@ -153,7 +153,7 @@ ShopConfig.IslandSells = {
 	-- เมล็ดฝ้าย (เฟส 2c ผู้ใช้เลือก 2026-09-27): แยกจากเมล็ดสุ่ม หยอดแล้วได้ฝ้ายแน่นอน · ราคาเท่าเมล็ดสุ่ม
 	{ id = "CottonSeed", category = "farm", level = 10, coins = 250, count = 3 },
 	{ id = "CornSeed", category = "farm", level = 15, coins = 250, count = 3 }, -- 2026-10-02
-	{ id = "SugarcaneSeed", category = "farm", level = 17, coins = 250, count = 3 }, -- 2026-10-02
+	{ id = "SugarcaneSeed", category = "farm", level = 20, coins = 250, count = 3 }, -- 2026-10-02 · Lv17 → 20 (ผู้ใช้สั่ง)
 	{ id = "MineZone", category = "farm", level = 6, coins = 30000 }, -- ผู้ใช้กำหนด 2026-09-25 (เดิม 50,000)
 }
 

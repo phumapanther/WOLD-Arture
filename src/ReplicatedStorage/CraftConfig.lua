@@ -287,7 +287,7 @@ CraftConfig.Recipes = {
 	{ id = "Popcorn", tab = "bakery", station = "bakery", chance = 1, gold = 0, yields = 2, seconds = 10 * 60,
 		level = 16, batch = true, cost = { Corn = 3, Butter = 1 } },
 	{ id = "Sugar", tab = "bakery", station = "bakery", chance = 1, gold = 0, yields = 2, seconds = 5 * 60,
-		level = 18, batch = true, cost = { Sugarcane = 3 } },
+		level = 20, batch = true, cost = { Sugarcane = 3 } }, -- ตามอ้อย Lv20 (2026-10-02 · เดิม 18)
 	{ id = "Caramel", tab = "bakery", station = "bakery", chance = 1, gold = 0, seconds = 15 * 60,
 		level = 22, batch = true, cost = { Sugar = 2, Butter = 1, Milk = 1 } },
 	{ id = "GrilledButterCorn", tab = "food", station = "stove", chance = 1, gold = 0, seconds = 20 * 60,

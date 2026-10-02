@@ -162,7 +162,7 @@ local ok, err = pcall(function()
 	-- ขนแกะ 13 · แร่เงิน สายแร่เงิน 15 · หนัง 17 · คริสตัล 22 · กิ่งเวท 5 (2026-10-02 · เดิม 28) · แร่ทอง 30 · แร่เวท 40 · เพชร 45 · ข้าวโพด 15 · อ้อย 17
 	local RAW = { Wheat = 1, Vegetable = 1, Egg = 2, Meat = 5, Herb = 6, IronOre = 6, Coal = 6, Milk = 8, Cotton = 10,
 		Wool = 13, SilverOre = 15, Leather = 17, Crystal = 22, MagicBranch = 5, GoldOre = 30, MagicOre = 40, Diamond = 45,
-		Corn = 15, Sugarcane = 17 }
+		Corn = 15, Sugarcane = 20 } -- อ้อย Lv20 (2026-10-02 · เดิม 17)
 	-- ของดิบต้องปลดที่ต้นทางจริง (ร้าน/คอก/พืช) ไม่เกินเลเวลใน RAW — กันแก้ตารางฝั่งเดียว
 	local sourceLevel = {}
 	local function source(id, level) sourceLevel[id] = math.min(sourceLevel[id] or 99, level) end

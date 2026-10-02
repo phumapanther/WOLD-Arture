@@ -34,10 +34,10 @@ local function grows(seed, level, item)
 	end
 	return nil
 end
-local corn, cane = grows("CornSeed", 15, "Corn"), grows("SugarcaneSeed", 17, "Sugarcane")
+local corn, cane = grows("CornSeed", 15, "Corn"), grows("SugarcaneSeed", 20, "Sugarcane")
 check(corn and corn.seconds == 30 * 60 and corn.min == 2 and corn.max == 4, "ข้าวโพด Lv15 · 30 นาที · 2-4")
 check(cane and cane.seconds == 35 * 60 and cane.min == 2 and cane.max == 4, "อ้อย Lv17 · 35 นาที · 2-4")
-check(not grows("CornSeed", 14, "Corn") and not grows("SugarcaneSeed", 16, "Sugarcane"), "ยังไม่ถึงเลเวล = ไม่งอก")
+check(not grows("CornSeed", 14, "Corn") and not grows("SugarcaneSeed", 19, "Sugarcane"), "ยังไม่ถึงเลเวล = ไม่งอก")
 check(not grows("Seed", 30, "Corn") and not grows("Seed", 30, "Sugarcane"), "เมล็ดสุ่มไม่ให้ข้าวโพด/อ้อย")
 check(table.find(IslandConfig.SeedItems, "CornSeed") and table.find(IslandConfig.SeedItems, "SugarcaneSeed"),
 	"เมล็ดใหม่หยอดลงแปลงได้")
@@ -59,7 +59,7 @@ local function recipe(id, station, level, cost, yields)
 end
 recipe("Butter", "bakery", 15, { Milk = 3 })
 recipe("Popcorn", "bakery", 16, { Corn = 3, Butter = 1 }, 2)
-recipe("Sugar", "bakery", 18, { Sugarcane = 3 }, 2)
+recipe("Sugar", "bakery", 20, { Sugarcane = 3 }, 2) -- อ้อย/น้ำตาล Lv20 (ผู้ใช้สั่ง 2026-10-02 · เดิม 17/18)
 recipe("Caramel", "bakery", 22, { Sugar = 2, Butter = 1, Milk = 1 })
 recipe("GrilledButterCorn", "stove", 23, { Corn = 2, Butter = 2 })
 recipe("BakedButterCorn", "bakery", 25, { Corn = 3, Butter = 2, Caramel = 1 })
@@ -68,8 +68,8 @@ recipe("CreamCake", "bakery", 15, { Dough = 3, Egg = 4, Butter = 1 }) -- สู�
 -- 4. ร้านเกาะ
 local rows = {}
 for _, row in ipairs(ShopConfig.IslandSells) do rows[row.id] = row end
-check(rows.CornSeed and rows.CornSeed.level == 15 and rows.SugarcaneSeed and rows.SugarcaneSeed.level == 17,
-	"ร้านขายเมล็ดข้าวโพด Lv15 · อ้อย Lv17")
+check(rows.CornSeed and rows.CornSeed.level == 15 and rows.SugarcaneSeed and rows.SugarcaneSeed.level == 20,
+	"ร้านขายเมล็ดข้าวโพด Lv15 · อ้อย Lv20")
 check(rows.TrainingDummy and rows.TrainingDummy.level == 19 and ShopConfig.PricesOf(rows.TrainingDummy) == 15000,
 	"ร้านขายหุ่นฟาง Lv19 15,000")
 
