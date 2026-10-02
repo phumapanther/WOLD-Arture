@@ -45,6 +45,7 @@ MapPoiRules.NpcEmoji = {
 	shop = "🛒", smith = "⚒️", bank = "🏦", vehicle = "🔑", guild = "🛡️",
 	lyra = "🔧", oforian = "🌾",
 }
+MapPoiRules.NpcRole = { shop = "ร้าน", smith = "ช่างตีเหล็ก", bank = "ธนาคาร/คลัง", vehicle = "โรงรถ", guild = "สมาคม" }
 MapPoiRules.StationEmoji = { Car = "🚂", Boat = "⚓", Airship = "🎈" }
 MapPoiRules.Emoji = { boss = "💀", monster = "👾", quest = "📜", fishing = "🎣", mine = "⛏️", npc = "🧑" }
 
@@ -75,16 +76,17 @@ function MapPoiRules.ClusterOres(list, radius)
 		end
 		if home then
 			home.sx += ore.x
+			home.sy += ore.y or 0
 			home.sz += ore.z
 			home.count += 1
-			home.x, home.z = home.sx / home.count, home.sz / home.count
+			home.x, home.y, home.z = home.sx / home.count, home.sy / home.count, home.sz / home.count
 		else
-			home = { x = ore.x, z = ore.z, sx = ore.x, sz = ore.z, count = 1, kinds = {} }
+			home = { x = ore.x, y = ore.y or 0, z = ore.z, sx = ore.x, sy = ore.y or 0, sz = ore.z, count = 1, kinds = {} }
 			groups[#groups + 1] = home
 		end
 		home.kinds[ore.kind] = (home.kinds[ore.kind] or 0) + 1
 	end
-	for _, g in ipairs(groups) do g.sx, g.sz = nil, nil end
+	for _, g in ipairs(groups) do g.sx, g.sy, g.sz = nil, nil, nil end
 	return groups
 end
 
@@ -99,6 +101,45 @@ function MapPoiRules.MineLabel(group)
 	local names = {}
 	for _, k in ipairs(kinds) do names[#names + 1] = MapPoiRules.OreNames[k[1]] or k[1] end
 	return "เหมือง: " .. table.concat(names, " · ")
+end
+
+-- ของดิบที่ MapPoi.server สแกนได้ → หมุด { id, cat, emoji, label, x, y, z }
+-- src = { npcs, story, oforian, spawners, ores, boards, stations, fishing } (ทุกช่องว่างได้) · ฟิลด์ดูที่ MapPoi.server
+-- สปอว์เนอร์อีเวนต์: บอสโลก = 💀 หมวดถ้ำ/บอส · อีเวนต์อื่น (สไลม์กลายพันธุ์) ว่างเปล่านอกอีเวนต์ จึงไม่ปัก
+MapPoiRules.OreClusterRadius = 250
+function MapPoiRules.Build(src)
+	local pins = {}
+	local function add(prefix, cat, emoji, label, at)
+		pins[#pins + 1] = { id = prefix .. ":" .. #pins + 1, cat = cat, emoji = emoji, label = label, x = at.x, y = at.y or 0, z = at.z }
+	end
+	for _, n in ipairs(src.npcs or {}) do
+		local role = MapPoiRules.NpcRole[n.kind]
+		add("npc", "npc", MapPoiRules.NpcEmoji[n.kind] or MapPoiRules.Emoji.npc, role and (role .. " " .. n.name) or n.name, n)
+	end
+	for _, n in ipairs(src.story or {}) do
+		add("story", "npc", MapPoiRules.NpcEmoji[string.lower(n.id)] or MapPoiRules.Emoji.npc, n.name, n)
+	end
+	if src.oforian then add("oforian", "npc", MapPoiRules.NpcEmoji.oforian, "ออฟาเรียน เทพหุ่นฟาง", src.oforian) end
+	for _, s in ipairs(src.spawners or {}) do
+		if s.event == "worldboss" then
+			add("boss", "dungeon", MapPoiRules.Emoji.boss, "บอสโลก: " .. s.name, s)
+		elseif not s.event then
+			add("mob", "monster", MapPoiRules.Emoji.monster, s.name, s)
+		end
+	end
+	for _, g in ipairs(MapPoiRules.ClusterOres(src.ores or {}, MapPoiRules.OreClusterRadius)) do
+		add("mine", "mine", MapPoiRules.Emoji.mine, MapPoiRules.MineLabel(g), g)
+	end
+	for _, b in ipairs(src.boards or {}) do
+		add("board", "quest", MapPoiRules.Emoji.quest, "บอร์ดเควส " .. b.name, b)
+	end
+	for _, s in ipairs(src.stations or {}) do
+		add("station", "station", MapPoiRules.StationEmoji[s.vtype] or MapPoiRules.Emoji.npc, s.title, s)
+	end
+	for _, f in ipairs(src.fishing or {}) do
+		add("fish", "fishing", MapPoiRules.Emoji.fishing, f.fish and (f.name .. " · " .. f.fish) or f.name, f)
+	end
+	return pins
 end
 
 return MapPoiRules

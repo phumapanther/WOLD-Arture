@@ -2,6 +2,7 @@
   "name": "WOLD Farming",
   "servePlaceIds": [136992335889132],
   "globIgnorePaths": [
+    "src/ServerScriptService/MapPoi.server.lua",
     "src/ServerScriptService/AnimalHerds.server.lua",
     "src/ServerScriptService/DevTeleport.server.lua",
     "src/ServerScriptService/TikTokLive.server.lua",

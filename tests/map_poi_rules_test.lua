@@ -76,4 +76,43 @@ local label = R.MineLabel(big)
 check(label:find("เหล็ก", 1, true) and label:find("คริสตัล", 1, true), "ป้ายเหมืองบอกชนิดแร่: " .. label)
 check(#R.ClusterOres({}, 250) == 0, "ไม่มีแร่ = ไม่มีกลุ่ม")
 
+-- 6. Build: ของดิบที่เซิร์ฟสแกนได้ → หมุด
+local pins = R.Build({
+	npcs = { { kind = "shop", name = "บาร์นาบี", x = 1, y = 2, z = 3 }, { kind = "weird", name = "ใครสักคน", x = 0, y = 0, z = 0 } },
+	story = { { id = "Lyra", name = "ไลรา", x = 5, y = 0, z = 5 } },
+	oforian = { x = 9, y = 0, z = 9 },
+	spawners = {
+		{ kind = "Skeleton", name = "โครงกระดูก", x = 100, y = 0, z = 100 },
+		{ kind = "SteamSlime", name = "บอยลี่", event = "slime", x = 200, y = 0, z = 200 },
+		{ kind = "Forgewarden", name = "ฟอร์จวอร์เดน", event = "worldboss", x = 300, y = 0, z = 300 },
+	},
+	ores = { { kind = "IronOre", x = 0, y = 10, z = 0 }, { kind = "Coal", x = 50, y = 30, z = 0 } },
+	boards = { { id = "Brasshaven", name = "บราสเฮเวน", x = 7, y = 0, z = 7 } },
+	stations = { { id = "TownGarage", vtype = "Car", title = "โรงรถไอน้ำ", x = 8, y = 0, z = 8 },
+		{ id = "HarbourDock", vtype = "Boat", title = "ท่าเรือ", x = 8, y = 0, z = 9 } },
+	fishing = { { id = "BrasshavenBay", name = "อ่าวบราสเฮเวน", fish = "เรือบรรทุก", x = 4, y = 0, z = 4 } },
+})
+local byCat, ids, allOk = {}, {}, true
+for _, p in ipairs(pins) do
+	byCat[p.cat] = byCat[p.cat] or {}
+	table.insert(byCat[p.cat], p)
+	if ids[p.id] or not R.Category(p.cat) or not clean(p.emoji) or type(p.label) ~= "string"
+		or type(p.x) ~= "number" or type(p.y) ~= "number" or type(p.z) ~= "number" then allOk = false end
+	ids[p.id] = true
+end
+check(allOk, "ทุกหมุดมี id ไม่ซ้ำ · หมวดที่รู้จัก · อีโมจิ · ชื่อ · พิกัดครบ")
+check(#(byCat.npc or {}) == 4, "NPC 2 + ไลรา + ออฟาเรียน = 4 หมุด")
+local shop = byCat.npc and byCat.npc[1]
+check(shop and shop.emoji == "🛒" and shop.label:find("บาร์นาบี", 1, true) and shop.label:find("ร้าน", 1, true), "ร้าน = 🛒 + ชื่อบทบาท + ชื่อคน")
+local unknownOk = false
+for _, p in ipairs(byCat.npc or {}) do if p.label:find("ใครสักคน", 1, true) and p.emoji == R.Emoji.npc then unknownOk = true end end
+check(unknownOk, "NPC ชนิดที่ไม่รู้จัก = 🧑")
+check(#(byCat.monster or {}) == 1 and byCat.monster[1].label == "โครงกระดูก", "สปอว์เนอร์ปกติ 1 หมุด · สปอว์เนอร์อีเวนต์สไลม์ถูกข้าม")
+check(#(byCat.dungeon or {}) == 1 and byCat.dungeon[1].emoji == R.Emoji.boss, "จุดเกิดบอสโลก = 💀 หมวดถ้ำ/บอส")
+check(#(byCat.mine or {}) == 1 and math.abs(byCat.mine[1].y - 20) < 1e-6, "สายแร่สองจุดใกล้กัน = หมุดเดียว ความสูงเฉลี่ย")
+check(#(byCat.quest or {}) == 1 and byCat.quest[1].label:find("บราสเฮเวน", 1, true), "บอร์ดเควสบอกชื่อเมือง")
+check(#(byCat.station or {}) == 2 and byCat.station[1].emoji == "🚂" and byCat.station[2].emoji == "⚓", "สถานีตามชนิดพาหนะ")
+check(#(byCat.fishing or {}) == 1 and byCat.fishing[1].label:find("เรือบรรทุก", 1, true), "จุดตกปลาบอกชื่อปลา")
+check(#R.Build({}) == 0, "ไม่มีข้อมูล = ไม่มีหมุด (ไม่ล้ม)")
+
 return (fails == 0 and "PASS\n" or ("FAIL x%d\n"):format(fails)) .. table.concat(out, "\n")

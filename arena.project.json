@@ -2,6 +2,7 @@
   "name": "WOLD Arena",
   "servePlaceIds": [134798670267276],
   "globIgnorePaths": [
+    "src/ServerScriptService/MapPoi.server.lua",
     "src/ServerScriptService/AdminChest.server.lua",
     "src/ServerScriptService/AnimalHerds.server.lua",
     "src/ServerScriptService/Arrest.server.lua",

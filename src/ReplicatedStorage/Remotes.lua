@@ -208,6 +208,8 @@ local EVENTS = {
 	"RequestMail", "MailUpdate",
 	-- แถบเควสรวม (2026-09-29): เซิร์ฟ → QuestLogBoard(แถวงานบอร์ด) · ไคลเอนต์ → RequestQuestNav(key) · เซิร์ฟ → QuestNav(ตำแหน่ง, ชื่อ)
 	"QuestLogBoard", "RequestQuestNav", "QuestNav",
+	-- แผนที่ v2 (2026-10-02): ไคลเอนต์ขอตอนเปิดแผนที่ → เซิร์ฟส่งหมุดทั้งชุด { id, cat, emoji, label, x, y, z } (MapPoi.server)
+	"RequestMapPois", "MapPois",
 }
 local FUNCTIONS = { "GetSpawnPosition" } -- DataStore-backed lookups can only run server-side; the client must ask
 
