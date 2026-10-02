@@ -8,6 +8,8 @@ local TweenService = game:GetService("TweenService")
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
 local ItemIcon = require(script.Parent.ItemIcon)
+local NumberBox = require(script.Parent.NumberBox)
+local CraftFuel = require(script.Parent.Parent.CraftFuel) -- เชื้อเพลิงเครื่องบนเกาะ (2026-10-02)
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -135,6 +137,106 @@ function CraftGui.new()
 	body.BorderSizePixel = 0
 	body.Parent = panel
 	corner(body, UDim.new(0, 10))
+	self.body = body
+
+	-- แถบเชื้อเพลิง (เครื่องคราฟบนเกาะ · ผู้ใช้สั่ง 2026-10-02) — โผล่เฉพาะตอนสแนปช็อตมี `fuel` แล้วดันรายการสูตรลง
+	-- ซ้าย: หลอด + % + เวลาที่ทำงานได้ · ขวา: ถ่านที่มี · +1 · ช่องจำนวน (เด้งเป็นที่เติมได้จริง) · เติม
+	local strip = Instance.new("Frame")
+	strip.Name = "Fuel"
+	strip.Position = UDim2.fromOffset(12, 84)
+	strip.Size = UDim2.new(1, -24, 0, 34)
+	strip.BackgroundColor3 = STONE_DEEP
+	strip.BorderSizePixel = 0
+	strip.Visible = false
+	strip.Parent = panel
+	corner(strip, UDim.new(0, 8))
+	self.fuelStrip = strip
+
+	local RIGHT = 212 -- ความกว้างกลุ่มปุ่มขวา
+	local track = Instance.new("Frame")
+	track.AnchorPoint = Vector2.new(0, 0.5)
+	track.Position = UDim2.new(0, 8, 0.5, 0)
+	track.Size = UDim2.new(1, -(RIGHT + 12), 0, 20)
+	track.BackgroundColor3 = Color3.fromRGB(44, 46, 56)
+	track.BorderSizePixel = 0
+	track.ClipsDescendants = true
+	track.Parent = strip
+	corner(track, UDim.new(0, 6))
+	local fill = Instance.new("Frame")
+	fill.Size = UDim2.fromScale(0, 1)
+	fill.BackgroundColor3 = Color3.fromRGB(226, 128, 52)
+	fill.BorderSizePixel = 0
+	fill.Parent = track
+	corner(fill, UDim.new(0, 6))
+	self.fuelFill = fill
+	local fuelText = Instance.new("TextLabel")
+	fuelText.Size = UDim2.new(1, -8, 1, 0)
+	fuelText.Position = UDim2.fromOffset(6, 0)
+	fuelText.BackgroundTransparency = 1
+	fuelText.Font = Enum.Font.GothamBold
+	fuelText.TextSize = 12
+	fuelText.TextColor3 = TEXT_LIGHT
+	fuelText.TextStrokeTransparency = 0.4
+	fuelText.TextXAlignment = Enum.TextXAlignment.Left
+	fuelText.TextTruncate = Enum.TextTruncate.AtEnd
+	fuelText.Parent = track
+	self.fuelText = fuelText
+
+	local function fuelButton(text, width, right, colour, onClick)
+		local b = Instance.new("TextButton")
+		b.AnchorPoint = Vector2.new(1, 0.5)
+		b.Position = UDim2.new(1, -right, 0.5, 0)
+		b.Size = UDim2.fromOffset(width, 26)
+		b.BackgroundColor3 = colour
+		b.BorderSizePixel = 0
+		b.Font = Enum.Font.GothamBold
+		b.TextSize = 12
+		b.TextColor3 = Color3.fromRGB(24, 26, 32)
+		b.Text = text
+		b.Parent = strip
+		corner(b, UDim.new(0, 5))
+		b.Activated:Connect(function()
+			UiSound.Play("Click")
+			onClick()
+		end)
+		return b
+	end
+	local box = Instance.new("TextBox")
+	box.AnchorPoint = Vector2.new(1, 0.5)
+	box.Position = UDim2.new(1, -64, 0.5, 0)
+	box.Size = UDim2.fromOffset(44, 26)
+	box.BackgroundColor3 = Color3.fromRGB(44, 46, 56)
+	box.BorderSizePixel = 0
+	box.Font = Enum.Font.GothamBold
+	box.TextSize = 12
+	box.TextColor3 = TEXT_LIGHT
+	box.PlaceholderText = "จำนวน"
+	box.PlaceholderColor3 = TEXT_MUTED
+	box.ClearTextOnFocus = false
+	box.Text = ""
+	box.Parent = strip
+	corner(box, UDim.new(0, 5))
+	NumberBox.Bind(box, function() return self.fuelMax end)
+	self.fuelBox = box
+	fuelButton("เติม", 52, 8, RUNE, function()
+		local n = NumberBox.Value(box.Text)
+		if n and n > 0 and self.onFuel then self.onFuel(n) end
+		box.Text = ""
+	end)
+	fuelButton("+1", 36, 112, ENOUGH, function()
+		if self.onFuel then self.onFuel(1) end
+	end)
+	local coal = Instance.new("TextLabel")
+	coal.AnchorPoint = Vector2.new(1, 0.5)
+	coal.Position = UDim2.new(1, -152, 0.5, 0)
+	coal.Size = UDim2.fromOffset(58, 26)
+	coal.BackgroundTransparency = 1
+	coal.Font = Enum.Font.Gotham
+	coal.TextSize = 12
+	coal.TextColor3 = TEXT_MUTED
+	coal.TextXAlignment = Enum.TextXAlignment.Right
+	coal.Parent = strip
+	self.fuelCoal = coal
 
 	local list = Instance.new("ScrollingFrame")
 	list.Position = UDim2.fromOffset(6, 6)
@@ -168,6 +270,7 @@ end
 
 function CraftGui:OnCraft(callback) self.onCraft = callback end
 function CraftGui:OnEnhance(callback) self.onEnhance = callback end
+function CraftGui:OnFuel(callback) self.onFuel = callback end -- (จำนวนถ่าน) เติมเชื้อเพลิงเครื่องที่เปิดอยู่
 
 -- Puts every button to sleep and runs the bar on the one row that is being made. Split out from Begin because
 -- a redraw arriving mid-swing has to re-apply exactly the same thing to a brand new set of rows, and the bar
@@ -278,7 +381,7 @@ local function duration(seconds)
 end
 
 -- `times` = จำนวนรอบที่เลือกไว้ (เครื่องบนเกาะทำได้ 1-10 รอบต่องาน · เฟส 2c) · `onTimes(n)` เปลี่ยนจำนวน
-local function recipeRow(parent, order, entry, onClick, times, onTimes)
+local function recipeRow(parent, order, entry, onClick, times, onTimes, fuel)
 	times = times or 1
 	local materialsBottom = 26 + #entry.materials * 16
 	local height = materialsBottom + 22
@@ -317,6 +420,14 @@ local function recipeRow(parent, order, entry, onClick, times, onTimes)
 	local affordable = entry.affordable
 	for _, material in ipairs(entry.materials) do
 		if material.have < material.need * times then affordable = false end
+	end
+	-- เชื้อเพลิง (เครื่องบนเกาะ · 2026-10-02): ใช้ตามเวลาทั้งงาน ไม่พอ = กดไม่ได้ (เซิร์ฟตรวจซ้ำตอนกด)
+	local fuelPct, fuelShort
+	if fuel and (entry.seconds or 0) > 0 and not entry.enhance and not entry.closed and not entry.lockLevel then
+		local seconds = entry.seconds * times
+		fuelPct = CraftFuel.CostPercent(seconds)
+		fuelShort = not CraftFuel.Enough(fuel.amount, CraftFuel.Cost(seconds))
+		if fuelShort then affordable = false end
 	end
 
 	for i, material in ipairs(entry.materials) do
@@ -393,6 +504,10 @@ local function recipeRow(parent, order, entry, onClick, times, onTimes)
 	else
 		odds.Text = ("โอกาสสำเร็จ %d%%  ·  ค่าจ้าง <font color=\"#%s\">%d</font> เหรียญ")
 			:format(math.floor((entry.chance or 1) * 100 + 0.5), feeColor:ToHex(), fee)
+	end
+	-- เชื้อเพลิงขึ้นหน้าสุด (บรรทัดยาวแล้วถูกตัดท้าย ⛽ ต้องไม่หาย)
+	if fuelPct then
+		odds.Text = ("<font color=\"#%s\">⛽ %d%%</font> · "):format((fuelShort and SHORT or ENOUGH):ToHex(), fuelPct) .. odds.Text
 	end
 	odds.Parent = frame
 
@@ -536,7 +651,7 @@ function CraftGui:Render()
 			end, times, function(n)
 				self.times[entry.index] = n
 				self:Render()
-			end)
+			end, self.fuel)
 		end
 	end
 
@@ -573,6 +688,23 @@ end
 
 function CraftGui:Show(snapshot)
 	self.snapshot = snapshot
+	-- เชื้อเพลิง: มีเฉพาะเครื่องบนเกาะ · แถบอยู่ใต้แท็บ แล้วรายการสูตรเลื่อนลง
+	local fuel = snapshot.fuel
+	self.fuel = fuel
+	self.fuelStrip.Visible = fuel ~= nil
+	local top = fuel and 124 or 84
+	self.body.Position = UDim2.fromOffset(12, top)
+	self.body.Size = UDim2.new(1, -24, 1, -(top + 12))
+	if fuel then
+		local pct = CraftFuel.Percent(fuel.amount)
+		self.fuelFill.Size = UDim2.fromScale(pct / 100, 1)
+		self.fuelText.Text = (fuel.amount or 0) > 0
+			and ("⛽ เชื้อเพลิง %d%% · ทำงานได้อีก %s"):format(math.floor(pct), duration(fuel.amount))
+			or "⛽ เชื้อเพลิงหมด — เติมถ่านหิน (16 ก้อน = เต็ม)"
+		self.fuelCoal.Text = ("ถ่าน %d"):format(fuel.coal or 0)
+		self.fuelMax = math.min(fuel.coal or 0, CraftFuel.Room(fuel.amount))
+		self.fuelBox.Text = NumberBox.Clean(self.fuelBox.Text, self.fuelMax)
+	end
 	-- ชื่อหน้าต่างตามเครื่องที่เปิด (เตาอบ/โต๊ะช่าง/กี่ทอ/ครัว) ไม่มี = โรงตีเหล็ก
 	self.title.Text = snapshot.title or "โรงตีเหล็ก"
 	if snapshot.farmLevel then self.title.Text ..= ("   ·   🌾 เลเวลฟาร์ม %d"):format(snapshot.farmLevel) end

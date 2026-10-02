@@ -27,6 +27,7 @@ local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 local Achievements = require(game.ServerScriptService.Achievements)
 local Announce = require(game.ServerScriptService.Announce)
 local IslandAccess = require(game.ServerScriptService.Island.IslandAccess)
+local CraftFuel = require(game.ReplicatedStorage.CraftFuel)
 
 -- เลเวลฟาร์มที่ล็อกสูตรของเครื่องบนเกาะ (เฟส 2c) · nil = ไม่ล็อก (นอกเกาะไม่มีสูตรที่มี level อยู่แล้ว)
 local function farmLevel()
@@ -128,6 +129,17 @@ local function lockKeyOf(player)
 		at = at.Parent
 	end
 	return src.station .. "@" .. tostring(uid or (model and model:GetFullName()) or "?")
+end
+
+-- เครื่องบนเกาะที่ต้องเติมถ่าน (CraftFuel · ผู้ใช้สั่ง 2026-10-02) → entry ของเครื่องที่วาง (เก็บ `entry.fuel` ในโปรไฟล์เจ้าของ)
+-- เครื่องถูกห่อด้วย Model ลูกชื่อต้นแบบ (IslandBuild FUNCTIONAL) entry จึงอยู่ที่ตัวแม่ · เกมหลัก/ช่างตีเหล็ก/ของที่ไม่ได้วางจากร้าน = nil (ใช้ฟรี)
+local function fuelEntry(player)
+	local src = Source[player]
+	if not (src and src.model and CraftFuel.Uses(src.station, ServerConfig.IsFarm)) or not IslandAccess.EntryOf then
+		return nil
+	end
+	local model = src.model
+	return IslandAccess.EntryOf(model) or (model.Parent and IslandAccess.EntryOf(model.Parent)) or nil
 end
 
 Players.PlayerRemoving:Connect(function(player)
@@ -319,7 +331,10 @@ local function snapshot(player)
 	local remaining = busy and math.max(0, busy.finishAt - os.clock()) or nil
 
 	local src = Source[player]
-	return { tabs = tabs, recipes = recipes, station = station,
+	-- เชื้อเพลิงของเครื่องนี้ (มีเฉพาะเครื่องบนเกาะ) · coal = ถ่านในกระเป๋า (ไม่นับขอบทอง) ให้หน้าต่างหนีบช่องเติม
+	local fuelBox = fuelEntry(player)
+	local fuel = fuelBox and { amount = fuelBox.fuel or 0, coal = Inventory.CountOf(player, CraftFuel.Item) } or nil
+	return { tabs = tabs, recipes = recipes, station = station, fuel = fuel,
 		title = CraftConfig.StationTitles[station or ""], farmLevel = level,
 		busy = busy and { index = busy.index, remaining = remaining, seconds = busy.seconds } or nil,
 		stationPosition = src and src.model.Parent and src.model:GetPivot().Position or nil }
@@ -353,6 +368,28 @@ CraftAccess.OpenAt = function(player, station, model)
 		player.Name, tostring(station), #snap.recipes, #snap.tabs))
 	Remotes.CraftOpen:FireClient(player, snap)
 end
+
+-- เติมถ่านหินเข้าเครื่องที่เปิดอยู่ (ผู้ใช้สั่ง 2026-10-02) · จำนวนหนีบตามที่ใส่ได้ (CraftFuel.Room) และถ่านที่มี (ไม่ใช้ถ่านขอบทอง)
+Remotes.RequestCraftFuel.OnServerEvent:Connect(function(player, count)
+	count = tonumber(count)
+	if not count or count ~= count or count == math.huge then return end
+	count = math.floor(count)
+	if count < 1 or not nearSource(player) then return end
+	local box = fuelEntry(player)
+	if not box then return end
+	local room = CraftFuel.Room(box.fuel)
+	local n = math.min(count, room, Inventory.CountOf(player, CraftFuel.Item))
+	if n < 1 then
+		return Remotes.SocialNotify:FireClient(player, "warn", room < 1 and "เชื้อเพลิงเต็มแล้ว" or "ไม่มีถ่านหินในกระเป๋า")
+	end
+	if not Inventory.RemoveById(player, CraftFuel.Item, n) then return end
+	box.fuel = CraftFuel.Add(box.fuel, n)
+	Inventory.Send(player)
+	if ProfileAccess.Flush then ProfileAccess.Flush(player) end
+	Remotes.SocialNotify:FireClient(player, "info",
+		("เติมถ่านหิน %d ก้อน · เชื้อเพลิง %d%%"):format(n, math.floor(CraftFuel.Percent(box.fuel))))
+	Remotes.CraftOpen:FireClient(player, snapshot(player))
+end)
 
 Remotes.RequestCraftClose.OnServerEvent:Connect(function(player)
 	Source[player] = nil
@@ -512,7 +549,16 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index, times)
 
 	-- สูตรกำหนดเวลาเองได้ (สเต็ก 15 นาที น้ำแอปเปิล 5 นาที) ที่เหลือใช้ค่ากลางของช่างตีเหล็ก
 	local seconds = (recipe.seconds or CraftConfig.CraftSeconds) * rounds
+	-- เชื้อเพลิง (เครื่องบนเกาะ · ผู้ใช้เลือก 2026-10-02): กินตามเวลาทั้งงาน · ไม่พอ = ทำไม่ได้ · หักตอนเริ่มพร้อมวัตถุดิบ
+	local fuelBox = fuelEntry(player)
+	local fuelCost = fuelBox and CraftFuel.Cost(seconds) or 0
+	if fuelBox and not CraftFuel.Enough(fuelBox.fuel, fuelCost) then
+		return Remotes.SocialNotify:FireClient(player, "error",
+			("เชื้อเพลิงไม่พอ ต้องใช้ %d%% (มี %d%%) — เติมถ่านหินที่แถบด้านบน"):format(
+				CraftFuel.CostPercent(seconds), math.floor(CraftFuel.Percent(fuelBox.fuel))))
+	end
 	Busy[player][key] = { index = index, finishAt = os.clock() + seconds, seconds = seconds }
+	if fuelBox then fuelBox.fuel = math.max(0, (fuelBox.fuel or 0) - fuelCost) end
 
 	-- Taken NOW rather than after the wait, so walking away or logging out mid-swing cannot dodge the cost.
 	-- The fee goes with them: the smith is paid for the attempt, not for the result.

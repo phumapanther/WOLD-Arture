@@ -24,6 +24,11 @@ gui:OnCraft(function(index, times)
 end)
 
 -- ตีบวก: ส่งช่องของอาวุธ ("equipped" หรือเลขช่อง) — เซิร์ฟเวอร์ตรวจทุกอย่างซ้ำ
+-- เติมถ่านหินเข้าเครื่องบนเกาะ (2026-10-02) · เซิร์ฟหนีบจำนวนเอง แล้วส่งหน้าต่างใหม่กลับมา
+gui:OnFuel(function(count)
+	Remotes.RequestCraftFuel:FireServer(count)
+end)
+
 gui:OnEnhance(function(slot)
 	Remotes.RequestEnhance:FireServer(slot)
 end)

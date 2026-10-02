@@ -8,7 +8,9 @@ mirror.Capabilities = SecurityCapabilities.new(Enum.SecurityCapability.Basic, En
 	Enum.SecurityCapability.UI, Enum.SecurityCapability.RunServerScript, Enum.SecurityCapability.Input)
 mirror.Parent = game.ServerStorage
 game.ReplicatedStorage.UI:Clone().Parent = mirror
-game.ReplicatedStorage.SoundscapeConfig:Clone().Parent = mirror -- UiSound อ่านจาก script.Parent.Parent
+for _, m in ipairs(game.ReplicatedStorage:GetChildren()) do -- โมดูลที่ UI อ่านจาก script.Parent.Parent (SoundscapeConfig CraftFuel …)
+	if m:IsA("ModuleScript") and m.Name ~= "Remotes" then m:Clone().Parent = mirror end
+end
 
 local out, fails = {}, 0
 local function check(ok, text)

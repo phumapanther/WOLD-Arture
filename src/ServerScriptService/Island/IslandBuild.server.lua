@@ -394,6 +394,8 @@ local function place(player, slotIndex, cx, cz, r)
 		entry.pats = tonumber(meta.pats)
 		entry.pat = tonumber(meta.pat)
 	end
+	-- เชื้อเพลิงเครื่องคราฟ (CraftFuel · 2026-10-02) ไปกับไอเทม · ไม่งั้นเก็บเครื่องคืน = ถ่านที่เติมไว้หาย
+	if type(meta) == "table" and tonumber(meta.fuel) then entry.fuel = tonumber(meta.fuel) end
 	-- จดแบบที่สุ่มได้ เฉพาะตอนที่มันไม่ใช่แบบแรก (โปรไฟล์จะได้ไม่บวมด้วยค่าที่เดาได้อยู่แล้ว)
 	if proto.Name ~= slot.id then entry.variant = proto.Name end
 	Data.nextUid += 1
@@ -426,6 +428,10 @@ local function pickup(player, uid)
 	local meta = nil
 	if IslandConfig.Pets[entry.id] and (entry.pats ~= nil or entry.pat ~= nil) then
 		meta = { pats = entry.pats, pat = entry.pat }
+	end
+	if (tonumber(entry.fuel) or 0) > 0 then
+		meta = meta or {}
+		meta.fuel = entry.fuel
 	end
 	if not Inventory.HasRoomFor(player, entry.id, 1, meta) then return false, "full" end
 	if not Inventory.AddItem(player, entry.id, 1, nil, meta) then return false, "full" end
