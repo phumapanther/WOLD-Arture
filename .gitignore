@@ -20,3 +20,6 @@ tools/tiktok-bridge/sub-cooldown.json
 # ไฟล์ชั่วคราวของการตรวจ syntax/ดันไฟล์เข้า Studio ไม่ใช่ของโปรเจ็ค
 mapgen/tmp/
 tools/ui-audit/out/
+
+# แผนที่ v2: รูปวาดใหม่ได้จาก samples.txt.gz ใน 3 วิ (tools/render-map.py)
+assets/map/*.png

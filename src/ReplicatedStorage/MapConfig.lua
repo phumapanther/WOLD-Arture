@@ -93,6 +93,14 @@ MapConfig.Kinds = {
 -- design points, so the map was promising paths and water that a player walking there would not find. What
 -- is left is the ground as it was actually sampled, and the places worth naming.
 
+-- แผนที่ v2 (2026-10-02): รูปพื้นโลก 2x2 แผ่น [แถว][คอลัมน์] แถวบน = ขอบ -Z วาดจากโลกจริง
+-- (tools/build-map-image.js → tools/render-map.py → upload) · ว่าง = MapGui วาดพื้นจาก MapTerrain แบบเดิม
+-- แมพเปลี่ยนเมื่อไหร่: รันสองตัวนั้น อัปโหลด world_<r>_<c>.png แล้วแก้เลขสี่ตัวนี้
+MapConfig.Tiles = {
+	{ "rbxassetid://116155269535746", "rbxassetid://128567406012767" },
+	{ "rbxassetid://82009149988465", "rbxassetid://118644319309557" },
+}
+
 -- Studs per grid square, so the grid means something rather than being decoration.
 MapConfig.GridStuds = 2000
 
