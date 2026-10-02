@@ -322,6 +322,10 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 ⚠️ **เพดานของคนหนึ่งคนถาม `Inventory.MaxWeight(player)` เท่านั้น** (ช้าลง · กลิ้ง/สไลด์สั้นลงที่ 1.5 เท่า · ป้ายในกระเป๋า) ห้ามอ่าน `InventoryConfig.MaxWeight` ตรงๆ ·
 VIP เริ่ม/หมดกลางเกม = `Inventory.RefreshWeightLimit` (ลูป 1 วิใน PlayerInventory) ส่งป้ายใหม่ · สนามไม่มีโปรไฟล์ = 500 ทุกคน · เทส `vip_weight_test` (offline)
 
+**ขี่จักรยานล้อเดียว: กงล้อเหลือง (`Rim`) จาง 0.7 · ยาง (`Tyre`) ล่องหน — เฉพาะเครื่องคนขี่** (ผู้ใช้สั่ง 2026-10-02 · ยังไม่ได้เทสในเกม)
+`MonowheelController` ตั้ง `LocalTransparencyModifier` (ไคลเอนต์ล้วน คนอื่นเห็นล้อทึบ) ลูป 0.25 วิ หาคันจาก `DriveSeat.Occupant` · ลงแล้วคืน 0 ·
+ตารางชื่อชิ้น `WHEEL_FADE` ต้องตรงกับ `Monowheel.server` `build()` — เปลี่ยนชื่อชิ้นที่นั่นต้องแก้ที่นี่
+
 ## โมเดลจากโค้ด (modelkit)
 ชุดสร้างโมเดลด้วยโค้ดอยู่ที่ `modelkit/` + `models/` — **อ่าน `docs/modelkit-reference.md` ก่อนแตะ**
 มีของพร้อมใช้: แลนด์มาร์ก 5 หลัง บ้าน 5 แบบ NPC 12 ตัว (rig R15 เดินได้จริง) ทุกอาคารเข้าไปอยู่ได้

@@ -37,7 +37,47 @@ local function restore()
 	saved = nil
 end
 
-Remotes.MonowheelRideChanged.OnClientEvent:Connect(function(riding)
+-- ล้อจางลงระหว่างขี่ เฉพาะเครื่องคนขี่ (ผู้ใช้สั่ง 2026-10-02): กล้องบุคคลที่หนึ่งอยู่ในวงล้อ ขอบทองเหลือง (Rim)
+-- กับยาง (Tyre ผิว Pebble) บังทางข้างหน้าเต็มจอ · LocalTransparencyModifier ตั้งจากไคลเอนต์ = เห็นเครื่องนี้เครื่องเดียว
+-- คนอื่นยังเห็นล้อทึบปกติ · ผู้ใช้กำหนด: กงล้อเหลือง (Rim) จาง · ยาง (Tyre) ล่องหนไปเลย · ซี่ล้อ/เฟืองอยู่ข้างๆ ไม่บัง คงเดิม
+local WHEEL_FADE = { Rim = 0.7, Tyre = 1 } -- ชื่อชิ้นจาก Monowheel.server build() · 1 = หายหมด
+local riding = false
+local faded = {} -- [part] = true
+
+-- คันที่เรานั่งอยู่จริง (ดูจากที่นั่ง ไม่ใช่เจ้าของ) · StreamingEnabled: ถามใหม่ทุกรอบ ไม่เก็บไว้ตั้งแต่ตอนขึ้น
+local function myWheel()
+	local folder = workspace:FindFirstChild("WOLD_Monowheels")
+	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	if not folder or not humanoid then return nil end
+	for _, model in ipairs(folder:GetChildren()) do
+		local seat = model:FindFirstChild("DriveSeat")
+		if seat and seat:IsA("VehicleSeat") and seat.Occupant == humanoid then return model end
+	end
+	return nil
+end
+
+task.spawn(function()
+	while true do
+		task.wait(0.25)
+		local model = riding and myWheel()
+		if model then
+			for _, p in ipairs(model:GetChildren()) do
+				if p:IsA("BasePart") and WHEEL_FADE[p.Name] and not faded[p] then
+					p.LocalTransparencyModifier = WHEEL_FADE[p.Name]
+					faded[p] = true
+				end
+			end
+		elseif not riding and next(faded) then
+			for p in pairs(faded) do
+				if p.Parent then p.LocalTransparencyModifier = 0 end
+			end
+			faded = {}
+		end
+	end
+end)
+
+Remotes.MonowheelRideChanged.OnClientEvent:Connect(function(isRiding)
+	riding = isRiding and true or false
 	if riding then
 		lockFirstPerson()
 	else
@@ -47,4 +87,7 @@ end)
 
 -- ตายคาจักรยาน: เซิร์ฟเวอร์เก็บจักรยานให้อยู่แล้ว แต่ถ้าสัญญาณหายไประหว่างนั้น กล้องจะค้าง
 -- ปลดเองตอนได้ตัวละครใหม่ จึงไม่มีทางที่ผู้เล่นจะติดอยู่ในมุมมองบุคคลที่หนึ่งถาวร
-player.CharacterAdded:Connect(restore)
+player.CharacterAdded:Connect(function()
+	riding = false
+	restore()
+end)
