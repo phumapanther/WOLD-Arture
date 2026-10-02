@@ -5,6 +5,7 @@
 -- snapshots -- every redraw is a fresh picture of what the server currently says is true.
 local Players = game:GetService("Players")
 local Responsive = require(script.Parent.Responsive)
+local NumberBox = require(script.Parent.NumberBox) -- พิมพ์เกินที่มี = เด้งเป็นเลขสูงสุด (2026-10-02)
 local UiSound = require(script.Parent.UiSound)
 local ItemIcon = require(script.Parent.ItemIcon)
 
@@ -160,16 +161,15 @@ function VaultGui.new()
 	box.Text = ""
 	box.Parent = money
 	corner(box, UDim.new(0, 6))
-	box:GetPropertyChangedSignal("Text"):Connect(function()
-		-- Digits only, filtered as it is typed rather than corrected on submit. Rewriting the box under
-		-- someone's fingers is what makes a field impossible to clear, so only non-digits are removed.
-		local digits = box.Text:gsub("%D", "")
-		if digits ~= box.Text then box.Text = digits end
-	end)
+	-- ตัวเลขล้วน + เพดาน = เงินที่มากกว่าระหว่างในกระเป๋ากับในธนาคาร (ยังไม่รู้ว่าจะฝากหรือถอน) · ลบจนว่างได้เสมอ
+	NumberBox.Bind(box, function() return math.max(self.goldNow or 0, self.bankedNow or 0) end)
 	self.amountBox = box
 
 	local function money_action(name, text, colour, offset)
 		local b = button(money, text, colour, Color3.fromRGB(24, 26, 32), function()
+			-- ฝาก = ไม่เกินเงินในกระเป๋า · ถอน = ไม่เกินเงินในธนาคาร (เด้งลงในช่องให้เห็น)
+			local limit = (name == "deposit") and self.goldNow or (name == "withdraw") and self.bankedNow or nil
+			if limit then box.Text = NumberBox.Clean(box.Text, limit) end
 			local amount = tonumber(box.Text)
 			if not amount or amount <= 0 then
 				return self:SetStatus("ใส่จำนวนเงินก่อน")
@@ -369,6 +369,7 @@ local function fill(list, entries, stackGlyph, onAll, onOne, emptyText)
 end
 
 function VaultGui:Show(snapshot)
+	self.goldNow, self.bankedNow = snapshot.gold or 0, snapshot.banked or 0
 	self.purse.Text = ("เงินในกระเป๋า %d"):format(snapshot.gold or 0)
 	self.banked.Text = ("เงินในธนาคาร %d"):format(snapshot.banked or 0)
 	self.vaultHead.Text = ("คลังสินค้า  %d/%d ช่อง"):format(snapshot.vaultUsed or 0, snapshot.vaultSlots or 0)

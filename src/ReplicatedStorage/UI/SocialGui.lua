@@ -7,6 +7,7 @@
 -- at a time, so adding a ninth feature later means adding a page, not rearranging the layout.
 local Players = game:GetService("Players")
 local SocialConfig = require(script.Parent.Parent.SocialConfig)
+local NumberBox = require(script.Parent.NumberBox) -- พิมพ์เกินที่มี = เด้งเป็นเลขสูงสุด (2026-10-02)
 local AvatarThumbnails = require(script.Parent.AvatarThumbnails)
 local Responsive = require(script.Parent.Responsive)
 local ClassConfig = require(script.Parent.Parent.ClassConfig)
@@ -2024,6 +2025,7 @@ function SocialGui:buildMailCompose()
 	count.Position = UDim2.new(0, 0, 1, -98)
 	count.Size = UDim2.new(0.3, -4, 0, 30)
 	self.composeCount = count
+	NumberBox.Bind(count, function() return self.composeMax end) -- ไม่เลือกของ = ไม่มีเพดาน
 
 	local body = textBox(page, "ข้อความ (ไม่ใส่ก็ได้)")
 	body.Position = UDim2.new(0.3, 4, 1, -98)
@@ -2054,6 +2056,7 @@ end
 function SocialGui:OpenCompose(userId, name)
 	self.composeUserId = userId
 	self.composeSlot = nil
+	self.composeMax = nil
 	self.composeCount.Text = ""
 	self.composeBody.Text = ""
 	self:ShowScreen("mailCompose", "ส่งของถึง " .. tostring(name))
@@ -2084,6 +2087,7 @@ function SocialGui:RenderCompose()
 			n.Size = UDim2.fromOffset(40, 14)
 			cell.Activated:Connect(function()
 				self.composeSlot = index
+				self.composeMax = slot.count or 1
 				self.composeCount.Text = tostring(slot.count or 1)
 				self.composePicked.Text = ("%s x%d"):format(ItemCatalog.DisplayName(slot.id, slot.meta), slot.count or 1)
 				self:RenderCompose()

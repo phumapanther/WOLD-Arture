@@ -8,6 +8,7 @@
 -- trade -- the server owns the offer, and this window is only ever showing the last thing it was told.
 local Players = game:GetService("Players")
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
+local NumberBox = require(script.Parent.NumberBox) -- พิมพ์เกินที่มี = เด้งเป็นเลขสูงสุด (2026-10-02)
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
 local ItemIcon = require(script.Parent.ItemIcon)
@@ -215,6 +216,7 @@ function TradeGui.new()
 	goldBox.PlaceholderColor3 = TEXT_MUTED
 	goldBox.Text = ""
 	goldBox.ClearTextOnFocus = false
+	NumberBox.Bind(goldBox, function() return self.goldHave or 0 end)
 	goldBox.Parent = right
 	corner(goldBox, UDim.new(0, 6))
 	self.goldBox = goldBox
@@ -321,7 +323,8 @@ function TradeGui:RenderBag(inventory)
 	for _, child in ipairs(self.bagGrid:GetChildren()) do
 		if child:IsA("TextButton") then child:Destroy() end
 	end
-	self.myGold.Text = ("เงิน: %d"):format(inventory and inventory.gold or 0)
+	self.goldHave = inventory and inventory.gold or 0
+	self.myGold.Text = ("เงิน: %d"):format(self.goldHave)
 
 	local offered = {}
 	for _, index in ipairs(self.offeredSlots) do offered[index] = true end

@@ -4,6 +4,7 @@
 -- Pure UI builder, like HudGui: it draws what it is handed and reports clicks through callbacks. The
 -- controller owns every decision and the server owns the data.
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
+local NumberBox = require(script.Parent.NumberBox) -- พิมพ์เกินที่มี = เด้งเป็นเลขสูงสุด (2026-10-02)
 local ItemIcon = require(script.Parent.ItemIcon)
 local UiSound = require(script.Parent.UiSound)
 local InventoryConfig = require(script.Parent.Parent.InventoryConfig)
@@ -964,6 +965,7 @@ function InventoryGui:ShowCountPrompt(slotButton, title, maxCount, onConfirm)
 	box.Text = tostring(maxCount)
 	box.ClearTextOnFocus = false
 	box.ZIndex = 61
+	NumberBox.Bind(box, function() return maxCount end)
 	box.Parent = menu
 	local bc = Instance.new("UICorner")
 	bc.CornerRadius = UDim.new(0, 6)

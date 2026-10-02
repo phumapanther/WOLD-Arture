@@ -115,6 +115,14 @@ if okNew then
 		local rock = rows(shop.sellList)[1]
 		check(rock and not rock.BuyCoins:GetAttribute("Short") and not rock.BuyGems:GetAttribute("Short"),
 			"ก้อนหิน 750/💎3 เงินพอ = สีปกติทั้งสองปุ่ม")
+		-- ช่องจำนวน: เงิน 5,000 ซื้อหิน 750 ได้ 6 ครั้ง (เพชร 10 ได้ 3) พิมพ์ 30 = เด้งเป็น 6
+		local amount = rock and rock:FindFirstChildWhichIsA("TextBox")
+		if amount then
+			amount.Text = "30"
+			task.wait()
+			task.wait()
+		end
+		check(amount and amount.Text == "6", "พิมพ์ 30 ในช่องจำนวน = เด้งเป็น 6 (ซื้อได้สูงสุด): " .. tostring(amount and amount.Text))
 		shop:SelectTab("animal")
 		shop:Show({ categories = cats, gold = 0, gems = 0, rerollIn = 0, buys = {}, sells = {
 			{ index = 9, id = "AnimalPen", name = "คอกสัตว์", icon = "", coins = 7500, gems = 30, category = "animal",

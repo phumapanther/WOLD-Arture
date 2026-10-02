@@ -7,6 +7,7 @@
 -- means is the server's business.
 local Players = game:GetService("Players")
 local Responsive = require(script.Parent.Responsive)
+local NumberBox = require(script.Parent.NumberBox) -- พิมพ์เกินที่มี = เด้งเป็นเลขสูงสุด (2026-10-02)
 local UiSound = require(script.Parent.UiSound)
 
 local STONE = Color3.fromRGB(38, 40, 48)
@@ -134,7 +135,7 @@ end
 -- Type an amount
 --------------------------------------------------------------------------------
 
-function ClassActionGui:AskAmount(target, onSend)
+function ClassActionGui:AskAmount(target, onSend, max)
 	self:clearBody()
 	self.title.Text = ("ให้เงิน %s"):format(target.DisplayName)
 	self.panel.Size = UDim2.fromOffset(300, 180)
@@ -151,6 +152,7 @@ function ClassActionGui:AskAmount(target, onSend)
 	box.Text = ""
 	box.ClearTextOnFocus = false
 	box.Parent = self.body
+	NumberBox.Bind(box, function() return max end)
 	corner(box, UDim.new(0, 8))
 
 	local send = button(self.body, "ส่ง", Color3.fromRGB(58, 78, 56))

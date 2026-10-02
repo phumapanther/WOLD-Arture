@@ -34,6 +34,8 @@ local addSkinEntries -- นิยามข้างล่าง ใกล้เ�
 
 Remotes.InventoryUpdate.OnClientEvent:Connect(function(data)
 	latest = data
+	-- เงินในกระเป๋าเป็นแอตทริบิวต์ท้องถิ่น (ไม่ replicate) ให้ช่องกรอกเงินที่อื่นใช้เป็นเพดาน เช่น ให้เงินผู้เล่น (2026-10-02)
+	player:SetAttribute("WOLD_GoldHeld", data and data.gold or 0)
 	-- Only redraw while open: the panel is hidden most of the time and this fires on every pickup.
 	if gui:IsOpen() then gui:Render(latest) end
 end)

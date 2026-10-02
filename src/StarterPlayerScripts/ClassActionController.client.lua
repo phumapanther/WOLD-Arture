@@ -105,7 +105,7 @@ local function buildPrompts(target)
 			if action.id == "give" then
 				gui:AskAmount(target, function(amount)
 					Remotes.RequestClassAction:FireServer("give", target, amount)
-				end)
+				end, player:GetAttribute("WOLD_GoldHeld")) -- พิมพ์เกินเงินที่มี = เด้งเป็นเงินที่มี
 			elseif action.id == "heal" then
 				gui:AskHealSize(target, function(size)
 					Remotes.RequestClassAction:FireServer("heal", target, size)

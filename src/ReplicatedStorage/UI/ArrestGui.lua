@@ -7,6 +7,7 @@
 -- only power they have while held.
 local Players = game:GetService("Players")
 local Responsive = require(script.Parent.Responsive)
+local NumberBox = require(script.Parent.NumberBox) -- พิมพ์เกินที่มี = เด้งเป็นเลขสูงสุด (2026-10-02)
 local UiSound = require(script.Parent.UiSound)
 local ItemIcon = require(script.Parent.ItemIcon)
 local ClassActionConfig = require(script.Parent.Parent.ClassActionConfig)
@@ -206,6 +207,7 @@ function ArrestGui.new()
 	fineBox.PlaceholderColor3 = TEXT_MUTED
 	fineBox.Text = ""
 	fineBox.ClearTextOnFocus = false
+	NumberBox.Bind(fineBox, function() return self.prisonerGold end)
 	fineBox.Parent = right
 	corner(fineBox, UDim.new(0, 6))
 	self.fineBox = fineBox
@@ -388,7 +390,8 @@ function ArrestGui:Render(payload)
 		if entry then tile(self.takeGrid, entry, nil) end
 	end
 
-	self.theirGold.Text = ("เงิน: %d"):format((payload and payload.gold) or 0)
+	self.prisonerGold = (payload and payload.gold) or 0
+	self.theirGold.Text = ("เงิน: %d"):format(self.prisonerGold)
 	if not self.fineBox:IsFocused() then
 		self.fineBox.Text = self.fine > 0 and tostring(self.fine) or ""
 	end

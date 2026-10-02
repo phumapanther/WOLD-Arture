@@ -4,6 +4,7 @@
 -- callbacks. Who may open it, and whether any of the buttons do anything, is the server's business.
 local Players = game:GetService("Players")
 local Responsive = require(script.Parent.Responsive)
+local NumberBox = require(script.Parent.NumberBox) -- พิมพ์เกินที่มี = เด้งเป็นเลขสูงสุด (2026-10-02)
 local UiSound = require(script.Parent.UiSound)
 
 local STONE = Color3.fromRGB(38, 40, 48)
@@ -316,6 +317,7 @@ function AdminPanelGui:Render(data)
 		levelBox.PlaceholderText = "lvl"
 		levelBox.Text = tostring(row.level)
 		levelBox.ClearTextOnFocus = false
+		NumberBox.Bind(levelBox, function() return self.maxLevel end)
 		levelBox.Parent = card
 		corner(levelBox, UDim.new(0, 6))
 		levelBox.FocusLost:Connect(function(enter)

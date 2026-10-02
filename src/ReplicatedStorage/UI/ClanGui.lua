@@ -6,6 +6,7 @@
 -- บ่อยมาก การต้องกดย้อนกลับทุกครั้งจะน่ารำคาญเร็ว
 local Players = game:GetService("Players")
 local Responsive = require(script.Parent.Responsive)
+local NumberBox = require(script.Parent.NumberBox) -- พิมพ์เกินที่มี = เด้งเป็นเลขสูงสุด (2026-10-02)
 local UiSound = require(script.Parent.UiSound)
 local ClanConfig = require(script.Parent.Parent.ClanConfig)
 
@@ -165,7 +166,7 @@ end
 -- กล่องกรอกข้อความ
 --------------------------------------------------------------------------------
 
-function ClanGui:prompt(titleText, placeholder, onConfirm)
+function ClanGui:prompt(titleText, placeholder, onConfirm, max)
 	local shade = Instance.new("TextButton")
 	shade.Size = UDim2.fromScale(1, 1)
 	shade.BackgroundColor3 = Color3.new(0, 0, 0)
@@ -203,6 +204,7 @@ function ClanGui:prompt(titleText, placeholder, onConfirm)
 	input.ClearTextOnFocus = false
 	input.ZIndex = 11
 	input.Parent = box
+	if max then NumberBox.Bind(input, function() return max end) end
 	corner(input, UDim.new(0, 6))
 
 	local ok = button(box, "ตกลง", GREEN, function()
@@ -397,7 +399,7 @@ function ClanGui:renderMine(data)
 		self:prompt("บริจาคเหรียญซิลเวอร์", ("มีอยู่ %d"):format(data.silverHeld or 0), function(text)
 			local n = tonumber(text)
 			if n and n > 0 then self:fire("donate", math.floor(n)) end
-		end)
+		end, data.silverHeld or 0)
 	end)
 	donate.AnchorPoint = Vector2.new(1, 0.5)
 	donate.Position = UDim2.new(1, -8, 0.5, 0)
@@ -409,7 +411,7 @@ function ClanGui:renderMine(data)
 			self:prompt("แจกให้ทุกคนคนละกี่ซิลเวอร์", "จำนวนรวม", function(text)
 				local n = tonumber(text)
 				if n and n > 0 then self:fire("distribute", math.floor(n), nil) end
-			end)
+			end, clan.silver or 0)
 		end)
 		give.AnchorPoint = Vector2.new(1, 0.5)
 		give.Position = UDim2.new(1, -92, 0.5, 0)
@@ -478,7 +480,7 @@ function ClanGui:renderMine(data)
 				self:prompt(("ให้ %s กี่ซิลเวอร์"):format(member.name), "จำนวน", function(text)
 					local n = tonumber(text)
 					if n and n > 0 then self:fire("distribute", math.floor(n), member.userId) end
-				end)
+				end, clan.silver or 0)
 			end)
 			one.AnchorPoint = Vector2.new(1, 0.5)
 			one.Position = UDim2.new(1, -8, 0.5, 0)

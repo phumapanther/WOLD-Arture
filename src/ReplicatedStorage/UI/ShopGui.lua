@@ -6,6 +6,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Responsive = require(script.Parent.Responsive)
+local NumberBox = require(script.Parent.NumberBox) -- พิมพ์เกินที่มี = เด้งเป็นเลขสูงสุด (2026-10-02)
 local UiSound = require(script.Parent.UiSound)
 local ItemIcon = require(script.Parent.ItemIcon)
 
@@ -310,7 +311,7 @@ end
 -- Empty means one, which is what the row did before this existed: a player who never touches the box gets
 -- the old behaviour. Anything that is not a number is ignored rather than corrected mid-typing, because
 -- rewriting the box under someone's fingers makes it impossible to clear.
-local function amountBox(frame, onChanged, right)
+local function amountBox(frame, onChanged, right, maxCount)
 	local b = Instance.new("TextBox")
 	b.Name = "Amount"
 	b.AnchorPoint = Vector2.new(1, 0.5)
@@ -329,8 +330,8 @@ local function amountBox(frame, onChanged, right)
 	corner(b, UDim.new(0, 5))
 
 	b:GetPropertyChangedSignal("Text"):Connect(function()
-		-- Digits only. Typed rather than pasted is the normal case, so this mostly stops a stray letter.
-		local digits = b.Text:gsub("%D", "")
+		-- Digits only, capped at what the purse can pay for (เด้งเป็นเลขสูงสุดเอง · 2026-10-02)
+		local digits = NumberBox.Clean(b.Text, maxCount)
 		if digits ~= b.Text then b.Text = digits end
 		if onChanged then onChanged(tonumber(digits)) end
 	end)
@@ -469,7 +470,10 @@ function ShopGui:Show(snapshot)
 			end
 			if buttons then
 				local frame, used = row(self.sellList, entry.index, entry.icon, label, priceText, buttons, 38 + 4)
-				amountBox(frame, function(n) want = n end, used)
+				local canBuy = 0
+				if entry.coins and entry.coins > 0 then canBuy = math.max(canBuy, gold // entry.coins) end
+				if entry.gems and entry.gems > 0 then canBuy = math.max(canBuy, gems // entry.gems) end
+				amountBox(frame, function(n) want = n end, used, math.max(1, canBuy))
 			end
 		end
 	end
