@@ -303,6 +303,21 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
   ตำแหน่งเป้าย้อนตามปิงผู้ยิง (`rewindSeconds` = ปิง + 0.1 สูงสุด 0.35 · ย้อนด้วยความเร็ว) · สไนย้อนด้วย · คลิกแรกของอาวุธยิง (ไม่ใช่สไน) ยิงเลย
   · เกมหลักยังวง 8 ที่จุดหยุด (ยิงมอนตัวใหญ่)
 
+**แผนที่โลก v2 (ผู้ใช้สั่ง 2026-10-02) — ดันสามเพลส mismatches 0 · ยังไม่ได้เทสในเกม** สเปก `docs/superpowers/specs/2026-10-02-world-map-v2-design.md`
+- **พื้นแผนที่เป็นรูปวาดจากโลกจริง** 2x2 แผ่น `MapConfig.Tiles` (ว่าง = วาดพื้นแบบ Frame เดิมจาก MapTerrain) · ทำใหม่เมื่อแมพเปลี่ยน:
+  `WOLD_PLACE=88774255487951 node tools/build-map-image.js` (Edit ~2 นาที → `assets/map/samples.txt.gz` วัสดุ/ความสูง/ความลึกน้ำ/สีหลังคา 1024²)
+  → `tools/render-map.py` (3 วิ → `assets/map/world*.png` gitignore) → MCP `upload_image` (ต้องเสิร์ฟไฟล์ทาง http://127.0.0.1) → แก้เลขสี่ตัว
+  · ตัววัดข้ามต้นไม้/หิน/พุ่ม (`WOLD.Gather`) สายแร่ (`WOLD.Mineral`) ของล่องหน และของลอยสูง > 400 จากพื้น · MapTerrain (กริด 360) ยังใช้กันปักหมุดกลางน้ำ
+- **หมุดอีโมจิ** กติกาล้วน `MapPoiRules` (หมวด 10 · ซูมขั้นต่ำ: เมือง/หมู่บ้าน/แลนด์มาร์ก/ถ้ำ-บอส/สถานี เสมอ · เหมือง/ปลา ×1.5 · มอน/บอร์ด ×2 · NPC ×3 ·
+  `Build` ของดิบ → หมุด · สายแร่รวมกลุ่มรัศมี 250) · หมุดสถานที่วาดจาก `MapConfig.Places` ฝั่งไคลเอนต์ · ที่เหลือมาจาก **`MapPoi.server`**
+  (เพลสหลักเท่านั้น · denylist เกาะ/สนาม · สแกนแท็ก WOLD_Npc/WOLD_StoryNpc/Dummy_Spawn/WOLD_Spawner/WOLD_QuestBoard + `WOLD.Mineral` +
+  `Stations.List` + ริมฝั่งเขตตกปลา ทุก 120 วิ) → `Remotes.RequestMapPois`/`MapPois` ขอตอนเปิดแผนที่ (ห่าง 60 วิ · เกาะไม่ขอ)
+  · ⚠️ **`MapConfig.Kinds` (สัญลักษณ์ ★ ◆ ▲) ถูกลบ** ชนิดสถานที่ที่ใช้ได้อยู่ `MapPoiRules.PlaceKinds` · เพิ่ม NpcKind/พาหนะ/แลนด์มาร์กใหม่ = เติมอีโมจิที่ `MapPoiRules`
+- `MapGui`: ชั้นหมุด `Pins` อยู่ใน viewport **นอก canvas** (ไม่โดน UIScale ซูม = ขนาดคงที่ · `apply` วางตำแหน่ง) · หมุดสถานที่ 28 px หมุดย่อย 22 ·
+  ชื่อหมู่บ้าน/แลนด์มาร์กขึ้นเมื่อแผนที่วาดกว้าง ≥ 600 px (ชื่อเมืองเสมอ) · ชี้เมาส์ = ชื่อลอย · แถบกรองซ้าย (ScrollingFrame จำในเซสชัน) ·
+  **แตะหมุดตัดสินใน `pinAt` ที่เดียว** (ปุ่มกรอง → ยกเลิกนำทาง → หมุด → พื้น) → `callbacks.poi` → SocialController `nav:SetDestination` · หมุดที่นำทางอยู่ = ขอบทอง
+- เทส: `map_poi_rules_test` (offline) · `map_gui_test` (Edit เพลสหลัก — แขวน StarterGui ชั่วคราวเพื่อเทสแตะจริง)
+
 ## โมเดลจากโค้ด (modelkit)
 ชุดสร้างโมเดลด้วยโค้ดอยู่ที่ `modelkit/` + `models/` — **อ่าน `docs/modelkit-reference.md` ก่อนแตะ**
 มีของพร้อมใช้: แลนด์มาร์ก 5 หลัง บ้าน 5 แบบ NPC 12 ตัว (rig R15 เดินได้จริง) ทุกอาคารเข้าไปอยู่ได้

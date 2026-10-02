@@ -14,6 +14,7 @@ local RS = game.ReplicatedStorage
 local W = fresh(RS.WyrmsleepConfig)
 local Vehicle = fresh(RS.Vehicle.Config)
 local Map = fresh(RS.MapConfig)
+local PoiRules = fresh(RS.MapPoiRules)
 local Sound = fresh(RS.SoundscapeConfig)
 local Vitals = fresh(RS.VitalsConfig)
 
@@ -47,7 +48,7 @@ local want = {
 }
 local found = {}
 for _, p in ipairs(Map.Places) do
-	check(Map.Kinds[p.kind] ~= nil, ("หมุด %s ใช้ชนิดที่มีจริง (%s)"):format(p.name, tostring(p.kind)))
+	check(PoiRules.PlaceKinds[p.kind] ~= nil, ("หมุด %s ใช้ชนิดที่มีจริง (%s)"):format(p.name, tostring(p.kind)))
 	check(p.name ~= "Spire of Eld" and p.name ~= "Crystal Cave", "ไม่มีหมุดเก่า " .. p.name)
 	local w = want[p.name]
 	if w then

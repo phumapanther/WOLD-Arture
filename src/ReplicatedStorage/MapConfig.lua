@@ -52,7 +52,7 @@ function MapConfig.ColorFor(code)
 	return MapConfig.Materials[code] or MapConfig.Materials.g
 end
 
--- Everywhere worth naming. `kind` picks the marker's colour and glyph.
+-- Everywhere worth naming. `kind` picks the pin's category and emoji (MapPoiRules.ForPlace).
 MapConfig.Places = {
 	{ name = "Brasshaven", th = "บราสเฮเวน", pos = { 0.26, 0.47 }, kind = "capital" },
 	{ name = "Ironcrest Keep", th = "ปราสาทไอรอนเครสต์", pos = { 0.22, 0.26 }, kind = "castle" },
@@ -73,19 +73,7 @@ MapConfig.Places = {
 	{ name = "Hermit Tower", th = "หอคอยสันโดษ", pos = { 0.1983, 0.0298 }, kind = "landmark" }, -- Ruin_TowerTall
 }
 
-MapConfig.Kinds = {
-	capital = { color = Color3.fromRGB(226, 178, 84), glyph = "\226\152\133", size = 12 }, -- ★
-	castle = { color = Color3.fromRGB(198, 198, 210), glyph = "\226\153\158", size = 10 },
-	farm = { color = Color3.fromRGB(180, 196, 100), glyph = "\226\151\143", size = 8 },
-	engineer = { color = Color3.fromRGB(196, 148, 96), glyph = "\226\151\143", size = 8 },
-	mine = { color = Color3.fromRGB(160, 156, 150), glyph = "\226\151\143", size = 8 },
-	lumber = { color = Color3.fromRGB(120, 168, 108), glyph = "\226\151\143", size = 8 },
-	fishing = { color = Color3.fromRGB(110, 168, 200), glyph = "\226\151\143", size = 8 },
-	mage = { color = Color3.fromRGB(170, 138, 220), glyph = "\226\151\143", size = 8 },
-	cave = { color = Color3.fromRGB(140, 132, 124), glyph = "\226\151\134", size = 7 },
-	volcano = { color = Color3.fromRGB(236, 96, 44), glyph = "\226\150\178", size = 10 }, -- ▲
-	landmark = { color = Color3.fromRGB(226, 196, 120), glyph = "\226\151\134", size = 8 }, -- ◆
-}
+-- หมุดสถานที่: หมวด + อีโมจิมาจาก MapPoiRules.ForPlace(place) (แผนที่ v2 · 2026-10-02)
 
 -- The river and the roads used to be drawn here: two polylines copied out of the design document. Both are
 -- gone at the user's request, and the reason they had to go is the same reason they looked wrong -- neither

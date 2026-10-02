@@ -24,7 +24,7 @@ function MapPoiRules.Category(id)
 end
 
 -- สถานที่ใน MapConfig.Places: kind → หมวด + อีโมจิ (แลนด์มาร์กแต่ละที่มีอีโมจิของตัวเองตามชื่อ)
-local PLACE_KIND = {
+local PLACE_KIND = { -- ชนิดสถานที่ที่ MapConfig.Places ใช้ได้ (เทสตรวจ)
 	capital = { "city", "🏰" }, castle = { "city", "🏰" },
 	farm = { "village", "🏡" }, engineer = { "village", "🏡" }, mine = { "village", "🏡" },
 	lumber = { "village", "🏡" }, fishing = { "village", "🏡" }, mage = { "village", "🏡" },
@@ -35,6 +35,7 @@ local PLACE_EMOJI = {
 	["Runestone Forest"] = "💠", ["Foundry"] = "🔥",
 }
 
+MapPoiRules.PlaceKinds = PLACE_KIND
 function MapPoiRules.ForPlace(place)
 	local rule = PLACE_KIND[place.kind] or { "landmark", "🗿" }
 	return rule[1], PLACE_EMOJI[place.name] or rule[2]

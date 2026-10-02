@@ -1,0 +1,108 @@
+-- WOLD_PLACE=88774255487951 node tools/lua.js tests/map_gui_test.lua Edit
+-- แผนที่ v2 (2026-10-02): พื้นเป็นรูป 2x2 · หมุดสถานที่คงที่ · SetPois แทนชุดเดิม · ซูมขั้นต่ำ/กรอง · ขอบทองหมุดนำทาง ·
+-- แตะหมุด = poi ไม่ใช่ปักหมุดพื้น · แตะปุ่มกรองไม่ทะลุลงแผนที่ · หมุดขนาดคงที่ทุกซูม
+-- Studio บล็อกการย้ายโมดูลเข้า ReplicatedStorage จาก execute_luau → โคลนเข้าโฟลเดอร์ Sandboxed ใน ServerStorage
+local mirror = Instance.new("Folder")
+mirror.Name = "MapGuiMirror"
+mirror.Sandboxed = true
+mirror.Capabilities = SecurityCapabilities.new(Enum.SecurityCapability.Basic, Enum.SecurityCapability.CreateInstances,
+	Enum.SecurityCapability.UI, Enum.SecurityCapability.RunServerScript, Enum.SecurityCapability.Input)
+mirror.Parent = game.ServerStorage
+local RS = game.ReplicatedStorage
+for _, name in ipairs({ "MapConfig", "MapTerrain", "MapPoiRules" }) do RS[name]:Clone().Parent = mirror end
+RS.UI:Clone().Parent = mirror
+
+local out, fails = {}, 0
+local function check(ok, text)
+	out[#out + 1] = (ok and "ok   " or "FAIL ") .. text
+	if not ok then fails += 1 end
+end
+
+local map
+local ok, err = pcall(function()
+	local MapGui = require(mirror.UI.MapGui)
+	local MapConfig = require(mirror.MapConfig)
+	map = MapGui.new()
+	local tiles = 0
+	for _, c in ipairs(map.canvas:GetChildren()) do if c.Name == "LandTile" then tiles += 1 end end
+	check(tiles == 4, "พื้นเป็นรูป 4 แผ่น ได้ " .. tiles)
+	local land = 0
+	for _, c in ipairs(map.canvas:GetChildren()) do if c.Name == "Land" then land += 1 end end
+	check(land == 0, "ไม่วาดพื้นแบบ Frame เมื่อมีรูป")
+	map:Zoom(MapConfig.DetailZoom) -- ข้ามเกณฑ์ความละเอียด: ต้องไม่สร้างแผ่นซ้ำ
+	tiles = 0
+	for _, c in ipairs(map.canvas:GetChildren()) do if c.Name == "LandTile" then tiles += 1 end end
+	check(tiles == 4, "ซูมข้ามเกณฑ์ไม่สร้างรูปซ้ำ")
+	map.zoom = 1
+
+	check(#map.pins == #MapConfig.Places, ("หมุดสถานที่ %d/%d"):format(#map.pins, #MapConfig.Places))
+	map:SetPois({
+		{ id = "npc:1", cat = "npc", emoji = "🛒", label = "ร้าน บาร์นาบี", x = 2135, y = 46, z = 3864 },
+		{ id = "mine:1", cat = "mine", emoji = "⛏️", label = "เหมือง: เหล็ก", x = 1210, y = 54, z = 2919 },
+		{ id = "mob:1", cat = "monster", emoji = "👾", label = "โครงกระดูก", x = 0, y = 0, z = 0 },
+		{ id = "bad", cat = "nope", emoji = "?", label = "x", x = 0, z = 0 },
+		"garbage",
+	})
+	check(#map.pins == #MapConfig.Places + 3, "SetPois รับ 3 หมุดถูกต้อง ทิ้งของเสีย")
+	map:SetPois({ { id = "npc:1", cat = "npc", emoji = "🛒", label = "ร้าน บาร์นาบี", x = 2135, y = 46, z = 3864 } })
+	check(#map.pins == #MapConfig.Places + 1, "SetPois รอบใหม่แทนชุดเดิม หมุดสถานที่อยู่ต่อ")
+	local npc, city
+	for _, p in ipairs(map.pins) do
+		if p.data.cat == "npc" then npc = p end
+		if p.data.cat == "city" and not city then city = p end
+	end
+
+	map:apply()
+	check(city.frame.Visible and not npc.frame.Visible, "ซูม 1: เห็นเมือง ไม่เห็น NPC")
+	local size1 = city.frame.Size
+	map.zoom = 3
+	map:apply()
+	check(npc.frame.Visible, "ซูม 3: NPC โผล่")
+	check(city.frame.Size == size1, "หมุดขนาดคงที่ทุกซูม")
+	map.filters.city = false
+	map:apply()
+	check(not city.frame.Visible and npc.frame.Visible, "ปิดหมวดเมือง = ซ่อนเฉพาะเมือง")
+	map.filters.city = nil
+
+	map:SetWaypoint(Vector3.new(2135, 46, 3864))
+	check(npc.stroke.Thickness == 3 and city.stroke.Thickness == 1, "หมุดที่นำทางอยู่ = ขอบทองหนา")
+	map:SetWaypoint(nil)
+	check(npc.stroke.Thickness == 1, "เลิกนำทาง = ขอบกลับปกติ")
+
+	-- แตะจริงต้องมีเลย์เอาต์: แขวนไว้ที่ StarterGui ชั่วคราว (ถูกลบตอนจบ)
+	map.gui.Parent = game.StarterGui
+	map.gui.Enabled = true
+	map.zoom = 3
+	map.offset = Vector2.new(0, 0)
+	-- เลื่อนให้ NPC อยู่กลางจอ
+	local scale = (map:canvasSize() / map.baseSize) * map.zoom
+	map.offset = Vector2.new(-npc.nx * map.baseSize / 2 * scale, -npc.nz * map.baseSize / 2 * scale)
+	map:apply()
+	task.wait(0.1)
+	local centre = npc.frame.AbsolutePosition + npc.frame.AbsoluteSize / 2
+	local got = {}
+	map:On("poi", function(data) got.poi = data end)
+	map:On("pin", function(at) got.pin = at end)
+	map:On("unpin", function() got.unpin = true end)
+	map:pinAt(Vector3.new(centre.X + 3, centre.Y + 3, 0))
+	check(got.poi and got.poi.id == "npc:1" and not got.pin, "แตะหมุด = poi (ไม่ปักหมุดพื้นซ้อน)")
+	got = {}
+	map:SetWaypoint(Vector3.new(2135, 46, 3864))
+	map:pinAt(Vector3.new(centre.X, centre.Y, 0))
+	check(got.unpin and not got.poi, "แตะหมุดที่นำทางอยู่ซ้ำ = ยกเลิก")
+	map:SetWaypoint(nil)
+	got = {}
+	local first = map.filterButtons.city.button
+	local fb = first.AbsolutePosition + first.AbsoluteSize / 2
+	map:pinAt(Vector3.new(fb.X, fb.Y, 0))
+	check(not got.poi and not got.pin and map:overFilters(Vector3.new(fb.X, fb.Y, 0)), "แตะปุ่มกรองไม่ทะลุลงแผนที่")
+	local below = map.lastFilterButton.AbsolutePosition + map.lastFilterButton.AbsoluteSize + Vector2.new(-10, 30)
+	check(not map:overFilters(Vector3.new(below.X, below.Y, 0)) or map.viewport.AbsoluteSize.Y < 420,
+		"ใต้ปุ่มกรองยังแตะแผนที่ได้")
+	map:hover(Vector3.new(centre.X, centre.Y, 0))
+	check(map.tooltip.Visible and map.tooltip.Text == "ร้าน บาร์นาบี", "ชี้เมาส์ที่หมุดย่อย = ชื่อลอย")
+end)
+if map then map.gui:Destroy() end
+mirror:Destroy()
+if not ok then fails += 1 out[#out + 1] = "ERROR " .. tostring(err) end
+return ("%s — %d fail\n%s"):format(fails == 0 and "PASS" or "FAIL", fails, table.concat(out, "\n"))

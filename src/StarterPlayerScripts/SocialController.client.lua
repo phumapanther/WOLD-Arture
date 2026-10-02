@@ -84,6 +84,26 @@ map:On("pin", function(position)
 	map:SetWaypoint(ok and position or nil)
 end)
 
+-- แผนที่ v2: แตะหมุดอีโมจิ (เมือง NPC เหมือง ...) = นำทางไปที่นั่นทันที · แตะซ้ำ = ยกเลิก (map ตัดสินเป็น unpin)
+map:On("poi", function(poi)
+	local position = Vector3.new(poi.x, poi.y or 0, poi.z)
+	local ok, message = nav:SetDestination(position, poi.label)
+	map:SetStatus(ok and ("นำทาง: %s — แตะหมุดซ้ำเพื่อยกเลิก"):format(poi.label) or message)
+	map:SetWaypoint(ok and position or nil)
+end)
+
+-- หมุดที่ไคลเอนต์มองไม่เห็นเอง (StreamingEnabled) มาจากเซิร์ฟ: ขอตอนเปิดแผนที่ ห่างกันอย่างน้อย 60 วิ
+-- เกาะไม่มี MapPoi.server (แผนที่เกาะมีแต่หมุดสถานที่คงที่)
+Remotes.MapPois.OnClientEvent:Connect(function(list)
+	map:SetPois(list)
+end)
+local poisAskedAt = -math.huge
+local function requestPois()
+	if workspace:GetAttribute("IslandMode") == true or os.clock() - poisAskedAt < 60 then return end
+	poisAskedAt = os.clock()
+	Remotes.RequestMapPois:FireServer()
+end
+
 -- Tapping the pin itself takes it back, which the line above has been promising since the day it was
 -- written. The map decides what counts as a tap on the pin, because only it knows where the pin is drawn;
 -- clearing the trail is this side's job, because the trail is ours.
@@ -157,6 +177,7 @@ local function toggleMap()
 	else
 		gui:Hide() -- the map wants the whole window
 		map:Show()
+		requestPois()
 	end
 end
 

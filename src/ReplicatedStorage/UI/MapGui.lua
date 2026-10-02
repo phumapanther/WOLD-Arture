@@ -10,6 +10,7 @@ local UserInputService = game:GetService("UserInputService")
 local MapConfig = require(script.Parent.Parent.MapConfig)
 local MapTerrain = require(script.Parent.Parent.MapTerrain)
 local Responsive = require(script.Parent.Responsive)
+local MapPoiRules = require(script.Parent.Parent.MapPoiRules)
 
 local MapGui = {}
 MapGui.__index = MapGui
@@ -54,7 +55,8 @@ function MapGui.new()
 	local self = setmetatable({}, MapGui)
 	self.zoom = 1
 	self.offset = Vector2.new(0, 0) -- pan, in canvas pixels
-	self.markers = {}
+	self.pins = {} -- { data = { id, cat, emoji, label, x, y, z }, frame, nx, nz, static }
+	self.filters = {} -- [หมวด] = false เมื่อผู้เล่นปิด · จำตลอดเซสชัน (MapGui สร้างครั้งเดียว)
 	self.callbacks = {}
 
 	local gui = Instance.new("ScreenGui")
@@ -204,6 +206,7 @@ function MapGui.new()
 	self.repairButton = repairButton
 
 	self:buildCanvas()
+	self:buildPinLayer()
 	self:bindInput()
 	Responsive.Scale(panel, small and 0.95 or 0.8)
 	return self
@@ -236,6 +239,27 @@ end
 -- Frames, which no amount of detail is worth.
 function MapGui:buildTerrain(step)
 	local canvas = self.canvas
+	-- แผนที่ v2: มีรูปพื้นโลก (MapConfig.Tiles) = ใช้รูป ไม่ต้องสลับความละเอียดตามซูม
+	-- รูปยังไม่โหลด/โหลดไม่ขึ้น = เห็นทะเลพื้นหลัง + ตาราง + หมุดครบ ไม่ใช่จอดำ
+	local tiles = MapConfig.Tiles
+	if tiles and #tiles > 0 then
+		self.terrainStep = step
+		if canvas:FindFirstChild("LandTile") then return end
+		for r, row in ipairs(tiles) do
+			for c, image in ipairs(row) do
+				local tile = Instance.new("ImageLabel")
+				tile.Name = "LandTile"
+				tile.BackgroundTransparency = 1
+				tile.BorderSizePixel = 0
+				tile.Image = image
+				tile.Position = UDim2.fromScale((c - 1) / #row, (r - 1) / #tiles)
+				tile.Size = UDim2.new(1 / #row, 1, 1 / #tiles, 1) -- +1 กันรอยต่อเส้นผมระหว่างแผ่นตอนซูม
+				tile.ZIndex = 1
+				tile.Parent = canvas
+			end
+		end
+		return
+	end
 	for _, c in ipairs(canvas:GetChildren()) do
 		if c.Name == "Land" then c:Destroy() end
 	end
@@ -287,7 +311,6 @@ function MapGui:buildCanvas()
 		if not c:IsA("UIScale") then c:Destroy() end
 	end
 	self.waypointPin = nil -- destroyed with the rest; the controller re-sets it if there is still one
-	self.markers = {}
 
 	local size = 600 -- drawn at a fixed size, then scaled: redrawing on every zoom would be wasteful
 	self.baseSize = size
@@ -304,38 +327,7 @@ function MapGui:buildCanvas()
 
 	-- The river and the roads used to be drawn here. Removed with their data: see the note in MapConfig.
 
-	-- Places.
-	for _, p in ipairs(MapConfig.Places) do
-		local kind = MapConfig.Kinds[p.kind] or MapConfig.Kinds.cave
-		local x, y = place(size, p.pos[1], p.pos[2])
-
-		local dot = Instance.new("TextLabel")
-		dot.AnchorPoint = Vector2.new(0.5, 0.5)
-		dot.Position = UDim2.fromOffset(x, y)
-		dot.Size = UDim2.fromOffset(kind.size * 2, kind.size * 2)
-		dot.BackgroundTransparency = 1
-		dot.Font = Enum.Font.GothamBold
-		dot.TextSize = kind.size * 1.8
-		dot.TextColor3 = kind.color
-		dot.Text = kind.glyph
-		dot.ZIndex = 4
-		dot.Parent = canvas
-
-		local name = Instance.new("TextLabel")
-		name.AnchorPoint = Vector2.new(0.5, 0)
-		name.Position = UDim2.fromOffset(x, y + kind.size)
-		name.Size = UDim2.fromOffset(120, 14)
-		name.BackgroundTransparency = 1
-		name.Font = Enum.Font.GothamBold
-		name.TextSize = 11
-		name.TextColor3 = INK
-		name.TextStrokeColor3 = PARCHMENT
-		name.TextStrokeTransparency = 0.2
-		name.Text = p.th or p.name
-		name.ZIndex = 4
-		name.Parent = canvas
-		table.insert(self.markers, name)
-	end
+	-- สถานที่ (เมือง หมู่บ้าน แลนด์มาร์ก ถ้ำ) เป็นหมุดอีโมจิในชั้นหมุด ไม่ได้วาดบน canvas — ดู buildPinLayer
 
 	-- The "you are here" pin, moved every frame while the map is open.
 	local you = Instance.new("Frame")
@@ -358,17 +350,241 @@ end
 -- Pan, zoom, and the player pin
 --------------------------------------------------------------------------------
 
+--------------------------------------------------------------------------------
+-- หมุดอีโมจิ + แถบกรองหมวด (แผนที่ v2 · 2026-10-02) — กติกาหมวด/ซูม/กรอง = MapPoiRules
+--------------------------------------------------------------------------------
+
+local PIN_SIZE = 28 -- สถานที่ (เมือง หมู่บ้าน แลนด์มาร์ก ถ้ำ)
+local SUB_PIN_SIZE = 22 -- หมุดย่อยจากเซิร์ฟ (NPC เหมือง มอน ...) เล็กกว่า กันรกเมื่อกองอยู่ในเมือง
+local NAMES_FROM = 600 -- ชื่อหมู่บ้าน/แลนด์มาร์กขึ้นเมื่อแผนที่วาดกว้างเท่านี้ (px) ขึ้นไป · ชื่อเมืองขึ้นเสมอ
+local PIN_REACH = 8 -- ระยะเผื่อรอบหมุดที่ยังนับว่าแตะโดน (นิ้วใหญ่กว่าหมุด)
+local NAMED = { city = true, village = true, landmark = true } -- ชื่อขึ้นใต้หมุดเสมอ ที่เหลือขึ้นเมื่อชี้เมาส์/แตะ
+local LIGHT = Color3.fromRGB(250, 244, 226)
+
+-- ชั้นหมุดอยู่ใน viewport นอก canvas: ไม่โดน UIScale ของการซูม หมุดจึงขนาดคงที่บนจอ (apply วางตำแหน่ง)
+function MapGui:buildPinLayer()
+	local layer = Instance.new("Frame")
+	layer.Name = "Pins"
+	layer.Size = UDim2.fromScale(1, 1)
+	layer.BackgroundTransparency = 1
+	layer.ZIndex = 8
+	layer.Parent = self.viewport
+	self.pinLayer = layer
+
+	local tip = Instance.new("TextLabel")
+	tip.Name = "Tooltip"
+	tip.AnchorPoint = Vector2.new(0.5, 1)
+	tip.AutomaticSize = Enum.AutomaticSize.X
+	tip.Size = UDim2.fromOffset(0, 22)
+	tip.BackgroundColor3 = FRAME
+	tip.BackgroundTransparency = 0.15
+	tip.Font = Enum.Font.GothamBold
+	tip.TextSize = 13
+	tip.TextColor3 = LIGHT
+	tip.ZIndex = 12
+	tip.Visible = false
+	tip.Parent = layer
+	corner(tip, UDim.new(0, 6))
+	local pad = Instance.new("UIPadding")
+	pad.PaddingLeft = UDim.new(0, 8)
+	pad.PaddingRight = UDim.new(0, 8)
+	pad.Parent = tip
+	self.tooltip = tip
+
+	-- แถบกรอง: ปุ่มอีโมจิเรียงตั้งขอบซ้าย เลื่อนได้เมื่อจอเตี้ย (มือถือแนวนอน)
+	local bar = Instance.new("ScrollingFrame")
+	bar.Name = "Filters"
+	bar.Position = UDim2.fromOffset(6, 6)
+	bar.Size = UDim2.new(0, 40, 1, -12)
+	bar.BackgroundTransparency = 1
+	bar.BorderSizePixel = 0
+	bar.ScrollBarThickness = 0
+	bar.ScrollingDirection = Enum.ScrollingDirection.Y
+	bar.AutomaticCanvasSize = Enum.AutomaticSize.Y
+	bar.CanvasSize = UDim2.new()
+	bar.ZIndex = 10
+	bar.Parent = self.viewport
+	self.filterBar = bar
+	local list = Instance.new("UIListLayout")
+	list.Padding = UDim.new(0, 4)
+	list.SortOrder = Enum.SortOrder.LayoutOrder
+	list.Parent = bar
+	self.filterButtons = {}
+	for i, cat in ipairs(MapPoiRules.Categories) do
+		local b = Instance.new("TextButton")
+		b.Name = cat.id
+		b.LayoutOrder = i
+		b.Size = UDim2.fromOffset(36, 36)
+		b.BackgroundColor3 = FRAME
+		b.BorderSizePixel = 0
+		b.Font = Enum.Font.GothamBold
+		b.TextSize = 18
+		b.Text = cat.emoji
+		b.ZIndex = 11
+		b.Parent = bar
+		corner(b, UDim.new(0, 8))
+		local edge = Instance.new("UIStroke")
+		edge.Color = ACCENT
+		edge.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+		edge.Parent = b
+		self.filterButtons[cat.id] = { button = b, stroke = edge }
+		self.lastFilterButton = b
+		b.Activated:Connect(function()
+			local show = self.filters[cat.id] == false
+			self.filters[cat.id] = (not show) and false or nil
+			self:paintFilters()
+			self:apply()
+			self:SetStatus((show and "แสดง: " or "ซ่อน: ") .. cat.label)
+		end)
+	end
+	self:paintFilters()
+
+	-- หมุดคงที่: สถานที่ใน MapConfig (เมือง หมู่บ้าน แลนด์มาร์ก ถ้ำ) · หมุดจากเซิร์ฟมาทาง SetPois
+	for _, p in ipairs(MapConfig.Places) do
+		local cat, emoji = MapPoiRules.ForPlace(p)
+		local x, z = MapConfig.ToWorld(p.pos[1], p.pos[2])
+		local h = MapTerrain.At(x, z)
+		self:addPin({ id = "place:" .. p.name, cat = cat, emoji = emoji, label = p.th or p.name,
+			x = x, y = h == MapTerrain.Water and 0 or h, z = z }, true)
+	end
+end
+
+function MapGui:paintFilters()
+	for id, f in pairs(self.filterButtons) do
+		local on = self.filters[id] ~= false
+		f.button.BackgroundTransparency = on and 0.15 or 0.55
+		f.button.TextTransparency = on and 0 or 0.65
+		f.stroke.Transparency = on and 0.2 or 1
+	end
+end
+
+function MapGui:addPin(data, static)
+	local frame = Instance.new("Frame")
+	frame.Name = "Pin"
+	frame.AnchorPoint = Vector2.new(0.5, 0.5)
+	local size = static and PIN_SIZE or SUB_PIN_SIZE
+	frame.Size = UDim2.fromOffset(size, size)
+	frame.BackgroundColor3 = FRAME
+	frame.BackgroundTransparency = 0.25
+	frame.BorderSizePixel = 0
+	frame.ZIndex = static and 9 or 8 -- เมือง/แลนด์มาร์กอยู่บนหมุดย่อยเมื่อทับกัน
+	frame.Visible = false
+	frame.Parent = self.pinLayer
+	corner(frame, UDim.new(1, 0))
+	local edge = Instance.new("UIStroke")
+	edge.Parent = frame
+	local icon = Instance.new("TextLabel")
+	icon.Size = UDim2.fromScale(1, 1)
+	icon.BackgroundTransparency = 1
+	icon.Font = Enum.Font.GothamBold
+	icon.TextSize = static and 17 or 13
+	icon.Text = data.emoji
+	icon.ZIndex = frame.ZIndex + 1
+	icon.Parent = frame
+	local name
+	if NAMED[data.cat] then
+		name = Instance.new("TextLabel")
+		name.AnchorPoint = Vector2.new(0.5, 0)
+		name.Position = UDim2.new(0.5, 0, 1, 1)
+		name.Size = UDim2.fromOffset(160, 15)
+		name.BackgroundTransparency = 1
+		name.Font = Enum.Font.GothamBold
+		name.TextSize = 12
+		name.TextColor3 = LIGHT
+		name.TextStrokeColor3 = FRAME
+		name.TextStrokeTransparency = 0.15
+		name.Text = data.label
+		name.ZIndex = frame.ZIndex + 1
+		name.Parent = frame
+	end
+	local nx, nz = MapConfig.ToNormalized(data.x, data.z)
+	local pin = { data = data, frame = frame, stroke = edge, static = static, name = name,
+		nx = math.clamp(nx, -1, 1), nz = math.clamp(nz, -1, 1) }
+	table.insert(self.pins, pin)
+	self:paintPin(pin)
+	return pin
+end
+
+-- หมุดที่เป็นจุดนำทางอยู่ = ขอบทองหนา (เพชรจุดหมายบน canvas ซ่อนอยู่ใต้หมุด)
+function MapGui:paintPin(pin)
+	local w = self.waypoint
+	local selected = w ~= nil and (Vector2.new(pin.data.x, pin.data.z) - Vector2.new(w.X, w.Z)).Magnitude < 2
+	pin.stroke.Color = selected and ACCENT or LIGHT
+	pin.stroke.Thickness = selected and 3 or 1
+	pin.stroke.Transparency = selected and 0 or 0.5
+end
+
+-- หมุดจากเซิร์ฟ (MapPoi.server) แทนชุดเดิมทั้งชุด · หมุดคงที่อยู่ต่อ
+function MapGui:SetPois(list)
+	local keep = {}
+	for _, pin in ipairs(self.pins) do
+		if pin.static then table.insert(keep, pin) else pin.frame:Destroy() end
+	end
+	self.pins = keep
+	for _, data in ipairs(type(list) == "table" and list or {}) do
+		if type(data) == "table" and MapPoiRules.Category(data.cat) and type(data.x) == "number"
+			and type(data.z) == "number" and type(data.label) == "string" then
+			self:addPin(data, false)
+		end
+	end
+	if self.gui.Enabled then self:apply() end
+end
+
+-- หมุดที่จุดบนจอนี้แตะโดน (ใกล้สุด) · วัดจากกรอบที่วาดจริง จึงถูกทุกซูมทุกขนาดจอ
+function MapGui:pinUnder(screenPosition)
+	local at = Vector2.new(screenPosition.X, screenPosition.Y)
+	local best, bestDistance
+	for _, pin in ipairs(self.pins) do
+		if pin.frame.Visible then
+			local size = pin.frame.AbsoluteSize
+			local d = (at - (pin.frame.AbsolutePosition + size / 2)).Magnitude
+			if d <= size.X / 2 + PIN_REACH and (not bestDistance or d < bestDistance) then
+				best, bestDistance = pin, d
+			end
+		end
+	end
+	return best
+end
+
+-- จุดนี้อยู่บนปุ่มกรองไหม (นับถึงปุ่มสุดท้าย ไม่ใช่ทั้งความสูงของแถบ — ใต้ปุ่มยังแตะแผนที่ได้)
+function MapGui:overFilters(screenPosition)
+	local bar, last = self.filterBar, self.lastFilterButton
+	if not bar or not last then return false end
+	local p, s = bar.AbsolutePosition, bar.AbsoluteSize
+	local bottom = math.min(p.Y + s.Y, last.AbsolutePosition.Y + last.AbsoluteSize.Y)
+	return screenPosition.X >= p.X and screenPosition.X <= p.X + s.X and screenPosition.Y >= p.Y and screenPosition.Y <= bottom
+end
+
+-- คอม: ชี้เมาส์ที่หมุดย่อย = ชื่อลอยเหนือหมุด (เมือง/หมู่บ้าน/แลนด์มาร์กมีชื่อใต้หมุดอยู่แล้ว)
+function MapGui:hover(screenPosition)
+	local pin = not self:overFilters(screenPosition) and self:pinUnder(screenPosition)
+	if not pin or (pin.name and pin.name.Visible) then
+		self.tooltip.Visible = false
+		return
+	end
+	self.tooltip.Text = pin.data.label
+	self.tooltip.Position = pin.frame.Position - UDim2.fromOffset(0, pin.frame.Size.Y.Offset / 2 + 2)
+	self.tooltip.Visible = true
+end
+
 function MapGui:apply()
 	-- The canvas keeps its drawn size; the UIScale does the zooming, so the contents grow with it and the
 	-- centre stays the centre.
 	local scale = (self:canvasSize() / self.baseSize) * self.zoom
 	self.canvasScale.Scale = scale
 	self.canvas.Position = UDim2.new(0.5, self.offset.X, 0.5, self.offset.Y)
-	-- Labels would become unreadable smears at high zoom if they grew with everything else, so the scale is
-	-- divided back out of their text size.
-	for _, label in ipairs(self.markers) do
-		label.TextSize = math.clamp(11 / self.zoom, 7, 14)
+	-- หมุดอยู่นอก canvas (ไม่โดน UIScale ของการซูม) จึงขนาดคงที่บนจอทุกซูม · ตำแหน่ง = จุดเดียวกับที่ canvas วาด
+	local half = self.baseSize / 2
+	local roomy = self:canvasSize() * self.zoom >= NAMES_FROM
+	for _, pin in ipairs(self.pins) do
+		local visible = MapPoiRules.Visible(pin.data.cat, self.zoom, self.filters)
+		pin.frame.Visible = visible
+		if pin.name then pin.name.Visible = roomy or pin.data.cat == "city" end
+		if visible then
+			pin.frame.Position = UDim2.new(0.5, self.offset.X + pin.nx * half * scale, 0.5, self.offset.Y + pin.nz * half * scale)
+		end
 	end
+	if self.tooltip then self.tooltip.Visible = false end
 end
 
 function MapGui:Zoom(delta, focus)
@@ -407,6 +623,7 @@ function MapGui:bindInput()
 	self.viewport.InputBegan:Connect(function(input)
 		if input.UserInputType == Enum.UserInputType.MouseButton1
 			or input.UserInputType == Enum.UserInputType.Touch then
+			if self:overFilters(input.Position) then return end -- เลื่อนแถบกรองไม่ใช่การลากแผนที่
 			dragging = true
 			lastPos = input.Position
 			pressedAt = os.clock()
@@ -442,6 +659,8 @@ function MapGui:bindInput()
 			self:apply()
 		elseif input.UserInputType == Enum.UserInputType.MouseWheel then
 			self:Zoom(input.Position.Z > 0 and MapConfig.ZoomStep or -MapConfig.ZoomStep)
+		elseif input.UserInputType == Enum.UserInputType.MouseMovement and not dragging then
+			self:hover(input.Position)
 		end
 	end)
 end
@@ -456,6 +675,7 @@ function MapGui:pinAt(screenPosition)
 	-- wrong as the window shrank. AbsoluteSize already has both applied.
 	local drawn = canvas.AbsoluteSize
 	if drawn.X <= 0 or drawn.Y <= 0 then return end
+	if self:overFilters(screenPosition) then return end
 	local local2d = Vector2.new(screenPosition.X, screenPosition.Y) - canvas.AbsolutePosition
 
 	-- Tapping the diamond that is already there takes it back -- what the footer has been promising all
@@ -472,6 +692,14 @@ function MapGui:pinAt(screenPosition)
 			if self.callbacks.unpin then self.callbacks.unpin() end
 			return
 		end
+	end
+
+	-- แตะหมุดอีโมจิ = นำทางไปหมุดนั้นทันที · ตัดสินที่นี่ที่เดียวกับการแตะพื้น (ไม่ผูก Activated แยก) จึงไม่ปักหมุดพื้นซ้อน
+	-- แตะหมุดที่นำทางอยู่ซ้ำ = เข้าเงื่อนไขยกเลิกข้างบนก่อน (เพชรจุดหมายอยู่ใต้หมุดพอดี)
+	local poi = self:pinUnder(screenPosition)
+	if poi then
+		if self.callbacks.poi then self.callbacks.poi(poi.data) end
+		return
 	end
 
 	local nx = (local2d.X / drawn.X) * 2 - 1
@@ -524,7 +752,7 @@ function MapGui:UpdatePin()
 	local x, y = place(self.baseSize, nx, nz)
 	self.youPin.Position = UDim2.fromOffset(x, y)
 	if not self.footerOverride then
-		self.footer.Text = ("ตำแหน่ง %.0f, %.0f · แตะเพื่อปักหมุด · ลากเพื่อเลื่อน"):format(
+		self.footer.Text = ("ตำแหน่ง %.0f, %.0f · แตะหมุดเพื่อนำทาง · ลากเพื่อเลื่อน"):format(
 			root.Position.X, root.Position.Z)
 	end
 end
@@ -536,6 +764,8 @@ function MapGui:SetWaypoint(position)
 		self.waypointPin:Destroy()
 		self.waypointPin = nil
 	end
+	self.waypoint = position
+	for _, p in ipairs(self.pins) do self:paintPin(p) end
 	if not position then return end
 
 	local pin = Instance.new("Frame")

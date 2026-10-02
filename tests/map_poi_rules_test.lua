@@ -37,6 +37,7 @@ check(R.Category("city").minZoom <= MapConfig.MinZoom and R.Category("npc").minZ
 
 -- 2. ทุกสถานที่ใน MapConfig ได้หมวด + อีโมจิ
 for _, p in ipairs(MapConfig.Places) do
+	check(R.PlaceKinds[p.kind] ~= nil, "ชนิดสถานที่มีจริง " .. tostring(p.kind))
 	local cat, emoji = R.ForPlace(p)
 	check(ids[cat] ~= nil and clean(emoji), ("สถานที่ %s → %s %s"):format(p.th or p.name, tostring(cat), tostring(emoji)))
 end
