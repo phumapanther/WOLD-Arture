@@ -56,6 +56,16 @@ function InventoryConfig.IsBroken(entry)
 	return type(entry) == "table" and type(entry.durability) == "number" and entry.durability <= 0
 end
 
+-- กินอาหารอัตโนมัติ (ผู้ใช้สั่ง 2026-10-02): หลอดอาหาร ≤ 10% · ไม่โดนตีมา 5 วิ (ไม่กินกลางวงตี) · ไม่ได้ล้ม/ใช้ของอื่นอยู่
+-- 🤤 เหนือหัวที่ ≤ 5% · PlayerInventory ถามทุกวินาที
+InventoryConfig.AutoEatBelow = 0.10
+InventoryConfig.AutoEatCalmSeconds = 5
+InventoryConfig.HungryMarkBelow = 0.05
+function InventoryConfig.ShouldAutoEat(hungerFraction, secondsSinceHurt, busy)
+	return not busy and hungerFraction <= InventoryConfig.AutoEatBelow
+		and secondsSinceHurt >= InventoryConfig.AutoEatCalmSeconds
+end
+
 function InventoryConfig.IsHeavilyLoaded(weight)
 	return weight > InventoryConfig.MaxWeight * InventoryConfig.HeavyLoadRatio
 end

@@ -26,6 +26,8 @@ function Inventory.Add(player, saved)
 		-- hotbar pointing at "slot 7" would silently start pointing at something else. An id still names the
 		-- same thing after any rearrangement, and simply shows empty when the last one is used up.
 		hotbar = saved and saved.Hotbar or {},
+		-- อาหารที่เลือกให้กินเองตอนหิว (ผู้ใช้สั่ง 2026-10-02) · id ไม่ใช่เลขช่อง ด้วยเหตุผลเดียวกับช่องลัด
+		autoEat = saved and saved.AutoEat or nil,
 	}
 	return States[player]
 end
@@ -608,6 +610,15 @@ function Inventory.SetHotbar(player, index, id)
 	return true
 end
 
+-- เลือก/ยกเลิกอาหารกินอัตโนมัติ (nil = ยกเลิก) · ทีละอย่าง · เฉพาะของที่เติมหลอดอาหาร
+function Inventory.SetAutoEat(player, id)
+	local state = States[player]
+	if not state then return false end
+	if id ~= nil and not ItemCatalog.FillsHunger(id) then return false end
+	state.autoEat = id
+	return true
+end
+
 -- The bag slot currently holding this id, or nil. The hotbar stores what to use, not where it lives, so
 -- using one is a lookup at the moment of the press.
 function Inventory.FindSlotById(player, id)
@@ -648,6 +659,7 @@ function Inventory.Send(player)
 		equipped = state.equipped,
 		gold = state.gold,
 		hotbar = state.hotbar,
+		autoEat = state.autoEat,
 		weight = Inventory.Weight(player),
 		maxWeight = InventoryConfig.MaxWeight,
 	})
@@ -657,7 +669,7 @@ function Inventory.Serialize(player)
 	local state = States[player]
 	if not state then return nil end
 	-- ช่องเซฟด้วยคีย์สตริงเสมอ — ดู SlotCodec (JSON ตัดช่อง VIP ทิ้งถ้าเซฟตาราง sparse ตรงๆ)
-	return { Slots = SlotCodec.ForSave(state.slots), Equipped = state.equipped, Gold = state.gold, Hotbar = state.hotbar }
+	return { Slots = SlotCodec.ForSave(state.slots), Equipped = state.equipped, Gold = state.gold, Hotbar = state.hotbar, AutoEat = state.autoEat }
 end
 
 return Inventory

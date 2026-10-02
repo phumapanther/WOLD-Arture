@@ -92,6 +92,8 @@ function StatusEffects.SetTired(player, on) setMark(player, MARK_TIRED.name, MAR
 -- 🐌 ของหนักเกินขีด · 🔧 ของที่ใส่/ถือใกล้พัง (ผู้ใช้สั่ง 2026-09-29) — PlayerStatusEffects ถามทุกครึ่งวิ
 function StatusEffects.SetHeavy(player, on) setMark(player, "HeavyMark", "🐌", Color3.new(1, 1, 1), on) end
 function StatusEffects.SetWorn(player, on) setMark(player, "WornMark", "🔧", Color3.new(1, 1, 1), on) end
+-- 🤤 หลอดอาหารเหลือ ≤ 5% รวมหมดหลอด (ผู้ใช้สั่ง 2026-10-02 · InventoryConfig.HungryMarkBelow)
+function StatusEffects.SetHungry(player, on) setMark(player, "HungryMark", "🤤", Color3.new(1, 1, 1), on) end
 function StatusEffects.SetAsleep(player, on)
 	setMark(player, MARK_ASLEEP.name, MARK_ASLEEP.emoji, MARK_ASLEEP.colour, on)
 	if not on then return end

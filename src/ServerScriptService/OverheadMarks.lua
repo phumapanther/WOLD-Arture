@@ -1,4 +1,4 @@
--- OverheadMarks: อีโมจิสถานะเหนือหัว (💫 มึน · 💤 หลับ · 💦 เหนื่อย/โดนสโลว์ · 🐌 ของหนัก · 🔧 ของใกล้พัง)
+-- OverheadMarks: อีโมจิสถานะเหนือหัว (💫 มึน · 💤 หลับ · 💦 เหนื่อย/โดนสโลว์ · 🐌 ของหนัก · 🔧 ของใกล้พัง · 🤤 หิวจนแทบหมด)
 --
 -- สร้างฝั่งเซิร์ฟเวอร์ ทุกคนแถวนั้นเห็น (สถานะที่คนอื่นต้องรู้) · **หลายสถานะพร้อมกัน = ขึ้นทุกอันเรียงข้างกัน**
 -- (ผู้ใช้สั่ง 2026-09-29 · เดิมทุกป้ายอยู่จุดเดียวกันจึงทับกันเหลือให้เห็นอันเดียว) · ไม่มี require อะไร จึงเทสใน Edit ได้
@@ -6,7 +6,7 @@
 local OverheadMarks = {}
 
 -- ลำดับซ้าย → ขวา · ป้ายใหม่ต้องเติมชื่อที่นี่ ไม่งั้นมันไม่ถูกจัดแถว (ซ้อนทับกลางหัว)
-OverheadMarks.Order = { "DizzyMark", "AsleepMark", "TiredMark", "SlowedMark", "HeavyMark", "WornMark" }
+OverheadMarks.Order = { "DizzyMark", "AsleepMark", "TiredMark", "SlowedMark", "HeavyMark", "WornMark", "HungryMark" }
 local RANK = {}
 for i, name in ipairs(OverheadMarks.Order) do RANK[name] = i end
 

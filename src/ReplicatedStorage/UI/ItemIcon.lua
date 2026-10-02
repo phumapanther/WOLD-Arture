@@ -106,6 +106,34 @@ function ItemIcon.SetBadge(image, badgeIcon)
 	badge.Glyph.ZIndex = image.ZIndex + 2
 end
 
+-- **🍽️ มุมขวาบน = อาหารที่ตั้งให้กินอัตโนมัติ** (ผู้ใช้สั่ง 2026-10-02) · มุมนี้ว่างในทุกช่อง (ซ้ายล่าง = ป้ายสกิน) ·
+-- อีโมจิสี ไม่ใช่สัญลักษณ์ตัวอักษร (✦ ขึ้นเป็นกล่องเปล่าในเกมจริง) · เรียกซ้ำได้
+local AUTO_EAT_NAME = "WOLD_AutoEatTag"
+function ItemIcon.SetAutoEat(image, on)
+	if not image then return end
+	local tag = image:FindFirstChild(AUTO_EAT_NAME)
+	if not on then
+		if tag then tag:Destroy() end
+		return
+	end
+	if not tag then
+		tag = Instance.new("TextLabel")
+		tag.Name = AUTO_EAT_NAME
+		tag.AnchorPoint = Vector2.new(1, 0)
+		tag.Position = UDim2.fromScale(1.04, -0.04)
+		tag.Size = UDim2.fromScale(0.42, 0.42)
+		tag.BackgroundColor3 = Color3.fromRGB(24, 22, 30)
+		tag.BackgroundTransparency = 0.15
+		tag.TextScaled = true
+		tag.Text = "🍽️"
+		tag.Parent = image
+		local round = Instance.new("UICorner")
+		round.CornerRadius = UDim.new(1, 0)
+		round.Parent = tag
+	end
+	tag.ZIndex = image.ZIndex + 1
+end
+
 -- จางลงพร้อมกับรูป: แถบไอเทมหรี่ช่องที่ของหมดด้วย ImageTransparency ซึ่งไม่แตะข้อความของ ⌛ เลย
 function ItemIcon.SetFade(image, transparency)
 	if not image then return end

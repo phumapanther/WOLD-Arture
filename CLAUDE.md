@@ -261,6 +261,13 @@ Place ใน Roblox Studio ชื่อ `WOLD Arture` (บัญชี phumapant
 - **มอนบุกกลางคืนออกนอกดินในรั้วไม่ได้**: `IslandNight.KEEP_IN` (`inside` + `clamp` ตามเส้นตรงทีละครึ่งช่อง) → `SpawnRaid opts.keepIn` →
   ลูป AI ใน `Mobs`: หลุดออก = เดินกลับ `home` · ค้างนอก 4 วิ = วาร์ป · ไล่/เดินเล่น = clamp · ยืนยันใน Play: สไลม์ไล่มา 26 สตัดแล้วหยุดที่ขอบดิน
 - **ฟาร์มออโต้เดิน 20** (ปกติ 8 วิ่ง 24) ไม่กินสตามินา · `Remotes.SetAutoFarming` จาก `GatherController` → `PlayerMovement` (สนามไม่รับ) · ทับโหมดเดิน (แตะ Shift) ด้วย (2026-10-02)
+- **กินอาหารอัตโนมัติ** (ผู้ใช้สั่ง 2026-10-02 · ยังไม่ได้เทสในเกม): เมนูอาหาร "🍽️ กินอัตโนมัติ" ทีละอย่าง · เฉพาะของที่เติมหลอดอาหาร (`ItemCatalog.FillsHunger`) ·
+  เก็บใน `state.autoEat` คู่ช่องลัด (เซฟ `AutoEat` · ส่งใน InventoryUpdate) · ลูป 1 วิใน `PlayerInventory` เรียก `doUseItem` เมื่อ `InventoryConfig.ShouldAutoEat`
+  (≤ 10% · ไม่โดนดาเมจ 5 วิ ยกเว้นหิว · ไม่ล้ม/ไม่กำลังใช้ของ) · ของหมด = เตือนครั้งเดียวต่อรอบหิว ตัวเลือกคงอยู่ ·
+  🍽️ มุมขวาบนรูปไอเทม (`ItemIcon.SetAutoEat` กระเป๋า + ช่องลัด) · 🤤 เหนือหัวที่ ≤ 5% (`HungryMark` ใน `OverheadMarks.Order`) · เทส `auto_eat_test` (offline)
+- ⚠️ **เทส Edit ที่โคลนโมดูลเข้า ReplicatedStorage/ServerStorage ใช้ไม่ได้แล้ว (2026-10-02)** — Studio ให้เธรดของ execute_luau มี Capabilities น้อยกว่าโฟลเดอร์
+  ("cannot reparent ... has additional values for the Capabilities property") · ทางเลี่ยง: โฟลเดอร์ใหม่ใน ServerStorage ตั้ง `Sandboxed = true` +
+  `Capabilities = Basic, CreateInstances, UI, RunServerScript` แล้วโคลนลงนั้น (UserInputService เป็น nil ในนั้น) · เทสข้อมูลล้วนใช้ `tools/offline-test.js` แทน
 - **หนอนกองละ 40 พกกองเดียว** (ที่เกินเข้าคลัง · 2026-10-02) · ตกปลาตัวละ 20-30 วิ เฉลี่ย 25 → หนอนหนึ่งกองหมดใน ~16.7 นาที (ผู้ใช้สั่ง 15-18 · `tests/fishing_bait_test`) ·
   ตัวจับเวลาใน `Fishing.server` นับจาก `os.clock` แล้ว (เดิมบวก 0.2 สะสม ช้าเกินราว 1 วิ/ตัว) · เซฟเก่าที่ถือหนอน 99 ตัวไม่ถูกตัด ใช้จนหมดเอง
 - **ปุ่ม 🌾 ฟาร์มออโต้ของมือถือบนเกาะ** (2026-10-02 · `GatherController` · ขวาบน x -148 ถัดจาก 🏗️) = คีย์ F เปล่าของมือถือ — ทุกโหนดบนเกาะมี `Uid` จึงไม่มีปุ่ม [F] ที่โหนดเลย ·

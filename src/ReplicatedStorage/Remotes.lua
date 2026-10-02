@@ -44,6 +44,7 @@ local EVENTS = {
 	-- Hotbar: assigning an item to one of the six slots, and pressing one. Assignment is a drag in the bag
 	-- UI; pressing is a number key or a tap.
 	"RequestSetHotbar", "RequestUseHotbar",
+	"RequestSetAutoEat", -- เลือก/ยกเลิกอาหารกินอัตโนมัติ (2026-10-02)
 	-- Classes: the card offering a choice at level 5 and 50, the choice itself, and the confirmation. The
 	-- client asks for an offer on join too, since the level that unlocked it may be from an old session.
 	"ClassOffer", "RequestChooseClass", "ClassChanged", "RequestClassOffer",

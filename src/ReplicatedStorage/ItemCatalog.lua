@@ -41,6 +41,13 @@ ItemCatalog.ConsumeSeconds = 3
 -- ซึ่งเบียดกันจนดูไม่ออกถ้ามีแค่สามวินาที ใส่ `use.holdSeconds` ที่ไอเทมเพื่อยืดเฉพาะชิ้นนั้น
 --
 -- **ไม่ใช้ชื่อ `use.seconds`** ชื่อนั้นมีเจ้าของแล้ว: มันคือความยาวของบัพที่อาหารให้ (สเต็ก 15 นาที)
+-- เติมหลอดอาหารไหม = เลือกเป็น "กินอัตโนมัติ" ได้ไหม (ผู้ใช้สั่ง 2026-10-02) · น้ำเปล่า/ยาชูกำลัง/น้ำแอปเปิลไม่เติม จึงไม่นับ
+function ItemCatalog.FillsHunger(id)
+	local item = ItemCatalog.Items[id]
+	local use = item and item.use
+	return use ~= nil and (use.stat == "hunger" or (use.stat == "meal" and use.hunger == true))
+end
+
 function ItemCatalog.HoldSeconds(id)
 	local item = ItemCatalog.Items[id]
 	local hold = item and item.use and item.use.holdSeconds

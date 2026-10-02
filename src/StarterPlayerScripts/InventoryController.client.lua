@@ -210,6 +210,13 @@ gui:OnSlotClicked(function(index)
 		table.insert(entries, { label = "ใช้", onClick = function()
 			Remotes.RequestUseItem:FireServer(index)
 		end })
+		-- 🍽️ กินอัตโนมัติเมื่ออาหารเหลือ 10% (ผู้ใช้สั่ง 2026-10-02) · ทีละอย่าง · เฉพาะของที่เติมหลอดอาหาร · ชิ้นขอบทองไม่ถูกกิน
+		if ItemCatalog.FillsHunger(slot.id) and not ItemCatalog.IsGoldBorder(slot.meta) then
+			local chosen = latest.autoEat == slot.id
+			table.insert(entries, { label = chosen and "ยกเลิกกินอัตโนมัติ" or "🍽️ กินอัตโนมัติ", onClick = function()
+				Remotes.RequestSetAutoEat:FireServer(not chosen and slot.id or nil)
+			end })
+		end
 	elseif item.kind == "aura" then
 		-- ออร่า: ใช้ = เปิด/ปิด ไม่ถูกใช้หมด
 		table.insert(entries, { label = "เปิด/ปิดออร่า", onClick = function()

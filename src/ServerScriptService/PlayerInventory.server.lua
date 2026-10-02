@@ -13,6 +13,7 @@ local ClanOutfitAccess = require(game.ServerScriptService.ClanOutfitAccess)
 local Classes = require(game.ServerScriptService.Classes)
 local ClassConfig = require(game.ReplicatedStorage.ClassConfig)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
+local InventoryConfig = require(game.ReplicatedStorage.InventoryConfig)
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local ProfileAccess = require(game.ServerScriptService.ProfileAccess)
 local Remotes = require(game.ReplicatedStorage.Remotes)
@@ -397,6 +398,53 @@ Remotes.RequestUseHotbar.OnServerEvent:Connect(function(player, index)
 		doEquip(player, slotIndex)
 	end
 end)
+
+-- 🍽️ เลือก/ยกเลิกอาหารกินอัตโนมัติ (ผู้ใช้สั่ง 2026-10-02) · nil = ยกเลิก · Inventory ตรวจว่าเติมหลอดอาหารจริง
+Remotes.RequestSetAutoEat.OnServerEvent:Connect(function(player, id)
+	if id ~= nil and type(id) ~= "string" then return end
+	if Inventory.SetAutoEat(player, id) then
+		Inventory.Send(player)
+		flush(player)
+		local item = id and ItemCatalog.Get(id)
+		Remotes.SocialNotify:FireClient(player, "info", item
+			and ("🍽️ กินอัตโนมัติ: %s เมื่ออาหารเหลือ %d%%"):format(item.name, math.floor(InventoryConfig.AutoEatBelow * 100 + 0.5))
+			or "ยกเลิกกินอาหารอัตโนมัติแล้ว")
+	end
+end)
+
+-- กินเองเมื่อหิว — ทุกวินาที ผ่าน doUseItem ทางเดียวกับกดเอง (ท่ากิน 3 วิ · เสียง · หักของ) · กติกาอยู่ InventoryConfig.ShouldAutoEat
+-- "โดนตี" = ดาเมจที่ลงจริงล่าสุด ยกเว้นหิวจนเลือดลด (กติกาเดียวกับ LobbyTravel — ไม่งั้นคนหิวจนหลอดหมดไม่มีวันได้กิน)
+-- ของที่เลือกหมด = เตือนครั้งเดียวต่อรอบหิว (ล้างเมื่ออาหารกลับเกิน 10%) ตัวเลือกยังอยู่ ได้ของมาใหม่ก็กินต่อเอง
+local autoEatWarned = {}
+task.spawn(function()
+	while true do
+		task.wait(1)
+		for _, player in ipairs(Players:GetPlayers()) do
+			local state = Inventory.Get(player)
+			local id = state and state.autoEat
+			local vitals = id and Vitals.Get(player)
+			local fractions = vitals and Vitals.Fractions(player)
+			if fractions and fractions.hunger > InventoryConfig.AutoEatBelow then
+				autoEatWarned[player] = nil
+			elseif fractions then
+				local since = vitals.lastHurtKind == "starve" and math.huge or os.clock() - vitals.lastHurtAt
+				local busy = Vitals.IsDowned(player) or Consuming.IsConsuming(player)
+				if InventoryConfig.ShouldAutoEat(fractions.hunger, since, busy) then
+					local index = Inventory.FindSlotById(player, id)
+					if index then
+						doUseItem(player, index)
+					elseif not autoEatWarned[player] then
+						autoEatWarned[player] = true
+						local item = ItemCatalog.Get(id)
+						Remotes.SocialNotify:FireClient(player, "warn",
+							("%s หมด — กินอัตโนมัติไม่ได้"):format(item and item.name or id))
+					end
+				end
+			end
+		end
+	end
+end)
+Players.PlayerRemoving:Connect(function(player) autoEatWarned[player] = nil end)
 
 -- Being downed or dying interrupts whatever was being eaten.
 local function interrupt(player)

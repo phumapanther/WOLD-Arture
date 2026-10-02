@@ -35,6 +35,7 @@ end)
 -- ไม่ผูกกับเหตุการณ์ (หยิบของ · ขาย · สึก · ซ่อม · เปลี่ยนชุด · เกิดใหม่) ซึ่งมีหลายทางเกินจะไล่ครบ
 local Inventory = require(game.ServerScriptService.Inventory)
 local InventoryConfig = require(game.ReplicatedStorage.InventoryConfig)
+local Vitals = require(game.ServerScriptService.Vitals)
 task.spawn(function()
 	while true do
 		task.wait(0.5)
@@ -43,6 +44,8 @@ task.spawn(function()
 			if state then
 				StatusEffects.SetHeavy(player, Inventory.SpeedMultiplier(player) < 1)
 				StatusEffects.SetWorn(player, InventoryConfig.AnyWorn(state.equipped))
+				local fractions = Vitals.Fractions(player)
+				StatusEffects.SetHungry(player, fractions ~= nil and fractions.hunger <= InventoryConfig.HungryMarkBelow)
 			end
 		end
 	end

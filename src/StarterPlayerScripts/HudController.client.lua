@@ -86,7 +86,7 @@ local function refreshHotbar(inventory)
 				-- ติดสกินอยู่ = ป้ายรูปสกินมุมล่างซ้ายเหมือนในกระเป๋า (ผู้ใช้สั่ง 2026-09-28)
 				local skin = type(skinMeta) == "table" and skinMeta.skin and ItemCatalog.Get(skinMeta.skin)
 				entries[i] = { id = id, count = count, icon = item.icon, name = item.name,
-					skinIcon = skin and (skin.icon or "") or nil }
+					skinIcon = skin and (skin.icon or "") or nil, autoEat = inventory.autoEat == id }
 			end
 		end
 	end

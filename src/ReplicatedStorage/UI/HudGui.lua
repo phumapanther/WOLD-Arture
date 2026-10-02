@@ -447,6 +447,7 @@ function HudGui:SetHotbar(entries)
 			-- ไม่มีรูป = ⌛ (ItemIcon) ชื่อยังขึ้นใต้มันเหมือนเดิม
 			ItemIcon.Apply(ui.icon, art)
 			ItemIcon.SetBadge(ui.icon, entry.skinIcon) -- สกินที่ติดอยู่ มุมล่างซ้าย
+			ItemIcon.SetAutoEat(ui.icon, entry.autoEat) -- 🍽️ อาหารกินอัตโนมัติ มุมขวาบน
 			ui.icon.Visible = true
 			ui.name.Text = (art == "") and (entry.name or entry.id) or ""
 			ui.count.Text = (entry.count or 1) > 1 and tostring(entry.count) or ""
@@ -458,6 +459,7 @@ function HudGui:SetHotbar(entries)
 		else
 			ui.icon.Image = ""
 			ItemIcon.SetBadge(ui.icon, nil)
+			ItemIcon.SetAutoEat(ui.icon, false)
 			ui.icon.Visible = false
 			ui.name.Text = ""
 			ui.count.Text = ""

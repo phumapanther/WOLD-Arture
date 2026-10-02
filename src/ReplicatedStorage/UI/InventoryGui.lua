@@ -616,6 +616,8 @@ function InventoryGui:Render(data)
 			ItemIcon.Apply(entry.icon, art)
 			-- ติดสกินอยู่ = รูปสกินเล็กๆ มุมล่างซ้าย (ผู้ใช้สั่ง 2026-09-28)
 			ItemIcon.SetBadge(entry.icon, InventoryGui.SkinIconOf(slot.meta))
+			-- 🍽️ อาหารที่ตั้งให้กินอัตโนมัติ (2026-10-02) · ชิ้นขอบทองไม่ถูกกิน (FindSlotById ข้าม) จึงไม่ติดป้าย
+			ItemIcon.SetAutoEat(entry.icon, data.autoEat == slot.id and not ItemCatalog.IsGoldBorder(slot.meta))
 			entry.icon.Visible = true
 			-- The name only shows when there is no artwork, so an icon is never covered by its own label.
 			entry.name.Text = (art == "") and ItemCatalog.DisplayName(slot.id, slot.meta) or ""
@@ -648,6 +650,7 @@ function InventoryGui:Render(data)
 			entry.durBar.Visible = false
 			entry.icon.Image = ""
 			ItemIcon.SetBadge(entry.icon, nil)
+			ItemIcon.SetAutoEat(entry.icon, false)
 			entry.icon.Visible = false
 			entry.icon.ImageTransparency = 0
 			entry.name.Text = ""
