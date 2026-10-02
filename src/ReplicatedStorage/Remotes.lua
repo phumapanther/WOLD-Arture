@@ -27,6 +27,7 @@ local EVENTS = {
 	"SetAutoWalking", -- เดินอัตโนมัติตามหมุด เปิด/ปิด → ความเร็วเท่าฟาร์มออโต้ (2026-10-02)
 	"RequestCraftFuel", -- เติมถ่านหินเข้าเครื่องคราฟบนเกาะที่เปิดอยู่ (จำนวนก้อน) → Crafting ส่ง CraftOpen ใหม่ (2026-10-02)
 	"RequestCraftBoost", -- ปุ่มเร่ง: เผาเชื้อเพลิงทั้งถัง ลดเวลางานที่ทำอยู่ 1:1 (2026-10-02)
+	"RequestCraftInstant", -- 💎 เสร็จทันที: จ่ายเพชรตามเวลาที่เหลือ (CraftConfig.InstantGems · 2026-10-02)
 	"AimUpdate", "SetBackpedal", -- จุดเล็งล่าสุดระหว่างง้าง · กำลังถอยหลังไหม (สนาม) — 2026-10-01
 	"RequestAttack", "CombatStateChanged", "RequestUnscope", "RequestBlock", "PvpRankInfo", "PvpRankUp", "PvpRankSeen", -- combat (click intent in, guard/attack playback out) · ยกการ์ด + แร็งก์ PVP (เฟส 3)
 	-- กับดัก (เฟส 3): เขวี้ยง/วาง · เลือกกระสุน · ภาพ (เขวี้ยง/ระเบิด) ถึงทุกเครื่อง

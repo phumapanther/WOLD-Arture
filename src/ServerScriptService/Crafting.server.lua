@@ -28,6 +28,7 @@ local Achievements = require(game.ServerScriptService.Achievements)
 local Announce = require(game.ServerScriptService.Announce)
 local IslandAccess = require(game.ServerScriptService.Island.IslandAccess)
 local CraftFuel = require(game.ReplicatedStorage.CraftFuel)
+local PremiumAccess = require(game.ServerScriptService.PremiumAccess)
 
 -- เลเวลฟาร์มที่ล็อกสูตรของเครื่องบนเกาะ (เฟส 2c) · nil = ไม่ล็อก (นอกเกาะไม่มีสูตรที่มี level อยู่แล้ว)
 local function farmLevel()
@@ -391,38 +392,67 @@ Remotes.RequestCraftFuel.OnServerEvent:Connect(function(player, count)
 	Remotes.CraftOpen:FireClient(player, snapshot(player))
 end)
 
+-- งานที่เครื่องนี้ทำอยู่ (มีตัวจบที่เลื่อนได้) · nil = ว่าง/ตีบวก (ตีบวกไม่มี finish) — บอกผู้เล่นแล้ว
+local function runningJob(player)
+	local busy = Busy[player] and Busy[player][lockKeyOf(player)]
+	if busy and busy.finish and busy.thread then return busy end
+	Remotes.SocialNotify:FireClient(player, "warn", "เครื่องนี้ไม่ได้ทำงานอยู่")
+	return nil
+end
+
+-- เลื่อนเวลาจบงานเป็นอีก `left` วิ (0 = จบเดี๋ยวนี้) · ใช้ร่วมกันระหว่างปุ่มเร่งกับ 💎 เสร็จทันที
+-- readyAt ในโปรไฟล์เลื่อนตาม (ออกเกมแล้วเข้าใหม่ได้เวลาใหม่) · ไฟในเตาจุดใหม่ตามเวลาใหม่ (lightFire ใช้ token ใหม่ทับของเดิม)
+local function reschedule(player, busy, left)
+	pcall(task.cancel, busy.thread)
+	busy.finishAt = os.clock() + left
+	if busy.job then busy.job.readyAt = os.time() + math.ceil(left) end
+	if ProfileAccess.Flush then ProfileAccess.Flush(player) end
+	local src = Source[player]
+	if src and CraftAccess.OnCraftStarted then CraftAccess.OnCraftStarted(player, src.station, src.model, left) end
+	if left <= 0 then
+		busy.finish() -- งานปกติส่งผล + หน้าต่างใหม่เอง · งานที่คืนมาไม่ส่ง จึงส่งซ้ำข้างล่าง
+	else
+		busy.thread = task.delay(left, busy.finish)
+	end
+	Remotes.CraftOpen:FireClient(player, snapshot(player))
+end
+
 -- ปุ่มเร่ง (ผู้ใช้เลือก 2026-10-02): ระหว่างเครื่องนี้ทำงาน · เผาทั้งถัง เวลาที่เหลือลดเท่าที่เผา (CraftFuel.Boost) ·
 -- เกินเวลาที่เหลือ = เสร็จทันที · readyAt ในโปรไฟล์เลื่อนตาม (ออกเกมแล้วเข้าใหม่ได้เวลาที่เร่งแล้ว)
 Remotes.RequestCraftBoost.OnServerEvent:Connect(function(player)
 	if not nearSource(player) then return end
 	local box = fuelEntry(player)
 	if not box then return end
-	local busy = Busy[player] and Busy[player][lockKeyOf(player)]
-	if not (busy and busy.finish and busy.thread) then
-		return Remotes.SocialNotify:FireClient(player, "warn", "เครื่องนี้ไม่ได้ทำงานอยู่")
-	end
+	local busy = runningJob(player)
+	if not busy then return end
 	local remaining = math.max(0, busy.finishAt - os.clock())
 	local left, burned = CraftFuel.Boost(remaining, box.fuel)
 	if burned <= 0 then
 		return Remotes.SocialNotify:FireClient(player, "warn", "ไม่มีเชื้อเพลิงให้เร่ง — เติมถ่านหินก่อน")
 	end
 	box.fuel = math.max(0, (box.fuel or 0) - burned)
-	pcall(task.cancel, busy.thread)
-	busy.finishAt = os.clock() + left
-	if busy.job then busy.job.readyAt = os.time() + math.ceil(left) end
-	if ProfileAccess.Flush then ProfileAccess.Flush(player) end
 	Remotes.SocialNotify:FireClient(player, "info", left <= 0
 		and ("⚡ เร่งจนเสร็จ · เผาเชื้อเพลิง %d%%"):format(math.ceil(CraftFuel.Percent(burned)))
 		or ("⚡ เร่งแล้ว ลดเวลา %d นาที · เผาเชื้อเพลิง %d%%"):format(
 			math.floor((remaining - left) / 60 + 0.5), math.ceil(CraftFuel.Percent(burned))))
-	if left <= 0 then
-		busy.finish() -- งานปกติส่งผล + หน้าต่างใหม่เอง · งานที่คืนมาไม่ส่ง จึงส่งซ้ำข้างล่าง
-	else
-		busy.thread = task.delay(left, busy.finish)
-		local src = Source[player] -- ไฟในเตาดับตามเวลาใหม่ (lightFire ใช้ token ใหม่ทับของเดิม)
-		if src and CraftAccess.OnCraftStarted then CraftAccess.OnCraftStarted(player, src.station, src.model, left) end
+	reschedule(player, busy, left)
+end)
+
+-- 💎 เสร็จทันที (ผู้ใช้เลือก 2026-10-02): ทุกเครื่องที่มีงานทำอยู่ (เกมหลัก + เกาะ) · ราคา CraftConfig.InstantGems
+-- จากเวลาที่เหลือฝั่งเซิร์ฟ (ไม่เกินที่หน้าต่างโชว์ เพราะหน้าต่างได้ภาพช้ากว่า) · หักผ่าน SpendGems (ด่าน "พอไหม" + แอดมินเติมคืน)
+Remotes.RequestCraftInstant.OnServerEvent:Connect(function(player)
+	if not nearSource(player) then return end
+	local busy = runningJob(player)
+	if not busy then return end
+	local remaining = math.max(0, busy.finishAt - os.clock())
+	if remaining <= 0 then return end
+	local gems = CraftConfig.InstantGems(remaining)
+	if not (PremiumAccess.SpendGems and PremiumAccess.SpendGems(player, gems)) then
+		local have = PremiumAccess.GetGems and PremiumAccess.GetGems(player) or 0
+		return Remotes.SocialNotify:FireClient(player, "error", ("เพชรไม่พอ ต้องใช้ 💎 %d (มี %d)"):format(gems, have))
 	end
-	Remotes.CraftOpen:FireClient(player, snapshot(player))
+	Remotes.SocialNotify:FireClient(player, "info", ("💎 ใช้ %d เพชร · เสร็จทันที"):format(gems))
+	reschedule(player, busy, 0)
 end)
 
 Remotes.RequestCraftClose.OnServerEvent:Connect(function(player)

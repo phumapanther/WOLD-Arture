@@ -41,4 +41,10 @@ check(left == 0 and burned == 7200, "เหลือ 10 นาที ถัง�
 left, burned = F.Boost(600, 0)
 check(left == 600 and burned == 0, "ไม่มีเชื้อเพลิง = ไม่เร่ง")
 
+-- 💎 เสร็จทันที (ผู้ใช้เลือก 2026-10-02): 1 เพชรต่อ 5 นาทีที่เหลือ ปัดขึ้น ขั้นต่ำ 1 · ทุกเครื่องที่มีเวลาทำ
+local C = fresh(game.ReplicatedStorage.CraftConfig)
+check(C.InstantGems(300) == 1 and C.InstantGems(301) == 2, "5 นาทีพอดี = 1 · เกินนิดเดียว = 2")
+check(C.InstantGems(2700) == 9 and C.InstantGems(7200) == 24, "45 นาที = 9 · 2 ชม. = 24")
+check(C.InstantGems(2) == 1 and C.InstantGems(0) == 1, "ขั้นต่ำ 1 เพชร")
+
 return (fails == 0 and "PASS\n" or ("FAIL x%d\n"):format(fails)) .. table.concat(out, "\n")

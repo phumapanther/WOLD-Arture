@@ -65,6 +65,14 @@ CraftConfig.InsigniaItem = "Insignia"
 -- ค่าเริ่มต้นของทุกสูตร สูตรที่ใส่ `seconds` เองใช้ค่าของตัวเองแทน (ครัวบางเมนูผู้ใช้กำหนดเป็นนาที)
 CraftConfig.CraftSeconds = 2.5
 
+-- 💎 เสร็จทันที (ผู้ใช้เลือก 2026-10-02): ทุกเครื่องที่มีงานทำอยู่ (เกมหลัก + เกาะ) · ราคาตามเวลาที่เหลือ
+-- 1 เพชรต่อ 5 นาที ปัดขึ้น ขั้นต่ำ 1 · ใช้ทั้งเซิร์ฟ (Crafting คิดเงินจริง) และหน้าต่าง (CraftGui โชว์ราคา)
+CraftConfig.InstantSecondsPerGem = 5 * 60
+CraftConfig.InstantMinSeconds = 10 -- เหลือน้อยกว่านี้ไม่โชว์ปุ่ม (ค้อนช่างตีเหล็ก 2.5 วิ)
+function CraftConfig.InstantGems(remaining)
+	return math.max(1, math.ceil((remaining or 0) / CraftConfig.InstantSecondsPerGem - 1e-9))
+end
+
 -- Amounts and success rates are the user's, exactly as given. Every id here is checked against ItemCatalog
 -- at startup by Crafting.server, so a typo is a loud warning on boot rather than a recipe that silently
 -- never appears.

@@ -61,6 +61,18 @@ local ok, err = pcall(function()
 	gui:Show(snap({ amount = 900, coal = 5 }))
 	check(gui.boostButton and not gui.boostButton.Visible, "เครื่องว่าง = ไม่มีปุ่มเร่ง")
 
+	-- 💎 เสร็จทันที (2026-10-02): ทุกเครื่องที่มีงานเหลือ ≥ 10 วิ · ราคาตามเวลาที่เหลือ (1 เพชร / 5 นาที)
+	check(gui.instantButton and not gui.instantButton.Visible, "เครื่องว่าง = ไม่มีปุ่มเสร็จทันที")
+	local long = snap(nil) -- เกมหลัก (ไม่มีเชื้อเพลิง) ก็มี
+	long.busy = { index = 2, remaining = 2700, seconds = 2700 }
+	gui:Show(long)
+	check(gui.instantButton and gui.instantButton.Visible and gui.instantButton.Text:find("9", 1, true),
+		"เหลือ 45 นาที = 💎 9: " .. tostring(gui.instantButton and gui.instantButton.Text))
+	local hammer = snap(nil) -- ค้อนช่างตีเหล็ก 2.5 วิ ไม่ต้องมีปุ่มเพชร
+	hammer.busy = { index = 1, remaining = 2, seconds = 2.5 }
+	gui:Show(hammer)
+	check(gui.instantButton and not gui.instantButton.Visible, "เหลือ 2 วิ = ไม่มีปุ่มเสร็จทันที")
+
 	gui:Show(snap(nil))
 	check(not gui.fuelStrip.Visible, "เครื่องที่ไม่ใช้เชื้อเพลิง (ช่างตีเหล็ก/เกมหลัก) = ไม่มีแถบ")
 	check(not gui.rows[2].odds.Text:find("⛽", 1, true) and gui.rows[2].button.AutoButtonColor == true,

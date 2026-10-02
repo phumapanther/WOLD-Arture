@@ -10,6 +10,7 @@ local UiSound = require(script.Parent.UiSound)
 local ItemIcon = require(script.Parent.ItemIcon)
 local NumberBox = require(script.Parent.NumberBox)
 local CraftFuel = require(script.Parent.Parent.CraftFuel) -- เชื้อเพลิงเครื่องบนเกาะ (2026-10-02)
+local CraftConfig = require(script.Parent.Parent.CraftConfig) -- ราคา 💎 เสร็จทันที (InstantGems)
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -95,6 +96,7 @@ function CraftGui.new()
 	title.TextColor3 = RUNE
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Text = "โรงตีเหล็ก"
+	title.TextTruncate = Enum.TextTruncate.AtEnd
 	title.Parent = panel
 	self.title = title
 
@@ -114,6 +116,44 @@ function CraftGui.new()
 		UiSound.Play("Click")
 		self:Hide()
 	end)
+
+	-- 💎 เสร็จทันที (ผู้ใช้เลือก 2026-10-02): ทุกเครื่องที่กำลังทำงาน (เกมหลัก + เกาะ) · หัวหน้าต่างข้าง × ·
+	-- แตะสองครั้งยืนยัน (ใช้เพชร) · ราคาเดินลงตามเวลาที่เหลือ (RefreshInstant · ลูปข้างล่าง)
+	local instant = Instance.new("TextButton")
+	instant.AnchorPoint = Vector2.new(1, 0)
+	instant.Position = UDim2.new(1, -44, 0, 12)
+	instant.Size = UDim2.fromOffset(150, 26)
+	instant.BackgroundColor3 = Color3.fromRGB(170, 130, 240)
+	instant.BorderSizePixel = 0
+	instant.Font = Enum.Font.GothamBold
+	instant.TextSize = 12
+	instant.TextColor3 = Color3.fromRGB(24, 26, 32)
+	instant.Visible = false
+	instant.Parent = panel
+	corner(instant, UDim.new(0, 6))
+	instant.Activated:Connect(function()
+		UiSound.Play("Click")
+		if instant:GetAttribute("Armed") then
+			instant:SetAttribute("Armed", nil)
+			if self.onInstant then self.onInstant() end
+		else
+			instant:SetAttribute("Armed", true)
+			task.delay(3, function()
+				instant:SetAttribute("Armed", nil)
+				self:RefreshInstant()
+			end)
+		end
+		self:RefreshInstant()
+	end)
+	self.instantButton = instant
+	if game:GetService("RunService"):IsRunning() then
+		task.spawn(function()
+			while gui.Parent do
+				if gui.Enabled then self:RefreshInstant() end
+				task.wait(1)
+			end
+		end)
+	end
 
 	-- The row of tabs. Built once and refilled on every snapshot, since the tab list comes down with it.
 	local tabBar = Instance.new("Frame")
@@ -293,6 +333,23 @@ function CraftGui:OnCraft(callback) self.onCraft = callback end
 function CraftGui:OnEnhance(callback) self.onEnhance = callback end
 function CraftGui:OnFuel(callback) self.onFuel = callback end -- (จำนวนถ่าน) เติมเชื้อเพลิงเครื่องที่เปิดอยู่
 function CraftGui:OnBoost(callback) self.onBoost = callback end -- () เผาเชื้อเพลิงทั้งถัง เร่งงานที่ทำอยู่
+function CraftGui:OnInstant(callback) self.onInstant = callback end -- () จ่ายเพชร งานที่ทำอยู่เสร็จทันที
+
+-- ปุ่ม 💎: เครื่องนี้ทำงานอยู่และเหลือ ≥ InstantMinSeconds · ราคาคิดจากเวลาที่เหลือ (เซิร์ฟคิดจากของตัวเองซึ่งไม่มากกว่านี้)
+function CraftGui:RefreshInstant()
+	local remaining = self.busyActive and (self.busyUntil or 0) - os.clock() or 0
+	local show = self.busyActive == true and remaining >= CraftConfig.InstantMinSeconds
+	local button = self.instantButton
+	button.Visible = show
+	if show then
+		local gems = CraftConfig.InstantGems(remaining)
+		button.Text = button:GetAttribute("Armed") and ("ยืนยัน 💎 %d ?"):format(gems) or ("💎 เสร็จทันที %d"):format(gems)
+	else
+		button:SetAttribute("Armed", nil)
+	end
+	-- ชื่อหน้าต่างหลบปุ่ม
+	self.title.Size = UDim2.new(1, show and -210 or -24, 0, 30)
+end
 
 -- Puts every button to sleep and runs the bar on the one row that is being made. Split out from Begin because
 -- a redraw arriving mid-swing has to re-apply exactly the same thing to a brand new set of rows, and the bar
@@ -375,6 +432,7 @@ end
 function CraftGui:Finish(index, success)
 	self.busyActive = false
 	self.busyIndex = nil
+	self:RefreshInstant()
 	self.outcomeIndex = index
 	self.outcomeOk = success
 	self:ApplyOutcome()
@@ -679,6 +737,7 @@ function CraftGui:Render()
 
 	-- ปุ่มเร่ง: เครื่องนี้ทำงานอยู่ + มีเชื้อเพลิง
 	self.boostButton.Visible = self.fuel ~= nil and self.busyActive == true and (self.fuel.amount or 0) > 0
+	self:RefreshInstant()
 
 	-- A craft in flight survives a redraw. The server sends a fresh snapshot the moment the hammer starts --
 	-- that is what makes the materials visibly leave the bag -- and it destroys every row, so without this the

@@ -32,6 +32,10 @@ end)
 gui:OnBoost(function()
 	Remotes.RequestCraftBoost:FireServer()
 end)
+-- 💎 เสร็จทันที: เซิร์ฟคิดราคาจากเวลาที่เหลือเองแล้วหักเพชร
+gui:OnInstant(function()
+	Remotes.RequestCraftInstant:FireServer()
+end)
 
 gui:OnEnhance(function(slot)
 	Remotes.RequestEnhance:FireServer(slot)
