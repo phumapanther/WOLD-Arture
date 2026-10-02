@@ -247,6 +247,9 @@ local function spawnEntry(entry)
 		-- ไม่มีใครอ่านจนกว่าจะมีแท็ก)
 		if entry.id ~= IslandConfig.TreeItem then CollectionService:AddTag(model, "WOLD_Node") end
 	end
+	-- หุ่นฟางฝึกซ้อม (2026-10-02): PlayerCombat ให้ EXP ทุกอย่างที่ติดแท็กนี้ (ต้องมีชิ้นชื่อ HumanoidRootPart — distanceToBody)
+	-- ติดที่ตัวที่วาง ไม่ใช่ที่ต้นแบบ — ต้นแบบใน WOLD_Placeables ก็จะถูกนับเป็นหุ่นด้วย
+	if entry.id == "TrainingDummy" then CollectionService:AddTag(model, "WOLD_Dummy") end
 
 	-- ปุ่มเก็บ: F กดค้าง ครึ่งวิ กันเผลอ · E ปล่อยไว้ให้ปุ่มของแปลง (ปลูก/เก็บเกี่ยว) ในไฟล์ IslandPlots
 	local item = ItemCatalog.Get(entry.id)

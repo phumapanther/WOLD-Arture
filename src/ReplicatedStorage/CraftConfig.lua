@@ -219,7 +219,7 @@ CraftConfig.Recipes = {
 	{ id = "MeatPie", tab = "bakery", station = "bakery", chance = 1, gold = 0, seconds = 60 * 60,
 		level = 9, batch = true, cost = { Dough = 2, Meat = 3, Vegetable = 2 } },
 	{ id = "CreamCake", tab = "bakery", station = "bakery", chance = 1, gold = 0, seconds = 90 * 60,
-		level = 15, batch = true, cost = { Dough = 3, Egg = 4, Milk = 3 } },
+		level = 15, batch = true, cost = { Dough = 3, Egg = 4, Butter = 1 } }, -- นม 3 → เนย 1 (2026-10-02 · เนยปลด Lv15 เท่ากัน)
 
 	-- โต๊ะช่างเหล็ก
 	{ id = "IronIngot", tab = "metal", station = "metal", chance = 1, gold = 0, seconds = 5 * 60,
@@ -277,6 +277,23 @@ CraftConfig.Recipes = {
 		cost = { GearSpare = 20, IronOre = 12, WoodScrap = 40, Fiber = 20, Blueprint = 6, Silver = 800 } },
 	{ id = "AirshipKey", tab = "vehicle", chance = 0.03, gold = 0,
 		cost = { GearSpare = 30, IronOre = 20, SilverOre = 10, Crystal = 10, Fiber = 30, Blueprint = 10, Silver = 1500 } },
+
+	----------------------------------------------------------------------------
+	-- ข้าวโพด/อ้อย ชุดเนย-น้ำตาล (ผู้ใช้อนุมัติตาราง 2026-10-02) — ต่อท้ายตามกติกาเดิม (ลำดับคือสัญญากับไคลเอนต์)
+	-- เตาอบเกือบทั้งหมด: บนเกาะเตาทำอาหารปลด Lv23 เครื่องปั่น Lv27 · เวลา/จำนวนผมตั้ง (ผู้ใช้ให้คิดเอง)
+	----------------------------------------------------------------------------
+	{ id = "Butter", tab = "bakery", station = "bakery", chance = 1, gold = 0, seconds = 5 * 60,
+		level = 15, batch = true, cost = { Milk = 3 } },
+	{ id = "Popcorn", tab = "bakery", station = "bakery", chance = 1, gold = 0, yields = 2, seconds = 10 * 60,
+		level = 16, batch = true, cost = { Corn = 3, Butter = 1 } },
+	{ id = "Sugar", tab = "bakery", station = "bakery", chance = 1, gold = 0, yields = 2, seconds = 5 * 60,
+		level = 18, batch = true, cost = { Sugarcane = 3 } },
+	{ id = "Caramel", tab = "bakery", station = "bakery", chance = 1, gold = 0, seconds = 15 * 60,
+		level = 22, batch = true, cost = { Sugar = 2, Butter = 1, Milk = 1 } },
+	{ id = "GrilledButterCorn", tab = "food", station = "stove", chance = 1, gold = 0, seconds = 20 * 60,
+		level = 23, batch = true, cost = { Corn = 2, Butter = 2 } },
+	{ id = "BakedButterCorn", tab = "bakery", station = "bakery", chance = 1, gold = 0, seconds = 45 * 60,
+		level = 25, batch = true, cost = { Corn = 3, Butter = 2, Caramel = 1 } },
 }
 
 return CraftConfig

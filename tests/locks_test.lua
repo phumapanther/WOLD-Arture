@@ -44,8 +44,11 @@ end
 check(vehicleTab.BoatKey and vehicleTab.AirshipKey and vehicleTab.CarKey, "หน้าพาหนะมีรถ เรือ เรือเหาะ")
 check(not Craft.IsClosed({ id = "CarKey" }) and not Craft.IsClosed({ id = "Sword" }) and not Craft.IsClosed({ id = "Pistol" }),
 	"ของอื่นยังคราฟได้ (รถ ดาบ ปืน)")
-local last = Craft.Recipes[#Craft.Recipes]
-check(last.id == "AirshipKey" and Craft.Recipes[#Craft.Recipes - 1].id == "BoatKey", "สูตรเรือ/เรือเหาะต่อท้ายตาราง")
+-- ลำดับคือสัญญากับไคลเอนต์: เรือ/เรือเหาะถูกต่อท้ายหลังกระสุนกับดัก (สูตรที่มาทีหลังต่อท้ายพวกมันได้ เช่นชุดข้าวโพด 2026-10-02)
+local idx = {}
+for i, r in ipairs(Craft.Recipes) do idx[r.id] = idx[r.id] or i end
+check(idx.BoatKey and idx.AirshipKey == idx.BoatKey + 1 and idx.BoatKey == idx.TrapAmmo_Blast + 1,
+	"สูตรเรือ/เรือเหาะต่อท้ายกระสุนกับดัก (ไม่ถูกแทรกกลางตาราง)")
 for _, r in ipairs(Craft.Recipes) do
 	if r.id == "BoatKey" or r.id == "AirshipKey" then
 		local ok = true

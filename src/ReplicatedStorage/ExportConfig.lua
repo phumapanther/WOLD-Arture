@@ -71,6 +71,8 @@ ExportConfig.Goods = {
 	{ id = "IronOre", coins = 15, max = 25, level = 6 },
 	{ id = "Cotton", coins = 30, max = 20, level = 10 },
 	{ id = "Wool", coins = 22, max = 20, level = 13 },
+	{ id = "Corn", coins = 30, max = 20, level = 15 }, -- 2026-10-02 (ราคาเท่าฝ้าย)
+	{ id = "Sugarcane", coins = 30, max = 20, level = 17 },
 	{ id = "SilverOre", coins = 50, max = 12, level = 15 },
 	{ id = "Leather", coins = 30, max = 15, level = 17 },
 	{ id = "Crystal", coins = 30, max = 10, level = 22 },
@@ -85,6 +87,13 @@ ExportConfig.Goods = {
 	{ id = "SpecialBread", coins = 560, max = 3, level = 8, final = true },
 	{ id = "MeatPie", coins = 680, max = 2, level = 9, final = true },
 	{ id = "CreamCake", coins = 980, max = 2, level = 15, final = true },
+	-- ชุดเนย-น้ำตาล (2026-10-02) · ราคาไล่จากวัตถุดิบ ×1.4 แบบของเตาอบชุดเดิม
+	{ id = "Butter", coins = 70, max = 10, level = 15 },
+	{ id = "Popcorn", coins = 110, max = 6, level = 16, final = true },
+	{ id = "Sugar", coins = 60, max = 12, level = 18 },
+	{ id = "Caramel", coins = 290, max = 4, level = 22 },
+	{ id = "GrilledButterCorn", coins = 290, max = 3, level = 23, final = true },
+	{ id = "BakedButterCorn", coins = 760, max = 2, level = 25, final = true },
 
 	-- โต๊ะช่างเหล็ก
 	{ id = "IronIngot", coins = 70, max = 12, level = 6 },

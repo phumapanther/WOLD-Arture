@@ -153,17 +153,23 @@ local ok, err = pcall(function()
 	local machineLevel = {}
 	for _, row in ipairs(ShopConfig.IslandSells) do machineLevel[row.id] = row.level end
 	local STATION_MACHINE = { bakery = "BakeryOven", metal = "MetalBench", loom = "Loom" }
+	-- เตาทำอาหารใช้ทั้งเกมหลักและเกาะ — นับเป็นสูตรเกาะเฉพาะแถวที่มี `level` (สูตรเชฟเกมหลักไม่มี) · ข้าวโพดย่างเนย 2026-10-02
+	local function machineOf(recipe)
+		return STATION_MACHINE[recipe.station or ""] or (recipe.level and recipe.station == "stove" and "Stove") or nil
+	end
 	-- เลเวลที่ของดิบแต่ละชิ้นเริ่มผลิตได้บนเกาะ (ตรงกับตารางปลด)
 	-- ตาราง 50 เลเวล (2026-09-27): ไข่ ไก่/เป็ด 2 · เนื้อ หมู 5 · สมุนไพร/เหล็ก/ถ่าน โซนแร่+สายถ่าน 6 · นม 8 · ฝ้าย 10 ·
-	-- ขนแกะ 13 · แร่เงิน สายแร่เงิน 15 · หนัง 17 · คริสตัล 22 · กิ่งเวท 28 · แร่ทอง 30 · แร่เวท 40 · เพชร 45
+	-- ขนแกะ 13 · แร่เงิน สายแร่เงิน 15 · หนัง 17 · คริสตัล 22 · กิ่งเวท 28 · แร่ทอง 30 · แร่เวท 40 · เพชร 45 · ข้าวโพด 15 · อ้อย 17
 	local RAW = { Wheat = 1, Vegetable = 1, Egg = 2, Meat = 5, Herb = 6, IronOre = 6, Coal = 6, Milk = 8, Cotton = 10,
-		Wool = 13, SilverOre = 15, Leather = 17, Crystal = 22, MagicBranch = 28, GoldOre = 30, MagicOre = 40, Diamond = 45 }
+		Wool = 13, SilverOre = 15, Leather = 17, Crystal = 22, MagicBranch = 28, GoldOre = 30, MagicOre = 40, Diamond = 45,
+		Corn = 15, Sugarcane = 17 }
 	-- ของดิบต้องปลดที่ต้นทางจริง (ร้าน/คอก/พืช) ไม่เกินเลเวลใน RAW — กันแก้ตารางฝั่งเดียว
 	local sourceLevel = {}
 	local function source(id, level) sourceLevel[id] = math.min(sourceLevel[id] or 99, level) end
 	for _, row in ipairs(ShopConfig.IslandSells) do
 		local wild = { Wild_Coal = "Coal", Wild_IronOre = "IronOre", Wild_SilverOre = "SilverOre", Wild_Crystal = "Crystal",
-			Wild_GoldOre = "GoldOre", Wild_MagicOre = "MagicOre", Wild_DiamondOre = "Diamond", Seed = "Wheat", CottonSeed = "Cotton" }
+			Wild_GoldOre = "GoldOre", Wild_MagicOre = "MagicOre", Wild_DiamondOre = "Diamond", Seed = "Wheat", CottonSeed = "Cotton",
+			CornSeed = "Corn", SugarcaneSeed = "Sugarcane" }
 		if wild[row.id] then source(wild[row.id], row.level) end
 		if row.id == "Seed" then source("Vegetable", row.level) end
 		if row.id == "MineZone" then source("IronOre", row.level) end
@@ -181,7 +187,7 @@ local ok, err = pcall(function()
 	for _, good in ipairs(ExportConfig.Goods) do if good.final then final[good.id] = true end end
 	local recipeProblems = {}
 	for index, recipe in ipairs(CraftConfig.Recipes) do
-		local machine = STATION_MACHINE[recipe.station or ""]
+		local machine = machineOf(recipe)
 		if machine then
 			made[recipe.id] = recipe.level
 			local good = ExportConfig.Get(recipe.id)
@@ -205,7 +211,7 @@ local ok, err = pcall(function()
 		end
 	end
 	for _, recipe in ipairs(CraftConfig.Recipes) do
-		if STATION_MACHINE[recipe.station or ""] then
+		if machineOf(recipe) then
 			for material in pairs(recipe.cost) do
 				local at = made[material] or RAW[material]
 				if not at or at > recipe.level then

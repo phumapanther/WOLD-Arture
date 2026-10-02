@@ -780,6 +780,20 @@ ItemCatalog.Items = {
 	--------------------------------------------------------------------------
 	Cotton = { icon = "rbxassetid://112391798683827", name = "ฝ้าย", kind = "junk", weight = 0.5, stackSize = 99, value = 20 }, -- decal 140293553717745
 	CottonSeed = { icon = "rbxassetid://126766678112436", name = "เมล็ดฝ้าย", kind = "junk", weight = 0.05, stackSize = 99, value = 0, sellable = false, vip = true }, -- decal 85650779914209
+	-- ข้าวโพด/อ้อย + ชุดเนย-น้ำตาล (ผู้ใช้อนุมัติตาราง 2026-10-02 · เลเวลฟาร์ม 15-25) · ยังไม่มีรูป = ⌛ (ใส่ id ที่ icon แล้วหายเอง)
+	-- ผลผลิตดิบเหมือนฝ้าย · ของคราฟเหมือนของเตาอบชุดเดิม (ส่งออก ไม่ใช่ของกิน) · ★ = ขั้นสุดท้าย
+	Corn = { icon = "", name = "ข้าวโพด", kind = "junk", weight = 0.5, stackSize = 99, value = 20 },
+	Sugarcane = { icon = "", name = "อ้อย", kind = "junk", weight = 0.6, stackSize = 99, value = 20 },
+	CornSeed = { icon = "", name = "เมล็ดข้าวโพด", kind = "junk", weight = 0.05, stackSize = 99, value = 0, sellable = false, vip = true },
+	SugarcaneSeed = { icon = "", name = "ท่อนพันธุ์อ้อย", kind = "junk", weight = 0.05, stackSize = 99, value = 0, sellable = false, vip = true },
+	Butter = { icon = "", name = "เนย", kind = "junk", weight = 0.4, stackSize = 50, value = 0, sellable = false, vip = true },
+	Sugar = { icon = "", name = "น้ำตาล", kind = "junk", weight = 0.3, stackSize = 50, value = 0, sellable = false, vip = true },
+	Caramel = { icon = "", name = "คาราเมล", kind = "junk", weight = 0.4, stackSize = 50, value = 0, sellable = false, vip = true },
+	Popcorn = { icon = "", name = "ป็อปคอร์น", kind = "junk", weight = 0.3, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
+	GrilledButterCorn = { icon = "", name = "ข้าวโพดย่างเนย", kind = "junk", weight = 0.6, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
+	BakedButterCorn = { icon = "", name = "ข้าวโพดอบเนย", kind = "junk", weight = 0.8, stackSize = 20, value = 0, sellable = false, vip = true }, -- ★
+	-- หุ่นฟางฝึกซ้อม: ตีได้ EXP ตัวละคร (เพดานรวมทุกหุ่น 1,000/วัน — ProgressionConfig.DummyGrant) · IslandBuild ติดแท็ก WOLD_Dummy ตอนวาง
+	TrainingDummy = { icon = "", name = "หุ่นฟางฝึกซ้อม", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "out" },
 
 	-- เครื่อง: ชื่อโมเดลตรงกับ CraftStations.STATIONS (ระบบหาจากชื่อ) · สำเร็จ 100% ไม่มีค่าจ้าง
 	BakeryOven = { icon = "rbxassetid://119192386106988", name = "เตาอบขนมปัง", kind = "placeable", weight = 3, stackSize = 3, value = 0, sellable = false, spot = "both" }, -- decal 139332824506569

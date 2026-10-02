@@ -50,7 +50,7 @@ IslandConfig.ClearanceHeight = 14
 
 IslandConfig.SeedItem = "Seed"
 -- เมล็ดทุกชนิดที่หยอดลงแปลงได้ (เฟส 2c) — "Seed" สุ่มพืช · ที่เหลือคือเมล็ดของพืชชนิดเดียว (พืชที่มี `seed` ตรงกัน)
-IslandConfig.SeedItems = { "Seed", "CottonSeed" }
+IslandConfig.SeedItems = { "Seed", "CottonSeed", "CornSeed", "SugarcaneSeed" }
 -- หยอดเมล็ดแล้วสุ่มพืชตามน้ำหนัก · seconds = เวลาจนสุก (นับจาก os.time จึงโตต่อตอนออฟไลน์) · ได้ min-max ชิ้น
 -- **`level` = เลเวลฟาร์มที่พืชนี้เริ่มงอกจากเมล็ดสุ่ม** (เฟส 2c) — ต่ำกว่านั้นตัดออกจากกองสุ่ม (น้ำหนักที่เหลือหารใหม่เอง)
 -- **`seed`** = พืชนี้ไม่อยู่ในกองสุ่ม ปลูกจากเมล็ดของมันเองเท่านั้น (ฝ้าย · ผู้ใช้เลือก 2026-09-27)
@@ -61,6 +61,9 @@ IslandConfig.Crops = {
 	{ item = "Herb", weight = 15, seconds = 35 * 60, min = 2, max = 3, level = 6 },
 	-- ฝ้าย (เฟส 2c) ไว้ป้อนกี่ทอผ้า · มีขอบทองได้เหมือนผักอื่น (GoldBorder อ่านจากตารางนี้เอง)
 	{ item = "Cotton", seed = "CottonSeed", weight = 0, seconds = 30 * 60, min = 2, max = 4, level = 10 },
+	-- ข้าวโพด/อ้อย (ผู้ใช้อนุมัติ 2026-10-02) ปลูกจากเมล็ดของมันเองแบบฝ้าย · ป้อนเตาอบ (เนย ป็อปคอร์น น้ำตาล คาราเมล …)
+	{ item = "Corn", seed = "CornSeed", weight = 0, seconds = 30 * 60, min = 2, max = 4, level = 15 },
+	{ item = "Sugarcane", seed = "SugarcaneSeed", weight = 0, seconds = 35 * 60, min = 2, max = 4, level = 17 },
 
 	-- **ต้นเวทมนตร์** (ผู้ใช้สั่ง 2026-09-23: "เพิ่มโมเดลในแปลงผักสำหรับสุ่มปลูก เพื่อให้ได้กิ่งเวทมนตร์
 	-- ด้วย โดยพอเก็บจะสุ่มกิ่งเวทมนตร์และแร่เวทมนตร์")

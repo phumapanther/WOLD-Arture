@@ -130,6 +130,21 @@ function Progression.AwardExpParty(player, amount)
 	end
 end
 
+-- ตีหุ่นฟางโดนหนึ่งครั้ง (PlayerCombat สามทาง: ประชิด · กระสุน · สไน) — เพดานรวมทุกหุ่นต่อวันอยู่ ProgressionConfig.DummyGrant
+-- บันทึกใน profile.Data.DummyExp จึงรอดออก-เข้าเกม/ข้ามเพลส · ยังไม่มีโปรไฟล์ = ไม่ให้ (นับเพดานไม่ได้)
+function Progression.AwardDummyExp(player)
+	local data = ProfileAccess.Get(player)
+	if not data then return end
+	local today = require(game.ReplicatedStorage.QuestConfig).DayNumber()
+	local grant, record, capped = ProgressionConfig.DummyGrant(data.DummyExp, today)
+	data.DummyExp = record
+	if grant > 0 then Progression.AwardExp(player, grant) end
+	if capped then
+		Remotes.SocialNotify:FireClient(player, "info",
+			("หุ่นฟางให้ EXP ครบ %d ของวันนี้แล้ว — พรุ่งนี้มาตีใหม่"):format(ProgressionConfig.DummyDailyExpCap))
+	end
+end
+
 function Progression.AwardExp(player, amount)
 	local state = States[player]
 	if not state or amount <= 0 then return end

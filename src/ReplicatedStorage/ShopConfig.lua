@@ -110,6 +110,8 @@ ShopConfig.IslandSells = {
 	{ id = "BakeryOven", category = "utility", level = 3, coins = 10000 },
 	{ id = "MetalBench", category = "utility", level = 6, coins = 15000 },
 	{ id = "Loom", category = "utility", level = 10, coins = 20000 },
+	-- หุ่นฟางฝึกซ้อม (2026-10-02) ตีได้ EXP ตัวละคร เพดานรวมทุกหุ่น 1,000/วัน
+	{ id = "TrainingDummy", category = "utility", level = 19, coins = 15000 },
 
 	-- สัตว์: สัตว์เลี้ยง (บัพให้ทั้งฟาร์มขณะอยู่บนเกาะ) + คอก · สัตว์ในคอกซื้อในหน้าต่างคอก (IslandConfig.PenAnimals)
 	{ id = "Pet_Cat", category = "animal", level = 4, gems = 250 },
@@ -150,6 +152,8 @@ ShopConfig.IslandSells = {
 	{ id = "Seed", category = "farm", level = 1, coins = 250, count = 3 },
 	-- เมล็ดฝ้าย (เฟส 2c ผู้ใช้เลือก 2026-09-27): แยกจากเมล็ดสุ่ม หยอดแล้วได้ฝ้ายแน่นอน · ราคาเท่าเมล็ดสุ่ม
 	{ id = "CottonSeed", category = "farm", level = 10, coins = 250, count = 3 },
+	{ id = "CornSeed", category = "farm", level = 15, coins = 250, count = 3 }, -- 2026-10-02
+	{ id = "SugarcaneSeed", category = "farm", level = 17, coins = 250, count = 3 }, -- 2026-10-02
 	{ id = "MineZone", category = "farm", level = 6, coins = 30000 }, -- ผู้ใช้กำหนด 2026-09-25 (เดิม 50,000)
 }
 

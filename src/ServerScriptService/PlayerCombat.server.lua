@@ -438,7 +438,7 @@ local function fireProjectile(player, attack, aim)
 	local function hitDummy(dummy)
 		if hitThisShot[dummy] then return end
 		hitThisShot[dummy] = true
-		Progression.AwardExp(player, ProgressionConfig.ExpPerDummyHit)
+		Progression.AwardDummyExp(player)
 		playHitSound(dummy, player)
 	end
 	local function hitMob(mob, isHead)
@@ -661,7 +661,7 @@ local function fireSniper(player, weapon, attack, aim)
 	end
 
 	if CollectionService:HasTag(model, "WOLD_Dummy") then
-		Progression.AwardExp(player, ProgressionConfig.ExpPerDummyHit)
+		Progression.AwardDummyExp(player)
 		playHitSound(model, player)
 		return
 	end
@@ -703,7 +703,7 @@ local function resolveHit(player, state, attack)
 		local root = dummy.PrimaryPart
 		if root and not state.hitThisSwing[dummy] and distanceToBody(origin, dummy) <= attack.range then
 			state.hitThisSwing[dummy] = true
-			Progression.AwardExp(player, ProgressionConfig.ExpPerDummyHit)
+			Progression.AwardDummyExp(player)
 			playHitSound(dummy, player)
 		end
 	end

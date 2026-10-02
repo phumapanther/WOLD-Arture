@@ -18,6 +18,16 @@ end
 ProgressionConfig.ExpPerMonsterKill = 100 -- no monsters exist yet; here so the ratios below are readable
 ProgressionConfig.ExpPerPlayerKill = ProgressionConfig.ExpPerMonsterKill / 10 -- 10
 ProgressionConfig.ExpPerDummyHit = ProgressionConfig.ExpPerPlayerKill / 2 -- 5, once per punch
+-- **เพดาน EXP จากหุ่นฟางต่อวัน รวมทุกหุ่น** (ผู้ใช้สั่ง 2026-10-02 · เกมหลัก + บนเกาะ · เดิมไม่จำกัด = ยืนตี AFK ได้เลเวลไม่จบ)
+ProgressionConfig.DummyDailyExpCap = 1000
+-- `record` = { day, exp } ที่เซฟไว้ (nil = ยังไม่เคยตี) · `today` = QuestConfig.DayNumber() (เที่ยงคืนไทย)
+-- คืน (EXP ที่ให้ครั้งนี้, บันทึกใหม่, เพิ่งชนเพดานพอดีไหม — ไว้บอกผู้เล่นครั้งเดียว)
+function ProgressionConfig.DummyGrant(record, today)
+	local used = (type(record) == "table" and record.day == today and tonumber(record.exp)) or 0
+	local cap = ProgressionConfig.DummyDailyExpCap
+	local grant = math.max(0, math.min(ProgressionConfig.ExpPerDummyHit, cap - used))
+	return grant, { day = today, exp = used + grant }, grant > 0 and used + grant >= cap
+end
 
 -- Killing UP is worth more: the further above you the victim was, the bigger the multiplier. Killing down is
 -- worth less, but never nothing, so farming low levels stops being efficient without becoming pointless.
