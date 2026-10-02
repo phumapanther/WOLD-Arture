@@ -71,7 +71,7 @@ ShopConfig.IslandSells = {
 	{ id = "Deco_Bench", category = "decor", level = 9, gems = 18 },
 	{ id = "Deco_Lamp", category = "decor", level = 18, gems = 22 },
 	{ id = "Deco_Tree", category = "decor", level = 19, gems = 30 },
-	{ id = "Deco_Well", category = "decor", level = 25, gems = 60 },
+	{ id = "Deco_Well", category = "decor", level = 28, gems = 60 }, -- 25 → 28 (2026-10-02 · ต้นเวทย้ายไป Lv5 ทิ้ง Lv28 ว่าง · กติกา 1-6 อย่างต่อเลเวล)
 
 	-- ของป่าจากเกมหลัก: วางแล้วเก็บเกี่ยวได้วันละครั้ง (ราคาผมตั้งเอง ผู้ใช้ให้มาแค่กติกา)
 	{ id = "Wild_Rock", category = "decor", level = 11, gems = 25 },

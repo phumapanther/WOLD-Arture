@@ -110,10 +110,10 @@ local ok, err = pcall(function()
 		return table.concat(t, ",")
 	end
 	check(names(IslandConfig.CropsFor("Seed", 1)) == "Vegetable,Wheat", "เมล็ดสุ่ม Lv1 = ข้าว/ผัก")
-	check(names(IslandConfig.CropsFor("Seed", 5)) == "Vegetable,Wheat" and names(IslandConfig.CropsFor("Seed", 6)) == "Herb,Vegetable,Wheat",
-		"Lv6 + สมุนไพร")
-	check(names(IslandConfig.CropsFor("Seed", 27)) == "Herb,Vegetable,Wheat"
-		and names(IslandConfig.CropsFor("Seed", 28)) == "Herb,MagicBranch,Vegetable,Wheat", "Lv28 + ต้นเวท · เมล็ดสุ่มไม่เคยได้ฝ้าย")
+	check(names(IslandConfig.CropsFor("Seed", 4)) == "Vegetable,Wheat" and names(IslandConfig.CropsFor("Seed", 5)) == "MagicBranch,Vegetable,Wheat",
+		"Lv5 + ต้นเวท (ผู้ใช้สั่ง 2026-10-02 · เดิม 28)")
+	check(names(IslandConfig.CropsFor("Seed", 6)) == "Herb,MagicBranch,Vegetable,Wheat"
+		and names(IslandConfig.CropsFor("Seed", 28)) == "Herb,MagicBranch,Vegetable,Wheat", "Lv6 + สมุนไพร · เมล็ดสุ่มไม่เคยได้ฝ้าย")
 	check(#IslandConfig.CropsFor("CottonSeed", 9) == 0 and names(IslandConfig.CropsFor("CottonSeed", 10)) == "Cotton",
 		"เมล็ดฝ้ายใช้ได้ Lv10 ได้ฝ้ายอย่างเดียว")
 	check(names(IslandConfig.CropsFor("Seed", nil)) == "Herb,MagicBranch,Vegetable,Wheat", "ไม่รู้เลเวล = ไม่ล็อก")
@@ -159,9 +159,9 @@ local ok, err = pcall(function()
 	end
 	-- เลเวลที่ของดิบแต่ละชิ้นเริ่มผลิตได้บนเกาะ (ตรงกับตารางปลด)
 	-- ตาราง 50 เลเวล (2026-09-27): ไข่ ไก่/เป็ด 2 · เนื้อ หมู 5 · สมุนไพร/เหล็ก/ถ่าน โซนแร่+สายถ่าน 6 · นม 8 · ฝ้าย 10 ·
-	-- ขนแกะ 13 · แร่เงิน สายแร่เงิน 15 · หนัง 17 · คริสตัล 22 · กิ่งเวท 28 · แร่ทอง 30 · แร่เวท 40 · เพชร 45 · ข้าวโพด 15 · อ้อย 17
+	-- ขนแกะ 13 · แร่เงิน สายแร่เงิน 15 · หนัง 17 · คริสตัล 22 · กิ่งเวท 5 (2026-10-02 · เดิม 28) · แร่ทอง 30 · แร่เวท 40 · เพชร 45 · ข้าวโพด 15 · อ้อย 17
 	local RAW = { Wheat = 1, Vegetable = 1, Egg = 2, Meat = 5, Herb = 6, IronOre = 6, Coal = 6, Milk = 8, Cotton = 10,
-		Wool = 13, SilverOre = 15, Leather = 17, Crystal = 22, MagicBranch = 28, GoldOre = 30, MagicOre = 40, Diamond = 45,
+		Wool = 13, SilverOre = 15, Leather = 17, Crystal = 22, MagicBranch = 5, GoldOre = 30, MagicOre = 40, Diamond = 45,
 		Corn = 15, Sugarcane = 17 }
 	-- ของดิบต้องปลดที่ต้นทางจริง (ร้าน/คอก/พืช) ไม่เกินเลเวลใน RAW — กันแก้ตารางฝั่งเดียว
 	local sourceLevel = {}

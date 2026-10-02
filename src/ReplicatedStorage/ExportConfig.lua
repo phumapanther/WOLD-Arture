@@ -76,7 +76,7 @@ ExportConfig.Goods = {
 	{ id = "SilverOre", coins = 50, max = 12, level = 15 },
 	{ id = "Leather", coins = 30, max = 15, level = 17 },
 	{ id = "Crystal", coins = 30, max = 10, level = 22 },
-	{ id = "MagicBranch", coins = 60, max = 8, level = 28 },
+	{ id = "MagicBranch", coins = 60, max = 8, level = 5 }, -- ต้นเวทปลด Lv5 (2026-10-02 · เดิม 28)
 	{ id = "GoldOre", coins = 90, max = 6, level = 30 },
 	{ id = "MagicOre", coins = 120, max = 4, level = 40 },
 	{ id = "Diamond", coins = 200, max = 3, level = 45 },
