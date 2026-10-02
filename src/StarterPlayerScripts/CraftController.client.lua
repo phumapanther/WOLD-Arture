@@ -65,7 +65,8 @@ end
 -- Held here rather than inside UiSound because only this file knows when the work stops: UiSound.Loop hands
 -- back a Sound and leaves the caller to end it, the same way the ringtone works.
 local forgeSound = nil
-local COOK_STATIONS = { stove = true, bakery = true }
+-- เสียงประจำเครื่อง (ผู้ใช้สั่ง 2026-10-02) · ไม่อยู่ในตาราง (ช่างตีเหล็ก/โต๊ะเหล็ก/กี่ทอ) = ค้อน "Craft"
+local STATION_SOUND = { stove = "Cook", bakery = "Cook", blender = "Blend", still = "Brew" }
 
 local function stopForge()
 	if not forgeSound then return end
@@ -80,9 +81,8 @@ end
 Remotes.CraftStarted.OnClientEvent:Connect(function(index, seconds)
 	-- A second craft should not stack a second loop on top of the first.
 	stopForge()
-	-- เตาทำอาหาร/เตาอบ = เสียงผัด (ผู้ใช้สั่ง 2026-10-02) · เครื่องอื่น/ช่างตีเหล็ก = ค้อนเหมือนเดิม
 	local station = gui.snapshot and gui.snapshot.station
-	forgeSound = UiSound.Loop(COOK_STATIONS[station] and "Cook" or "Craft")
+	forgeSound = UiSound.Loop(station and STATION_SOUND[station] or "Craft")
 	gui:Begin(index, seconds)
 end)
 

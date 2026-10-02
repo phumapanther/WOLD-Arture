@@ -232,7 +232,7 @@ SoundscapeConfig.Interface = {
 		-- length of an action rather than firing once, and at the common level it went missing under the
 		-- world while the player stood there waiting for it.
 		Craft = 0.6,
-		Cook = 0.6,
+		Cook = 0.6, Blend = 0.5, Brew = 0.6,
 		-- ชุด QA 2026-09-28: ตัวอักษรบทพูดเบามาก (ขึ้นถี่) · เลเวลขึ้น/กาชาหายาก/ป้ายชื่อเกมดังกว่าปกติ
 		Blip = 0.12, LevelUp = 0.5, GachaLegend = 0.45, CutTitle = 0.45, CutRumble = 0.35, ToastError = 0.25,
 		-- แตรฉลองเลเวลฟาร์ม (เฟส 2c) — เกิดนานๆ ครั้ง ต้องดังพอให้รู้สึกว่าเป็นช่วงเวลาพิเศษ
@@ -282,6 +282,10 @@ SoundscapeConfig.Interface = {
 	-- ทำอาหาร (ผู้ใช้สั่ง 2026-10-02): เตาทำอาหาร/เตาอบใช้เสียงผัดในกระทะแทนค้อน (CraftController เลือกตามสถานี)
 	-- "Fry Or Sizzle 1" ProSoundEffects 40 วิ · PreloadAsync ผ่าน 2026-10-02
 	Cook = "rbxassetid://9114542867",
+	-- เครื่องปั่น: มอเตอร์ปั่นน้ำ ("Blender Water 5" ProSoundEffects 71 วิ) · เครื่องต้มยา: ของเหลวเดือดปุดๆ ในห้องแล็บ
+	-- ("The Laboratory (a)" APM 31 วิ) · PreloadAsync ผ่านทั้งคู่ 2026-10-02 (ผู้ใช้สั่ง)
+	Blend = "rbxassetid://9113457453",
+	Brew = "rbxassetid://1842379744",
 
 	-- Money changing hands: giving, robbing, a fine paid, a trade closing. Heard by both parties, since a
 	-- transfer is a thing that happens between two people rather than to one.

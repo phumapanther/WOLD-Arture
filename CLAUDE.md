@@ -353,8 +353,9 @@ VIP เริ่ม/หมดกลางเกม = `Inventory.RefreshWeightLim
   `Remotes.RequestCraftInstant` หักผ่าน `PremiumAccess.SpendGems` · เร่ง/เสร็จทันทีใช้ `reschedule(player, busy, left)` ตัวเดียวใน Crafting
 - **รถส่งออก 💎 กลับทันที** (ผู้ใช้สั่ง 2026-10-02): ปุ่มในการ์ดที่กำลังส่งข้างแถบเวลา · ราคา `CraftConfig.InstantGems` ตัวเดียวกัน
   (18 นาที = 💎 4) · `RequestExport("instant")` → `IslandFarm.instant` หักเพชรแล้วเรียก `resolve` ตัวเดียวกับลูป · เทส `export_gui_instant_test` (Edit)
-- **เสียงทำอาหาร** (ผู้ใช้สั่ง 2026-10-02): เตาทำอาหาร/เตาอบ (`stove`/`bakery`) เล่น `Cook` (ProSoundEffects Fry Or Sizzle 9114542867) แทนค้อน `Craft` ·
-  `CraftController.COOK_STATIONS` · เครื่องอื่น/ช่างตีเหล็กยังเป็นค้อน · ใช้ทั้งเกมหลักและเกาะ
+- **เสียงประจำเครื่อง** (ผู้ใช้สั่ง 2026-10-02): เตาทำอาหาร/เตาอบ = `Cook` (ผัดกระทะ 9114542867) · เครื่องปั่น = `Blend`
+  (มอเตอร์ปั่น 9113457453) · เครื่องต้มยา = `Brew` (ของเหลวเดือดในแล็บ APM 1842379744) · ที่เหลือ = ค้อน `Craft` ·
+  ตาราง `CraftController.STATION_SOUND` · ใช้ทั้งเกมหลักและเกาะ
 
 **สนาม PVP: ช่วงเตรียมตัว/นับถอยหลังยิง-ฟัน-ใช้สกิลไม่ได้** (ผู้ใช้สั่ง 2026-10-02) `ArenaAccess.AttacksAllowed` (phase == live) ถามที่
 `PlayerCombat` RequestAttack + `WeaponSkills` RequestSkill · ไม่ได้ใส่ใน `Deny.Blocked` เพราะสวมอาวุธ/ใช้ของช่วงซื้อต้องทำได้
