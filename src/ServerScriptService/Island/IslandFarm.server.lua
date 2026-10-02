@@ -27,6 +27,7 @@ local IslandAccess = require(script.Parent.IslandAccess)
 local FarmLevelConfig = require(ReplicatedStorage.FarmLevelConfig)
 local ExportConfig = require(ReplicatedStorage.ExportConfig)
 local ExportOrders = require(ReplicatedStorage.ExportOrders)
+local CraftConfig = require(ReplicatedStorage.CraftConfig) -- ราคา 💎 รถกลับทันที (InstantGems)
 local ItemCatalog = require(ReplicatedStorage.ItemCatalog)
 local Remotes = require(ReplicatedStorage.Remotes)
 
@@ -308,6 +309,29 @@ local function reroll(player, slot)
 	return true
 end
 
+-- 💎 รถกลับทันที (ผู้ใช้สั่ง 2026-10-02): ราคาเดียวกับเสร็จทันทีของเครื่องคราฟ (CraftConfig.InstantGems · 1 เพชร / 5 นาที)
+-- จากเวลาที่เหลือฝั่งเซิร์ฟ · หักผ่าน SpendGems แล้วจบงานเดี๋ยวนี้ด้วย resolve ตัวเดียวกับลูป (ล้าง ship ก่อนแจก = ไม่ซ้ำ)
+local resolve -- นิยามข้างล่าง (จบงานส่งออก)
+local function instant(player)
+	if not IslandAccess.MayUseFixtures(player) then return false, IslandAccess.FixtureDenied end
+	local farm = farmData()
+	if not farm or not Inventory.Get(player) then return false, "ข้อมูลเกาะยังโหลดไม่เสร็จ" end
+	if not nearTruck(player) then return false, "อยู่ไกลจากรถเกินไป" end
+	if not farm.ship then return false, "รถไม่ได้กำลังส่งของ" end
+	local left = farm.ship.endAt - os.time()
+	if left > 0 then
+		local gems = CraftConfig.InstantGems(left)
+		if not (PremiumAccess.SpendGems and PremiumAccess.SpendGems(player, gems)) then
+			local have = PremiumAccess.GetGems and PremiumAccess.GetGems(player) or 0
+			return false, ("เพชรไม่พอ ต้องใช้ 💎 %d (มี %d)"):format(gems, have)
+		end
+		farm.ship.endAt = os.time()
+		notify(player, "info", ("💎 ใช้ %d เพชร · รถกลับทันที"):format(gems))
+	end
+	resolve(player, farm)
+	return true
+end
+
 Remotes.RequestExport.OnServerEvent:Connect(function(player, action, slot)
 	if type(action) ~= "string" then return end
 	if action == "close" then
@@ -322,6 +346,8 @@ Remotes.RequestExport.OnServerEvent:Connect(function(player, action, slot)
 		ok, why = ship(player, slot)
 	elseif action == "reroll" then
 		ok, why = reroll(player, slot)
+	elseif action == "instant" then
+		ok, why = instant(player)
 	else
 		return
 	end
@@ -343,7 +369,7 @@ local function offerCelebration(player, farm)
 	Remotes.FarmCelebrate:FireClient(player, { from = from, to = level })
 end
 
-local function resolve(owner, farm)
+function resolve(owner, farm)
 	local ship = farm.ship
 	-- **รับสิทธิ์ก่อนแจก** ล้างงานออกก่อน และไม่มี yield จนแจกครบ = จบได้ครั้งเดียวแน่นอน
 	farm.ship = nil

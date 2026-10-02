@@ -21,6 +21,7 @@ local WALK_AWAY = 34 -- สตัดจากกลางรถ (ด่านเ
 gui:OnShip(function(slot) Remotes.RequestExport:FireServer("ship", slot) end)
 gui:OnReroll(function(slot) Remotes.RequestExport:FireServer("reroll", slot) end)
 gui:OnClose(function() Remotes.RequestExport:FireServer("close") end)
+gui:OnInstant(function() Remotes.RequestExport:FireServer("instant") end) -- 💎 รถกลับทันที (เซิร์ฟคิดราคาเอง)
 
 local lastShip = nil -- สล็อตที่กำลังส่งในภาพก่อนหน้า (ไว้ตัดสินเสียงหวูด/เหรียญ)
 Remotes.ExportOpen.OnClientEvent:Connect(function(snap)

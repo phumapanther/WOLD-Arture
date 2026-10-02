@@ -10,7 +10,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
 local ItemIcon = require(script.Parent.ItemIcon)
-local FarmLevelConfig = require(ReplicatedStorage.FarmLevelConfig)
+local FarmLevelConfig = require(script.Parent.Parent.FarmLevelConfig) -- พี่น้องของ UI (เทส Edit โคลนลงโฟลเดอร์ sandbox ได้)
+local CraftConfig = require(script.Parent.Parent.CraftConfig) -- ราคา 💎 รถกลับทันที (InstantGems ตัวเดียวกับเครื่องคราฟ)
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -263,21 +264,24 @@ function ExportGui.new()
 
 	self.cards = {}
 	self.armed = nil -- ช่องที่กดสุ่มใหม่ไปหนึ่งครั้งแล้ว รอยืนยัน
-	self.onShip, self.onReroll, self.onClose = nil, nil, nil
+	self.onShip, self.onReroll, self.onClose, self.onInstant = nil, nil, nil, nil
 
-	-- นาฬิกา: ถอยหลังรถ + แถบในการ์ดที่กำลังส่ง (4 ครั้งต่อวิ ไม่ต้องทุกเฟรม)
-	task.spawn(function()
-		while true do
-			if self.gui.Enabled then self:Tick() end
-			task.wait(0.25)
-		end
-	end)
+	-- นาฬิกา: ถอยหลังรถ + แถบในการ์ดที่กำลังส่ง (4 ครั้งต่อวิ ไม่ต้องทุกเฟรม) · เทส Edit ไม่ต้องมีลูปค้าง
+	if RunService:IsRunning() then
+		task.spawn(function()
+			while true do
+				if self.gui.Enabled then self:Tick() end
+				task.wait(0.25)
+			end
+		end)
+	end
 	return self
 end
 
 function ExportGui:OnShip(fn) self.onShip = fn end
 function ExportGui:OnReroll(fn) self.onReroll = fn end
 function ExportGui:OnClose(fn) self.onClose = fn end
+function ExportGui:OnInstant(fn) self.onInstant = fn end -- () จ่ายเพชร รถกลับทันที
 
 local function serverNow()
 	return workspace:GetServerTimeNow()
@@ -300,6 +304,11 @@ function ExportGui:Tick()
 		if card and card.bar then
 			card.bar.Size = UDim2.fromScale(progress, 1)
 			card.barText.Text = left > 0 and clock(left) or "กลับแล้ว"
+		end
+		if card and card.instant then
+			card.instant.Visible = left > 0
+			local gems = CraftConfig.InstantGems(left)
+			card.instant.Text = self.instantArmed and ("ยืนยัน 💎%d"):format(gems) or ("💎 ทันที %d"):format(gems)
 		end
 	else
 		self.stripFill.Visible = false
@@ -393,7 +402,7 @@ function ExportGui:DrawCard(order, snap)
 		local track = Instance.new("Frame")
 		track.AnchorPoint = Vector2.new(0, 1)
 		track.Position = UDim2.new(0, 8, 1, -8)
-		track.Size = UDim2.new(1, -16, 0, 30)
+		track.Size = UDim2.new(1, -110, 0, 30) -- ขวา = ปุ่ม 💎
 		track.BackgroundColor3 = STONE_DEEP
 		track.BorderSizePixel = 0
 		track.Parent = frame
@@ -407,6 +416,33 @@ function ExportGui:DrawCard(order, snap)
 		card.bar = bar
 		card.barText = label(track, { text = "", size = 13, align = Enum.TextXAlignment.Center, dim = UDim2.fromScale(1, 1) })
 		card.barText.ZIndex = 2
+
+		-- 💎 รถกลับทันที (ผู้ใช้สั่ง 2026-10-02): ราคาเดียวกับเสร็จทันทีของเครื่องคราฟ (CraftConfig.InstantGems) ·
+		-- แตะสองครั้งยืนยัน (ใช้เพชร) · ราคา/ป้ายเดินลงใน Tick
+		local instant = button(frame, {
+			text = "💎", size = 12, color = Color3.fromRGB(170, 130, 240),
+			anchor = Vector2.new(1, 1), pos = UDim2.new(1, -8, 1, -8), dim = UDim2.fromOffset(94, 30),
+		})
+		instant.Name = "Instant"
+		instant.Activated:Connect(function()
+			UiSound.Play("Click")
+			if self.instantArmed then
+				self.instantArmed = nil
+				if self.onInstant then self.onInstant() end
+			else
+				local token = os.clock()
+				self.instantArmed = token
+				task.delay(3, function()
+					if self.instantArmed == token then
+						self.instantArmed = nil
+						self:Tick()
+					end
+				end)
+				self:Flash("กด “ยืนยัน” อีกครั้ง — ใช้เพชรให้รถกลับทันที")
+			end
+			self:Tick()
+		end)
+		card.instant = instant
 	else
 		local canShip = order.ready and not busy
 		local ship = button(frame, {
