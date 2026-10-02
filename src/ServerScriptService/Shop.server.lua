@@ -246,7 +246,7 @@ local CAPS = {
 		full = "🐄 คอกสัตว์เต็มแล้ว (%d/%d คอก)", more = " — เลเวลฟาร์ม %d มีได้ %d คอก" },
 }
 
--- แถวนี้ซื้อได้ไหมที่เลเวลนี้ · คืน (ข้อความที่จะบอก, จำนวนที่ยังซื้อได้ | nil = ไม่จำกัด)
+-- แถวนี้ซื้อได้ไหมที่เลเวลนี้ · คืน (ข้อความที่จะบอก, จำนวนที่ยังซื้อได้ | nil = ไม่จำกัด, true = เต็มเพดาน ไม่ใช่ล็อกเลเวล)
 -- ร้านเกมหลักไม่มีเลเวล คืน nil เสมอ
 local function farmGate(player, entry)
 	if not ISLAND then return nil, nil end
@@ -261,7 +261,7 @@ local function farmGate(player, entry)
 			local owned = ownedCount(player, rule.is)
 			if owned >= cap then
 				local at = FarmLevelConfig.NextCapLevel(rule.levels, level)
-				return rule.full:format(owned, cap) .. (at and rule.more:format(at, rule.cap(at)) or ""), 0
+				return rule.full:format(owned, cap) .. (at and rule.more:format(at, rule.cap(at)) or ""), 0, true
 			end
 			return nil, cap - owned
 		end
@@ -291,12 +291,13 @@ local function snapshot(player)
 			-- เฟส 2a: ราคาสองสกุลจากกฎเดียว (ShopConfig.PricesOf) · ร้านเกมหลักได้แต่เหรียญ (gems = nil)
 			local coins, gems = ShopConfig.PricesOf(entry)
 			-- เฟส 2c: แถวที่ยังไม่ปลด/บ้านเต็ม โชว์ 🔒 พร้อมเหตุผล ปุ่มซื้อปิด (เซิร์ฟตรวจซ้ำตอนซื้ออยู่ดี)
-			local lockText = farmGate(player, entry)
+			local lockText, _, isFull = farmGate(player, entry)
 			table.insert(sells, {
 				index = index, id = entry.id,
 				name = item.name .. (SPOT_TAG[item.spot] or ""),
 				icon = item.icon, coins = coins, gems = gems,
 				lock = lockText,
+				full = isFull or nil, -- ปุ่ม "เต็ม" แทน 🔒 (ผู้ใช้สั่ง 2026-10-02)
 				category = entry.category, -- แท็บในหน้าร้าน (เฉพาะร้านเกาะ)
 				-- **จำนวนที่ได้ต่อหนึ่งครั้งที่กด** (ผู้ใช้สั่ง 2026-09-24: เมล็ด 250 ได้ 3 เม็ด)
 				-- nil/1 = ทีละชิ้นเหมือนเดิม จึงไม่ต้องแตะแถวอื่นในคอนฟิกเลย

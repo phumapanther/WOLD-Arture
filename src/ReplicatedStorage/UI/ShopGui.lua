@@ -17,6 +17,9 @@ local RUNE = Color3.fromRGB(244, 197, 66)
 local GOLD = Color3.fromRGB(238, 200, 96)
 local GEM = Color3.fromRGB(128, 190, 240) -- ปุ่มจ่ายเพชร: ฟ้า แยกจากปุ่มเหรียญสีทองได้ทันที
 local INK = Color3.fromRGB(24, 26, 32)
+-- เงินไม่พอ = ปุ่มแดง (ผู้ใช้สั่ง 2026-10-02) · ยังกดได้ เซิร์ฟตอบเหตุผลเอง · ราคายังอ่านออกบนพื้นแดง
+local SHORT = Color3.fromRGB(196, 70, 62)
+local SHORT_TEXT = Color3.fromRGB(250, 236, 228)
 
 -- 62500 -> "62,500" · ราคาบ้าน/ของผิดกฎหมายเป็นหลักหมื่น-แสน อ่านไม่ออกถ้าไม่มีจุลภาค
 local function commas(n)
@@ -256,12 +259,13 @@ local function row(parent, order, icon, name, priceText, buttons, extra, priceCo
 		button.AnchorPoint = Vector2.new(1, 0.5)
 		button.Position = UDim2.new(1, -x, 0.5, 0)
 		button.Size = UDim2.fromOffset(spec.width, 26)
-		button.BackgroundColor3 = spec.color
+		button.BackgroundColor3 = spec.short and SHORT or spec.color
 		button.BorderSizePixel = 0
 		button.Font = Enum.Font.GothamBold
 		button.TextSize = 12
-		button.TextColor3 = INK
+		button.TextColor3 = spec.short and SHORT_TEXT or INK
 		button.Text = spec.text
+		if spec.short then button:SetAttribute("Short", true) end
 		button.Parent = frame
 		corner(button, UDim.new(0, 5))
 		button.Activated:Connect(function()
@@ -421,6 +425,8 @@ function ShopGui:Show(snapshot)
 	end
 
 	local filter = self:drawTabs(snapshot.categories)
+	-- ราคาต่อหนึ่งครั้งที่กด เทียบกับเงินในกระเป๋าตอนวาด (เซิร์ฟส่งภาพใหม่หลังทุกการซื้อ สีจึงตามเงินที่เหลือ)
+	local gold, gems = snapshot.gold or 0, snapshot.gems or 0
 	for _, entry in ipairs(snapshot.sells or {}) do
 		if not filter or entry.category == filter then
 			-- The quantity lives in the closure rather than being read off the box at press time, so the row
@@ -439,22 +445,27 @@ function ShopGui:Show(snapshot)
 			if entry.lock then
 				-- เฟส 2c: ยังไม่ปลด/บ้านเต็ม — ปุ่ม 🔒 ปุ่มเดียว บรรทัดล่างบอกเหตุผล (แตะ = ขึ้นเหตุผลเต็มที่ท้ายร้าน)
 				-- จมลงใต้ของที่ซื้อได้ทุกแถว ลำดับในกลุ่มเดิม (ผู้ใช้สั่ง 2026-09-28: คอกสัตว์ตกล่างสุดต้องเลื่อนหา)
+				-- เต็มเพดาน (บ้าน/สัตว์เลี้ยง/คอก) = "เต็ม" · ยังไม่ปลดเลเวล = 🔒 (ผู้ใช้สั่ง 2026-10-02)
 				local frame = row(self.sellList, 100000 + entry.index, entry.icon, label, entry.lock, {
-					{ name = "Locked", text = "🔒", color = Color3.fromRGB(70, 74, 84), width = 58, onClick = function()
+					{ name = "Locked", text = entry.full and "เต็ม" or "🔒", color = Color3.fromRGB(70, 74, 84), width = 58, onClick = function()
 						self:Note(entry.lock)
 					end },
 				}, nil, Color3.fromRGB(214, 150, 110))
 				frame.BackgroundTransparency = 0.35
 			elseif entry.gems and entry.coins then
 				buttons = {
-					{ name = "BuyCoins", text = "💰 " .. commas(entry.coins), color = GOLD, width = 74, onClick = buy("coins") },
-					{ name = "BuyGems", text = "💎 " .. commas(entry.gems), color = GEM, width = 52, onClick = buy("gems") },
+					{ name = "BuyCoins", text = "💰 " .. commas(entry.coins), color = GOLD, width = 74, onClick = buy("coins"),
+						short = entry.coins > gold },
+					{ name = "BuyGems", text = "💎 " .. commas(entry.gems), color = GEM, width = 52, onClick = buy("gems"),
+						short = entry.gems > gems },
 				}
 			elseif entry.gems then
-				buttons = { { name = "BuyGems", text = "💎 " .. commas(entry.gems), color = GEM, width = 58, onClick = buy("gems") } }
+				buttons = { { name = "BuyGems", text = "💎 " .. commas(entry.gems), color = GEM, width = 58, onClick = buy("gems"),
+					short = entry.gems > gems } }
 			else
 				priceText = ("ราคา %d"):format(entry.coins or 0)
-				buttons = { { name = "Buy", text = "ซื้อ", color = Color3.fromRGB(150, 200, 140), width = 58, onClick = buy(nil) } }
+				buttons = { { name = "Buy", text = "ซื้อ", color = Color3.fromRGB(150, 200, 140), width = 58, onClick = buy(nil),
+					short = (entry.coins or 0) > gold } }
 			end
 			if buttons then
 				local frame, used = row(self.sellList, entry.index, entry.icon, label, priceText, buttons, 38 + 4)

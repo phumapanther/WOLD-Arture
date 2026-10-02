@@ -1,17 +1,15 @@
 -- node tools/lua.js tests/shop_gui_test.lua Edit
 -- เฟส 2a: หน้าร้านเกาะมี 5 แท็บ · สองปุ่มซื้อ 💎/💰 ทุกแถว · แท็บไม่เด้งกลับตอนหน้าต่างวาดใหม่หลังซื้อ ·
 -- ร้านเกมหลัก (ไม่มีหมวด) หน้าตาเดิม: ไม่มีแท็บ ปุ่มซื้อปุ่มเดียว
--- เก็บโคลนไว้จนจบเทส เหมือน arena_hud_test (โมดูล UI บางตัว require พี่น้องตอนเรียก ไม่ใช่ตอนโหลด)
-local clones = {}
-local function fresh(module)
-	local copy = module:Clone()
-	copy.Name = module.Name .. "_t" .. math.random(1, 1e9)
-	copy.Parent = module.Parent
-	clones[#clones + 1] = copy
-	local ok, result = pcall(require, copy)
-	assert(ok, result)
-	return result
-end
+-- Studio บล็อกการโคลนโมดูลเข้า ReplicatedStorage จาก execute_luau (2026-10-02) → โฟลเดอร์ Sandboxed ใน ServerStorage
+local mirror = Instance.new("Folder")
+mirror.Name = "ShopGuiMirror"
+mirror.Sandboxed = true
+mirror.Capabilities = SecurityCapabilities.new(Enum.SecurityCapability.Basic, Enum.SecurityCapability.CreateInstances,
+	Enum.SecurityCapability.UI, Enum.SecurityCapability.RunServerScript, Enum.SecurityCapability.Input)
+mirror.Parent = game.ServerStorage
+game.ReplicatedStorage.UI:Clone().Parent = mirror
+game.ReplicatedStorage.SoundscapeConfig:Clone().Parent = mirror -- UiSound อ่านจาก script.Parent.Parent
 
 local out, fails = {}, 0
 local function check(ok, text)
@@ -27,7 +25,7 @@ local function rows(list)
 	return found
 end
 
-local ShopGui = fresh(game.ReplicatedStorage.UI.ShopGui)
+local ShopGui = require(mirror.UI.ShopGui)
 local okNew, shop = pcall(ShopGui.new)
 check(okNew, "สร้างหน้าร้านได้ใน Edit (ไม่ต้องมี LocalPlayer) " .. (okNew and "" or tostring(shop)))
 
@@ -99,8 +97,40 @@ if okNew then
 	check(#shown == 1 and shown[1]:FindFirstChild("Buy") ~= nil and shown[1]:FindFirstChild("BuyGems") == nil,
 		"ร้านเกมหลักปุ่มซื้อปุ่มเดียว")
 	check(shop.purse.Text == "เงิน 100", "กระเป๋าเงินร้านเกมหลักเหมือนเดิม: " .. shop.purse.Text)
+
+	-- 2026-10-02 ผู้ใช้สั่ง: ราคาเกินเงินในกระเป๋า = ปุ่มแดง · แถวที่เต็มเพดาน = ปุ่ม "เต็ม" แทน 🔒
+	local buyRow = rows(shop.sellList)[1]
+	check(buyRow and buyRow.Buy:GetAttribute("Short") == true, "ร้านเกมหลัก: เงิน 100 ซื้อขนมปัง 120 = ปุ่มแดง")
+	shop:Show({ gold = 500, rerollIn = 0, buys = {},
+		sells = { { index = 1, id = "Bread", name = "ขนมปัง", icon = "", coins = 120 } } })
+	buyRow = rows(shop.sellList)[1]
+	check(buyRow and not buyRow.Buy:GetAttribute("Short"), "ร้านเกมหลัก: เงินพอ = ปุ่มสีปกติ")
+	if shop.SelectTab then
+		shop:SelectTab("house")
+		shop:Show(island) -- เงิน 5,000 · เพชร 10
+		local house = rows(shop.sellList)[1]
+		check(house and house.BuyCoins:GetAttribute("Short") == true and house.BuyGems:GetAttribute("Short") == true,
+			"กระท่อมหิน 20,000/💎80 เงินไม่พอทั้งสองสกุล = แดงทั้งสองปุ่ม")
+		shop:SelectTab("decor")
+		local rock = rows(shop.sellList)[1]
+		check(rock and not rock.BuyCoins:GetAttribute("Short") and not rock.BuyGems:GetAttribute("Short"),
+			"ก้อนหิน 750/💎3 เงินพอ = สีปกติทั้งสองปุ่ม")
+		shop:SelectTab("animal")
+		shop:Show({ categories = cats, gold = 0, gems = 0, rerollIn = 0, buys = {}, sells = {
+			{ index = 9, id = "AnimalPen", name = "คอกสัตว์", icon = "", coins = 7500, gems = 30, category = "animal",
+				lock = "🐄 คอกสัตว์เต็มแล้ว (2/2 คอก)", full = true },
+			{ index = 5, id = "Pet_Wolf", name = "หมาป่า", icon = "", coins = 65000, gems = 260, category = "animal",
+				lock = "🔒 ปลดที่เลเวลฟาร์ม 19" },
+		} })
+		local pen, wolf
+		for _, r in ipairs(rows(shop.sellList)) do
+			if r.LayoutOrder == 100009 then pen = r elseif r.LayoutOrder == 100005 then wolf = r end
+		end
+		check(pen and pen.Locked.Text == "เต็ม", "คอกเต็มเพดาน = ปุ่ม \"เต็ม\": " .. tostring(pen and pen.Locked.Text))
+		check(wolf and wolf.Locked.Text == "🔒", "ยังไม่ปลดเลเวล = 🔒 เหมือนเดิม")
+	end
 	shop.gui:Destroy()
 end
 
-for _, c in ipairs(clones) do c:Destroy() end
+mirror:Destroy()
 return (fails == 0 and "PASS\n" or ("FAIL x%d\n"):format(fails)) .. table.concat(out, "\n")

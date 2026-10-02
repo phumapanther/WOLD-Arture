@@ -54,7 +54,10 @@ function CraftGui.new()
 	gui.IgnoreGuiInset = true
 	gui.DisplayOrder = 17
 	gui.Enabled = false
-	gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+	-- นอกเกม (เทสใน Edit) ไม่มี PlayerGui — สร้างไว้เฉยๆ ไม่ต้องแขวน (ทรงเดียวกับ ShopGui)
+	if game:GetService("RunService"):IsRunning() then
+		gui.Parent = Players.LocalPlayer:WaitForChild("PlayerGui")
+	end
 	self.gui = gui
 
 	local backdrop = Instance.new("Frame")
@@ -172,6 +175,16 @@ function CraftGui:OnEnhance(callback) self.onEnhance = callback end
 -- remembered, not how far along it was.
 function CraftGui:ApplyBusy()
 	local remaining = math.max(0, self.busyUntil - os.clock())
+	-- ครบเวลาแล้วปลดเอง: งานที่คืนมาหลังเข้าเกมใหม่ไม่มี CraftFinished ส่งมา (เซิร์ฟแค่แจ้งข้อความ) ไม่งั้นค้าง "รอสักครู่"
+	-- เผื่อ 1 วิให้ CraftFinished ของงานปกติมาถึงก่อน · ปลดเฉพาะงานเดิม (busyUntil เดิม) ไม่ทับงานใหม่
+	local untilAt = self.busyUntil
+	task.delay(remaining + 1, function()
+		if self.busyActive and self.busyUntil == untilAt then
+			self.busyActive = false
+			self.busyIndex = nil
+			self:Render()
+		end
+	end)
 	for index, row in pairs(self.rows or {}) do
 		if index == self.busyIndex then
 			row.odds.Visible = false
@@ -185,7 +198,8 @@ function CraftGui:ApplyBusy()
 			-- เตาไม่ได้ตีเหล็ก: คำว่า "กำลังตี" ที่หน้าครัวอ่านแล้วสะดุด
 			row.button.Text = (self.snapshot and self.snapshot.station) and "กำลังทำ..." or "กำลังตี..."
 		else
-			row.button.Text = "รอ..."
+			-- ผู้ใช้สั่ง 2026-10-02 · งานที่คืนมาหลังเข้าเกมใหม่ไม่รู้ว่าสูตรไหน (busyIndex nil) = ทุกแถวขึ้นแบบนี้
+			row.button.Text = "รอสักครู่"
 		end
 		-- Every button, not just the busy row's: the server refuses a second craft anyway, and a window that
 		-- lets the player press and then tells them off is worse than one that simply does not offer. Greyed
@@ -201,6 +215,7 @@ end
 function CraftGui:Begin(index, seconds)
 	-- A new swing ends the last one's outcome early, whichever row it was on: the player has moved on.
 	self.outcomeIndex = nil
+	self.busyActive = true
 	self.busyIndex = index
 	self.busySeconds = seconds
 	self.busyUntil = os.clock() + seconds
@@ -233,6 +248,7 @@ end
 
 -- The answer. Unlocks the buttons, shows the outcome, and puts the row back to normal a moment later.
 function CraftGui:Finish(index, success)
+	self.busyActive = false
 	self.busyIndex = nil
 	self.outcomeIndex = index
 	self.outcomeOk = success
@@ -527,7 +543,7 @@ function CraftGui:Render()
 	-- A craft in flight survives a redraw. The server sends a fresh snapshot the moment the hammer starts --
 	-- that is what makes the materials visibly leave the bag -- and it destroys every row, so without this the
 	-- bar would appear and vanish in the same frame and every button would come back live mid-swing.
-	if self.busyIndex then
+	if self.busyActive then
 		self:ApplyBusy()
 	elseif self.outcomeIndex then
 		self:ApplyOutcome()
@@ -567,7 +583,9 @@ function CraftGui:Show(snapshot)
 	-- แล้วเสียวัตถุดิบอีกชุด) และเดินจากเตาที่กำลังทำงานไปเครื่องต้มยาต้องไม่เห็นทุกปุ่มขึ้น "รอ..." ทั้งที่
 	-- เครื่องต้มยาว่างอยู่ — ล็อกเป็นของเครื่อง ไม่ใช่ของคน
 	local busy = snapshot.busy
-	if busy and (busy.remaining or 0) > 0 then
+	-- `busyActive` แยกจาก index: งานที่คืนมาหลังเข้าเกมใหม่อาจไม่มี index แต่เครื่องยังทำงานอยู่ ต้องล็อกทุกแถว
+	self.busyActive = busy ~= nil and (busy.remaining or 0) > 0
+	if self.busyActive then
 		self.busyIndex = busy.index
 		self.busySeconds = busy.seconds or busy.remaining
 		self.busyUntil = os.clock() + busy.remaining
@@ -630,6 +648,7 @@ function CraftGui:Hide()
 	-- Forgotten on close. The craft itself carries on at the smith's end -- the server took the materials
 	-- before the first swing -- but a bar and an outcome are things being SHOWN, and there is nobody left to
 	-- show them to. Reopening draws whatever the server says by then.
+	self.busyActive = false
 	self.busyIndex = nil
 	self.outcomeIndex = nil
 	self.times = {}

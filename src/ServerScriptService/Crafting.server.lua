@@ -527,7 +527,7 @@ Remotes.RequestCraft.OnServerEvent:Connect(function(player, index, times)
 	local data = ProfileAccess.Get(player)
 	-- `lock` = เครื่องที่งานนี้จองไว้ · เข้าเกมใหม่ระหว่างทำ ล็อกเครื่องนี้คืนจนงานเสร็จ (QA 2026-09-26)
 	local job = { id = recipe.id, yields = yields, chance = recipe.chance or 1, failGives = recipe.failGives,
-		fee = fee, readyAt = os.time() + seconds, lock = key }
+		fee = fee, readyAt = os.time() + seconds, lock = key, index = index, seconds = seconds }
 	if data then
 		data.CraftJobs = data.CraftJobs or {}
 		table.insert(data.CraftJobs, job)
@@ -740,7 +740,9 @@ PlayerJoin.Each(function(player)
 				local left = math.max(0, (tonumber(job.readyAt) or 0) - os.time())
 				if type(job.lock) == "string" then
 					Busy[player] = Busy[player] or {}
-					Busy[player][job.lock] = { finishAt = os.clock() + left, seconds = left }
+					-- index/seconds = แถบเดินต่อที่แถวเดิมในหน้าต่าง (งานเก่าก่อน 2026-10-02 ไม่มี = หน้าต่างล็อกทุกแถว "รอสักครู่")
+					Busy[player][job.lock] = { index = tonumber(job.index), finishAt = os.clock() + left,
+						seconds = math.max(left, tonumber(job.seconds) or 0) }
 				end
 				task.delay(left, function()
 					if Busy[player] and job.lock then Busy[player][job.lock] = nil end
