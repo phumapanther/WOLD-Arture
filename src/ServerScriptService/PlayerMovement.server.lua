@@ -55,7 +55,8 @@ local function applySpeed(state, player)
 	-- Vitals owns WalkSpeed while downed (crawling pace); don't fight it.
 	if not humanoid or Vitals.IsDowned(player) then return end
 	local base = SPEED[state.state == "ForcedWalk" and "Walk" or state.state]
-	if state.autoFarm and state.state == "Normal" then base = AUTO_FARM_SPEED end
+	-- โหมดเดิน (แตะ Shift ตอนยืน) ก็ถูกทับด้วย — ออโต้ต้องเร็วเท่ากันทุกครั้ง (ผู้ใช้สั่ง 2026-10-02) · หมดแรง (ForcedWalk) ยังช้าตามเดิม
+	if state.autoFarm and (state.state == "Normal" or state.state == "Walk") then base = AUTO_FARM_SPEED end
 	local backward = backpedaling(state)
 	if backward then base = math.min(base, SPEED.Normal) end -- ถอยหลังวิ่งไม่ได้
 	-- Carry weight and any slow effect both scale the same base speed, so neither has to know about the other.

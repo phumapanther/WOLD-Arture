@@ -140,6 +140,7 @@ if cfg.arena then
 end
 if cfg.touch then
 	if not cfg.arena then SYN[#SYN + 1] = { "BuildToggle(ปุ่ม🏗️·เกาะ)", 41, { x = W - 140, y = 7, w = 38, h = 38 }, true }
+		SYN[#SYN + 1] = { "AutoFarmToggle(ปุ่ม🌾·เกาะ)", 41, { x = W - 186, y = 7, w = 38, h = 38 }, true }
 	end
 	SYN[#SYN + 1] = { "Unscope(ปุ่มเลิกส่องสไน·สนาม)", 23, { x = W - 80, y = 0.32 * H - 28, w = 56, h = 56 }, true }
 end
@@ -231,7 +232,7 @@ end
 
 -- 5) panels covered by persistent HUD drawn on top (DisplayOrder >= panel) — grouped per HUD piece
 local PERSIST = { ["EventBannerGui::EventBannerGui|Banners"] = true, ["StoryGui::WOLD_Story|Tracker"] = true,
-	["TutorialGui::TutorialGui|TopRight"] = true, ["script:BuildToggle(ปุ่ม🏗️·เกาะ)"] = true,
+	["TutorialGui::TutorialGui|TopRight"] = true, ["script:BuildToggle(ปุ่ม🏗️·เกาะ)"] = true, ["script:AutoFarmToggle(ปุ่ม🌾·เกาะ)"] = true,
 	["script:DebugCoords(พิกัด/เวอร์ชัน)"] = true, ["PartyGui::PartyGui|Panel"] = true, ["script:Toast(ข้อความเด้ง)"] = true }
 add("-- หน้าต่างโดน HUD ที่ค้างจอ (ลำดับสูงกว่า) ทับ")
 for _, grp in ipairs(hudGroups) do

@@ -458,6 +458,12 @@ local function startAuto()
 		task.delay(2, function() if not autoFarming then setBanner(nil) end end)
 		return
 	end
+	-- เกาะไม่มีฝูงสัตว์เดินเล่น (สัตว์ในคอกไม่ใช่ HerdAnimal) มือเปล่าจึงไม่มีอะไรให้เล็ง — บอกตรงๆ ดีกว่าขึ้น "เปิด" แล้วยืนนิ่ง
+	if not heldTool and workspace:GetAttribute("IslandMode") == true then
+		setBanner("ถือขวาน อีเต้อ หรือพลั่วก่อน แล้วค่อยเปิดออโต้")
+		task.delay(2, function() if not autoFarming then setBanner(nil) end end)
+		return
+	end
 	autoFarming = true
 	Remotes.SetAutoFarming:FireServer(true) -- เดินเร็วเกือบวิ่งระหว่างจุด (PlayerMovement · 2026-10-01)
 	-- บอกทางหยุดที่ **เครื่องนี้** ใช้ได้จริง เครื่องที่มีทั้งสองอย่างบอกทั้งสองทาง
@@ -549,6 +555,56 @@ UserInputService.InputBegan:Connect(function(input, gameProcessed)
 	-- ปุ่มบนจอเป็นเจ้าของคีย์เสมอ (มันยิง Triggered ให้เองอยู่แล้ว) คีย์เปล่าใช้ได้เฉพาะตอนไม่มีปุ่มไหนโชว์
 	if not anyFPromptShown() then toggleAuto() end
 end)
+
+-- ปุ่มฟาร์มออโต้ของมือถือบนเกาะ (ผู้ใช้แจ้ง 2026-10-02: มือถือเปิดออโต้บนเกาะไม่ได้เลย)
+-- ทุกโหนดบนเกาะมี `Uid` (ของที่วาง · จุดสุ่มบนดิน · ก้อนในโซนแร่) Gathering จึงไม่ใส่ปุ่ม [F] ให้สักจุด — คอมยังมีคีย์ F เปล่า
+-- แต่มือถือไม่มีทางเข้าเลย · ปุ่มนี้ = คีย์ F เปล่าของมือถือ · ขวาบนแถวเดียวกับ 🏗️ (-102) ถัดซ้ายไปอีกช่อง
+if workspace:GetAttribute("IslandMode") == true and UserInputService.TouchEnabled then
+	local Responsive = require(game.ReplicatedStorage.UI.Responsive)
+	local gui = Instance.new("ScreenGui")
+	gui.Name = "WOLD_AutoFarmToggle"
+	gui.ResetOnSpawn = false
+	gui.IgnoreGuiInset = true
+	gui.DisplayOrder = 41
+	gui.Parent = player:WaitForChild("PlayerGui")
+
+	local group = Instance.new("Frame")
+	group.AnchorPoint = Vector2.new(1, 0)
+	group.Position = UDim2.new(1, 0, 0, 0)
+	group.Size = UDim2.fromOffset(220, 140)
+	group.BackgroundTransparency = 1
+	group.Parent = gui
+	Responsive.Scale(group, Responsive.CornerMinScale())
+
+	local button = Instance.new("TextButton")
+	button.Name = "AutoFarmButton"
+	button.AnchorPoint = Vector2.new(1, 0)
+	button.Position = UDim2.new(1, -148, 0, 7)
+	button.Size = UDim2.fromOffset(38, 38)
+	button.BackgroundColor3 = Color3.fromRGB(40, 38, 46)
+	button.BackgroundTransparency = 0.35
+	button.BorderSizePixel = 0
+	button.TextSize = 20
+	button.Text = "🌾"
+	button.AutoButtonColor = false
+	button.Parent = group
+	local round = Instance.new("UICorner")
+	round.CornerRadius = UDim.new(1, 0)
+	round.Parent = button
+	local rim = Instance.new("UIStroke")
+	rim.Thickness = 2
+	rim.Transparency = 0.2
+	rim.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+	rim.Parent = button
+	button.Activated:Connect(toggleAuto)
+	-- ขอบทอง = ปิด · เขียว = กำลังออโต้ (แตะอีกครั้ง/แตะแถบสถานะเพื่อหยุด) ทรงเดียวกับปุ่ม 🏗️
+	task.spawn(function()
+		while true do
+			rim.Color = autoFarming and Color3.fromRGB(111, 224, 122) or Color3.fromRGB(196, 150, 60)
+			task.wait(0.25)
+		end
+	end)
+end
 
 -- Changing what is held changes what the run is allowed to target, so any change stops it.
 Remotes.EquipmentChanged.OnClientEvent:Connect(function(who)
