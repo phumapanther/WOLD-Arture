@@ -16,6 +16,7 @@ local States = {} -- [player] = { slots, equipped = {weapon, armor}, gold }
 -- · 2026-09-22: โหลดกลับมาคีย์เป็นสตริง → `state.slots[40]` หาไม่เจอ (FromSave แปลงกลับเป็นตัวเลข)
 -- · 2026-09-25: เซฟตรงๆ แล้ว JSON ตัดทุกช่องหลังรูแรกทิ้ง = **ของกระเป๋า VIP หายหลังออกเข้าเซิร์ฟ** (ForSave ใช้คีย์สตริง)
 local SlotCodec = require(game.ServerScriptService.SlotCodec)
+local Vip = require(game.ServerScriptService.Vip) -- เพดานน้ำหนัก VIP (Inventory.MaxWeight)
 
 function Inventory.Add(player, saved)
 	States[player] = {
@@ -61,12 +62,23 @@ function Inventory.Weight(player)
 	return total
 end
 
+-- เพดานน้ำหนักของคนนี้: VIP 750 · ทั่วไป 500 (สนามไม่มีโปรไฟล์ = 500 ทุกคน)
+function Inventory.MaxWeight(player)
+	return InventoryConfig.WeightLimit(Vip.Has(player))
+end
+
 function Inventory.SpeedMultiplier(player)
-	return InventoryConfig.SpeedMultiplier(Inventory.Weight(player))
+	return InventoryConfig.SpeedMultiplier(Inventory.Weight(player), Inventory.MaxWeight(player))
 end
 
 function Inventory.IsHeavilyLoaded(player)
-	return InventoryConfig.IsHeavilyLoaded(Inventory.Weight(player))
+	return InventoryConfig.IsHeavilyLoaded(Inventory.Weight(player), Inventory.MaxWeight(player))
+end
+
+-- VIP เริ่ม/หมดโดยไม่มีของในกระเป๋าขยับ = ป้ายน้ำหนักยังโชว์เพดานเก่า · PlayerInventory ถามทุกวินาที ส่งใหม่เมื่อเปลี่ยน
+function Inventory.RefreshWeightLimit(player)
+	local state = States[player]
+	if state and state.sentMaxWeight ~= Inventory.MaxWeight(player) then Inventory.Send(player) end
 end
 
 --------------------------------------------------------------------------------
@@ -654,6 +666,7 @@ function Inventory.Send(player)
 	-- ไคลเอนต์ที่เริ่มช้ากว่าก็อ่านได้ · เขียนซ้ำค่าเดิมไม่ส่งอะไรข้ามเน็ต
 	local held = state.equipped.weapon and state.equipped.weapon.id or nil
 	if player:GetAttribute("WOLD_Weapon") ~= held then player:SetAttribute("WOLD_Weapon", held) end
+	state.sentMaxWeight = Inventory.MaxWeight(player)
 	Remotes.InventoryUpdate:FireClient(player, {
 		slots = wireSlots(state.slots),
 		equipped = state.equipped,
@@ -661,7 +674,7 @@ function Inventory.Send(player)
 		hotbar = state.hotbar,
 		autoEat = state.autoEat,
 		weight = Inventory.Weight(player),
-		maxWeight = InventoryConfig.MaxWeight,
+		maxWeight = state.sentMaxWeight,
 	})
 end
 

@@ -21,6 +21,11 @@ InventoryConfig.VipSlotEnd = InventoryConfig.SlotCount + InventoryConfig.VipSlot
 -- ช่องทั้งหมดที่มีจริง (ของเก่าที่วน 1..SlotCount ยังเห็นแค่กระเป๋าหลัก ซึ่งถูกแล้ว)
 InventoryConfig.TotalSlotCount = InventoryConfig.VipSlotEnd
 InventoryConfig.MaxWeight = 500 -- carry this much before the penalties below start (ผู้ใช้ปรับจาก 2000)
+InventoryConfig.VipMaxWeight = 750 -- VIP แบกได้มากกว่า (ผู้ใช้สั่ง 2026-10-02) · ถามผ่าน WeightLimit / Inventory.MaxWeight
+
+function InventoryConfig.WeightLimit(isVip)
+	return isVip and InventoryConfig.VipMaxWeight or InventoryConfig.MaxWeight
+end
 
 -- Overencumbrance. Past MaxWeight you slow down in proportion to the excess, down to a floor so a hoarder can
 -- still crawl home rather than being frozen in place.
@@ -30,9 +35,11 @@ InventoryConfig.HeavyLoadRatio = 1.5
 InventoryConfig.HeavyActionPenalty = 0.5
 
 -- Returns the movement multiplier for a given carried weight: 1 up to the limit, then falling away.
-function InventoryConfig.SpeedMultiplier(weight)
-	if weight <= InventoryConfig.MaxWeight then return 1 end
-	local over = weight / InventoryConfig.MaxWeight -- 1.0 at the limit, 2.0 at double
+-- `limit` = เพดานของคนนั้น (VIP 750) · ไม่ใส่ = MaxWeight
+function InventoryConfig.SpeedMultiplier(weight, limit)
+	limit = limit or InventoryConfig.MaxWeight
+	if weight <= limit then return 1 end
+	local over = weight / limit -- 1.0 at the limit, 2.0 at double
 	return math.max(InventoryConfig.MinSpeedMultiplier, 1 / over)
 end
 
@@ -66,8 +73,8 @@ function InventoryConfig.ShouldAutoEat(hungerFraction, secondsSinceHurt, busy)
 		and secondsSinceHurt >= InventoryConfig.AutoEatCalmSeconds
 end
 
-function InventoryConfig.IsHeavilyLoaded(weight)
-	return weight > InventoryConfig.MaxWeight * InventoryConfig.HeavyLoadRatio
+function InventoryConfig.IsHeavilyLoaded(weight, limit)
+	return weight > (limit or InventoryConfig.MaxWeight) * InventoryConfig.HeavyLoadRatio
 end
 
 return InventoryConfig

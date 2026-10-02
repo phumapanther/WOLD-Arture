@@ -420,6 +420,7 @@ task.spawn(function()
 	while true do
 		task.wait(1)
 		for _, player in ipairs(Players:GetPlayers()) do
+			Inventory.RefreshWeightLimit(player) -- VIP เริ่ม/หมด = ป้ายน้ำหนักเปลี่ยนตาม (750 / 500)
 			local state = Inventory.Get(player)
 			local id = state and state.autoEat
 			local vitals = id and Vitals.Get(player)
