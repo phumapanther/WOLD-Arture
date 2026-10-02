@@ -614,6 +614,10 @@ end
 ArenaAccess.TrapsAllowed = function()
 	return State.phase == "live"
 end
+-- ช่วงนับถอยหลัง/ซื้อของ ยิงไม่ได้ (ผู้ใช้สั่ง 2026-10-02)
+ArenaAccess.AttacksAllowed = function()
+	return State.phase == "live"
+end
 
 ArenaBots.Bind({
 	sideOfPlayer = sideOfPlayer,

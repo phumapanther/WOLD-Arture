@@ -442,6 +442,11 @@ Remotes.RequestSkill.OnServerEvent:Connect(function(player)
 	-- ล้ม/ติดสถานะ/กำลังกินยา = ใช้สกิลไม่ได้ **และบอกเหตุผล** (QA 2026-09-28)
 	local blocked = require(game.ServerScriptService.Deny).Blocked(player, "ใช้สกิล")
 	if blocked then return refuse(player, blocked) end
+	-- สนาม: ช่วงเตรียมตัว/นับถอยหลังใช้สกิลไม่ได้ (ผู้ใช้สั่ง 2026-10-02)
+	local ArenaAccess = require(game.ServerScriptService.ArenaAccess)
+	if ArenaAccess.AttacksAllowed and not ArenaAccess.AttacksAllowed() then
+		return refuse(player, "ยังไม่เริ่มสู้ — รอนับถอยหลังจบก่อน")
+	end
 	if Blocking.IsBlocking(player) then return end -- ยกการ์ดอยู่ = ใช้สกิลไม่ได้ (สนาม · เฟส 3)
 	local _, _, humanoid = characterParts(player)
 	if not humanoid or humanoid.Health <= 0 then return end

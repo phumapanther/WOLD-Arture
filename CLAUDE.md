@@ -353,6 +353,14 @@ VIP เริ่ม/หมดกลางเกม = `Inventory.RefreshWeightLim
   `Remotes.RequestCraftInstant` หักผ่าน `PremiumAccess.SpendGems` · เร่ง/เสร็จทันทีใช้ `reschedule(player, busy, left)` ตัวเดียวใน Crafting
 - **รถส่งออก 💎 กลับทันที** (ผู้ใช้สั่ง 2026-10-02): ปุ่มในการ์ดที่กำลังส่งข้างแถบเวลา · ราคา `CraftConfig.InstantGems` ตัวเดียวกัน
   (18 นาที = 💎 4) · `RequestExport("instant")` → `IslandFarm.instant` หักเพชรแล้วเรียก `resolve` ตัวเดียวกับลูป · เทส `export_gui_instant_test` (Edit)
+- **เสียงทำอาหาร** (ผู้ใช้สั่ง 2026-10-02): เตาทำอาหาร/เตาอบ (`stove`/`bakery`) เล่น `Cook` (ProSoundEffects Fry Or Sizzle 9114542867) แทนค้อน `Craft` ·
+  `CraftController.COOK_STATIONS` · เครื่องอื่น/ช่างตีเหล็กยังเป็นค้อน · ใช้ทั้งเกมหลักและเกาะ
+
+**สนาม PVP: ช่วงเตรียมตัว/นับถอยหลังยิง-ฟัน-ใช้สกิลไม่ได้** (ผู้ใช้สั่ง 2026-10-02) `ArenaAccess.AttacksAllowed` (phase == live) ถามที่
+`PlayerCombat` RequestAttack + `WeaponSkills` RequestSkill · ไม่ได้ใส่ใน `Deny.Blocked` เพราะสวมอาวุธ/ใช้ของช่วงซื้อต้องทำได้
+
+**ตกปลาบนเกาะ** (ผู้ใช้สั่ง 2026-10-02): น้ำทุกที่บนเกาะ = สระฟาร์ม (`FishingConfig.IslandLoot` ไม่ผูกพิกัด) ตกได้ปลาครบ 17 ชนิด +
+`IslandExtras` ของดรอปมอน 5 ชนิด · เศษไม้/ก้อนหิน · ขนมปัง/น้ำ ≈ 14% (`junk = true` ไม่มีน้ำหนัก ไม่นับสมุดสะสม/เควสปลา) · เทส `island_fishing_test` (offline)
 
 **ต้นเวทมนตร์ (กิ่งเวท) ปลด Lv5 แทน Lv28** (ผู้ใช้สั่ง 2026-10-02 · เดิมเลเวลตันที่ 20 ไม่มีใครปลูกได้) · `IslandConfig.Crops` + `ExportConfig.Goods` ·
 บ่อน้ำ (`Deco_Well`) ย้าย Lv25 → Lv28 ให้ Lv28 ไม่ว่าง (กติกาปลด 1-6 อย่างต่อเลเวล) · ใบส่งออกอาจขอกิ่งเวทได้ตั้งแต่ Lv5

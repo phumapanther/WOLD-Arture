@@ -265,4 +265,36 @@ function FishingConfig.LootAt(position)
 	return combined, zone
 end
 
+--------------------------------------------------------------------------------
+-- ตกปลาบนเกาะฟาร์ม (ผู้ใช้สั่ง 2026-10-02)
+--------------------------------------------------------------------------------
+
+-- ของที่ไม่ใช่ปลาในสระบนเกาะ: ของดรอปมอน · ขยะ (เศษไม้ ก้อนหิน) · ขนมปัง/น้ำ — `junk = true` = ไม่มีน้ำหนัก
+-- ไม่นับสมุดสะสม/เควสปลา · น้ำหนักรวม 22 เทียบปลา 140 ≈ 14% ของการตก (ตัวเลขผมตั้ง)
+FishingConfig.IslandExtras = {
+	{ item = "Slime", weight = 3, junk = true },
+	{ item = "Bone", weight = 2, junk = true },
+	{ item = "Fiber", weight = 2, junk = true },
+	{ item = "BatGuano", weight = 2, junk = true },
+	{ item = "Claw", weight = 1, junk = true },
+	{ item = "WoodScrap", weight = 4, junk = true },
+	{ item = "Stone", weight = 4, junk = true },
+	{ item = "Bread", weight = 2, junk = true },
+	{ item = "Water", weight = 2, junk = true },
+}
+
+-- บนเกาะน้ำทุกที่คือสระฟาร์ม (ไม่ผูกพิกัด — ผู้ใช้ขุด/ย้ายสระเองได้ วงพิกัดเดิมอาจไม่ครอบน้ำทั้งหมด) ·
+-- ปลาธรรมดา + ปลาประจำถิ่นทุกชนิด (เขต IslandPond) + ของที่ไม่ใช่ปลา
+function FishingConfig.IslandLoot()
+	local zone
+	for _, z in ipairs(FishingConfig.Zones) do
+		if z.id == "IslandPond" then zone = z end
+	end
+	local combined = {}
+	for _, list in ipairs({ FishingConfig.Loot, zone.fish, FishingConfig.IslandExtras }) do
+		for _, entry in ipairs(list) do combined[#combined + 1] = entry end
+	end
+	return combined, zone
+end
+
 return FishingConfig

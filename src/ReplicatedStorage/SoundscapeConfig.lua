@@ -232,6 +232,7 @@ SoundscapeConfig.Interface = {
 		-- length of an action rather than firing once, and at the common level it went missing under the
 		-- world while the player stood there waiting for it.
 		Craft = 0.6,
+		Cook = 0.6,
 		-- ชุด QA 2026-09-28: ตัวอักษรบทพูดเบามาก (ขึ้นถี่) · เลเวลขึ้น/กาชาหายาก/ป้ายชื่อเกมดังกว่าปกติ
 		Blip = 0.12, LevelUp = 0.5, GachaLegend = 0.45, CutTitle = 0.45, CutRumble = 0.35, ToastError = 0.25,
 		-- แตรฉลองเลเวลฟาร์ม (เฟส 2c) — เกิดนานๆ ครั้ง ต้องดังพอให้รู้สึกว่าเป็นช่วงเวลาพิเศษ
@@ -278,6 +279,9 @@ SoundscapeConfig.Interface = {
 	-- the point: the bar filling and the sound running are the same piece of feedback, and a single clang
 	-- against a two-and-a-half-second wait would leave most of it silent.
 	Craft = "rbxassetid://99358431994374",
+	-- ทำอาหาร (ผู้ใช้สั่ง 2026-10-02): เตาทำอาหาร/เตาอบใช้เสียงผัดในกระทะแทนค้อน (CraftController เลือกตามสถานี)
+	-- "Fry Or Sizzle 1" ProSoundEffects 40 วิ · PreloadAsync ผ่าน 2026-10-02
+	Cook = "rbxassetid://9114542867",
 
 	-- Money changing hands: giving, robbing, a fine paid, a trade closing. Heard by both parties, since a
 	-- transfer is a thing that happens between two people rather than to one.

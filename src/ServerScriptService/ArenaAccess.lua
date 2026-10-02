@@ -29,4 +29,8 @@ ArenaAccess.OnKill = nil
 -- `TrapWeapon.server` เก็บกับดักที่ค้างทิ้งทั้งหมด (ช่วงซื้อของเขวี้ยงไปดักจุดเกิดศัตรูไม่ได้ · รอบใหม่สนามสะอาด)
 ArenaAccess.TrapsAllowed = nil
 
+-- ตั้งโดย `Arena/ArenaMatch.server` · () → true เฉพาะช่วงสู้ (ผู้ใช้สั่ง 2026-10-02) · ช่วงเตรียมตัว/นับถอยหลัง
+-- คลิกแล้วยิง/ฟัน/ใช้สกิลไม่ได้ · ถามที่ `PlayerCombat` RequestAttack กับ `WeaponSkills` RequestSkill
+ArenaAccess.AttacksAllowed = nil
+
 return ArenaAccess

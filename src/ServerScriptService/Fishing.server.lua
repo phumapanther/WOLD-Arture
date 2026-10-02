@@ -217,7 +217,10 @@ end
 -- คืนทั้งชนิดปลาและเขต เพื่อให้ผู้เรียกบอกผู้เล่นได้ว่านี่คือปลาประจำถิ่น
 local function rollLoot(position)
 	local loot, zone = FishingConfig.Loot, nil
-	if position then
+	if ServerConfig.IsFarm then
+		-- เกาะ: น้ำทุกที่ = สระฟาร์ม ปลาครบทุกชนิด + ของที่ไม่ใช่ปลา (ผู้ใช้สั่ง 2026-10-02)
+		loot, zone = FishingConfig.IslandLoot()
+	elseif position then
 		loot, zone = FishingConfig.LootAt(position)
 	end
 
@@ -227,9 +230,9 @@ local function rollLoot(position)
 	local running = 0
 	for _, entry in ipairs(loot) do
 		running += entry.weight
-		if roll <= running then return entry.item, zone end
+		if roll <= running then return entry.item, zone, entry.junk end
 	end
-	return loot[1].item, zone
+	return loot[1].item, zone, loot[1].junk
 end
 
 local function baitCount(player)
@@ -353,7 +356,7 @@ local function startFishing(player)
 				return stop(player, "หนอนหมด หยุดตกปลา")
 			end
 
-			local caught, zone = rollLoot(session.anchor)
+			local caught, zone, junk = rollLoot(session.anchor)
 			local item = ItemCatalog.Get(caught)
 
 			-- ปลาประจำถิ่นไหม — ใช้บอกผู้เล่นและใช้ตัดสินว่าจะประกาศให้ทั้งเซิร์ฟเวอร์รู้ไหม
@@ -377,6 +380,21 @@ local function startFishing(player)
 				sound.Parent = root
 				sound:Play()
 				Debris:AddItem(sound, 4)
+			end
+
+			-- ของที่ไม่ใช่ปลา (บนเกาะ): ไม่มีน้ำหนัก ไม่นับสมุดสะสม/เควสปลา · คันเบ็ดยังสึกเหมือนตกปลา
+			if junk then
+				if Inventory.AddItem(player, caught, 1) then
+					local held = Inventory.EquippedWeapon(player)
+					if held and held.fishing and not ClassPerks.Has(player, "weaponNeverBreaks") then
+						Inventory.WearEquipped(player, 1)
+					end
+					Remotes.SocialNotify:FireClient(player, "info",
+						("ตกได้ %s 🎣"):format(item and item.name or caught))
+				else
+					Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม ของหลุดไป")
+				end
+				continue
 			end
 
 			-- Rolled HERE, on the server, for the same reason the catch itself is: the client is told what it

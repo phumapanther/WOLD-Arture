@@ -781,6 +781,10 @@ Remotes.RequestAttack.OnServerEvent:Connect(function(player, aim)
 	-- is deliberately still allowed -- walking, running, rolling and sliding all stay available.
 	local blocked = Deny.Blocked(player, "โจมตี")
 	if blocked then return Deny.Tell(player, blocked) end
+	-- สนาม: ช่วงเตรียมตัว/นับถอยหลังยิงไม่ได้ (ผู้ใช้สั่ง 2026-10-02)
+	if ArenaAccess.AttacksAllowed and not ArenaAccess.AttacksAllowed() then
+		return Deny.Tell(player, "ยังไม่เริ่มสู้ — รอนับถอยหลังจบก่อน")
+	end
 	-- อาวุธติดสกินพังค้าง (ความคงทน 0) = ตีไม่ได้จนกว่าจะซ่อม (ผู้ใช้สั่ง 2026-09-29)
 	if InventoryConfig.IsBroken(select(2, Inventory.EquippedWeapon(player))) then
 		return Deny.Tell(player, "อาวุธพังแล้ว — ใช้ค้อนซ่อมก่อน")
