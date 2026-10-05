@@ -11,8 +11,16 @@ local tables = {}
 local function tableOf(lang)
 	if lang == "th" then return nil end
 	if tables[lang] == nil then
-		local mod = script.Parent:FindFirstChild("LocaleData") and script.Parent.LocaleData:FindFirstChild(lang)
-		tables[lang] = mod and require(mod) or false
+		-- แต่ละภาษาแบ่งหลายโมดูล <lang>_<n> (Source ของ Roblox เกิน 200,000 ไบต์ไม่ได้) → รวมทุกส่วน
+		local merged, found = {}, false
+		local folder = script.Parent:FindFirstChild("LocaleData")
+		for _, mod in ipairs(folder and folder:GetChildren() or {}) do
+			if mod:IsA("ModuleScript") and (mod.Name == lang or mod.Name:match("^" .. lang .. "_%d+$")) then
+				for k, v in pairs(require(mod)) do merged[k] = v end
+				found = true
+			end
+		end
+		tables[lang] = found and merged or false
 	end
 	return tables[lang] or nil
 end

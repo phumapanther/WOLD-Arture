@@ -14,13 +14,16 @@ const ROOT = path.resolve(__dirname, "..");
 const LANGS = ["en", "zh", "ja"];
 const THAI = /[฀-๿]/;
 
+// แต่ละภาษาแบ่งเป็นหลายไฟล์ <lang>_<n>.lua (Source เกิน 200,000 ไม่ได้) — อ่านรวมทุกส่วน
 function readTable(lang) {
-  const file = path.join(ROOT, "src/ReplicatedStorage/LocaleData", lang + ".lua");
-  const text = fs.readFileSync(file, "utf8");
+  const dir = path.join(ROOT, "src/ReplicatedStorage/LocaleData");
   const map = new Map();
   const re = /\[("(?:[^"\\]|\\.)*")\]\s*=\s*("(?:[^"\\]|\\.)*")/g;
-  let m;
-  while ((m = re.exec(text))) map.set(JSON.parse(m[1]), JSON.parse(m[2]));
+  for (const f of fs.readdirSync(dir).filter((f) => new RegExp(`^${lang}(_\\d+)?\\.lua$`).test(f))) {
+    const text = fs.readFileSync(path.join(dir, f), "utf8");
+    let m;
+    while ((m = re.exec(text))) map.set(JSON.parse(m[1]), JSON.parse(m[2]));
+  }
   return map;
 }
 
