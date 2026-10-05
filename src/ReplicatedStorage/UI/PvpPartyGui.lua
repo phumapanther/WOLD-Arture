@@ -15,6 +15,8 @@ PvpPartyGui.__index = PvpPartyGui
 local ACCENT = Color3.fromRGB(216, 172, 84)
 local TEXT_LIGHT = Color3.fromRGB(240, 240, 245)
 local ClassConfig = require(script.Parent.Parent.ClassConfig)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show
 local TEXT_MUTED = Color3.fromRGB(180, 180, 195)
 local GLASS = Color3.fromRGB(255, 255, 255)
 local SLOT_BG = Color3.fromRGB(78, 78, 82)
@@ -134,7 +136,7 @@ function PvpPartyGui.new(parent)
 	title.TextSize = 30
 	title.TextColor3 = TEXT_LIGHT
 	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.Text = "ปาร์ตี้"
+	title.Text = L("ปาร์ตี้")
 	title.Parent = panel
 	self.title = title
 
@@ -268,7 +270,7 @@ function PvpPartyGui.new(parent)
 	--------------------------------------------------------------------------------
 	-- ปุ่มเล่น / สถานะค้นหาห้อง
 	--------------------------------------------------------------------------------
-	local playButton = pill(panel, "เล่น", GREEN, 170)
+	local playButton = pill(panel, L("เล่น"), GREEN, 170)
 	playButton.Name = "PlayButton"
 	playButton.AnchorPoint = Vector2.new(0.5, 1)
 	playButton.Position = UDim2.new(0.5, 0, 1, -34)
@@ -291,7 +293,7 @@ function PvpPartyGui.new(parent)
 	searchLabel.Parent = panel
 	self.searchLabel = searchLabel
 
-	local cancelButton = pill(panel, "ยกเลิก", RED, 150)
+	local cancelButton = pill(panel, L("ยกเลิก"), RED, 150)
 	cancelButton.Name = "CancelButton"
 	cancelButton.AnchorPoint = Vector2.new(0.5, 1)
 	cancelButton.Position = UDim2.new(0.5, 0, 1, -34)
@@ -303,7 +305,7 @@ function PvpPartyGui.new(parent)
 
 	-- **ปุ่มของแอดมิน: เริ่มแมตช์คนเดียวได้เลย ที่เหลือเป็นบอท** (ผู้ใช้สั่ง)
 	-- นั่งข้างปุ่มเล่น ไม่ใช่แทนที่มัน — แอดมินต้องเทสทางปกติได้ด้วยโดยไม่ต้องถอดสิทธิ์ตัวเอง
-	local soloButton = pill(panel, "เริ่มเลย (แอดมิน)", Color3.fromRGB(86, 96, 130), 170)
+	local soloButton = pill(panel, L("เริ่มเลย (แอดมิน)"), Color3.fromRGB(86, 96, 130), 170)
 	soloButton.Name = "SoloButton"
 	soloButton.AnchorPoint = Vector2.new(0, 1)
 	soloButton.Position = UDim2.new(0.5, 100, 1, -34)
@@ -339,11 +341,11 @@ function PvpPartyGui.new(parent)
 	inviteText.Parent = invite
 	self.inviteText = inviteText
 
-	local accept = pill(invite, "ตกลง", GREEN, 140)
+	local accept = pill(invite, L("ตกลง"), GREEN, 140)
 	accept.AnchorPoint = Vector2.new(1, 1)
 	accept.Position = UDim2.new(0.5, -4, 1, -8)
 	accept.ZIndex = 6
-	local decline = pill(invite, "ยกเลิก", RED, 140)
+	local decline = pill(invite, L("ยกเลิก"), RED, 140)
 	decline.AnchorPoint = Vector2.new(0, 1)
 	decline.Position = UDim2.new(0.5, 4, 1, -8)
 	decline.ZIndex = 6
@@ -372,11 +374,11 @@ function PvpPartyGui.new(parent)
 	friendsTitle.Font = Enum.Font.SourceSansBold
 	friendsTitle.TextSize = 24
 	friendsTitle.TextColor3 = TEXT_LIGHT
-	friendsTitle.Text = "รายชื่อเพื่อน"
+	friendsTitle.Text = L("รายชื่อเพื่อน")
 	friendsTitle.ZIndex = 11
 	friendsTitle.Parent = friends
 
-	local closeFriends = pill(friends, "ปิด", Color3.fromRGB(70, 68, 78), 70)
+	local closeFriends = pill(friends, L("ปิด"), Color3.fromRGB(70, 68, 78), 70)
 	closeFriends.AnchorPoint = Vector2.new(1, 0)
 	closeFriends.Position = UDim2.new(1, -12, 0, 12)
 	closeFriends.Size = UDim2.fromOffset(70, 30)
@@ -406,7 +408,7 @@ function PvpPartyGui.new(parent)
 	empty.Font = Enum.Font.SourceSans
 	empty.TextSize = 18
 	empty.TextColor3 = TEXT_MUTED
-	empty.Text = "ยังไม่มีเพื่อนในรายชื่อ"
+	empty.Text = L("ยังไม่มีเพื่อนในรายชื่อ")
 	empty.Visible = false
 	empty.ZIndex = 11
 	empty.Parent = friendRows
@@ -455,30 +457,30 @@ function PvpPartyGui:SetRankInfo(info)
 	end
 	local PvpRankConfig = require(script.Parent.Parent.PvpRankConfig)
 	if info.locked then
-		self.rankLine.Text = "🔒 " .. PvpRankConfig.LockedText
-		self.rankNote.Text = "แมตช์ตอนนี้ยังไม่นับแต้มแร็งก์"
+		self.rankLine.Text = "🔒 " .. Show(PvpRankConfig.LockedText)
+		self.rankNote.Text = L("แมตช์ตอนนี้ยังไม่นับแต้มแร็งก์")
 		return
 	end
 	if not info.played then
-		self.rankLine.Text = "🔩 ยังไม่มีแร็งก์"
-		self.rankNote.Text = "ชนะแมตช์ที่ไม่มีบอทเพื่อเก็บแต้ม (+25 · แพ้ −18)"
+		self.rankLine.Text = L("🔩 ยังไม่มีแร็งก์")
+		self.rankNote.Text = L("ชนะแมตช์ที่ไม่มีบอทเพื่อเก็บแต้ม (+25 · แพ้ −18)")
 		return
 	end
 	local tier = PvpRankConfig.Tier(info.tier)
 	local nextTier = PvpRankConfig.Tiers[(info.tier or 1) + 1]
-	local line = ('%s <font color="#%s">%s</font> · %d แต้ม'):format(tier.emoji, tier.color:ToHex(), tier.name, info.points or 0)
-	if nextTier and info.next then line ..= (" · อีก %d ถึง%s"):format(info.next - (info.points or 0), nextTier.name) end
+	local line = L('%s <font color="#%s">%s</font> · %d แต้ม', tier.emoji, tier.color:ToHex(), tier.name, info.points or 0)
+	if nextTier and info.next then line ..= L(" · อีก %d ถึง%s", info.next - (info.points or 0), nextTier.name) end
 	self.rankLine.Text = line
 	local notes = {}
 	local last = info.last
 	if last and last.kind == "season" then
-		notes[#notes + 1] = ("จบซีซัน: แร็งก์ลดลง 2 ขั้น (%d แต้ม)"):format(last.d or 0)
+		notes[#notes + 1] = L("จบซีซัน: แร็งก์ลดลง 2 ขั้น (%d แต้ม)", last.d or 0)
 	elseif last and last.d then
-		notes[#notes + 1] = ("แมตช์ล่าสุด %s%d"):format((last.d or 0) >= 0 and "+" or "−", math.abs(last.d or 0))
+		notes[#notes + 1] = L("แมตช์ล่าสุด %s%d", (last.d or 0) >= 0 and "+" or "−", math.abs(last.d or 0))
 	end
 	if info.endsAt then
 		local days = math.max(0, math.floor((info.endsAt - workspace:GetServerTimeNow()) / 86400))
-		notes[#notes + 1] = ("ซีซัน %d เหลือ %d วัน"):format(info.season or 1, days)
+		notes[#notes + 1] = L("ซีซัน %d เหลือ %d วัน", info.season or 1, days)
 	end
 	self.rankNote.Text = table.concat(notes, " · ")
 end
@@ -579,7 +581,7 @@ function PvpPartyGui:Render(snap)
 		slot.rankBadge.Visible = member ~= nil
 		slot.card.BackgroundColor3 = member and SLOT_BG or SLOT_EMPTY
 		if member then
-			slot.name.Text = member.name .. (member.me and " (คุณ)" or "")
+			slot.name.Text = member.name .. (member.me and L(" (คุณ)") or "")
 			slot.level.Text = member.level and ("Lv. %d"):format(member.level) or ""
 			slot.level.Visible = member.level ~= nil
 			-- กรอบการ์ดเป็นสีอาชีพ (ถ้ามีอาชีพ) ไม่มีอาชีพ = กรอบกระจกจางเหมือนเดิม
@@ -600,7 +602,7 @@ function PvpPartyGui:Render(snap)
 	self._inviteFrom = snap.invite and snap.invite.userId or nil
 	self.invite.Visible = snap.invite ~= nil
 	if snap.invite then
-		self.inviteText.Text = ("%s ชวนเข้าปาร์ตี้"):format(snap.invite.name)
+		self.inviteText.Text = L("%s ชวนเข้าปาร์ตี้", snap.invite.name)
 	end
 
 	-- ค้นหาห้อง
@@ -616,19 +618,19 @@ function PvpPartyGui:Render(snap)
 
 	if snap.notReady == true and not searching then
 		-- **บอกความจริงตั้งแต่ก่อนกด** ไม่ใช่ให้หมุนแล้วค่อยเฉลยตอนหมดเวลา
-		self.searchLabel.Text = "สนาม PVP ยังไม่เปิด — ยังไม่ได้สร้างเพลสสนาม"
+		self.searchLabel.Text = L("สนาม PVP ยังไม่เปิด — ยังไม่ได้สร้างเพลสสนาม")
 		self.searchLabel.TextColor3 = ACCENT
 	elseif searching then
 		local secs = snap.searchSeconds or 0
 		if snap.launching then
-			self.searchLabel.Text = "เจอห้องแล้ว — กำลังพาเข้าสนาม…"
+			self.searchLabel.Text = L("เจอห้องแล้ว — กำลังพาเข้าสนาม…")
 			self.searchLabel.TextColor3 = GREEN
 		else
-			local line = ("กำลังค้นหาห้อง  %d:%02d   (%d/%d คน)")
+			local line = (L("กำลังค้นหาห้อง  %d:%02d   (%d/%d คน)"))
 				:format(math.floor(secs / 60), secs % 60, snap.queued or 1, snap.needed or 6)
 			-- นับถอยหลังบอทเติม: การรอที่บอกว่าจะจบเมื่อไหร่ ต่างจากการรอที่ไม่บอกอะไรเลย
 			if snap.botsIn and snap.botsIn > 0 then
-				line ..= ("   · บอทมาเติมใน %d:%02d"):format(math.floor(snap.botsIn / 60), snap.botsIn % 60)
+				line ..= L("   · บอทมาเติมใน %d:%02d", math.floor(snap.botsIn / 60), snap.botsIn % 60)
 			end
 			self.searchLabel.Text = line
 			self.searchLabel.TextColor3 = TEXT_MUTED
@@ -663,11 +665,11 @@ function PvpPartyGui:RenderFriends(rows)
 		name.TextTruncate = Enum.TextTruncate.AtEnd
 		-- **บอกด้วยว่าใครอยู่ในล็อบบี้นี้** — คำเชิญยังส่งข้ามเซิร์ฟไม่ได้ ปุ่มที่กดแล้วโดนปฏิเสธ
 		-- ทุกครั้งโดยไม่บอกเหตุผลล่วงหน้าคือปุ่มที่อ่านเหมือนพัง
-		name.Text = friend.name .. (friend.here and "" or "  · ไม่ได้อยู่ในล็อบบี้")
+		name.Text = friend.name .. (friend.here and "" or L("  · ไม่ได้อยู่ในล็อบบี้"))
 		name.ZIndex = 12
 		name.Parent = row
 
-		local invite = pill(row, "ชวน", friend.here and GREEN or Color3.fromRGB(70, 68, 78), 88)
+		local invite = pill(row, L("ชวน"), friend.here and GREEN or Color3.fromRGB(70, 68, 78), 88)
 		invite.AnchorPoint = Vector2.new(1, 0.5)
 		invite.Position = UDim2.new(1, -12, 0.5, 0)
 		invite.Size = UDim2.fromOffset(88, 32)

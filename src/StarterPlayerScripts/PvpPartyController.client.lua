@@ -11,6 +11,7 @@ while workspace:GetAttribute("IsLobby") == nil do task.wait(0.2) end
 if workspace:GetAttribute("IsLobby") ~= true then return end
 
 local Remotes = require(ReplicatedStorage.Remotes)
+local L = require(ReplicatedStorage.Locale).L
 local player = Players.LocalPlayer
 
 -- หน้าปาร์ตี้ตัวปัจจุบัน — **ไม่ใช่ตัวแรกที่เจอ** (บั๊กมือถือ 2026-09-26: สามช่องเป็น + ทั้งหมด กดเล่นไม่ได้)
@@ -129,7 +130,7 @@ task.spawn(function()
 	if not back then return end
 	if not game:IsLoaded() then game.Loaded:Wait() end
 	UiSound.Play("LobbyReturn")
-	local text = back.again and "กลับสู่ล็อบบี้แล้ว — กำลังหาห้องต่อพร้อมตี้" or "กลับสู่ล็อบบี้แล้ว"
+	local text = back.again and L("กลับสู่ล็อบบี้แล้ว — กำลังหาห้องต่อพร้อมตี้") or L("กลับสู่ล็อบบี้แล้ว")
 	for _ = 1, 20 do
 		local toast = ReplicatedStorage:FindFirstChild("WOLD_Toast")
 		if toast then return toast:Fire(text, false, true) end -- silent: เสียงของตัวเองดังไปแล้ว

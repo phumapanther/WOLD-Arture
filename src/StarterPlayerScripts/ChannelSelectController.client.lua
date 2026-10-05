@@ -10,6 +10,7 @@ local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 local ChannelSelectGui = require(game.ReplicatedStorage.UI.ChannelSelectGui)
 local AvatarThumbnails = require(game.ReplicatedStorage.UI.AvatarThumbnails)
+local L = require(game.ReplicatedStorage.Locale).L
 local Responsive = require(game.ReplicatedStorage.UI.Responsive)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 
@@ -105,20 +106,20 @@ end
 
 -- เหตุผลที่เข้าเกาะฟาร์มไม่ได้ ต้องบอกเป็นภาษาคน ไม่ใช่รหัสที่มีแต่คนเขียนโค้ดอ่านออก
 local FARM_REASONS = {
-	need_vip = "ต้องมี VIP ก่อนถึงจะเข้าเกาะของตัวเองได้ — ซื้อได้ที่ร้านเพชรในเกม",
-	not_invited = "เจ้าของเกาะยังไม่ได้ชวนคุณ",
-	no_island = "เพื่อนคนนี้ยังไม่มีเกาะ (ต้องเข้าเกาะตัวเองสักครั้งก่อน)",
-	owner_away = "เจ้าของไม่ได้อยู่บนเกาะตอนนี้ — เข้าได้ตอนเขาอยู่เท่านั้น",
-	farm_not_ready = "โหมดฟาร์มมิ่งยังไม่เปิด",
-	create_failed = "สร้างเกาะไม่สำเร็จ ลองใหม่อีกครั้ง",
-	teleport_failed = "เข้าเกาะไม่สำเร็จ ลองใหม่อีกครั้ง",
+	need_vip = "ต้องมี VIP ก่อนถึงจะเข้าเกาะของตัวเองได้ — ซื้อได้ที่ร้านเพชรในเกม", -- locale: skip (แปลตอนใช้)
+	not_invited = "เจ้าของเกาะยังไม่ได้ชวนคุณ", -- locale: skip (แปลตอนใช้)
+	no_island = "เพื่อนคนนี้ยังไม่มีเกาะ (ต้องเข้าเกาะตัวเองสักครั้งก่อน)", -- locale: skip (แปลตอนใช้)
+	owner_away = "เจ้าของไม่ได้อยู่บนเกาะตอนนี้ — เข้าได้ตอนเขาอยู่เท่านั้น", -- locale: skip (แปลตอนใช้)
+	farm_not_ready = "โหมดฟาร์มมิ่งยังไม่เปิด", -- locale: skip (แปลตอนใช้)
+	create_failed = "สร้างเกาะไม่สำเร็จ ลองใหม่อีกครั้ง", -- locale: skip (แปลตอนใช้)
+	teleport_failed = "เข้าเกาะไม่สำเร็จ ลองใหม่อีกครั้ง", -- locale: skip (แปลตอนใช้)
 }
 
 Remotes.JoinFailed.OnClientEvent:Connect(function(reason)
 	warn("[ChannelSelect] join failed:", reason)
 	pendingJoin += 1 -- a real answer arrived; any in-flight timeout for this attempt should no-op
 	resetToLobby("error")
-	gui:SetFarmStatus(FARM_REASONS[reason])
+	gui:SetFarmStatus(FARM_REASONS[reason] and L(FARM_REASONS[reason]))
 end)
 
 local function onJoin(mode, channel)
@@ -180,3 +181,6 @@ Responsive.OnViewportChanged(function()
 	wasPortrait = isPortrait
 	buildGui()
 end)
+
+-- เปลี่ยนภาษาที่หินเวทในล็อบบี้ = สร้างหน้าจอใหม่ทางเดียวกับจอพลิก ข้อความทุกป้ายเป็นภาษาใหม่ทันที (2026-10-05)
+player:GetAttributeChangedSignal("WOLD_Lang"):Connect(buildGui)

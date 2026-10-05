@@ -5,6 +5,7 @@
 -- Creations -> Images), because image upload is a website action. Paste the returned id into BACKGROUND_IMAGE
 -- below. An empty id is safe: the painted gradient underneath stands in for it, in the same brass and teal.
 local BACKGROUND_IMAGE = "" -- assets/ui/loading-background.jpg
+local L = require(script.Parent.Parent.Locale).L
 
 local LoadingGui = {}
 LoadingGui.__index = LoadingGui
@@ -21,10 +22,10 @@ local CREAM = Color3.fromRGB(248, 234, 200)
 
 -- Cycled under the bar while loading, so a slow join still looks like it is doing something.
 local STATUS_LINES = {
-	"กำลังโหลดทรัพยากรเกม...",
-	"กำลังเตรียมโลก Arthue...",
-	"กำลังจุดเตาไอน้ำ...",
-	"กำลังปรับเฟืองและวาล์ว...",
+	L("กำลังโหลดทรัพยากรเกม..."),
+	L("กำลังเตรียมโลก Arthue..."),
+	L("กำลังจุดเตาไอน้ำ..."),
+	L("กำลังปรับเฟืองและวาล์ว..."),
 }
 
 local function corner(parent, radius)

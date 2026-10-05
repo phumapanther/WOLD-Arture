@@ -5,6 +5,7 @@ local ROWS, COLS = 2, 15 -- 30 avatar slots per channel, matching the reference 
 local Responsive = require(script.Parent.Responsive)
 
 local PvpPartyGui = require(script.Parent.PvpPartyGui)
+local L = require(script.Parent.Parent.Locale).L
 
 local ChannelSelectGui = {}
 ChannelSelectGui.__index = ChannelSelectGui
@@ -39,8 +40,8 @@ local GLASS = Color3.fromRGB(255, 255, 255)
 
 -- **หน้าจอตอนกดเข้าเซิร์ฟ** (ผู้ใช้สั่ง 2026-09-25) — ทรงเดียวกับจอ "กำลังพาไปหน้าล็อบบี้" ของ LobbyTravelController
 -- แทนจอดำเฉยๆ · ใช้สองที่: บนแผ่นดำของ Lock() (จุดไข่ปลาขยับ) และสำเนานิ่งที่ส่งให้ SetTeleportGui
-local JOIN_TITLE = "กำลังเข้าสู่โลก"
-local JOIN_SUB = "กำลังค้นหาโลก รอสักครู่"
+local JOIN_TITLE = "กำลังเข้าสู่โลก" -- locale: skip (แปลตอนใช้)
+local JOIN_SUB = "กำลังค้นหาโลก รอสักครู่" -- locale: skip (แปลตอนใช้)
 local JOIN_GOLD = Color3.fromRGB(244, 197, 66) -- สีเดียวกับจอไปล็อบบี้
 
 local function addJoinText(sheet)
@@ -53,7 +54,7 @@ local function addJoinText(sheet)
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 20
 	title.TextColor3 = JOIN_GOLD
-	title.Text = JOIN_TITLE
+	title.Text = L(JOIN_TITLE)
 	title.ZIndex = sheet.ZIndex + 1
 	title.Parent = sheet
 
@@ -66,7 +67,7 @@ local function addJoinText(sheet)
 	sub.Font = Enum.Font.Gotham
 	sub.TextSize = 13
 	sub.TextColor3 = Color3.fromRGB(176, 178, 188)
-	sub.Text = JOIN_SUB
+	sub.Text = L(JOIN_SUB)
 	sub.ZIndex = sheet.ZIndex + 1
 	sub.Parent = sheet
 	return title
@@ -154,7 +155,7 @@ function ChannelSelectGui.new()
 	title.TextSize = portrait and 20 or 26
 	title.TextColor3 = ACCENT
 	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.Text = "WOLD Arture — เลือกเซิร์ฟเวอร์"
+	title.Text = L("WOLD Arture — เลือกเซิร์ฟเวอร์")
 	title.Parent = root
 
 	-- mode tab bar — anchored to the top-right corner (not a fixed negative offset) so it stays on-screen and
@@ -215,7 +216,7 @@ function ChannelSelectGui.new()
 	refreshButton.Font = Enum.Font.SourceSansBold
 	refreshButton.TextSize = portrait and 14 or 15
 	refreshButton.TextColor3 = TEXT_LIGHT
-	refreshButton.Text = "รีเฟรช"
+	refreshButton.Text = L("รีเฟรช")
 	refreshButton.Parent = tabBar
 	corner(refreshButton, UDim.new(1, 0))
 	glassStroke(refreshButton, 0.7)
@@ -297,7 +298,7 @@ function ChannelSelectGui.new()
 		nameLabel.Font = Enum.Font.SourceSansBold
 		nameLabel.TextSize = small and 16 or 22
 		nameLabel.TextColor3 = TEXT_LIGHT
-		nameLabel.Text = "เชิฟ " .. channel
+		nameLabel.Text = L("เชิฟ %s", channel)
 		nameLabel.TextXAlignment = Enum.TextXAlignment.Left
 		nameLabel.Parent = row
 
@@ -584,7 +585,7 @@ function ChannelSelectGui:RenderFarms(rows)
 		empty.Font = Enum.Font.SourceSans
 		empty.TextSize = small and 16 or 20
 		empty.TextColor3 = TEXT_MUTED
-		empty.Text = "กำลังโหลด..."
+		empty.Text = L("กำลังโหลด...")
 		empty.Parent = list
 		return
 	end
@@ -611,7 +612,7 @@ function ChannelSelectGui:RenderFarms(rows)
 		title.TextColor3 = TEXT_LIGHT
 		title.TextXAlignment = Enum.TextXAlignment.Left
 		title.TextTruncate = Enum.TextTruncate.AtEnd
-		title.Text = ("เกาะของ %s"):format(farm.ownerName or "?")
+		title.Text = L("เกาะของ %s", farm.ownerName or "?")
 		title.Parent = row
 
 		local sub = Instance.new("TextLabel")
@@ -622,8 +623,8 @@ function ChannelSelectGui:RenderFarms(rows)
 		sub.TextSize = small and 12 or 15
 		sub.TextColor3 = farm.locked and Color3.fromRGB(230, 170, 90) or TEXT_MUTED
 		sub.TextXAlignment = Enum.TextXAlignment.Left
-		sub.Text = farm.locked == "vip" and "ต้องมี VIP — ซื้อได้ที่ร้านเพชรในเกม"
-			or (farm.mine and "เกาะส่วนตัวของคุณ" or "คุณถูกชวนเข้าเกาะนี้")
+		sub.Text = farm.locked == "vip" and L("ต้องมี VIP — ซื้อได้ที่ร้านเพชรในเกม")
+			or (farm.mine and L("เกาะส่วนตัวของคุณ") or L("คุณถูกชวนเข้าเกาะนี้"))
 		sub.Parent = row
 
 		local JOIN_W = small and 84 or 110
@@ -637,7 +638,7 @@ function ChannelSelectGui:RenderFarms(rows)
 		join.TextColor3 = Color3.new(1, 1, 1)
 		join.BackgroundColor3 = farm.locked and Color3.fromRGB(70, 72, 86) or Color3.fromRGB(52, 178, 108)
 		join.AutoButtonColor = farm.locked == nil
-		join.Text = farm.locked and "ล็อก" or "เข้า"
+		join.Text = farm.locked and L("ล็อก") or L("เข้า")
 		join.Parent = row
 		corner(join, UDim.new(0, 10))
 		join.MouseButton1Click:Connect(function()
@@ -665,9 +666,9 @@ end
 -- Brief feedback so a press that finds no change still looks like it did something.
 function ChannelSelectGui:FlashRefresh()
 	local button = self.refreshButton
-	button.Text = "กำลังรีเฟรช..."
+	button.Text = L("กำลังรีเฟรช...")
 	task.delay(0.6, function()
-		if button.Parent then button.Text = "รีเฟรช" end
+		if button.Parent then button.Text = L("รีเฟรช") end
 	end)
 end
 
@@ -705,9 +706,9 @@ function ChannelSelectGui:SetRowStatus(mode, channel, status)
 	-- then contradicts.
 	local text = {
 		idle = "",
-		connecting = "กำลังเชื่อมต่อ...",
-		slow = "ใช้เวลานานกว่าปกติ กดใหม่ได้",
-		error = "เชื่อมต่อไม่สำเร็จ ลองอีกครั้ง",
+		connecting = L("กำลังเชื่อมต่อ..."),
+		slow = L("ใช้เวลานานกว่าปกติ กดใหม่ได้"),
+		error = L("เชื่อมต่อไม่สำเร็จ ลองอีกครั้ง"),
 	}
 	row.statusLabel.Text = text[status] or ""
 	row.joinButton.Active = (status ~= "connecting") and not self._locked
@@ -724,7 +725,7 @@ function ChannelSelectGui:Lock()
 		local dots = 0
 		while self._locked and self.joinTitle.Parent do
 			dots = (dots + 1) % 4
-			self.joinTitle.Text = JOIN_TITLE .. string.rep(".", dots)
+			self.joinTitle.Text = L(JOIN_TITLE) .. string.rep(".", dots)
 			task.wait(0.4)
 		end
 	end)
