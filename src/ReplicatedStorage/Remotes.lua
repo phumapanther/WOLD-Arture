@@ -49,6 +49,7 @@ local EVENTS = {
 	-- UI; pressing is a number key or a tap.
 	"RequestSetHotbar", "RequestUseHotbar",
 	"RequestSetAutoEat", -- เลือก/ยกเลิกอาหารกินอัตโนมัติ (2026-10-02)
+	"SetLanguage", -- เลือกภาษา (หินเวท · 2026-10-05)
 	-- Classes: the card offering a choice at level 5 and 50, the choice itself, and the confirmation. The
 	-- client asks for an offer on join too, since the level that unlocked it may be from an old session.
 	"ClassOffer", "RequestChooseClass", "ClassChanged", "RequestClassOffer",
