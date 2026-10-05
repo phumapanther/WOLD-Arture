@@ -15,6 +15,7 @@ local UiSound = require(script.Parent.UiSound)
 local ItemIcon = require(script.Parent.ItemIcon)
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
 local MailConfig = require(script.Parent.Parent.MailConfig)
+local Locale = require(script.Parent.Parent.Locale) -- ระบบหลายภาษา (2026-10-05)
 
 local SocialGui = {}
 SocialGui.__index = SocialGui
@@ -482,7 +483,7 @@ end
 -- Mute calls, mute chat notices, and pick the wallpaper. Kept on the client: none of it changes what the
 -- server does, only what this player hears and sees.
 function SocialGui:buildSettings()
-	local page = scrollPage(self.body, "settings", 300)
+	local page = scrollPage(self.body, "settings", 390) -- +ภาษา 90 px
 	self.screens.settings = page
 
 	self.settings = self.settings or { muteCalls = false, muteChat = false, wallpaper = "rune" }
@@ -541,6 +542,46 @@ function SocialGui:buildSettings()
 		y = y + 48
 		return row
 	end
+
+	-- ภาษา (ระบบหลายภาษา 2026-10-05): ปุ่มสี่ปุ่ม ป้ายเขียนด้วยภาษานั้นเอง · เลือก = callback "language"
+	-- (SocialController ยิง SetLanguage) · ปุ่มที่เลือกอยู่ไฮไลต์ตามแอตทริบิวต์ WOLD_Lang
+	local langHead = label(page, "ภาษา / Language", 12, TEXT_MUTED)
+	langHead.Position = UDim2.new(0, 0, 0, y + 2)
+	langHead.Size = UDim2.new(1, 0, 0, 18)
+	y = y + 22
+	self.languageButtons = {}
+	local function paintLang()
+		local current = Locale.Current()
+		for id, b in pairs(self.languageButtons) do
+			b.BackgroundColor3 = id == current and OK_GREEN or STONE_DEEP
+		end
+	end
+	self.pickLanguage = function(id)
+		if self.callbacks.language then self.callbacks.language(id) end
+	end
+	for i, lang in ipairs(Locale.Languages) do
+		local b = Instance.new("TextButton")
+		b.Position = UDim2.new((i - 1) / 4, 2, 0, y)
+		b.Size = UDim2.new(0.25, -4, 0, 34)
+		b.BorderSizePixel = 0
+		b.BackgroundTransparency = 0.2
+		b.Text = lang.label
+		b.TextColor3 = TEXT_LIGHT
+		b.TextSize = 14
+		b.Font = Enum.Font.GothamMedium
+		b.Parent = page
+		corner(b, UDim.new(0, 8))
+		self.languageButtons[lang.id] = b
+		b.Activated:Connect(function() self.pickLanguage(lang.id) end)
+	end
+	local localPlayer = game:GetService("Players").LocalPlayer
+	if localPlayer then localPlayer:GetAttributeChangedSignal("WOLD_Lang"):Connect(paintLang) end
+	paintLang()
+	y = y + 40
+	local langNote = label(page, Locale.L("บางส่วนจะเปลี่ยนเมื่อเข้าเกมใหม่"), 11, TEXT_MUTED)
+	langNote.Position = UDim2.new(0, 0, 0, y)
+	langNote.Size = UDim2.new(1, 0, 0, 16)
+	y = y + 26
 
 	toggleRow("ปิดเสียงโทรเข้า", "muteCalls")
 	toggleRow("ปิดแจ้งเตือนแชท", "muteChat")

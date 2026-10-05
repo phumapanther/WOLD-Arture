@@ -184,6 +184,8 @@ end
 local latest = { board = {}, friends = {}, pending = {}, bank = 0, gold = 0, level = 1 }
 local settings = { muteCalls = false, muteChat = false, wallpaper = "rune" }
 gui:SetSettings(settings)
+-- เลือกภาษา: ยิงตรง ไม่ผ่าน ask() เพราะต้องใช้ได้ในล็อบบี้ด้วย (LanguagePublisher รันทุกเพลส)
+gui:On("language", function(lang) Remotes.SetLanguage:FireServer(lang) end)
 gui:On("settingsChanged", function(updated)
 	settings = updated
 	if (settings.photoMode == true) ~= PhotoMode.IsOn() then
