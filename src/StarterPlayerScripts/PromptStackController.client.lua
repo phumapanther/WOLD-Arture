@@ -10,9 +10,17 @@ local Locale = require(game.ReplicatedStorage.Locale)
 
 -- ป้ายปุ่ม E/F ตั้งจากเซิร์ฟ = ภาษาเดียวกันทุกคน → แปลในเครื่องนี้ตอนโชว์ (ค่าที่ไคลเอนต์เขียนไม่ replicate ·
 -- เซิร์ฟเขียนทับเมื่อไหร่ ลูปข้างล่างแปลซ้ำเอง · Show ของข้อความที่แปลแล้ว = เดิม) — ระบบหลายภาษา 2026-10-05
+-- ข้อความปุ่มอาจถูกแปลเป็นภาษาก่อนหน้าไปแล้ว → ย้อนเป็นไทยก่อนแปลใหม่ (เปลี่ยนภาษากลางเกม/กลับเป็นไทยได้)
+local function toThai(text)
+	for _, lang in ipairs({ "en", "zh", "ja" }) do
+		local thai = Locale.ToThai(lang, text)
+		if thai ~= text then return thai end
+	end
+	return text
+end
+
 local function translatePrompt(prompt)
-	if Locale.Current() == "th" then return end
-	local action, object = Locale.Show(prompt.ActionText), Locale.Show(prompt.ObjectText)
+	local action, object = Locale.Show(toThai(prompt.ActionText)), Locale.Show(toThai(prompt.ObjectText))
 	if prompt.ActionText ~= action then prompt.ActionText = action end
 	if prompt.ObjectText ~= object then prompt.ObjectText = object end
 end

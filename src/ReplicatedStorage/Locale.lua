@@ -53,62 +53,80 @@ function Locale.T(lang, thai, ...)
 	return ok and text or template
 end
 
--- แม่แบบไทย → รูปแบบ Lua ไว้จับข้อความที่เซิร์ฟประกอบมาแล้ว · เรียงยาวก่อน (เจาะจงกว่าชนะ)
-local patterns = {}
-local function patternsOf(lang)
-	if patterns[lang] then return patterns[lang] end
+-- แม่แบบ → รูปแบบ Lua ไว้จับข้อความที่ประกอบมาแล้ว · เรียงยาวก่อน (เจาะจงกว่าชนะ)
+-- map = { แม่แบบต้นทาง = แม่แบบปลายทาง } ใช้ได้ทั้งไทย→ภาษาอื่น (Translate) และกลับ (ToThai)
+local function buildPatterns(map)
 	local list = {}
-	for thai in pairs(tableOf(lang) or {}) do
-		if thai:find("%%") then
+	for source in pairs(map) do
+		if source:find("%%") then
 			-- ตัดเป็นชิ้น: ตัวคั่น %… → ช่องจับ · ข้อความระหว่างนั้น escape ตัวพิเศษของรูปแบบ Lua
 			local p, last = "", 1
 			-- %% ในแม่แบบ = เครื่องหมาย % ตัวเดียวในข้อความจริง
 			local function literal(piece)
 				return (piece:gsub("%%%%", "%%"):gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0"))
 			end
-			for s, spec, e in thai:gmatch("()(%%[%-%d%.]*[sdf%%])()") do
+			for st, spec, e in source:gmatch("()(%%[%-%d%.]*[sdf%%])()") do
 				if spec == "%%" then
-					p ..= literal(thai:sub(last, e - 1))
+					p ..= literal(source:sub(last, e - 1))
 				else
-					p ..= literal(thai:sub(last, s - 1))
+					p ..= literal(source:sub(last, st - 1))
 					p ..= spec:sub(-1) == "s" and "(.-)" or "([%-%d%.,]+)"
 				end
 				last = e
 			end
-			p ..= literal(thai:sub(last))
-			list[#list + 1] = { thai = thai, pattern = "^" .. p .. "$" }
+			p ..= literal(source:sub(last))
+			list[#list + 1] = { source = source, pattern = "^" .. p .. "$" }
 		end
 	end
-	table.sort(list, function(a, b) return #a.thai > #b.thai end)
-	patterns[lang] = list
+	table.sort(list, function(x, y) return #x.source > #y.source end)
 	return list
 end
 
+-- ข้อความสำเร็จรูป → แม่แบบปลายทาง · ช่อง %s แปลซ้ำได้ (ชื่อไอเทม · "ดาบ (ในบ้าน) x3") · ไม่เจอ = ข้อความเดิม
+local function convert(map, list, text)
+	if map[text] then return map[text] end
+	for _, entry in ipairs(list) do
+		local caps = table.pack(text:match(entry.pattern))
+		if caps[1] ~= nil then
+			local i = 0
+			return (map[entry.source]:gsub("%%[%-%d%.]*[sdf%%]", function(spec)
+				if spec == "%%" then return "%" end
+				i += 1
+				local v = caps[i]
+				if not v then return "" end
+				if map[v] then return map[v] end
+				-- สั้นกว่าเดิมเสมอ = ไม่วนไม่จบ
+				if spec:sub(-1) == "s" and #v < #text then return convert(map, list, v) end
+				return v
+			end))
+		end
+	end
+	return text
+end
+
+local patterns = {}
 -- ข้อความไทยสำเร็จรูป (จากเซิร์ฟ) → ภาษา lang · ไม่เจอ = ข้อความเดิม
 function Locale.Translate(lang, text)
 	if lang == "th" or type(text) ~= "string" then return text end
 	local t = tableOf(lang)
 	if not t then return text end
-	if t[text] then return t[text] end
-	for _, entry in ipairs(patternsOf(lang)) do
-		local caps = table.pack(text:match(entry.pattern))
-		if caps[1] ~= nil then
-			local template = t[entry.thai]
-			local i = 0
-			local result = template:gsub("%%[%-%d%.]*[sdf%%]", function(spec)
-				if spec == "%%" then return "%" end
-				i += 1
-				local v = caps[i]
-				if not v then return "" end
-				if t[v] then return t[v] end
-				-- ช่อง %s ที่เป็นข้อความซ้อนแม่แบบอีกชั้น ("ดาบ (ในบ้าน) x3") · สั้นกว่าเดิมเสมอ = ไม่วนไม่จบ
-				if spec:sub(-1) == "s" and #v < #text then return Locale.Translate(lang, v) end
-				return v
-			end)
-			return result
-		end
+	patterns[lang] = patterns[lang] or buildPatterns(t)
+	return convert(t, patterns[lang], text)
+end
+
+-- กลับทาง: ข้อความภาษา lang ที่ขึ้นจออยู่แล้ว → ไทยต้นฉบับ (เปลี่ยนภาษากลางเกมแปลป้ายเดิมใหม่ได้ · ผู้ใช้แจ้ง 2026-10-05)
+-- คำแปลซ้ำกันหลายกุญแจ = ได้กุญแจใดกุญแจหนึ่ง (ความหมายเดียวกันอยู่แล้ว) · ไม่รู้จัก/เป็นไทยอยู่แล้ว = เดิม
+local reverse = {}
+function Locale.ToThai(lang, text)
+	if lang == "th" or type(text) ~= "string" then return text end
+	if not reverse[lang] then
+		local t = tableOf(lang)
+		if not t then return text end
+		local map = {}
+		for thai, tr in pairs(t) do map[tr] = map[tr] or thai end
+		reverse[lang] = { map = map, list = buildPatterns(map) }
 	end
-	return text
+	return convert(reverse[lang].map, reverse[lang].list, text)
 end
 
 -- โฟลเดอร์ Sandboxed ของเทส Edit ได้ GetService("Players") = nil ทั้งที่ IsClient() เป็นจริง
