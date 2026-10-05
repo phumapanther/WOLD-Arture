@@ -17,6 +17,7 @@ if workspace:GetAttribute("IsLobby") then return end
 
 local Responsive = require(game.ReplicatedStorage.UI.Responsive)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local L = require(game.ReplicatedStorage.Locale).L
 
 local RUNE = Color3.fromRGB(244, 197, 66)
 local GOOD = Color3.fromRGB(120, 206, 128)
@@ -25,9 +26,9 @@ local BAD = Color3.fromRGB(206, 72, 62)
 -- Why a trip ended, in the words the player would use. Anything unlisted falls back to the generic line,
 -- so a reason added on the server later is merely vague here rather than blank.
 local REASONS = {
-	hit = "ยกเลิก — โดนโจมตีระหว่างรอ",
-	downed = "ยกเลิก — คุณล้มลงแล้ว",
-	failed = "ไปล็อบบี้ไม่สำเร็จ ลองใหม่อีกครั้ง",
+	hit = "ยกเลิก — โดนโจมตีระหว่างรอ", -- locale: skip (แปลตอนใช้)
+	downed = "ยกเลิก — คุณล้มลงแล้ว", -- locale: skip (แปลตอนใช้)
+	failed = "ไปล็อบบี้ไม่สำเร็จ ลองใหม่อีกครั้ง", -- locale: skip (แปลตอนใช้)
 }
 
 local gui = Instance.new("ScreenGui")
@@ -60,7 +61,7 @@ caption.Font = Enum.Font.GothamBold
 caption.TextSize = 13
 caption.TextColor3 = RUNE
 caption.TextXAlignment = Enum.TextXAlignment.Left
-caption.Text = "กำลังกลับหน้าล็อบบี้"
+caption.Text = L("กำลังกลับหน้าล็อบบี้")
 caption.Parent = panel
 
 local hint = Instance.new("TextLabel")
@@ -71,7 +72,7 @@ hint.Font = Enum.Font.Gotham
 hint.TextSize = 11
 hint.TextColor3 = Color3.fromRGB(176, 178, 188)
 hint.TextXAlignment = Enum.TextXAlignment.Left
-hint.Text = "ถ้าโดนตีหรือล้มระหว่างนี้ จะยกเลิก"
+hint.Text = L("ถ้าโดนตีหรือล้มระหว่างนี้ จะยกเลิก")
 hint.Parent = panel
 
 local track = Instance.new("Frame")
@@ -154,7 +155,7 @@ local function buildVeil()
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 20
 	title.TextColor3 = RUNE
-	title.Text = "กำลังพาไปหน้าล็อบบี้"
+	title.Text = L("กำลังพาไปหน้าล็อบบี้")
 	title.Parent = sheet
 
 	local sub = Instance.new("TextLabel")
@@ -165,7 +166,7 @@ local function buildVeil()
 	sub.Font = Enum.Font.Gotham
 	sub.TextSize = 13
 	sub.TextColor3 = Color3.fromRGB(176, 178, 188)
-	sub.Text = "กำลังหาเซิร์ฟเวอร์ล็อบบี้ รอสักครู่"
+	sub.Text = L("กำลังหาเซิร์ฟเวอร์ล็อบบี้ รอสักครู่")
 	sub.Parent = sheet
 
 	return veil, title, sub
@@ -183,16 +184,16 @@ end)
 local function veilOn()
 	veil.Enabled = true
 	local shownAt = os.clock()
-	veilSub.Text = "กำลังหาเซิร์ฟเวอร์ล็อบบี้ รอสักครู่"
+	veilSub.Text = L("กำลังหาเซิร์ฟเวอร์ล็อบบี้ รอสักครู่")
 	task.spawn(function()
 		local dots = 0
 		while veil.Enabled do
 			dots = (dots + 1) % 4
-			veilTitle.Text = "กำลังพาไปหน้าล็อบบี้" .. string.rep(".", dots)
+			veilTitle.Text = L("กำลังพาไปหน้าล็อบบี้") .. string.rep(".", dots)
 			-- มือถือ/เน็ตช้าใช้เวลานาน — บอกว่ายังทำงานอยู่ ไม่ใช่ค้าง (เซิร์ฟเวอร์ลองซ้ำเองสามรอบ แล้วคืนจอถ้าไม่สำเร็จ)
 			local waited = math.floor(os.clock() - shownAt)
 			if waited >= 8 then
-				veilSub.Text = ("ยังกำลังเชื่อมต่อ (%d วินาที) — เครือข่ายช้า ระบบกำลังลองใหม่ให้"):format(waited)
+				veilSub.Text = L("ยังกำลังเชื่อมต่อ (%d วินาที) — เครือข่ายช้า ระบบกำลังลองใหม่ให้", waited)
 			end
 			task.wait(0.4)
 		end
@@ -203,9 +204,9 @@ Remotes.LobbyTravelChanged.OnClientEvent:Connect(function(state, detail)
 	if state == "started" then
 		local seconds = tonumber(detail) or 5
 		local endsAt = os.clock() + seconds
-		caption.Text = "กำลังกลับหน้าล็อบบี้"
+		caption.Text = L("กำลังกลับหน้าล็อบบี้")
 		caption.TextColor3 = RUNE
-		hint.Text = "ถ้าโดนตีหรือล้มระหว่างนี้ จะยกเลิก"
+		hint.Text = L("ถ้าโดนตีหรือล้มระหว่างนี้ จะยกเลิก")
 		hint.Visible = true
 		fill.BackgroundColor3 = RUNE
 		fill.Size = UDim2.fromScale(0, 1)
@@ -223,7 +224,7 @@ Remotes.LobbyTravelChanged.OnClientEvent:Connect(function(state, detail)
 		-- take -- so the bar sits full and the words change instead. Anything that pretended to measure this
 		-- would be inventing a number.
 		stopTicker()
-		caption.Text = "กำลังพาไปหน้าล็อบบี้..."
+		caption.Text = L("กำลังพาไปหน้าล็อบบี้...")
 		caption.TextColor3 = GOOD
 		hint.Visible = false
 		fill.BackgroundColor3 = GOOD
@@ -236,7 +237,7 @@ Remotes.LobbyTravelChanged.OnClientEvent:Connect(function(state, detail)
 		stopTicker()
 		-- "failed" มาถึงได้หลังจอดำขึ้นแล้ว (TeleportInitFailed) ต้องคืนจอให้เขาก่อน ไม่งั้นดำค้างทั้งที่ยังอยู่ในเกม
 		veil.Enabled = false
-		caption.Text = REASONS[detail] or "ยกเลิกการกลับหน้าล็อบบี้"
+		caption.Text = REASONS[detail] and L(REASONS[detail]) or L("ยกเลิกการกลับหน้าล็อบบี้")
 		caption.TextColor3 = BAD
 		hint.Visible = false
 		fill.BackgroundColor3 = BAD

@@ -85,7 +85,7 @@ end
 local function refreshTownPrompts()
 	local raw = player:GetAttribute("ClanId")
 	if raw == nil then
-		warnOnce("clan", "ยังไม่มีแอตทริบิวต์ ClanId บนตัวผู้เล่น (Clans.server ยังไม่ประกาศ) — ปล่อยปุ่มไว้ตามเดิม")
+		warnOnce("clan", "ยังไม่มีแอตทริบิวต์ ClanId บนตัวผู้เล่น (Clans.server ยังไม่ประกาศ) — ปล่อยปุ่มไว้ตามเดิม") -- locale: skip (F9 debug)
 		return
 	end
 	local myClan = raw ~= "" and raw or nil
@@ -94,7 +94,7 @@ local function refreshTownPrompts()
 		if prompt:IsA("ProximityPrompt") and prompt.Parent then
 			local owner = prompt:GetAttribute("OwnerClanId")
 			if owner == nil then
-				warnOnce("owner", ("ปุ่ม %s ยังไม่มีแอตทริบิวต์ OwnerClanId — ปล่อยไว้ตามเดิม"):format(prompt.Name))
+				warnOnce("owner", ("ปุ่ม %s ยังไม่มีแอตทริบิวต์ OwnerClanId — ปล่อยไว้ตามเดิม"):format(prompt.Name)) -- locale: skip (F9 debug)
 			else
 				if owner == "" then owner = nil end
 				local isOwner = myClan ~= nil and owner ~= nil and myClan == owner

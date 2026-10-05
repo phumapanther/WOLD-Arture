@@ -3,6 +3,8 @@
 -- DisplayOrder 4 = ใต้ปุ่มมือถือ (5) และทุกหน้าต่าง (12+) — ของเดิมอยู่ 900 ทับปุ่ม Q กับหน้าต่างฝั่งขวา (QA U1)
 local Responsive = require(script.Parent.Responsive)
 local QuestLogRules = require(script.Parent.Parent.QuestLogRules)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local QuestTrackerGui = {}
 QuestTrackerGui.__index = QuestTrackerGui
@@ -91,7 +93,7 @@ end
 function QuestTrackerGui:_layout()
 	local n = #self.rows
 	self.holder.Visible = n > 0
-	self.header.Text = ("📜 เควส (%d)%s"):format(n, self.collapsed and "  · แตะเพื่อดู" or "")
+	self.header.Text = self.collapsed and L("📜 เควส (%d)  · แตะเพื่อดู", n) or L("📜 เควส (%d)", n)
 	local listH = self.collapsed and 0 or math.min(n * (ROW_H + GAP), MAX_LIST)
 	self.list.Visible = not self.collapsed
 	self.list.Size = UDim2.new(1, 0, 0, listH)
@@ -131,12 +133,12 @@ function QuestTrackerGui:_row(row, order, navigating)
 		s.Parent = b
 	end
 	local prefix = dim and "🔒 " or (navigating and "🧭 " or "")
-	local title = label(b, "Title", prefix .. (row.title or ""), 14, color)
+	local title = label(b, "Title", prefix .. Show(row.title or ""), 14, color)
 	title.Font = Enum.Font.GothamBold
 	title.Position = UDim2.fromOffset(14, 4)
 	title.Size = UDim2.new(1, -72, 0, 18)
 	title.TextTransparency = dim and 0.35 or 0
-	local goal = label(b, "Goal", row.goal or "", 12, dim and MUTED or TEXT)
+	local goal = label(b, "Goal", Show(row.goal or ""), 12, dim and MUTED or TEXT)
 	goal.Position = UDim2.fromOffset(14, 24)
 	goal.Size = UDim2.new(1, -20, 0, 20)
 	local progress = QuestLogRules.Progress(row)

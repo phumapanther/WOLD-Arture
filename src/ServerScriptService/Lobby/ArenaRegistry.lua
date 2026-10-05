@@ -42,12 +42,12 @@ local function rewardKey(userId) return "arenareward_" .. userId end
 function ArenaRegistry.CreateMatch(mapId, teams, bots, admin, parties)
 	local placeId = arenaPlaceId()
 	if not placeId or placeId == 0 then
-		error("[ArenaRegistry] ยังไม่ได้ตั้ง ServerConfig.ArenaPlaceId", 0)
+		error("[ArenaRegistry] ยังไม่ได้ตั้ง ServerConfig.ArenaPlaceId", 0) -- locale: skip
 	end
 
 	local reserveOk, accessCode, privateServerId = pcall(TeleportService.ReserveServer, TeleportService, placeId)
 	if not reserveOk then
-		error("[ArenaRegistry] จองเซิร์ฟแมตช์ไม่สำเร็จ: " .. tostring(accessCode), 0)
+		error("[ArenaRegistry] จองเซิร์ฟแมตช์ไม่สำเร็จ: " .. tostring(accessCode), 0) -- locale: skip
 	end
 
 	local record = {
@@ -62,7 +62,7 @@ function ArenaRegistry.CreateMatch(mapId, teams, bots, admin, parties)
 	if not setOk then
 		-- เซิร์ฟถูกจองไปแล้วแต่ไม่มีใครรู้ว่ามันคือแมตช์ไหน — ส่งคนเข้าไปตอนนี้คือส่งเข้าห้องที่จะเด้ง
 		-- ทุกคนกลับทันที บอกให้รู้ตรงนี้ดีกว่าให้ไปตายเอาข้างหน้า
-		error("[ArenaRegistry] จองเซิร์ฟได้แต่บันทึกแมตช์ไม่ได้: " .. tostring(setErr), 0)
+		error("[ArenaRegistry] จองเซิร์ฟได้แต่บันทึกแมตช์ไม่ได้: " .. tostring(setErr), 0) -- locale: skip
 	end
 	return accessCode, privateServerId, record
 end

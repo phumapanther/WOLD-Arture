@@ -17,6 +17,7 @@ if workspace:GetAttribute("IsLobby") then return end
 local Responsive = require(game.ReplicatedStorage.UI.Responsive)
 local UiSound = require(game.ReplicatedStorage.UI.UiSound)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local L = require(game.ReplicatedStorage.Locale).L
 
 local RUNE = Color3.fromRGB(244, 197, 66)
 local GOOD = Color3.fromRGB(120, 206, 128)
@@ -52,7 +53,7 @@ caption.Font = Enum.Font.GothamBold
 caption.TextSize = 13
 caption.TextColor3 = RUNE
 caption.TextXAlignment = Enum.TextXAlignment.Left
-caption.Text = "กำลังซ่อมหม้อแปลง"
+caption.Text = L("กำลังซ่อมหม้อแปลง")
 caption.Parent = panel
 
 local track = Instance.new("Frame")
@@ -107,7 +108,7 @@ Remotes.RepairStateChanged.OnClientEvent:Connect(function(state, detail)
 	if state == "started" then
 		seconds = tonumber(detail) or 30
 		endsAt = os.clock() + seconds
-		caption.Text = "กำลังซ่อมหม้อแปลง — อย่าขยับ"
+		caption.Text = L("กำลังซ่อมหม้อแปลง — อย่าขยับ")
 		caption.TextColor3 = RUNE
 		fill.BackgroundColor3 = RUNE
 		fill.Size = UDim2.fromScale(0, 1)
@@ -128,7 +129,7 @@ Remotes.RepairStateChanged.OnClientEvent:Connect(function(state, detail)
 		endsAt = nil
 		stopLoop()
 		local done = detail == "done"
-		caption.Text = done and "ซ่อมเสร็จแล้ว" or "การซ่อมหลุด"
+		caption.Text = done and L("ซ่อมเสร็จแล้ว") or L("การซ่อมหลุด")
 		caption.TextColor3 = done and GOOD or BAD
 		fill.BackgroundColor3 = done and GOOD or BAD
 		if done then fill.Size = UDim2.fromScale(1, 1) end

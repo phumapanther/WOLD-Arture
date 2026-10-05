@@ -25,7 +25,7 @@ function Net.get()
     }
   end
   local folder = ReplicatedStorage:WaitForChild(FOLDER, 30)
-  assert(folder, "VehicleNet หาย — เซิร์ฟเวอร์ยังไม่ได้ติดตั้งระบบพาหนะ")
+  assert(folder, "VehicleNet หาย — เซิร์ฟเวอร์ยังไม่ได้ติดตั้งระบบพาหนะ") -- locale: skip (assert)
   return {
     Request = folder:WaitForChild("Request", 30),
     Signal = folder:WaitForChild("Signal", 30),

@@ -11,6 +11,7 @@ local ClassActionConfig = require(game.ReplicatedStorage.ClassActionConfig)
 local ClassActionGui = require(game.ReplicatedStorage.UI.ClassActionGui)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local UiSound = require(game.ReplicatedStorage.UI.UiSound)
+local L = require(game.ReplicatedStorage.Locale).L
 
 while workspace:GetAttribute("IsLobby") == nil do
 	task.wait()
@@ -172,7 +173,7 @@ end
 Remotes.ClassActionPrompt.OnClientEvent:Connect(function(actionId, fromPlayer, seconds, question)
 	-- ฮีล/ซ่อมที่เราต้องจ่ายเงิน — เซิร์ฟเวอร์เขียนคำถามมาให้ (ราคาอยู่ในนั้น) · QA 2026-09-26
 	if actionId == "service" then
-		gui:AskConsent(fromPlayer, seconds, tostring(question or "มีคนขอให้บริการ"),
+		gui:AskConsent(fromPlayer, seconds, tostring(question or L("มีคนขอให้บริการ")),
 			function(accepted)
 				Remotes.RespondClassAction:FireServer("service", accepted)
 			end)
@@ -182,13 +183,13 @@ Remotes.ClassActionPrompt.OnClientEvent:Connect(function(actionId, fromPlayer, s
 		end)
 	elseif actionId == "carry" then
 		gui:AskConsent(fromPlayer, seconds,
-			("%s ขออุ้มคุณ"):format(fromPlayer and fromPlayer.DisplayName or "ใครบางคน"),
+			L("%s ขออุ้มคุณ"):format(fromPlayer and fromPlayer.DisplayName or L("ใครบางคน")),
 			function(accepted)
 				Remotes.RespondClassAction:FireServer("carry", accepted)
 			end)
 	elseif actionId == "trade" then
 		gui:AskConsent(fromPlayer, seconds,
-			("%s ขอเทรดกับคุณ"):format(fromPlayer and fromPlayer.DisplayName or "ใครบางคน"),
+			L("%s ขอเทรดกับคุณ"):format(fromPlayer and fromPlayer.DisplayName or L("ใครบางคน")),
 			function(accepted)
 				Remotes.RespondClassAction:FireServer("trade", accepted)
 			end)

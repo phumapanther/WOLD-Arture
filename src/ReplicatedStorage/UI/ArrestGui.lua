@@ -11,6 +11,8 @@ local NumberBox = require(script.Parent.NumberBox) -- พิมพ์เกิ�
 local UiSound = require(script.Parent.UiSound)
 local ItemIcon = require(script.Parent.ItemIcon)
 local ClassActionConfig = require(script.Parent.Parent.ClassActionConfig)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show -- ชื่อไอเทมในกระเป๋าผู้ถูกจับมาจากเซิร์ฟเป็นไทย
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -94,7 +96,7 @@ local function tile(parent, entry, onClick)
 		name.TextSize = 9
 		name.TextWrapped = true
 		name.TextColor3 = TEXT_LIGHT
-		name.Text = entry.name or entry.id
+		name.Text = Show(entry.name) or entry.id
 		name.Parent = b
 	end
 
@@ -158,7 +160,7 @@ function ArrestGui.new()
 	Responsive.Scale(panel, Responsive.IsSmallScreen() and 0.95 or nil) -- มือถือ: แผงเต็มจออยู่แล้ว ห้ามย่อซ้ำ (QA 2026-09-26)
 	self.panel = panel
 
-	local title = label(panel, "จับกุม", 18, GUARD_BLUE, 12, 28)
+	local title = label(panel, L("จับกุม"), 18, GUARD_BLUE, 12, 28)
 	title.Position = UDim2.new(0, 14, 0, 12)
 	self.title = title
 
@@ -171,11 +173,11 @@ function ArrestGui.new()
 	left.BackgroundTransparency = 1
 	left.Parent = panel
 
-	self.bagLabel = label(left, "กระเป๋าผู้ถูกจับ", 12, TEXT_MUTED, 0)
+	self.bagLabel = label(left, L("กระเป๋าผู้ถูกจับ"), 12, TEXT_MUTED, 0)
 	self.bagGrid = makeGrid(left)
 	self.bagGrid.Position = UDim2.new(0, 4, 0, 22)
 	self.bagGrid.Size = UDim2.new(1, -8, 1, -50)
-	self.theirGold = label(left, "เงิน: 0", 13, RUNE, 0)
+	self.theirGold = label(left, L("เงิน: %d", 0), 13, RUNE, 0)
 	self.theirGold.AnchorPoint = Vector2.new(0, 1)
 	self.theirGold.Position = UDim2.new(0, 4, 1, -4)
 
@@ -186,13 +188,13 @@ function ArrestGui.new()
 	right.BackgroundTransparency = 1
 	right.Parent = panel
 
-	label(right, ("ยึดของ (สูงสุด %d ช่อง)"):format(ClassActionConfig.Arrest.confiscateSlots),
+	label(right, L("ยึดของ (สูงสุด %d ช่อง)", ClassActionConfig.Arrest.confiscateSlots),
 		12, DANGER, 0)
 	self.takeGrid = makeGrid(right)
 	self.takeGrid.Position = UDim2.new(0, 4, 0, 22)
 	self.takeGrid.Size = UDim2.new(1, -8, 0.55, -34)
 
-	self.fineLabel = label(right, "ค่าปรับ", 12, DANGER, 0)
+	self.fineLabel = label(right, L("ค่าปรับ"), 12, DANGER, 0)
 	self.fineLabel.Position = UDim2.new(0, 4, 0.55, 0)
 
 	local fineBox = Instance.new("TextBox")
@@ -203,7 +205,7 @@ function ArrestGui.new()
 	fineBox.Font = Enum.Font.GothamBold
 	fineBox.TextSize = 15
 	fineBox.TextColor3 = TEXT_LIGHT
-	fineBox.PlaceholderText = "จำนวนเงินค่าปรับ"
+	fineBox.PlaceholderText = L("จำนวนเงินค่าปรับ")
 	fineBox.PlaceholderColor3 = TEXT_MUTED
 	fineBox.Text = ""
 	fineBox.ClearTextOnFocus = false
@@ -228,7 +230,7 @@ function ArrestGui.new()
 	confirm.Font = Enum.Font.GothamBold
 	confirm.TextSize = 14
 	confirm.TextColor3 = TEXT_LIGHT
-	confirm.Text = "ยืนยัน"
+	confirm.Text = L("ยืนยัน")
 	confirm.Parent = panel
 	corner(confirm, UDim.new(0, 8))
 	self.confirmButton = confirm
@@ -242,7 +244,7 @@ function ArrestGui.new()
 	release.Font = Enum.Font.GothamBold
 	release.TextSize = 14
 	release.TextColor3 = TEXT_LIGHT
-	release.Text = "ปล่อยตัว"
+	release.Text = L("ปล่อยตัว")
 	release.Parent = panel
 	corner(release, UDim.new(0, 8))
 	self.releaseButton = release
@@ -273,7 +275,7 @@ function ArrestGui.new()
 		b.Font = Enum.Font.GothamBold
 		b.TextSize = 13
 		b.TextColor3 = TEXT_LIGHT
-		b.Text = "⛓ คุมขัง " .. term.label
+		b.Text = L("⛓ คุมขัง %s", term.label)
 		b.Parent = panel
 		corner(b, UDim.new(0, 8))
 		self.jailButtons[i] = { button = b, term = term }
@@ -301,9 +303,9 @@ function ArrestGui:Open(other, asGuard)
 	self.taking = {}
 	self.fine = 0
 	self.fineBox.Text = ""
-	self.title.Text = asGuard and ("จับกุม %s"):format(other and other.DisplayName or "")
-		or ("คุณถูกจับกุมโดย %s"):format(other and other.DisplayName or "")
-	self.bagLabel.Text = asGuard and "กระเป๋าผู้ถูกจับ" or "กระเป๋าของคุณ"
+	self.title.Text = asGuard and L("จับกุม %s"):format(other and other.DisplayName or "")
+		or L("คุณถูกจับกุมโดย %s"):format(other and other.DisplayName or "")
+	self.bagLabel.Text = asGuard and L("กระเป๋าผู้ถูกจับ") or L("กระเป๋าของคุณ")
 
 	-- A prisoner can look but not touch: the buttons and the box are the guard's alone.
 	self.fineBox.TextEditable = asGuard
@@ -312,7 +314,7 @@ function ArrestGui:Open(other, asGuard)
 	for _, entry in ipairs(self.jailButtons) do
 		entry.button.Visible = asGuard
 	end
-	self.summary.Text = asGuard and "" or "ขยับไม่ได้จนกว่าจะถูกปล่อยตัว"
+	self.summary.Text = asGuard and "" or L("ขยับไม่ได้จนกว่าจะถูกปล่อยตัว")
 
 	self.gui.Enabled = true
 
@@ -391,12 +393,12 @@ function ArrestGui:Render(payload)
 	end
 
 	self.prisonerGold = (payload and payload.gold) or 0
-	self.theirGold.Text = ("เงิน: %d"):format(self.prisonerGold)
+	self.theirGold.Text = L("เงิน: %d", self.prisonerGold)
 	if not self.fineBox:IsFocused() then
 		self.fineBox.Text = self.fine > 0 and tostring(self.fine) or ""
 	end
 	if self.isGuard then
-		self.summary.Text = ("ยึด %d ชิ้น • ปรับ %d ทอง"):format(#self.taking, self.fine)
+		self.summary.Text = L("ยึด %d ชิ้น • ปรับ %d ทอง", #self.taking, self.fine)
 	end
 end
 

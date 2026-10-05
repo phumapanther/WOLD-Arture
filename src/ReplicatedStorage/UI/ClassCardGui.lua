@@ -7,6 +7,8 @@ local Players = game:GetService("Players")
 local ClassConfig = require(script.Parent.Parent.ClassConfig)
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
+local Locale = require(script.Parent.Parent.Locale)
+local L = Locale.L -- ชื่อ/คำอธิบายอาชีพมาจาก ClassConfig (ไทย) แปลตอนวาดด้วย Locale.Show
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -79,7 +81,7 @@ function ClassCardGui.new()
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 20
 	title.TextColor3 = RUNE
-	title.Text = "เลือกอาชีพ"
+	title.Text = L("เลือกอาชีพ")
 	title.Parent = panel
 	self.title = title
 
@@ -125,12 +127,11 @@ function ClassCardGui:Show(tier, classIds)
 	end
 
 	local level = ClassConfig.LevelFor(tier)
-	local heading = "เลือกอาชีพ"
-	if tier == "advanced" then heading = "เลือกอาชีพขั้นสูง"
-	elseif tier == "elite" then heading = "เลือกยศสูงสุด" end
+	local heading = L("เลือกอาชีพ")
+	if tier == "advanced" then heading = L("เลือกอาชีพขั้นสูง")
+	elseif tier == "elite" then heading = L("เลือกยศสูงสุด") end
 	self.title.Text = heading
-	self.subtitle.Text = ("ถึงเลเวล %d แล้ว — ไม่เลือกตอนนี้ก็ได้ ถึงเลเวลนี้อีกครั้งจะถามใหม่")
-		:format(level or 0)
+	self.subtitle.Text = L("ถึงเลเวล %d แล้ว — ไม่เลือกตอนนี้ก็ได้ ถึงเลเวลนี้อีกครั้งจะถามใหม่", level or 0)
 
 	for i, id in ipairs(classIds or {}) do
 		local class = ClassConfig.Get(id)
@@ -156,7 +157,7 @@ function ClassCardGui:Show(tier, classIds)
 			name.TextSize = 16
 			name.TextWrapped = true
 			name.TextColor3 = class.color
-			name.Text = class.name
+			name.Text = Locale.Show(class.name)
 			name.Parent = card
 
 			local blurb = Instance.new("TextLabel")
@@ -168,7 +169,7 @@ function ClassCardGui:Show(tier, classIds)
 			blurb.TextWrapped = true
 			blurb.TextYAlignment = Enum.TextYAlignment.Top
 			blurb.TextColor3 = TEXT_LIGHT
-			blurb.Text = class.blurb or ""
+			blurb.Text = Locale.Show(class.blurb or "")
 			blurb.Parent = card
 
 			-- The passive, under the list of things the class can do. Shown on the card because it is the
@@ -190,7 +191,7 @@ function ClassCardGui:Show(tier, classIds)
 				bonus.TextWrapped = true
 				bonus.TextYAlignment = Enum.TextYAlignment.Bottom
 				bonus.TextColor3 = class.color
-				bonus.Text = ("✦ %s"):format(perk.blurb)
+				bonus.Text = ("✦ %s"):format(Locale.Show(perk.blurb))
 				bonus.Parent = card
 			end
 
@@ -221,7 +222,7 @@ function ClassCardGui:Show(tier, classIds)
 	skip.Font = Enum.Font.GothamBold
 	skip.TextSize = 13
 	skip.TextColor3 = TEXT_MUTED
-	skip.Text = "ยังไม่เลือกตอนนี้"
+	skip.Text = L("ยังไม่เลือกตอนนี้")
 	skip.Parent = self.panel
 	corner(skip, UDim.new(0, 8))
 	skip.Activated:Connect(function()

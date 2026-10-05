@@ -7,6 +7,8 @@
 local Players = game:GetService("Players")
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show -- ข้อความในสแนปช็อต (ชื่อ เมือง คำอธิบาย) เป็นไทยจากเซิร์ฟ แปลตอนวาด
 
 local WOOD = Color3.fromRGB(74, 52, 34)       -- กระดานไม้
 local WOOD_DARK = Color3.fromRGB(52, 36, 24)
@@ -98,7 +100,7 @@ function QuestBoardGui.new()
 		plank.Parent = panel
 	end
 
-	local title = label(panel, "กระดานงาน", 19, RUNE, Enum.TextXAlignment.Left)
+	local title = label(panel, L("กระดานงาน"), 19, RUNE, Enum.TextXAlignment.Left)
 	title.Size = UDim2.new(1, -60, 0, 26)
 	title.Position = UDim2.new(0, 16, 0, 10)
 	self.title = title
@@ -215,7 +217,7 @@ local function notice(self, parent, order, quest, noticeImage, accepted, index, 
 	pin.Parent = card
 	corner(pin, UDim.new(1, 0))
 
-	local head = label(card, quest.title or "", 13, INK)
+	local head = label(card, Show(quest.title or ""), 13, INK)
 	head.Position = UDim2.new(0, 6, 0, 16)
 	head.Size = UDim2.new(1, -12, 0, 16)
 	head.TextTruncate = Enum.TextTruncate.AtEnd
@@ -223,7 +225,7 @@ local function notice(self, parent, order, quest, noticeImage, accepted, index, 
 
 	-- บอร์ดรวมบอกด้วยว่างานนี้ของเมืองไหน ไม่งั้นรับไปแล้วไม่รู้ว่าต้องไปส่งที่ไหน
 	if showFrom and quest.from then
-		local town = label(card, quest.from, 10, TEXT_MUTED)
+		local town = label(card, Show(quest.from), 10, TEXT_MUTED)
 		town.Position = UDim2.new(0, 6, 0, 32)
 		town.Size = UDim2.new(1, -12, 0, 12)
 		town.ZIndex = 2
@@ -243,7 +245,7 @@ local function notice(self, parent, order, quest, noticeImage, accepted, index, 
 
 	-- ไม่มีรูปก็ยังอ่านออก: ชื่อทำหน้าที่แทน เหมือนที่แคตตาล็อกเขียนไว้
 	if not quest.icon or quest.icon == "" then
-		local fallback = label(card, quest.text or "", 12, TEXT_MUTED)
+		local fallback = label(card, Show(quest.text or ""), 12, TEXT_MUTED)
 		fallback.Position = UDim2.new(0, 8, 0, 76)
 		fallback.Size = UDim2.new(1, -16, 0, 40)
 		fallback.TextWrapped = true
@@ -259,7 +261,7 @@ local function notice(self, parent, order, quest, noticeImage, accepted, index, 
 	counter.ZIndex = 2
 
 	-- รางวัล
-	local reward = label(card, ("%d ซิลเวอร์ · %d เหรียญ"):format(quest.silver or 0, quest.gold or 0),
+	local reward = label(card, L("%d ซิลเวอร์ · %d เหรียญ", quest.silver or 0, quest.gold or 0),
 		11, TEXT_MUTED)
 	reward.Position = UDim2.new(0, 4, 0, 164)
 	reward.Size = UDim2.new(1, -8, 0, 16)
@@ -288,7 +290,7 @@ local function notice(self, parent, order, quest, noticeImage, accepted, index, 
 
 	if not accepted and quest.locked then
 		-- เมืองที่ยังล็อก (ผู้ใช้สั่ง 2026-09-27): ใบเป็นสีเทา + กุญแจ · กดไม่ได้ (เซิร์ฟปฏิเสธซ้ำอยู่แล้ว)
-		button.Text = "🔒 ล็อกอยู่"
+		button.Text = L("🔒 ล็อกอยู่")
 		button.BackgroundColor3 = GREY
 		button.AutoButtonColor = false
 		local veil = Instance.new("Frame")
@@ -312,7 +314,7 @@ local function notice(self, parent, order, quest, noticeImage, accepted, index, 
 			if toast then toast:Fire(require(script.Parent.Parent.QuestConfig).LockedText, true) end
 		end)
 	elseif not accepted then
-		button.Text = "รับงาน"
+		button.Text = L("รับงาน")
 		button.BackgroundColor3 = RUNE
 		button.TextColor3 = Color3.fromRGB(38, 28, 16)
 		button.Activated:Connect(function()
@@ -320,7 +322,7 @@ local function notice(self, parent, order, quest, noticeImage, accepted, index, 
 			self:fire("accept", index)
 		end)
 	elseif done then
-		button.Text = "รับรางวัล"
+		button.Text = L("รับรางวัล")
 		button.BackgroundColor3 = GREEN
 		button.Activated:Connect(function()
 			UiSound.Play("Click")
@@ -328,12 +330,12 @@ local function notice(self, parent, order, quest, noticeImage, accepted, index, 
 		end)
 	else
 		-- รับแล้วแต่ยังไม่ครบ: บอกว่ายังขาดเท่าไหร่
-		button.Text = ("ยังขาด %d"):format(quest.need - (quest.got or 0))
+		button.Text = L("ยังขาด %d", quest.need - (quest.got or 0))
 		button.BackgroundColor3 = GREY
 		button.AutoButtonColor = false
 		button.Activated:Connect(function()
 			local toast = game.ReplicatedStorage:FindFirstChild("WOLD_Toast")
-			if toast then toast:Fire(("ยังขาดอีก %d — %s"):format(quest.need - (quest.got or 0), quest.text or ""), true) end
+			if toast then toast:Fire(("ยังขาดอีก %d — %s"):format(quest.need - (quest.got or 0), quest.text or ""), true) end -- locale: skip (ข้อความเด้งแปลตอนแสดง)
 		end)
 	end
 
@@ -354,7 +356,7 @@ local function notice(self, parent, order, quest, noticeImage, accepted, index, 
 		cancel.Font = Enum.Font.GothamBold
 		cancel.TextSize = 10
 		cancel.TextColor3 = TEXT_LIGHT
-		cancel.Text = "ยกเลิกงาน"
+		cancel.Text = L("ยกเลิกงาน")
 		cancel.ZIndex = 2
 		cancel.Parent = card
 		corner(cancel, UDim.new(0, 5))
@@ -367,12 +369,12 @@ local function notice(self, parent, order, quest, noticeImage, accepted, index, 
 				return
 			end
 			armed = true
-			cancel.Text = "กดอีกครั้งเพื่อยืนยัน"
+			cancel.Text = L("กดอีกครั้งเพื่อยืนยัน")
 			cancel.BackgroundColor3 = Color3.fromRGB(150, 60, 50)
 			task.delay(3, function()
 				if cancel.Parent then
 					armed = false
-					cancel.Text = "ยกเลิกงาน"
+					cancel.Text = L("ยกเลิกงาน")
 					cancel.BackgroundColor3 = Color3.fromRGB(96, 62, 62)
 				end
 			end)
@@ -393,25 +395,24 @@ function QuestBoardGui:Render(data)
 	end
 
 	if not data then
-		self.title.Text = "กระดานงาน"
-		self.blurb.Text = "กำลังอ่านใบประกาศ..."
+		self.title.Text = L("กระดานงาน")
+		self.blurb.Text = L("กำลังอ่านใบประกาศ...")
 		self.rerollBtn.Visible = false
 		return
 	end
 
-	self.title.Text = ("กระดานงาน — %s%s"):format(data.boardName or "", data.locked and " 🔒" or "")
+	self.title.Text = L("กระดานงาน — %s", Show(data.boardName or "")) .. (data.locked and " 🔒" or "")
 	if data.rerollPrice and data.rerollPrice > 0 then
 		self.rerollBtn.Visible = true
 		self.rerollBtn.Text = ("🔄 💎%d"):format(data.rerollPrice)
 	else
 		self.rerollBtn.Visible = false
 	end
-	self.blurb.Text = ("%s · รับได้ %d/%d งาน%s"):format(
-		data.blurb or "", #(data.active or {}), data.maxActive or 3,
-		(data.rerolls or 0) > 0 and (" · สุ่มใหม่ไปแล้ว %d ครั้ง"):format(data.rerolls) or "")
+	self.blurb.Text = L("%s · รับได้ %d/%d งาน", Show(data.blurb or ""), #(data.active or {}), data.maxActive or 3)
+		.. ((data.rerolls or 0) > 0 and L(" · สุ่มใหม่ไปแล้ว %d ครั้ง", data.rerolls) or "")
 	-- บอร์ดเมืองที่ล็อก: บอกเหตุผลแทนบรรทัดปกติ + ซ่อนปุ่มสุ่มใหม่ (สุ่มแล้วก็รับไม่ได้อยู่ดี)
 	if data.locked then
-		self.blurb.Text = data.lockText or "🔒"
+		self.blurb.Text = Show(data.lockText or "🔒")
 		self.rerollBtn.Visible = false
 	end
 
@@ -434,8 +435,8 @@ function QuestBoardGui:Render(data)
 		-- **กระดานว่างเพราะทำครบ ไม่เหมือนกระดานว่างเพราะไม่มีงาน** ใบที่ส่งไปแล้ววันนี้ถูกซ่อน (รับซ้ำไม่ได้
 		-- เมืองละ 3 ใบต่อวัน) ถ้าไม่บอกเหตุผล ผู้เล่นที่เพิ่งส่งครบจะอ่านว่ากระดานพัง
 		local text = (data.finishedToday or 0) > 0
-			and "ส่งงานของกระดานนี้ครบแล้ววันนี้ — กลับมาใหม่พรุ่งนี้"
-			or "ไม่มีใบประกาศบนกระดาน"
+			and L("ส่งงานของกระดานนี้ครบแล้ววันนี้ — กลับมาใหม่พรุ่งนี้")
+			or L("ไม่มีใบประกาศบนกระดาน")
 		local empty = label(self.board, text, 13, TEXT_LIGHT)
 		empty.Size = UDim2.new(1, 0, 0, 60)
 	end

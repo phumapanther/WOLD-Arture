@@ -10,6 +10,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Remotes = require(ReplicatedStorage.Remotes)
 local Responsive = require(ReplicatedStorage.UI.Responsive)
 local UiSound = require(ReplicatedStorage.UI.UiSound)
+local L = require(ReplicatedStorage.Locale).L
 
 -- **เสียงซื้อ** (ผู้ใช้แจ้ง 2026-09-27: ซื้อสัตว์แล้วเงียบ) — กดปุ่ม = เสียงคลิก · เหรียญดังเมื่อเซิร์ฟเวอร์ยืนยันจริง
 -- ดูจากจำนวนสัตว์ในคอกที่เพิ่มขึ้น เพราะภาพคอกมาทั้งตอนซื้อสำเร็จ/ไม่สำเร็จ และทุก 3 วิจากการอัปเดตแถบโต
@@ -50,7 +51,7 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 20
 title.TextColor3 = BRASS
 title.TextXAlignment = Enum.TextXAlignment.Left
-title.Text = "คอกสัตว์"
+title.Text = L("คอกสัตว์")
 title.Parent = panel
 
 local subtitle = Instance.new("TextLabel")
@@ -97,7 +98,7 @@ release.BorderSizePixel = 0
 release.Font = Enum.Font.GothamMedium
 release.TextSize = 14
 release.TextColor3 = TEXT
-release.Text = "ปล่อยสัตว์"
+release.Text = L("ปล่อยสัตว์")
 release.Visible = false -- โผล่เฉพาะตอนมีสัตว์ให้ปล่อย
 release.Parent = panel
 local rc = Instance.new("UICorner"); rc.CornerRadius = UDim.new(0, 8); rc.Parent = release
@@ -105,14 +106,14 @@ local rc = Instance.new("UICorner"); rc.CornerRadius = UDim.new(0, 8); rc.Parent
 local armed = false
 local function disarm()
 	armed = false
-	release.Text = "ปล่อยสัตว์"
+	release.Text = L("ปล่อยสัตว์")
 	release.BackgroundColor3 = Color3.fromRGB(92, 70, 48)
 end
 release.MouseButton1Click:Connect(function()
 	if not currentUid then return end
 	if not armed then
 		armed = true
-		release.Text = "แน่ใจ?"
+		release.Text = L("แน่ใจ?")
 		release.BackgroundColor3 = Color3.fromRGB(132, 62, 48)
 		task.delay(4, function() if armed then disarm() end end)
 		return
@@ -140,9 +141,9 @@ layout.Parent = list
 local function longTime(seconds)
 	seconds = math.max(0, math.floor(seconds or 0))
 	local days, hours = math.floor(seconds / 86400), math.floor((seconds % 86400) / 3600)
-	if days > 0 then return ("%d วัน %d ชม."):format(days, hours) end
-	if hours > 0 then return ("%d ชม."):format(hours) end
-	return ("%d นาที"):format(math.max(1, math.ceil(seconds / 60)))
+	if days > 0 then return L("%d วัน %d ชม.", days, hours) end
+	if hours > 0 then return L("%d ชม.", hours) end
+	return L("%d นาที", math.max(1, math.ceil(seconds / 60)))
 end
 
 local function row(index, animal, snap)
@@ -162,7 +163,7 @@ local function row(index, animal, snap)
 	name.TextSize = 16
 	name.TextColor3 = TEXT
 	name.TextXAlignment = Enum.TextXAlignment.Left
-	name.Text = (animal.emoji and (animal.emoji .. " ") or "") .. animal.name
+	name.Text = (animal.emoji and (animal.emoji .. " ") or "") .. L(animal.name) -- ชื่อไทยจากภาพคอก
 	name.Parent = frame
 
 	-- เฟส 2c: ยังไม่ปลดตามเลเวลฟาร์ม = ป้าย 🔒 แทนปุ่มซื้อ (เซิร์ฟปฏิเสธอยู่แล้ว ไม่ชวนให้กดแล้วโดนดุ)
@@ -177,7 +178,7 @@ local function row(index, animal, snap)
 		lock.Font = Enum.Font.GothamBold
 		lock.TextSize = 14
 		lock.TextColor3 = Color3.fromRGB(214, 170, 120)
-		lock.Text = ("🔒 เลเวลฟาร์ม %d"):format(animal.lockLevel)
+		lock.Text = L("🔒 เลเวลฟาร์ม %d", animal.lockLevel)
 		lock.Parent = frame
 		local lc = Instance.new("UICorner"); lc.CornerRadius = UDim.new(0, 7); lc.Parent = lock
 		return
@@ -230,8 +231,8 @@ local function draw(snap)
 	for _, g in ipairs(growing) do
 		if g.state ~= "ready" then waiting += 1 end
 	end
-	local tail = waiting > 0 and (" · รออยู่ %d"):format(waiting) or ""
-	subtitle.Text = ("ในคอก %d/%d ตัว · เก็บได้ %d%s"):format(snap.count, snap.max, snap.ready or 0, tail)
+	local tail = waiting > 0 and L(" · รออยู่ %d", waiting) or ""
+	subtitle.Text = L("ในคอก %d/%d ตัว · เก็บได้ %d%s", snap.count, snap.max, snap.ready or 0, tail)
 
 	-- **แถบความคืบหน้าของตัวที่ยังโตไม่เสร็จ** (ผู้ใช้สั่ง 2026-09-22)
 	-- วาดก่อนรายการสัตว์ที่ซื้อได้ เพราะมันคือ "สถานะตอนนี้" ส่วนรายการข้างล่างคือ "จะซื้ออะไรต่อ"
@@ -264,16 +265,17 @@ local function draw(snap)
 		text.TextXAlignment = Enum.TextXAlignment.Left
 		-- **บอกเป็นนาที:วินาที เมื่อเหลือน้อยกว่าหนึ่งนาที** ไม่งั้น "อีก 1 นาที" ค้างอยู่ตั้งนาน
 		local left = math.max(0, g.secondsLeft or 0)
-		local when = left >= 60 and ("%d นาที"):format(math.ceil(left / 60)) or ("%d วินาที"):format(left)
+		local when = left >= 60 and L("%d นาที", math.ceil(left / 60)) or L("%d วินาที", left)
 		-- เลเวลนำหน้าชื่อ · ท้ายแถวบอกว่าอีกนานแค่ไหนถึงเลเวลถัดไป (โตเองตามอายุ Lv5 ครบ 7 วัน)
-		local who = ("%s Lv%d"):format(g.name or "สัตว์", g.level or 1)
-		local grow = g.nextLevelIn and (" · Lv%d ใน %s"):format((g.level or 1) + 1, longTime(g.nextLevelIn)) or " · เลเวลสูงสุด"
+		-- ชื่อสัตว์มาเป็นไทยจากเซิร์ฟ — L แปลอาร์กิวเมนต์สตริงให้เอง
+		local who = L("%s Lv%d", g.name or L("สัตว์"), g.level or 1)
+		local grow = g.nextLevelIn and L(" · Lv%d ใน %s", (g.level or 1) + 1, longTime(g.nextLevelIn)) or L(" · เลเวลสูงสุด")
 		if g.state == "ready" then
-			text.Text = ("%s · เก็บได้แล้ว%s"):format(who, grow)
+			text.Text = L("%s · เก็บได้แล้ว%s", who, grow)
 		elseif g.state == "cool" then
-			text.Text = ("%s · เก็บได้อีกใน %s%s"):format(who, when, grow)
+			text.Text = L("%s · เก็บได้อีกใน %s%s", who, when, grow)
 		else
-			text.Text = ("%s · โตอีก %s (%d%%)%s"):format(who, when, math.floor((g.progress or 0) * 100), grow)
+			text.Text = L("%s · โตอีก %s (%d%%)%s", who, when, math.floor((g.progress or 0) * 100), grow)
 		end
 		text.ZIndex = 2
 		text.Parent = bar

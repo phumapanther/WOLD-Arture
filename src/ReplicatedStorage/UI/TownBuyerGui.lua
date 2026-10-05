@@ -7,6 +7,8 @@ local Players = game:GetService("Players")
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
 local ItemIcon = require(script.Parent.ItemIcon)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local ROW = Color3.fromRGB(44, 47, 58)
@@ -91,7 +93,7 @@ function TownBuyerGui.new()
 	corner(panel, UDim.new(0, 12))
 	Responsive.Scale(panel, Responsive.IsSmallScreen() and 0.95 or nil) -- มือถือ: แผงเต็มจออยู่แล้ว ห้ามย่อซ้ำ (QA 2026-09-26)
 
-	local title = label(panel, "พ่อค้าประจำเมือง", 17, RUNE)
+	local title = label(panel, L("พ่อค้าประจำเมือง"), 17, RUNE)
 	title.Position = UDim2.new(0, 16, 0, 10)
 	title.Size = UDim2.new(1, -60, 0, 24)
 	self.title = title
@@ -151,27 +153,27 @@ function TownBuyerGui:Render(data)
 	end
 
 	if not data then
-		self.title.Text = "พ่อค้าประจำเมือง"
+		self.title.Text = L("พ่อค้าประจำเมือง")
 		self.sub.Text = ""
 		return
 	end
 
-	self.title.Text = ("พ่อค้า%s"):format(data.townName or "")
+	self.title.Text = L("พ่อค้า%s", data.townName or "")
 
 	local bits = {}
 	if data.owner then
-		bits[#bits + 1] = ("เมืองของแคลน %s"):format(data.owner)
-		bits[#bits + 1] = ("ภาษี %d%%"):format(math.floor((data.tax or 0) * 100))
+		bits[#bits + 1] = L("เมืองของแคลน %s", data.owner)
+		bits[#bits + 1] = L("ภาษี %d%%", math.floor((data.tax or 0) * 100))
 	else
-		bits[#bits + 1] = "ยังไม่มีแคลนยึดเมืองนี้"
+		bits[#bits + 1] = L("ยังไม่มีแคลนยึดเมืองนี้")
 	end
 	if data.isHome then
-		bits[#bits + 1] = ("คนในแคลน +%d%%"):format(math.floor((data.bonus or 0) * 100))
+		bits[#bits + 1] = L("คนในแคลน +%d%%", math.floor((data.bonus or 0) * 100))
 	end
 	self.sub.Text = table.concat(bits, " · ")
 
 	if #(data.rows or {}) == 0 then
-		local empty = label(self.list, "ไม่มีของที่พ่อค้าเมืองนี้รับซื้อ", 13, TEXT_MUTED,
+		local empty = label(self.list, L("ไม่มีของที่พ่อค้าเมืองนี้รับซื้อ"), 13, TEXT_MUTED,
 			Enum.TextXAlignment.Center)
 		empty.Size = UDim2.new(1, 0, 0, 60)
 		return
@@ -202,21 +204,21 @@ function TownBuyerGui:Render(data)
 		local leftPad = hasIcon and 44 or 10
 		local textWidth = -(leftPad + 134)
 
-		local name = label(row, ("%s x%d"):format(entry.name, entry.count), 13, TEXT_LIGHT)
+		local name = label(row, ("%s x%d"):format(Show(entry.name), entry.count), 13, TEXT_LIGHT) -- ชื่อจากเซิร์ฟเป็นไทย
 		name.Position = UDim2.new(0, leftPad, 0, 4)
 		name.Size = UDim2.new(1, textWidth, 0, 18)
 		name.TextTruncate = Enum.TextTruncate.AtEnd
 
 		-- ราคาอยู่ใต้ชื่อแบบเดียวกับร้านเมืองหลัก ปุ่มเหลือแต่คำสั่ง
-		local price = label(row, ("ชิ้นละ %d — รวม %d"):format(entry.price, entry.price * entry.count),
+		local price = label(row, L("ชิ้นละ %d — รวม %d", entry.price, entry.price * entry.count),
 			11, TEXT_MUTED)
 		price.Position = UDim2.new(0, leftPad, 0, 22)
 		price.Size = UDim2.new(1, textWidth, 0, 16)
 
-		pill(row, "ขาย 1", Color3.fromRGB(70, 74, 84), 46, -80, function()
+		pill(row, L("ขาย 1"), Color3.fromRGB(70, 74, 84), 46, -80, function()
 			self:fire("sell", entry.index, 1)
 		end)
-		pill(row, "ขายหมด", GREEN, 66, -8, function()
+		pill(row, L("ขายหมด"), GREEN, 66, -8, function()
 			self:fire("sell", entry.index, entry.count)
 		end)
 	end

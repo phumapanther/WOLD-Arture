@@ -10,6 +10,7 @@
 -- เป็นตัววาดล้วน ไม่รู้จัก remote — `PartyController` ป้อนข้อมูลและรับปุ่ม "ออกจากตี้" ไปยิงเอง
 local Players = game:GetService("Players")
 local Responsive = require(script.Parent.Responsive)
+local L = require(script.Parent.Parent.Locale).L
 
 local PANEL_WIDTH = 190
 local ROW_HEIGHT = 34
@@ -90,7 +91,7 @@ function PartyGui.new()
 	header.TextSize = 11
 	header.TextColor3 = TEXT_MUTED
 	header.TextXAlignment = Enum.TextXAlignment.Left
-	header.Text = "ตี้"
+	header.Text = L("ตี้")
 	header.Parent = panel
 	self.header = header
 
@@ -110,21 +111,21 @@ function PartyGui.new()
 	leave.Font = Enum.Font.GothamBold
 	leave.TextSize = touchOnly and 14 or 11
 	leave.TextColor3 = TEXT_LIGHT
-	leave.Text = "ออก"
+	leave.Text = L("ออก")
 	leave.Parent = panel
 	corner(leave, UDim.new(0, 6))
 	local armedUntil = 0
 	leave.Activated:Connect(function()
 		if os.clock() > armedUntil then
 			armedUntil = os.clock() + 3
-			leave.Text, leave.BackgroundColor3 = "ยืนยัน?", ARMED_COLOR
+			leave.Text, leave.BackgroundColor3 = L("ยืนยัน?"), ARMED_COLOR
 			task.delay(3, function()
-				if os.clock() >= armedUntil then leave.Text, leave.BackgroundColor3 = "ออก", LEAVE_COLOR end
+				if os.clock() >= armedUntil then leave.Text, leave.BackgroundColor3 = L("ออก"), LEAVE_COLOR end
 			end)
 			return
 		end
 		armedUntil = 0
-		leave.Text, leave.BackgroundColor3 = "ออก", LEAVE_COLOR
+		leave.Text, leave.BackgroundColor3 = L("ออก"), LEAVE_COLOR
 		if self.onLeave then self.onLeave() end
 	end)
 
@@ -188,12 +189,12 @@ function PartyGui:SetMembers(members)
 	end
 
 	self.panel.Size = UDim2.fromOffset(PANEL_WIDTH, HEADER_HEIGHT + count * ROW_HEIGHT)
-	self.header.Text = ("ตี้ · %d คน"):format(count + 1) -- +1 คือตัวเอง ซึ่งไม่มีแถวของตัวเองที่นี่
+	self.header.Text = L("ตี้ · %d คน", count + 1) -- +1 คือตัวเอง ซึ่งไม่มีแถวของตัวเองที่นี่
 
 	for index, member in ipairs(members) do
 		local row = self:rowAt(index)
 		row.frame.Visible = true
-		row.name.Text = member.downed and ("%s (ล้ม)"):format(member.name) or member.name
+		row.name.Text = member.downed and L("%s (ล้ม)", member.name) or member.name
 		row.name.TextColor3 = member.downed and DOWNED or TEXT_LIGHT
 		row.hp.Size = UDim2.new(math.clamp(member.hp or 0, 0, 1), 0, 1, 0)
 		row.hunger.Size = UDim2.new(math.clamp(member.hunger or 0, 0, 1), 0, 1, 0)

@@ -12,6 +12,8 @@ local NumberBox = require(script.Parent.NumberBox) -- พิมพ์เกิ�
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
 local ItemIcon = require(script.Parent.ItemIcon)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -106,7 +108,7 @@ local function tile(parent, entry, onClick)
 		name.TextSize = 9
 		name.TextWrapped = true
 		name.TextColor3 = TEXT_LIGHT
-		name.Text = entry.name or entry.id
+		name.Text = Show(entry.name) or entry.id
 		name.Parent = b
 	end
 
@@ -166,7 +168,7 @@ function TradeGui.new()
 	Responsive.Scale(panel, Responsive.IsSmallScreen() and 0.95 or nil) -- มือถือ: แผงเต็มจออยู่แล้ว ห้ามย่อซ้ำ (QA 2026-09-26)
 	self.panel = panel
 
-	local title = label(panel, "เทรด", 18, RUNE, 12, 28)
+	local title = label(panel, L("เทรด"), 18, RUNE, 12, 28)
 	title.Position = UDim2.new(0, 14, 0, 12)
 	self.title = title
 
@@ -179,10 +181,10 @@ function TradeGui.new()
 	left.BackgroundTransparency = 1
 	left.Parent = panel
 
-	label(left, "กระเป๋าของฉัน", 12, TEXT_MUTED, 0)
+	label(left, L("กระเป๋าของฉัน"), 12, TEXT_MUTED, 0)
 	self.bagGrid = makeGrid(left, 22, 0)
 	self.bagGrid.Size = UDim2.new(1, -8, 1, -50)
-	self.myGold = label(left, "เงิน: 0", 13, RUNE, 0)
+	self.myGold = label(left, L("เงิน: %d", 0), 13, RUNE, 0)
 	self.myGold.AnchorPoint = Vector2.new(0, 1)
 	self.myGold.Position = UDim2.new(0, 4, 1, -4)
 
@@ -195,11 +197,11 @@ function TradeGui.new()
 	right.BackgroundTransparency = 1
 	right.Parent = panel
 
-	label(right, "ฉันจะให้", 12, GOOD, 0)
+	label(right, L("ฉันจะให้"), 12, GOOD, 0)
 	self.mineGrid = makeGrid(right, 22, 0)
 	self.mineGrid.Size = UDim2.new(1, -8, 0.5, -46)
 
-	self.mineGold = label(right, "เงิน: 0", 12, RUNE, 0)
+	self.mineGold = label(right, L("เงิน: %d", 0), 12, RUNE, 0)
 	self.mineGold.Size = UDim2.new(0.55, 0, 0, 20)
 	self.mineGold.Position = UDim2.new(0, 4, 0.5, -22)
 
@@ -212,7 +214,7 @@ function TradeGui.new()
 	goldBox.Font = Enum.Font.GothamBold
 	goldBox.TextSize = 12
 	goldBox.TextColor3 = TEXT_LIGHT
-	goldBox.PlaceholderText = "ใส่เงิน"
+	goldBox.PlaceholderText = L("ใส่เงิน")
 	goldBox.PlaceholderColor3 = TEXT_MUTED
 	goldBox.Text = ""
 	goldBox.ClearTextOnFocus = false
@@ -221,12 +223,12 @@ function TradeGui.new()
 	corner(goldBox, UDim.new(0, 6))
 	self.goldBox = goldBox
 
-	self.theirsLabel = label(right, "เขาจะให้", 12, TEXT_MUTED, 0)
+	self.theirsLabel = label(right, L("เขาจะให้"), 12, TEXT_MUTED, 0)
 	self.theirsLabel.Position = UDim2.new(0, 4, 0.5, 2)
 	self.theirsGrid = makeGrid(right, 0, 0)
 	self.theirsGrid.Position = UDim2.new(0, 4, 0.5, 24)
 	self.theirsGrid.Size = UDim2.new(1, -8, 0.5, -46)
-	self.theirsGold = label(right, "เงิน: 0", 12, RUNE, 0)
+	self.theirsGold = label(right, L("เงิน: %d", 0), 12, RUNE, 0)
 	self.theirsGold.AnchorPoint = Vector2.new(0, 1)
 	self.theirsGold.Position = UDim2.new(0, 4, 1, -2)
 
@@ -240,7 +242,7 @@ function TradeGui.new()
 	confirm.Font = Enum.Font.GothamBold
 	confirm.TextSize = 14
 	confirm.TextColor3 = TEXT_LIGHT
-	confirm.Text = "ตกลง"
+	confirm.Text = L("ตกลง")
 	confirm.Parent = panel
 	corner(confirm, UDim.new(0, 8))
 	self.confirmButton = confirm
@@ -254,7 +256,7 @@ function TradeGui.new()
 	cancel.Font = Enum.Font.GothamBold
 	cancel.TextSize = 14
 	cancel.TextColor3 = TEXT_LIGHT
-	cancel.Text = "ยกเลิก"
+	cancel.Text = L("ยกเลิก")
 	cancel.Parent = panel
 	corner(cancel, UDim.new(0, 8))
 	self.cancelButton = cancel
@@ -275,7 +277,7 @@ local function fire(self, name, ...)
 end
 
 function TradeGui:Open(partner)
-	self.title.Text = ("เทรดกับ %s"):format(partner and partner.DisplayName or "")
+	self.title.Text = L("เทรดกับ %s", partner and partner.DisplayName or "")
 	self.offeredSlots = {}
 	self.offeredGold = 0
 	self.goldBox.Text = ""
@@ -324,7 +326,7 @@ function TradeGui:RenderBag(inventory)
 		if child:IsA("TextButton") then child:Destroy() end
 	end
 	self.goldHave = inventory and inventory.gold or 0
-	self.myGold.Text = ("เงิน: %d"):format(self.goldHave)
+	self.myGold.Text = L("เงิน: %d", self.goldHave)
 
 	local offered = {}
 	for _, index in ipairs(self.offeredSlots) do offered[index] = true end
@@ -365,14 +367,14 @@ function TradeGui:RenderOffers(mine, theirs)
 			tile(pane[1], entry, nil)
 		end
 	end
-	self.mineGold.Text = ("เงิน: %d"):format((mine and mine.gold) or 0)
-	self.theirsGold.Text = ("เงิน: %d"):format((theirs and theirs.gold) or 0)
+	self.mineGold.Text = L("เงิน: %d", (mine and mine.gold) or 0)
+	self.theirsGold.Text = L("เงิน: %d", (theirs and theirs.gold) or 0)
 
 	-- Whose agreement stands. Both must be green before anything moves.
-	self.confirmButton.Text = (mine and mine.confirmed) and "รออีกฝ่าย..." or "ตกลง"
+	self.confirmButton.Text = (mine and mine.confirmed) and L("รออีกฝ่าย...") or L("ตกลง")
 	self.confirmButton.BackgroundColor3 = (mine and mine.confirmed)
 		and Color3.fromRGB(70, 74, 84) or Color3.fromRGB(58, 78, 56)
-	self.theirsLabel.Text = (theirs and theirs.confirmed) and "เขาจะให้ (ตกลงแล้ว)" or "เขาจะให้"
+	self.theirsLabel.Text = (theirs and theirs.confirmed) and L("เขาจะให้ (ตกลงแล้ว)") or L("เขาจะให้")
 	self.theirsLabel.TextColor3 = (theirs and theirs.confirmed) and GOOD or TEXT_MUTED
 end
 

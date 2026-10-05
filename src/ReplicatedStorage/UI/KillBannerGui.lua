@@ -4,6 +4,7 @@
 local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 local ArenaConfig = require(game.ReplicatedStorage.ArenaConfig)
+local Show = require(script.Parent.Parent.Locale).Show
 
 local KillBannerGui = {}
 KillBannerGui.__index = KillBannerGui
@@ -87,7 +88,7 @@ function KillBannerGui:_run(info)
 	self.title.Text = t[1]
 	self.shine.Color = ColorSequence.new(Color3.new(1, 1, 1), t[2])
 	local tail = info.headshot and '  ·  <font color="#ff5a4a">HEADSHOT</font>' or ""
-	self.sub.Text = ("ELIMINATED  %s%s"):format(info.victim or "", tail)
+	self.sub.Text = ("ELIMINATED  %s%s"):format(Show(info.victim or ""), tail) -- ชื่อบอทแปล · ชื่อคนจริงไม่ตรงคีย์ ผ่านตรง
 	for _, obj in ipairs({ self.title, self.sub }) do obj.TextTransparency = 0 end
 	self.titleStroke.Transparency, self.subStroke.Transparency = 0, 0
 	self.holder.Visible = true

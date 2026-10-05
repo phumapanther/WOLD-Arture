@@ -15,6 +15,8 @@ local RunService = game:GetService("RunService")
 local ContextActionService = game:GetService("ContextActionService")
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local Responsive = require(game.ReplicatedStorage.UI.Responsive)
+local Locale = require(game.ReplicatedStorage.Locale)
+local L = Locale.L
 
 local player = Players.LocalPlayer
 
@@ -36,7 +38,7 @@ button.BorderSizePixel = 0
 button.Font = Enum.Font.GothamBold
 button.TextSize = 16
 button.TextColor3 = Color3.fromRGB(236, 232, 224)
-button.Text = Responsive.IsTouchOnly() and "🐾 วางลง" or "🐾 วางลง (F)"
+button.Text = Responsive.IsTouchOnly() and L("🐾 วางลง") or L("🐾 วางลง (F)")
 button.Parent = gui
 local corner = Instance.new("UICorner")
 corner.CornerRadius = UDim.new(0, 10)
@@ -61,6 +63,29 @@ local function carrying()
 		if model:GetAttribute("CarriedBy") == player.UserId then return true end
 	end
 	return false
+end
+
+-- ป้ายชื่อ+ความโตเหนือหัว (PetTag) สร้างฝั่งเซิร์ฟเป็นไทย → แปลบนเครื่องนี้ (ระบบหลายภาษา 2026-10-05)
+-- เขียนทับแค่ในเครื่องเรา · เซิร์ฟเปลี่ยนข้อความเมื่อไหร่ ค่าใหม่ replicate มาทับ แล้วรอบถัดไปแปลใหม่
+local tagState = setmetatable({}, { __mode = "k" }) -- [TextLabel] = { source = ไทย, shown = ที่เราเขียน, lang }
+local function translateTags()
+	local island = workspace:FindFirstChild("WOLD_Island")
+	local placed = island and island:FindFirstChild("Placed")
+	if not placed then return end
+	local lang = Locale.Current()
+	for _, model in ipairs(placed:GetChildren()) do
+		local hrp = model:FindFirstChild("HumanoidRootPart")
+		local tag = hrp and hrp:FindFirstChild("PetTag")
+		local label = tag and tag:FindFirstChild("Text")
+		if label then
+			local s = tagState[label]
+			if not s or label.Text ~= s.shown then s = { source = label.Text }; tagState[label] = s end
+			if s.lang ~= lang then
+				s.lang, s.shown = lang, Locale.Translate(lang, s.source)
+				label.Text = s.shown
+			end
+		end
+	end
 end
 
 -- หัวใจ ---------------------------------------------------------------------------
@@ -140,6 +165,7 @@ end)
 
 local bound = false
 while true do
+	translateTags()
 	local now = carrying()
 	gui.Enabled = now
 	if now and not bound then

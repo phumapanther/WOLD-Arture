@@ -164,9 +164,18 @@ local function sell(player, index, amount)
 
 	local item = ItemCatalog.Get(slot.id)
 	local name = item and item.name or slot.id
-	local note = ("ขาย %s x%d ได้ %d เหรียญ"):format(name, count, total)
-	if home then note = note .. (" (+%d%% คนในแคลน)"):format(math.floor(ClanConfig.HomeSellBonus * 100)) end
-	if taxed > 0 then note = note .. (" · ภาษี %d ซิลเวอร์เข้าคลังแคลน"):format(taxed) end
+	-- แม่แบบเดียวต่อแบบ (ไคลเอนต์ย้อนแปลทั้งประโยคได้) — ไทยเหมือนเดิมทุกไบต์
+	local bonus = math.floor(ClanConfig.HomeSellBonus * 100)
+	local note
+	if home and taxed > 0 then
+		note = ("ขาย %s x%d ได้ %d เหรียญ (+%d%% คนในแคลน) · ภาษี %d ซิลเวอร์เข้าคลังแคลน"):format(name, count, total, bonus, taxed)
+	elseif home then
+		note = ("ขาย %s x%d ได้ %d เหรียญ (+%d%% คนในแคลน)"):format(name, count, total, bonus)
+	elseif taxed > 0 then
+		note = ("ขาย %s x%d ได้ %d เหรียญ · ภาษี %d ซิลเวอร์เข้าคลังแคลน"):format(name, count, total, taxed)
+	else
+		note = ("ขาย %s x%d ได้ %d เหรียญ"):format(name, count, total)
+	end
 	Remotes.SocialNotify:FireClient(player, "info", note)
 
 	Remotes.TownBuyerUpdate:FireClient(player, snapshot(player, townId))

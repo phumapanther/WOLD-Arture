@@ -22,6 +22,8 @@ local ArenaShopGui = require(game.ReplicatedStorage.UI.ArenaShopGui)
 local KillBannerGui = require(game.ReplicatedStorage.UI.KillBannerGui)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local UiSound = require(game.ReplicatedStorage.UI.UiSound)
+local Locale = require(game.ReplicatedStorage.Locale)
+local L, Show = Locale.L, Locale.Show
 
 -- เสียงพากย์ตามจังหวะแมตช์ที่เซิร์ฟสั่ง (เริ่มแมตช์ · นับ 5 วิ · Fight!) — ArenaMatch.beginPhase/matchLoop
 Remotes.ArenaCue.OnClientEvent:Connect(function(name)
@@ -338,6 +340,12 @@ local function hpBarFor(body)
 	round:Clone().Parent = fill
 	bar = { gui = gui, fill = fill }
 	hpBars[body] = bar
+	-- ชื่อบอทเหนือหัว (เซิร์ฟตั้ง DisplayName เป็นไทย) แปลบนเครื่องเรา · เขียนฝั่งไคลเอนต์ไม่ replicate กลับ
+	local hum = body:FindFirstChildOfClass("Humanoid")
+	if hum and not Players:GetPlayerFromCharacter(body) then
+		local shown = Show(hum.DisplayName)
+		if shown ~= hum.DisplayName then hum.DisplayName = shown end
+	end
 	return bar
 end
 
@@ -537,7 +545,7 @@ end)
 
 board:OnBack(function()
 	Remotes.RequestReturnToLobby:FireServer()
-	board.backButton.Text = "กำลังกลับ…"
+	board.backButton.Text = L("กำลังกลับ…")
 end)
 
 -- เล่นต่อทันที: ทั้งตี้กลับล็อบบี้ด้วยกัน รวมตี้ให้ใหม่ แล้วเข้าคิวต่อเอง (ArenaMatch.sendPartyHome → LobbyParty)
@@ -545,7 +553,7 @@ board:OnAgain(function()
 	if board.againButton.Active == false then return end
 	board.againButton.Active = false
 	board.againButton.AutoButtonColor = false
-	board.againButton.Text = "กำลังไปพร้อมตี้…"
+	board.againButton.Text = L("กำลังไปพร้อมตี้…")
 	UiSound.Play("Click")
 	Remotes.RequestArenaAgain:FireServer()
 end)
@@ -560,10 +568,11 @@ end)
 local ArenaUiSound = require(game.ReplicatedStorage.UI.UiSound)
 local function noticeSound(kind, text)
 	text = tostring(text or "")
-	if kind == "warn" or kind == "error" or string.find(text, "พัง", 1, true) then return "ToastError" end
-	if string.find(text, "ยกเลิก", 1, true) then return "Select" end
-	if string.find(text, "ซื้อ", 1, true) then return "Purchase" end
-	if string.find(text, "หยิบ", 1, true) then return "Pickup" end
+	-- เทียบคำไทยจากเซิร์ฟ (ข้อความยังเป็นไทยตอนมาถึง แปลตอนวาดใน ArenaShopGui:Flash)
+	if kind == "warn" or kind == "error" or string.find(text, "พัง", 1, true) then return "ToastError" end -- locale: skip
+	if string.find(text, "ยกเลิก", 1, true) then return "Select" end -- locale: skip
+	if string.find(text, "ซื้อ", 1, true) then return "Purchase" end -- locale: skip
+	if string.find(text, "หยิบ", 1, true) then return "Pickup" end -- locale: skip
 	return "ToastInfo"
 end
 Remotes.ArenaNotice.OnClientEvent:Connect(function(kind, text)

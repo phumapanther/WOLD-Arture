@@ -6,9 +6,10 @@
 --
 -- Client-only. Nothing here is ever set on the server.
 local EmoteAccess = {}
+local L = require(script.Parent.Parent.Locale).L
 
 -- Play(id) -> ok, message. Asking for the pose already running stops it instead.
-EmoteAccess.Play = function() return false, "ระบบท่าทางยังไม่พร้อม" end
+EmoteAccess.Play = function() return false, L("ระบบท่าทางยังไม่พร้อม") end
 EmoteAccess.Stop = function() end
 EmoteAccess.Current = function() return nil end
 

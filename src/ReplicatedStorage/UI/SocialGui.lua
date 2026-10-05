@@ -16,6 +16,7 @@ local ItemIcon = require(script.Parent.ItemIcon)
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
 local MailConfig = require(script.Parent.Parent.MailConfig)
 local Locale = require(script.Parent.Parent.Locale) -- ระบบหลายภาษา (2026-10-05)
+local L, Show = Locale.L, Locale.Show
 
 local SocialGui = {}
 SocialGui.__index = SocialGui
@@ -213,7 +214,7 @@ function SocialGui.new()
 	back.Parent = header
 	self.backButton = back
 
-	local title = label(header, "หินเวทสื่อสาร", 17, ACCENT, Enum.TextXAlignment.Center)
+	local title = label(header, L("หินเวทสื่อสาร"), 17, ACCENT, Enum.TextXAlignment.Center)
 	title.Size = UDim2.new(1, -100, 0, 28)
 	title.Position = UDim2.new(0, 50, 0, 10)
 	title.Font = Enum.Font.GothamBold
@@ -545,7 +546,7 @@ function SocialGui:buildSettings()
 
 	-- ภาษา (ระบบหลายภาษา 2026-10-05): ปุ่มสี่ปุ่ม ป้ายเขียนด้วยภาษานั้นเอง · เลือก = callback "language"
 	-- (SocialController ยิง SetLanguage) · ปุ่มที่เลือกอยู่ไฮไลต์ตามแอตทริบิวต์ WOLD_Lang
-	local langHead = label(page, "ภาษา / Language", 12, TEXT_MUTED)
+	local langHead = label(page, L("ภาษา / Language"), 12, TEXT_MUTED)
 	langHead.Position = UDim2.new(0, 0, 0, y + 2)
 	langHead.Size = UDim2.new(1, 0, 0, 18)
 	y = y + 22
@@ -584,11 +585,11 @@ function SocialGui:buildSettings()
 	langNote.Size = UDim2.new(1, 0, 0, 16)
 	y = y + 26
 
-	toggleRow("ปิดเสียงโทรเข้า", "muteCalls")
-	toggleRow("ปิดแจ้งเตือนแชท", "muteChat")
-	toggleRow("โหมดถ่ายรูป · ซ่อน UI (ออก: P / ปุ่มหินเวท)", "photoMode")
+	toggleRow(L("ปิดเสียงโทรเข้า"), "muteCalls")
+	toggleRow(L("ปิดแจ้งเตือนแชท"), "muteChat")
+	toggleRow(L("โหมดถ่ายรูป · ซ่อน UI (ออก: P / ปุ่มหินเวท)"), "photoMode")
 
-	local head = label(page, "พื้นหลังหน้าจอ", 12, TEXT_MUTED)
+	local head = label(page, L("พื้นหลังหน้าจอ"), 12, TEXT_MUTED)
 	head.Position = UDim2.new(0, 0, 0, y + 6)
 	head.Size = UDim2.new(1, 0, 0, 18)
 	y = y + 28
@@ -637,7 +638,7 @@ function SocialGui:buildSettings()
 	end
 	y = y + 68
 
-	local note = label(page, "การตั้งค่าเก็บเฉพาะเครื่องนี้", 11, TEXT_MUTED,
+	local note = label(page, L("การตั้งค่าเก็บเฉพาะเครื่องนี้"), 11, TEXT_MUTED,
 		Enum.TextXAlignment.Center)
 	note.Position = UDim2.new(0, 0, 0, y)
 	note.Size = UDim2.new(1, 0, 0, 18)
@@ -732,7 +733,7 @@ function SocialGui:buildHome()
 		glyph.Size = UDim2.new(1, 0, 0, 42)
 		glyph.Position = UDim2.new(0, 0, 0, 14)
 
-		local name = label(tile, screen.name, 12, screen.ready and TEXT_LIGHT or TEXT_MUTED,
+		local name = label(tile, Show(screen.name), 12, screen.ready and TEXT_LIGHT or TEXT_MUTED,
 			Enum.TextXAlignment.Center)
 		name.Size = UDim2.new(1, -8, 0, 30)
 		name.Position = UDim2.new(0, 4, 0, 56)
@@ -755,7 +756,7 @@ function SocialGui:buildHome()
 				self:ShowScreen(screen.id)
 			else
 				-- Not a dead button: say why, or the player will think the game froze.
-				self:ShowNotice(screen.name, screen.notice or "ยังไม่เปิดใช้งาน")
+				self:ShowNotice(screen.name, screen.notice or L("ยังไม่เปิดใช้งาน"))
 			end
 		end)
 	end
@@ -778,13 +779,13 @@ function SocialGui:buildBoard()
 	list.Size = UDim2.new(1, 0, 1, -46)
 	self.boardList = list
 
-	local box = textBox(page, "เขียนประกาศ...")
+	local box = textBox(page, L("เขียนประกาศ..."))
 	box.AnchorPoint = Vector2.new(0, 1)
 	box.Position = UDim2.new(0, 0, 1, 0)
 	box.Size = UDim2.new(1, -86, 0, 34)
 	self.boardBox = box
 
-	local post = button(page, "ส่ง", 14, Color3.fromRGB(58, 96, 78))
+	local post = button(page, L("ส่ง"), 14, Color3.fromRGB(58, 96, 78))
 	post.AnchorPoint = Vector2.new(1, 1)
 	post.Position = UDim2.new(1, 0, 1, 0)
 	post.Size = UDim2.fromOffset(78, 34)
@@ -802,9 +803,9 @@ end
 -- One post row: headshot, name, text, and how long ago.
 local function agoText(at)
 	local seconds = os.time() - (at or 0)
-	if seconds < 60 then return "เมื่อสักครู่" end
-	if seconds < 3600 then return ("%d นาทีที่แล้ว"):format(seconds // 60) end
-	return ("%d ชั่วโมงที่แล้ว"):format(seconds // 3600)
+	if seconds < 60 then return L("เมื่อสักครู่") end
+	if seconds < 3600 then return L("%d นาทีที่แล้ว", seconds // 60) end
+	return L("%d ชั่วโมงที่แล้ว", seconds // 3600)
 end
 
 function SocialGui:RenderBoard(posts)
@@ -814,7 +815,7 @@ function SocialGui:RenderBoard(posts)
 	end
 
 	if #posts == 0 then
-		local empty = label(list, "ยังไม่มีประกาศ — เขียนอันแรกได้เลย", 13, TEXT_MUTED,
+		local empty = label(list, L("ยังไม่มีประกาศ — เขียนอันแรกได้เลย"), 13, TEXT_MUTED,
 			Enum.TextXAlignment.Center)
 		empty.Size = UDim2.new(1, 0, 0, 60)
 		empty.Name = "Empty"
@@ -848,7 +849,7 @@ function SocialGui:RenderBoard(posts)
 		-- where you learn that the person posting is a guard or a priest.
 		local nameColor = post.class and ClassConfig.ColorOf(post.class) or ACCENT
 		local shown = post.class
-			and ("[%s] %s"):format(ClassConfig.DisplayName(post.class), post.name)
+			and ("[%s] %s"):format(Show(ClassConfig.DisplayName(post.class)), post.name)
 			or post.name
 		local name = label(row, shown, 13, nameColor)
 		name.Position = UDim2.new(0, 62, 0, 7)
@@ -882,11 +883,11 @@ function SocialGui:buildFriends()
 	self.screens.friends = page
 
 	-- Add-a-friend row along the top.
-	local box = textBox(page, "ชื่อผู้เล่นในเซิร์ฟเวอร์นี้")
+	local box = textBox(page, L("ชื่อผู้เล่นในเซิร์ฟเวอร์นี้"))
 	box.Size = UDim2.new(1, -92, 0, 32)
 	self.friendBox = box
 
-	local add = button(page, "เพิ่ม", 13, Color3.fromRGB(58, 84, 110))
+	local add = button(page, L("เพิ่ม"), 13, Color3.fromRGB(58, 84, 110))
 	add.AnchorPoint = Vector2.new(1, 0)
 	add.Position = UDim2.new(1, 0, 0, 0)
 	add.Size = UDim2.fromOffset(84, 32)
@@ -916,7 +917,7 @@ function SocialGui:buildFriends()
 	who.Font = Enum.Font.GothamBold
 	self.chatWho = who
 
-	local back = button(chat, "ย้อนกลับ", 12, Color3.fromRGB(46, 48, 58))
+	local back = button(chat, L("ย้อนกลับ"), 12, Color3.fromRGB(46, 48, 58))
 	back.AnchorPoint = Vector2.new(1, 0)
 	back.Position = UDim2.new(1, 0, 0, 0)
 	back.Size = UDim2.fromOffset(66, 24)
@@ -935,13 +936,13 @@ function SocialGui:buildFriends()
 	messages.Size = UDim2.new(1, 0, 1, -76)
 	self.chatList = messages
 
-	local msgBox = textBox(chat, "พิมพ์ข้อความ...")
+	local msgBox = textBox(chat, L("พิมพ์ข้อความ..."))
 	msgBox.AnchorPoint = Vector2.new(0, 1)
 	msgBox.Position = UDim2.new(0, 0, 1, 0)
 	msgBox.Size = UDim2.new(1, -150, 0, 32)
 	self.chatBox = msgBox
 
-	local send = button(chat, "ส่ง", 13, Color3.fromRGB(58, 96, 78))
+	local send = button(chat, L("ส่ง"), 13, Color3.fromRGB(58, 96, 78))
 	send.AnchorPoint = Vector2.new(1, 1)
 	send.Position = UDim2.new(1, -76, 1, 0)
 	send.Size = UDim2.fromOffset(68, 32)
@@ -957,7 +958,7 @@ function SocialGui:buildFriends()
 
 	-- Voice lives on the conversation rather than as its own icon, because that is what it is: a call to
 	-- one person. It is not wired up yet; the notice explains why.
-	local voice = button(chat, "โทรจิต", 13, Color3.fromRGB(72, 58, 96))
+	local voice = button(chat, L("โทรจิต"), 13, Color3.fromRGB(72, 58, 96))
 	voice.AnchorPoint = Vector2.new(1, 1)
 	voice.Position = UDim2.new(1, 0, 1, 0)
 	voice.Size = UDim2.fromOffset(70, 32)
@@ -989,7 +990,7 @@ function SocialGui:RenderFriends(friends, pending)
 
 	-- Requests first: they need an answer, so they should not be scrolled past.
 	if #pending > 0 then
-		local head = label(list, "คำขอเป็นเพื่อน", 12, ACCENT)
+		local head = label(list, L("คำขอเป็นเพื่อน"), 12, ACCENT)
 		head.LayoutOrder = 0
 		head.Size = UDim2.new(1, 0, 0, 20)
 		for _, req in ipairs(pending) do
@@ -998,7 +999,7 @@ function SocialGui:RenderFriends(friends, pending)
 			name.Position = UDim2.new(0, 12, 0, 0)
 			name.Size = UDim2.new(1, -150, 1, 0)
 
-			local yes = button(f, "รับ", 12, Color3.fromRGB(58, 96, 78))
+			local yes = button(f, L("รับ"), 12, Color3.fromRGB(58, 96, 78))
 			yes.AnchorPoint = Vector2.new(1, 0.5)
 			yes.Position = UDim2.new(1, -74, 0.5, 0)
 			yes.Size = UDim2.fromOffset(60, 26)
@@ -1006,7 +1007,7 @@ function SocialGui:RenderFriends(friends, pending)
 				if self.callbacks.friendAction then self.callbacks.friendAction("accept", req.userId) end
 			end)
 
-			local no = button(f, "ปฏิเสธ", 12, Color3.fromRGB(96, 56, 52))
+			local no = button(f, L("ปฏิเสธ"), 12, Color3.fromRGB(96, 56, 52))
 			no.AnchorPoint = Vector2.new(1, 0.5)
 			no.Position = UDim2.new(1, -8, 0.5, 0)
 			no.Size = UDim2.fromOffset(62, 26)
@@ -1017,7 +1018,7 @@ function SocialGui:RenderFriends(friends, pending)
 	end
 
 	if #friends == 0 then
-		local empty = label(list, "ยังไม่มีสหาย — พิมพ์ชื่อคนในเซิร์ฟเวอร์เพื่อขอเป็นเพื่อน", 12,
+		local empty = label(list, L("ยังไม่มีสหาย — พิมพ์ชื่อคนในเซิร์ฟเวอร์เพื่อขอเป็นเพื่อน"), 12,
 			TEXT_MUTED, Enum.TextXAlignment.Center)
 		empty.LayoutOrder = 99
 		empty.Size = UDim2.new(1, 0, 0, 50)
@@ -1043,7 +1044,7 @@ function SocialGui:RenderFriends(friends, pending)
 		name.TextTruncate = Enum.TextTruncate.AtEnd
 
 		-- Only an online friend can be messaged, and the button says so rather than failing on tap.
-		local talk = button(f, friend.online and "คุย" or "ไม่อยู่", 12,
+		local talk = button(f, friend.online and L("คุย") or L("ไม่อยู่"), 12,
 			friend.online and Color3.fromRGB(58, 84, 110) or Color3.fromRGB(46, 48, 58))
 		talk.AnchorPoint = Vector2.new(1, 0.5)
 		talk.Position = UDim2.new(1, -136, 0.5, 0)
@@ -1051,21 +1052,21 @@ function SocialGui:RenderFriends(friends, pending)
 
 		-- ชวนเข้าตี้ — **ทางเดียวที่ชวนกันได้** (ผู้ใช้กำหนด 2026-09-19) ไม่มีปุ่มที่ตัวคนในโลก ไม่มีคำสั่งแชท
 		-- อยู่ในแถวนี้เพราะตี้ตั้งกับสหาย และเซิร์ฟเวอร์ก็ปฏิเสธคนที่ไม่ใช่สหายอยู่แล้ว ปุ่มจึงไม่ได้อยู่ผิดที่
-		local party = button(f, "ชวนตี้", 12,
+		local party = button(f, L("ชวนตี้"), 12,
 			friend.online and Color3.fromRGB(64, 86, 62) or Color3.fromRGB(46, 48, 58))
 		party.AnchorPoint = Vector2.new(1, 0.5)
 		party.Position = UDim2.new(1, -194, 0.5, 0)
 		party.Size = UDim2.fromOffset(56, 26)
 		party.Activated:Connect(function()
 			if not friend.online then
-				self:SetStatus("เพื่อนคนนี้ไม่ได้อยู่ในเซิร์ฟเวอร์นี้", "error")
+				self:SetStatus(L("เพื่อนคนนี้ไม่ได้อยู่ในเซิร์ฟเวอร์นี้"), "error")
 				return
 			end
 			if self.callbacks.partyInvite then self.callbacks.partyInvite(friend.userId) end
 		end)
 
 		-- ส่งของทางเมล — ใช้ได้แม้เพื่อนออฟไลน์ (นั่นคือเหตุผลที่มีเมล) ปุ่มจึงไม่หรี่ตามสถานะออนไลน์
-		local post = button(f, "ส่งของ", 12, Color3.fromRGB(96, 78, 44))
+		local post = button(f, L("ส่งของ"), 12, Color3.fromRGB(96, 78, 44))
 		post.AnchorPoint = Vector2.new(1, 0.5)
 		post.Position = UDim2.new(1, -254, 0.5, 0)
 		post.Size = UDim2.fromOffset(56, 26)
@@ -1074,27 +1075,27 @@ function SocialGui:RenderFriends(friends, pending)
 		end)
 
 		-- Telepathy sits next to the chat button because it is the same act aimed at the same person.
-		local call = button(f, "โทร", 12,
+		local call = button(f, L("โทร"), 12,
 			friend.online and Color3.fromRGB(72, 58, 96) or Color3.fromRGB(46, 48, 58))
 		call.AnchorPoint = Vector2.new(1, 0.5)
 		call.Position = UDim2.new(1, -78, 0.5, 0)
 		call.Size = UDim2.fromOffset(52, 26)
 		call.Activated:Connect(function()
 			if not friend.online then
-				self:SetStatus("เพื่อนคนนี้ไม่ได้อยู่ในเซิร์ฟเวอร์นี้", "error")
+				self:SetStatus(L("เพื่อนคนนี้ไม่ได้อยู่ในเซิร์ฟเวอร์นี้"), "error")
 				return
 			end
 			if self.callbacks.call then self.callbacks.call(friend.userId) end
 		end)
 		talk.Activated:Connect(function()
 			if not friend.online then
-				self:SetStatus("เพื่อนคนนี้ไม่ได้อยู่ในเซิร์ฟเวอร์นี้", "error")
+				self:SetStatus(L("เพื่อนคนนี้ไม่ได้อยู่ในเซิร์ฟเวอร์นี้"), "error")
 				return
 			end
 			self:OpenChat(friend.userId, friend.name)
 		end)
 
-		local drop = button(f, "ลบ", 12, Color3.fromRGB(96, 56, 52))
+		local drop = button(f, L("ลบ"), 12, Color3.fromRGB(96, 56, 52))
 		drop.AnchorPoint = Vector2.new(1, 0.5)
 		drop.Position = UDim2.new(1, -8, 0.5, 0)
 		drop.Size = UDim2.fromOffset(62, 26)
@@ -1169,30 +1170,30 @@ function SocialGui:buildBank()
 		return value
 	end
 
-	self.pocketLabel = balanceCard(0, "ในกระเป๋า (หายเมื่อตาย)", ACCENT)
-	self.bankLabel = balanceCard(0.5, "ในธนาคาร (ปลอดภัย)", OK_GREEN)
+	self.pocketLabel = balanceCard(0, L("ในกระเป๋า (หายเมื่อตาย)"), ACCENT)
+	self.bankLabel = balanceCard(0.5, L("ในธนาคาร (ปลอดภัย)"), OK_GREEN)
 
 	-- Depositing and withdrawing are done at the banker NPC, not from here. Saying so is the difference
 	-- between a screen that looks unfinished and one that is telling you where to go.
-	local hint = label(page, "ฝาก-ถอน ทำที่ NPC ธนาคารในเมือง", 12, TEXT_MUTED, Enum.TextXAlignment.Center)
+	local hint = label(page, L("ฝาก-ถอน ทำที่ NPC ธนาคารในเมือง"), 12, TEXT_MUTED, Enum.TextXAlignment.Center)
 	hint.Position = UDim2.new(0, 0, 0, 78)
 	hint.Size = UDim2.new(1, 0, 0, 18)
 
-	local head = label(page, "โอนเงิน (ผู้รับต้องอยู่ในเซิร์ฟเวอร์นี้)", 12, TEXT_MUTED)
+	local head = label(page, L("โอนเงิน (ผู้รับต้องอยู่ในเซิร์ฟเวอร์นี้)"), 12, TEXT_MUTED)
 	head.Position = UDim2.new(0, 0, 0, 106)
 	head.Size = UDim2.new(1, 0, 0, 18)
 
-	local target = textBox(page, "@ชื่อผู้รับ")
+	local target = textBox(page, L("@ชื่อผู้รับ"))
 	target.Position = UDim2.new(0, 0, 0, 128)
 	target.Size = UDim2.new(1, 0, 0, 32)
 	self.bankTarget = target
 
-	local amount = textBox(page, "จำนวนเงิน")
+	local amount = textBox(page, L("จำนวนเงิน"))
 	amount.Position = UDim2.new(0, 0, 0, 168)
 	amount.Size = UDim2.new(1, 0, 0, 32)
 	self.bankAmount = amount
 
-	local transfer = button(page, "โอน", 13, Color3.fromRGB(58, 84, 110))
+	local transfer = button(page, L("โอน"), 13, Color3.fromRGB(58, 84, 110))
 	transfer.Position = UDim2.new(0, 0, 0, 208)
 	transfer.Size = UDim2.new(1, 0, 0, 34)
 	transfer.Activated:Connect(function()
@@ -1243,7 +1244,7 @@ function SocialGui:buildCollection()
 	self.collectionTab = "fish"
 	self.collectionTabs = {}
 	-- แท็บที่สาม "ความสำเร็จ" (2026-09-25 ผู้ใช้สั่งให้อยู่เมนูเดียวกับสมุดสะสม)
-	local tabSpecs = { { id = "fish", name = "ปลา" }, { id = "mobs", name = "มอนสเตอร์" }, { id = "achievements", name = "ความสำเร็จ" } }
+	local tabSpecs = { { id = "fish", name = L("ปลา") }, { id = "mobs", name = L("มอนสเตอร์") }, { id = "achievements", name = L("ความสำเร็จ") } }
 	for i, spec in ipairs(tabSpecs) do
 		local b = Instance.new("TextButton")
 		b.Position = UDim2.new((i - 1) / #tabSpecs, 3, 0, 0)
@@ -1285,7 +1286,7 @@ function SocialGui:RenderCollection(data)
 	end
 
 	if not data then
-		local wait = label(list, "กำลังเปิดสมุด...", 13, TEXT_MUTED, Enum.TextXAlignment.Center)
+		local wait = label(list, L("กำลังเปิดสมุด..."), 13, TEXT_MUTED, Enum.TextXAlignment.Center)
 		wait.Size = UDim2.new(1, 0, 0, 60)
 		self.collectionSummary.Text = ""
 		return
@@ -1299,11 +1300,11 @@ function SocialGui:RenderCollection(data)
 	local showingFish = self.collectionTab == "fish"
 	local rows = showingFish and data.fish or data.mobs
 	self.collectionSummary.Text = showingFish
-		and ("ปลา %d ชนิด · รวม %d ตัว"):format(data.fishKinds or 0, data.fishTotal or 0)
-		or ("มอน %d ชนิด · รวม %d ตัว"):format(data.mobKinds or 0, data.mobTotal or 0)
+		and L("ปลา %d ชนิด · รวม %d ตัว", data.fishKinds or 0, data.fishTotal or 0)
+		or L("มอน %d ชนิด · รวม %d ตัว", data.mobKinds or 0, data.mobTotal or 0)
 
 	if not rows or #rows == 0 then
-		local empty = label(list, showingFish and "ยังไม่เคยตกปลาได้เลย" or "ยังไม่เคยฆ่ามอนเลย",
+		local empty = label(list, showingFish and L("ยังไม่เคยตกปลาได้เลย") or L("ยังไม่เคยฆ่ามอนเลย"),
 			13, TEXT_MUTED, Enum.TextXAlignment.Center)
 		empty.Size = UDim2.new(1, 0, 0, 60)
 		return
@@ -1336,7 +1337,7 @@ function SocialGui:RenderCollection(data)
 		end
 
 		-- ชื่อมาจากเซิร์ฟเวอร์ ถอยไปใช้ id ถ้าไม่มี (ของเก่าในสมุดที่บันทึกก่อนมีฟิลด์นี้)
-		local title = entry.name or entry.id
+		local title = Show(entry.name) or entry.id
 
 		local name = label(row, title, 13, TEXT_LIGHT)
 		-- เว้นที่ให้ไอคอนเฉพาะแถวที่มีรูป แถวที่ไม่มีจะได้ไม่เยื้องลอย
@@ -1349,7 +1350,7 @@ function SocialGui:RenderCollection(data)
 
 		-- ปลาโชว์น้ำหนักตัวที่หนักที่สุดด้วย ซึ่งเป็นสิ่งที่ผู้ใช้ขอ
 		local right = showingFish and entry.best and entry.best > 0
-			and ("x%d · หนักสุด %.1f กก."):format(entry.n, entry.best)
+			and L("x%d · หนักสุด %.1f กก.", entry.n, entry.best)
 			or ("x%d"):format(entry.n)
 		local count = label(row, right, 12, RUNE, Enum.TextXAlignment.Right)
 		count.AnchorPoint = Vector2.new(1, 0)
@@ -1364,14 +1365,14 @@ function SocialGui:RenderAchievements(ach)
 	local list = self.collectionList
 	if not ach then
 		self.collectionSummary.Text = ""
-		local wait = label(list, "กำลังเปิดสมุด...", 13, TEXT_MUTED, Enum.TextXAlignment.Center)
+		local wait = label(list, L("กำลังเปิดสมุด..."), 13, TEXT_MUTED, Enum.TextXAlignment.Center)
 		wait.Size = UDim2.new(1, 0, 0, 60)
 		return
 	end
 	local done = 0
 	for _, row in ipairs(ach.rows or {}) do if row.unlocked then done += 1 end end
-	self.collectionSummary.Text = ach.marked and ("ปลดแล้ว %d/%d · ⚠️ ติดหัวแดง ฉายาถูกล็อกจนหมดเวลา"):format(done, #(ach.rows or {}))
-		or ("ปลดแล้ว %d/%d · เลือกฉายาเพื่อขึ้นเหนือหัว"):format(done, #(ach.rows or {}))
+	self.collectionSummary.Text = ach.marked and L("ปลดแล้ว %d/%d · ⚠️ ติดหัวแดง ฉายาถูกล็อกจนหมดเวลา", done, #(ach.rows or {}))
+		or L("ปลดแล้ว %d/%d · เลือกฉายาเพื่อขึ้นเหนือหัว", done, #(ach.rows or {}))
 
 	local order = 0
 	local function row(height)
@@ -1394,7 +1395,7 @@ function SocialGui:RenderAchievements(ach)
 		b.BorderSizePixel = 0
 		b.Font = Enum.Font.GothamBold
 		b.TextSize = 11
-		b.Text = equipped and "กำลังใช้" or (enabled and "ใช้ฉายา" or "ยังไม่ปลด")
+		b.Text = equipped and L("กำลังใช้") or (enabled and L("ใช้ฉายา") or L("ยังไม่ปลด"))
 		b.BackgroundColor3 = equipped and RUNE or (enabled and Color3.fromRGB(70, 130, 90) or Color3.fromRGB(60, 62, 72))
 		b.TextColor3 = equipped and Color3.fromRGB(28, 24, 16) or (enabled and TEXT_LIGHT or TEXT_MUTED)
 		b.AutoButtonColor = enabled and not equipped
@@ -1409,7 +1410,7 @@ function SocialGui:RenderAchievements(ach)
 	-- ไม่ใช้ฉายา
 	do
 		local frame = row(34)
-		local t = label(frame, "ไม่ใช้ฉายา", 13, TEXT_MUTED)
+		local t = label(frame, L("ไม่ใช้ฉายา"), 13, TEXT_MUTED)
 		t.Position = UDim2.new(0, 10, 0, 0)
 		t.Size = UDim2.new(1, -100, 1, 0)
 		useButton(frame, "", true, ach.equipped == nil)
@@ -1417,7 +1418,7 @@ function SocialGui:RenderAchievements(ach)
 	-- ฉายา VIP (มีเฉพาะตอน VIP ยังไม่หมด)
 	if ach.vip then
 		local frame = row(34)
-		local t = label(frame, ach.vip.title .. "  —  ฉายาของ VIP", 13, ach.vip.color)
+		local t = label(frame, L("%s  —  ฉายาของ VIP", Show(ach.vip.title)), 13, ach.vip.color)
 		t.Font = Enum.Font.GothamBold
 		t.Position = UDim2.new(0, 10, 0, 0)
 		t.Size = UDim2.new(1, -100, 1, 0)
@@ -1426,7 +1427,7 @@ function SocialGui:RenderAchievements(ach)
 	-- ฉายาพิเศษอื่น (แร็งก์ PVP ฯลฯ) ทรงเดียวกับแถว VIP
 	for _, extra in ipairs(ach.extras or {}) do
 		local frame = row(34)
-		local t = label(frame, extra.title .. "  —  " .. (extra.note or ""), 13, extra.color)
+		local t = label(frame, Show(extra.title) .. "  —  " .. (Show(extra.note) or ""), 13, extra.color)
 		t.Font = Enum.Font.GothamBold
 		t.Position = UDim2.new(0, 10, 0, 0)
 		t.Size = UDim2.new(1, -100, 1, 0)
@@ -1435,12 +1436,12 @@ function SocialGui:RenderAchievements(ach)
 	end
 	for _, entry in ipairs(ach.rows or {}) do
 		local frame = row(46)
-		local title = label(frame, entry.title, 13, entry.unlocked and entry.color or TEXT_MUTED)
+		local title = label(frame, Show(entry.title), 13, entry.unlocked and entry.color or TEXT_MUTED)
 		title.Font = Enum.Font.GothamBold
 		title.Position = UDim2.new(0, 10, 0, 3)
 		title.Size = UDim2.new(1, -100, 0, 18)
 		title.TextTruncate = Enum.TextTruncate.AtEnd
-		local desc = label(frame, ("%s · %s/%s · 💎 %d"):format(entry.desc, entry.progress, entry.goal, entry.gems), 11, TEXT_MUTED)
+		local desc = label(frame, ("%s · %s/%s · 💎 %d"):format(Show(entry.desc), entry.progress, entry.goal, entry.gems), 11, TEXT_MUTED)
 		desc.Position = UDim2.new(0, 10, 0, 22)
 		desc.Size = UDim2.new(1, -100, 0, 14)
 		desc.TextTruncate = Enum.TextTruncate.AtEnd
@@ -1481,10 +1482,10 @@ function SocialGui:buildRanking()
 	self.rankingTab = "levels"
 	self.rankingTabs = {}
 	local specs = {
-		{ id = "levels", name = "เลเวล" },
-		{ id = "gold", name = "คนรวย" },
-		{ id = "points", name = "แต้ม" },
-		{ id = "channels", name = "ช่อง" },
+		{ id = "levels", name = L("เลเวล") },
+		{ id = "gold", name = L("คนรวย") },
+		{ id = "points", name = L("แต้ม") },
+		{ id = "channels", name = L("ช่อง") },
 	}
 	for i, spec in ipairs(specs) do
 		local b = Instance.new("TextButton")
@@ -1528,7 +1529,7 @@ function SocialGui:RenderRanking(data)
 	end
 
 	if not data then
-		local wait = label(list, "กำลังนับคะแนน...", 13, TEXT_MUTED, Enum.TextXAlignment.Center)
+		local wait = label(list, L("กำลังนับคะแนน..."), 13, TEXT_MUTED, Enum.TextXAlignment.Center)
 		wait.Size = UDim2.new(1, 0, 0, 60)
 		return
 	end
@@ -1536,20 +1537,21 @@ function SocialGui:RenderRanking(data)
 	local tab = self.rankingTab
 	local rows = data[tab]
 	if not rows or #rows == 0 then
-		local empty = label(list, "ยังไม่มีข้อมูล", 13, TEXT_MUTED, Enum.TextXAlignment.Center)
+		local empty = label(list, L("ยังไม่มีข้อมูล"), 13, TEXT_MUTED, Enum.TextXAlignment.Center)
 		empty.Size = UDim2.new(1, 0, 0, 60)
 		return
 	end
 
-	local SUFFIX = { levels = "", gold = " เหรียญ", points = " แต้ม", channels = " คน" }
+	-- หน่วยต่อท้ายค่า: แม่แบบเต็มต่อแท็บ (แปลทั้งก้อน) · เลเวลไม่มีหน่วย
+	local VALUE_TEMPLATE = { gold = "%s เหรียญ", points = "%s แต้ม" } -- locale: skip (แปลตอนใช้)
 
 	-- **บอกว่าตารางนี้กว้างแค่ไหน** เลเวลกับเงินเป็นอันดับของทั้งเกม (OrderedDataStore) ส่วนแต้มกิจกรรม
 	-- ยังเป็นของคนในเซิร์ฟเวอร์นี้ · ถ้าไม่บอก คนเล่นบนเกาะส่วนตัวจะอ่านตารางแต้มที่มีชื่อตัวเองคนเดียว
 	-- แล้วนึกว่าระบบพัง
 	local scope = data[tab .. "Scope"]
 	local note = (tab == "levels" or tab == "gold")
-		and (scope == "global" and "อันดับของผู้เล่นทั้งเกม" or "อันดับในเซิร์ฟเวอร์นี้ (ยังอ่านตารางรวมไม่ได้)")
-		or (tab == "points" and "แต้มของคนในเซิร์ฟเวอร์นี้" or nil)
+		and (scope == "global" and L("อันดับของผู้เล่นทั้งเกม") or L("อันดับในเซิร์ฟเวอร์นี้ (ยังอ่านตารางรวมไม่ได้)"))
+		or (tab == "points" and L("แต้มของคนในเซิร์ฟเวอร์นี้") or nil)
 	if note then
 		local hint = label(list, note, 11, TEXT_MUTED, Enum.TextXAlignment.Center)
 		hint.Size = UDim2.new(1, 0, 0, 20)
@@ -1574,12 +1576,12 @@ function SocialGui:RenderRanking(data)
 
 		local who, value
 		if tab == "channels" then
-			who = ("ช่อง %s"):format(tostring(entry.channel))
-			if entry.channel == data.myChannel then who = who .. " (ช่องคุณ)" end
-			value = ("%d%s"):format(entry.count, SUFFIX[tab])
+			who = entry.channel == data.myChannel and L("ช่อง %s (ช่องคุณ)", tostring(entry.channel))
+				or L("ช่อง %s", tostring(entry.channel))
+			value = L("%d คน", entry.count)
 		else
-			who = entry.name
-			value = ("%s%s"):format(tostring(entry.value), SUFFIX[tab])
+			who = Show(entry.name) -- "ผู้เล่น #<id>" ตอนอ่านชื่อไม่ได้ (GlobalRanks)
+			value = VALUE_TEMPLATE[tab] and L(VALUE_TEMPLATE[tab], tostring(entry.value)) or tostring(entry.value)
 		end
 
 		local name = label(row, who, 13, TEXT_LIGHT)
@@ -1626,7 +1628,7 @@ function SocialGui:RenderMarket(market)
 	-- in the first seconds of a server, before the shop has published its prices, and an empty list there
 	-- would read as "the shop buys nothing" -- the opposite of the truth.
 	if not market or not market.prices or #market.prices == 0 then
-		local empty = label(list, "กำลังถามราคาจากตลาด...", 13, TEXT_MUTED, Enum.TextXAlignment.Center)
+		local empty = label(list, L("กำลังถามราคาจากตลาด..."), 13, TEXT_MUTED, Enum.TextXAlignment.Center)
 		empty.Size = UDim2.new(1, 0, 0, 60)
 		self.marketHint.Text = ""
 		return
@@ -1653,7 +1655,7 @@ function SocialGui:RenderMarket(market)
 			icon.Parent = row
 		end
 
-		local name = label(row, entry.name, 13, TEXT_LIGHT)
+		local name = label(row, Show(entry.name), 13, TEXT_LIGHT)
 		name.Position = UDim2.new(0, 42, 0, 0)
 		name.Size = UDim2.new(1, -250, 1, 0)
 		name.TextTruncate = Enum.TextTruncate.AtEnd
@@ -1670,7 +1672,7 @@ function SocialGui:RenderMarket(market)
 			elseif diff < 0 then
 				text = ('<font color="#FF5A5A">⬇ %d</font>   <font color="#6E6E6E">%d</font> → %s'):format(diff, entry.previous, new)
 			else
-				text = ('<font color="#6E6E6E">คงที่</font>   %s'):format(new)
+				text = L('<font color="#6E6E6E">คงที่</font>   %s', new)
 			end
 		end
 		local price = label(row, text, 14, TEXT_LIGHT, Enum.TextXAlignment.Right)
@@ -1680,7 +1682,7 @@ function SocialGui:RenderMarket(market)
 		price.Font = Enum.Font.GothamBold
 	end
 
-	self.marketHint.Text = ("ราคารับซื้อเปลี่ยนใหม่ใน %d นาที"):format(math.max(0, (market.rerollIn or 0) // 60))
+	self.marketHint.Text = L("ราคารับซื้อเปลี่ยนใหม่ใน %d นาที", math.max(0, (market.rerollIn or 0) // 60))
 end
 
 --------------------------------------------------------------------------------
@@ -1741,7 +1743,7 @@ function SocialGui:buildProfile()
 
 	-- The three fields the player will be able to set later. Shown now so the screen is not half-empty,
 	-- and so it is obvious where they will appear.
-	local rows = { { "วันเกิด", "birthday" }, { "เพศ", "gender" } }
+	local rows = { { L("วันเกิด"), "birthday" }, { L("เพศ"), "gender" } }
 	self.profileFields = {}
 	for i, entry in ipairs(rows) do
 		local row = Instance.new("Frame")
@@ -1757,7 +1759,7 @@ function SocialGui:buildProfile()
 		caption.Position = UDim2.new(0, 12, 0, 0)
 		caption.Size = UDim2.new(0.4, 0, 1, 0)
 
-		local value = label(row, "ยังไม่ระบุ", 12, TEXT_LIGHT, Enum.TextXAlignment.Right)
+		local value = label(row, L("ยังไม่ระบุ"), 12, TEXT_LIGHT, Enum.TextXAlignment.Right)
 		value.AnchorPoint = Vector2.new(1, 0)
 		value.Position = UDim2.new(1, -12, 0, 0)
 		value.Size = UDim2.new(0.55, 0, 1, 0)
@@ -1776,10 +1778,10 @@ function SocialGui:buildProfile()
 	rankRow.Text = ""
 	rankRow.Parent = page
 	corner(rankRow, UDim.new(0, 8))
-	local rankCaption = label(rankRow, "แร็งก์ PVP", 12, TEXT_MUTED)
+	local rankCaption = label(rankRow, L("แร็งก์ PVP"), 12, TEXT_MUTED)
 	rankCaption.Position = UDim2.new(0, 12, 0, 0)
 	rankCaption.Size = UDim2.new(0.4, 0, 1, 0)
-	local rankValue = label(rankRow, "🔩 ไอร่อน  🔒", 12, TEXT_LIGHT, Enum.TextXAlignment.Right)
+	local rankValue = label(rankRow, L("🔩 ไอร่อน  🔒"), 12, TEXT_LIGHT, Enum.TextXAlignment.Right)
 	rankValue.AnchorPoint = Vector2.new(1, 0)
 	rankValue.Position = UDim2.new(1, -12, 0, 0)
 	rankValue.Size = UDim2.new(0.55, 0, 1, 0)
@@ -1795,7 +1797,7 @@ function SocialGui:buildProfile()
 	-- It toggles, because the only way to take a sign down is the same button that put it up.
 	-- วางต่อจากแถวสุดท้ายเสมอ (เดิมตายตัวที่ 314 แล้วแถวแร็งก์ที่เพิ่มทีหลังโดนทับ · เทส social_profile_layout_test)
 	local nextY = 264 + (#rows + 1) * 36 + 4
-	local show = button(page, "แสดงการ์ดโปรไฟล์", 13, Color3.fromRGB(58, 84, 110))
+	local show = button(page, L("แสดงการ์ดโปรไฟล์"), 13, Color3.fromRGB(58, 84, 110))
 	show.Position = UDim2.new(0, 0, 0, nextY)
 	show.Size = UDim2.new(1, 0, 0, 34)
 	self.showCardButton = show
@@ -1806,7 +1808,7 @@ function SocialGui:buildProfile()
 		if self.callbacks.showCard then self.callbacks.showCard(self.cardShowing) end
 	end)
 
-	local note = label(page, "แก้ไขโปรไฟล์จะเปิดให้ใช้ในภายหลัง", 11, TEXT_MUTED,
+	local note = label(page, L("แก้ไขโปรไฟล์จะเปิดให้ใช้ในภายหลัง"), 11, TEXT_MUTED,
 		Enum.TextXAlignment.Center)
 	note.Position = UDim2.new(0, 0, 0, nextY + 38)
 	note.Size = UDim2.new(1, 0, 0, 18)
@@ -1817,7 +1819,7 @@ end
 -- stop claiming it is up.
 function SocialGui:SetCardButton(showing)
 	self.cardShowing = showing
-	self.showCardButton.Text = showing and "ซ่อนการ์ดโปรไฟล์" or "แสดงการ์ดโปรไฟล์"
+	self.showCardButton.Text = showing and L("ซ่อนการ์ดโปรไฟล์") or L("แสดงการ์ดโปรไฟล์")
 	self.showCardButton.BackgroundColor3 = showing and Color3.fromRGB(96, 80, 52)
 		or Color3.fromRGB(58, 84, 110)
 end
@@ -1835,27 +1837,27 @@ function SocialGui:RenderProfile(data)
 	self.rankLabel.TextColor3 = rank.color
 	self.rankStroke.Color = rank.color
 	self.rankStroke.Transparency = rank.glow and 0.05 or 0.4
-	self.profileLevel.Text = ("เลเวล %d"):format(level)
+	self.profileLevel.Text = L("เลเวล %d", level)
 
 	if self.profileClass then
 		if data.class then
-			self.profileClass.Text = ClassConfig.DisplayName(data.class)
+			self.profileClass.Text = Show(ClassConfig.DisplayName(data.class))
 			self.profileClass.TextColor3 = ClassConfig.ColorOf(data.class)
 		else
-			self.profileClass.Text = "ยังไม่มีอาชีพ"
+			self.profileClass.Text = L("ยังไม่มีอาชีพ")
 			self.profileClass.TextColor3 = TEXT_MUTED
 		end
 	end
 
-	self.profileFields.birthday.Text = data.birthday or "ยังไม่ระบุ"
-	self.profileFields.gender.Text = data.gender or "ยังไม่ระบุ"
+	self.profileFields.birthday.Text = data.birthday or L("ยังไม่ระบุ")
+	self.profileFields.gender.Text = data.gender or L("ยังไม่ระบุ")
 
 	-- แร็งก์ PVP: ล็อกอยู่ = ไอร่อน + 🔒 ทุกคน · เปิดแล้ว = ขั้นจริงจากแอตทริบิวต์ (PvpRankPublisher) ยังไม่เคยเล่น = ไอร่อน
 	if self.profilePvpRank then
 		local PvpRankConfig = require(script.Parent.Parent.PvpRankConfig)
 		local tierIndex = PvpRankConfig.Enabled and player:GetAttribute("WOLD_PvpTier") or 1
 		local tier = PvpRankConfig.Tier(type(tierIndex) == "number" and tierIndex or 1)
-		self.profilePvpRank.Text = ("%s %s%s"):format(tier.emoji, tier.name, PvpRankConfig.Enabled and "" or "  🔒")
+		self.profilePvpRank.Text = ("%s %s%s"):format(tier.emoji, Show(tier.name), PvpRankConfig.Enabled and "" or "  🔒")
 		self.profilePvpRank.TextColor3 = PvpRankConfig.Enabled and tier.color or TEXT_LIGHT
 	end
 end
@@ -1882,7 +1884,7 @@ function SocialGui:buildNotice()
 end
 
 function SocialGui:ShowNotice(title, message)
-	self.noticeText.Text = message
+	self.noticeText.Text = Show(message) or ""
 	self:ShowScreen("notice", title)
 end
 
@@ -1908,7 +1910,7 @@ function SocialGui:buildMail()
 	count.Size = UDim2.new(1, -130, 0, 26)
 	self.mailCount = count
 
-	local clean = button(page, "ล้างที่รับแล้ว", 12, Color3.fromRGB(96, 56, 52))
+	local clean = button(page, L("ล้างที่รับแล้ว"), 12, Color3.fromRGB(96, 56, 52))
 	clean.AnchorPoint = Vector2.new(1, 0)
 	clean.Position = UDim2.new(1, 0, 0, 0)
 	clean.Size = UDim2.fromOffset(120, 26)
@@ -1925,9 +1927,9 @@ end
 local function attachmentText(letter)
 	local parts = {}
 	for _, it in ipairs(letter.items or {}) do
-		parts[#parts + 1] = ("%s x%d"):format(ItemCatalog.DisplayName(it.id, it.meta), it.count or 1)
+		parts[#parts + 1] = ("%s x%d"):format(Show(ItemCatalog.DisplayName(it.id, it.meta)), it.count or 1)
 	end
-	if (letter.gold or 0) > 0 then parts[#parts + 1] = ("%d เหรียญ"):format(letter.gold) end
+	if (letter.gold or 0) > 0 then parts[#parts + 1] = L("%d เหรียญ", letter.gold) end
 	if (letter.exp or 0) > 0 then parts[#parts + 1] = ("%d EXP"):format(letter.exp) end
 	return table.concat(parts, " · ")
 end
@@ -1939,7 +1941,7 @@ function SocialGui:RenderMail(box)
 		if child:IsA("Frame") then child:Destroy() end
 	end
 	local letters = box and box.letters or {}
-	self.mailCount.Text = ("จดหมาย %d/%d"):format(#letters, box and box.cap or MailConfig.BoxSize)
+	self.mailCount.Text = L("จดหมาย %d/%d", #letters, box and box.cap or MailConfig.BoxSize)
 
 	for i = #letters, 1, -1 do
 		local letter = letters[i]
@@ -1953,12 +1955,13 @@ function SocialGui:RenderMail(box)
 		card.Parent = self.mailList
 		corner(card, UDim.new(0, 10))
 
-		local head = label(card, ("%s · %s"):format(letter.fromName or "ระบบ", os.date("%d/%m %H:%M", letter.at or 0)),
+		local head = label(card, ("%s · %s"):format(Show(letter.fromName) or L("ระบบ"), os.date("%d/%m %H:%M", letter.at or 0)),
 			12, letter.read and TEXT_MUTED or ACCENT)
 		head.Position = UDim2.new(0, 10, 0, 6)
 		head.Size = UDim2.new(1, -80, 0, 16)
 
-		local subject, body = letter.subject or "", letter.body or ""
+		-- เมลระบบ (บอสโลก สนาม ช่าง) หัวเรื่อง/ข้อความเป็นแม่แบบไทย → แปล · ข้อความผู้เล่นไม่ตรงกุญแจไหน = เดิม
+		local subject, body = Show(letter.subject) or "", Show(letter.body) or ""
 		local text = (subject ~= "" and (subject .. (body ~= "" and " — " or "")) or "") .. body
 		local bodyLabel = label(card, text, 12, TEXT_LIGHT)
 		bodyLabel.Position = UDim2.new(0, 10, 0, 24)
@@ -1967,12 +1970,12 @@ function SocialGui:RenderMail(box)
 		bodyLabel.TextYAlignment = Enum.TextYAlignment.Top
 
 		local canDelete = letter.claimed or attached == ""
-		local drop = button(card, "ลบ", 12, canDelete and Color3.fromRGB(96, 56, 52) or Color3.fromRGB(46, 48, 58))
+		local drop = button(card, L("ลบ"), 12, canDelete and Color3.fromRGB(96, 56, 52) or Color3.fromRGB(46, 48, 58))
 		drop.AnchorPoint = Vector2.new(1, 0)
 		drop.Position = UDim2.new(1, -8, 0, 8)
 		drop.Size = UDim2.fromOffset(56, 24)
 		drop.Activated:Connect(function()
-			if not canDelete then return self:SetStatus("รับของก่อนแล้วค่อยลบ", "error") end
+			if not canDelete then return self:SetStatus(L("รับของก่อนแล้วค่อยลบ"), "error") end
 			if self.callbacks.mail then self.callbacks.mail("delete", letter.id) end
 		end)
 
@@ -1991,7 +1994,7 @@ function SocialGui:RenderMail(box)
 			what.Size = UDim2.new(1, -120, 0, 18)
 			what.TextTruncate = Enum.TextTruncate.AtEnd
 
-			local take = button(card, letter.claimed and "รับแล้ว" or "รับ", 12,
+			local take = button(card, letter.claimed and L("รับแล้ว") or L("รับ"), 12,
 				letter.claimed and Color3.fromRGB(46, 48, 58) or Color3.fromRGB(64, 86, 62))
 			take.AnchorPoint = Vector2.new(1, 0)
 			take.Position = UDim2.new(1, -8, 0, 54)
@@ -2063,28 +2066,28 @@ function SocialGui:buildMailCompose()
 	picked.TextTruncate = Enum.TextTruncate.AtEnd
 	self.composePicked = picked
 
-	local count = textBox(page, "จำนวน")
+	local count = textBox(page, L("จำนวน"))
 	count.Position = UDim2.new(0, 0, 1, -98)
 	count.Size = UDim2.new(0.3, -4, 0, 30)
 	self.composeCount = count
 	NumberBox.Bind(count, function() return self.composeMax end) -- ไม่เลือกของ = ไม่มีเพดาน
 
-	local body = textBox(page, "ข้อความ (ไม่ใส่ก็ได้)")
+	local body = textBox(page, L("ข้อความ (ไม่ใส่ก็ได้)"))
 	body.Position = UDim2.new(0.3, 4, 1, -98)
 	body.Size = UDim2.new(0.7, -4, 0, 30)
 	self.composeBody = body
 
-	local send = button(page, ("ส่ง (ค่าส่ง %d ซิลเวอร์)"):format(MailConfig.Fee), 13, Color3.fromRGB(64, 86, 62))
+	local send = button(page, L("ส่ง (ค่าส่ง %d ซิลเวอร์)", MailConfig.Fee), 13, Color3.fromRGB(64, 86, 62))
 	send.Position = UDim2.new(0, 0, 1, -60)
 	send.Size = UDim2.new(1, 0, 0, 34)
 	send.Activated:Connect(function()
-		if not self.composeSlot then return self:SetStatus("เลือกของที่จะส่งก่อน", "error") end
+		if not self.composeSlot then return self:SetStatus(L("เลือกของที่จะส่งก่อน"), "error") end
 		if self.callbacks.mail then
 			self.callbacks.mail("send", self.composeUserId, self.composeSlot, tonumber(count.Text) or 0, body.Text)
 		end
 	end)
 
-	local hint = label(page, "ส่งได้เฉพาะวัตถุดิบ · 1 ช่องต่อฉบับ · เพื่อนออฟไลน์ก็ได้รับ", 11, TEXT_MUTED,
+	local hint = label(page, L("ส่งได้เฉพาะวัตถุดิบ · 1 ช่องต่อฉบับ · เพื่อนออฟไลน์ก็ได้รับ"), 11, TEXT_MUTED,
 		Enum.TextXAlignment.Center)
 	hint.Position = UDim2.new(0, 0, 1, -22)
 	hint.Size = UDim2.new(1, 0, 0, 18)
@@ -2101,7 +2104,7 @@ function SocialGui:OpenCompose(userId, name)
 	self.composeMax = nil
 	self.composeCount.Text = ""
 	self.composeBody.Text = ""
-	self:ShowScreen("mailCompose", "ส่งของถึง " .. tostring(name))
+	self:ShowScreen("mailCompose", L("ส่งของถึง %s", tostring(name)))
 	self:RenderCompose()
 end
 
@@ -2131,26 +2134,27 @@ function SocialGui:RenderCompose()
 				self.composeSlot = index
 				self.composeMax = slot.count or 1
 				self.composeCount.Text = tostring(slot.count or 1)
-				self.composePicked.Text = ("%s x%d"):format(ItemCatalog.DisplayName(slot.id, slot.meta), slot.count or 1)
+				self.composePicked.Text = ("%s x%d"):format(Show(ItemCatalog.DisplayName(slot.id, slot.meta)), slot.count or 1)
 				self:RenderCompose()
 			end)
 		end
 	end
 	if not self.composeSlot then
-		self.composePicked.Text = any and "เลือกของหนึ่งช่อง" or "ไม่มีของที่ส่งได้ในกระเป๋า (ส่งได้เฉพาะวัตถุดิบ)"
+		self.composePicked.Text = any and L("เลือกของหนึ่งช่อง") or L("ไม่มีของที่ส่งได้ในกระเป๋า (ส่งได้เฉพาะวัตถุดิบ)")
 	end
 end
 
+-- หัวหน้าจอ: แปลตอนแสดง (ShowScreen) ไม่ใช่ตอนโหลดโมดูล
 local TITLES = {
-	home = "หินเวทสื่อสาร",
-	settings = "ตั้งค่า",
-	board = "บอร์ดกิลด์",
-	friends = "รายชื่อสหาย",
-	bank = "ธนาคาร",
-	market = "ราคากลาง",
-	profile = "โปรไฟล์",
-	mail = "กล่องจดหมาย",
-	mailCompose = "ส่งของ",
+	home = "หินเวทสื่อสาร", -- locale: skip (แปลตอนใช้)
+	settings = "ตั้งค่า", -- locale: skip (แปลตอนใช้)
+	board = "บอร์ดกิลด์", -- locale: skip (แปลตอนใช้)
+	friends = "รายชื่อสหาย", -- locale: skip (แปลตอนใช้)
+	bank = "ธนาคาร", -- locale: skip (แปลตอนใช้)
+	market = "ราคากลาง", -- locale: skip (แปลตอนใช้)
+	profile = "โปรไฟล์", -- locale: skip (แปลตอนใช้)
+	mail = "กล่องจดหมาย", -- locale: skip (แปลตอนใช้)
+	mailCompose = "ส่งของ", -- locale: skip (แปลตอนใช้)
 }
 
 -- ล็อบบี้ (ผู้ใช้สั่ง 2026-09-25): เปิดได้เฉพาะหน้าที่ไม่ต้องใช้ข้อมูลตัวละคร — ล็อบบี้ห้ามเปิดเซสชันโปรไฟล์
@@ -2163,7 +2167,7 @@ end
 
 function SocialGui:ShowScreen(id, titleOverride)
 	if self.lobbyNotice and not LOBBY_SCREENS[id] then
-		return self:ShowNotice(titleOverride or TITLES[id] or "หินเวทสื่อสาร", self.lobbyNotice)
+		return self:ShowNotice(titleOverride or L(TITLES[id] or TITLES.home), self.lobbyNotice)
 	end
 	for name, page in pairs(self.screens) do
 		page.Visible = (name == id)
@@ -2173,7 +2177,7 @@ function SocialGui:ShowScreen(id, titleOverride)
 	if self.wallpaperFrame then
 		self.wallpaperFrame.Visible = (id == "home")
 	end
-	self.title.Text = titleOverride or TITLES[id] or "หินเวทสื่อสาร"
+	self.title.Text = Show(titleOverride) or L(TITLES[id] or TITLES.home)
 	self.backButton.Visible = (id ~= "home")
 	self:SetStatus("")
 
@@ -2190,7 +2194,8 @@ function SocialGui:ShowScreen(id, titleOverride)
 end
 
 function SocialGui:SetStatus(text, kind)
-	self.status.Text = text or ""
+	-- ข้อความจากเซิร์ฟ (SocialNotify) มาเป็นไทย → แปลตอนแสดง · "" ไม่ส่งเข้า Show
+	self.status.Text = (text and text ~= "") and Show(text) or ""
 	self.status.TextColor3 = (kind == "error") and BAD_RED or (kind == "ok") and OK_GREEN or TEXT_MUTED
 end
 

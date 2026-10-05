@@ -8,6 +8,8 @@ local SocialConfig = require(script.Parent.Parent.SocialConfig)
 local PvpRankConfig = require(script.Parent.Parent.PvpRankConfig)
 local ClassConfig = require(script.Parent.Parent.ClassConfig)
 local AvatarThumbnails = require(script.Parent.AvatarThumbnails)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local ProfileCardGui = {}
 
@@ -134,15 +136,15 @@ function ProfileCardGui.Show(data)
 	-- Level and class on one line. Raising the card is the only way anyone learns either of these about a
 	-- stranger now, so the card has to carry both.
 	local levelText = data.class
-		and ("เลเวล %d · %s"):format(data.level or 1, ClassConfig.DisplayName(data.class))
-		or ("เลเวล %d"):format(data.level or 1)
+		and L("เลเวล %d · %s", data.level or 1, Show(ClassConfig.DisplayName(data.class)))
+		or L("เลเวล %d", data.level or 1)
 	local level = label(panel, levelText, 12,
 		data.class and ClassConfig.ColorOf(data.class) or TEXT_MUTED)
 	level.Position = UDim2.new(0, 62, 0, 28)
 	level.Size = UDim2.new(1, -70, 0, 16)
 
 	local details = label(panel,
-		("%s · %s"):format(data.gender or "ยังไม่ระบุ", data.birthday or "ยังไม่ระบุ"),
+		("%s · %s"):format(Show(data.gender) or L("ยังไม่ระบุ"), data.birthday or L("ยังไม่ระบุ")),
 		11, TEXT_MUTED)
 	details.Position = UDim2.new(0, 10, 0, 62)
 	details.Size = UDim2.new(1, -20, 0, 26)

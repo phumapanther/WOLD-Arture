@@ -15,6 +15,7 @@ local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local CombatConfig = require(game.ReplicatedStorage.CombatConfig)
 local TrapConfig = require(game.ReplicatedStorage.TrapConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local L = require(game.ReplicatedStorage.Locale).L
 
 while workspace:GetAttribute("IsLobby") == nil do
 	task.wait()
@@ -313,8 +314,8 @@ local function drawAmmo(inventory)
 			icon.Visible = i <= count
 			icon.BackgroundColor3 = ammo and ammo.color or CASE_COLOR
 		end
-		ammoText.Text = not ammo and "ไม่มีกระสุนกับดัก"
-			or count == 0 and (ammo.name .. " หมด") or (" %s %d"):format(ammo.name, count)
+		ammoText.Text = not ammo and L("ไม่มีกระสุนกับดัก")
+			or count == 0 and L("%s หมด", ammo.name) or (" %s %d"):format(L(ammo.name), count)
 		ammoText.TextColor3 = count == 0 and Color3.fromRGB(235, 110, 100) or Color3.fromRGB(245, 240, 225)
 		return
 	end
@@ -329,7 +330,7 @@ local function drawAmmo(inventory)
 		icon.Visible = i <= count
 		icon.BackgroundColor3 = CASE_COLOR
 	end
-	ammoText.Text = count == 0 and "กระสุนหมด" or (" " .. count)
+	ammoText.Text = count == 0 and L("กระสุนหมด") or (" " .. count)
 	ammoText.TextColor3 = count == 0 and Color3.fromRGB(235, 110, 100) or Color3.fromRGB(245, 240, 225)
 end
 

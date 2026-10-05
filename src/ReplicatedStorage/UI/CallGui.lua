@@ -7,6 +7,7 @@
 local SocialConfig = require(script.Parent.Parent.SocialConfig)
 local AvatarThumbnails = require(script.Parent.AvatarThumbnails)
 local Responsive = require(script.Parent.Responsive)
+local L = require(script.Parent.Parent.Locale).L
 
 local CallGui = {}
 CallGui.__index = CallGui
@@ -100,8 +101,8 @@ function CallGui.new()
 		return b
 	end
 
-	self.answerButton = actionButton("รับสาย", ANSWER, 0, 0.5)
-	self.endButton = actionButton("วางสาย", HANGUP, 0.5, 0.5)
+	self.answerButton = actionButton(L("รับสาย"), ANSWER, 0, 0.5)
+	self.endButton = actionButton(L("วางสาย"), HANGUP, 0.5, 0.5)
 
 	self.answerButton.Activated:Connect(function()
 		if self.callbacks.answer then self.callbacks.answer() end
@@ -126,24 +127,24 @@ function CallGui:Show(state, userId, name)
 	end)
 
 	if state == "calling" then
-		self.stateLabel.Text = "กำลังโทร..."
+		self.stateLabel.Text = L("กำลังโทร...")
 		-- Nothing to answer on our own outgoing call; only hanging up makes sense.
 		self.answerButton.Visible = false
 		self.endButton.Size = UDim2.new(1, -20, 0, 30)
 		self.endButton.Position = UDim2.new(0, 10, 1, -10)
-		self.endButton.Text = "ยกเลิก"
+		self.endButton.Text = L("ยกเลิก")
 	elseif state == "incoming" then
-		self.stateLabel.Text = "สายเรียกเข้า"
+		self.stateLabel.Text = L("สายเรียกเข้า")
 		self.answerButton.Visible = true
 		self.endButton.Size = UDim2.new(0.5, -15, 0, 30)
 		self.endButton.Position = UDim2.new(0.5, 5, 1, -10)
-		self.endButton.Text = "ไม่รับ"
+		self.endButton.Text = L("ไม่รับ")
 	else
-		self.stateLabel.Text = "กำลังคุยสาย (ยังไม่มีเสียง)"
+		self.stateLabel.Text = L("กำลังคุยสาย (ยังไม่มีเสียง)")
 		self.answerButton.Visible = false
 		self.endButton.Size = UDim2.new(1, -20, 0, 30)
 		self.endButton.Position = UDim2.new(0, 10, 1, -10)
-		self.endButton.Text = "วางสาย"
+		self.endButton.Text = L("วางสาย")
 	end
 
 	self.gui.Enabled = true

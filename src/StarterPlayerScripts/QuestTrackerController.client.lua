@@ -46,7 +46,7 @@ gui.onTap = function(row)
 	if navKey == row.key and nav and nav:HasDestination() then
 		nav:Clear()
 		navKey = nil
-		toast("เลิกนำทางแล้ว")
+		toast("เลิกนำทางแล้ว") -- locale: skip (ข้อความเด้งแปลตอนแสดง)
 		return redraw()
 	end
 	pendingKey = row.key
@@ -55,14 +55,19 @@ end
 
 Remotes.QuestNav.OnClientEvent:Connect(function(position, label)
 	local nav = Navigation.Active
-	if not nav then return toast("แผนที่ยังไม่พร้อม ลองใหม่อีกครั้ง") end
+	if not nav then return toast("แผนที่ยังไม่พร้อม ลองใหม่อีกครั้ง") end -- locale: skip (ข้อความเด้งแปลตอนแสดง)
 	local ok, message = nav:SetDestination(position, label)
 	if ok then
 		navKey = pendingKey
-		local hint = UserInputService.KeyboardEnabled and " — กด T เพื่อเดินอัตโนมัติ" or ""
-		toast(("🧭 นำทางไป %s%s"):format(label ~= "" and label or "จุดหมาย", hint))
+		-- ส่งไทยทั้งประโยค (แม่แบบละแบบ) ให้ ToastController แปล + เลือกเสียง
+		local dest = label ~= "" and label or "จุดหมาย" -- locale: skip (แปลเป็นช่อง %s ตอนแสดง)
+		if UserInputService.KeyboardEnabled then
+			toast(("🧭 นำทางไป %s — กด T เพื่อเดินอัตโนมัติ"):format(dest)) -- locale: skip (ข้อความเด้งแปลตอนแสดง)
+		else
+			toast(("🧭 นำทางไป %s"):format(dest)) -- locale: skip (ข้อความเด้งแปลตอนแสดง)
+		end
 	else
-		toast(message or "นำทางไปจุดนั้นไม่ได้")
+		toast(message or "นำทางไปจุดนั้นไม่ได้") -- locale: skip (ข้อความเด้งแปลตอนแสดง)
 	end
 	redraw()
 end)

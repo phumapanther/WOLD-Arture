@@ -9,6 +9,7 @@
 -- จุดบนแผนที่: เรา (ขาวมีขีดบอกทิศ) + เพื่อนร่วมทีมที่ยังยืนอยู่ · **ไม่โชว์ศัตรู** (แผนที่ที่บอกตำแหน่ง
 -- ศัตรูคือ wallhack ที่ทุกคนได้ฟรี)
 local ArenaConfig = require(script.Parent.Parent.ArenaConfig)
+local L = require(script.Parent.Parent.Locale).L
 
 local ArenaMapGui = {}
 ArenaMapGui.__index = ArenaMapGui
@@ -62,7 +63,7 @@ function ArenaMapGui.new()
 	title.TextColor3 = Color3.fromRGB(238, 234, 226)
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.ZIndex = 5
-	title.Text = require(game.ReplicatedStorage.UI.Responsive).IsTouchOnly() and "แผนที่" or "แผนที่ (M)"
+	title.Text = require(game.ReplicatedStorage.UI.Responsive).IsTouchOnly() and L("แผนที่") or L("แผนที่ (M)")
 	title.Parent = panel
 	self.title = title
 
@@ -92,7 +93,8 @@ function ArenaMapGui:Build(mapId, mapName)
 	-- ⚠️ StreamingEnabled: ชิ้นที่ยังไม่มาถึงไคลเอนต์จะหายจากแผนที่ — วาดใหม่ถ้าจำนวนชิ้นเปลี่ยน
 	if self.builtFor == mapId and self.builtCount == #parts then return true end
 	self.builtFor, self.builtCount = mapId, #parts
-	self.title.Text = (require(game.ReplicatedStorage.UI.Responsive).IsTouchOnly() and "%s — แผนที่" or "%s — แผนที่ (M)"):format(mapName or mapId)
+	local touch = require(game.ReplicatedStorage.UI.Responsive).IsTouchOnly()
+	self.title.Text = touch and L("%s — แผนที่", mapName or mapId) or L("%s — แผนที่ (M)", mapName or mapId)
 
 	for _, child in ipairs(self.canvas:GetChildren()) do child:Destroy() end
 	self.dots = {}

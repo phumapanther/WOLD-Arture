@@ -143,7 +143,7 @@ local function spawn(role, kind)
 		local L, config = R.leader, GatherConfig.Mobs[kind]
 		opts.scale = L.scale * (config.scale or 1)
 		opts.power = L.power
-		opts.title = "👑 หัวหน้าฝูง " .. (config.name or kind)
+		opts.title = ("👑 หัวหน้าฝูง %s"):format(config.name or kind)
 		opts.loot = { amount = L.amount, xp = L.xp }
 	end
 	if not kind then return nil end

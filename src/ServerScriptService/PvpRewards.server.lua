@@ -59,8 +59,9 @@ PlayerJoin.Each(function(player)
 
 	Inventory.Send(player)
 
-	local line = ("รางวัลจากสนาม PVP: %d เหรียญ · %d EXP"):format(gold, exp)
-	if #given > 0 then line ..= " · " .. table.concat(given, ", ") end
+	-- แม่แบบเดียวทั้งประโยค (ไคลเอนต์แปลย้อนได้) · มีหีบ = ต่อท้ายรายการหีบ
+	local line = #given > 0 and ("รางวัลจากสนาม PVP: %d เหรียญ · %d EXP · %s"):format(gold, exp, table.concat(given, ", "))
+		or ("รางวัลจากสนาม PVP: %d เหรียญ · %d EXP"):format(gold, exp)
 	Remotes.SocialNotify:FireClient(player, "info", line)
 	if heldBack > 0 then
 		Remotes.SocialNotify:FireClient(player, "warn",

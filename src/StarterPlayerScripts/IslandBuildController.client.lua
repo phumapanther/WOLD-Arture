@@ -28,6 +28,7 @@ local Responsive = require(ReplicatedStorage.UI.Responsive)
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local Remotes = require(ReplicatedStorage.Remotes)
 local IslandBuildGui = require(ReplicatedStorage.UI.IslandBuildGui)
+local L = require(ReplicatedStorage.Locale).L
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -35,9 +36,10 @@ local gui = IslandBuildGui.new(playerGui)
 
 local GREEN = Color3.fromRGB(90, 220, 110)
 local RED = Color3.fromRGB(230, 80, 80)
+-- แปลครั้งเดียวตอนโหลด (Locale รอภาษาที่เซฟไว้ก่อน require แรก) · ponytail: เปลี่ยนภาษากลางเกมต้องเข้าใหม่
 local REASON_TEXT = {
-	edge = "ใกล้ขอบเกาะเกินไป", blocked = "ตรงนี้วางไม่ได้", occupied = "วางทับของอื่น",
-	needsoil = "ต้องวางบนผืนดิน", onsoil = "ผืนดินไว้ปลูกผักเท่านั้น", steep = "พื้นชันเกินไป", badground = "ต้องเป็นพื้นหญ้า", obstructed = "มีของตั้งอยู่แล้ว", unreachable = "เดินเข้าไปไม่ได้",
+	edge = L("ใกล้ขอบเกาะเกินไป"), blocked = L("ตรงนี้วางไม่ได้"), occupied = L("วางทับของอื่น"),
+	needsoil = L("ต้องวางบนผืนดิน"), onsoil = L("ผืนดินไว้ปลูกผักเท่านั้น"), steep = L("พื้นชันเกินไป"), badground = L("ต้องเป็นพื้นหญ้า"), obstructed = L("มีของตั้งอยู่แล้ว"), unreachable = L("เดินเข้าไปไม่ได้"),
 }
 local CAMERA_OFFSET = Vector3.new(0, 62, 40) -- มุมก้ม ~57° · ระยะคูณด้วย zoom
 local ZOOM_MIN, ZOOM_MAX = 0.55, 1.8
@@ -142,6 +144,7 @@ local function placedUnderPointer()
 	return node
 end
 
+-- ชื่อไทย (L แปลอาร์กิวเมนต์สตริงให้เองตอนประกอบประโยค)
 local function itemName(id)
 	local item = ItemCatalog.Get(id or "")
 	return item and item.name or tostring(id)
@@ -156,7 +159,7 @@ local function refreshItems()
 	for index, slot in pairs(latestSlots) do
 		local item = slot and ItemCatalog.Get(slot.id)
 		if item and item.kind == "placeable" then
-			table.insert(items, { slot = index, id = slot.id, name = item.name, icon = item.icon, count = slot.count or 1 })
+			table.insert(items, { slot = index, id = slot.id, name = L(item.name), icon = item.icon, count = slot.count or 1 })
 		end
 	end
 	table.sort(items, function(a, b) return a.slot < b.slot end)
@@ -284,7 +287,7 @@ end
 local function confirm()
 	if not session then return end
 	if not session.ok then
-		gui:SetStatus(REASON_TEXT[session.reason] or "วางตรงนี้ไม่ได้", false)
+		gui:SetStatus(REASON_TEXT[session.reason] or L("วางตรงนี้ไม่ได้"), false)
 		return
 	end
 	if session.kind == "new" then
@@ -325,17 +328,17 @@ end
 
 function refreshPanel()
 	if session then
-		gui:SetActions((session.kind == "move" and "ย้าย: " or "วาง: ") .. itemName(session.id), {
-			{ label = KEY_R and "หมุน (R)" or "หมุน", color = "rotate", fn = rotate },
-			{ label = "วาง", color = "place", fn = confirm },
-			{ label = KEY_R and "ยกเลิก (Esc)" or "ยกเลิก", color = "cancel", fn = cancel },
+		gui:SetActions(session.kind == "move" and L("ย้าย: %s", itemName(session.id)) or L("วาง: %s", itemName(session.id)), {
+			{ label = KEY_R and L("หมุน (R)") or L("หมุน"), color = "rotate", fn = rotate },
+			{ label = L("วาง"), color = "place", fn = confirm },
+			{ label = KEY_R and L("ยกเลิก (Esc)") or L("ยกเลิก"), color = "cancel", fn = cancel },
 		})
 	elseif selected then
-		gui:SetActions(itemName(selected.model:GetAttribute("ItemId")), {
-			{ label = "ย้าย", color = "move", fn = function() if selected then startMove(selected.model) end end },
-			{ label = KEY_R and "หมุน (R)" or "หมุน", color = "rotate", fn = rotate },
-			{ label = "เก็บ", color = "pickup", fn = pickup },
-			{ label = KEY_R and "ยกเลิก (Esc)" or "ยกเลิก", color = "cancel", fn = cancel },
+		gui:SetActions(L(itemName(selected.model:GetAttribute("ItemId"))), {
+			{ label = L("ย้าย"), color = "move", fn = function() if selected then startMove(selected.model) end end },
+			{ label = KEY_R and L("หมุน (R)") or L("หมุน"), color = "rotate", fn = rotate },
+			{ label = L("เก็บ"), color = "pickup", fn = pickup },
+			{ label = KEY_R and L("ยกเลิก (Esc)") or L("ยกเลิก"), color = "cancel", fn = cancel },
 		})
 	else
 		gui:SetActions(nil, nil)
@@ -498,7 +501,7 @@ RunService.RenderStepped:Connect(function()
 	local hit = workspace:Raycast(ray.Origin, ray.Direction * 800, params)
 	if not hit then
 		session.ok = false
-		gui:SetStatus("ชี้ไปที่พื้นเกาะ", false)
+		gui:SetStatus(L("ชี้ไปที่พื้นเกาะ"), false)
 		return
 	end
 	local cx, cz = IslandGrid.anchorFor(hit.Position.X, hit.Position.Z, session.w, session.d, session.r)
@@ -533,7 +536,7 @@ RunService.RenderStepped:Connect(function()
 			sq.Color = ok and GREEN or RED
 		end
 	end
-	gui:SetStatus(ok and "วางได้" or (REASON_TEXT[reason] or "วางไม่ได้"), ok)
+	gui:SetStatus(ok and L("วางได้") or (REASON_TEXT[reason] or L("วางไม่ได้")), ok)
 end)
 
 --------------------------------------------------------------------------------

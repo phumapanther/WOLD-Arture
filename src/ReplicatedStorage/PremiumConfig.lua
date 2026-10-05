@@ -242,8 +242,12 @@ function PremiumConfig.PassSeasonEnds(season)
 	return os.time({ year = year, month = month, day = 1, hour = 0, min = 0, sec = 0 }) - TZ
 end
 
-function PremiumConfig.PassName(season)
+-- lang (หลายภาษา 2026-10-05): ภาษาอื่นใช้ปี ค.ศ. (พ.ศ. อ่านแปลกสำหรับคนต่างชาติ) · ไม่ส่ง/ไทย = ข้อความเดิมทุกไบต์
+function PremiumConfig.PassName(season, lang)
 	local year, month = monthOf(season)
+	if lang and lang ~= "th" then
+		return require(script.Parent.Locale).T(lang, "พาสเดือน%s %d", THAI_MONTHS[month], year)
+	end
 	return ("พาสเดือน%s %d"):format(THAI_MONTHS[month], year + 543)
 end
 

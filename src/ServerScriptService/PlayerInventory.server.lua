@@ -113,15 +113,13 @@ local function playEquipSound(player)
 	game:GetService("Debris"):AddItem(sound, CombatConfig.EquipSoundMaxSeconds)
 end
 
--- "3 นาที" / "45 วินาที" — ยาชูกำลังอยู่หนึ่งนาที ถ้าปัดเป็นนาทีเสมอ ของที่สั้นกว่านั้นจะแจ้งว่า "0 นาที"
-local function durationText(seconds)
-	if seconds < 60 then return ("%d วินาที"):format(math.floor(seconds)) end
-	return ("%d นาที"):format(math.floor(seconds / 60))
-end
-
 -- แจ้งคนกินว่าได้บัพอะไรนานเท่าไหร่ ชื่อบัพมาจาก Vitals ที่เดียว (ดู `Vitals.BuffText`)
+-- "… 3 นาที" / "… 45 วินาที" (ยาชูกำลังอยู่หนึ่งนาที ปัดเป็นนาทีเสมอจะได้ "0 นาที") · แม่แบบเดียวต่อหน่วย ไคลเอนต์แปลทั้งประโยค
 local function notifyBuff(player, buff, seconds)
-	Remotes.SocialNotify:FireClient(player, "info", ("%s %s"):format(Vitals.BuffText(buff), durationText(seconds)))
+	local text = Vitals.BuffText(buff)
+	Remotes.SocialNotify:FireClient(player, "info", seconds < 60
+		and ("%s %d วินาที"):format(text, math.floor(seconds))
+		or ("%s %d นาที"):format(text, math.floor(seconds / 60)))
 end
 
 local function canAct(player)

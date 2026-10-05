@@ -76,8 +76,8 @@ workspace:SetAttribute("IsLobby", ServerConfig.IsLobby)
 local GameVersion = require(game.ReplicatedStorage.GameVersion)
 ServerConfig.Version = GameVersion.Number
 print(("[WOLD] %s (%s) -- %s"):format(GameVersion.Label(), GameVersion.Number,
-	ServerConfig.IsLobby and "ล็อบบี้"
-		or ServerConfig.IsArena and ("สนาม PVP " .. (ServerConfig.ArenaMatch and "(แมตช์)" or "(เซิร์ฟสาธารณะ)"))
-		or ("ช่อง " .. tostring(ServerConfig.Channel))))
+	ServerConfig.IsLobby and "ล็อบบี้" -- locale: skip (log เซิร์ฟ)
+		or ServerConfig.IsArena and ("สนาม PVP " .. (ServerConfig.ArenaMatch and "(แมตช์)" or "(เซิร์ฟสาธารณะ)")) -- locale: skip (log เซิร์ฟ)
+		or ("ช่อง " .. tostring(ServerConfig.Channel)))) -- locale: skip (log เซิร์ฟ)
 
 return ServerConfig

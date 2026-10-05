@@ -634,7 +634,7 @@ if game:GetService("RunService"):IsStudio() then
 			done[k] = on or nil
 			return true
 		end
-		error("QuestTest: ไม่มี op " .. tostring(op))
+		error("QuestTest: ไม่มี op " .. tostring(op)) -- locale: skip
 	end
 	bf.Parent = game:GetService("ServerStorage")
 end

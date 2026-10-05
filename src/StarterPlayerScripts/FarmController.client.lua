@@ -7,6 +7,7 @@
 -- GetServerTimeNow is what makes that safe: it is the same clock on every machine in the server, so a
 -- deadline written by the server means the same instant here.
 local CollectionService = game:GetService("CollectionService")
+local L = require(game.ReplicatedStorage.Locale).L
 
 while workspace:GetAttribute("IsLobby") == nil do
 	task.wait()
@@ -118,7 +119,7 @@ task.spawn(function()
 					gui.Enabled = true
 					local label = gui:FindFirstChildWhichIsA("TextLabel")
 					if label then
-						label.Text = ("รออีก %d:%02d"):format(math.floor(left / 60), math.floor(left % 60))
+						label.Text = L("รออีก %d:%02d", math.floor(left / 60), math.floor(left % 60))
 					end
 				end
 			else

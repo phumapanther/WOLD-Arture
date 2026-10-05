@@ -8,6 +8,8 @@ local UiSound = require(script.Parent.UiSound)
 local PremiumConfig = require(script.Parent.Parent.PremiumConfig)
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
 local ItemIcon = require(script.Parent.ItemIcon)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local STONE = Color3.fromRGB(30, 32, 40)
 local PANEL = Color3.fromRGB(38, 40, 48)
@@ -128,7 +130,7 @@ function PremiumGui.new()
 	self.panel = panel
 
 	-- หัว: ชื่อแท็บ + เพชร + ปิด
-	self.title = label(panel, "ร้านค้าพรีเมียม", 17, RUNE)
+	self.title = label(panel, L("ร้านค้าพรีเมียม"), 17, RUNE)
 	self.title.Position = UDim2.new(0, 16, 0, 10)
 	self.title.Size = UDim2.new(0.5, 0, 0, 24)
 
@@ -154,7 +156,7 @@ function PremiumGui.new()
 	tabLayout.Padding = UDim.new(0, 6)
 	tabLayout.Parent = tabs
 	self.tabButtons = {}
-	for _, t in ipairs({ { id = "shop", text = "💎 ร้านค้า" }, { id = "gacha", text = "🎰 กาชา" }, { id = "pass", text = "🎫 แบทเทิลพาส" } }) do
+	for _, t in ipairs({ { id = "shop", text = L("💎 ร้านค้า") }, { id = "gacha", text = L("🎰 กาชา") }, { id = "pass", text = L("🎫 แบทเทิลพาส") } }) do
 		local b = button(tabs, t.text, GREY, function() self:SetTab(t.id) end)
 		b.Size = UDim2.new(0, 150, 1, 0)
 		self.tabButtons[t.id] = b
@@ -195,7 +197,7 @@ function PremiumGui:renderShop()
 	local gems = self.data.gems or 0
 
 	-- แพ็กเพชร (โรบัค) — ปิดจนกว่าจะเปิดขาย
-	local head = label(list, self.data.robuxEnabled and "ซื้อเพชร" or "ซื้อเพชรด้วยโรบัค — ยังไม่เปิด (ตอนนี้แอดมินแจกให้เทส)", 12, TEXT_MUTED)
+	local head = label(list, self.data.robuxEnabled and L("ซื้อเพชร") or L("ซื้อเพชรด้วยโรบัค — ยังไม่เปิด (ตอนนี้แอดมินแจกให้เทส)"), 12, TEXT_MUTED)
 	head.LayoutOrder = 0
 	head.Size = UDim2.new(1, 0, 0, 18)
 	local packs = Instance.new("Frame")
@@ -243,12 +245,12 @@ function PremiumGui:renderShop()
 		crown.Position = UDim2.new(0, 12, 0.5, -16)
 		crown.Size = UDim2.fromOffset(34, 32)
 
-		local name = label(frame, ("%s — %d วัน"):format(vip.name, vip.days), 13, left > 0 and RUNE or nil)
+		local name = label(frame, L("%s — %d วัน", vip.name, vip.days), 13, left > 0 and RUNE or nil)
 		name.Position = UDim2.new(0, 56, 0, 6)
 		name.Size = UDim2.new(1, -190, 0, 18)
 
 		local blurb = label(frame,
-			left > 0 and ("เหลืออีก %d วัน · ซื้อซ้ำ = ต่ออายุทบจากของเดิม"):format(days) or vip.blurb,
+			left > 0 and L("เหลืออีก %d วัน · ซื้อซ้ำ = ต่ออายุทบจากของเดิม", days) or L(vip.blurb),
 			11, TEXT_MUTED)
 		blurb.Position = UDim2.new(0, 56, 0, 26)
 		blurb.Size = UDim2.new(1, -190, 0, 22)
@@ -284,12 +286,13 @@ function PremiumGui:renderShop()
 		end
 
 		-- แถวที่ไม่ใช่ไอเทม (เงินในเกม) ไม่มีชื่อให้หยิบจากแคตตาล็อก จึงพกชื่อ/รูปมาเองในคอนฟิก
-		local title = row.name
-			or ("%s%s"):format(item and item.name or row.item, (row.count or 1) > 1 and (" x" .. row.count) or "")
+		local itemName = item and item.name or row.item
+		local title = row.name and L(row.name)
+			or ((row.count or 1) > 1 and L("%s x%d", itemName, row.count) or L(itemName))
 		local name = label(frame, title, 13)
 		name.Position = UDim2.new(0, 56, 0, 6)
 		name.Size = UDim2.new(1, -190, 0, 18)
-		local blurb = label(frame, row.blurb or "", 11, TEXT_MUTED)
+		local blurb = label(frame, L(row.blurb or ""), 11, TEXT_MUTED)
 		blurb.Position = UDim2.new(0, 56, 0, 26)
 		blurb.Size = UDim2.new(1, -190, 0, 22)
 
@@ -320,10 +323,10 @@ function PremiumGui:renderGacha()
 		frame.Parent = list
 		corner(frame, UDim.new(0, 8))
 
-		local name = label(frame, ("%s %s"):format(banner.icon or "", banner.name), 15, RUNE)
+		local name = label(frame, ("%s %s"):format(banner.icon or "", L(banner.name)), 15, RUNE)
 		name.Position = UDim2.new(0, 12, 0, 8)
 		name.Size = UDim2.new(1, -24, 0, 20)
-		local blurb = label(frame, banner.blurb or "", 11, TEXT_MUTED)
+		local blurb = label(frame, L(banner.blurb or ""), 11, TEXT_MUTED)
 		blurb.Position = UDim2.new(0, 12, 0, 28)
 		blurb.Size = UDim2.new(1, -240, 0, 30)
 
@@ -331,21 +334,21 @@ function PremiumGui:renderGacha()
 		local names = {}
 		for _, id in ipairs(banner.pool) do
 			local item = ItemCatalog.Get(id)
-			if item then names[#names + 1] = item.name end
+			if item then names[#names + 1] = L(item.name) end
 		end
-		local pool = label(frame, #names > 0 and table.concat(names, " · ") or "เร็วๆ นี้", 10, TEXT_MUTED)
+		local pool = label(frame, #names > 0 and table.concat(names, " · ") or L("เร็วๆ นี้"), 10, TEXT_MUTED)
 		pool.Position = UDim2.new(0, 12, 0, 60)
 		pool.Size = UDim2.new(1, -240, 0, 30)
 		pool.TextTruncate = Enum.TextTruncate.AtEnd
 
 		local open = #banner.pool > 0
-		local one = button(frame, open and ("สุ่ม 1  💎 %d"):format(banner.cost) or "เร็วๆ นี้", (open and gems >= banner.cost) and GREEN or GREY, function()
+		local one = button(frame, open and L("สุ่ม 1  💎 %d", banner.cost) or L("เร็วๆ นี้"), (open and gems >= banner.cost) and GREEN or GREY, function()
 			if open then self:fire("pull", banner.id, 1) end
 		end)
 		one.AnchorPoint = Vector2.new(1, 0)
 		one.Position = UDim2.new(1, -8, 0, 12)
 		one.Size = UDim2.fromOffset(200, 32)
-		local ten = button(frame, open and ("สุ่ม 10  💎 %d"):format(banner.cost10) or "เร็วๆ นี้", (open and gems >= banner.cost10) and Color3.fromRGB(150, 110, 40) or GREY, function()
+		local ten = button(frame, open and L("สุ่ม 10  💎 %d", banner.cost10) or L("เร็วๆ นี้"), (open and gems >= banner.cost10) and Color3.fromRGB(150, 110, 40) or GREY, function()
 			if open then self:fire("pull", banner.id, 10) end
 		end)
 		ten.AnchorPoint = Vector2.new(1, 0)
@@ -383,7 +386,7 @@ function PremiumGui:ShowResults(results)
 	box.Parent = overlay
 	corner(box, UDim.new(0, 10))
 
-	local head = label(box, "ได้รับ!", 18, RUNE, Enum.TextXAlignment.Center)
+	local head = label(box, L("ได้รับ!"), 18, RUNE, Enum.TextXAlignment.Center)
 	head.Position = UDim2.new(0, 0, 0, 10)
 	head.Size = UDim2.new(1, 0, 0, 26)
 	head.ZIndex = 7
@@ -432,13 +435,13 @@ function PremiumGui:ShowResults(results)
 			art.ScaleType = Enum.ScaleType.Fit
 			art.Parent = card
 		end
-		local n = label(card, r.name, 10, rarityColour(r.rarity), Enum.TextXAlignment.Center)
+		local n = label(card, Show(r.name), 10, rarityColour(r.rarity), Enum.TextXAlignment.Center)
 		n.Position = UDim2.new(0, 2, 0, 52)
 		n.Size = UDim2.new(1, -4, 0, 34)
 		n.ZIndex = 9
 	end
 
-	local ok = button(box, "ตกลง", GREEN, function() overlay:Destroy() end)
+	local ok = button(box, L("ตกลง"), GREEN, function() overlay:Destroy() end)
 	ok.AnchorPoint = Vector2.new(0.5, 1)
 	ok.Position = UDim2.new(0.5, 0, 1, -10)
 	ok.Size = UDim2.fromOffset(120, 30)
@@ -452,12 +455,12 @@ end
 
 local function rewardText(reward)
 	if not reward then return "—" end
-	if reward.gold then return ("เงิน %d"):format(reward.gold) end
+	if reward.gold then return L("เงิน %d", reward.gold) end
 	if reward.gems then return ("💎 %d"):format(reward.gems) end
 	local item = ItemCatalog.Get(reward.item)
 	-- ของประจำเดือน (สกิน/ออร่าที่หมุนทุกเดือน) ขึ้นดาวนำหน้าให้เห็นว่าเดือนหน้าไม่ใช่ชิ้นนี้แล้ว
-	if reward.monthly then return ("✨ %s (ประจำเดือน)"):format(item and item.name or reward.item) end
-	return ("%s x%d"):format(item and item.name or reward.item, reward.count or 1)
+	if reward.monthly then return L("✨ %s (ประจำเดือน)", item and item.name or reward.item) end
+	return L("%s x%d", item and item.name or reward.item, reward.count or 1)
 end
 
 -- ของทั้งขั้น (รายการ) → ข้อความเดียว
@@ -471,14 +474,14 @@ end
 -- ชื่อพาสเดือนนี้ + เวลาที่เหลือ (ซีซันมาจากเซิร์ฟ ไม่คิดจากนาฬิกาเครื่องนี้)
 local function passTitle(pass)
 	local season = pass and pass.season or PremiumConfig.PassSeason(os.time())
-	local name = PremiumConfig.PassName(season)
+	local name = PremiumConfig.PassName(season, Locale.Current())
 	local ends = pass and pass.endsAt
 	if not ends then return name end
 	local left = ends - workspace:GetServerTimeNow()
 	if left <= 0 then return name end
 	local days = math.floor(left / 86400)
-	if days >= 1 then return ("%s · เหลือ %d วัน"):format(name, days) end
-	return ("%s · เหลือ %d ชม."):format(name, math.max(1, math.floor(left / 3600)))
+	if days >= 1 then return L("%s · เหลือ %d วัน", name, days) end
+	return L("%s · เหลือ %d ชม.", name, math.max(1, math.floor(left / 3600)))
 end
 
 function PremiumGui:renderPass()
@@ -492,7 +495,7 @@ function PremiumGui:renderPass()
 	top.BackgroundTransparency = 1
 	top.Parent = self.body
 
-	local tierLabel = label(top, ("ขั้น %d / %d"):format(pass.tier, cfg.tiers), 14, RUNE)
+	local tierLabel = label(top, L("ขั้น %d / %d", pass.tier, cfg.tiers), 14, RUNE)
 	tierLabel.Position = UDim2.new(0, 0, 0, 0)
 	tierLabel.Size = UDim2.new(0.5, 0, 0, 20)
 
@@ -515,7 +518,7 @@ function PremiumGui:renderPass()
 	fill.Parent = bar
 	corner(fill, UDim.new(1, 0))
 
-	local unlock = button(top, pass.premium and "พรีเมียม ✓" or ("ปลดพรีเมียม 💎 %d"):format(cfg.premiumCost),
+	local unlock = button(top, pass.premium and L("พรีเมียม ✓") or L("ปลดพรีเมียม 💎 %d", cfg.premiumCost),
 		pass.premium and GREY or Color3.fromRGB(150, 110, 40), function()
 			if not pass.premium then self:fire("unlockpass") end
 		end)
@@ -546,14 +549,14 @@ function PremiumGui:renderPass()
 		t.Size = UDim2.new(1, -90, 1, 0)
 		if reward and not claimed then
 			local can = reached and not locked
-			local b = button(f, locked and "🔒" or (reached and "รับ" or "…"), can and GREEN or GREY, function()
+			local b = button(f, locked and "🔒" or (reached and (Locale.Current() == "th" and L("รับ") or L("รับของ")) or "…"), can and GREEN or GREY, function()
 				if can then self:fire("claim", tier, track) end
 			end)
 			b.AnchorPoint = Vector2.new(1, 0.5)
 			b.Position = UDim2.new(1, -6, 0.5, 0)
 			b.Size = UDim2.fromOffset(64, 24)
 		elseif claimed then
-			local done = label(f, "รับแล้ว", 10, TEXT_MUTED, Enum.TextXAlignment.Right)
+			local done = label(f, L("รับแล้ว"), 10, TEXT_MUTED, Enum.TextXAlignment.Right)
 			done.AnchorPoint = Vector2.new(1, 0.5)
 			done.Position = UDim2.new(1, -8, 0.5, 0)
 			done.Size = UDim2.fromOffset(70, 20)
@@ -566,9 +569,9 @@ function PremiumGui:renderPass()
 	header.Size = UDim2.new(1, -6, 0, 18)
 	header.BackgroundTransparency = 1
 	header.Parent = list
-	local h1 = label(header, "ขั้น", 10, TEXT_MUTED) h1.Size = UDim2.new(0, 40, 1, 0)
-	local h2 = label(header, "สายฟรี", 10, TEXT_MUTED) h2.Position = UDim2.new(0, 46, 0, 0) h2.Size = UDim2.new(0.5, -50, 1, 0)
-	local h3 = label(header, "สายพรีเมียม", 10, RUNE) h3.Position = UDim2.new(0.5, 4, 0, 0) h3.Size = UDim2.new(0.5, -4, 1, 0)
+	local h1 = label(header, L("ขั้น"), 10, TEXT_MUTED) h1.Size = UDim2.new(0, 40, 1, 0)
+	local h2 = label(header, L("สายฟรี"), 10, TEXT_MUTED) h2.Position = UDim2.new(0, 46, 0, 0) h2.Size = UDim2.new(0.5, -50, 1, 0)
+	local h3 = label(header, L("สายพรีเมียม"), 10, RUNE) h3.Position = UDim2.new(0.5, 4, 0, 0) h3.Size = UDim2.new(0.5, -4, 1, 0)
 
 	for tier = 1, cfg.tiers do
 		local row = Instance.new("Frame")
@@ -593,7 +596,7 @@ end
 function PremiumGui:Render(data)
 	self.data = data or self.data
 	self.gems.Text = ("💎 %d"):format(self.data.gems or 0)
-	self.title.Text = self.tab == "shop" and "ร้านค้าพรีเมียม" or self.tab == "gacha" and "กาชา" or passTitle(self.data.pass)
+	self.title.Text = self.tab == "shop" and L("ร้านค้าพรีเมียม") or self.tab == "gacha" and L("กาชา") or passTitle(self.data.pass)
 	clear(self.body)
 	if self.tab == "shop" then self:renderShop()
 	elseif self.tab == "gacha" then self:renderGacha()

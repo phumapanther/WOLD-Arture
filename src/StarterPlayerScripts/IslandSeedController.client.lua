@@ -13,6 +13,8 @@ local Responsive = require(ReplicatedStorage.UI.Responsive)
 local UiSound = require(ReplicatedStorage.UI.UiSound)
 local ItemIcon = require(ReplicatedStorage.UI.ItemIcon)
 local ItemCatalog = require(ReplicatedStorage.ItemCatalog)
+local Locale = require(ReplicatedStorage.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local player = Players.LocalPlayer
 local RUNE = Color3.fromRGB(244, 197, 66)
@@ -54,7 +56,7 @@ title.Font = Enum.Font.GothamBold
 title.TextSize = 15
 title.TextColor3 = RUNE
 title.TextXAlignment = Enum.TextXAlignment.Left
-title.Text = "🌱 หยอดเมล็ดอะไรดี?"
+title.Text = L("🌱 หยอดเมล็ดอะไรดี?")
 title.Parent = picker
 
 local close = Instance.new("TextButton")
@@ -116,7 +118,7 @@ change.BorderSizePixel = 0
 change.Font = Enum.Font.GothamBold
 change.TextSize = 12
 change.TextColor3 = TEXT
-change.Text = "เปลี่ยนเมล็ด"
+change.Text = L("เปลี่ยนเมล็ด")
 change.Parent = active
 corner(change, 13)
 
@@ -169,7 +171,7 @@ local function showPicker(uid, options)
 		name.TextColor3 = TEXT
 		name.TextXAlignment = Enum.TextXAlignment.Left
 		name.TextTruncate = Enum.TextTruncate.AtEnd
-		name.Text = opt.name
+		name.Text = Show(opt.name)
 		name.Parent = b
 		local count = Instance.new("TextLabel")
 		count.BackgroundTransparency = 1
@@ -179,7 +181,7 @@ local function showPicker(uid, options)
 		count.TextSize = 12
 		count.TextColor3 = MUTED
 		count.TextXAlignment = Enum.TextXAlignment.Left
-		count.Text = ("มี %d เม็ด"):format(opt.count or 0)
+		count.Text = L("มี %d เม็ด", opt.count or 0)
 		count.Parent = b
 		b.Activated:Connect(function()
 			UiSound.Play("Click")
@@ -198,7 +200,7 @@ Remotes.IslandSeedChoice.OnClientEvent:Connect(function(what, a, b)
 	elseif what == "active" and type(a) == "string" then
 		local item = ItemCatalog.Get(a)
 		ItemIcon.Apply(activeIcon, item and item.icon or "")
-		activeText.Text = ("กำลังหยอด: %s"):format(item and item.name or a)
+		activeText.Text = L("กำลังหยอด: %s", item and item.name or a)
 		activeUntil = os.clock() + (tonumber(b) or 90)
 		picker.Visible = false
 		active.Visible = true

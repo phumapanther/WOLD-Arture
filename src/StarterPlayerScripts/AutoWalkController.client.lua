@@ -21,6 +21,7 @@ local Navigation = require(ReplicatedStorage.Navigation)
 local NavigationConfig = require(ReplicatedStorage.NavigationConfig)
 local AutoWalk = require(ReplicatedStorage.AutoWalk)
 local Remotes = require(ReplicatedStorage:WaitForChild("Remotes"))
+local L = require(ReplicatedStorage.Locale).L
 
 local player = Players.LocalPlayer
 local TOGGLE = Enum.KeyCode.T
@@ -63,7 +64,7 @@ corner.CornerRadius = UDim.new(1, 0)
 corner.Parent = label
 
 -- บอกทางที่เครื่องนี้ใช้ได้จริง (ทรงเดียวกับแถบฟาร์มออโต้ของ GatherController)
-local HOW = UserInputService.KeyboardEnabled and (touch and "กด T หรือแตะ " or "กด T ") or "แตะ"
+local HOW = UserInputService.KeyboardEnabled and (touch and "กด T หรือแตะ " or "กด T ") or "แตะ" -- locale: skip (แปลเป็นช่อง %s ตอนแสดง)
 
 local shownT = {}
 ProximityPromptService.PromptShown:Connect(function(prompt)
@@ -103,7 +104,7 @@ end
 local function start()
 	local nav = Navigation.Active
 	if not (nav and nav:HasDestination()) then
-		return toast("ปักหมุดบนแผนที่ก่อน (กด M) แล้วกด T เพื่อเดินอัตโนมัติ")
+		return toast("ปักหมุดบนแผนที่ก่อน (กด M) แล้วกด T เพื่อเดินอัตโนมัติ") -- locale: skip (ข้อความเด้งแปลตอนแสดง)
 	end
 	walking = true
 	Remotes.SetAutoWalking:FireServer(true) -- เร็วเท่าฟาร์มออโต้ (PlayerMovement · 20) · Shift ยังวิ่งเต็มได้
@@ -145,7 +146,7 @@ RunService:BindToRenderStep("WOLD_AutoWalk", Enum.RenderPriority.Input.Value + 1
 	local nav = Navigation.Active
 	local hasPin = nav ~= nil and nav:HasDestination()
 	label.Visible = walking or hasPin
-	label.Text = walking and ("🚶 เดินอัตโนมัติ — %sเพื่อหยุด"):format(HOW) or ("🚶 %sเพื่อเดินอัตโนมัติไปหมุด"):format(HOW)
+	label.Text = walking and L("🚶 เดินอัตโนมัติ — %sเพื่อหยุด", HOW) or L("🚶 %sเพื่อเดินอัตโนมัติไปหมุด", HOW)
 	if not walking then return end
 
 	if not hasPin then
@@ -153,13 +154,13 @@ RunService:BindToRenderStep("WOLD_AutoWalk", Enum.RenderPriority.Input.Value + 1
 		local _, root = humanoidAndRoot()
 		local arrived = root and lastDestination
 			and (root.Position - lastDestination).Magnitude <= NavigationConfig.ArriveDistance + 4
-		return stop(arrived and "ถึงจุดหมายแล้ว" or nil)
+		return stop(arrived and "ถึงจุดหมายแล้ว" or nil) -- locale: skip (ข้อความเด้งแปลตอนแสดง)
 	end
 	lastDestination = nav.destination
 
 	local humanoid, root = humanoidAndRoot()
 	if not humanoid or not root or humanoid.Health <= 0 then return stop() end
-	if player:GetAttribute("WOLD_Downed") then return stop("หยุดเดินอัตโนมัติ (ล้มอยู่)") end
+	if player:GetAttribute("WOLD_Downed") then return stop("หยุดเดินอัตโนมัติ (ล้มอยู่)") end -- locale: skip (ข้อความเด้งแปลตอนแสดง)
 	if humanoid.Sit then return stop() end
 
 	-- เส้นใหม่ (คำนวณใหม่ระหว่างทาง) = หาจุดเริ่มใหม่จากตำแหน่งตอนนี้

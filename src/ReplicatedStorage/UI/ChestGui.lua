@@ -12,6 +12,7 @@ local UiSound = require(script.Parent.UiSound)
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
 local ItemIcon = require(script.Parent.ItemIcon)
 local ChestConfig = require(script.Parent.Parent.ChestConfig)
+local L = require(script.Parent.Parent.Locale).L
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -86,7 +87,7 @@ function ChestGui.new()
 	title.TextSize = 19
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.TextColor3 = GOLD
-	title.Text = "หีบสมบัติ"
+	title.Text = L("หีบสมบัติ")
 	title.Parent = panel
 	self.title = title
 
@@ -98,7 +99,7 @@ function ChestGui.new()
 	hint.TextSize = 12
 	hint.TextXAlignment = Enum.TextXAlignment.Left
 	hint.TextColor3 = TEXT_MUTED
-	hint.Text = "แตะของเพื่อเก็บทีละชิ้น · ปิดหน้านี้แล้วหีบจะหายถาวร"
+	hint.Text = L("แตะของเพื่อเก็บทีละชิ้น · ปิดหน้านี้แล้วหีบจะหายถาวร")
 	hint.Parent = panel
 
 	local list = Instance.new("ScrollingFrame")
@@ -134,7 +135,7 @@ function ChestGui.new()
 	empty.Font = Enum.Font.Gotham
 	empty.TextSize = 14
 	empty.TextColor3 = TEXT_MUTED
-	empty.Text = "หีบว่างเปล่า"
+	empty.Text = L("หีบว่างเปล่า")
 	empty.Visible = false
 	empty.Parent = list
 	self.empty = empty
@@ -149,7 +150,7 @@ function ChestGui.new()
 	takeAll.Font = Enum.Font.GothamBold
 	takeAll.TextSize = 14
 	takeAll.TextColor3 = TEXT_LIGHT
-	takeAll.Text = "เก็บทั้งหมด"
+	takeAll.Text = L("เก็บทั้งหมด")
 	takeAll.Parent = panel
 	corner(takeAll, UDim.new(0, 8))
 	takeAll.Activated:Connect(function()
@@ -167,7 +168,7 @@ function ChestGui.new()
 	close.Font = Enum.Font.GothamBold
 	close.TextSize = 14
 	close.TextColor3 = TEXT_LIGHT
-	close.Text = "ปิด (หีบหายถาวร)"
+	close.Text = L("ปิด (หีบหายถาวร)")
 	close.Parent = panel
 	corner(close, UDim.new(0, 8))
 	close.Activated:Connect(function()
@@ -195,7 +196,7 @@ function ChestGui:Show(tier, loot)
 	end
 
 	local spec = ChestConfig.Chests[tier]
-	self.title.Text = spec and spec.name or "หีบสมบัติ"
+	self.title.Text = spec and L(spec.name) or L("หีบสมบัติ")
 	if spec and spec.colour then
 		self.title.TextColor3 = spec.colour
 	end
@@ -234,7 +235,7 @@ function ChestGui:Show(tier, loot)
 		name.TextSize = 10
 		name.TextTruncate = Enum.TextTruncate.AtEnd
 		name.TextColor3 = TEXT_LIGHT
-		name.Text = item and item.name or row.id
+		name.Text = ItemCatalog.DisplayName(row.id)
 		name.Parent = tile
 
 		local count = Instance.new("TextLabel")

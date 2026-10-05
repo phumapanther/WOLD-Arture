@@ -5,6 +5,7 @@
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local Show = require(game.ReplicatedStorage.Locale).Show
 
 local SPEED = 140 -- พิกเซลต่อวินาที
 local BAR_Y, BAR_H = 78, 30
@@ -57,7 +58,7 @@ local function playNext()
 	while #queue > 0 do
 		local item = table.remove(queue, 1)
 		local color = COLORS[item.kind] or COLORS.info
-		text.Text = item.text
+		text.Text = Show(item.text)
 		text.TextColor3 = color
 		edge.Color = color
 		bar.Visible = true

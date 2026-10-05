@@ -69,7 +69,7 @@ function handlers.Register(player, msg)
   local plate, err = VehicleService.register(player, msg.plate, msg.name)
   if not plate then return { ok = false, err = err } end
   local payload = garagePayload(player, station)
-  payload.toast = "📜 จดทะเบียน " .. plate .. " เรียบร้อย เป็นพาหนะของคุณแล้ว"
+  payload.toast = ("📜 จดทะเบียน %s เรียบร้อย เป็นพาหนะของคุณแล้ว"):format(plate)
   return payload
 end
 
@@ -94,7 +94,7 @@ function handlers.Summon(player, msg)
   local fee = type(result) == "table" and result.fee or 0
   payload.toast = fee > 0
     and string.format("🚂 เบิก %s ออกมาแล้ว ค่าบริการ %d เหรียญ", msg.plate, fee)
-    or ("🚂 เบิก " .. msg.plate .. " ออกมาแล้ว")
+    or ("🚂 เบิก %s ออกมาแล้ว"):format(msg.plate)
   return payload
 end
 
@@ -106,7 +106,7 @@ function handlers.Stow(player, msg)
   local fee = tonumber(result) or 0
   payload.toast = fee > 0
     and string.format("🏠 ฝาก %s เข้าโรงเก็บแล้ว ค่าบริการ %d เหรียญ", msg.plate, fee)
-    or ("🏠 ฝาก " .. msg.plate .. " เข้าโรงเก็บแล้ว")
+    or ("🏠 ฝาก %s เข้าโรงเก็บแล้ว"):format(msg.plate)
   return payload
 end
 
@@ -115,7 +115,7 @@ function handlers.Lock(player, msg)
   if not ok then return { ok = false, err = err } end
   local station = msg.stationId and Stations.get(msg.stationId) or nil
   local payload = garagePayload(player, station)
-  payload.toast = (msg.locked and "🔒 ล็อก " or "🔓 ปลดล็อก ") .. msg.plate .. " แล้ว"
+  payload.toast = (msg.locked and "🔒 ล็อก %s แล้ว" or "🔓 ปลดล็อก %s แล้ว"):format(msg.plate)
   return payload
 end
 
@@ -124,7 +124,7 @@ function handlers.Refuel(player, msg)
   if not ok then return { ok = false, err = result } end
   local station = msg.stationId and Stations.get(msg.stationId) or nil
   local payload = garagePayload(player, station)
-  payload.toast = "🔥 " .. msg.plate .. " " .. tostring(result) .. " เรียบร้อย"
+  payload.toast = ("🔥 %s %s เรียบร้อย"):format(msg.plate, tostring(result))
   return payload
 end
 
@@ -162,7 +162,7 @@ end
 net.Request.OnServerInvoke = function(player, msg)
   if type(msg) ~= "table" or type(msg.action) ~= "string" then return { ok = false, err = "คำสั่งไม่ถูกต้อง" } end
   local fn = handlers[msg.action]
-  if not fn then return { ok = false, err = "ไม่รู้จักคำสั่ง " .. msg.action } end
+  if not fn then return { ok = false, err = ("ไม่รู้จักคำสั่ง %s"):format(msg.action) } end
   local ok, result = pcall(fn, player, msg)
   if not ok then
     warn("[VehicleMain] " .. msg.action .. " ล้ม: " .. tostring(result))

@@ -16,6 +16,7 @@ local ClassActionGui = require(game.ReplicatedStorage.UI.ClassActionGui)
 local PartyGui = require(game.ReplicatedStorage.UI.PartyGui)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local UiSound = require(game.ReplicatedStorage.UI.UiSound)
+local L = require(game.ReplicatedStorage.Locale).L
 
 local party = PartyGui.new()
 local ask = ClassActionGui.new()
@@ -32,7 +33,7 @@ end)
 -- ใบเก่าหมดอายุเองที่เซิร์ฟเวอร์อยู่ดี และการมีหน้าต่างซ้อนกันสองบานคือสิ่งที่ไม่มีใครตอบถูก
 Remotes.PartyInvite.OnClientEvent:Connect(function(fromUserId, fromName, seconds)
 	UiSound.Play("Notification")
-	ask:AskConsent(nil, seconds, ("%s ชวนคุณเข้าตี้"):format(fromName), function(agreed)
+	ask:AskConsent(nil, seconds, L("%s ชวนคุณเข้าตี้", fromName), function(agreed)
 		Remotes.RequestPartyAction:FireServer(agreed and "accept" or "decline", fromUserId)
 	end)
 end)

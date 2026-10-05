@@ -9,6 +9,7 @@
 -- and a banner that has to be read while a town is going dark is better still than clever anyway. That also
 -- took a RenderStepped connection and a per-grapheme text measurement out of the client for free.
 local Players = game:GetService("Players")
+local Show = require(script.Parent.Parent.Locale).Show
 
 local EventBannerGui = {}
 EventBannerGui.__index = EventBannerGui
@@ -126,7 +127,7 @@ function EventBannerGui:build(spec)
 	message.TextColor3 = spec.colour or Color3.fromRGB(244, 197, 66)
 	message.TextXAlignment = Enum.TextXAlignment.Left
 	message.TextTruncate = Enum.TextTruncate.AtEnd
-	message.Text = spec.message or ""
+	message.Text = Show(spec.message) or ""
 	message.Parent = frame
 
 	local timer = Instance.new("TextLabel")
@@ -223,7 +224,7 @@ function EventBannerGui:refresh()
 		self:drawHealth(banner, spec.hp)
 		if spec.detail then
 			banner.timer.TextColor3 = Color3.fromRGB(255, 196, 92)
-			banner.timer.Text = spec.detail
+			banner.timer.Text = Show(spec.detail)
 		elseif spec.endsAt then
 			local left = math.max(0, spec.endsAt - now)
 			banner.timer.TextColor3 = left < 60 and Color3.fromRGB(255, 120, 110) or TEXT_MUTED

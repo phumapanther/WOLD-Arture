@@ -670,7 +670,7 @@ function InventoryGui:Render(data)
 		local worn = data.equipped and data.equipped[key]
 		if worn then
 			local item = ItemCatalog.Get(worn.id)
-			entry.name.Text = item and item.name or worn.id
+			entry.name.Text = item and L(item.name) or worn.id
 			entry.name.TextColor3 = TEXT_LIGHT
 			local maxDurability = item and (item.maxDurability or item.armor)
 			if maxDurability and worn.durability then

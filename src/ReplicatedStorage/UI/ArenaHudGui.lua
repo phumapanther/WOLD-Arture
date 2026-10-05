@@ -5,6 +5,8 @@
 -- **สกอร์อยู่กลางจอบนสุด** เพราะมันคือตัวเลขที่ต้องอ่านได้โดยไม่ละสายตาจากศัตรู — ต่างจาก HUD ของ
 -- เกมหลักที่ทุกอย่างเกาะมุม (ที่นั่นไม่มีอะไรต้องรีบอ่าน)
 local ArenaConfig = require(script.Parent.Parent.ArenaConfig)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local ArenaHudGui = {}
 ArenaHudGui.__index = ArenaHudGui
@@ -14,11 +16,11 @@ local TEXT = Color3.fromRGB(238, 234, 226)
 local MUTED = Color3.fromRGB(176, 172, 164)
 
 local PHASE_TEXT = {
-	warmup = "กำลังรอผู้เล่น",
-	buy = "เตรียมตัว — ซื้อของ",
-	live = "สู้!",
-	roundEnd = "จบรอบ",
-	matchEnd = "จบแมตช์",
+	warmup = "กำลังรอผู้เล่น", -- locale: skip (แปลตอนใช้)
+	buy = "เตรียมตัว — ซื้อของ", -- locale: skip (แปลตอนใช้)
+	live = "สู้!", -- locale: skip (แปลตอนใช้)
+	roundEnd = "จบรอบ", -- locale: skip (แปลตอนใช้)
+	matchEnd = "จบแมตช์", -- locale: skip (แปลตอนใช้)
 }
 
 local function corner(parent, radius)
@@ -206,7 +208,7 @@ end
 function ArenaHudGui:SetSpectating(name, count)
 	self.spectate.Visible = name ~= nil
 	if name then
-		self.specName.Text = ("กำลังดู: %s"):format(name)
+		self.specName.Text = L("กำลังดู: %s"):format(Show(name))
 		self.specPrev.Visible = (count or 0) > 1
 		self.specNext.Visible = (count or 0) > 1
 	end
@@ -232,7 +234,7 @@ function ArenaHudGui:SetDamageCards(dealt)
 	h.TextSize = 16
 	h.TextColor3 = MUTED
 	h.TextXAlignment = Enum.TextXAlignment.Right
-	h.Text = "ดาเมจของคุณรอบนี้"
+	h.Text = L("ดาเมจของคุณรอบนี้")
 	h.Parent = header
 
 	for i, row in ipairs(dealt) do
@@ -260,7 +262,7 @@ function ArenaHudGui:SetDamageCards(dealt)
 		name.TextColor3 = row.alive and TEXT or MUTED
 		name.TextXAlignment = Enum.TextXAlignment.Left
 		name.TextTruncate = Enum.TextTruncate.AtEnd
-		name.Text = row.name .. (row.alive and "" or "  · ตายแล้ว")
+		name.Text = row.alive and Show(row.name) or L("%s  · ตายแล้ว"):format(Show(row.name))
 		name.Parent = card
 
 		local amount = Instance.new("TextLabel")
@@ -271,7 +273,7 @@ function ArenaHudGui:SetDamageCards(dealt)
 		amount.TextSize = 18
 		amount.TextColor3 = row.damage > 0 and Color3.fromRGB(240, 150, 140) or MUTED
 		amount.TextXAlignment = Enum.TextXAlignment.Left
-		amount.Text = ("ดาเมจ %d"):format(row.damage)
+		amount.Text = L("ดาเมจ %d", row.damage)
 		amount.Parent = card
 	end
 end
@@ -286,7 +288,7 @@ function ArenaHudGui:Render(snap)
 
 	local secs = snap.secondsLeft or 0
 	self.timer.Text = ("%d:%02d"):format(math.floor(secs / 60), secs % 60)
-	self.phase.Text = ("รอบ %d · %s · %s"):format(snap.round or 0,
+	self.phase.Text = L("รอบ %d · %s · %s", snap.round or 0,
 		PHASE_TEXT[snap.phase] or snap.phase or "", snap.mapName or "")
 
 	-- จุดคนเป็น/คนตาย: วาดใหม่ทั้งแถวทุกครั้ง (หกจุด ไม่ใช่หกร้อย)

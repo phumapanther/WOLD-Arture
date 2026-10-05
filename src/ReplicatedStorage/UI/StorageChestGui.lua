@@ -8,6 +8,7 @@ local Players = game:GetService("Players")
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
+local L = require(script.Parent.Parent.Locale).L
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -74,11 +75,11 @@ function StorageChestGui.new()
 	corner(panel, UDim.new(0, 12))
 	Responsive.Scale(panel, Responsive.IsSmallScreen() and 0.95 or nil) -- มือถือ: แผงเต็มจออยู่แล้ว ห้ามย่อซ้ำ (QA 2026-09-26)
 
-	local title = label(panel, "หีบเก็บของ", 18, RUNE)
+	local title = label(panel, L("หีบเก็บของ"), 18, RUNE)
 	title.Size = UDim2.new(1, -60, 0, 28)
 	title.Position = UDim2.new(0, 14, 0, 10)
 
-	local hint = label(panel, "ของในหีบทุกคนหยิบได้ · หายเมื่อเซิร์ฟเวอร์ปิด", 12, TEXT_MUTED)
+	local hint = label(panel, L("ของในหีบทุกคนหยิบได้ · หายเมื่อเซิร์ฟเวอร์ปิด"), 12, TEXT_MUTED)
 	hint.Size = UDim2.new(1, -28, 0, 16)
 	hint.Position = UDim2.new(0, 14, 0, 34)
 
@@ -134,8 +135,8 @@ function StorageChestGui.new()
 		return scroll
 	end
 
-	self.chestList = column(0, "ในหีบ")
-	self.bagList = column(0.5, "กระเป๋าของคุณ")
+	self.chestList = column(0, L("ในหีบ"))
+	self.bagList = column(0.5, L("กระเป๋าของคุณ"))
 
 	return self
 end
@@ -206,11 +207,11 @@ function StorageChestGui:SetChest(contents, slotCount)
 		if slot then
 			local name = ItemCatalog.DisplayName(slot.id, slot.meta) or slot.id
 			local text = (slot.count or 1) > 1 and ("%s x%d"):format(name, slot.count) or name
-			row(self.chestList, i, text, "หยิบ", function()
+			row(self.chestList, i, text, L("หยิบ"), function()
 				self:fire("take", i, slot.count or 1)
 			end)
 		else
-			local empty = row(self.chestList, i, "— ว่าง —", nil, nil)
+			local empty = row(self.chestList, i, L("— ว่าง —"), nil, nil)
 			empty.BackgroundTransparency = 0.6
 		end
 	end
@@ -226,13 +227,13 @@ function StorageChestGui:SetBag(slots)
 			order += 1
 			local name = ItemCatalog.DisplayName(slot.id, slot.meta) or slot.id
 			local text = (slot.count or 1) > 1 and ("%s x%d"):format(name, slot.count) or name
-			row(self.bagList, order, text, "ใส่", function()
+			row(self.bagList, order, text, L("ใส่"), function()
 				self:fire("put", index, slot.count or 1)
 			end)
 		end
 	end
 	if order == 0 then
-		local empty = row(self.bagList, 1, "กระเป๋าว่าง", nil, nil)
+		local empty = row(self.bagList, 1, L("กระเป๋าว่าง"), nil, nil)
 		empty.BackgroundTransparency = 0.6
 	end
 end

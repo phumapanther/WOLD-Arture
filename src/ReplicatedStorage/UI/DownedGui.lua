@@ -5,6 +5,7 @@
 -- See docs/superpowers/specs/2026-09-07-vitals-downed-design.md.
 local Lighting = game:GetService("Lighting")
 local TweenService = game:GetService("TweenService")
+local L = require(script.Parent.Parent.Locale).L
 
 local DownedGui = {}
 DownedGui.__index = DownedGui
@@ -78,8 +79,8 @@ function DownedGui.new()
 	caption.Font = Enum.Font.Gotham
 	caption.TextScaled = true
 	caption.TextColor3 = Color3.fromRGB(190, 182, 170)
-	caption.Text = "คุณล้มลงแล้ว — รอเวลาเกิดใหม่ หรือให้เพื่อนมาชุบ"
 	caption.Parent = gui
+	self.caption = caption -- ข้อความตั้งตอน Show (ภาษาปัจจุบัน)
 
 	local button = Instance.new("TextButton")
 	button.Name = "RespawnButton"
@@ -91,7 +92,6 @@ function DownedGui.new()
 	button.Font = Enum.Font.GothamBold
 	button.TextScaled = true
 	button.TextColor3 = ACCENT
-	button.Text = "เกิดใหม่ทันที"
 	button.AutoButtonColor = true
 	button.Parent = gui
 	corner(button, UDim.new(0, 10))
@@ -135,6 +135,8 @@ function DownedGui:OnRespawnRequested(callback)
 end
 
 function DownedGui:Show()
+	self.caption.Text = L("คุณล้มลงแล้ว — รอเวลาเกิดใหม่ หรือให้เพื่อนมาชุบ")
+	self.button.Text = L("เกิดใหม่ทันที")
 	self.gui.Enabled = true
 	self.effect.Enabled = true
 	-- Tween rather than snap: an instant blackout reads as a bug/disconnect.

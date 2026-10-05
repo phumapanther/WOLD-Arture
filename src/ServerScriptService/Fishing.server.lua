@@ -153,6 +153,8 @@ local function showCatch(player, itemId, kg)
 		name.TextWrapped = true
 		name.TextYAlignment = Enum.TextYAlignment.Top
 		name.TextStrokeTransparency = 0.4
+		-- ข้อความไทยจากเซิร์ฟ · ไคลเอนต์แปลเป็นภาษาของคนดูทุกครั้งที่เปลี่ยน (WorldTextController)
+		game:GetService("CollectionService"):AddTag(name, "WOLD_ShowText")
 		name.Parent = back
 	end
 	-- The kilograms go on the card itself. A tier that has a word for itself ("ตำนาน") says it too, because
@@ -426,10 +428,19 @@ local function startFishing(player)
 				showCatch(player, caught, kg)
 				Collection.RecordFish(player, caught, kg)
 				if QuestAccess.RecordCatch then QuestAccess.RecordCatch(player, caught) end
-				Remotes.SocialNotify:FireClient(player, "info",
-					("ตกได้ %s %.1f กก.%s%s"):format(item and item.name or caught, kg,
-						tier.name ~= "" and (" (%s)"):format(tier.name) or "",
-						isLocal and (" — ปลาประจำถิ่น%s"):format(zone.name) or ""))
+				-- แม่แบบเดียวต่อรูปประโยค ให้ไคลเอนต์ย้อนแปลได้ (ระบบหลายภาษา) · ข้อความไทยเท่าเดิมทุกไบต์
+				local fishName = item and item.name or caught
+				local text
+				if tier.name ~= "" and isLocal then
+					text = ("ตกได้ %s %.1f กก. (%s) — ปลาประจำถิ่น%s"):format(fishName, kg, tier.name, zone.name)
+				elseif tier.name ~= "" then
+					text = ("ตกได้ %s %.1f กก. (%s)"):format(fishName, kg, tier.name)
+				elseif isLocal then
+					text = ("ตกได้ %s %.1f กก. — ปลาประจำถิ่น%s"):format(fishName, kg, zone.name)
+				else
+					text = ("ตกได้ %s %.1f กก."):format(fishName, kg)
+				end
+				Remotes.SocialNotify:FireClient(player, "info", text)
 			else
 				Remotes.SocialNotify:FireClient(player, "error", "กระเป๋าเต็ม ปลาหลุดไป")
 			end

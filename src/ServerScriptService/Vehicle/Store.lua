@@ -162,7 +162,7 @@ function Store.giveKey(player, plate)
   local prefix = tostring(plate):sub(1, 3)
   local vtype = PREFIX_TO_TYPE[prefix]
   local itemId = vtype and Store.keyItemFor(vtype)
-  if not itemId then return false, "ไม่รู้จักชนิดของทะเบียน " .. prefix end
+  if not itemId then return false, ("ไม่รู้จักชนิดของทะเบียน %s"):format(prefix) end
   -- meta คือสิ่งที่ทำให้กุญแจสองดอกไม่กองรวมกัน (Inventory.AddItem ปฏิเสธการรวมกองของทุกอย่างที่มี meta)
   if not Inventory.AddItem(player, itemId, 1, nil, { plate = plate }) then
     return false, "กระเป๋าเต็ม ใส่กุญแจไม่ได้"

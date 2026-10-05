@@ -394,9 +394,15 @@ function resolve(owner, farm)
 	flush(owner)
 	publish(farm)
 
-	local text = wasMax and ("🚚 รถส่งออกกลับมาแล้ว! +%s เหรียญ · ฟาร์มเลเวลสูงสุดแล้ว"):format(commas(coins))
-		or ("🚚 รถส่งออกกลับมาแล้ว! +%s เหรียญ · +%s EXP ฟาร์ม"):format(commas(coins), commas(exp))
-	if gems > 0 then text ..= (" · +%d 💎"):format(gems) end
+	-- แม่แบบเต็มประโยคทั้งสี่แบบ (ไคลเอนต์ย้อนแปลทั้งประโยค ต่อท้ายด้วย .. แปลไม่ได้) · ไทยเหมือนเดิมทุกไบต์
+	local text
+	if wasMax then
+		text = gems > 0 and ("🚚 รถส่งออกกลับมาแล้ว! +%s เหรียญ · ฟาร์มเลเวลสูงสุดแล้ว · +%d 💎"):format(commas(coins), gems)
+			or ("🚚 รถส่งออกกลับมาแล้ว! +%s เหรียญ · ฟาร์มเลเวลสูงสุดแล้ว"):format(commas(coins))
+	else
+		text = gems > 0 and ("🚚 รถส่งออกกลับมาแล้ว! +%s เหรียญ · +%s EXP ฟาร์ม · +%d 💎"):format(commas(coins), commas(exp), gems)
+			or ("🚚 รถส่งออกกลับมาแล้ว! +%s เหรียญ · +%s EXP ฟาร์ม"):format(commas(coins), commas(exp))
+	end
 	notify(owner, "info", text)
 	push(owner, farm, false)
 	offerCelebration(owner, farm)
@@ -540,7 +546,7 @@ end)
 
 IslandAccess.FarmAdmin = function(admin, args)
 	local farm = farmData()
-	if not farm then return "ข้อมูลเกาะยังไม่โหลด (ต้องเป็นเกาะของคุณ และเจ้าของต้องอยู่)" end
+	if not farm then return "ข้อมูลเกาะยังไม่โหลด (ต้องเป็นเกาะของคุณ และเจ้าของต้องอยู่)" end -- locale: skip (แอดมิน /farm ใช้ภาษาไทย)
 	local sub = args[1]
 	local n = tonumber(args[2])
 	if sub == "exp" and n then
@@ -554,7 +560,7 @@ IslandAccess.FarmAdmin = function(admin, args)
 		-- ลดเลเวล (เทส) = ถือว่าฉลองถึงตรงนั้นแล้ว ไม่งั้นขึ้นใหม่ครั้งหน้าจะไม่มีแบนเนอร์
 		if target < farm.celebrated then farm.celebrated = target end
 	elseif sub == "ship" then
-		if not farm.ship then return "รถไม่ได้กำลังส่งของ" end
+		if not farm.ship then return "รถไม่ได้กำลังส่งของ" end -- locale: skip (แอดมิน)
 		farm.ship.endAt = os.time()
 	elseif sub == "orders" then
 		for slot = 1, ExportConfig.OrderSlots do
@@ -572,16 +578,16 @@ IslandAccess.FarmAdmin = function(admin, args)
 		Offered[admin] = nil
 	elseif sub == "pets" then
 		-- สัตว์เลี้ยงเป็นของ IslandPets (เฟส 2d) · ไม่แตะข้อมูลฟาร์ม จึงตอบกลับเลยไม่ต้องส่งภาพรถใหม่
-		return IslandAccess.PetAdmin and IslandAccess.PetAdmin(args[2]) or "ระบบสัตว์เลี้ยงยังไม่พร้อม"
+		return IslandAccess.PetAdmin and IslandAccess.PetAdmin(args[2]) or "ระบบสัตว์เลี้ยงยังไม่พร้อม" -- locale: skip (แอดมิน)
 	elseif sub ~= nil and sub ~= "" then
-		return "ใช้: /farm [exp <n> | level <n> | ship | orders | reroll | gems | reset | pets ready|<n>]"
+		return "ใช้: /farm [exp <n> | level <n> | ship | orders | reroll | gems | reset | pets ready|<n>]" -- locale: skip (แอดมิน)
 	end
 	Offered[admin] = nil
 	publish(farm)
 	push(admin, farm, false)
 	local level, into, need = FarmLevelConfig.LevelFromExp(farm.exp)
-	return ("ฟาร์ม Lv%d (%d/%d · รวม %d EXP) · ฉลองแล้วถึง Lv%d · รถ%s · เพชรวันนี้ %d/%d"):format(
+	return ("ฟาร์ม Lv%d (%d/%d · รวม %d EXP) · ฉลองแล้วถึง Lv%d · รถ%s · เพชรวันนี้ %d/%d"):format( -- locale: skip (แอดมิน)
 		level, into, need, farm.exp, farm.celebrated,
-		farm.ship and (" กลับใน %d วิ"):format(math.max(0, farm.ship.endAt - os.time())) or "ว่าง",
+		farm.ship and (" กลับใน %d วิ"):format(math.max(0, farm.ship.endAt - os.time())) or "ว่าง", -- locale: skip (แอดมิน)
 		farm.gemDayCount or 0, ExportConfig.Gems.perDay)
 end

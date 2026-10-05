@@ -199,8 +199,9 @@ local function harvest(player, model)
 	if not given then return false, "full" end
 	local item = ItemCatalog.Get(entry.crop)
 	WorldSound.At("Harvest", model, 1, 45)
-	Remotes.SocialNotify:FireClient(player, "info", ("เก็บเกี่ยวได้ %s x%d%s"):format(item and item.name or entry.crop, amount,
-		goldResult == "given" and " (🌟 ขอบทอง 1 ชิ้น)" or ""), true) -- เสียงเก็บผักดังแล้ว
+	-- แม่แบบเดียวต่อแบบ (ไคลเอนต์ย้อนแปลทั้งประโยค) · ไทยเหมือนเดิมทุกไบต์
+	local harvestText = goldResult == "given" and "เก็บเกี่ยวได้ %s x%d (🌟 ขอบทอง 1 ชิ้น)" or "เก็บเกี่ยวได้ %s x%d"
+	Remotes.SocialNotify:FireClient(player, "info", harvestText:format(item and item.name or entry.crop, amount), true) -- เสียงเก็บผักดังแล้ว
 	if goldResult == "lost" then
 		Remotes.SocialNotify:FireClient(player, "error", "กระเป๋า VIP เต็ม — ขอบทองกลายเป็นของธรรมดา")
 	end
@@ -373,7 +374,7 @@ local function tick()
 					state.prompt.Enabled = progress >= 1
 					if progress >= 1 then
 						state.prompt.ActionText = "เก็บเกี่ยว"
-						state.prompt.ObjectText = name .. " · สุกแล้ว"
+						state.prompt.ObjectText = ("%s · สุกแล้ว"):format(name)
 					else
 						state.prompt.ActionText = "รอ..."
 						state.prompt.ObjectText = ("%s · เหลือ %d นาที"):format(name, minutesLeft(entry))

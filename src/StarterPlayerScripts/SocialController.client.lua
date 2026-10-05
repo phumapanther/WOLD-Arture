@@ -23,13 +23,15 @@ local Navigation = require(game.ReplicatedStorage.Navigation)
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local UiSound = require(game.ReplicatedStorage.UI.UiSound)
 local PhotoMode = require(game.ReplicatedStorage.UI.PhotoMode)
+local Locale = require(game.ReplicatedStorage.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 
 local gui = SocialGui.new()
 gui.gui.Parent = playerGui
-if LOBBY then gui:SetLobbyMode("ใช้ได้หลังเข้าโลกแล้ว — ในล็อบบี้ใช้ได้แค่หน้าตั้งค่า (ปุ่มเฟืองด้านล่าง)") end
+if LOBBY then gui:SetLobbyMode(L("ใช้ได้หลังเข้าโลกแล้ว — ในล็อบบี้ใช้ได้แค่หน้าตั้งค่า (ปุ่มเฟืองด้านล่าง)")) end
 
 -- ยิงไปหาเซิร์ฟเฉพาะตอนไม่ได้อยู่ล็อบบี้ (ล็อบบี้ไม่มีใครฟัง — Roblox จะเตือนคิวเต็มซ้ำๆ)
 local function ask(remote, ...)
@@ -73,14 +75,14 @@ local emotes = EmoteGui.new()
 
 emotes:On("play", function(id)
 	local ok, message = EmoteAccess.Play(id)
-	emotes:SetStatus(ok and message or ('ทำไม่ได้: ' .. tostring(message)))
+	emotes:SetStatus(ok and Show(message) or L("ทำไม่ได้: %s", Show(tostring(message))))
 end)
 emotes:On("stop", function() EmoteAccess.Stop() end)
 gui:On("openEmotes", function() emotes:Show() end)
 
 map:On("pin", function(position)
 	local ok, message = nav:SetDestination(position, ("%.0f, %.0f"):format(position.X, position.Z))
-	map:SetStatus(ok and ("ปักหมุดแล้ว (%s) — แตะหมุดเดิมเพื่อยกเลิก"):format(message) or message)
+	map:SetStatus(ok and L("ปักหมุดแล้ว (%s) — แตะหมุดเดิมเพื่อยกเลิก", Show(message)) or Show(message))
 	map:SetWaypoint(ok and position or nil)
 end)
 
@@ -88,7 +90,7 @@ end)
 map:On("poi", function(poi)
 	local position = Vector3.new(poi.x, poi.y or 0, poi.z)
 	local ok, message = nav:SetDestination(position, poi.label)
-	map:SetStatus(ok and ("นำทาง: %s — แตะหมุดซ้ำเพื่อยกเลิก"):format(poi.label) or message)
+	map:SetStatus(ok and L("นำทาง: %s — แตะหมุดซ้ำเพื่อยกเลิก", Show(poi.label)) or Show(message))
 	map:SetWaypoint(ok and position or nil)
 end)
 
@@ -110,7 +112,7 @@ end
 map:On("unpin", function()
 	nav:Clear()
 	map:SetWaypoint(nil)
-	map:SetStatus("ยกเลิกหมุดแล้ว")
+	map:SetStatus(L("ยกเลิกหมุดแล้ว"))
 end)
 
 --------------------------------------------------------------------------------
@@ -134,7 +136,7 @@ local lastRouted = nil
 map:On("repairRoute", function()
 	local candidates = brokenMachines()
 	if #candidates == 0 then
-		return map:SetStatus("ไม่มีเครื่องที่ต้องซ่อมแล้ว")
+		return map:SetStatus(L("ไม่มีเครื่องที่ต้องซ่อมแล้ว"))
 	end
 
 	local pick = candidates[math.random(1, #candidates)]
@@ -146,8 +148,8 @@ map:On("repairRoute", function()
 	lastRouted = pick
 
 	local position = pick:IsA("BasePart") and pick.Position or pick:GetPivot().Position
-	local ok, message = nav:SetDestination(position, "หม้อแปลงไฟ")
-	map:SetStatus(ok and ("นำทางไปหม้อแปลง (%s) — กดซ้ำเพื่อสุ่มเครื่องใหม่"):format(message) or message)
+	local ok, message = nav:SetDestination(position, L("หม้อแปลงไฟ"))
+	map:SetStatus(ok and L("นำทางไปหม้อแปลง (%s) — กดซ้ำเพื่อสุ่มเครื่องใหม่", Show(message)) or Show(message))
 	map:SetWaypoint(ok and position or nil)
 end)
 
@@ -165,7 +167,7 @@ task.spawn(function()
 			local state, extra = nav:Update()
 			if state == "arrived" then
 				map:SetWaypoint(nil)
-				map:SetStatus("ถึงจุดหมายแล้ว")
+				map:SetStatus(L("ถึงจุดหมายแล้ว"))
 			end
 		end
 	end
@@ -279,7 +281,7 @@ Remotes.SocialNotify.OnClientEvent:Connect(function(kind, message)
 	-- A message that arrives with the stone closed still deserves to be seen, so it goes on the feed --
 	-- unless the player has muted chat notices, which is the whole point of that switch.
 	-- ส่งของสำเร็จ: กลับไปหน้ารายชื่อสหาย หน้าส่งของทำหน้าที่เสร็จแล้ว
-	if kind == "info" and gui.current == "mailCompose" and message:find("^ส่ง ") then
+	if kind == "info" and gui.current == "mailCompose" and message:find("^ส่ง ") then -- locale: skip (จับข้อความไทยจากเซิร์ฟ ไม่ได้ขึ้นจอ)
 		gui:ShowScreen("friends")
 	end
 	if settings.muteChat and (kind == "pigeon" or kind == "friendRequest" or kind == "mail") then return end
@@ -289,7 +291,7 @@ Remotes.SocialNotify.OnClientEvent:Connect(function(kind, message)
 		UiSound.Play("Notification")
 	end
 	if not gui:IsOpen() and (kind == "pigeon" or kind == "friendRequest" or kind == "mail") then
-		feed:Add({ id = os.clock(), userId = player.UserId, name = "หินเวท", text = message })
+		feed:Add({ id = os.clock(), userId = player.UserId, name = L("หินเวท"), text = Show(message) })
 	end
 end)
 
@@ -336,7 +338,7 @@ Remotes.CallStateChanged.OnClientEvent:Connect(function(state, userId, name)
 	if state == "ended" then
 		stopRinging()
 		call:Hide()
-		if gui:IsOpen() then gui:SetStatus(("จบสายกับ %s"):format(name or ""), "ok") end
+		if gui:IsOpen() then gui:SetStatus(L("จบสายกับ %s", name or ""), "ok") end
 		return
 	end
 

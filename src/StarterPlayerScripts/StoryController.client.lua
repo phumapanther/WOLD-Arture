@@ -22,6 +22,8 @@ local Remotes = require(ReplicatedStorage.Remotes)
 local StoryGui = require(ReplicatedStorage.UI.StoryGui)
 local PhotoMode = require(ReplicatedStorage.UI.PhotoMode)
 local UiSound = require(ReplicatedStorage.UI.UiSound)
+local Locale = require(ReplicatedStorage.Locale)
+local L, Show = Locale.L, Locale.Show
 local TeleportService = game:GetService("TeleportService")
 
 local player = Players.LocalPlayer
@@ -88,6 +90,16 @@ local function refreshMarks()
 			local b = billboard(head, "StoryMark", (mine and state.ready) and "❗" or "❔", 2.6)
 			b.Enabled = mine == true and not inCutscene
 		end
+		-- ป้ายชื่อในโลก (R.nametag ของโมเดล เช่นไลรา) เป็นไทย — แปลบนเครื่องนี้ · จำไทยเดิมไว้ในแอตทริบิวต์ ไม่แปลซ้ำซ้อน
+		local tag = m:FindFirstChild("NameTag", true)
+		for _, label in ipairs(tag and tag:GetChildren() or {}) do
+			if label:IsA("TextLabel") then
+				local thai = label:GetAttribute("WOLD_Thai")
+				if thai == nil then thai = label.Text label:SetAttribute("WOLD_Thai", thai) end
+				local want = Show(thai)
+				if label.Text ~= want then label.Text = want end
+			end
+		end
 	end
 	-- จุดหมายขั้น reach
 	if state and state.kind == "reach" and state.target and not inCutscene then
@@ -115,6 +127,11 @@ local function refreshMarks()
 				local cf, size = d:GetBoundingBox()
 				local b = billboard(anchor, "OforianMark", "❗", (cf.Position.Y + size.Y / 2) - anchor.Position.Y + 2.4)
 				b.Enabled = sideReady and not inCutscene
+				-- ป้ายชื่อเหนือหัวสร้างฝั่งเซิร์ฟ (VipGiftPrompt) เป็นไทย — แปลบนเครื่องนี้
+				local tag = d:FindFirstChild("OforianTag", true)
+				local name = tag and tag:FindFirstChildOfClass("TextLabel")
+				local want = Show(StoryConfig.Npcs.Oforian.name)
+				if name and name.Text ~= want then name.Text = want end
 			end
 		end
 	end
@@ -139,9 +156,9 @@ Remotes.StoryState.OnClientEvent:Connect(function(s)
 	if previous and s and not s.done and previous.chapter == s.chapter then
 		if (s.step or 0) > (previous.step or 0) then
 			UiSound.Play("StoryStep")
-			localToast(("📜 %s"):format(s.goal or ""), true)
+			localToast(("📜 %s"):format(Show(s.goal or "")), true) -- เป้าหมายแปลก่อน (แม่แบบไม่มีคำไทย)
 		elseif s.kind == "hunt" and (s.got or 0) > (previous.got or 0) then
-			localToast(("📜 %s %d/%d"):format(s.goal or "", s.got or 0, s.need or 0))
+			localToast(("📜 %s %d/%d"):format(Show(s.goal or ""), s.got or 0, s.need or 0))
 		end
 	end
 end)
@@ -396,7 +413,7 @@ local function whiteVeil()
 	t.Font = Enum.Font.GothamBlack
 	t.TextScaled = true
 	t.TextColor3 = Color3.fromRGB(170, 130, 60)
-	t.Text = StoryConfig.SkyTitle
+	t.Text = Show(StoryConfig.SkyTitle)
 	t.Parent = f
 	return g
 end
@@ -597,7 +614,7 @@ local function runSkyCutscene(info)
 		if skyRestore then
 			skyRestore()
 			skyRestore = nil
-			localToast("วาปนานเกินไป — เข้าเกาะได้จากล็อบบี้ แท็บฟาร์มมิ่ง (VIP ได้ไปแล้ว)")
+			localToast("วาปนานเกินไป — เข้าเกาะได้จากล็อบบี้ แท็บฟาร์มมิ่ง (VIP ได้ไปแล้ว)") -- locale: skip (ข้อความเด้งแปลตอนแสดง)
 		end
 	end)
 end
@@ -636,24 +653,24 @@ Remotes.StoryPlay.OnClientEvent:Connect(function(kind, arg)
 			if arg.gold then
 				local digits = tostring(math.floor(arg.gold))
 				local grouped = digits:reverse():gsub("(%d%d%d)", "%1,"):reverse()
-				lines[#lines + 1] = ("+%s เหรียญ"):format((grouped:gsub("^,", "")))
+				lines[#lines + 1] = L("+%s เหรียญ", (grouped:gsub("^,", "")))
 			end
 			local body = table.concat(lines, " · ")
-			if arg.title then body ..= ("\nได้ฉายา \"%s\" — เลือกใช้ได้ในสมุดสะสม"):format(arg.title) end
-			if arg.gift then body ..= "\n🎁 ออฟาเรียน เทพหุ่นฟางมีของขวัญการเดินทางให้ — ไปพบที่ข้างจุดเกิด" end
-			gui:Banner(("📜 จบบท: %s"):format(arg.name or ""), body, 7)
+			if arg.title then body ..= "\n" .. L("ได้ฉายา \"%s\" — เลือกใช้ได้ในสมุดสะสม", arg.title) end
+			if arg.gift then body ..= "\n" .. L("🎁 ออฟาเรียน เทพหุ่นฟางมีของขวัญการเดินทางให้ — ไปพบที่ข้างจุดเกิด") end
+			gui:Banner(L("📜 จบบท: %s", arg.name or ""), body, 7)
 		end)
 	elseif kind == "newQuest" then
 		UiSound.Play("StoryStep")
-		localToast(("📜 เควสใหม่: %s — แตะที่แถบเควสเพื่อนำทาง"):format(tostring(arg)), true)
+		localToast(("📜 เควสใหม่: %s — แตะที่แถบเควสเพื่อนำทาง"):format(tostring(arg)), true) -- locale: skip (ข้อความเด้งแปลตอนแสดง)
 	elseif kind == "gift" and type(arg) == "table" then
 		afterTalking(function()
 			UiSound.Play("ToastReward")
-			gui:Banner(arg.title or "🎁", arg.body or "", 7)
+			gui:Banner(arg.title and ("🎁 " .. Show(arg.title)) or "🎁", Show(arg.body or ""), 7)
 		end)
 	elseif kind == "skyOffer" then
 		afterTalking(function()
-			gui:Choice("รับพรจากออฟาเรียน แล้วเดินทางไปเกาะลอยฟ้าแห่งความฝัน?", "รับพร", "ไว้ก่อน", function(yes)
+			gui:Choice(L("รับพรจากออฟาเรียน แล้วเดินทางไปเกาะลอยฟ้าแห่งความฝัน?"), L("รับพร"), L("ไว้ก่อน"), function(yes)
 				if yes then Remotes.RequestStory:FireServer("sky_accept") end
 			end)
 		end)

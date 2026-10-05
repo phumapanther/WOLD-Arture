@@ -125,7 +125,7 @@ local function letterFor(rank, row, bracket, extraItems)
 	for _, item in ipairs(extraItems or {}) do items[#items + 1] = { id = item.id, count = item.count or 1 } end
 	return {
 		from = 0, fromName = "สมาคมนักล่า",
-		subject = ("รางวัลบอสโลก — %s"):format(bracket.label or ("อันดับ " .. rank)),
+		subject = ("รางวัลบอสโลก — %s"):format(bracket.label or ("อันดับ %d"):format(rank)),
 		body = ("ดาเมจ %d"):format(math.floor(row.damage)),
 		items = items, gold = bracket.gold, exp = bracket.xp,
 	}
@@ -176,7 +176,7 @@ local function payout()
 			if player then
 				Remotes.SocialNotify:FireClient(player, "info",
 					("%s (ดาเมจ %d) — รางวัลส่งเข้ากล่องจดหมายแล้ว (P → กล่องจดหมาย)")
-						:format(bracket.label or ("อันดับ " .. rank), math.floor(row.damage)))
+						:format(bracket.label or ("อันดับ %d"):format(rank), math.floor(row.damage)))
 				if lastHit then
 					Remotes.SocialNotify:FireClient(player, "info", "ไม้สุดท้ายเป็นของคุณ! กล่องเวทมนตร์อยู่ในจดหมายฉบับเดียวกัน")
 				end
@@ -189,9 +189,9 @@ local function payout()
 	for i = 1, math.min(WB.AnnounceTop or 3, #ranked) do
 		table.insert(top, ("%d. %s (%d)"):format(i, ranked[i].name, math.floor(ranked[i].damage)))
 	end
-	Remotes.SocialNotify:FireAllClients("info", ("%s — %s"):format(
-		Killed and "ฟอร์จวอร์เดนถูกปราบแล้ว!" or "ฟอร์จวอร์เดนถอยกลับเตาหลอม",
-		table.concat(top, "  ")))
+	-- แม่แบบเดียวต่อหัวข้อ ให้ไคลเอนต์ย้อนแปลได้ (ระบบหลายภาษา) · ไทยเท่าเดิมทุกไบต์
+	Remotes.SocialNotify:FireAllClients("info", (Killed and "ฟอร์จวอร์เดนถูกปราบแล้ว! — %s"
+		or "ฟอร์จวอร์เดนถอยกลับเตาหลอม — %s"):format(table.concat(top, "  ")))
 end
 
 --------------------------------------------------------------------------------
@@ -204,13 +204,13 @@ EventState.Register(ID, {
 		if not MobAccess.StartEventSpawners then
 			-- ไม่มีระบบมอน = ประกาศที่ไม่มีบอสอยู่ข้างหลัง ซึ่งแย่กว่าไม่ประกาศ · โยนให้ WorldEvents
 			-- ยกเลิกอีเวนต์ทิ้ง (มันจับ error ของ start hook ไว้อยู่แล้ว)
-			error("[WorldBoss] MobAccess.StartEventSpawners ยังไม่ถูกตั้ง (Mobs.server ไม่ได้รัน?)", 0)
+			error("[WorldBoss] MobAccess.StartEventSpawners ยังไม่ถูกตั้ง (Mobs.server ไม่ได้รัน?)", 0) -- locale: skip
 		end
 		local spawners = MobAccess.StartEventSpawners(ID)
 		if not spawners or spawners == 0 then
 			-- เพลสนี้ไม่มีหมุดบอสเลย (ยังไม่ได้รัน `mapgen/83_boss_spawner.lua` หรืออยู่คนละเพลส)
 			-- ล้มตั้งแต่ตรงนี้ดีกว่าประกาศแล้วให้คนวิ่งหาทั้งชั่วโมง
-			error("[WorldBoss] ไม่มีหมุดที่ติด EventOnly = worldboss ในเพลสนี้", 0)
+			error("[WorldBoss] ไม่มีหมุดที่ติด EventOnly = worldboss ในเพลสนี้", 0) -- locale: skip
 		end
 
 		local config = GatherConfig.Mobs[WB.kind or ""]
@@ -250,15 +250,15 @@ MobAccess.WorldBoss = {
 	Id = ID,
 
 	Start = function()
-		if EventState.IsActive(ID) then return false, "บอสโลกกำลังเกิดอยู่แล้ว" end
-		if not EventState.Start then return false, "ระบบอีเวนต์ยังไม่พร้อม" end
+		if EventState.IsActive(ID) then return false, "บอสโลกกำลังเกิดอยู่แล้ว" end -- locale: skip (ตอบแอดมิน)
+		if not EventState.Start then return false, "ระบบอีเวนต์ยังไม่พร้อม" end -- locale: skip (ตอบแอดมิน)
 		EventState.Start(ID)
-		if not EventState.IsActive(ID) then return false, "เริ่มไม่สำเร็จ (ดู Output)" end
+		if not EventState.IsActive(ID) then return false, "เริ่มไม่สำเร็จ (ดู Output)" end -- locale: skip (ตอบแอดมิน)
 		return true
 	end,
 
 	Stop = function()
-		if not EventState.IsActive(ID) then return false, "ตอนนี้ไม่มีบอสโลก" end
+		if not EventState.IsActive(ID) then return false, "ตอนนี้ไม่มีบอสโลก" end -- locale: skip (ตอบแอดมิน)
 		EventState.Stop(ID)
 		return true
 	end,

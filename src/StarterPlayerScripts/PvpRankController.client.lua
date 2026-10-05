@@ -15,6 +15,7 @@ local UserInputService = game:GetService("UserInputService")
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local PvpRankConfig = require(game.ReplicatedStorage.PvpRankConfig)
 local UiSound = require(game.ReplicatedStorage.UI.UiSound)
+local L = require(game.ReplicatedStorage.Locale).L
 
 local player = Players.LocalPlayer
 local playing = false
@@ -154,14 +155,14 @@ local function celebrate(data)
 		title.TextSize = 40
 		title.TextColor3 = to.color
 		title.TextStrokeTransparency = 0.3
-		title.Text = ("เลื่อนแร็งก์เป็น %s!"):format(to.name)
+		title.Text = L("เลื่อนแร็งก์เป็น %s!", to.name)
 		title.Parent = gui
 		local sub = title:Clone()
 		sub.Position = UDim2.new(0.5, 0, 0.45, 196)
 		sub.Font = Enum.Font.GothamBold
 		sub.TextSize = 18
 		sub.TextColor3 = Color3.fromRGB(230, 226, 214)
-		sub.Text = ("%d แต้ม · แตะเพื่อไปต่อ"):format(data.points or 0)
+		sub.Text = L("%d แต้ม · แตะเพื่อไปต่อ", data.points or 0)
 		sub.Parent = gui
 	end)
 

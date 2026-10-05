@@ -14,6 +14,7 @@ if workspace:GetAttribute("IsLobby") then return end
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local UiSound = require(game.ReplicatedStorage.UI.UiSound)
 local Responsive = require(game.ReplicatedStorage.UI.Responsive)
+local L = require(game.ReplicatedStorage.Locale).L
 
 local player = Players.LocalPlayer
 local GOLD = Color3.fromRGB(255, 214, 110)
@@ -74,7 +75,7 @@ local token = 0
 local function banner(level)
 	token += 1
 	local mine = token
-	sub.Text = ("เลเวล %d · เลือด สตามินา เกราะ เติมเต็ม"):format(level)
+	sub.Text = L("เลเวล %d · เลือด สตามินา เกราะ เติมเต็ม", level)
 	holder.Visible = true
 	popScale.Scale = 0.4
 	title.TextTransparency, sub.TextTransparency = 0, 0

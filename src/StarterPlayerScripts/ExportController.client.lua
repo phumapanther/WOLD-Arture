@@ -13,6 +13,7 @@ local CollectionService = game:GetService("CollectionService")
 local Remotes = require(ReplicatedStorage.Remotes)
 local ExportGui = require(ReplicatedStorage.UI.ExportGui)
 local UiSound = require(ReplicatedStorage.UI.UiSound)
+local L = require(ReplicatedStorage.Locale).L
 
 local player = Players.LocalPlayer
 local gui = ExportGui.new()
@@ -90,7 +91,7 @@ local function buildBoard(truck)
 	title.Font = Enum.Font.GothamBold
 	title.TextScaled = true
 	title.TextColor3 = Color3.fromRGB(244, 197, 66)
-	title.Text = "🚚 รถส่งออก"
+	title.Text = L("🚚 รถส่งออก")
 	title.Parent = frame
 	local pad = Instance.new("UIPadding"); pad.PaddingTop = UDim.new(0.08, 0); pad.Parent = title
 
@@ -146,10 +147,10 @@ local function drawBoard(truck, entry)
 	if shipping then
 		local left = math.max(0, endAt - workspace:GetServerTimeNow())
 		entry.fill.Size = UDim2.fromScale(math.clamp(1 - left / math.max(1, endAt - startAt), 0, 1), 1)
-		entry.status.Text = left > 0 and ("กำลังส่ง · กลับใน %s"):format(clock(left)) or "กำลังกลับเข้าฟาร์ม…"
+		entry.status.Text = left > 0 and L("กำลังส่ง · กลับใน %s", clock(left)) or L("กำลังกลับเข้าฟาร์ม…")
 	else
 		entry.fill.Size = UDim2.fromScale(0, 1)
-		entry.status.Text = "ว่าง · กด E ท้ายรถเพื่อส่งของ"
+		entry.status.Text = L("ว่าง · กด E ท้ายรถเพื่อส่งของ")
 	end
 	if entry.smoke then entry.smoke.Enabled = shipping end
 end

@@ -74,7 +74,7 @@ end
 local function nameOf(id)
 	local item = ItemCatalog.Get(id)
 	local name = item and item.name or id
-	return (name:gsub(" %(สัตว์เลี้ยง%)", ""))
+	return (name:gsub(" %(สัตว์เลี้ยง%)", "")) -- locale: skip (รูปแบบ gsub · ชื่อที่ได้มีคำแปลของมันเอง)
 end
 
 -- จำนวนครั้งที่ลูบ (ตัวเลขที่แก้แล้ว) · โปรไฟล์ก่อน แอตทริบิวต์เป็นทางสำรองตอนเจ้าของไม่อยู่
@@ -407,15 +407,27 @@ end
 -- ลูบหัว
 --------------------------------------------------------------------------------
 
--- "กระดูก ×3 · เหล็ก ×1"
-local function describe(drops)
+-- " · ได้ กระดูก ×3 · เหล็ก ×1" ต่อท้าย text — ทั้งท่อนเป็นแม่แบบเดียวตามจำนวนชนิดของ (ระบบหลายภาษา 2026-10-05)
+-- ไคลเอนต์ย้อนแปลงได้ทั้งชื่อของ (แม่แบบ "%s ×%d" ที่ไม่มีไทยใส่ตารางคำแปลไม่ได้) · ลูบหนึ่งครั้งทอยได้ไม่เกิน 5 ชิ้น
+local GOT_TEMPLATES = {
+	"%s · ได้ %s ×%d",
+	"%s · ได้ %s ×%d · %s ×%d",
+	"%s · ได้ %s ×%d · %s ×%d · %s ×%d",
+	"%s · ได้ %s ×%d · %s ×%d · %s ×%d · %s ×%d",
+	"%s · ได้ %s ×%d · %s ×%d · %s ×%d · %s ×%d · %s ×%d",
+}
+local function withDrops(text, drops)
 	local parts = {}
 	for item, count in pairs(drops) do
 		local it = ItemCatalog.Get(item)
-		parts[#parts + 1] = ("%s ×%d"):format(it and it.name or item, count)
+		local name = it and it.name or item
+		parts[#parts + 1] = { ("%s ×%d"):format(name, count), name, count }
 	end
-	table.sort(parts)
-	return table.concat(parts, " · ")
+	table.sort(parts, function(a, b) return a[1] < b[1] end) -- ลำดับเดิม (เรียงตามข้อความ "ชื่อ ×n")
+	local args = {}
+	for _, p in ipairs(parts) do args[#args + 1] = p[2]; args[#args + 1] = p[3] end
+	local template = GOT_TEMPLATES[#parts] or (GOT_TEMPLATES[5] .. (" · %s ×%d"):rep(#parts - 5))
+	return template:format(text, table.unpack(args))
 end
 
 function pat(model, player)
@@ -470,10 +482,11 @@ function pat(model, player)
 	end
 
 	local name = nameOf(state.id)
+	-- ต่อทีละท่อนด้วยแม่แบบ (ไคลเอนต์ย้อนแปลงได้ · ไทยออกมาเหมือนเดิมทุกไบต์)
 	local text = ("%s ดูมีความสุข (+%d EXP)"):format(name, xp)
-	if next(got) then text ..= " · ได้ " .. describe(got) end
-	if lost then text ..= " · กระเป๋าเต็ม ได้ของไม่ครบ" end
-	if before < need then text ..= " · " .. growthText(model) end
+	if next(got) then text = withDrops(text, got) end
+	if lost then text = ("%s · กระเป๋าเต็ม ได้ของไม่ครบ"):format(text) end
+	if before < need then text = ("%s · %s"):format(text, growthText(model)) end
 	Remotes.SocialNotify:FireClient(player, "info", text)
 	if before < need and after >= need then
 		-- ครั้งที่ทำให้โตเต็มวัย: หัวใจอีกชุด + แจ้งแยกให้เห็นชัด
@@ -774,7 +787,7 @@ if RunService:IsStudio() then
 			local state = Live[model]
 			return model:GetScale(), state and state.fullScale
 		end
-		error("PetTest: ไม่มี op " .. tostring(op))
+		error("PetTest: ไม่มี op " .. tostring(op)) -- locale: skip
 	end
 	bf.Parent = game:GetService("ServerStorage")
 end

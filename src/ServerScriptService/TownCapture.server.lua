@@ -112,7 +112,7 @@ local function capture(player, townId)
 
 	local ok, why = canCapture(townId)
 	if not ok then
-		return Remotes.SocialNotify:FireClient(player, "warn", "ยึดไม่ได้: " .. why)
+		return Remotes.SocialNotify:FireClient(player, "warn", ("ยึดไม่ได้: %s"):format(why))
 	end
 
 	-- ตัดสินจริงใน UpdateAsync ของคีย์ towns — สองเซิร์ฟเวอร์ที่กดจบพร้อมกันจะเห็นกันและกันตรงนี้
@@ -131,7 +131,7 @@ local function capture(player, townId)
 		return t
 	end)
 	if refused then
-		return Remotes.SocialNotify:FireClient(player, "warn", "ยึดไม่ได้: " .. refused)
+		return Remotes.SocialNotify:FireClient(player, "warn", ("ยึดไม่ได้: %s"):format(refused))
 	end
 	if not towns or not towns[townId] or towns[townId].clanId ~= clan.id then
 		return Remotes.SocialNotify:FireClient(player, "error", "ยึดเมืองไม่สำเร็จ")
@@ -163,9 +163,10 @@ local function capture(player, townId)
 		end
 	end
 
+	-- แม่แบบเดียวทั้งประโยค (ไคลเอนต์ย้อนแปลได้) — ไทยเหมือนเดิมทุกไบต์
 	local message = ("แคลน %s ยึด%sได้แล้ว"):format(clan.name, townName(townId))
 	if previous and previous ~= townId then
-		message = message .. (" (ปล่อย%s)"):format(townName(previous))
+		message = ("แคลน %s ยึด%sได้แล้ว (ปล่อย%s)"):format(clan.name, townName(townId), townName(previous))
 	end
 	Remotes.SocialNotify:FireAllClients("info", message)
 	for id in pairs(Prompts) do refreshPrompt(id) end

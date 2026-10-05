@@ -357,7 +357,10 @@ local function claim(player, tier, track)
 	end
 	local names = {}
 	for _, reward in ipairs(rewards) do names[#names + 1] = rewardName(reward) end
-	Remotes.SocialNotify:FireClient(player, "info", ("รับ %s (ขั้น %d)"):format(table.concat(names, " + "), tier))
+	-- สองชิ้น (ขั้นของประจำเดือน) = แม่แบบของตัวเอง ไคลเอนต์ย้อนแปลงทีละชื่อได้ · ข้อความไทยเท่าเดิมทุกไบต์
+	local text = #names == 2 and ("รับ %s + %s (ขั้น %d)"):format(names[1], names[2], tier)
+		or ("รับ %s (ขั้น %d)"):format(table.concat(names, " + "), tier)
+	Remotes.SocialNotify:FireClient(player, "info", text)
 	push(player)
 end
 

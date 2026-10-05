@@ -19,6 +19,14 @@ local PlayerJoin = require(game.ServerScriptService.PlayerJoin)
 local Vip = require(game.ServerScriptService.Vip)
 local Mail = require(game.ServerScriptService.Mail)
 local Achievements = require(game.ServerScriptService.Achievements)
+local Locale = require(game.ReplicatedStorage.Locale)
+
+-- ข้อความเตะขึ้นที่จอของ Roblox เอง ไคลเอนต์แปลให้ไม่ได้ → แปลตามภาษาของคนนั้นที่นี่ (ไทย = ข้อความเดิม)
+local function kick(player, thai)
+	local lang = player:GetAttribute("WOLD_Lang")
+	if not Locale.Valid(lang) then lang = Locale.FromLocaleId(player.LocaleId) end
+	player:Kick(Locale.T(lang, thai))
+end
 
 local ProfileTemplate = {
 	Position = nil, -- {x, y, z} | nil (nil = never saved yet)
@@ -288,7 +296,7 @@ if not ServerConfig.IsLobby then
 	PlayerJoin.Each(function(player)
 		local profile = Store:StartSessionAsync(profileKey(player.UserId))
 		if not profile then
-			player:Kick("ไม่สามารถโหลดข้อมูลผู้เล่นได้ กรุณาเข้าเกมใหม่อีกครั้ง")
+			kick(player, "ไม่สามารถโหลดข้อมูลผู้เล่นได้ กรุณาเข้าเกมใหม่อีกครั้ง")
 			return
 		end
 		profile:AddUserId(player.UserId)
@@ -332,7 +340,7 @@ if not ServerConfig.IsLobby then
 			Profiles[player] = nil
 			if EndingOurselves[player] then return end -- our own PlayerRemoving handler ended this, not a steal
 			if player:IsDescendantOf(Players) then
-				player:Kick("เซสชันข้อมูลของคุณถูกเปิดจากที่อื่น")
+				kick(player, "เซสชันข้อมูลของคุณถูกเปิดจากที่อื่น")
 			end
 		end)
 		if not player:IsDescendantOf(Players) then

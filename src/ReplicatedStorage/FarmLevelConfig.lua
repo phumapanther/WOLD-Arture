@@ -189,9 +189,11 @@ end
 --------------------------------------------------------------------------------
 
 -- แถวหนึ่ง = { text, icon?, emoji? } · icon คือ rbxassetid ของไอเทม ("" = ⌛) · emoji ใช้เมื่อไม่ใช่ไอเทม
-local function itemRow(id, prefix)
+-- text เป็นไทยเสมอ (หน้าจอแปลด้วย Locale.Show) · `template` = แม่แบบไทยที่มี %s แทนชื่อไอเทม (ย้อนแปลทั้งแถวได้)
+local function itemRow(id, template)
 	local item = ItemCatalog.Get(id)
-	return { text = (prefix or "") .. (item and item.name or id), icon = item and item.icon or "" }
+	local name = item and item.name or id
+	return { text = template and template:format(name) or name, icon = item and item.icon or "" }
 end
 
 -- ชื่อก้อนในโซนแร่ (MineRocks ใช้ kind ของ GatherConfig ซึ่งเป็นภาษาอังกฤษ)
@@ -230,19 +232,19 @@ function FarmLevelConfig.UnlocksAt(level)
 		if FarmLevelConfig.ShopRowLevel(row) == level and not inTown[row.id] then add(itemRow(row.id)) end
 	end
 	for _, a in ipairs(IslandConfig.PenAnimals) do
-		if (a.level or 1) == level then add({ text = a.name .. " (คอก)", emoji = a.emoji or "🐾" }) end
+		if (a.level or 1) == level then add({ text = ("%s (คอก)"):format(a.name), emoji = a.emoji or "🐾" }) end
 	end
 	for _, c in ipairs(IslandConfig.Crops) do
 		-- พืชเลเวล 1 ออกมากับเมล็ดอยู่แล้ว · พืชที่มีเมล็ดของตัวเองปลดพร้อมเมล็ดในร้าน (แถวร้านบอกแล้ว)
-		if (c.level or 1) == level and level > 1 and c.seed == nil then add(itemRow(c.item, "งอกจากเมล็ด: ")) end
+		if (c.level or 1) == level and level > 1 and c.seed == nil then add(itemRow(c.item, "งอกจากเมล็ด: %s")) end
 	end
 	for _, r in ipairs(IslandConfig.MineRocks) do
 		if (r.level or 1) == level and level > 1 then
-			add({ text = "โซนแร่: " .. (ROCK_NAMES[r.kind] or r.kind), emoji = "⛏️" })
+			add({ text = ("โซนแร่: %s"):format(ROCK_NAMES[r.kind] or r.kind), emoji = "⛏️" })
 		end
 	end
 	for _, recipe in ipairs(CraftConfig.Recipes) do
-		if recipe.level == level then add(itemRow(recipe.id, "สูตร: ")) end
+		if recipe.level == level then add(itemRow(recipe.id, "สูตร: %s")) end
 	end
 	return out
 end

@@ -292,7 +292,7 @@ function VehicleService.setLock(player, plate, locked)
       local occ = seat.Occupant
       local sitter = occ and Players:GetPlayerFromCharacter(occ.Parent)
       if sitter and not VehicleService.hasKey(sitter, plate) then
-        VehicleService.eject(sitter, occ, "เจ้าของล็อกพาหนะ")
+        VehicleService.eject(sitter, occ, "🔒 เจ้าของล็อกพาหนะ")
       end
     end
   end
@@ -321,7 +321,7 @@ function VehicleService.eject(player, humanoid, reason)
     local root = humanoid.Parent and humanoid.Parent:FindFirstChild("HumanoidRootPart")
     if root then root.CFrame = root.CFrame * CFrame.new(0, 2, 6) end
   end)
-  notify(player, "🔒 " .. (reason or "พาหนะถูกล็อกอยู่"), "warn")
+  notify(player, reason or "🔒 พาหนะถูกล็อกอยู่", "warn") -- reason ขึ้นต้น 🔒 มาเอง (ประโยคเดียวให้ไคลเอนต์แปลได้)
 end
 
 -- ---------------------------------------------------------------- สร้างตัวถัง
@@ -344,7 +344,7 @@ local function wireSeat(record, seat)
     local humanoid = char and char:FindFirstChildOfClass("Humanoid")
     if not humanoid or humanoid.Health <= 0 then return end
     if not VehicleService.canAccess(player, record) then
-      notify(player, "🔒 " .. record.plate .. " ถูกล็อกอยู่ ต้องมีกุญแจถึงจะขึ้นได้", "warn")
+      notify(player, ("🔒 %s ถูกล็อกอยู่ ต้องมีกุญแจถึงจะขึ้นได้"):format(record.plate), "warn")
       return
     end
     if seat.Occupant then
@@ -379,7 +379,7 @@ local function wireSeat(record, seat)
     local sitter = Players:GetPlayerFromCharacter(occ.Parent)
     if sitter and not VehicleService.canAccess(sitter, record) then
       -- ปีนขึ้นมาเองทั้งที่ล็อกอยู่ (ไม่ได้ผ่านปุ่ม) — ด่านสุดท้ายที่กันไว้
-      task.defer(VehicleService.eject, sitter, occ, "พาหนะคันนี้ถูกล็อกอยู่")
+      task.defer(VehicleService.eject, sitter, occ, "🔒 พาหนะคันนี้ถูกล็อกอยู่")
       return
     end
     if sitter and seat == record.driveSeat then
@@ -442,13 +442,13 @@ local function wireLockPrompt(record)
   local p = prompt(record.hull, "ล็อก / ปลดล็อก", record.display .. " " .. record.plate, 12)
   p.Triggered:Connect(function(player)
     if not VehicleService.hasKey(player, record.plate) then
-      notify(player, "ไม่มีกุญแจของ " .. record.plate, "warn")
+      notify(player, ("ไม่มีกุญแจของ %s"):format(record.plate), "warn")
       return
     end
     local locked = record.model:GetAttribute("IsLocked") ~= true
     local ok, err = VehicleService.setLock(player, record.plate, locked)
     if ok then
-      notify(player, (locked and "🔒 ล็อก " or "🔓 ปลดล็อก ") .. record.plate .. " แล้ว", "ok")
+      notify(player, (locked and "🔒 ล็อก %s แล้ว" or "🔓 ปลดล็อก %s แล้ว"):format(record.plate), "ok")
     else
       notify(player, tostring(err), "warn")
     end
@@ -488,7 +488,7 @@ function VehicleService.build(vtype, cf, plate, ownerId, data)
   model:SetAttribute("Durability", dur and math.floor(record.durability / dur.max * 100 + 0.5) or 100)
   record.onEmpty = function(rec)
     if rec.driver then
-      notify(rec.driver, "🔥 ไฟในเตาดับแล้ว — " .. rec.plate .. " ไปต่อไม่ได้ ต้องเติมถ่าน (เปิดท้ายรถแล้วกดเติม)", "warn")
+      notify(rec.driver, ("🔥 ไฟในเตาดับแล้ว — %s ไปต่อไม่ได้ ต้องเติมถ่าน (เปิดท้ายรถแล้วกดเติม)"):format(rec.plate), "warn")
     end
   end
   -- ตัวเลขความสึกคำนวณใน Drive ส่วนการเก็บ/เผยแพร่/แจ้งเตือนอยู่ที่นี่ ด้วยเหตุผลเดียวกับ onEmpty
@@ -569,14 +569,14 @@ end
 function VehicleService.summon(player, plate, station)
   local vtype = VehicleService.typeOfPlate(plate)
   if not vtype then return false, "ทะเบียนไม่ถูกต้อง" end
-  if not VehicleService.hasKey(player, plate) then return false, "ต้องมีกุญแจของ " .. plate end
+  if not VehicleService.hasKey(player, plate) then return false, ("ต้องมีกุญแจของ %s"):format(plate) end
   -- กุญแจที่ยังไม่ได้จดทะเบียนเรียกรถออกมาไม่ได้ ถ้าไม่ด่านนี้ การจดทะเบียนก็ไม่มีความหมาย: หีบทดสอบแจก
   -- กุญแจมา แล้วขับได้เลยโดยไม่ต้องแวะหาบารอนเวนสักครั้ง (ตัว build ยอมรับ data = nil อยู่แล้ว จึงเงียบ)
   if not VehicleService.isRegistered(player, plate) then
     return false, "กุญแจดอกนี้ยังไม่ได้จดทะเบียน ไปจดที่บารอนเวนก่อน"
   end
-  if VehicleService.Active[plate] then return false, plate .. " ถูกเรียกออกมาแล้ว" end
-  if station and station.vtype ~= vtype then return false, "จุดนี้เรียกได้เฉพาะ" .. Config.Types[station.vtype].display end
+  if VehicleService.Active[plate] then return false, ("%s ถูกเรียกออกมาแล้ว"):format(plate) end
+  if station and station.vtype ~= vtype then return false, ("จุดนี้เรียกได้เฉพาะ%s"):format(Config.Types[station.vtype].display) end
 
   local char = player.Character
   local root = char and char:FindFirstChild("HumanoidRootPart")
@@ -672,7 +672,7 @@ end
 function VehicleService.refuel(player, plate)
   local record = VehicleService.Active[plate]
   if not record then return false, "ต้องเรียกพาหนะออกมาก่อนถึงจะเติมได้" end
-  if not VehicleService.canAccess(player, record) then return false, plate .. " ถูกล็อกอยู่" end
+  if not VehicleService.canAccess(player, record) then return false, ("%s ถูกล็อกอยู่"):format(plate) end
   local spec = record.spec.fuel
   if not spec then return false, "พาหนะนี้ไม่ใช้เชื้อเพลิง" end
   local missing = spec.max - record.fuel
@@ -691,7 +691,7 @@ function VehicleService.refuel(player, plate)
   record.lastTouch = os.clock()
   record.model:SetAttribute("Fuel", math.floor(record.fuel / spec.max * 100 + 0.5))
   VehicleService.saveTrunk(record)
-  return true, used > 0 and ("เติมถ่าน " .. used .. " ชิ้น") or "เติมให้ฟรี"
+  return true, used > 0 and ("เติมถ่าน %d ชิ้น"):format(used) or "เติมให้ฟรี"
 end
 
 function VehicleService.fuelPercent(record)
@@ -723,7 +723,7 @@ function VehicleService.wear(record, amount)
   -- ถึงศูนย์แล้วเงียบไปเฉยๆ คือบั๊กที่คนขับหาไม่เจอ ต้องบอกให้รู้ว่าเกิดอะไรขึ้นและต้องทำอย่างไรต่อ
   if record.durability <= 0 and before > 0 then
     if record.driver then
-      notify(record.driver, "⚙️ " .. record.plate .. " พังแล้ว ขับต่อไม่ได้ — ฝากคืนกับบารอนเวนแล้วกดซ่อม หรือให้นักประดิษฐ์ซ่อมให้ตรงนี้", "warn")
+      notify(record.driver, ("⚙️ %s พังแล้ว ขับต่อไม่ได้ — ฝากคืนกับบารอนเวนแล้วกดซ่อม หรือให้นักประดิษฐ์ซ่อมให้ตรงนี้"):format(record.plate), "warn")
     end
     VehicleService.saveTrunk(record)
   end
@@ -783,7 +783,7 @@ local function stowedRecord(player, plate)
   local profile = Store.get(player)
   local rec = profile and profile.Data.Vehicles[plate]
   if not rec then return nil, "ทะเบียนนี้ไม่ได้อยู่ในโรงรถของคุณ" end
-  if not Store.hasKey(player, plate) then return nil, "ต้องมีกุญแจของ " .. plate end
+  if not Store.hasKey(player, plate) then return nil, ("ต้องมีกุญแจของ %s"):format(plate) end
   return rec, Config.Types[rec.Type]
 end
 
@@ -880,7 +880,7 @@ function VehicleService.trunkState(player, plate)
   local record = VehicleService.Active[plate]
   if not record then return nil, "ไม่พบพาหนะทะเบียนนี้" end
   if not VehicleService.canAccess(player, record) then
-    return nil, plate .. " ถูกล็อกอยู่ ต้องมีกุญแจถึงจะเปิดท้ายได้"
+    return nil, ("%s ถูกล็อกอยู่ ต้องมีกุญแจถึงจะเปิดท้ายได้"):format(plate)
   end
   local char = player.Character
   local root = char and char:FindFirstChild("HumanoidRootPart")

@@ -12,6 +12,8 @@ local UiSound = require(script.Parent.UiSound)
 local ItemIcon = require(script.Parent.ItemIcon)
 local FarmLevelConfig = require(script.Parent.Parent.FarmLevelConfig) -- พี่น้องของ UI (เทส Edit โคลนลงโฟลเดอร์ sandbox ได้)
 local CraftConfig = require(script.Parent.Parent.CraftConfig) -- ราคา 💎 รถกลับทันที (InstantGems ตัวเดียวกับเครื่องคราฟ)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -132,7 +134,7 @@ function ExportGui.new()
 	Responsive.Scale(panel, small and 0.95 or nil) -- มือถือ: แผงเต็มจออยู่แล้ว ห้ามย่อซ้ำ
 	self.panel = panel
 
-	label(panel, { text = "🚚 รถส่งออก", size = 19, color = RUNE, pos = UDim2.fromOffset(14, 12),
+	label(panel, { text = L("🚚 รถส่งออก"), size = 19, color = RUNE, pos = UDim2.fromOffset(14, 12),
 		dim = UDim2.new(0, 170, 0, 30) })
 
 	-- เลเวลฟาร์ม + แถบ EXP (หัวหน้าต่าง ขวามือ)
@@ -186,7 +188,7 @@ function ExportGui.new()
 	tabLayout.Padding = UDim.new(0, 6)
 	tabLayout.Parent = tabs
 	self.tabButtons = {}
-	for order, spec in ipairs({ { id = "orders", text = "📦 ใบสั่งซื้อ" }, { id = "unlocks", text = "🔓 ปลดล็อก" } }) do
+	for order, spec in ipairs({ { id = "orders", text = L("📦 ใบสั่งซื้อ") }, { id = "unlocks", text = L("🔓 ปลดล็อก") } }) do
 		local b = button(tabs, { text = spec.text, size = 13, dim = UDim2.fromOffset(122, 28) })
 		b.LayoutOrder = order
 		b.Activated:Connect(function()
@@ -299,20 +301,20 @@ function ExportGui:Tick()
 		local progress = math.clamp(1 - left / total, 0, 1)
 		self.stripFill.Visible = true
 		self.stripFill.Size = UDim2.fromScale(progress, 1)
-		text = left > 0 and ("🚚 กำลังส่งของ… รถกลับมาใน %s"):format(clock(left)) or "🚚 รถกำลังกลับเข้าฟาร์ม…"
+		text = left > 0 and L("🚚 กำลังส่งของ… รถกลับมาใน %s", clock(left)) or L("🚚 รถกำลังกลับเข้าฟาร์ม…")
 		local card = self.cards[ship.slot]
 		if card and card.bar then
 			card.bar.Size = UDim2.fromScale(progress, 1)
-			card.barText.Text = left > 0 and clock(left) or "กลับแล้ว"
+			card.barText.Text = left > 0 and clock(left) or L("กลับแล้ว")
 		end
 		if card and card.instant then
 			card.instant.Visible = left > 0
 			local gems = CraftConfig.InstantGems(left)
-			card.instant.Text = self.instantArmed and ("ยืนยัน 💎%d"):format(gems) or ("💎 ทันที %d"):format(gems)
+			card.instant.Text = self.instantArmed and L("ยืนยัน 💎%d", gems) or L("💎 ทันที %d", gems)
 		end
 	else
 		self.stripFill.Visible = false
-		text = ("🚚 รถว่าง — เลือกใบที่ของครบแล้วกด “ส่งของ” (ทีละใบ ใบละ %d นาที)"):format(
+		text = L("🚚 รถว่าง — เลือกใบที่ของครบแล้วกด “ส่งของ” (ทีละใบ ใบละ %d นาที)",
 			math.floor((snap.shipSeconds or 1080) / 60))
 	end
 	-- ข้อความสั้นจากปุ่ม (Flash) ขึ้นแทนชั่วคราว แถบยังเดินปกติ
@@ -344,7 +346,7 @@ function ExportGui:DrawCard(order, snap)
 	local rowH, step, top = compact and 26 or 32, compact and 29 or 36, compact and 28 or 34
 
 	local head = label(frame, {
-		text = shipping and "🚚 กำลังส่ง" or (order.gold and "🌟 ใบขอบทอง" or ("📦 ใบสั่งซื้อ %d"):format(order.slot)),
+		text = shipping and L("🚚 กำลังส่ง") or (order.gold and L("🌟 ใบขอบทอง") or L("📦 ใบสั่งซื้อ %d", order.slot)),
 		size = compact and 13 or 14, color = order.gold and GOLD or RUNE, pos = UDim2.fromOffset(10, compact and 5 or 8),
 		dim = UDim2.new(1, -20, 0, 20),
 	})
@@ -366,7 +368,7 @@ function ExportGui:DrawCard(order, snap)
 		icon.Position = UDim2.fromOffset(3, 2)
 		ItemIcon.Apply(icon, line.icon)
 		icon.Parent = row
-		label(row, { text = line.name, size = 12, pos = UDim2.fromOffset(rowH + 2, 0), dim = UDim2.new(1, -(rowH + 64), 1, 0) })
+		label(row, { text = Show(line.name), size = 12, pos = UDim2.fromOffset(rowH + 2, 0), dim = UDim2.new(1, -(rowH + 64), 1, 0) })
 		local enough = shipping or line.have >= line.qty
 		label(row, {
 			text = shipping and ("x%d"):format(line.qty) or ("%s/%s"):format(commas(line.have), commas(line.qty)),
@@ -386,14 +388,14 @@ function ExportGui:DrawCard(order, snap)
 	if compact then
 		label(rewards, {
 			text = ("<font color=\"#%s\">💰 %s</font>  <font color=\"#%s\">⭐ %s</font>  <font color=\"#%s\">%s</font>"):format(
-				GOLD:ToHex(), commas(order.coins), EXP:ToHex(), expText, GEM:ToHex(), order.gems or ""),
+				GOLD:ToHex(), commas(order.coins), EXP:ToHex(), expText, GEM:ToHex(), Show(order.gems or "")),
 			rich = true, size = 12, dim = UDim2.fromScale(1, 1),
 		})
 	else
 		label(rewards, { text = "💰 " .. commas(order.coins), size = 14, color = GOLD, dim = UDim2.new(0.5, 0, 0, 20) })
-		label(rewards, { text = snap.max and "⭐ เลเวลสูงสุด" or ("⭐ " .. expText .. " EXP"), size = 13, color = EXP,
+		label(rewards, { text = snap.max and L("⭐ เลเวลสูงสุด") or ("⭐ " .. expText .. " EXP"), size = 13, color = EXP,
 			pos = UDim2.new(0.5, 0, 0, 0), dim = UDim2.new(0.5, 0, 0, 20), align = Enum.TextXAlignment.Right })
-		label(rewards, { text = order.gems or "", size = 12, color = GEM, pos = UDim2.fromOffset(0, 22),
+		label(rewards, { text = Show(order.gems or ""), size = 12, color = GEM, pos = UDim2.fromOffset(0, 22),
 			dim = UDim2.new(1, 0, 0, 18) })
 	end
 
@@ -438,7 +440,7 @@ function ExportGui:DrawCard(order, snap)
 						self:Tick()
 					end
 				end)
-				self:Flash("กด “ยืนยัน” อีกครั้ง — ใช้เพชรให้รถกลับทันที")
+				self:Flash(L("กด “ยืนยัน” อีกครั้ง — ใช้เพชรให้รถกลับทันที"))
 			end
 			self:Tick()
 		end)
@@ -446,7 +448,7 @@ function ExportGui:DrawCard(order, snap)
 	else
 		local canShip = order.ready and not busy
 		local ship = button(frame, {
-			text = canShip and "🚚 ส่งของ" or (busy and "รถไม่ว่าง" or "ของยังไม่ครบ"),
+			text = canShip and L("🚚 ส่งของ") or (busy and L("รถไม่ว่าง") or L("ของยังไม่ครบ")),
 			color = canShip and ENOUGH or BUTTON_OFF, textColor = canShip and INK or TEXT_MUTED, size = 14,
 			anchor = Vector2.new(0, 1), pos = UDim2.new(0, 8, 1, -8), dim = UDim2.new(1, -60, 0, 32),
 		})
@@ -470,13 +472,13 @@ function ExportGui:DrawCard(order, snap)
 		reroll.Activated:Connect(function()
 			if not canReroll then
 				UiSound.Play("Click")
-				self:Flash("🔄 สุ่มใบใหม่ฟรีได้วันละครั้ง — ใช้ไปแล้ววันนี้")
+				self:Flash(L("🔄 สุ่มใบใหม่ฟรีได้วันละครั้ง — ใช้ไปแล้ววันนี้"))
 				return
 			end
 			UiSound.Play("Click")
 			if self.armed ~= order.slot then
 				self.armed = order.slot
-				reroll.Text = "แน่ใจ?"
+				reroll.Text = L("แน่ใจ?")
 				reroll.TextSize = 12
 				reroll.BackgroundColor3 = Color3.fromRGB(150, 96, 70)
 				task.delay(3, function()
@@ -487,7 +489,7 @@ function ExportGui:DrawCard(order, snap)
 						reroll.BackgroundColor3 = Color3.fromRGB(96, 110, 150)
 					end
 				end)
-				self:Flash("กด “แน่ใจ?” อีกครั้งเพื่อสุ่มใบนี้ใหม่ (ฟรีวันละครั้ง)")
+				self:Flash(L("กด “แน่ใจ?” อีกครั้งเพื่อสุ่มใบนี้ใหม่ (ฟรีวันละครั้ง)"))
 				return
 			end
 			self.armed = nil
@@ -548,14 +550,14 @@ function ExportGui:DrawUnlocks(snap)
 			list.SortOrder = Enum.SortOrder.LayoutOrder
 			list.Parent = section
 
-			local status = done and "✓ ปลดแล้ว" or (now and "◀ เลเวลตอนนี้" or "🔒")
+			local status = done and L("✓ ปลดแล้ว") or (now and L("◀ เลเวลตอนนี้") or "🔒")
 			if level == current + 1 and not snap.max then
-				status = ("🔒 อีก %s EXP"):format(commas(math.max(0, (snap.need or 0) - (snap.into or 0))))
+				status = L("🔒 อีก %s EXP", commas(math.max(0, (snap.need or 0) - (snap.into or 0))))
 			end
 			-- เลเวลที่เกินเพดานที่เปิดอยู่ (ผู้ใช้สั่ง 2026-09-28 ตันที่ 20 ไปก่อน) — ของยังโชว์ให้เห็นว่ามีอะไรรออยู่
-			if closed then status = ("🔒 ยังไม่ปลดล็อก · ตอนนี้ตันที่ Lv%d"):format(FarmLevelConfig.Ceiling()) end
+			if closed then status = L("🔒 ยังไม่ปลดล็อก · ตอนนี้ตันที่ Lv%d", FarmLevelConfig.Ceiling()) end
 			local head = label(section, {
-				text = ("เลเวล %d   <font color=\"#%s\">%s</font>"):format(level,
+				text = L("เลเวล %d   <font color=\"#%s\">%s</font>", level,
 					(done and ENOUGH or (now and RUNE or TEXT_MUTED)):ToHex(), status),
 				rich = true, size = 14, color = done and TEXT_MUTED or TEXT_LIGHT, dim = UDim2.new(1, 0, 0, 22),
 			})
@@ -592,7 +594,7 @@ function ExportGui:DrawUnlocks(snap)
 					icon.ImageTransparency = closed and 0.55 or (level > current and 0.4 or 0)
 					icon.Parent = chip
 				end
-				label(chip, { text = row.text, size = 12, font = Enum.Font.GothamMedium,
+				label(chip, { text = Show(row.text), size = 12, font = Enum.Font.GothamMedium,
 					color = level > current and TEXT_MUTED or TEXT_LIGHT,
 					pos = UDim2.fromOffset(32, 0), dim = UDim2.new(1, -36, 1, 0) })
 			end
@@ -637,10 +639,10 @@ function ExportGui:Show(snap)
 	}):Play()
 	-- เพดานเลเวล (FarmLevelConfig.MaxLevel = 50) — หลอดเต็มสีทอง บอกว่ารอเปิดเพิ่ม ไม่โชว์ตัวเลขที่ไม่มีความหมาย
 	self.expFill.BackgroundColor3 = snap.max and RUNE or EXP
-	self.expText.Text = snap.max and "เลเวลสูงสุด · รอเปิดเพิ่มในอัปเดตหน้า"
-		or ("%s / %s EXP ฟาร์ม"):format(commas(snap.into or 0), commas(need))
-	self.gemsText.Text = ("💎 วันนี้ %d/%d   ·   🔄 สุ่มใหม่ฟรี %s"):format(snap.gemsToday or 0, snap.gemsDayCap or 5,
-		(snap.rerollLeft or 0) > 0 and "เหลือ 1" or "ใช้แล้ว")
+	self.expText.Text = snap.max and L("เลเวลสูงสุด · รอเปิดเพิ่มในอัปเดตหน้า")
+		or L("%s / %s EXP ฟาร์ม", commas(snap.into or 0), commas(need))
+	self.gemsText.Text = L("💎 วันนี้ %d/%d   ·   🔄 สุ่มใหม่ฟรี %s", snap.gemsToday or 0, snap.gemsDayCap or 5,
+		(snap.rerollLeft or 0) > 0 and L("เหลือ 1") or L("ใช้แล้ว"))
 
 	for _, child in ipairs(self.ordersPage:GetChildren()) do
 		if child:IsA("Frame") then child:Destroy() end

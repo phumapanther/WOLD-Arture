@@ -11,6 +11,8 @@ local UiSound = require(script.Parent.UiSound)
 local ItemIcon = require(script.Parent.ItemIcon)
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
 local ClanConfig = require(script.Parent.Parent.ClanConfig)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -99,7 +101,7 @@ local function fillSlot(cell, entry)
 	local hasIcon = ItemIcon.Has(entry.icon)
 	ItemIcon.Apply(cell.icon, entry.icon)
 	cell.icon.Visible = true
-	cell.name.Text = hasIcon and "" or (entry.name or entry.id or "")
+	cell.name.Text = hasIcon and "" or Show(entry.name or entry.id or "") -- ชื่อจากเซิร์ฟเป็นไทย
 	cell.count.Text = (entry.count or 1) > 1 and ("x%d"):format(entry.count) or ""
 	cell.stroke.Transparency = 0.5
 end
@@ -109,10 +111,10 @@ end
 local function agoText(at)
 	if not at then return "" end
 	local seconds = math.max(0, os.time() - at)
-	if seconds < 60 then return "เมื่อสักครู่" end
-	if seconds < 3600 then return ("%d นาทีที่แล้ว"):format(math.floor(seconds / 60)) end
-	if seconds < 86400 then return ("%d ชม.ที่แล้ว"):format(math.floor(seconds / 3600)) end
-	return ("%d วันที่แล้ว"):format(math.floor(seconds / 86400))
+	if seconds < 60 then return L("เมื่อสักครู่") end
+	if seconds < 3600 then return L("%d นาทีที่แล้ว", math.floor(seconds / 60)) end
+	if seconds < 86400 then return L("%d ชม.ที่แล้ว", math.floor(seconds / 3600)) end
+	return L("%d วันที่แล้ว", math.floor(seconds / 86400))
 end
 
 function TownVaultGui.new()
@@ -148,7 +150,7 @@ function TownVaultGui.new()
 	corner(panel, UDim.new(0, 12))
 	Responsive.Scale(panel, Responsive.IsSmallScreen() and 0.95 or nil) -- มือถือ: แผงเต็มจออยู่แล้ว ห้ามย่อซ้ำ (QA 2026-09-26)
 
-	local title = label(panel, "คลังเมือง", 17, RUNE)
+	local title = label(panel, L("คลังเมือง"), 17, RUNE)
 	title.Position = UDim2.new(0, 16, 0, 10)
 	title.Size = UDim2.new(1, -60, 0, 24)
 	self.title = title
@@ -182,7 +184,7 @@ function TownVaultGui.new()
 	left.Parent = panel
 	corner(left, UDim.new(0, 10))
 
-	local leftHead = label(left, "ของในคลัง", 12, TEXT_MUTED)
+	local leftHead = label(left, L("ของในคลัง"), 12, TEXT_MUTED)
 	leftHead.Position = UDim2.new(0, 10, 0, 6)
 	leftHead.Size = UDim2.new(1, -20, 0, 18)
 	self.leftHead = leftHead
@@ -219,7 +221,7 @@ function TownVaultGui.new()
 	right.Parent = panel
 	corner(right, UDim.new(0, 10))
 
-	local rightHead = label(right, "กระเป๋าของคุณ", 12, TEXT_MUTED)
+	local rightHead = label(right, L("กระเป๋าของคุณ"), 12, TEXT_MUTED)
 	rightHead.Position = UDim2.new(0, 10, 0, 6)
 	rightHead.Size = UDim2.new(1, -20, 0, 18)
 
@@ -255,7 +257,7 @@ function TownVaultGui.new()
 	logPane.Parent = panel
 	corner(logPane, UDim.new(0, 10))
 
-	local logHead = label(logPane, ("บันทึกล่าสุด %d ครั้ง"):format(ClanConfig.TownVaultLogSize), 12, TEXT_MUTED)
+	local logHead = label(logPane, L("บันทึกล่าสุด %d ครั้ง", ClanConfig.TownVaultLogSize), 12, TEXT_MUTED)
 	logHead.Position = UDim2.new(0, 10, 0, 6)
 	logHead.Size = UDim2.new(1, -20, 0, 18)
 
@@ -295,18 +297,24 @@ function TownVaultGui:SetVault(data)
 		fillSlot(self.cells[i], entry)
 	end
 
-	self.title.Text = data and ("คลังเมือง — %s%s"):format(data.townName or "",
-		data.clanName and (" · แคลน " .. data.clanName) or "") or "คลังเมือง"
+	-- ชื่อเมือง (ไทยจากเซิร์ฟ) แปลเป็นอาร์กิวเมนต์ของ L · ชื่อแคลนผู้เล่นตั้งเอง
+	if not data then
+		self.title.Text = L("คลังเมือง")
+	elseif data.clanName then
+		self.title.Text = L("คลังเมือง — %s · แคลน %s", data.townName or "", data.clanName)
+	else
+		self.title.Text = L("คลังเมือง — %s", data.townName or "")
+	end
 	self.leftHead.Text = data
-		and ("ของในคลัง %d/%d ช่อง"):format(data.used or 0, data.total or ClanConfig.TownVaultSlots)
-		or "ของในคลัง"
+		and L("ของในคลัง %d/%d ช่อง", data.used or 0, data.total or ClanConfig.TownVaultSlots)
+		or L("ของในคลัง")
 
 	for _, child in ipairs(self.logList:GetChildren()) do
 		if child:IsA("TextLabel") then child:Destroy() end
 	end
 	local rows = data and data.log or {}
 	if #rows == 0 then
-		local empty = label(self.logList, "ยังไม่มีใครเอาของเข้าหรือออก", 11, TEXT_MUTED)
+		local empty = label(self.logList, L("ยังไม่มีใครเอาของเข้าหรือออก"), 11, TEXT_MUTED)
 		empty.LayoutOrder = 1
 		empty.Size = UDim2.new(1, 0, 0, 18)
 		return
@@ -315,7 +323,7 @@ function TownVaultGui:SetVault(data)
 		-- ลูกศรบอกทิศทางแทนคำว่า "ฝาก/ถอน": อ่านเร็วกว่าและแยกสีได้ชัดในรายการที่ยาวเท่ากันหมด
 		local arrow = row.action == "out" and "\226\172\134" or "\226\172\135"
 		local line = label(self.logList,
-			("%s %s — %s x%d · %s"):format(arrow, row.name or "?", row.itemName or "?", row.count or 1,
+			("%s %s — %s x%d · %s"):format(arrow, row.name or "?", Show(row.itemName or "?"), row.count or 1,
 				agoText(row.at)),
 			11, row.action == "out" and OUT_COLOUR or IN_COLOUR)
 		line.LayoutOrder = index

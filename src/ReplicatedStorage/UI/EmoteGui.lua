@@ -11,6 +11,8 @@ local Players = game:GetService("Players")
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
 local EmoteConfig = require(script.Parent.Parent.EmoteConfig)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -83,7 +85,7 @@ function EmoteGui.new()
 	Responsive.Scale(panel, Responsive.IsSmallScreen() and 0.95 or nil) -- มือถือ: แผงเต็มจออยู่แล้ว ห้ามย่อซ้ำ (QA 2026-09-26)
 	self.panel = panel
 
-	local title = label(panel, "ท่าทาง", 19, RUNE, true)
+	local title = label(panel, L("ท่าทาง"), 19, RUNE, true)
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.Position = UDim2.fromOffset(14, 12)
 	title.Size = UDim2.new(1, -100, 0, 28)
@@ -115,13 +117,13 @@ function EmoteGui.new()
 	stop.Font = Enum.Font.GothamBold
 	stop.TextSize = 12
 	stop.TextColor3 = TEXT_LIGHT
-	stop.Text = "เลิกท่า"
+	stop.Text = L("เลิกท่า")
 	stop.Parent = panel
 	corner(stop, UDim.new(0, 6))
 	stop.Activated:Connect(function()
 		UiSound.Play("Click")
 		if self.callbacks.stop then self.callbacks.stop() end
-		self:SetStatus("กลับมายืนปกติแล้ว")
+		self:SetStatus(L("กลับมายืนปกติแล้ว"))
 	end)
 
 	local list = Instance.new("ScrollingFrame")
@@ -140,7 +142,7 @@ function EmoteGui.new()
 	layout.Parent = list
 	self.list = list
 
-	self.status = label(panel, "เลือกท่าเพื่อแสดง · เดินเพื่อยกเลิก", 11, TEXT_MUTED)
+	self.status = label(panel, L("เลือกท่าเพื่อแสดง · เดินเพื่อยกเลิก"), 11, TEXT_MUTED)
 	self.status.TextXAlignment = Enum.TextXAlignment.Left
 	self.status.AnchorPoint = Vector2.new(0, 1)
 	self.status.Position = UDim2.new(0, 14, 1, -10)
@@ -157,7 +159,7 @@ function EmoteGui:build()
 		local entries = EmoteConfig.Available(group.id)
 		if #entries > 0 then
 			order += 1
-			local heading = label(self.list, group.name, 12, RUNE, true)
+			local heading = label(self.list, Show(group.name), 12, RUNE, true)
 			heading.LayoutOrder = order
 			heading.Size = UDim2.new(1, 0, 0, 18)
 			heading.TextXAlignment = Enum.TextXAlignment.Left
@@ -192,7 +194,7 @@ function EmoteGui:build()
 				glyph.Position = UDim2.fromOffset(0, 10)
 				glyph.TextXAlignment = Enum.TextXAlignment.Center
 
-				local name = label(tile, entry.label, 11, TEXT_LIGHT)
+				local name = label(tile, Show(entry.label), 11, TEXT_LIGHT)
 				name.Size = UDim2.new(1, -6, 0, 26)
 				name.Position = UDim2.fromOffset(3, 48)
 				name.TextXAlignment = Enum.TextXAlignment.Center
@@ -226,7 +228,7 @@ function EmoteGui:SetStatus(text)
 	local token = self.statusToken
 	task.delay(3, function()
 		if self.statusToken == token and self.status.Parent then
-			self.status.Text = "เลือกท่าเพื่อแสดง · เดินเพื่อยกเลิก"
+			self.status.Text = L("เลือกท่าเพื่อแสดง · เดินเพื่อยกเลิก")
 		end
 	end)
 end

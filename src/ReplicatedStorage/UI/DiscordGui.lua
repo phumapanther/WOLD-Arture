@@ -10,6 +10,7 @@
 local Players = game:GetService("Players")
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
+local L = require(script.Parent.Parent.Locale).L
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -73,7 +74,7 @@ function DiscordGui.new(url)
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 19
 	title.TextColor3 = BLURPLE
-	title.Text = "ดิสคอร์ดของ WOLD Arture"
+	title.Text = L("ดิสคอร์ดของ WOLD Arture")
 	title.Parent = panel
 
 	local hint = Instance.new("TextLabel")
@@ -84,7 +85,7 @@ function DiscordGui.new(url)
 	hint.TextSize = 12
 	hint.TextWrapped = true
 	hint.TextColor3 = TEXT_MUTED
-	hint.Text = "Roblox เปิดลิงก์ข้างนอกให้ไม่ได้ — ก๊อปลิงก์ข้างล่างไปวางในเบราว์เซอร์ได้เลย"
+	hint.Text = L("Roblox เปิดลิงก์ข้างนอกให้ไม่ได้ — ก๊อปลิงก์ข้างล่างไปวางในเบราว์เซอร์ได้เลย")
 	hint.Parent = panel
 
 	-- Selectable, so a desktop player can drag across it and press Ctrl+C. Not editable in any way that
@@ -115,7 +116,7 @@ function DiscordGui.new(url)
 	copy.Font = Enum.Font.GothamBold
 	copy.TextSize = 14
 	copy.TextColor3 = Color3.new(1, 1, 1)
-	copy.Text = "คัดลอกลิงก์"
+	copy.Text = L("คัดลอกลิงก์")
 	copy.Parent = panel
 	corner(copy, UDim.new(0, 8))
 	copy.Activated:Connect(function()
@@ -127,9 +128,9 @@ function DiscordGui.new(url)
 		if type(clip) == "function" then
 			copied = pcall(clip, self.url)
 		end
-		copy.Text = copied and "คัดลอกแล้ว!" or (Responsive.IsTouchOnly() and "กดค้างที่ข้อความข้างบนแล้วเลือกคัดลอก" or "เลือกข้อความข้างบนแล้วกด Ctrl+C")
+		copy.Text = copied and L("คัดลอกแล้ว!") or (Responsive.IsTouchOnly() and L("กดค้างที่ข้อความข้างบนแล้วเลือกคัดลอก") or L("เลือกข้อความข้างบนแล้วกด Ctrl+C"))
 		task.delay(2.5, function()
-			if copy.Parent then copy.Text = "คัดลอกลิงก์" end
+			if copy.Parent then copy.Text = L("คัดลอกลิงก์") end
 		end)
 		if not copied then
 			box:CaptureFocus()
@@ -145,7 +146,7 @@ function DiscordGui.new(url)
 	close.Font = Enum.Font.GothamBold
 	close.TextSize = 13
 	close.TextColor3 = TEXT_MUTED
-	close.Text = "ปิด"
+	close.Text = L("ปิด")
 	close.Parent = panel
 	corner(close, UDim.new(0, 8))
 	close.Activated:Connect(function()

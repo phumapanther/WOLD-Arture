@@ -8,6 +8,8 @@ local Responsive = require(script.Parent.Responsive)
 local NumberBox = require(script.Parent.NumberBox) -- พิมพ์เกินที่มี = เด้งเป็นเลขสูงสุด (2026-10-02)
 local UiSound = require(script.Parent.UiSound)
 local ItemIcon = require(script.Parent.ItemIcon)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -106,7 +108,7 @@ function VaultGui.new()
 	Responsive.Scale(panel, Responsive.IsSmallScreen() and 0.95 or nil) -- มือถือ: แผงเต็มจออยู่แล้ว ห้ามย่อซ้ำ (QA 2026-09-26)
 	self.panel = panel
 
-	local title = label(panel, "ธนาคารและคลังสินค้า", 19, RUNE, true)
+	local title = label(panel, L("ธนาคารและคลังสินค้า"), 19, RUNE, true)
 	title.Position = UDim2.fromOffset(12, 12)
 	title.Size = UDim2.new(1, -60, 0, 30)
 
@@ -136,11 +138,11 @@ function VaultGui.new()
 	money.Parent = panel
 	corner(money, UDim.new(0, 10))
 
-	self.purse = label(money, "เงินในกระเป๋า 0", 13, TEXT_LIGHT, true)
+	self.purse = label(money, L("เงินในกระเป๋า %d", 0), 13, TEXT_LIGHT, true)
 	self.purse.Position = UDim2.fromOffset(12, 8)
 	self.purse.Size = UDim2.new(small and 1 or 0.5, -12, 0, 20)
 
-	self.banked = label(money, "เงินในธนาคาร 0", 13, GOOD, true)
+	self.banked = label(money, L("เงินในธนาคาร %d", 0), 13, GOOD, true)
 	self.banked.Position = UDim2.fromOffset(12, 30)
 	self.banked.Size = UDim2.new(small and 1 or 0.5, -12, 0, 20)
 
@@ -155,7 +157,7 @@ function VaultGui.new()
 	box.Font = Enum.Font.GothamBold
 	box.TextSize = 13
 	box.TextColor3 = TEXT_LIGHT
-	box.PlaceholderText = "จำนวนเงิน"
+	box.PlaceholderText = L("จำนวนเงิน")
 	box.PlaceholderColor3 = TEXT_MUTED
 	box.ClearTextOnFocus = false
 	box.Text = ""
@@ -172,7 +174,7 @@ function VaultGui.new()
 			if limit then box.Text = NumberBox.Clean(box.Text, limit) end
 			local amount = tonumber(box.Text)
 			if not amount or amount <= 0 then
-				return self:SetStatus("ใส่จำนวนเงินก่อน")
+				return self:SetStatus(L("ใส่จำนวนเงินก่อน"))
 			end
 			if self.callbacks[name] then self.callbacks[name](amount) end
 		end)
@@ -185,8 +187,8 @@ function VaultGui.new()
 		b.Size = UDim2.fromOffset(68, 30)
 		return b
 	end
-	money_action("deposit", "ฝากเงิน", GOOD, 82)
-	money_action("withdraw", "ถอนเงิน", RUNE, 10)
+	money_action("deposit", L("ฝากเงิน"), GOOD, 82)
+	money_action("withdraw", L("ถอนเงิน"), RUNE, 10)
 
 	----------------------------------------------------------------------------
 	-- The two columns
@@ -247,18 +249,18 @@ function VaultGui.new()
 	-- The warehouse on the LEFT and the bag on the RIGHT, at the user's request. It reads as the direction the
 	-- goods travel for the thing this counter is mostly used for: taking what you came for off the shelf.
 	if stacked then
-		self.vaultHead, self.vaultList = column("คลังสินค้า",
+		self.vaultHead, self.vaultList = column(L("คลังสินค้า"),
 			UDim2.fromScale(0, 0), UDim2.new(1, 0, 0.5, -4))
-		self.bagHead, self.bagList = column("กระเป๋า",
+		self.bagHead, self.bagList = column(L("กระเป๋า"),
 			UDim2.new(0, 0, 0.5, 4), UDim2.new(1, 0, 0.5, -4))
 	else
-		self.vaultHead, self.vaultList = column("คลังสินค้า",
+		self.vaultHead, self.vaultList = column(L("คลังสินค้า"),
 			UDim2.fromScale(0, 0), UDim2.new(0.5, -6, 1, 0))
-		self.bagHead, self.bagList = column("กระเป๋า",
+		self.bagHead, self.bagList = column(L("กระเป๋า"),
 			UDim2.new(0.5, 6, 0, 0), UDim2.new(0.5, -6, 1, 0))
 	end
 
-	self.status = label(panel, "ฝากของเข้าคลังแล้วของจะไม่หายตอนตาย · แตะช่อง = ย้าย 1 ชิ้น · ปุ่มมุมช่อง = ย้ายทั้งกอง", 11, TEXT_MUTED)
+	self.status = label(panel, L("ฝากของเข้าคลังแล้วของจะไม่หายตอนตาย · แตะช่อง = ย้าย 1 ชิ้น · ปุ่มมุมช่อง = ย้ายทั้งกอง"), 11, TEXT_MUTED)
 	self.status.AnchorPoint = Vector2.new(0, 1)
 	self.status.Position = UDim2.new(0, 14, 1, -10)
 	self.status.Size = UDim2.new(1, -28, 0, 20)
@@ -276,7 +278,7 @@ function VaultGui:SetStatus(text)
 	local token = self.statusToken
 	task.delay(3, function()
 		if self.statusToken == token and self.status.Parent then
-			self.status.Text = "ฝากของเข้าคลังแล้วของจะไม่หายตอนตาย · แตะช่อง = ย้าย 1 ชิ้น · ปุ่มมุมช่อง = ย้ายทั้งกอง"
+			self.status.Text = L("ฝากของเข้าคลังแล้วของจะไม่หายตอนตาย · แตะช่อง = ย้าย 1 ชิ้น · ปุ่มมุมช่อง = ย้ายทั้งกอง")
 		end
 	end)
 end
@@ -313,7 +315,7 @@ local function itemTile(parent, order, entry, stackGlyph, onAll, onOne)
 	-- ไม่มีรูปเป็นของตัวเอง = ⌛ (ItemIcon แขวนให้ในช่องรูปแล้ว) ชื่ออยู่ใต้ช่องอยู่แล้วจึงยังบอกได้ว่าชิ้นไหน
 	-- เดิมเอาตัวอักษรหกตัวแรกของชื่อมาแทน ซึ่งซ้ำกับชื่อข้างล่างพอดี
 
-	local name = label(tile, entry.name, 11, TEXT_LIGHT)
+	local name = label(tile, Show(entry.name), 11, TEXT_LIGHT)
 	name.AnchorPoint = Vector2.new(0.5, 1)
 	name.Position = UDim2.new(0.5, 0, 1, -4)
 	name.Size = UDim2.new(1, -6, 0, 14)
@@ -370,19 +372,19 @@ end
 
 function VaultGui:Show(snapshot)
 	self.goldNow, self.bankedNow = snapshot.gold or 0, snapshot.banked or 0
-	self.purse.Text = ("เงินในกระเป๋า %d"):format(snapshot.gold or 0)
-	self.banked.Text = ("เงินในธนาคาร %d"):format(snapshot.banked or 0)
-	self.vaultHead.Text = ("คลังสินค้า  %d/%d ช่อง"):format(snapshot.vaultUsed or 0, snapshot.vaultSlots or 0)
+	self.purse.Text = L("เงินในกระเป๋า %d", snapshot.gold or 0)
+	self.banked.Text = L("เงินในธนาคาร %d", snapshot.banked or 0)
+	self.vaultHead.Text = L("คลังสินค้า  %d/%d ช่อง", snapshot.vaultUsed or 0, snapshot.vaultSlots or 0)
 
 	fill(self.bagList, snapshot.bag or {}, "≪",
 		function(entry) if self.callbacks.store then self.callbacks.store(entry.slot, nil) end end,
 		function(entry) if self.callbacks.store then self.callbacks.store(entry.slot, 1) end end,
-		"กระเป๋าว่าง")
+		L("กระเป๋าว่าง"))
 
 	fill(self.vaultList, snapshot.vault or {}, "≫",
 		function(entry) if self.callbacks.take then self.callbacks.take(entry.slot, nil) end end,
 		function(entry) if self.callbacks.take then self.callbacks.take(entry.slot, 1) end end,
-		"คลังว่าง")
+		L("คลังว่าง"))
 
 	self.gui.Enabled = true
 end

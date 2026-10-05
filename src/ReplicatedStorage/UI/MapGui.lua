@@ -11,6 +11,26 @@ local MapConfig = require(script.Parent.Parent.MapConfig)
 local MapTerrain = require(script.Parent.Parent.MapTerrain)
 local Responsive = require(script.Parent.Responsive)
 local MapPoiRules = require(script.Parent.Parent.MapPoiRules)
+local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show
+
+-- ชื่อหมุด (ไทยจาก MapConfig/MapPoi.server) แปลตอนวาด · ป้ายเหมือง "เหมือง: เหล็ก · เงิน" ใช้ชื่อแร่สั้นที่ชนกุญแจอื่น
+-- ("เงิน" = เงินตรา) จึงแปลชื่อแร่ผ่านชื่อไอเทมของแร่นั้นแทน · ไทยขึ้นป้ายเดิมทุกไบต์
+local ORE_ITEM = {}
+for kind, short in pairs(MapPoiRules.OreNames) do
+	local item = ItemCatalog.Get(kind == "DiamondOre" and "Diamond" or kind) -- locale: skip (id ไอเทม)
+	ORE_ITEM[short] = item and item.name or short
+end
+local function labelOf(data)
+	local ores = Locale.Current() ~= "th" and data.label:match("^เหมือง: (.+)$") -- locale: skip (จับป้ายไทย)
+	if ores then
+		local names = {}
+		for short in (ores .. " · "):gmatch("(.-) · ") do names[#names + 1] = L(ORE_ITEM[short] or short) end
+		return L("เหมือง: %s", table.concat(names, " · "))
+	end
+	return Show(data.label)
+end
 
 local MapGui = {}
 MapGui.__index = MapGui
@@ -95,7 +115,7 @@ function MapGui.new()
 	title.TextSize = 17
 	title.TextColor3 = ACCENT
 	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.Text = "แผนที่โลก"
+	title.Text = L("แผนที่โลก")
 	title.Parent = panel
 
 	local close = Instance.new("TextButton")
@@ -152,7 +172,7 @@ function MapGui.new()
 	footer.TextSize = 12
 	footer.TextColor3 = Color3.fromRGB(150, 156, 172)
 	footer.TextXAlignment = Enum.TextXAlignment.Left
-	footer.Text = Responsive.IsTouchOnly() and "ลากเพื่อเลื่อน · ปุ่ม + / - เพื่อซูม" or "ลากเพื่อเลื่อน · ล้อเมาส์เพื่อซูม"
+	footer.Text = Responsive.IsTouchOnly() and L("ลากเพื่อเลื่อน · ปุ่ม + / - เพื่อซูม") or L("ลากเพื่อเลื่อน · ล้อเมาส์เพื่อซูม")
 	footer.Parent = panel
 	self.footer = footer
 
@@ -438,7 +458,7 @@ function MapGui:buildPinLayer()
 			self.filters[cat.id] = (not show) and false or nil
 			self:paintFilters()
 			self:apply()
-			self:SetStatus((show and "แสดง: " or "ซ่อน: ") .. cat.label)
+			if show then self:SetStatus(L("แสดง: %s", cat.label)) else self:SetStatus(L("ซ่อน: %s", cat.label)) end
 		end)
 	end
 	self:paintFilters()
@@ -497,7 +517,7 @@ function MapGui:addPin(data, static)
 		name.TextColor3 = LIGHT
 		name.TextStrokeColor3 = FRAME
 		name.TextStrokeTransparency = 0.15
-		name.Text = data.label
+		name.Text = labelOf(data)
 		name.ZIndex = frame.ZIndex + 1
 		name.Parent = frame
 	end
@@ -570,7 +590,7 @@ function MapGui:hover(screenPosition)
 		self.tooltip.Visible = false
 		return
 	end
-	self.tooltip.Text = pin.data.label
+	self.tooltip.Text = labelOf(pin.data)
 	self.tooltip.Position = pin.frame.Position - UDim2.fromOffset(0, pin.frame.Size.Y.Offset / 2 + 2)
 	self.tooltip.Visible = true
 end
@@ -707,7 +727,10 @@ function MapGui:pinAt(screenPosition)
 		if self:isSelected(poi) then
 			if self.callbacks.unpin then self.callbacks.unpin() end
 		elseif self.callbacks.poi then
-			self.callbacks.poi(poi.data)
+			-- ป้ายแปลแล้ว (labelOf) ให้แถบนำทางขึ้นตรงกับชื่อหมุด · Show ป้ายเหมืองไทยตรงๆ ได้ "เงิน" = Coins
+			local data = table.clone(poi.data)
+			data.label = labelOf(poi.data)
+			self.callbacks.poi(data)
 		end
 		return
 	end
@@ -736,7 +759,7 @@ function MapGui:pinAt(screenPosition)
 	-- Height comes from the sampled terrain, so the pin lands on the ground rather than at sea level.
 	local h = MapTerrain.At(x, z)
 	if h == MapTerrain.Water then
-		self:SetStatus("ปักหมุดกลางน้ำไม่ได้")
+		self:SetStatus(L("ปักหมุดกลางน้ำไม่ได้"))
 		return
 	end
 	if self.callbacks.pin then self.callbacks.pin(Vector3.new(x, h, z)) end
@@ -778,7 +801,7 @@ function MapGui:UpdatePin()
 	self.youAt = Vector2.new(nx, nz)
 	self:placeYou()
 	if not self.footerOverride then
-		self.footer.Text = ("ตำแหน่ง %.0f, %.0f · แตะหมุดเพื่อนำทาง · ลากเพื่อเลื่อน"):format(
+		self.footer.Text = L("ตำแหน่ง %.0f, %.0f · แตะหมุดเพื่อนำทาง · ลากเพื่อเลื่อน",
 			root.Position.X, root.Position.Z)
 	end
 end

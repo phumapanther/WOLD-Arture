@@ -13,6 +13,7 @@ if workspace:GetAttribute("ArenaMode") == true then return end
 local Players = game:GetService("Players")
 local ActionConfig = require(game.ReplicatedStorage.ActionConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local L = require(game.ReplicatedStorage.Locale).L
 
 local player = Players.LocalPlayer
 local prompts = {} -- [player] = { revive, carry }
@@ -77,8 +78,8 @@ local function addPrompts(target)
 	prompts[target] = {
 		-- Reviving is a tap because the five seconds of CPR happen AFTER it, on the server, with its own
 		-- animation. Carrying has no such phase, so its wait is the hold itself.
-		revive = make("ชุบ", Enum.KeyCode.E, 0),
-		carry = make("อุ้ม", Enum.KeyCode.F, 1, ActionConfig.Carry.holdSeconds),
+		revive = make(L("ชุบ"), Enum.KeyCode.E, 0),
+		carry = make(L("อุ้ม"), Enum.KeyCode.F, 1, ActionConfig.Carry.holdSeconds),
 	}
 
 	prompts[target].revive.Triggered:Connect(function()

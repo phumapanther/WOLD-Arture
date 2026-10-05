@@ -9,7 +9,7 @@ mirror.Capabilities = SecurityCapabilities.new(Enum.SecurityCapability.Basic, En
 	Enum.SecurityCapability.UI, Enum.SecurityCapability.RunServerScript, Enum.SecurityCapability.Input)
 mirror.Parent = game.ServerStorage
 local RS = game.ReplicatedStorage
-for _, name in ipairs({ "MapConfig", "MapTerrain", "MapPoiRules" }) do RS[name]:Clone().Parent = mirror end
+for _, name in ipairs({ "MapConfig", "MapTerrain", "MapPoiRules", "Locale", "ItemCatalog", "CraftConfig", "ShopConfig", "MailConfig", "PremiumConfig" }) do RS[name]:Clone().Parent = mirror end -- MapGui แปลชื่อแร่ (ระบบหลายภาษา 2026-10-05)
 RS.UI:Clone().Parent = mirror
 
 local out, fails = {}, 0

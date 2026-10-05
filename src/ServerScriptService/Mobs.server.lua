@@ -791,6 +791,7 @@ local function showDamageNumber(model, amount, dodged)
 	if dodged then
 		label.Text = "หลบ!"
 		label.TextColor3 = Color3.fromRGB(150, 210, 255)
+		CollectionService:AddTag(label, "WOLD_ShowText") -- ไคลเอนต์แปลเป็นภาษาผู้เล่น (WorldTextController)
 	else
 		label.Text = tostring(math.max(1, math.floor(amount + 0.5)))
 		label.TextColor3 = Color3.fromRGB(255, 214, 92)

@@ -67,7 +67,7 @@ local SEQUENCES = {}
 
 -- ทำอาหาร: การต้ม -----------------------------------------------------------
 SEQUENCES.stove = {
-	{ name = "ตั้งหม้อ", seconds = 2.2, pose = function(j, u)
+	{ name = "ตั้งหม้อ", seconds = 2.2, pose = function(j, u) -- locale: skip (ชื่อจังหวะภายใน ไม่ขึ้นจอ)
 		-- ยกหม้อขึ้นตั้งบนเตา: สองแขนถือของหนักอยู่หน้าตัวแล้ววางลง
 		local lift = 1 - math.abs(u * 2 - 1) -- ขึ้นแล้วลง
 		set(j.ls, CFrame.Angles(rad(50 + lift * 22), 0, rad(22)))
@@ -77,7 +77,7 @@ SEQUENCES.stove = {
 		set(j.neck, CFrame.Angles(rad(-14), 0, 0))
 		set(j.waist, CFrame.Angles(rad(-6 * lift), 0, 0))
 	end },
-	{ name = "ใส่วัตถุดิบ", seconds = 2.2, pose = function(j, u, t)
+	{ name = "ใส่วัตถุดิบ", seconds = 2.2, pose = function(j, u, t) -- locale: skip (ชื่อจังหวะภายใน ไม่ขึ้นจอ)
 		-- มือขวายกของเหนือหม้อแล้วคว่ำข้อมือเทลง มือซ้ายถือจานรอง
 		workStance(j, 14)
 		local tip = math.clamp((u - 0.35) / 0.5, 0, 1)
@@ -89,7 +89,7 @@ SEQUENCES.stove = {
 		local flick = tip > 0.6 and 8 * math.sin(t * 22) or 0
 		set(j.rw, CFrame.Angles(0, 0, rad(-70 * tip + flick)))
 	end },
-	{ name = "คนหม้อ", seconds = 3.0, filler = true, pose = function(j, _, t)
+	{ name = "คนหม้อ", seconds = 3.0, filler = true, pose = function(j, _, t) -- locale: skip (ชื่อจังหวะภายใน ไม่ขึ้นจอ)
 		-- **หัวใจของท่านี้** หมุนข้อมือคนวนไปทางเดียว (wrist-to-ladle) และโยกตัวจากสะโพกตามรอบการคน
 		local a = t * math.pi * 2 * 0.8 -- ราวหนึ่งรอบต่อวินาทีกว่าๆ คนซุปไม่ใช่ตีไข่
 		set(j.rs, CFrame.Angles(rad(68 + 10 * math.sin(a)), rad(8 * math.cos(a)), rad(-16 + 10 * math.cos(a))))
@@ -102,7 +102,7 @@ SEQUENCES.stove = {
 		set(j.waist, CFrame.Angles(rad(-5 + 2 * math.sin(a)), rad(4 * math.cos(a)), rad(3 * math.sin(a))))
 		set(j.neck, CFrame.Angles(rad(-18), rad(3 * math.cos(a)), 0))
 	end },
-	{ name = "เช็คอุณหภูมิ", seconds = 2.0, pose = function(j, u)
+	{ name = "เช็คอุณหภูมิ", seconds = 2.0, pose = function(j, u) -- locale: skip (ชื่อจังหวะภายใน ไม่ขึ้นจอ)
 		-- ก้มลงดูไอ แล้วยกมือขวามาใกล้หน้าเหมือนโบกกลิ่นเข้าจมูก
 		workStance(j, 24)
 		local wave = math.sin(u * math.pi * 3)
@@ -112,7 +112,7 @@ SEQUENCES.stove = {
 		set(j.neck, CFrame.Angles(rad(-28), 0, 0))
 		set(j.waist, CFrame.Angles(rad(-8), 0, 0))
 	end },
-	{ name = "เสร็จแล้ว", seconds = 1.4, pose = function(j, u)
+	{ name = "เสร็จแล้ว", seconds = 1.4, pose = function(j, u) -- locale: skip (ชื่อจังหวะภายใน ไม่ขึ้นจอ)
 		-- ยกหม้อขึ้นจากเตา ยืดตัวขึ้น
 		set(j.ls, CFrame.Angles(rad(58 + u * 14), 0, rad(20)))
 		set(j.rs, CFrame.Angles(rad(58 + u * 14), 0, rad(-20)))
@@ -124,14 +124,14 @@ SEQUENCES.stove = {
 
 -- ปั่นเครื่องดื่ม (เครื่องปั่นไอน้ำ) ------------------------------------------
 SEQUENCES.blender = {
-	{ name = "เทผลไม้ลงโถ", seconds = 2.0, pose = function(j, u)
+	{ name = "เทผลไม้ลงโถ", seconds = 2.0, pose = function(j, u) -- locale: skip (ชื่อจังหวะภายใน ไม่ขึ้นจอ)
 		workStance(j, 12)
 		local tip = math.clamp((u - 0.3) / 0.6, 0, 1)
 		set(j.rs, CFrame.Angles(rad(74), 0, rad(-16)))
 		set(j.re, CFrame.Angles(rad(52), 0, 0))
 		set(j.rw, CFrame.Angles(0, 0, rad(-80 * tip)))
 	end },
-	{ name = "ปิดฝาแล้วกดล็อก", seconds = 1.6, pose = function(j, u)
+	{ name = "ปิดฝาแล้วกดล็อก", seconds = 1.6, pose = function(j, u) -- locale: skip (ชื่อจังหวะภายใน ไม่ขึ้นจอ)
 		local press = math.sin(u * math.pi)
 		set(j.ls, CFrame.Angles(rad(62 - press * 10), 0, rad(16)))
 		set(j.rs, CFrame.Angles(rad(62 - press * 10), 0, rad(-16)))
@@ -140,7 +140,7 @@ SEQUENCES.blender = {
 		set(j.waist, CFrame.Angles(rad(-8 * press), 0, 0))
 		set(j.neck, CFrame.Angles(rad(-16), 0, 0))
 	end },
-	{ name = "โยกคันโยกไอน้ำ", seconds = 3.0, filler = true, pose = function(j, _, t)
+	{ name = "โยกคันโยกไอน้ำ", seconds = 3.0, filler = true, pose = function(j, _, t) -- locale: skip (ชื่อจังหวะภายใน ไม่ขึ้นจอ)
 		-- โยกขึ้นลงเป็นจังหวะ ตัวสั่นตามเครื่องนิดหน่อย
 		local a = t * math.pi * 2 * 1.1
 		local pump = math.sin(a)
@@ -152,7 +152,7 @@ SEQUENCES.blender = {
 		set(j.waist, CFrame.Angles(rad(-4 + pump * 3), rad(pump * 4), 0))
 		set(j.neck, CFrame.Angles(rad(-12 + shake), 0, 0))
 	end },
-	{ name = "รินใส่แก้ว", seconds = 2.0, pose = function(j, u)
+	{ name = "รินใส่แก้ว", seconds = 2.0, pose = function(j, u) -- locale: skip (ชื่อจังหวะภายใน ไม่ขึ้นจอ)
 		local tip = math.clamp((u - 0.2) / 0.6, 0, 1)
 		set(j.ls, CFrame.Angles(rad(58), 0, rad(20)))
 		set(j.rs, CFrame.Angles(rad(58), 0, rad(-20)))
@@ -166,14 +166,14 @@ SEQUENCES.blender = {
 
 -- ต้มยา: การกลั่นและผสม ------------------------------------------------------
 SEQUENCES.still = {
-	{ name = "ใส่สมุนไพร", seconds = 2.0, pose = function(j, u, t)
+	{ name = "ใส่สมุนไพร", seconds = 2.0, pose = function(j, u, t) -- locale: skip (ชื่อจังหวะภายใน ไม่ขึ้นจอ)
 		workStance(j, 16)
 		local drop = math.clamp((u - 0.3) / 0.6, 0, 1)
 		set(j.rs, CFrame.Angles(rad(82), 0, rad(-12)))
 		set(j.re, CFrame.Angles(rad(44), 0, 0))
 		set(j.rw, CFrame.Angles(rad(30 * drop), 0, rad(6 * math.sin(t * 18))))
 	end },
-	{ name = "ตรวจการกลั่น", seconds = 2.0, pose = function(j, u)
+	{ name = "ตรวจการกลั่น", seconds = 2.0, pose = function(j, u) -- locale: skip (ชื่อจังหวะภายใน ไม่ขึ้นจอ)
 		-- ยกขวดขึ้นส่องระดับสายตา เอียงหัวดู
 		local raise = math.min(u * 2, 1)
 		set(j.ls, CFrame.Angles(rad(52), 0, rad(24)))
@@ -183,7 +183,7 @@ SEQUENCES.still = {
 		set(j.rw, CFrame.Angles(0, rad(20 * raise), 0))
 		set(j.neck, CFrame.Angles(rad(4 * raise), rad(-10 * raise), 0))
 	end },
-	{ name = "เติมผง", seconds = 2.0, pose = function(j, _, t)
+	{ name = "เติมผง", seconds = 2.0, pose = function(j, _, t) -- locale: skip (ชื่อจังหวะภายใน ไม่ขึ้นจอ)
 		-- ถูปลายนิ้วโรยผงลงหม้อ: ข้อมือบิดกลับไปกลับมาถี่ๆ
 		workStance(j, 18)
 		local rub = math.sin(t * 16)
@@ -194,7 +194,7 @@ SEQUENCES.still = {
 		set(j.le, CFrame.Angles(rad(70), 0, 0))
 		set(j.neck, CFrame.Angles(rad(-24), 0, 0))
 	end },
-	{ name = "คนอย่างควบคุม", seconds = 3.0, filler = true, pose = function(j, _, t)
+	{ name = "คนอย่างควบคุม", seconds = 3.0, filler = true, pose = function(j, _, t) -- locale: skip (ชื่อจังหวะภายใน ไม่ขึ้นจอ)
 		-- ช้ากว่าการคนหม้อครัวราวครึ่งหนึ่ง: ภาพเน้นว่า "ควบคุม" ไม่ใช่แรง มือซ้ายประคองขวดไว้นิ่งๆ
 		local a = t * math.pi * 2 * 0.45
 		set(j.rs, CFrame.Angles(rad(70 + 7 * math.sin(a)), rad(6 * math.cos(a)), rad(-18 + 7 * math.cos(a))))
@@ -206,7 +206,7 @@ SEQUENCES.still = {
 		set(j.waist, CFrame.Angles(rad(-4), rad(3 * math.cos(a)), 0))
 		set(j.neck, CFrame.Angles(rad(-22), 0, 0))
 	end },
-	{ name = "น้ำยาเปลี่ยนสี", seconds = 1.8, pose = function(j, u)
+	{ name = "น้ำยาเปลี่ยนสี", seconds = 1.8, pose = function(j, u) -- locale: skip (ชื่อจังหวะภายใน ไม่ขึ้นจอ)
 		-- ผงะถอยเล็กน้อย ยกมือขึ้นกันไอ
 		local back = math.sin(u * math.pi)
 		set(j.ls, CFrame.Angles(rad(56 + back * 20), 0, rad(30)))
@@ -216,7 +216,7 @@ SEQUENCES.still = {
 		set(j.waist, CFrame.Angles(rad(6 * back), 0, 0))
 		set(j.neck, CFrame.Angles(rad(8 * back), 0, 0))
 	end },
-	{ name = "พร้อมริน", seconds = 1.6, pose = function(j, u)
+	{ name = "พร้อมริน", seconds = 1.6, pose = function(j, u) -- locale: skip (ชื่อจังหวะภายใน ไม่ขึ้นจอ)
 		local tip = math.clamp((u - 0.2) / 0.7, 0, 1)
 		set(j.ls, CFrame.Angles(rad(60), 0, rad(22)))
 		set(j.rs, CFrame.Angles(rad(64), 0, rad(-22)))
@@ -237,7 +237,7 @@ local function woundedArm(j)
 end
 
 SEQUENCES.bandage = {
-	{ name = "ล้างแผล", seconds = 1.2, pose = function(j, _, t)
+	{ name = "ล้างแผล", seconds = 1.2, pose = function(j, _, t) -- locale: skip (ชื่อจังหวะภายใน ไม่ขึ้นจอ)
 		woundedArm(j)
 		-- ปาดไปมาตามแนวปลายแขน
 		local sweep = math.sin(t * 7)
@@ -245,21 +245,21 @@ SEQUENCES.bandage = {
 		set(j.re, CFrame.Angles(rad(64), 0, 0))
 		set(j.rw, CFrame.Angles(0, rad(14 * sweep), 0))
 	end },
-	{ name = "สำลีชุบแอลกอฮอล์", seconds = 1.2, pose = function(j, _, t)
+	{ name = "สำลีชุบแอลกอฮอล์", seconds = 1.2, pose = function(j, _, t) -- locale: skip (ชื่อจังหวะภายใน ไม่ขึ้นจอ)
 		woundedArm(j)
 		-- แตะเป็นจุดๆ ไม่ปาด: ขยับสั้นแล้วหยุด
 		local dab = math.max(0, math.sin(t * 9))
 		set(j.rs, CFrame.Angles(rad(70 + dab * 8), 0, rad(-28)))
 		set(j.re, CFrame.Angles(rad(60 + dab * 14), 0, 0))
 	end },
-	{ name = "ปิดผ้าก๊อซ", seconds = 1.2, pose = function(j, u)
+	{ name = "ปิดผ้าก๊อซ", seconds = 1.2, pose = function(j, u) -- locale: skip (ชื่อจังหวะภายใน ไม่ขึ้นจอ)
 		woundedArm(j)
 		local lay = math.sin(math.clamp(u, 0, 1) * math.pi)
 		set(j.rs, CFrame.Angles(rad(66 + lay * 10), 0, rad(-26)))
 		set(j.re, CFrame.Angles(rad(58 + lay * 8), 0, 0))
 		set(j.rw, CFrame.Angles(rad(-12 * lay), 0, 0))
 	end },
-	{ name = "กดห้ามเลือด", seconds = 1.6, filler = true, pose = function(j, _, t)
+	{ name = "กดห้ามเลือด", seconds = 1.6, filler = true, pose = function(j, _, t) -- locale: skip (ชื่อจังหวะภายใน ไม่ขึ้นจอ)
 		-- จังหวะที่ยืดได้: กดค้าง สั่นจากแรงกดนิดเดียว ไม่ใช่ขยับไปมา (ภาพเขียนว่าเน้นแรงกดและการควบคุม)
 		woundedArm(j)
 		local push = 1 + 0.12 * math.sin(t * 3)
@@ -268,7 +268,7 @@ SEQUENCES.bandage = {
 		set(j.rw, CFrame.Angles(rad(-18), 0, 0))
 		set(j.neck, CFrame.Angles(rad(-26), 0, 0))
 	end },
-	{ name = "พันยึด", seconds = 1.8, pose = function(j, _, t)
+	{ name = "พันยึด", seconds = 1.8, pose = function(j, _, t) -- locale: skip (ชื่อจังหวะภายใน ไม่ขึ้นจอ)
 		-- มือขวาวนรอบปลายแขนซ้ายเป็นวง = พันผ้า (ท่าเดิมของเกม ยกมาเป็นจังหวะสุดท้าย)
 		woundedArm(j)
 		local a = t * math.pi * 2 * 2

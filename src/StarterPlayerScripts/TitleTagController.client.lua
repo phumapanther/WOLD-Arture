@@ -7,6 +7,7 @@
 -- **ลูปถามใหม่ทุก 0.5 วิ ไม่ผูก event ครั้งเดียว** (กฎเหล็ก StreamingEnabled: ร่าง/หัว/แอตทริบิวต์มาถึงคนละรอบ)
 local Players = game:GetService("Players")
 local TweenService = game:GetService("TweenService")
+local Show = require(game.ReplicatedStorage.Locale).Show
 
 while workspace:GetAttribute("IsLobby") == nil do
 	task.wait()
@@ -64,7 +65,8 @@ local function refresh(player)
 	local color = player:GetAttribute("WOLD_TitleColor")
 	if typeof(color) ~= "Color3" then color = Color3.new(1, 1, 1) end
 	local label = gui:FindFirstChild("Title")
-	if label.Text ~= title then label.Text = title end
+	local shown = Show(title) -- ฉายาเป็นไทยจากเซิร์ฟ · ลูปนี้วนทุก 0.5 วิ เปลี่ยนภาษาแล้วตามเอง
+	if label.Text ~= shown then label.Text = shown end
 	label.TextColor3 = Color3.new(1, 1, 1):Lerp(color, 0.55) -- ไส้สว่าง ขอบสีฉายา = ดูเปล่งแสง
 	label.Glow.Color = color
 end

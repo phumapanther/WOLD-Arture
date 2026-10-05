@@ -279,7 +279,7 @@ function Stations.build(onTalk)
 		if head then
 			local p = Instance.new("ProximityPrompt")
 			p.Name = "CallPrompt"
-			p.ActionText = "เรียก" .. spec.display
+			p.ActionText = ("เรียก%s"):format(spec.display)
 			p.ObjectText = info.title
 			p.KeyboardKeyCode = Enum.KeyCode.E
 			p.HoldDuration = 0

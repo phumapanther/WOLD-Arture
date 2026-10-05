@@ -133,7 +133,7 @@ Players.PlayerRemoving:Connect(function(player) LastRefusal[player] = nil end)
 -- ติดสถานะ (ล้ม มึน เซ ถูกจับ ถูกตรึง) = บอกเหตุผล · ติดคูลดาวน์/กลางอากาศ/กำลังกลิ้งอยู่ = เงียบ (กดรัวเป็นเรื่องปกติ)
 local function explain(player, action)
 	local text = require(game.ServerScriptService.Deny).Blocked(player, action)
-	if not text and StatusEffects.IsRooted(player) then text = action .. "ไม่ได้ตอนนี้" end
+	if not text and StatusEffects.IsRooted(player) then text = ("%sไม่ได้ตอนนี้"):format(action) end
 	if text then refuse(player, text) end
 end
 

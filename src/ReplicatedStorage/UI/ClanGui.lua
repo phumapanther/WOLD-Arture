@@ -9,6 +9,8 @@ local Responsive = require(script.Parent.Responsive)
 local NumberBox = require(script.Parent.NumberBox) -- พิมพ์เกินที่มี = เด้งเป็นเลขสูงสุด (2026-10-02)
 local UiSound = require(script.Parent.UiSound)
 local ClanConfig = require(script.Parent.Parent.ClanConfig)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -116,7 +118,7 @@ function ClanGui.new()
 	corner(panel, UDim.new(0, 12))
 	Responsive.Scale(panel, Responsive.IsSmallScreen() and 0.95 or nil) -- มือถือ: แผงเต็มจออยู่แล้ว ห้ามย่อซ้ำ (QA 2026-09-26)
 
-	local title = label(panel, "สมาคมแคลน", 18, RUNE)
+	local title = label(panel, L("สมาคมแคลน"), 18, RUNE)
 	title.Position = UDim2.new(0, 16, 0, 10)
 	title.Size = UDim2.new(1, -60, 0, 26)
 
@@ -134,7 +136,7 @@ function ClanGui.new()
 	tabs.Parent = panel
 
 	self.tabButtons = {}
-	local specs = { { id = "mine", name = "แคลนของฉัน" }, { id = "list", name = "แคลนทั้งหมด" } }
+	local specs = { { id = "mine", name = L("แคลนของฉัน") }, { id = "list", name = L("แคลนทั้งหมด") } }
 	for i, spec in ipairs(specs) do
 		local b = button(tabs, spec.name, STONE_DEEP, function()
 			self.tab = spec.id
@@ -207,7 +209,7 @@ function ClanGui:prompt(titleText, placeholder, onConfirm, max)
 	if max then NumberBox.Bind(input, function() return max end) end
 	corner(input, UDim.new(0, 6))
 
-	local ok = button(box, "ตกลง", GREEN, function()
+	local ok = button(box, L("ตกลง"), GREEN, function()
 		local value = input.Text
 		shade:Destroy()
 		onConfirm(value)
@@ -216,7 +218,7 @@ function ClanGui:prompt(titleText, placeholder, onConfirm, max)
 	ok.Size = UDim2.new(0.5, -18, 0, 34)
 	ok.ZIndex = 11
 
-	local cancel = button(box, "ยกเลิก", Color3.fromRGB(70, 74, 84), function()
+	local cancel = button(box, L("ยกเลิก"), Color3.fromRGB(70, 74, 84), function()
 		shade:Destroy()
 	end)
 	cancel.AnchorPoint = Vector2.new(1, 0)
@@ -241,7 +243,7 @@ function ClanGui:Render(data)
 	end
 
 	if not data then
-		local wait = label(self.body, "กำลังติดต่อสมาคม...", 13, TEXT_MUTED, Enum.TextXAlignment.Center)
+		local wait = label(self.body, L("กำลังติดต่อสมาคม..."), 13, TEXT_MUTED, Enum.TextXAlignment.Center)
 		wait.Size = UDim2.new(1, 0, 0, 60)
 		return
 	end
@@ -254,7 +256,7 @@ function ClanGui:Render(data)
 end
 
 function ClanGui:renderList(data)
-	local hint = label(self.body, "อันดับจากยอดเหรียญซิลเวอร์ในคลังแคลน", 11, TEXT_MUTED)
+	local hint = label(self.body, L("อันดับจากยอดเหรียญซิลเวอร์ในคลังแคลน"), 11, TEXT_MUTED)
 	hint.Size = UDim2.new(1, 0, 0, 16)
 
 	local list = scrollList(self.body)
@@ -262,7 +264,7 @@ function ClanGui:renderList(data)
 	list.Size = UDim2.new(1, 0, 1, -20)
 
 	if #(data.list or {}) == 0 then
-		local empty = label(list, "ยังไม่มีแคลนในโลกนี้", 13, TEXT_MUTED, Enum.TextXAlignment.Center)
+		local empty = label(list, L("ยังไม่มีแคลนในโลกนี้"), 13, TEXT_MUTED, Enum.TextXAlignment.Center)
 		empty.Size = UDim2.new(1, 0, 0, 60)
 		return
 	end
@@ -285,15 +287,15 @@ function ClanGui:renderList(data)
 		name.Position = UDim2.new(0, 40, 0, 6)
 		name.Size = UDim2.new(1, -170, 0, 20)
 
-		local sub = label(row, ("%d ซิลเวอร์ · %d คน · ยึด %d เมือง")
-			:format(clan.silver or 0, clan.members or 0, clan.towns or 0), 11, TEXT_MUTED)
+		local sub = label(row, L("%d ซิลเวอร์ · %d คน · ยึด %d เมือง",
+			clan.silver or 0, clan.members or 0, clan.towns or 0), 11, TEXT_MUTED)
 		sub.Position = UDim2.new(0, 40, 0, 26)
 		sub.Size = UDim2.new(1, -170, 0, 18)
 
 		-- สมัครเข้าได้เฉพาะคนที่ยังไม่มีแคลน สมัครแล้วต้องรอหัวแคลนอนุมัติ
 		if not data.mine then
 			local waiting = data.applying == clan.id
-			local join = button(row, waiting and "รออนุมัติ ✕" or "ขอเข้า",
+			local join = button(row, waiting and L("รออนุมัติ ✕") or L("ขอเข้า"),
 				waiting and Color3.fromRGB(70, 74, 84) or RUNE, function()
 					if waiting then
 						self:fire("cancelapply")
@@ -312,19 +314,19 @@ end
 function ClanGui:renderMine(data)
 	if not data.mine then
 		-- ยังไม่มีแคลน
-		local msg = label(self.body, "คุณยังไม่ได้สังกัดแคลนใด", 14, TEXT_LIGHT, Enum.TextXAlignment.Center)
+		local msg = label(self.body, L("คุณยังไม่ได้สังกัดแคลนใด"), 14, TEXT_LIGHT, Enum.TextXAlignment.Center)
 		msg.Position = UDim2.new(0, 0, 0, 40)
 		msg.Size = UDim2.new(1, 0, 0, 24)
 
-		local cost = label(self.body, ("สร้างแคลนของตัวเอง ใช้เหรียญซิลเวอร์ %d เหรียญ (มี %d)")
-			:format(data.createCost or 0, data.silverHeld or 0), 12, TEXT_MUTED, Enum.TextXAlignment.Center)
+		local cost = label(self.body, L("สร้างแคลนของตัวเอง ใช้เหรียญซิลเวอร์ %d เหรียญ (มี %d)",
+			data.createCost or 0, data.silverHeld or 0), 12, TEXT_MUTED, Enum.TextXAlignment.Center)
 		cost.Position = UDim2.new(0, 0, 0, 68)
 		cost.Size = UDim2.new(1, 0, 0, 20)
 
-		local make = button(self.body, "สร้างแคลน", RUNE, function()
-			self:prompt("ตั้งชื่อแคลน", "ชื่อแคลน", function(name)
+		local make = button(self.body, L("สร้างแคลน"), RUNE, function()
+			self:prompt(L("ตั้งชื่อแคลน"), L("ชื่อแคลน"), function(name)
 				if name == "" then return end
-				self:prompt("รายละเอียดแคลน", "คำอธิบายสั้นๆ", function(blurb)
+				self:prompt(L("รายละเอียดแคลน"), L("คำอธิบายสั้นๆ"), function(blurb)
 					self:fire("create", name, blurb)
 				end)
 			end)
@@ -335,7 +337,7 @@ function ClanGui:renderMine(data)
 		make.TextSize = 14
 		make.TextColor3 = Color3.fromRGB(38, 28, 16)
 
-		local note = label(self.body, "หรือไปที่แท็บ 'แคลนทั้งหมด' เพื่อสมัครเข้าแคลนที่มีอยู่",
+		local note = label(self.body, L("หรือไปที่แท็บ 'แคลนทั้งหมด' เพื่อสมัครเข้าแคลนที่มีอยู่"),
 			11, TEXT_MUTED, Enum.TextXAlignment.Center)
 		note.Position = UDim2.new(0, 0, 0, 148)
 		note.Size = UDim2.new(1, 0, 0, 18)
@@ -371,13 +373,13 @@ function ClanGui:renderMine(data)
 	name.Position = UDim2.new(0, 68, 0, 8)
 	name.Size = UDim2.new(1, -80, 0, 22)
 
-	local towns = (#clan.towns > 0) and ("ยึดเมือง: " .. table.concat(clan.towns, ", "))
-		or "ยังไม่ได้ยึดเมืองใด"
+	local towns = (#clan.towns > 0) and L("ยึดเมือง: %s", table.concat(clan.towns, ", "))
+		or L("ยังไม่ได้ยึดเมืองใด")
 	local townLabel = label(head, towns, 11, TEXT_MUTED)
 	townLabel.Position = UDim2.new(0, 68, 0, 30)
 	townLabel.Size = UDim2.new(1, -80, 0, 16)
 
-	local blurb = label(head, clan.blurb ~= "" and clan.blurb or "ไม่มีรายละเอียด", 11, TEXT_MUTED)
+	local blurb = label(head, clan.blurb ~= "" and clan.blurb or L("ไม่มีรายละเอียด"), 11, TEXT_MUTED)
 	blurb.Position = UDim2.new(0, 68, 0, 46)
 	blurb.Size = UDim2.new(1, -80, 0, 16)
 	blurb.TextTruncate = Enum.TextTruncate.AtEnd
@@ -391,12 +393,12 @@ function ClanGui:renderMine(data)
 	money.Parent = self.body
 	corner(money, UDim.new(0, 8))
 
-	local silver = label(money, ("คลังแคลน: %d ซิลเวอร์"):format(clan.silver or 0), 14, RUNE)
+	local silver = label(money, L("คลังแคลน: %d ซิลเวอร์", clan.silver or 0), 14, RUNE)
 	silver.Position = UDim2.new(0, 12, 0, 0)
 	silver.Size = UDim2.new(0.4, 0, 1, 0)
 
-	local donate = button(money, "บริจาค", GREEN, function()
-		self:prompt("บริจาคเหรียญซิลเวอร์", ("มีอยู่ %d"):format(data.silverHeld or 0), function(text)
+	local donate = button(money, L("บริจาค"), GREEN, function()
+		self:prompt(L("บริจาคเหรียญซิลเวอร์"), L("มีอยู่ %d", data.silverHeld or 0), function(text)
 			local n = tonumber(text)
 			if n and n > 0 then self:fire("donate", math.floor(n)) end
 		end, data.silverHeld or 0)
@@ -407,8 +409,8 @@ function ClanGui:renderMine(data)
 
 	local isLeader = clan.myRole == "leader"
 	if isLeader then
-		local give = button(money, "แจกจ่าย", Color3.fromRGB(70, 90, 120), function()
-			self:prompt("แจกให้ทุกคนคนละกี่ซิลเวอร์", "จำนวนรวม", function(text)
+		local give = button(money, L("แจกจ่าย"), Color3.fromRGB(70, 90, 120), function()
+			self:prompt(L("แจกให้ทุกคนคนละกี่ซิลเวอร์"), L("จำนวนรวม"), function(text)
 				local n = tonumber(text)
 				if n and n > 0 then self:fire("distribute", math.floor(n), nil) end
 			end, clan.silver or 0)
@@ -434,19 +436,19 @@ function ClanGui:renderMine(data)
 		row.Parent = list
 		corner(row, UDim.new(0, 6))
 
-		local name = label(row, ("%s — ขอเข้าแคลน"):format(who.name), 13, RUNE)
+		local name = label(row, L("%s — ขอเข้าแคลน", who.name), 13, RUNE)
 		name.Position = UDim2.new(0, 10, 0, 0)
 		name.Size = UDim2.new(1, -130, 1, 0)
 
 		if canApprove then
-			local ok = button(row, "รับ", Color3.fromRGB(78, 122, 64), function()
+			local ok = button(row, L("รับ"), Color3.fromRGB(78, 122, 64), function()
 				self:fire("approve", who.userId)
 			end)
 			ok.AnchorPoint = Vector2.new(1, 0.5)
 			ok.Position = UDim2.new(1, -62, 0.5, 0)
 			ok.Size = UDim2.fromOffset(48, 24)
 
-			local no = button(row, "ไม่รับ", Color3.fromRGB(96, 62, 62), function()
+			local no = button(row, L("ไม่รับ"), Color3.fromRGB(96, 62, 62), function()
 				self:fire("reject", who.userId)
 			end)
 			no.AnchorPoint = Vector2.new(1, 0.5)
@@ -464,11 +466,13 @@ function ClanGui:renderMine(data)
 		row.Parent = list
 		corner(row, UDim.new(0, 6))
 
-		local who = label(row, member.name, 13, member.online and TEXT_LIGHT or TEXT_MUTED)
+		-- Show: ชื่อสำรอง "ผู้เล่น <id>" จากเซิร์ฟ (ชื่อจริงไม่ตรงแม่แบบไหน = เดิม) · ตำแหน่งมาจาก ClanConfig.Roles
+		local memberName = Show(member.name)
+		local who = label(row, memberName, 13, member.online and TEXT_LIGHT or TEXT_MUTED)
 		who.Position = UDim2.new(0, 10, 0, 0)
 		who.Size = UDim2.new(1, -200, 1, 0)
 
-		local role = label(row, member.roleName, 11,
+		local role = label(row, Show(member.roleName), 11,
 			member.rank == 1 and RUNE or TEXT_MUTED, Enum.TextXAlignment.Right)
 		role.AnchorPoint = Vector2.new(1, 0)
 		role.Position = UDim2.new(1, isLeader and -84 or -10, 0, 0)
@@ -476,8 +480,8 @@ function ClanGui:renderMine(data)
 
 		-- หัวแคลนแจกให้รายคนได้
 		if isLeader and member.rank ~= 1 then
-			local one = button(row, "ให้", Color3.fromRGB(70, 90, 120), function()
-				self:prompt(("ให้ %s กี่ซิลเวอร์"):format(member.name), "จำนวน", function(text)
+			local one = button(row, L("ให้"), Color3.fromRGB(70, 90, 120), function()
+				self:prompt(L("ให้ %s กี่ซิลเวอร์", memberName), L("จำนวน"), function(text)
 					local n = tonumber(text)
 					if n and n > 0 then self:fire("distribute", math.floor(n), member.userId) end
 				end, clan.silver or 0)
@@ -489,8 +493,8 @@ function ClanGui:renderMine(data)
 	end
 
 	-- แถวล่าง: คลังแคลน + ออกจากแคลน
-	local vault = button(self.body, ("เปิดคลังแคลน (%d/%d)")
-		:format(clan.vaultUsed or 0, clan.vaultSlots or ClanConfig.VaultSlots),
+	local vault = button(self.body, L("เปิดคลังแคลน (%d/%d)",
+		clan.vaultUsed or 0, clan.vaultSlots or ClanConfig.VaultSlots),
 		Color3.fromRGB(84, 70, 48), function()
 			self:fire("openvault")
 		end)
@@ -502,7 +506,7 @@ function ClanGui:renderMine(data)
 	-- หัวแคลน: ยุบแคลน (กดสองครั้งยืนยัน) สมาชิก: ออกจากแคลน
 	if isLeader then
 		local armed = false
-		local out = button(self.body, "ยุบแคลน", Color3.fromRGB(120, 40, 40), function() end)
+		local out = button(self.body, L("ยุบแคลน"), Color3.fromRGB(120, 40, 40), function() end)
 		out.AnchorPoint = Vector2.new(1, 1)
 		out.Position = UDim2.new(1, 0, 1, 0)
 		out.Size = UDim2.new(0.4, -4, 0, 32)
@@ -513,13 +517,13 @@ function ClanGui:renderMine(data)
 				return
 			end
 			armed = true
-			out.Text = "กดอีกครั้งเพื่อยุบแคลน"
+			out.Text = L("กดอีกครั้งเพื่อยุบแคลน")
 			task.delay(3, function()
-				if out.Parent then armed = false out.Text = "ยุบแคลน" end
+				if out.Parent then armed = false out.Text = L("ยุบแคลน") end
 			end)
 		end)
 	else
-		local out = button(self.body, "ออกจากแคลน", Color3.fromRGB(96, 62, 62), function()
+		local out = button(self.body, L("ออกจากแคลน"), Color3.fromRGB(96, 62, 62), function()
 			self:fire("leave")
 		end)
 		out.AnchorPoint = Vector2.new(1, 1)

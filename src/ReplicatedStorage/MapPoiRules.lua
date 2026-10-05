@@ -46,7 +46,8 @@ MapPoiRules.NpcEmoji = {
 	shop = "🛒", smith = "⚒️", bank = "🏦", vehicle = "🔑", guild = "🛡️",
 	lyra = "🔧", oforian = "🌾",
 }
-MapPoiRules.NpcRole = { shop = "ร้าน", smith = "ช่างตีเหล็ก", bank = "ธนาคาร/คลัง", vehicle = "โรงรถ", guild = "สมาคม" }
+-- แม่แบบ "บทบาท ชื่อ" ทั้งป้าย ให้ไคลเอนต์ย้อนแปลได้ (ระบบหลายภาษา)
+MapPoiRules.NpcRole = { shop = "ร้าน %s", smith = "ช่างตีเหล็ก %s", bank = "ธนาคาร/คลัง %s", vehicle = "โรงรถ %s", guild = "สมาคม %s" }
 MapPoiRules.StationEmoji = { Car = "🚂", Boat = "⚓", Airship = "🎈" }
 MapPoiRules.Emoji = { boss = "💀", monster = "👾", quest = "📜", fishing = "🎣", mine = "⛏️", npc = "🧑" }
 
@@ -101,7 +102,7 @@ function MapPoiRules.MineLabel(group)
 	end)
 	local names = {}
 	for _, k in ipairs(kinds) do names[#names + 1] = MapPoiRules.OreNames[k[1]] or k[1] end
-	return "เหมือง: " .. table.concat(names, " · ")
+	return ("เหมือง: %s"):format(table.concat(names, " · "))
 end
 
 -- ของดิบที่ MapPoi.server สแกนได้ → หมุด { id, cat, emoji, label, x, y, z }
@@ -115,7 +116,7 @@ function MapPoiRules.Build(src)
 	end
 	for _, n in ipairs(src.npcs or {}) do
 		local role = MapPoiRules.NpcRole[n.kind]
-		add("npc", "npc", MapPoiRules.NpcEmoji[n.kind] or MapPoiRules.Emoji.npc, role and (role .. " " .. n.name) or n.name, n)
+		add("npc", "npc", MapPoiRules.NpcEmoji[n.kind] or MapPoiRules.Emoji.npc, role and role:format(n.name) or n.name, n)
 	end
 	for _, n in ipairs(src.story or {}) do
 		add("story", "npc", MapPoiRules.NpcEmoji[string.lower(n.id)] or MapPoiRules.Emoji.npc, n.name, n)
@@ -123,7 +124,7 @@ function MapPoiRules.Build(src)
 	if src.oforian then add("oforian", "npc", MapPoiRules.NpcEmoji.oforian, "ออฟาเรียน เทพหุ่นฟาง", src.oforian) end
 	for _, s in ipairs(src.spawners or {}) do
 		if s.event == "worldboss" then
-			add("boss", "dungeon", MapPoiRules.Emoji.boss, "บอสโลก: " .. s.name, s)
+			add("boss", "dungeon", MapPoiRules.Emoji.boss, ("บอสโลก: %s"):format(s.name), s)
 		elseif not s.event then
 			add("mob", "monster", MapPoiRules.Emoji.monster, s.name, s)
 		end
@@ -132,13 +133,13 @@ function MapPoiRules.Build(src)
 		add("mine", "mine", MapPoiRules.Emoji.mine, MapPoiRules.MineLabel(g), g)
 	end
 	for _, b in ipairs(src.boards or {}) do
-		add("board", "quest", MapPoiRules.Emoji.quest, "บอร์ดเควส " .. b.name, b)
+		add("board", "quest", MapPoiRules.Emoji.quest, ("บอร์ดเควส %s"):format(b.name), b)
 	end
 	for _, s in ipairs(src.stations or {}) do
 		add("station", "station", MapPoiRules.StationEmoji[s.vtype] or MapPoiRules.Emoji.npc, s.title, s)
 	end
 	for _, f in ipairs(src.fishing or {}) do
-		add("fish", "fishing", MapPoiRules.Emoji.fishing, f.fish and (f.name .. " · " .. f.fish) or f.name, f)
+		add("fish", "fishing", MapPoiRules.Emoji.fishing, f.fish and ("%s · %s"):format(f.name, f.fish) or f.name, f)
 	end
 	return pins
 end

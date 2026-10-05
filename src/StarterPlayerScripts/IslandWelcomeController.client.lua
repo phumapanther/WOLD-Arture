@@ -9,6 +9,7 @@ local Remotes = require(ReplicatedStorage.Remotes)
 local StoryConfig = require(ReplicatedStorage.StoryConfig)
 local StoryGui = require(ReplicatedStorage.UI.StoryGui)
 local UiSound = require(ReplicatedStorage.UI.UiSound)
+local Show = require(ReplicatedStorage.Locale).Show
 
 local player = Players.LocalPlayer
 local gui = nil
@@ -19,7 +20,7 @@ Remotes.StoryPlay.OnClientEvent:Connect(function(kind)
 	shown = true
 	gui = gui or StoryGui.new(player:WaitForChild("PlayerGui"))
 	UiSound.Play("CutTitle")
-	gui:Banner("🏝️ " .. StoryConfig.SkyTitle, StoryConfig.SkySubtitle, 8)
+	gui:Banner("🏝️ " .. Show(StoryConfig.SkyTitle), StoryConfig.SkySubtitle, 8) -- ชื่อแปลก่อนต่ออีโมจิ (Banner Show ซ้ำได้ ไม่เปลี่ยน)
 	task.delay(1.5, function()
 		gui:Say(StoryConfig.Dialogues.island_welcome)
 	end)

@@ -373,19 +373,20 @@ local function tickPen(model, entry)
 		applyLevel(animal, now)
 
 		-- นาฬิกาบนปุ่ม ทรงเดียวกับแปลงผัก (ObjectText) — ไม่ต้องมีโค้ดไคลเอนต์
-		local label = ("%s Lv%d"):format(ANIMAL_NAMES[animal.Name] or animal.Name, animal:GetAttribute("Level") or 1)
+		-- ชื่อ+เลเวลอยู่ในแม่แบบเดียวกับสถานะ (ไคลเอนต์ย้อนแปลงทั้งบรรทัดได้ ชื่อสัตว์เป็นกุญแจของมันเอง)
+		local animalName, level = ANIMAL_NAMES[animal.Name] or animal.Name, animal:GetAttribute("Level") or 1
 		for _, d in ipairs(animal:GetDescendants()) do
 			if d:IsA("ProximityPrompt") and d.Name == "GatherPrompt" then
 				if readyAt > now then
-					d.ObjectText = ("%s · โตอีก %d นาที"):format(label, math.max(1, math.ceil((readyAt - now) / 60)))
+					d.ObjectText = ("%s Lv%d · โตอีก %d นาที"):format(animalName, level, math.max(1, math.ceil((readyAt - now) / 60)))
 				elseif animal:GetAttribute("Spent") then
 					-- เก็บไปแล้ว รอรอบหน้า · Gathering เป็นเจ้าของนาฬิกานี้ เราแค่ถามมันว่าเหลือเท่าไหร่
 					local again = animal:GetAttribute("ReadyAgainAt")
 					d.ObjectText = (again and again > now)
-						and ("%s · เก็บได้อีก %d นาที"):format(label, math.max(1, math.ceil((again - now) / 60)))
-						or (label .. " · เก็บไปแล้ว")
+						and ("%s Lv%d · เก็บได้อีก %d นาที"):format(animalName, level, math.max(1, math.ceil((again - now) / 60)))
+						or ("%s Lv%d · เก็บไปแล้ว"):format(animalName, level)
 				else
-					d.ObjectText = label .. " · เก็บได้"
+					d.ObjectText = ("%s Lv%d · เก็บได้"):format(animalName, level)
 				end
 			end
 		end

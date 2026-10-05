@@ -285,6 +285,7 @@ function K.sign(parent, cf, text, w, h, color, textColor)      -- board reading 
   local g = Instance.new("SurfaceGui"); g.Face = Enum.NormalId.Front; g.CanvasSize = Vector2.new(w * 50, h * 50); g.Parent = b
   local t = Instance.new("TextLabel"); t.Size = UDim2.fromScale(1, 1); t.BackgroundTransparency = 1
   t.Text = text; t.TextScaled = true; t.Font = Enum.Font.Garamond; t.TextColor3 = textColor or K.C.brass; t.Parent = g
+  game:GetService("CollectionService"):AddTag(t, "WOLD_ShowText") -- ชื่อจุดเป็นไทย · ไคลเอนต์แปลตามภาษาผู้เล่น (WorldTextController)
   return m
 end
 

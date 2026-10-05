@@ -17,6 +17,8 @@ local TextService = game:GetService("TextService")
 local ArenaConfig = require(script.Parent.Parent.ArenaConfig)
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
 local ItemIcon = require(script.Parent.ItemIcon)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local ArenaScoreboardGui = {}
 ArenaScoreboardGui.__index = ArenaScoreboardGui
@@ -38,15 +40,15 @@ local ROW_H = 40
 -- คอลัมน์: x/w ในแถว (กว้าง PANEL_W - 64) · reward = โชว์เฉพาะตารางจบแมตช์
 local COLUMNS = {
 	{ key = "rank",   title = "#",        x = 16,  w = 30,  align = Enum.TextXAlignment.Center },
-	{ key = "name",   title = "ผู้เล่น",    x = 56,  w = 250, align = Enum.TextXAlignment.Left },
+	{ key = "name",   title = "ผู้เล่น",    x = 56,  w = 250, align = Enum.TextXAlignment.Left }, -- locale: skip (แปลตอนใช้)
 	{ key = "kills",  title = "K",        x = 314, w = 44,  align = Enum.TextXAlignment.Center },
 	{ key = "deaths", title = "D",        x = 360, w = 44,  align = Enum.TextXAlignment.Center },
 	{ key = "assists",title = "A",        x = 406, w = 44,  align = Enum.TextXAlignment.Center },
-	{ key = "damage", title = "ดาเมจ",     x = 456, w = 80,  align = Enum.TextXAlignment.Center },
-	{ key = "score",  title = "คะแนน",     x = 540, w = 80,  align = Enum.TextXAlignment.Center },
+	{ key = "damage", title = "ดาเมจ",     x = 456, w = 80,  align = Enum.TextXAlignment.Center }, -- locale: skip (แปลตอนใช้)
+	{ key = "score",  title = "คะแนน",     x = 540, w = 80,  align = Enum.TextXAlignment.Center }, -- locale: skip (แปลตอนใช้)
 	{ key = "exp",    title = "EXP",      x = 628, w = 80,  align = Enum.TextXAlignment.Center, reward = true },
-	{ key = "chest",  title = "รางวัล",     x = 712, w = 70,  align = Enum.TextXAlignment.Center, reward = true },
-	{ key = "gold",   title = "เงิน",       x = 786, w = 100, align = Enum.TextXAlignment.Right, reward = true },
+	{ key = "chest",  title = "รางวัล",     x = 712, w = 70,  align = Enum.TextXAlignment.Center, reward = true }, -- locale: skip (แปลตอนใช้)
+	{ key = "gold",   title = "เงิน",       x = 786, w = 100, align = Enum.TextXAlignment.Right, reward = true }, -- locale: skip (แปลตอนใช้)
 }
 
 local function corner(p, r)
@@ -135,7 +137,7 @@ function ArenaScoreboardGui.new()
 	self.panel = panel
 
 	-- หัว: ผลใหญ่ซ้าย · สกอร์ทีมกลาง · ปุ่มกลับขวา
-	self.title = text(panel, { text = "จบเกม", font = Enum.Font.GothamBold, size = 34, pos = UDim2.fromOffset(32, 18), dim = UDim2.fromOffset(300, 42) })
+	self.title = text(panel, { text = L("จบเกม"), font = Enum.Font.GothamBold, size = 34, pos = UDim2.fromOffset(32, 18), dim = UDim2.fromOffset(300, 42) })
 	self.subtitle = text(panel, { text = "", size = 16, colour = MUTED, pos = UDim2.fromOffset(32, 60), dim = UDim2.fromOffset(360, 20) })
 
 	local score = Instance.new("Frame")
@@ -170,7 +172,7 @@ function ArenaScoreboardGui.new()
 	back.Font = Enum.Font.GothamBold
 	back.TextSize = 17
 	back.TextColor3 = rgb(28, 24, 16)
-	back.Text = "กลับสู่ล็อบบี้"
+	back.Text = L("กลับสู่ล็อบบี้")
 	back.Parent = panel
 	corner(back, 22)
 	self.backButton = back
@@ -183,7 +185,7 @@ function ArenaScoreboardGui.new()
 	header.Parent = panel
 	self.headerCells = {}
 	for _, column in ipairs(COLUMNS) do
-		self.headerCells[column.key] = text(header, { text = column.title, size = 14, colour = MUTED, align = column.align,
+		self.headerCells[column.key] = text(header, { text = L(column.title), size = 14, colour = MUTED, align = column.align,
 			pos = UDim2.fromOffset(column.x, 0), dim = UDim2.new(0, column.w, 1, 0) })
 	end
 
@@ -198,7 +200,7 @@ function ArenaScoreboardGui.new()
 	layout.Parent = rows
 	self.rows = rows
 
-	self.note = text(panel, { text = "หีบ เงิน และ EXP เข้าตัวละครของคุณเมื่อกลับเข้าเกมหลัก", size = 15, colour = MUTED,
+	self.note = text(panel, { text = L("หีบ เงิน และ EXP เข้าตัวละครของคุณเมื่อกลับเข้าเกมหลัก"), size = 15, colour = MUTED,
 		align = Enum.TextXAlignment.Center, pos = UDim2.new(0, 0, 1, -34), dim = UDim2.new(1, 0, 0, 22) })
 
 	-- เล่นต่อทันที (ผู้ใช้สั่ง 2026-10-01): ทั้งตี้กลับล็อบบี้พร้อมกัน รวมตี้เดิมให้เอง แล้วหาห้องต่อเลย ·
@@ -211,7 +213,7 @@ function ArenaScoreboardGui.new()
 	again.Font = Enum.Font.GothamBold
 	again.TextSize = 17
 	again.TextColor3 = rgb(16, 32, 20)
-	again.Text = "เล่นต่อทันที"
+	again.Text = L("เล่นต่อทันที")
 	again.Parent = panel
 	corner(again, 20)
 	self.againButton = again
@@ -252,9 +254,9 @@ function ArenaScoreboardGui:RenderLive(snap)
 	end
 	table.sort(rows, function(a, b) return (a.score or 0) > (b.score or 0) end)
 	for rank, row in ipairs(rows) do row.rank = rank end
-	self.title.Text, self.title.TextColor3 = "สถิติ", TEXT
-	self.subtitle.Text = ("รอบ %d · %s"):format(snap.round or 0, snap.mapName or "")
-	self:Render({ rows = rows, wins = snap.wins, titles = { "ทีมเรา", "ทีมศัตรู" } })
+	self.title.Text, self.title.TextColor3 = L("สถิติ"), TEXT
+	self.subtitle.Text = L("รอบ %d · %s", snap.round or 0, snap.mapName or "")
+	self:Render({ rows = rows, wins = snap.wins, titles = { L("ทีมเรา"), L("ทีมศัตรู") } })
 end
 
 -- `result` = { rows = {…}, winner = "A"|"B"|nil, wins = {A=,B=} }
@@ -274,15 +276,15 @@ function ArenaScoreboardGui:Render(result)
 		local mine
 		for _, row in ipairs(result.rows or {}) do if isMe(row) then mine = row end end
 		if not result.winner then
-			self.title.Text, self.title.TextColor3 = "เสมอ", TEXT
+			self.title.Text, self.title.TextColor3 = L("เสมอ"), TEXT
 		elseif mine and mine.won then
-			self.title.Text, self.title.TextColor3 = "ชัยชนะ!", GOLD
+			self.title.Text, self.title.TextColor3 = L("ชัยชนะ!"), GOLD
 		elseif mine then
-			self.title.Text, self.title.TextColor3 = "พ่ายแพ้", RED
+			self.title.Text, self.title.TextColor3 = L("พ่ายแพ้"), RED
 		else
-			self.title.Text, self.title.TextColor3 = "จบเกม", TEXT
+			self.title.Text, self.title.TextColor3 = L("จบเกม"), TEXT
 		end
-		self.subtitle.Text = "จบแมตช์ · ตารางอันดับ"
+		self.subtitle.Text = L("จบแมตช์ · ตารางอันดับ")
 	end
 
 	-- MVP = คะแนนสูงสุดทั้งห้อง
@@ -292,7 +294,7 @@ function ArenaScoreboardGui:Render(result)
 	end
 
 	local order = 0
-	local titles = result.titles or { "ทีมชนะ", "ทีมแพ้" }
+	local titles = result.titles or { L("ทีมชนะ"), L("ทีมแพ้") }
 	local function section(title, winning)
 		local members = {}
 		for _, row in ipairs(result.rows or {}) do
@@ -314,7 +316,7 @@ function ArenaScoreboardGui:Render(result)
 		bar.BackgroundColor3 = team.colour
 		bar.Parent = head
 		corner(bar, 2)
-		text(head, { text = ("%s  ·  %s"):format(team.name, title), font = Enum.Font.GothamBold, size = 16,
+		text(head, { text = ("%s  ·  %s"):format(L(team.name), title), font = Enum.Font.GothamBold, size = 16,
 			colour = winning and (self.live and TEXT or GREEN) or (self.live and MUTED or RED), pos = UDim2.fromOffset(14, 0) })
 
 		for _, row in ipairs(members) do
@@ -339,7 +341,8 @@ function ArenaScoreboardGui:Render(result)
 			local dimText = dead and MUTED or TEXT
 			local values = {
 				rank = tostring(row.rank or "-"),
-				name = row.name .. (me and "  (คุณ)" or ""),
+				-- ชื่อบอท ("หุ่นไอน้ำ-01") แปลได้ · ชื่อคนไม่แปล
+				name = me and L("%s  (คุณ)"):format(row.name) or (row.bot and Show(row.name) or row.name),
 				kills = tostring(row.kills or 0), deaths = tostring(row.deaths or 0), assists = tostring(row.assists or 0),
 				damage = tostring(math.floor(row.damage or 0)),
 				score = tostring(math.floor((row.score or 0) + 0.5)),
@@ -365,12 +368,12 @@ function ArenaScoreboardGui:Render(result)
 				pill(frame, "MVP", GOLD, rgb(28, 24, 16), tagX, 38)
 				tagX += 44
 			end
-			if row.bot then pill(frame, "บอท", rgb(70, 72, 84), TEXT, tagX, 36); tagX += 42 end
-			if dead then pill(frame, "ตาย", rgb(110, 50, 48), TEXT, tagX, 34) end
+			if row.bot then pill(frame, L("บอท"), rgb(70, 72, 84), TEXT, tagX, 36); tagX += 42 end
+			if dead then pill(frame, L("ตาย"), rgb(110, 50, 48), TEXT, tagX, 34) end
 			-- แต้มแร็งก์ของแมตช์นี้ (ตารางจบเท่านั้น · แมตช์ที่ไม่นับแร็งก์ไม่มีป้าย) เฟส 3
 			if type(row.pvp) == "number" and not self.live then
 				local up = row.pvp >= 0
-				pill(frame, ("แร็งก์ %s%d"):format(up and "+" or "−", math.abs(row.pvp)),
+				pill(frame, L("แร็งก์ %s%d", up and "+" or "−", math.abs(row.pvp)),
 					up and rgb(52, 110, 64) or rgb(120, 52, 50), TEXT, tagX, 74)
 			end
 

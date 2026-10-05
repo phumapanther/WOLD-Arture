@@ -340,7 +340,8 @@ StoryAccess.TalkOforian = function(player)
 			local got = giveSide(player, data, q.id)
 			if got then
 				play(player, def.dialogue)
-				Remotes.StoryPlay:FireClient(player, "gift", { title = "🎁 " .. def.title, body = "ได้รับ " .. got })
+				-- ไคลเอนต์เติม 🎁 หน้าชื่อเอง (ชื่อเควสเป็นกุญแจแปลตรงตัว)
+				Remotes.StoryPlay:FireClient(player, "gift", { title = def.title, body = ("ได้รับ %s"):format(got) })
 				print(("[Oforian] %s (%d) ได้ %s"):format(player.Name, player.UserId, got))
 				spoke = true
 			end
@@ -552,26 +553,26 @@ end)
 StoryAccess.Admin = function(player, args)
 	local sub = (args[1] or ""):lower()
 	local s = storyOf(player)
-	if not s then return "ยังโหลดโปรไฟล์ไม่เสร็จ" end
+	if not s then return "ยังโหลดโปรไฟล์ไม่เสร็จ" end -- locale: skip (คำสั่งแอดมิน)
 	local ch, p = current(s)
 	if sub == "cutscene" then
 		startCutscene(player)
-		return "เล่นคัทซีนแล้ว (ข้ามได้มุมขวาบน)"
+		return "เล่นคัทซีนแล้ว (ข้ามได้มุมขวาบน)" -- locale: skip (คำสั่งแอดมิน)
 	elseif sub == "memory" then
 		Remotes.StoryPlay:FireClient(player, "memory", "m1")
-		return "เล่นภาพความทรงจำ m1"
+		return "เล่นภาพความทรงจำ m1" -- locale: skip (คำสั่งแอดมิน)
 	elseif sub == "reset" then
 		local data = ProfileAccess.Get(player)
 		data.Story = nil
 		LastPushed[player] = nil
 		push(player, true)
-		return "ล้างเนื้อเรื่องแล้ว — กลับไปขั้น 1 (คัทซีนสั่งเองด้วย /story cutscene)"
+		return "ล้างเนื้อเรื่องแล้ว — กลับไปขั้น 1 (คัทซีนสั่งเองด้วย /story cutscene)" -- locale: skip (คำสั่งแอดมิน)
 	elseif sub == "step" then
-		if not ch then return "จบทุกบทแล้ว — /story reset ก่อน" end
+		if not ch then return "จบทุกบทแล้ว — /story reset ก่อน" end -- locale: skip (คำสั่งแอดมิน)
 		local n = math.clamp(math.floor(tonumber(args[2]) or 1), 1, #ch.steps)
 		p.step, p.got = n, 0
 		push(player, true)
-		return ("ไปขั้น %d/%d: %s"):format(n, #ch.steps, ch.steps[n].goal)
+		return ("ไปขั้น %d/%d: %s"):format(n, #ch.steps, ch.steps[n].goal) -- locale: skip (คำสั่งแอดมิน)
 	elseif sub == "gifts" then
 		-- ทำให้บัญชีนี้เหมือนบัญชีใหม่ที่ยังไม่เคยรับของขวัญออฟาเรียน (ทดสอบเควสฟ้าทั้งสี่)
 		local data = ProfileAccess.Get(player)
@@ -579,20 +580,20 @@ StoryAccess.Admin = function(player, args)
 		data.NewbieGemsClaimed, data.NewbiePassClaimed, data.VipGiftClaimed, data.FriendAuraClaimed = nil, nil, nil, nil
 		s.pop = nil
 		push(player, true)
-		return "ล้างธงของขวัญแล้ว — เควสฟ้าโผล่ตามเงื่อนไข (Lv.5 = เกาะลอยฟ้า · จบบทไลรา = การเดินทาง · เพื่อน 5 = มิตรภาพ)"
+		return "ล้างธงของขวัญแล้ว — เควสฟ้าโผล่ตามเงื่อนไข (Lv.5 = เกาะลอยฟ้า · จบบทไลรา = การเดินทาง · เพื่อน 5 = มิตรภาพ)" -- locale: skip (คำสั่งแอดมิน)
 	elseif sub == "welcome" then
 		s.skyWelcome = true
-		return "ตั้งธงป้ายต้อนรับแล้ว — เข้าเกาะ (จากล็อบบี้) ครั้งถัดไปจะเห็น"
+		return "ตั้งธงป้ายต้อนรับแล้ว — เข้าเกาะ (จากล็อบบี้) ครั้งถัดไปจะเห็น" -- locale: skip (คำสั่งแอดมิน)
 	elseif sub == "done" then
-		if not ch then return "จบทุกบทแล้ว" end
+		if not ch then return "จบทุกบทแล้ว" end -- locale: skip (คำสั่งแอดมิน)
 		p.step = #ch.steps
 		advance(player, s, ch, p)
-		return "จบบทแล้ว (ได้รางวัล + ฉายา)"
+		return "จบบทแล้ว (ได้รางวัล + ฉายา)" -- locale: skip (คำสั่งแอดมิน)
 	end
-	if not ch then return "จบทุกบทแล้ว · เมืองที่ปลด: " .. table.concat((function()
+	if not ch then return "จบทุกบทแล้ว · เมืองที่ปลด: " .. table.concat((function() -- locale: skip (คำสั่งแอดมิน)
 		local t = {} for k in pairs(s.towns) do t[#t + 1] = k end return t end)(), ", ") end
 	local step = ch.steps[p.step]
-	return ("บท %s ขั้น %d/%d: %s (%d/%s) · คัทซีนเห็นแล้ว: %s"):format(ch.name, p.step, #ch.steps, step.goal,
+	return ("บท %s ขั้น %d/%d: %s (%d/%s) · คัทซีนเห็นแล้ว: %s"):format(ch.name, p.step, #ch.steps, step.goal, -- locale: skip (คำสั่งแอดมิน)
 		p.got or 0, tostring(step.need or "-"), tostring(s.cut == true))
 end
 
@@ -611,7 +612,7 @@ if game:GetService("RunService"):IsStudio() then
 			LastPushed[player] = nil
 			return true
 		end
-		error("StoryTest: ไม่มี op " .. tostring(op))
+		error("StoryTest: ไม่มี op " .. tostring(op)) -- locale: skip
 	end
 	bf.Parent = game:GetService("ServerStorage")
 end

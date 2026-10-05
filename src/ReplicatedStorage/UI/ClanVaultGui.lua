@@ -10,6 +10,8 @@ local UiSound = require(script.Parent.UiSound)
 local ItemIcon = require(script.Parent.ItemIcon)
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
 local ClanConfig = require(script.Parent.Parent.ClanConfig)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -104,7 +106,8 @@ local function fillSlot(cell, entry)
 	local hasIcon = ItemIcon.Has(entry.icon)
 	ItemIcon.Apply(cell.icon, entry.icon)
 	cell.icon.Visible = true
-	cell.name.Text = hasIcon and "" or (entry.name or entry.id or "")
+	-- ชื่อของในคลังมาจากเซิร์ฟเป็นไทย (DisplayName) → Show · ของในกระเป๋าแปลแล้ว Show คืนเดิม
+	cell.name.Text = hasIcon and "" or Show(entry.name or entry.id or "")
 	cell.count.Text = (entry.count or 1) > 1 and ("x%d"):format(entry.count) or ""
 	cell.stroke.Transparency = 0.5
 end
@@ -143,7 +146,7 @@ function ClanVaultGui.new()
 	corner(panel, UDim.new(0, 12))
 	Responsive.Scale(panel, Responsive.IsSmallScreen() and 0.95 or nil) -- มือถือ: แผงเต็มจออยู่แล้ว ห้ามย่อซ้ำ (QA 2026-09-26)
 
-	local title = label(panel, "คลังแคลน", 17, RUNE)
+	local title = label(panel, L("คลังแคลน"), 17, RUNE)
 	title.Position = UDim2.new(0, 16, 0, 10)
 	title.Size = UDim2.new(1, -60, 0, 24)
 	self.title = title
@@ -177,7 +180,7 @@ function ClanVaultGui.new()
 	left.Parent = panel
 	corner(left, UDim.new(0, 10))
 
-	local leftHead = label(left, "ของในคลัง", 12, TEXT_MUTED)
+	local leftHead = label(left, L("ของในคลัง"), 12, TEXT_MUTED)
 	leftHead.Position = UDim2.new(0, 10, 0, 6)
 	leftHead.Size = UDim2.new(1, -20, 0, 18)
 	self.leftHead = leftHead
@@ -215,7 +218,7 @@ function ClanVaultGui.new()
 	right.Parent = panel
 	corner(right, UDim.new(0, 10))
 
-	local rightHead = label(right, "กระเป๋าของคุณ", 12, TEXT_MUTED)
+	local rightHead = label(right, L("กระเป๋าของคุณ"), 12, TEXT_MUTED)
 	rightHead.Position = UDim2.new(0, 10, 0, 6)
 	rightHead.Size = UDim2.new(1, -20, 0, 18)
 
@@ -260,8 +263,8 @@ function ClanVaultGui:SetVault(clan)
 		if entry then used += 1 end
 		fillSlot(self.vaultCells[i], entry)
 	end
-	self.title.Text = clan and ("คลังแคลน — %s"):format(clan.name) or "คลังแคลน"
-	self.leftHead.Text = ("ของในคลัง %d/%d ช่อง"):format(used, ClanConfig.VaultSlots)
+	self.title.Text = clan and L("คลังแคลน — %s", clan.name) or L("คลังแคลน")
+	self.leftHead.Text = L("ของในคลัง %d/%d ช่อง", used, ClanConfig.VaultSlots)
 end
 
 function ClanVaultGui:SetBag(slots)

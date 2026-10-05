@@ -10,6 +10,8 @@ local TweenService = game:GetService("TweenService")
 local Responsive = require(script.Parent.Responsive)
 local StoryConfig = require(script.Parent.Parent.StoryConfig)
 local UiSound = require(script.Parent.UiSound)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local StoryGui = {}
 StoryGui.__index = StoryGui
@@ -111,7 +113,7 @@ function StoryGui.new(parent)
 	self.line.Position = UDim2.fromOffset(24, 26)
 	self.line.Size = UDim2.new(1, -48, 1, -56)
 	self.line.ZIndex = 21
-	local hint = label(dialogue, "แตะ / คลิก เพื่อไปต่อ", 12, MUTED, Enum.TextXAlignment.Right)
+	local hint = label(dialogue, L("แตะ / คลิก เพื่อไปต่อ"), 12, MUTED, Enum.TextXAlignment.Right)
 	hint.AnchorPoint = Vector2.new(1, 1)
 	hint.Position = UDim2.new(1, -16, 1, -8)
 	hint.Size = UDim2.fromOffset(240, 16)
@@ -176,7 +178,7 @@ function StoryGui.new(parent)
 	skip.Font = Enum.Font.GothamBold
 	skip.TextSize = 16
 	skip.TextColor3 = TEXT
-	skip.Text = "ข้าม"
+	skip.Text = L("ข้าม")
 	skip.ZIndex = 45
 	skip.Parent = cinema
 	corner(skip, 18)
@@ -261,11 +263,11 @@ end
 function StoryGui:_show(line)
 	local npc = line.who and StoryConfig.Npcs[line.who]
 	self.nameplate.Visible = npc ~= nil
-	self.speaker.Text = npc and npc.name or ""
+	self.speaker.Text = npc and Show(npc.name) or ""
 	self.speaker.TextColor3 = npc and npc.color or RUNE
 	self.line.Font = npc and Enum.Font.GothamMedium or Enum.Font.GothamMedium
 	self.line.TextColor3 = npc and TEXT or rgb(206, 214, 232)
-	self.line.Text = line.text or ""
+	self.line.Text = Show(line.text or "")
 	self.line.MaxVisibleGraphemes = 0
 	self.typing = os.clock()
 	local token = self.typing
@@ -329,7 +331,7 @@ end
 
 function StoryGui:Caption(text, who)
 	local npc = who and StoryConfig.Npcs[who]
-	self.caption.Text = npc and (npc.name .. ": " .. (text or "")) or (text or "")
+	self.caption.Text = npc and (Show(npc.name) .. ": " .. Show(text or "")) or Show(text or "")
 	self.caption.TextColor3 = npc and npc.color or TEXT
 end
 
@@ -369,7 +371,7 @@ function StoryGui:Flash(seconds)
 end
 
 function StoryGui:TitleCard(title, subtitle)
-	self.title.Text, self.subtitle.Text = title or "", subtitle or ""
+	self.title.Text, self.subtitle.Text = Show(title or ""), Show(subtitle or "")
 	self.title.Visible, self.subtitle.Visible = true, true
 	self.title.TextTransparency, self.subtitle.TextTransparency = 1, 1
 	TweenService:Create(self.title, TweenInfo.new(0.8), { TextTransparency = 0 }):Play()
@@ -385,7 +387,7 @@ function StoryGui:Memory(beats, onDone)
 	TweenService:Create(self.memory, TweenInfo.new(0.5), { BackgroundTransparency = 0.12 }):Play()
 	task.spawn(function()
 		for _, beat in ipairs(beats or {}) do
-			self.memoryText.Text = beat.text or ""
+			self.memoryText.Text = Show(beat.text or "")
 			self.memoryText.TextTransparency = 1
 			TweenService:Create(self.memoryText, TweenInfo.new(0.35), { TextTransparency = 0 }):Play()
 			-- ภาพกะพริบ: จอหรี่วาบสั้นๆ กลางช่วง
@@ -408,7 +410,8 @@ end
 -- banner
 --------------------------------------------------------------------------------
 function StoryGui:Banner(title, body, seconds)
-	self.bannerTitle.Text, self.bannerBody.Text = title or "", body or ""
+	-- ข้อความจากคอนฟิก/เซิร์ฟเป็นไทย · ที่ผู้เรียกแปลแล้ว Show คืนเดิม
+	self.bannerTitle.Text, self.bannerBody.Text = Show(title or ""), Show(body or "")
 	self.banner.Visible = true
 	self.banner.BackgroundTransparency = 1
 	TweenService:Create(self.banner, TweenInfo.new(0.4), { BackgroundTransparency = 0.05 }):Play()
@@ -445,7 +448,7 @@ function StoryGui:Choice(question, yesText, noText, onPick)
 	corner(panel, 14)
 	stroke(panel, GOLD, 0.1, 2)
 	Responsive.Scale(panel, 0.6)
-	local q = label(panel, question, 18, GOLD, Enum.TextXAlignment.Center)
+	local q = label(panel, Show(question), 18, GOLD, Enum.TextXAlignment.Center)
 	q.Font = Enum.Font.GothamBold
 	q.Position = UDim2.fromOffset(16, 16)
 	q.Size = UDim2.new(1, -32, 0, 56)
@@ -460,7 +463,7 @@ function StoryGui:Choice(question, yesText, noText, onPick)
 		b.Font = Enum.Font.GothamBold
 		b.TextSize = 18
 		b.TextColor3 = rgb(24, 20, 12)
-		b.Text = text
+		b.Text = Show(text)
 		b.ZIndex = 72
 		b.Parent = panel
 		corner(b, 10)

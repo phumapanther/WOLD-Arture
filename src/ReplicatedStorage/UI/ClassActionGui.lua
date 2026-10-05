@@ -9,6 +9,8 @@ local Players = game:GetService("Players")
 local Responsive = require(script.Parent.Responsive)
 local NumberBox = require(script.Parent.NumberBox) -- พิมพ์เกินที่มี = เด้งเป็นเลขสูงสุด (2026-10-02)
 local UiSound = require(script.Parent.UiSound)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show -- ข้อความผลลัพธ์/คำถามมาจากเซิร์ฟเป็นไทย แปลตอนวาด
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -137,7 +139,7 @@ end
 
 function ClassActionGui:AskAmount(target, onSend, max)
 	self:clearBody()
-	self.title.Text = ("ให้เงิน %s"):format(target.DisplayName)
+	self.title.Text = L("ให้เงิน %s"):format(target.DisplayName)
 	self.panel.Size = UDim2.fromOffset(300, 180)
 
 	local box = Instance.new("TextBox")
@@ -147,7 +149,7 @@ function ClassActionGui:AskAmount(target, onSend, max)
 	box.Font = Enum.Font.GothamBold
 	box.TextSize = 18
 	box.TextColor3 = TEXT_LIGHT
-	box.PlaceholderText = "จำนวนเงิน"
+	box.PlaceholderText = L("จำนวนเงิน")
 	box.PlaceholderColor3 = TEXT_MUTED
 	box.Text = ""
 	box.ClearTextOnFocus = false
@@ -155,11 +157,11 @@ function ClassActionGui:AskAmount(target, onSend, max)
 	NumberBox.Bind(box, function() return max end)
 	corner(box, UDim.new(0, 8))
 
-	local send = button(self.body, "ส่ง", Color3.fromRGB(58, 78, 56))
+	local send = button(self.body, L("ส่ง"), Color3.fromRGB(58, 78, 56))
 	send.Size = UDim2.new(0.5, -4, 0, 36)
 	send.Position = UDim2.new(0, 0, 1, -44)
 
-	local cancel = button(self.body, "ยกเลิก")
+	local cancel = button(self.body, L("ยกเลิก"))
 	cancel.Size = UDim2.new(0.5, -4, 0, 36)
 	cancel.Position = UDim2.new(0.5, 4, 1, -44)
 
@@ -181,14 +183,14 @@ end
 
 function ClassActionGui:AskHealSize(target, onChoose)
 	self:clearBody()
-	self.title.Text = ("ฮีล %s"):format(target.DisplayName)
+	self.title.Text = L("ฮีล %s"):format(target.DisplayName)
 	self.panel.Size = UDim2.fromOffset(300, 190)
 
 	local ClassActionConfig = require(script.Parent.Parent.ClassActionConfig)
 	local order = { "small", "large" }
 	for i, size in ipairs(order) do
 		local option = ClassActionConfig.Heal[size]
-		local b = button(self.body, ("%s — %d ทอง"):format(option.label, option.cost))
+		local b = button(self.body, L("%s — %d ทอง", option.label, option.cost))
 		b.Size = UDim2.new(1, 0, 0, 40)
 		b.Position = UDim2.new(0, 0, 0, (i - 1) * 48)
 		b.Activated:Connect(function()
@@ -197,7 +199,7 @@ function ClassActionGui:AskHealSize(target, onChoose)
 		end)
 	end
 
-	local cancel = button(self.body, "ยกเลิก")
+	local cancel = button(self.body, L("ยกเลิก"))
 	cancel.Size = UDim2.new(1, 0, 0, 34)
 	cancel.Position = UDim2.new(0, 0, 1, -34)
 	cancel.Activated:Connect(function() self:Close() end)
@@ -211,7 +213,7 @@ end
 
 function ClassActionGui:ShowRobDefence(thief, seconds, onDefend)
 	self:clearBody()
-	self.title.Text = "โดนปล้น!"
+	self.title.Text = L("โดนปล้น!")
 	self.panel.Size = UDim2.fromOffset(320, 180)
 
 	local who = Instance.new("TextLabel")
@@ -220,7 +222,7 @@ function ClassActionGui:ShowRobDefence(thief, seconds, onDefend)
 	who.Font = Enum.Font.Gotham
 	who.TextSize = 13
 	who.TextColor3 = TEXT_LIGHT
-	who.Text = ("%s กำลังปล้นคุณ"):format(thief and thief.DisplayName or "ใครบางคน")
+	who.Text = L("%s กำลังปล้นคุณ"):format(thief and thief.DisplayName or L("ใครบางคน"))
 	who.Parent = self.body
 
 	local count = Instance.new("TextLabel")
@@ -233,7 +235,7 @@ function ClassActionGui:ShowRobDefence(thief, seconds, onDefend)
 	count.Text = tostring(seconds)
 	count.Parent = self.body
 
-	local defend = button(self.body, "ป้องกัน!", Color3.fromRGB(96, 52, 48))
+	local defend = button(self.body, L("ป้องกัน!"), Color3.fromRGB(96, 52, 48))
 	defend.Size = UDim2.new(1, 0, 0, 40)
 	defend.Position = UDim2.new(0, 0, 1, -44)
 
@@ -270,7 +272,7 @@ end
 -- two buttons, and a clock that answers "no" for you if you ignore it.
 function ClassActionGui:AskConsent(fromPlayer, seconds, question, onAnswer)
 	self:clearBody()
-	self.title.Text = "คำขอ"
+	self.title.Text = L("คำขอ")
 	self.panel.Size = UDim2.fromOffset(320, 190)
 
 	local text = Instance.new("TextLabel")
@@ -280,7 +282,7 @@ function ClassActionGui:AskConsent(fromPlayer, seconds, question, onAnswer)
 	text.TextSize = 14
 	text.TextWrapped = true
 	text.TextColor3 = TEXT_LIGHT
-	text.Text = question
+	text.Text = Show(question) -- คำถามฮีล/ซ่อมเขียนมาจากเซิร์ฟ · ที่ไคลเอนต์แปลแล้ว Show คืนเดิม
 	text.Parent = self.body
 
 	local clock = Instance.new("TextLabel")
@@ -293,11 +295,11 @@ function ClassActionGui:AskConsent(fromPlayer, seconds, question, onAnswer)
 	clock.Text = tostring(seconds)
 	clock.Parent = self.body
 
-	local yes = button(self.body, "ยินยอม", Color3.fromRGB(58, 78, 56))
+	local yes = button(self.body, L("ยินยอม"), Color3.fromRGB(58, 78, 56))
 	yes.Size = UDim2.new(0.5, -4, 0, 40)
 	yes.Position = UDim2.new(0, 0, 1, -44)
 
-	local no = button(self.body, "ปฏิเสธ", Color3.fromRGB(96, 52, 48))
+	local no = button(self.body, L("ปฏิเสธ"), Color3.fromRGB(96, 52, 48))
 	no.Size = UDim2.new(0.5, -4, 0, 40)
 	no.Position = UDim2.new(0.5, 4, 1, -44)
 
@@ -338,8 +340,8 @@ function ClassActionGui:Notify(ok, message, other)
 	self.noticeToken += 1
 	local token = self.noticeToken
 
-	local who = other and (" — " .. other.DisplayName) or ""
-	self.notice.Text = message .. who
+	local text = Show(message) -- ข้อความผลลัพธ์เป็นไทยจากเซิร์ฟ (ClassActions/เทรด/จับกุม)
+	self.notice.Text = other and ("%s — %s"):format(text, other.DisplayName) or text
 	self.notice.TextColor3 = ok and GOOD or DANGER
 	self.notice.Visible = true
 

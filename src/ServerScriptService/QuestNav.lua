@@ -112,7 +112,7 @@ function QuestNav.Send(player, position, label)
 	if position then
 		Remotes.QuestNav:FireClient(player, position, label or "")
 	else
-		Remotes.SocialNotify:FireClient(player, "warn", ("ไม่มีจุด%s ในแมพนี้"):format(label and (" " .. label) or ""))
+		Remotes.SocialNotify:FireClient(player, "warn", label and ("ไม่มีจุด %s ในแมพนี้"):format(label) or "ไม่มีจุด ในแมพนี้")
 	end
 end
 

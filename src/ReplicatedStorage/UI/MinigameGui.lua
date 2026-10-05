@@ -19,6 +19,8 @@ local UserInputService = game:GetService("UserInputService")
 local ContextActionService = game:GetService("ContextActionService")
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local STONE = Color3.fromRGB(30, 32, 40)
 local TEXT_LIGHT = Color3.fromRGB(232, 232, 238)
@@ -217,7 +219,7 @@ function MinigameGui:finish(success)
 
 	UiSound.Play(success and "Ding" or "Fail")
 	self.edge.Color = success and DONE or MISS
-	self.title.Text = success and "สำเร็จ!" or "พลาด!"
+	self.title.Text = success and L("สำเร็จ!") or L("พลาด!")
 	self.title.TextColor3 = success and DONE or MISS
 	self.hint.Text = ""
 
@@ -294,9 +296,9 @@ function MinigameGui:StartArrows(spec, onFinish)
 	self.active = { onFinish = onFinish }
 	self.edge.Color = RUNE
 	self.title.TextColor3 = RUNE
-	self.title.Text = spec.title or "กดตามจังหวะ"
-	self.hint.Text = self.touch and "แตะปุ่มให้ตรงลูกศรที่สว่าง"
-		or "กดลูกศร (หรือ WASD) ให้ตรงกับตัวที่สว่าง"
+	self.title.Text = spec.title and Show(spec.title) or L("กดตามจังหวะ")
+	self.hint.Text = self.touch and L("แตะปุ่มให้ตรงลูกศรที่สว่าง")
+		or L("กดลูกศร (หรือ WASD) ให้ตรงกับตัวที่สว่าง")
 	self.gui.Enabled = true
 
 	----------------------------------------------------------------------------
@@ -437,9 +439,9 @@ function MinigameGui:StartSkillCheck(spec, onFinish)
 	self.active = { onFinish = onFinish }
 	self.edge.Color = RUNE
 	self.title.TextColor3 = RUNE
-	self.title.Text = spec.title or "ตีให้ตรงจังหวะ"
-	self.hint.Text = self.touch and "แตะปุ่ม ตี ตอนเข็มอยู่ในแถบเขียว"
-		or "คลิกซ้าย (หรือเว้นวรรค) ตอนเข็มอยู่ในแถบเขียว"
+	self.title.Text = spec.title and Show(spec.title) or L("ตีให้ตรงจังหวะ")
+	self.hint.Text = self.touch and L("แตะปุ่ม ตี ตอนเข็มอยู่ในแถบเขียว")
+		or L("คลิกซ้าย (หรือเว้นวรรค) ตอนเข็มอยู่ในแถบเขียว")
 	self.gui.Enabled = true
 
 	-- The warning that a check has appeared. Loud on purpose: it pops up in the middle of a repair the player
@@ -516,7 +518,11 @@ function MinigameGui:StartSkillCheck(spec, onFinish)
 
 	if self.touch then
 		self.pad.Visible = true
-		self:touchButton(UDim2.fromOffset(95, 66), UDim2.fromOffset(120, 60), nil, "ตี", strike)
+		-- "ตี" มีคำแปลเดิมแล้ว = "Enhance" (ปุ่มตีบวกที่ช่างตีเหล็ก) · ปุ่มนี้คือตีจังหวะ จึงแปลจากกุญแจแยก
+		-- ไทยยังขึ้น "ตี" เหมือนเดิมทุกไบต์
+		local strikeLabel = L("ตี (ปุ่มมินิเกม)")
+		if Locale.Current() == "th" then strikeLabel = "ตี" end -- locale: skip (กุญแจแปลแยก ไทยไม่เปลี่ยน)
+		self:touchButton(UDim2.fromOffset(95, 66), UDim2.fromOffset(120, 60), nil, strikeLabel, strike)
 	end
 end
 

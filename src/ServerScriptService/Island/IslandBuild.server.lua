@@ -511,7 +511,7 @@ end
 -- อาการ "เข้าได้แต่ทำอะไรไม่ได้" มีสาเหตุเดียว: `ownerId` ไม่ตรงกับคนที่เข้ามา แล้ว `PlayerJoin` ก็
 -- `return` เงียบๆ — ไม่เตะ ไม่แจกชุดเริ่มต้น ไม่โหลดโปรไฟล์ ไม่มีอะไรบอกเลยว่าทำไม
 print(("[Island] เซิร์ฟนี้เป็นเกาะของ userId=%s (PrivateServerId=%s)")
-	:format(tostring(ownerId), game.PrivateServerId ~= "" and game.PrivateServerId or "ว่าง"))
+	:format(tostring(ownerId), game.PrivateServerId ~= "" and game.PrivateServerId or "ว่าง")) -- locale: skip (log)
 
 PlayerJoin.Each(function(player)
 	if ownerId == nil then
@@ -716,7 +716,7 @@ end
 -- ตารางช่องเป็นรูปทรงอะไร (เทส) — sparse array ข้าม remote แล้วกลายเป็น dict คีย์สตริง
 IslandAccess.SlotsShape = function(player)
 	local state = Inventory.Get(player)
-	if not state then return "ไม่มี state" end
+	if not state then return "ไม่มี state" end -- locale: skip (เทส)
 	local IC = require(game.ReplicatedStorage.InventoryConfig)
 	local n, maxKey, holes = 0, 0, 0
 	for k in pairs(state.slots) do
@@ -724,13 +724,13 @@ IslandAccess.SlotsShape = function(player)
 		if type(k) == "number" and k > maxKey then maxKey = k end
 	end
 	for i = 1, maxKey do if state.slots[i] == nil then holes += 1 end end
-	return ("ช่องที่มีของ %d · ดัชนีสูงสุด %d · ช่องว่างคั่นกลาง %d · #slots (array length) = %d")
+	return ("ช่องที่มีของ %d · ดัชนีสูงสุด %d · ช่องว่างคั่นกลาง %d · #slots (array length) = %d") -- locale: skip (เทส)
 		:format(n, maxKey, holes, #state.slots)
 end
 
 IslandAccess.DumpSlots = function(player)
 	local state = Inventory.Get(player)
-	if not state then return "ไม่มี state" end
+	if not state then return "ไม่มี state" end -- locale: skip (เทส)
 	local rows = {}
 	for k, v in pairs(state.slots) do
 		rows[#rows + 1] = ("[%s:%s]=%s x%s"):format(type(k), tostring(k), tostring(v and v.id), tostring(v and v.count))
@@ -772,7 +772,7 @@ if RunService:IsStudio() then
 	bf.Name = "IslandTest"
 	bf.OnInvoke = function(op, ...)
 		local fn = IslandAccess[op]
-		if type(fn) ~= "function" then error("IslandTest: ไม่มี op " .. tostring(op)) end
+		if type(fn) ~= "function" then error("IslandTest: ไม่มี op " .. tostring(op)) end -- locale: skip
 		return fn(...)
 	end
 	bf.Parent = game:GetService("ServerStorage")

@@ -440,12 +440,15 @@ local function gather(node, player)
 	end
 
 	local item = ItemCatalog.Get(itemId)
-	local text = ("ได้ %s x%d"):format(item and item.name or itemId, count)
+	-- แม่แบบเดียวต่อรูปประโยค ให้ไคลเอนต์ย้อนแปลได้ (ระบบหลายภาษา)
+	local text
 	if bonusId then
 		local extra = ItemCatalog.Get(bonusId)
-		text ..= (" + %s x%d"):format(extra and extra.name or bonusId, bonusCount)
+		text = ("ได้ %s x%d + %s x%d"):format(item and item.name or itemId, count, extra and extra.name or bonusId, bonusCount)
+	else
+		text = ("ได้ %s x%d"):format(item and item.name or itemId, count)
 	end
-	if goldResult == "given" then text ..= " (🌟 ขอบทอง 1 ชิ้น)" end
+	if goldResult == "given" then text = ("%s (🌟 ขอบทอง 1 ชิ้น)"):format(text) end
 	Remotes.SocialNotify:FireClient(player, "info", text)
 	if goldResult == "lost" then
 		Remotes.SocialNotify:FireClient(player, "error", "กระเป๋า VIP เต็ม — ขอบทองกลายเป็นของธรรมดา")

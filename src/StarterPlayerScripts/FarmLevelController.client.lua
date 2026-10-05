@@ -17,6 +17,8 @@ local Responsive = require(ReplicatedStorage.UI.Responsive)
 local UiSound = require(ReplicatedStorage.UI.UiSound)
 local ItemIcon = require(ReplicatedStorage.UI.ItemIcon)
 local FarmLevelConfig = require(ReplicatedStorage.FarmLevelConfig)
+local Locale = require(ReplicatedStorage.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -104,7 +106,7 @@ truckText.Parent = chip
 
 local function clock(seconds)
 	seconds = math.max(0, math.floor(seconds))
-	if seconds >= 3600 then return ("%dชม."):format(seconds // 3600) end
+	if seconds >= 3600 then return L("%dชม.", seconds // 3600) end
 	return ("%d:%02d"):format(seconds // 60, seconds % 60)
 end
 
@@ -127,7 +129,7 @@ local function drawChip()
 	else
 		-- รถเพิ่งกลับ (มีเวลาแล้วหายไป) = กะพริบเขียวแป๊บหนึ่งให้รู้ว่าไปรับรางวัลแล้ว
 		if lastShipEnd ~= nil then flashUntil = os.clock() + 6 end
-		truckText.Text = os.clock() < flashUntil and "🚚 กลับแล้ว!" or "🚚 ว่าง"
+		truckText.Text = os.clock() < flashUntil and L("🚚 กลับแล้ว!") or L("🚚 ว่าง")
 		truckText.TextColor3 = os.clock() < flashUntil and EXP or MUTED
 	end
 	lastShipEnd = type(shipEnd) == "number" and shipEnd or nil
@@ -211,7 +213,7 @@ local function showBanner(from, to)
 	title.Font = Enum.Font.GothamBlack
 	title.TextSize = 40
 	title.TextColor3 = RUNE
-	title.Text = ("🎉 เลเวลฟาร์ม %d!"):format(to)
+	title.Text = L("🎉 เลเวลฟาร์ม %d!", to)
 	title.Parent = card
 	local ts = Instance.new("UIStroke")
 	ts.Color = Color3.fromRGB(90, 50, 10)
@@ -226,7 +228,7 @@ local function showBanner(from, to)
 	sub.Font = Enum.Font.GothamBold
 	sub.TextSize = 16
 	sub.TextColor3 = TEXT
-	sub.Text = #rows > 0 and "ปลดล็อกใหม่" or "ฟาร์มของคุณเติบโตขึ้นแล้ว"
+	sub.Text = #rows > 0 and L("ปลดล็อกใหม่") or L("ฟาร์มของคุณเติบโตขึ้นแล้ว")
 	sub.Parent = card
 
 	-- แถวไอคอนของที่ปลด สูงสุด 8 + "+N"
@@ -276,7 +278,7 @@ local function showBanner(from, to)
 		t.TextWrapped = true
 		t.TextColor3 = TEXT
 		t.TextXAlignment = Enum.TextXAlignment.Left
-		t.Text = row.text
+		t.Text = Show(row.text)
 		t.Parent = tile
 	end
 	if #rows > shown then
@@ -286,7 +288,7 @@ local function showBanner(from, to)
 		more.Font = Enum.Font.GothamBold
 		more.TextSize = 15
 		more.TextColor3 = RUNE
-		more.Text = ("+%d อย่าง"):format(#rows - shown)
+		more.Text = L("+%d อย่าง", #rows - shown)
 		more.Parent = strip
 		corner(more, UDim.new(0, 8))
 	end
@@ -299,7 +301,7 @@ local function showBanner(from, to)
 	hint.Font = Enum.Font.Gotham
 	hint.TextSize = 12
 	hint.TextColor3 = MUTED
-	hint.Text = "ดูทั้งหมดได้ที่รถส่งออก · แตะเพื่อปิด"
+	hint.Text = L("ดูทั้งหมดได้ที่รถส่งออก · แตะเพื่อปิด")
 	hint.Parent = card
 
 	-- ขนาดการ์ดตามจำนวนแถวไอคอน (หนึ่งแถว = เตี้ยลง)

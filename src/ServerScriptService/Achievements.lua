@@ -107,7 +107,7 @@ local function rankTitleOf(player)
 	local tierIndex = player:GetAttribute("WOLD_PvpTier")
 	if type(tierIndex) ~= "number" then return nil end
 	local tier = PvpRankConfig.Tier(tierIndex)
-	return { id = "pvprank_" .. tier.id, title = "แร็งก์" .. tier.name, color = tier.color }
+	return { id = "pvprank_" .. tier.id, title = ("แร็งก์%s"):format(tier.name), color = tier.color }
 end
 
 -- **ฉายาเมือง** (เนื้อเรื่อง) id = "story_<บท>" · ได้ถาวรเมื่อจบบท (`profile.Data.Story.titles` — Story.server เขียน)
@@ -117,7 +117,7 @@ local function storyTitlesOf(player)
 	local list = {}
 	for _, ch in ipairs(StoryConfig.Chapters) do
 		if ch.title and owned[ch.title.id] then
-			list[#list + 1] = { id = ch.title.id, title = ch.title.text, color = ch.title.color, note = "ฉายาเมือง · จบบท " .. ch.name }
+			list[#list + 1] = { id = ch.title.id, title = ch.title.text, color = ch.title.color, note = ("ฉายาเมือง · จบบท %s"):format(ch.name) }
 		end
 	end
 	return list

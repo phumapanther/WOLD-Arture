@@ -133,7 +133,7 @@ local function skinsFor(entry)
 		local skin = slot and ItemCatalog.Get(slot.id)
 		if skin and ((item.kind == "weapon" and skin.kind == "skin" and skin.skinFor == entry.id)
 			or (item.kind == "armor" and skin.kind == "fashion")) then
-			out[#out + 1] = { index = tonumber(index), name = skin.name }
+			out[#out + 1] = { index = tonumber(index), name = L(skin.name) }
 		end
 	end
 	table.sort(out, function(a, b) return a.index < b.index end)
@@ -150,7 +150,7 @@ addSkinEntries = function(entries, anchorButton, title, target, entry)
 			local picks = {}
 			for _, ammo in ipairs(TrapConfig.Ammo) do
 				local _, count = TrapConfig.SelectedAmmo(entry.id, { ammo = ammo.id }, latest.slots)
-				table.insert(picks, { label = ("%s (%d)"):format(ammo.name, count), onClick = function()
+				table.insert(picks, { label = ("%s (%d)"):format(L(ammo.name), count), onClick = function()
 					Remotes.RequestTrapAmmo:FireServer(target, ammo.id)
 				end })
 			end
@@ -366,7 +366,7 @@ gui:OnDragStarted(function(index, input)
 		local position = Vector2.new(moved.Position.X, moved.Position.Y)
 		if not drag.moved and (position - startPosition).Magnitude >= DRAG_THRESHOLD then
 			drag.moved = true
-			gui:BeginDragGhost(item.icon, item.name)
+			gui:BeginDragGhost(item.icon, L(item.name))
 		end
 		if drag.moved then
 			gui:MoveDragGhost(position)

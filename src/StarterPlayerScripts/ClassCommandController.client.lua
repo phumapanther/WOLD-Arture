@@ -7,6 +7,7 @@ local Players = game:GetService("Players")
 local ClassConfig = require(game.ReplicatedStorage.ClassConfig)
 local Responsive = require(game.ReplicatedStorage.UI.Responsive)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local Locale = require(game.ReplicatedStorage.Locale)
 
 while workspace:GetAttribute("IsLobby") == nil do
 	task.wait()
@@ -35,9 +36,9 @@ local ADMIN_COLOR = Color3.fromRGB(255, 60, 60)
 
 local function appearance(senderId)
 	if senderId == "admin" then
-		return ADMIN_COLOR, "แอดมิน"
+		return ADMIN_COLOR, Locale.L("แอดมิน")
 	end
-	return ClassConfig.ColorOf(senderId), ClassConfig.DisplayName(senderId)
+	return ClassConfig.ColorOf(senderId), Locale.Show(ClassConfig.DisplayName(senderId))
 end
 
 Remotes.ClassAnnouncement.OnClientEvent:Connect(function(classId, name, text)

@@ -24,6 +24,8 @@ local CombatConfig = require(script.Parent.Parent.CombatConfig)
 local ItemCatalog = require(script.Parent.Parent.ItemCatalog)
 local TrapConfig = require(script.Parent.Parent.TrapConfig)
 local ItemIcon = require(script.Parent.ItemIcon)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local ArenaShopGui = {}
 ArenaShopGui.__index = ArenaShopGui
@@ -39,11 +41,11 @@ local MUTED = rgb(150, 150, 160)
 local RED = rgb(226, 110, 100)
 
 local SECTIONS = {
-	{ row = "melee", title = "อาวุธระยะใกล้" },
-	{ row = "ranged", title = "อาวุธระยะไกล" },
-	{ row = "trap", title = "กับดัก" }, -- เฟส 3
-	{ row = "armor", title = "เกราะ" },
-	{ row = "use", title = "ของใช้" },
+	{ row = "melee", title = "อาวุธระยะใกล้" }, -- locale: skip (แปลตอนใช้)
+	{ row = "ranged", title = "อาวุธระยะไกล" }, -- locale: skip (แปลตอนใช้)
+	{ row = "trap", title = "กับดัก" }, -- locale: skip (แปลตอนใช้) เฟส 3
+	{ row = "armor", title = "เกราะ" }, -- locale: skip (แปลตอนใช้)
+	{ row = "use", title = "ของใช้" }, -- locale: skip (แปลตอนใช้)
 }
 
 local function corner(p, r)
@@ -87,6 +89,13 @@ local function coin(parent, px, pos)
 	return c
 end
 
+-- ป้าย "เงินไม่พอ" บนการ์ด = ซิลเวอร์ของสนาม · คำแปลของ "เงินไม่พอ" (ร้านหลัก) คือเหรียญ จึงใช้คำแปลของ
+-- "ซิลเวอร์ไม่พอ" แทนในภาษาอื่น · ไทยเหมือนเดิมทุกตัวอักษร
+local function noSilver()
+	if Locale.Current() == "th" then return "เงินไม่พอ" end -- locale: skip (ไทยเดิม · ภาษาอื่นใช้คำแปลของซิลเวอร์ไม่พอ)
+	return L("ป้ายซิลเวอร์ไม่พอ") -- คำสั้นสำหรับป้าย 62 px · คีย์ไทยนี้ไม่เคยโชว์ (ไทยคืน "เงินไม่พอ")
+end
+
 local function damageOf(id)
 	local override = ArenaConfig.CombatOverrides[id]
 	if override and override.damage then return override.damage end
@@ -101,13 +110,13 @@ local function statsOf(entry)
 	local item = ItemCatalog.Items[entry.id] or {}
 	local lines = {}
 	if entry.slot == "weapon" then
-		if entry.size then lines[#lines + 1] = "ขนาด  " .. (ArenaConfig.SizeLabel[entry.size] or "") end
+		if entry.size then lines[#lines + 1] = L("ขนาด  %s", ArenaConfig.SizeLabel[entry.size] or "") end
 		-- สไน: ดาเมจเป็นสัดส่วน ไม่มีตัวเลขให้โชว์
 		local spec = CombatConfig.Weapons[entry.id]
 		if spec and spec.pierceFraction then
-			lines[#lines + 1] = ("เลือดลด %d%% ต่อนัด (ไม่ผ่านเกราะ)"):format(math.floor(spec.pierceFraction * 100 + 0.5))
-			lines[#lines + 1] = "โดนหัว = ตายทันที"
-			lines[#lines + 1] = ("ใช้มานา %d เม็ดต่อนัด · ซื้อแล้วมานาเต็ม"):format(spec.manaCost or 1)
+			lines[#lines + 1] = L("เลือดลด %d%% ต่อนัด (ไม่ผ่านเกราะ)", math.floor(spec.pierceFraction * 100 + 0.5))
+			lines[#lines + 1] = L("โดนหัว = ตายทันที")
+			lines[#lines + 1] = L("ใช้มานา %d เม็ดต่อนัด · ซื้อแล้วมานาเต็ม", spec.manaCost or 1)
 			return lines
 		end
 		-- กับดัก (เฟส 3): บอกผลของกระสุนที่ติดมา
@@ -115,35 +124,35 @@ local function statsOf(entry)
 		local ammo = trap and TrapConfig.AmmoById[trap.fixedAmmo]
 		if ammo then
 			if ammo.kind == "slow" then
-				lines[#lines + 1] = ("หนืด: ช้าลง %d%% นาน %d วิ"):format(math.floor((1 - ammo.factor) * 100 + 0.5), ammo.seconds)
+				lines[#lines + 1] = L("หนืด: ช้าลง %d%% นาน %d วิ", math.floor((1 - ammo.factor) * 100 + 0.5), ammo.seconds)
 			elseif ammo.kind == "stun" then
-				lines[#lines + 1] = ("ช็อต: เซขยับไม่ได้ %s วิ"):format(tostring(ammo.seconds))
+				lines[#lines + 1] = L("ช็อต: เซขยับไม่ได้ %s วิ", tostring(ammo.seconds))
 			elseif ammo.kind == "damage" then
-				lines[#lines + 1] = ("ระเบิด: ดาเมจ %d ในวง %d สตัด"):format(ammo.damage, TrapConfig.EffectRadius)
+				lines[#lines + 1] = L("ระเบิด: ดาเมจ %d ในวง %d สตัด", ammo.damage, TrapConfig.EffectRadius)
 			end
-			lines[#lines + 1] = ("กับดัก %d อัน · วางค้างได้ %d อัน"):format(entry.ammo or 0, TrapConfig.MaxPerOwner)
-			lines[#lines + 1] = TOUCH_ONLY and "กดปุ่มโจมตีค้าง = เล็ง · ปล่อย = เขวี้ยง · แตะ = วาง"
-				or "คลิกค้าง = เล็ง · ปล่อย = เขวี้ยง · คลิกสั้น = วาง"
-			lines[#lines + 1] = "ซื้อทับ = ของเก่าหาย · ตายแล้วต้องซื้อใหม่"
+			lines[#lines + 1] = L("กับดัก %d อัน · วางค้างได้ %d อัน", entry.ammo or 0, TrapConfig.MaxPerOwner)
+			lines[#lines + 1] = TOUCH_ONLY and L("กดปุ่มโจมตีค้าง = เล็ง · ปล่อย = เขวี้ยง · แตะ = วาง")
+				or L("คลิกค้าง = เล็ง · ปล่อย = เขวี้ยง · คลิกสั้น = วาง")
+			lines[#lines + 1] = L("ซื้อทับ = ของเก่าหาย · ตายแล้วต้องซื้อใหม่")
 			return lines
 		end
 		local dmg = damageOf(entry.id)
-		if dmg then lines[#lines + 1] = ("ดาเมจต่อครั้ง  %d"):format(dmg) end
-		if entry.ammo then lines[#lines + 1] = ("กระสุน  %d นัด (หมดแล้วต้องซื้อปืนใหม่)"):format(entry.ammo) end
+		if dmg then lines[#lines + 1] = L("ดาเมจต่อครั้ง  %d", dmg) end
+		if entry.ammo then lines[#lines + 1] = L("กระสุน  %d นัด (หมดแล้วต้องซื้อปืนใหม่)", entry.ammo) end
 	elseif entry.slot == "armor" then
-		lines[#lines + 1] = ("เกราะ  %d"):format(item.armor or 0)
-		lines[#lines + 1] = ("กันดาเมจ  %d%%"):format(math.floor((item.absorbFraction or 0) * 100 + 0.5))
+		lines[#lines + 1] = L("เกราะ  %d", item.armor or 0)
+		lines[#lines + 1] = L("กันดาเมจ  %d%%", math.floor((item.absorbFraction or 0) * 100 + 0.5))
 	elseif entry.mana then
-		lines[#lines + 1] = ("มานา +%d เม็ดทันที"):format(entry.mana)
-		lines[#lines + 1] = ("ซื้อได้ %d ขวดต่อรอบ"):format(ArenaConfig.PerRound(entry))
+		lines[#lines + 1] = L("มานา +%d เม็ดทันที", entry.mana)
+		lines[#lines + 1] = L("ซื้อได้ %d ขวดต่อรอบ", ArenaConfig.PerRound(entry))
 	else
 		local use = item.use or {}
-		if use.stat == "hp" then lines[#lines + 1] = ("ฟื้นเลือด %d"):format(use.amount or 0)
-		elseif use.stat == "healfull" then lines[#lines + 1] = "ฟื้นเลือดเต็มหลอด"
-		elseif use.stat == "firstaid" then lines[#lines + 1] = ("พันแผล %d วิ · เลือดไม่ลด %d วิ"):format(use.holdSeconds or 0, use.seconds or 0) end
-		lines[#lines + 1] = TOUCH_ONLY and "แตะปุ่ม 🧪 เพื่อใช้" or "กด F เพื่อใช้"
+		if use.stat == "hp" then lines[#lines + 1] = L("ฟื้นเลือด %d", use.amount or 0)
+		elseif use.stat == "healfull" then lines[#lines + 1] = L("ฟื้นเลือดเต็มหลอด")
+		elseif use.stat == "firstaid" then lines[#lines + 1] = L("พันแผล %d วิ · เลือดไม่ลด %d วิ", use.holdSeconds or 0, use.seconds or 0) end
+		lines[#lines + 1] = TOUCH_ONLY and L("แตะปุ่ม 🧪 เพื่อใช้") or L("กด F เพื่อใช้")
 	end
-	lines[#lines + 1] = entry.slot == "mana" and "" or "ซื้อทับ = ของเก่าหาย · ตายแล้วต้องซื้อใหม่"
+	lines[#lines + 1] = entry.slot == "mana" and "" or L("ซื้อทับ = ของเก่าหาย · ตายแล้วต้องซื้อใหม่")
 	return lines
 end
 
@@ -229,7 +238,7 @@ function ArenaShopGui.new()
 	self.panel = panel
 
 	-- หัว
-	label(panel, { text = "คลังอาวุธ", font = Enum.Font.GothamBold, size = 28, pos = UDim2.fromOffset(28, 16), dim = UDim2.fromOffset(300, 34) })
+	label(panel, { text = L("คลังอาวุธ"), font = Enum.Font.GothamBold, size = 28, pos = UDim2.fromOffset(28, 16), dim = UDim2.fromOffset(300, 34) })
 	self.subtitle = label(panel, { text = "", size = 16, colour = MUTED, pos = UDim2.fromOffset(28, 50), dim = UDim2.fromOffset(560, 20) })
 	-- ข้อความสั้นจากเซิร์ฟเวอร์ (ซื้อแล้ว/ซิลเวอร์ไม่พอ/คืนเงิน) — เดิมขึ้นกลางจอ ผู้ใช้สั่งเอาออก (เฟส 1 · 2026-09-26)
 	self.status = label(panel, { text = "", font = Enum.Font.GothamBold, size = 18, colour = GOLD,
@@ -286,7 +295,7 @@ function ArenaShopGui.new()
 	layout.Parent = list
 
 	for order, section in ipairs(SECTIONS) do
-		label(list, { text = section.title, font = Enum.Font.GothamBold, size = 15, colour = GOLD, dim = UDim2.new(1, 0, 0, 20) }).LayoutOrder = order * 2 - 1
+		label(list, { text = L(section.title), font = Enum.Font.GothamBold, size = 15, colour = GOLD, dim = UDim2.new(1, 0, 0, 20) }).LayoutOrder = order * 2 - 1
 		local row = Instance.new("Frame")
 		row.LayoutOrder = order * 2
 		row.Size = UDim2.new(1, -8, 0, 132)
@@ -336,8 +345,8 @@ function ArenaShopGui.new()
 	glow.Parent = stage
 	self.stage = stage
 
-	self.detailName = label(detail, { text = "เลือกไอเทม", font = Enum.Font.GothamBold, size = 22, pos = UDim2.fromOffset(16, 284), dim = UDim2.fromOffset(264, 28) })
-	self.detailKind = label(detail, { text = TOUCH_ONLY and "แตะการ์ดเพื่อดู แล้วกดปุ่มซื้อด้านล่าง" or "ชี้ที่การ์ดเพื่อดูรายละเอียด", size = 15, colour = MUTED, pos = UDim2.fromOffset(16, 314), dim = UDim2.fromOffset(264, 20) })
+	self.detailName = label(detail, { text = L("เลือกไอเทม"), font = Enum.Font.GothamBold, size = 22, pos = UDim2.fromOffset(16, 284), dim = UDim2.fromOffset(264, 28) })
+	self.detailKind = label(detail, { text = TOUCH_ONLY and L("แตะการ์ดเพื่อดู แล้วกดปุ่มซื้อด้านล่าง") or L("ชี้ที่การ์ดเพื่อดูรายละเอียด"), size = 15, colour = MUTED, pos = UDim2.fromOffset(16, 314), dim = UDim2.fromOffset(264, 20) })
 	self.detailStats = label(detail, { text = "", size = 16, colour = TEXT, wrap = true, pos = UDim2.fromOffset(16, 346), dim = UDim2.fromOffset(264, 128) })
 	self.detailStats.TextYAlignment = Enum.TextYAlignment.Top
 	self.detailStats.LineHeight = 1.15
@@ -350,7 +359,7 @@ function ArenaShopGui.new()
 	buy.Font = Enum.Font.GothamBold
 	buy.TextSize = 20
 	buy.TextColor3 = rgb(28, 24, 16)
-	buy.Text = "ซื้อ"
+	buy.Text = L("ซื้อ")
 	buy.AutoButtonColor = true
 	buy.Parent = detail
 	corner(buy, 12)
@@ -438,13 +447,13 @@ function ArenaShopGui:_card(parent, entry)
 		tag.Font = Enum.Font.GothamBold
 		tag.TextSize = 11
 		tag.TextColor3 = rgb(250, 250, 250)
-		tag.Text = ArenaConfig.SizeLabel[entry.size] or ""
+		tag.Text = L(ArenaConfig.SizeLabel[entry.size] or "")
 		tag.ZIndex = 5
 		tag.Parent = art
 		corner(tag, 8)
 	end
 
-	label(card, { text = item.name or entry.id, size = 17, pos = UDim2.fromOffset(10, 84), dim = UDim2.fromOffset(98, 22) })
+	label(card, { text = ItemCatalog.DisplayName(entry.id), size = 17, pos = UDim2.fromOffset(10, 84), dim = UDim2.fromOffset(98, 22) })
 
 	local pricePill = Instance.new("Frame")
 	pricePill.Position = UDim2.fromOffset(10, 106)
@@ -462,9 +471,13 @@ function ArenaShopGui:_card(parent, entry)
 	badge.Size = UDim2.fromOffset(62, 20)
 	badge.BackgroundColor3 = GOLD
 	badge.Font = Enum.Font.GothamBold
-	badge.TextSize = 12
+	badge.TextScaled = true
 	badge.TextColor3 = rgb(28, 24, 16)
 	badge.Visible = false
+	-- ป้ายกว้าง 62 คงที่ (ยืดแล้วทับรูป) · ภาษาอื่นที่ยาวกว่าย่อตัวอักษรลงเอง ไทยที่พอดียังขนาด 12
+	local maxText = Instance.new("UITextSizeConstraint")
+	maxText.MaxTextSize = 12
+	maxText.Parent = badge
 	badge.ZIndex = 4
 	badge.Parent = card
 	corner(badge, 10)
@@ -504,8 +517,8 @@ function ArenaShopGui:_select(id)
 	self.selected = id
 	local entry = row.entry
 	local item = ItemCatalog.Items[id] or {}
-	self.detailName.Text = item.name or id
-	self.detailKind.Text = ArenaConfig.SlotLabel[entry.slot] or ""
+	self.detailName.Text = ItemCatalog.DisplayName(id)
+	self.detailKind.Text = L(ArenaConfig.SlotLabel[entry.slot] or "")
 	self.detailStats.Text = table.concat(statsOf(entry), "\n")
 
 	for _, child in ipairs(self.stage:GetChildren()) do
@@ -539,7 +552,7 @@ function ArenaShopGui:IsVisible() return self.gui.Enabled end
 
 -- บรรทัดสถานะหัวร้าน 2.5 วิ · "warn" = แดง อื่นๆ = ทอง · ข้อความใหม่ทับของเก่าและนับเวลาใหม่
 function ArenaShopGui:Flash(text, kind)
-	self.status.Text = text or ""
+	self.status.Text = Show(text) or ""
 	self.status.TextColor3 = kind == "warn" and RED or GOLD
 	self.status.Visible = text ~= nil and text ~= ""
 	local token = {}
@@ -557,9 +570,9 @@ function ArenaShopGui:Render(snap)
 	self.silverLabel.Text = tostring(silver)
 	local secs = snap.secondsLeft or 0
 	if snap.phase == "buy" then
-		self.subtitle.Text = ("เตรียมตัว — ร้านปิดใน %d:%02d · ซื้อได้ช่องละ 1 ชิ้นต่อรอบ"):format(math.floor(secs / 60), secs % 60)
+		self.subtitle.Text = L("เตรียมตัว — ร้านปิดใน %d:%02d · ซื้อได้ช่องละ 1 ชิ้นต่อรอบ", math.floor(secs / 60), secs % 60)
 	else
-		self.subtitle.Text = "อยู่ในฐาน — ซื้อได้ (ออกจากฐานแล้วร้านปิด)"
+		self.subtitle.Text = L("อยู่ในฐาน — ซื้อได้ (ออกจากฐานแล้วร้านปิด)")
 	end
 
 	local function stateOf(entry)
@@ -578,11 +591,11 @@ function ArenaShopGui:Render(snap)
 		row.outline.Thickness = owned and 2.5 or 1.5
 		row.badge.Visible = owned or used or not afford
 		if owned then
-			row.badge.Text, row.badge.BackgroundColor3 = "ติดตัว", GOLD
+			row.badge.Text, row.badge.BackgroundColor3 = L("ติดตัว"), GOLD
 		elseif used then
-			row.badge.Text, row.badge.BackgroundColor3 = "ครบแล้ว", rgb(90, 92, 104)
+			row.badge.Text, row.badge.BackgroundColor3 = L("ครบแล้ว"), rgb(90, 92, 104)
 		else
-			row.badge.Text, row.badge.BackgroundColor3 = "เงินไม่พอ", rgb(120, 58, 54)
+			row.badge.Text, row.badge.BackgroundColor3 = noSilver(), rgb(120, 58, 54)
 		end
 		local dimmed = used or not afford
 		row.card.AutoButtonColor = not dimmed
@@ -595,26 +608,26 @@ function ArenaShopGui:Render(snap)
 	self.refundMode = false
 	self.refundButton.Visible = false
 	if not row then
-		self.buyButton.Text, self.buyButton.BackgroundColor3 = "ชี้ที่การ์ดเพื่อเลือก", rgb(60, 62, 72)
+		self.buyButton.Text, self.buyButton.BackgroundColor3 = L("ชี้ที่การ์ดเพื่อเลือก"), rgb(60, 62, 72)
 		return
 	end
 	local owned, _, limit, used, afford = stateOf(row.entry)
 	local refundable = snap.refundable and snap.refundable[row.entry.id]
 	if refundable and limit > 1 then
 		self.refundButton.Visible = true
-		self.refundButton.Text = ("ยกเลิก 1 ชิ้น  —  คืน %d"):format(row.entry.price)
+		self.refundButton.Text = L("ยกเลิก 1 ชิ้น  —  คืน %d", row.entry.price)
 		refundable = false -- ปุ่มหลักยังเป็นปุ่มซื้อ
 	end
 	if refundable then
 		self.refundMode = true
-		self.buyButton.Text = ("ยกเลิกการซื้อ  —  คืน %d"):format(row.entry.price)
+		self.buyButton.Text = L("ยกเลิกการซื้อ  —  คืน %d", row.entry.price)
 		self.buyButton.BackgroundColor3 = rgb(196, 96, 84)
 	elseif used then
-		self.buyButton.Text, self.buyButton.BackgroundColor3 = "รอบนี้ซื้อครบแล้ว", rgb(60, 62, 72)
+		self.buyButton.Text, self.buyButton.BackgroundColor3 = L("รอบนี้ซื้อครบแล้ว"), rgb(60, 62, 72)
 	elseif not afford then
-		self.buyButton.Text, self.buyButton.BackgroundColor3 = "ซิลเวอร์ไม่พอ", rgb(120, 58, 54)
+		self.buyButton.Text, self.buyButton.BackgroundColor3 = L("ซิลเวอร์ไม่พอ"), rgb(120, 58, 54)
 	else
-		self.buyButton.Text = (owned and "ซื้อซ้ำ  —  %d" or "ซื้อ  —  %d"):format(row.entry.price)
+		self.buyButton.Text = owned and L("ซื้อซ้ำ  —  %d", row.entry.price) or L("ซื้อ  —  %d", row.entry.price)
 		self.buyButton.BackgroundColor3 = GOLD
 	end
 end

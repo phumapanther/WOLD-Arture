@@ -108,7 +108,7 @@ local function nameOf(userId)
 		return player.DisplayName
 	end
 	local ok, name = pcall(Players.GetNameFromUserIdAsync, Players, userId)
-	name = ok and name or ("ผู้เล่น #" .. userId)
+	name = ok and name or ("ผู้เล่น #%s"):format(tostring(userId))
 	NAME_CACHE[userId] = name
 	return name
 end

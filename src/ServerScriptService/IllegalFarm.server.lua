@@ -337,7 +337,9 @@ local function work(node, player)
 		Minigames.Run(player, {
 			kind = "arrows",
 			length = config.sequence,
-			title = ("%s%s"):format(config.prompt or "ทำงาน", config.object and (" · " .. config.object) or ""),
+			-- "%s · %s" ย้อนแปลทีละชิ้นได้ฝั่งไคลเอนต์ (ระบบหลายภาษา) · ไทยเท่าเดิม
+			title = config.object and ("%s · %s"):format(config.prompt or "ทำงาน", config.object)
+				or (config.prompt or "ทำงาน"),
 		}, function(success)
 			if not player.Parent then return end
 			if success then

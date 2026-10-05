@@ -220,7 +220,7 @@ if game:GetService("RunService"):IsStudio() then
 	local function withFriend(player, userId, on, fn)
 		local mine = Friends.Get(player)
 		local before = mine.friends[userId]
-		mine.friends[userId] = on and "เพื่อนเทส" or nil
+		mine.friends[userId] = on and "เพื่อนเทส" or nil -- locale: skip (ชื่อปลอมในเทส Studio)
 		local results = table.pack(pcall(fn))
 		mine.friends[userId] = before
 		assert(results[1], results[2])
@@ -305,7 +305,7 @@ if game:GetService("RunService"):IsStudio() then
 			Mail.Forget(player)
 			return result
 		end
-		error("MailTest: ไม่มี op " .. tostring(op))
+		error("MailTest: ไม่มี op " .. tostring(op)) -- locale: skip
 	end
 	bf.Parent = game:GetService("ServerStorage")
 end

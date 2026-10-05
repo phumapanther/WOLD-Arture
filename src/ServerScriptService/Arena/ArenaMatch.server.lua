@@ -1067,7 +1067,7 @@ local function finishMatch()
 		end
 	end
 	print(("[Arena] แร็งก์: %s (บอทตั้งต้น %d · แอดมินเริ่ม %s · มีคนดู %s · บอทแทน %s)"):format(
-		ranked and "นับ" or "ไม่นับ", startBots, tostring(record.admin == true), tostring(visitors), tostring(replaced)))
+		ranked and "นับ" or "ไม่นับ", startBots, tostring(record.admin == true), tostring(visitors), tostring(replaced))) -- locale: skip (log)
 	beginPhase("matchEnd", ArenaConfig.Phase.matchEnd)
 	Remotes.ArenaMatchEnd:FireAllClients({ rows = rows, winner = winner, wins = State.wins })
 
@@ -1183,7 +1183,7 @@ PlayerJoin.Each(function(player)
 		side = countIn("A") <= countIn("B") and "A" or "B"
 	end
 	if not side then
-		return sendHome(player, "ไม่ได้อยู่ในแมตช์นี้")
+		return sendHome(player, "ไม่ได้อยู่ในแมตช์นี้") -- locale: skip (log ใน warn)
 	end
 
 	Fighters[player] = {

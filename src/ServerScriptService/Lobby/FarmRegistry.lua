@@ -42,19 +42,19 @@ local function liveKey(ownerUserId) return "farmlive_" .. ownerUserId end
 function FarmRegistry.GetOrCreate(ownerUserId)
 	local placeId = farmPlaceId()
 	if not placeId or placeId == 0 then
-		error("[FarmRegistry] ยังไม่ได้ตั้ง ServerConfig.FarmingPlaceId", 0)
+		error("[FarmRegistry] ยังไม่ได้ตั้ง ServerConfig.FarmingPlaceId", 0) -- locale: skip (log)
 	end
 
 	local key = farmKey(ownerUserId)
 	local getOk, existing = pcall(function() return store:GetAsync(key) end)
 	if not getOk then
-		error("[FarmRegistry] อ่านเกาะของ " .. tostring(ownerUserId) .. " ไม่ได้: " .. tostring(existing), 0)
+		error("[FarmRegistry] อ่านเกาะของ " .. tostring(ownerUserId) .. " ไม่ได้: " .. tostring(existing), 0) -- locale: skip (log)
 	end
 	if existing and existing.accessCode then return existing.accessCode end
 
 	local reserveOk, accessCode, privateServerId = pcall(TeleportService.ReserveServer, TeleportService, placeId)
 	if not reserveOk then
-		error("[FarmRegistry] จองเซิร์ฟเกาะไม่สำเร็จ: " .. tostring(accessCode), 0)
+		error("[FarmRegistry] จองเซิร์ฟเกาะไม่สำเร็จ: " .. tostring(accessCode), 0) -- locale: skip (log)
 	end
 
 	local setOk, setErr = pcall(function()

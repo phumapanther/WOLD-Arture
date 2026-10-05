@@ -7,6 +7,7 @@ local TweenService = game:GetService("TweenService")
 local Responsive = require(script.Parent.Responsive)
 local UiSound = require(script.Parent.UiSound)
 local TutorialConfig = require(script.Parent.Parent.TutorialConfig)
+local Show = require(script.Parent.Parent.Locale).Show -- ข้อความไทยในคอนฟิก → ภาษาผู้เล่นตอนวาด
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -104,9 +105,9 @@ function TutorialGui.new()
 	tip.TextSize = 12
 	tip.TextXAlignment = Enum.TextXAlignment.Right
 	tip.TextColor3 = TEXT_MUTED
-	tip.Text = TutorialConfig.ButtonTooltip
 	tip.Visible = false
 	tip.Parent = button
+	self.tip = tip
 
 	button.MouseEnter:Connect(function() tip.Visible = true end)
 	button.MouseLeave:Connect(function() tip.Visible = false end)
@@ -158,8 +159,8 @@ function TutorialGui.new()
 	title.TextSize = 19
 	title.TextXAlignment = Enum.TextXAlignment.Left
 	title.TextColor3 = RUNE
-	title.Text = TutorialConfig.Title
 	title.Parent = book
+	self.title = title
 
 	local close = Instance.new("TextButton")
 	close.AnchorPoint = Vector2.new(1, 0)
@@ -250,7 +251,6 @@ function TutorialGui.new()
 		tab.TextXAlignment = Enum.TextXAlignment.Left
 		tab.TextTruncate = Enum.TextTruncate.AtEnd
 		tab.TextColor3 = TEXT_LIGHT
-		tab.Text = ("  %s %s"):format(section.icon or "", section.title)
 		tab.Parent = spine
 		corner(tab, UDim.new(0, 6))
 		tab.Activated:Connect(function()
@@ -265,8 +265,22 @@ function TutorialGui.new()
 		if book.Visible then self:Hide() else self:Show() end
 	end)
 
-	self:ShowSection(touchOnly and "controls_touch" or firstShown) -- มือถือเปิดมาเจอหน้าปุ่มก่อน
+	self.current = touchOnly and "controls_touch" or firstShown -- มือถือเปิดมาเจอหน้าปุ่มก่อน
+	self:Relabel() -- ตั้งป้ายทั้งหมด + วาดหน้าแรก
+	-- เปลี่ยนภาษาในหน้าตั้งค่า = ป้ายทั้งสมุดเปลี่ยนตามทันที ไม่ต้องรอเกิดใหม่
+	Players.LocalPlayer:GetAttributeChangedSignal("WOLD_Lang"):Connect(function() self:Relabel() end)
 	return self
+end
+
+-- ป้ายที่มาจากคอนฟิก (ชื่อสมุด · คำใบ้ปุ่ม · ชื่อหัวข้อ) แปลตามภาษาปัจจุบัน แล้ววาดหน้าที่เปิดอยู่ใหม่
+function TutorialGui:Relabel()
+	self.tip.Text = Show(TutorialConfig.ButtonTooltip)
+	self.title.Text = Show(TutorialConfig.Title)
+	for _, section in ipairs(TutorialConfig.Sections) do
+		local tab = self.tabs[section.id]
+		if tab then tab.Text = ("  %s %s"):format(section.icon or "", Show(section.title)) end
+	end
+	self:ShowSection(self.current)
 end
 
 -- วาดหัวข้อหนึ่งลงหน้ากระดาษ
@@ -298,7 +312,7 @@ function TutorialGui:ShowSection(id)
 	heading.TextSize = 17
 	heading.TextXAlignment = Enum.TextXAlignment.Left
 	heading.TextColor3 = Color3.fromRGB(120, 72, 32)
-	heading.Text = ("%s  %s"):format(section.icon or "", section.title)
+	heading.Text = ("%s  %s"):format(section.icon or "", Show(section.title))
 	heading.Parent = self.page
 
 	for order, line in ipairs(section.body) do
@@ -316,7 +330,7 @@ function TutorialGui:ShowSection(id)
 		label.RichText = true
 		label.TextColor3 = INK
 		-- `**ข้อความ**` เป็นตัวหนา เขียนในคอนฟิกได้โดยไม่ต้องรู้จัก RichText
-		label.Text = (line:gsub("%*%*(.-)%*%*", "<b>%1</b>"))
+		label.Text = (Show(line):gsub("%*%*(.-)%*%*", "<b>%1</b>"))
 		label.Parent = self.page
 	end
 end

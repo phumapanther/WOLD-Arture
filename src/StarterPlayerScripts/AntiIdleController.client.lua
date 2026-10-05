@@ -39,6 +39,7 @@
 local Players = game:GetService("Players")
 local UserInputService = game:GetService("UserInputService")
 local VirtualUser = game:GetService("VirtualUser")
+local L = require(game.ReplicatedStorage.Locale).L
 
 local player = Players.LocalPlayer
 
@@ -99,8 +100,10 @@ end
 
 local function showWarning(secondsLeft)
 	ensureWarnGui()
-	warnLabel.Text = ((UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled) and "แตะจอหรือขยับตัวละคร" or "ขยับเมาส์หรือกดปุ่มอะไรก็ได้") .. (" — อีก %d นาทีระบบของ Roblox จะตัดการเชื่อมต่อเพราะอยู่นิ่ง")
-		:format(math.max(1, math.ceil(secondsLeft / 60)))
+	local minutes = math.max(1, math.ceil(secondsLeft / 60))
+	warnLabel.Text = (UserInputService.TouchEnabled and not UserInputService.KeyboardEnabled)
+		and L("แตะจอหรือขยับตัวละคร — อีก %d นาทีระบบของ Roblox จะตัดการเชื่อมต่อเพราะอยู่นิ่ง", minutes)
+		or L("ขยับเมาส์หรือกดปุ่มอะไรก็ได้ — อีก %d นาทีระบบของ Roblox จะตัดการเชื่อมต่อเพราะอยู่นิ่ง", minutes)
 	warnGui.Enabled = true
 end
 
@@ -182,10 +185,10 @@ do
 	-- ก็ error เหมือนกัน ถ้านับรวมเป็น "ไม่ผ่าน" จะอ่านผลผิดทั้งหมด
 	local function tryCall(fn)
 		local ok, err = pcall(fn)
-		if ok then return "ผ่าน" end
+		if ok then return "ผ่าน" end -- locale: skip (ข้อความดีบักลง F9)
 		err = tostring(err)
-		if err:find("lacking capability", 1, true) then return "ไม่มีสิทธิ์" end
-		return "พังด้วยเหตุอื่น (" .. err:sub(1, 60) .. ")"
+		if err:find("lacking capability", 1, true) then return "ไม่มีสิทธิ์" end -- locale: skip (ข้อความดีบักลง F9)
+		return "พังด้วยเหตุอื่น (" .. err:sub(1, 60) .. ")" -- locale: skip (ข้อความดีบักลง F9)
 	end
 
 	local clientVersion = "?"

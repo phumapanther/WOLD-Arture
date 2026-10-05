@@ -28,6 +28,7 @@ if workspace:GetAttribute("ArenaMode") == true then return end
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
 local GatherConfig = require(game.ReplicatedStorage.GatherConfig)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local L = require(game.ReplicatedStorage.Locale).L
 
 local player = Players.LocalPlayer
 
@@ -454,13 +455,13 @@ end
 local function startAuto()
 	if autoFarming then return end
 	if heldWeapon and not heldTool then
-		setBanner("ออโต้ต้องมือเปล่า (สัตว์) หรือถือเครื่องมือฟาร์ม")
+		setBanner(L("ออโต้ต้องมือเปล่า (สัตว์) หรือถือเครื่องมือฟาร์ม"))
 		task.delay(2, function() if not autoFarming then setBanner(nil) end end)
 		return
 	end
 	-- เกาะไม่มีฝูงสัตว์เดินเล่น (สัตว์ในคอกไม่ใช่ HerdAnimal) มือเปล่าจึงไม่มีอะไรให้เล็ง — บอกตรงๆ ดีกว่าขึ้น "เปิด" แล้วยืนนิ่ง
 	if not heldTool and workspace:GetAttribute("IslandMode") == true then
-		setBanner("ถือขวาน อีเต้อ หรือพลั่วก่อน แล้วค่อยเปิดออโต้")
+		setBanner(L("ถือขวาน อีเต้อ หรือพลั่วก่อน แล้วค่อยเปิดออโต้"))
 		task.delay(2, function() if not autoFarming then setBanner(nil) end end)
 		return
 	end
@@ -468,9 +469,9 @@ local function startAuto()
 	Remotes.SetAutoFarming:FireServer(true) -- เดินเร็วเกือบวิ่งระหว่างจุด (PlayerMovement · 2026-10-01)
 	-- บอกทางหยุดที่ **เครื่องนี้** ใช้ได้จริง เครื่องที่มีทั้งสองอย่างบอกทั้งสองทาง
 	local how = UserInputService.KeyboardEnabled
-		and (UserInputService.TouchEnabled and "กด F หรือแตะแถบนี้เพื่อหยุด" or "กด F เพื่อหยุด")
-		or "แตะแถบนี้เพื่อหยุด"
-	setBanner((heldTool and "ฟาร์มออโต้: เปิด" or "ฟาร์มออโต้ (สัตว์): เปิด") .. " — " .. how)
+		and (UserInputService.TouchEnabled and L("กด F หรือแตะแถบนี้เพื่อหยุด") or L("กด F เพื่อหยุด"))
+		or L("แตะแถบนี้เพื่อหยุด")
+	if heldTool then setBanner(L("ฟาร์มออโต้: เปิด — %s", how)) else setBanner(L("ฟาร์มออโต้ (สัตว์): เปิด — %s", how)) end
 
 	autoThread = task.spawn(function()
 		local lastFailed = nil

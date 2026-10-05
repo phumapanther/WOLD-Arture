@@ -17,6 +17,8 @@ if workspace:GetAttribute("IsLobby") then return end
 local Config = require(game.ReplicatedStorage.Vehicle.Config)
 local Net = require(game.ReplicatedStorage.Vehicle.Net)
 local ItemCatalog = require(game.ReplicatedStorage.ItemCatalog)
+local Locale = require(game.ReplicatedStorage.Locale)
+local L, Show = Locale.L, Locale.Show
 local net = Net.get()
 
 local player = Players.LocalPlayer
@@ -68,7 +70,7 @@ local function toast(text, kind)
   local label = make("TextLabel", {
     Parent = toastHolder, BackgroundColor3 = PALETTE.ink, BackgroundTransparency = 0.1,
     Size = UDim2.new(1, 0, 0, 34), Font = Enum.Font.GothamMedium, TextSize = 16,
-    TextColor3 = color, Text = text, AutomaticSize = Enum.AutomaticSize.Y,
+    TextColor3 = color, Text = Show(text), AutomaticSize = Enum.AutomaticSize.Y,
   }, { corner(6), stroke(PALETTE.brassDim, 1), pad(6) })
   task.delay(3.2, function()
     TweenService:Create(label, TweenInfo.new(0.4), { BackgroundTransparency = 1, TextTransparency = 1 }):Play()
@@ -103,7 +105,7 @@ make("Frame", { Parent = header, BackgroundColor3 = PALETTE.ink, BorderSizePixel
 local title = make("TextLabel", {
   Parent = header, BackgroundTransparency = 1, Font = Enum.Font.Garamond, TextSize = 28,
   TextColor3 = PALETTE.brass, TextXAlignment = Enum.TextXAlignment.Left,
-  Position = UDim2.new(0, 18, 0, 6), Size = UDim2.new(1, -80, 0, 30), Text = "โรงรถ",
+  Position = UDim2.new(0, 18, 0, 6), Size = UDim2.new(1, -80, 0, 30), Text = L("โรงรถ"),
 })
 local subtitle = make("TextLabel", {
   Parent = header, BackgroundTransparency = 1, Font = Enum.Font.Gotham, TextSize = 14,
@@ -143,7 +145,7 @@ end
 local function request(msg)
   local ok, result = pcall(function() return net.Request:InvokeServer(msg) end)
   if not ok then
-    toast("ติดต่อเซิร์ฟเวอร์ไม่ได้", "warn")
+    toast(L("ติดต่อเซิร์ฟเวอร์ไม่ได้"), "warn")
     return nil
   end
   if type(result) ~= "table" then return nil end
@@ -160,15 +162,15 @@ local function renderGarage(data)
   currentStation = data.station
   data.vehicles = data.vehicles or {}
   clearBody()
-  title.Text = (data.station and data.station.title) or "โรงรถของฉัน"
+  title.Text = (data.station and data.station.title) and Show(data.station.title) or L("โรงรถของฉัน")
   -- ค่าบริการมาจากเซิร์ฟเวอร์ (คิดตามระยะจากบารอนเวนถึงลานจอด) เขียนบอกไว้ตั้งแต่ก่อนกด ไม่ใช่ให้รู้ตอน
   -- เงินหายไปแล้ว
-  local money = string.format("เงิน %d เหรียญ", data.gold or 0)
+  local money = L("เงิน %d เหรียญ", data.gold or 0)
   if data.station then
-    subtitle.Text = string.format("%s · ค่าเบิก %d เหรียญ (ห่างบารอนเวน %d studs) · %s",
-      data.station.title or (data.display or ""), data.retrieveFee or 0, data.retrieveStuds or 0, money)
+    subtitle.Text = L("%s · ค่าเบิก %d เหรียญ (ห่างบารอนเวน %d studs) · %s",
+      Show(data.station.title or (data.display or "")), data.retrieveFee or 0, data.retrieveStuds or 0, money)
   else
-    subtitle.Text = "พาหนะทั้งหมดที่คุณมีกุญแจ · " .. money
+    subtitle.Text = L("พาหนะทั้งหมดที่คุณมีกุญแจ · %s", money)
   end
 
   local list = make("ScrollingFrame", {
@@ -182,7 +184,7 @@ local function renderGarage(data)
     make("TextLabel", {
       Parent = list, BackgroundTransparency = 1, Size = UDim2.new(1, 0, 0, 80),
       Font = Enum.Font.Gotham, TextSize = 15, TextColor3 = PALETTE.soft, TextWrapped = true,
-      Text = "ยังไม่มีทะเบียนของชนิดนี้เลย — ต้องได้กุญแจมาก่อน แล้วกุญแจจะมาโผล่ที่นี่ให้กดจดทะเบียน",
+      Text = L("ยังไม่มีทะเบียนของชนิดนี้เลย — ต้องได้กุญแจมาก่อน แล้วกุญแจจะมาโผล่ที่นี่ให้กดจดทะเบียน"),
     })
   end
 
@@ -203,12 +205,12 @@ local function renderGarage(data)
       TextColor3 = PALETTE.soft, TextXAlignment = Enum.TextXAlignment.Left,
       Position = UDim2.new(0, 14, 0, 32), Size = UDim2.new(0, 320, 0, 18),
       Text = v.unregistered
-        and string.format("%s · 🔑 กุญแจในกระเป๋า ยังไม่ได้จดทะเบียน", spec.display or v.vtype)
-        or string.format("%s · %s%s%s%s", spec.display or v.vtype,
-          v.out and "อยู่ในโลก" or "จอดในโรงเก็บ",
-          v.locked and " · 🔒 ล็อกอยู่" or "",
+        and L("%s · 🔑 กุญแจในกระเป๋า ยังไม่ได้จดทะเบียน", spec.display or v.vtype)
+        or string.format("%s · %s%s%s%s", L(spec.display or v.vtype),
+          v.out and L("อยู่ในโลก") or L("จอดในโรงเก็บ"),
+          v.locked and L(" · 🔒 ล็อกอยู่") or "",
           v.fuel and string.format(" · 🔥 %d%%", v.fuel) or "",
-          v.durability and ((v.durability <= 0 and " · ⚙️ พังแล้ว")
+          v.durability and ((v.durability <= 0 and L(" · ⚙️ พังแล้ว"))
             or string.format(" · ⚙️ %d%%", v.durability)) or ""),
     })
 
@@ -225,7 +227,7 @@ local function renderGarage(data)
       --
       -- แถวว่างเปล่าเมื่อ canRegister ปิด: ไม่ใส่ปุ่มอื่นแทน เพราะไม่มีปุ่มไหนที่จะทำงานได้จริง
       if data.canRegister then
-        local reg = button("📜 จดทะเบียน", actions, PALETTE.ink, 130)
+        local reg = button(L("📜 จดทะเบียน"), actions, PALETTE.ink, 130)
         reg.MouseButton1Click:Connect(function()
           local r = request({ action = "Register", plate = v.plate, stationId = currentStation and currentStation.id })
           if r and r.vehicles then renderGarage(r) end
@@ -240,21 +242,21 @@ local function renderGarage(data)
     -- เติมถ่านกับซ่อมขึ้นเฉพาะตอน **ฝากแล้ว** เพราะเป็นเงื่อนไขของบริการเอง เซิร์ฟเวอร์ปฏิเสธคันที่ยังอยู่
     -- ในโลกอยู่แล้ว การซ่อนปุ่มจึงเป็นการพูดกติกาเดิมให้ตรงกัน ไม่ใช่กติกาที่สอง
     elseif v.out then
-      local stow = button("ฝากคืน", actions, PALETTE.ink, 90)
+      local stow = button(L("ฝากคืน"), actions, PALETTE.ink, 90)
       stow.MouseButton1Click:Connect(function()
         local r = request({ action = "Stow", plate = v.plate, stationId = currentStation and currentStation.id })
         if r and r.vehicles then renderGarage(r) end
       end)
     else
       local fee = data.retrieveFee or 0
-      local call = button(fee > 0 and ("เบิก · " .. fee) or "เบิกออกมา", actions, PALETTE.ink, 128)
+      local call = button(fee > 0 and L("เบิก · %d", fee) or L("เบิกออกมา"), actions, PALETTE.ink, 128)
       call.MouseButton1Click:Connect(function()
         local r = request({ action = "Summon", plate = v.plate, stationId = currentStation and currentStation.id })
         if r and r.vehicles then renderGarage(r) end
       end)
 
       if v.fuel and v.fuel < 100 and data.serviceRefuel then
-        local refuel = button("เติมถ่าน · " .. data.serviceRefuel, actions,
+        local refuel = button(L("เติมถ่าน · %d", data.serviceRefuel), actions,
           v.fuel < 40 and PALETTE.warn or PALETTE.row, 138)
         refuel.MouseButton1Click:Connect(function()
           local r = request({ action = "ServiceRefuel", plate = v.plate, stationId = currentStation and currentStation.id })
@@ -262,7 +264,7 @@ local function renderGarage(data)
         end)
       end
       if v.durability and v.durability < 100 and data.serviceRepair then
-        local fix = button("ซ่อม · " .. data.serviceRepair, actions,
+        local fix = button(L("ซ่อม · %d", data.serviceRepair), actions,
           v.durability <= 0 and PALETTE.warn or PALETTE.row, 120)
         fix.MouseButton1Click:Connect(function()
           local r = request({ action = "ServiceRepair", plate = v.plate, stationId = currentStation and currentStation.id })
@@ -283,7 +285,7 @@ local function renderGarage(data)
   make("TextLabel", {
     Parent = footer, BackgroundTransparency = 1, Font = Enum.Font.Gotham, TextSize = 12,
     TextColor3 = PALETTE.soft, TextXAlignment = Enum.TextXAlignment.Left, Size = UDim2.new(0, 420, 1, 0),
-    Text = "ต้องมีกุญแจในกระเป๋าก่อนถึงจดทะเบียนได้ · ยกกุญแจให้เพื่อนได้ · ค่าฝากคิดตามระยะจากบารอนเวน",
+    Text = L("ต้องมีกุญแจในกระเป๋าก่อนถึงจดทะเบียนได้ · ยกกุญแจให้เพื่อนได้ · ค่าฝากคิดตามระยะจากบารอนเวน"),
   })
 
   panel.Visible = true
@@ -319,7 +321,7 @@ local function itemTiles(parent, source, toTrunk, onChange)
       Parent = tile, BackgroundTransparency = 1, Font = Enum.Font.Gotham, TextSize = 11,
       TextColor3 = PALETTE.text, TextTruncate = Enum.TextTruncate.AtEnd,
       AnchorPoint = Vector2.new(0.5, 1), Position = UDim2.new(0.5, 0, 1, -4), Size = UDim2.new(1, -6, 0, 14),
-      Text = (item and item.name) or id,
+      Text = Show((item and item.name) or id),
     })
     -- จำนวน วางทับมุมล่างซ้ายของไอคอน แบบเดียวกับช่องในกระเป๋า
     make("TextLabel", {
@@ -345,7 +347,7 @@ local function itemTiles(parent, source, toTrunk, onChange)
   if empty then
     make("TextLabel", {
       Parent = parent, BackgroundTransparency = 1, Size = UDim2.fromOffset(TILE * 2, 40),
-      Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = PALETTE.soft, Text = "— ว่าง —",
+      Font = Enum.Font.Gotham, TextSize = 13, TextColor3 = PALETTE.soft, Text = L("— ว่าง —"),
     })
   end
 end
@@ -354,8 +356,8 @@ renderTrunk = function(data)
   clearBody()
   local used = 0
   for _ in pairs(data.trunk) do used += 1 end
-  title.Text = "ท้าย" .. (data.display or "พาหนะ") .. " " .. data.plate
-  subtitle.Text = string.format("ช่องเก็บของ %d/%d ช่อง", used, data.capacity)
+  title.Text = L("ท้าย%s %s", data.display or L("พาหนะ"), data.plate)
+  subtitle.Text = L("ช่องเก็บของ %d/%d ช่อง", used, data.capacity)
 
   -- แถบล่างกันไว้ให้ปุ่มเติมถ่าน กริดจึงสั้นลงเท่านั้น
   local FOOTER = 40
@@ -383,8 +385,8 @@ renderTrunk = function(data)
     }) })
   end
 
-  local bagList = column(0, 0.5, "🎒 กระเป๋าของคุณ")
-  local trunkList = column(0.5, 0.5, "📦 ท้ายพาหนะ")
+  local bagList = column(0, 0.5, L("🎒 กระเป๋าของคุณ"))
+  local trunkList = column(0.5, 0.5, L("📦 ท้ายพาหนะ"))
 
   local function move(id, count, toTrunk)
     local r = request({ action = "Move", plate = data.plate, item = id, count = count, toTrunk = toTrunk })
@@ -408,14 +410,14 @@ renderTrunk = function(data)
     Parent = footer, BackgroundTransparency = 1, Font = Enum.Font.Gotham, TextSize = 12,
     TextColor3 = PALETTE.soft, TextXAlignment = Enum.TextXAlignment.Left,
     Position = UDim2.new(0, 0, 0, 0), Size = UDim2.new(1, -190, 1, 0), TextWrapped = true,
-    Text = data.fuel and string.format("🔥 ถ่านในเตา %d%%  ·  เติมเต็มถังใช้ถ่าน %d ก้อน",
+    Text = data.fuel and L("🔥 ถ่านในเตา %d%%  ·  เติมเต็มถังใช้ถ่าน %d ก้อน",
       data.fuel, data.coalPerFullTank or 100) or "",
   })
   local refuel = make("TextButton", {
     Parent = footer, BackgroundColor3 = (data.fuel and data.fuel < 40) and PALETTE.warn or PALETTE.ink,
     AutoButtonColor = true, Font = Enum.Font.GothamBold, TextSize = 14, TextColor3 = PALETTE.brass,
     AnchorPoint = Vector2.new(1, 0.5), Position = UDim2.new(1, 0, 0.5, 0), Size = UDim2.fromOffset(180, 30),
-    Text = "🔥 เติมถ่านจากกระเป๋า",
+    Text = L("🔥 เติมถ่านจากกระเป๋า"),
   }, { corner(6), stroke(PALETTE.brassDim, 1) })
   refuel.MouseButton1Click:Connect(function()
     local r = request({ action = "Refuel", plate = data.plate })
@@ -464,7 +466,7 @@ local hudBoost = make("TextLabel", {
   Parent = hud, BackgroundColor3 = PALETTE.warn, BackgroundTransparency = 0.1, Visible = false,
   Font = Enum.Font.GothamBold, TextSize = 12, TextColor3 = Color3.fromRGB(28, 22, 12),
   AnchorPoint = Vector2.new(1, 0), Position = UDim2.new(1, -116, 0, 3), Size = UDim2.fromOffset(62, 20),
-  Text = "⚡ บูสต์",
+  Text = L("⚡ บูสต์"),
 }, { corner(5) })
 
 -- ความเร็ว ตัวใหญ่สุดในแถบ พร้อมหน่วยตัวเล็กใต้เลข เพื่อให้เลขไม่ต้องแบกคำอธิบายไว้ในตัวเอง
@@ -508,8 +510,8 @@ local function meter(x, w, label)
   return { name = name, readout = readout, bar = bar }
 end
 
-local fuelMeter = meter(0, 0.5, "🔥 ถ่านในเตา")
-local wearMeter = meter(0.5, 0.5, "⚙️ ความคงทน")
+local fuelMeter = meter(0, 0.5, L("🔥 ถ่านในเตา"))
+local wearMeter = meter(0.5, 0.5, L("⚙️ ความคงทน"))
 
 local hudHint = make("TextLabel", {
   Parent = hud, BackgroundTransparency = 1, Font = Enum.Font.Gotham, TextSize = 11,
@@ -524,7 +526,7 @@ local function setMeter(m, fraction, broken)
   m.bar.Size = UDim2.new(fraction, 0, 1, 0)
   m.bar.BackgroundColor3 = (fraction <= 0.001) and PALETTE.warn
     or (fraction < 0.2 and Color3.fromRGB(226, 168, 96) or PALETTE.brass)
-  m.readout.Text = broken and "พังแล้ว" or (math.floor(fraction * 100 + 0.5) .. "%")
+  m.readout.Text = broken and L("พังแล้ว") or (math.floor(fraction * 100 + 0.5) .. "%")
   m.readout.TextColor3 = (fraction < 0.2) and PALETTE.warn or PALETTE.text
 end
 
@@ -558,11 +560,16 @@ local function setDriving(data)
     return
   end
   driving = { plate = data.plate, mode = data.mode, model = findModel(data.plate) }
-  hudTitle.Text = (data.display or "พาหนะ") .. "  " .. data.plate
-  hudHint.Text = TOUCH_ONLY and ("⚡ บูสต์ · 📯 หวูด" .. (data.mode == "Hover" and " · ลูกศรขึ้น-ลง" or "") .. " · ปุ่มกระโดด = ลงจากรถ")
-    or data.mode == "Hover"
-    and "W/S เดินหน้า-ถอย · Shift บูสต์ · A/D เลี้ยว · เล็งกล้องไต่-ดิ่ง · R/F ขึ้น-ลง · H หวูด · L ล็อก · ซ้อน " .. (data.seats or 0)
-    or "W/S เร่ง-ถอย · Shift บูสต์ · A/D เลี้ยว · H หวูด · L ล็อก · เบาะซ้อน " .. (data.seats or 0) .. " ที่"
+  hudTitle.Text = (data.display and Show(data.display) or L("พาหนะ")) .. "  " .. data.plate
+  local hover = data.mode == "Hover"
+  if TOUCH_ONLY then
+    hudHint.Text = hover and L("⚡ บูสต์ · 📯 หวูด · ลูกศรขึ้น-ลง · ปุ่มกระโดด = ลงจากรถ")
+      or L("⚡ บูสต์ · 📯 หวูด · ปุ่มกระโดด = ลงจากรถ")
+  else
+    hudHint.Text = hover
+      and L("W/S เดินหน้า-ถอย · Shift บูสต์ · A/D เลี้ยว · เล็งกล้องไต่-ดิ่ง · R/F ขึ้น-ลง · H หวูด · L ล็อก · ซ้อน %d", data.seats or 0)
+      or L("W/S เร่ง-ถอย · Shift บูสต์ · A/D เลี้ยว · H หวูด · L ล็อก · เบาะซ้อน %d ที่", data.seats or 0)
+  end
   hud.Visible = true
   if onTouchDriving then onTouchDriving(data.mode) end
 end
@@ -580,7 +587,7 @@ RunService.RenderStepped:Connect(function()
   -- ความสูงไปอยู่บรรทัดหน่วย ไม่ใช่ยัดเข้าไปในตัวเลขใหญ่: สองตัวเลขในช่องเดียวที่ฟอนต์ขนาด 30 คือช่องที่
   -- ล้นเสมอ และตัวไหนคือความเร็วก็เดาไม่ออก
   hudUnit.Text = driving.mode == "Hover"
-    and ("stud/s · สูง " .. (model:GetAttribute("Altitude") or 0))
+    and L("stud/s · สูง %d", model:GetAttribute("Altitude") or 0)
     or "stud/s"
 
   -- ส่งมุมเล็งกล้องให้เซิร์ฟเวอร์ เฉพาะตอนขยับจริงและไม่เกิน ~12 ครั้ง/วินาที
@@ -598,7 +605,7 @@ RunService.RenderStepped:Connect(function()
   setMeter(fuelMeter, fuel)
   if fuel < 0.2 and not warnedLow then
     warnedLow = true
-    toast("🔥 ถ่านใกล้หมด — เปิดท้ายรถแล้วกดเติมถ่าน", "warn")
+    toast(L("🔥 ถ่านใกล้หมด — เปิดท้ายรถแล้วกดเติมถ่าน"), "warn")
   elseif fuel >= 0.25 then
     warnedLow = false
   end
@@ -607,7 +614,7 @@ RunService.RenderStepped:Connect(function()
   setMeter(wearMeter, wear, wear <= 0.001)
   if wear < 0.25 and not warnedWear then
     warnedWear = true
-    toast("⚙️ สภาพรถย่ำแย่ — ให้นักประดิษฐ์ซ่อม หรือฝากคืนกับบารอนเวนแล้วกดซ่อม", "warn")
+    toast(L("⚙️ สภาพรถย่ำแย่ — ให้นักประดิษฐ์ซ่อม หรือฝากคืนกับบารอนเวนแล้วกดซ่อม"), "warn")
   elseif wear >= 0.3 then
     warnedWear = false
   end

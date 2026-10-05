@@ -7,6 +7,7 @@
 -- ปุ่มทุกปุ่มมีไว้ให้มือถือเป็นหลัก คีย์บอร์ดมีทางลัดเดียวกัน (คลิก ลาก R Esc F4)
 local Responsive = require(script.Parent.Responsive)
 local ItemIcon = require(script.Parent.ItemIcon)
+local L = require(script.Parent.Parent.Locale).L
 
 local PANEL = Color3.fromRGB(24, 22, 28)
 local CARD = Color3.fromRGB(40, 37, 46)
@@ -68,7 +69,7 @@ function IslandBuildGui.new(playerGui)
 	head.Parent = gui
 	corner(head)
 	Responsive.Scale(head, 0.55)
-	local headText = text(head, "🏗️ จัดเกาะ · แตะของเพื่อเลือก · ลากเพื่อย้าย", 15, BRASS, Enum.Font.GothamBold)
+	local headText = text(head, L("🏗️ จัดเกาะ · แตะของเพื่อเลือก · ลากเพื่อย้าย"), 15, BRASS, Enum.Font.GothamBold)
 	headText.Position = UDim2.new(0, 14, 0, 0)
 	headText.Size = UDim2.new(1, -130, 1, 0)
 	headText.TextXAlignment = Enum.TextXAlignment.Left
@@ -81,7 +82,7 @@ function IslandBuildGui.new(playerGui)
 	exit.Font = Enum.Font.GothamBold
 	exit.TextSize = 14
 	exit.TextColor3 = TEXT
-	exit.Text = IslandBuildGui.TouchOnly and "ออก" or "ออก (F4)"
+	exit.Text = IslandBuildGui.TouchOnly and L("ออก") or L("ออก (F4)")
 	exit.Parent = head
 	corner(exit, 8)
 	exit.MouseButton1Click:Connect(function() if self.OnExit then self.OnExit() end end)
@@ -144,7 +145,7 @@ function IslandBuildGui.new(playerGui)
 	barLayout.Padding = UDim.new(0, 8)
 	barLayout.SortOrder = Enum.SortOrder.LayoutOrder
 	barLayout.Parent = bar
-	local empty = text(bar, "ไม่มีของวางได้ในกระเป๋า VIP — ซื้อที่ร้านบนเกาะ", 15, MUTED)
+	local empty = text(bar, L("ไม่มีของวางได้ในกระเป๋า VIP — ซื้อที่ร้านบนเกาะ"), 15, MUTED)
 	empty.Size = UDim2.new(0, 740, 0, 90)
 
 	-- ปุ่มซูม (มือถือ): ขวากลางจอ ห่างทั้งแถบล่างและกลุ่มปุ่มกระโดด · + / - เป็นตัวอักษร ASCII วาดได้ทุกฟอนต์

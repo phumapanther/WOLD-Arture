@@ -20,6 +20,7 @@ if workspace:GetAttribute("IsLobby") then return end
 local EmoteConfig = require(game.ReplicatedStorage.EmoteConfig)
 local EmoteAccess = require(game.ReplicatedStorage.UI.EmoteAccess)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local L = require(game.ReplicatedStorage.Locale).L
 
 local player = Players.LocalPlayer
 
@@ -91,12 +92,12 @@ end
 
 function EmoteAccess.Play(id)
 	local entry = EmoteConfig.Get(id)
-	if not entry then return false, "ไม่มีท่าชื่อนี้" end
-	if entry.anim == "" then return false, ("ท่า %s ยังไม่ได้อัปโหลด"):format(entry.label) end
+	if not entry then return false, L("ไม่มีท่าชื่อนี้") end
+	if entry.anim == "" then return false, L("ท่า %s ยังไม่ได้อัปโหลด", entry.label) end
 
 	local humanoid = humanoidOf()
 	local animator = humanoid and humanoid:FindFirstChildOfClass("Animator")
-	if not animator then return false, "ตัวละครยังไม่พร้อม" end
+	if not animator then return false, L("ตัวละครยังไม่พร้อม") end
 
 	-- Asking for the pose you are already in means standing up. The button that started it is the button that
 	-- ends it, which is what people reach for first.
@@ -107,14 +108,14 @@ function EmoteAccess.Play(id)
 	-- nothing at all, and the player has to press a second time to get the pose they asked for.
 	if current and current.entry.id == id and current.track and current.track.IsPlaying then
 		stop()
-		return true, ("เลิก%s"):format(entry.label)
+		return true, L("เลิก%s", entry.label)
 	end
 	stop(0.15)
 
 	local anim = Instance.new("Animation")
 	anim.AnimationId = entry.anim
 	local ok, track = pcall(function() return animator:LoadAnimation(anim) end)
-	if not ok or not track then return false, "โหลดท่าไม่สำเร็จ" end
+	if not ok or not track then return false, L("โหลดท่าไม่สำเร็จ") end
 
 	-- Action4 so a pose sits above the walk and idle the default Animate script is running, but below
 	-- nothing this game plays: the crawl, the carry and the knockdown all have to win over an emote, and
@@ -142,7 +143,7 @@ function EmoteAccess.Play(id)
 		end)
 	end
 
-	return true, entry.label
+	return true, L(entry.label)
 end
 
 function EmoteAccess.Stop()

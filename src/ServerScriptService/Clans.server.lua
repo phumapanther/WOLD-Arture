@@ -81,7 +81,7 @@ local function memberRows(clan)
 		local userId = tonumber(userIdStr)
 		rows[#rows + 1] = {
 			userId = userId,
-			name = (clan.names and clan.names[userIdStr]) or ("ผู้เล่น " .. userIdStr),
+			name = (clan.names and clan.names[userIdStr]) or ("ผู้เล่น %s"):format(userIdStr),
 			role = role,
 			roleName = ClanConfig.RoleName(role),
 			rank = ClanConfig.RankOf(role),

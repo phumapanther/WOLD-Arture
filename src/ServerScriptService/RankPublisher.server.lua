@@ -67,7 +67,7 @@ if RunService:IsStudio() then
 		if op == "Publish" then publish(...) return true end
 		if op == "Wealth" then return wealthOf(...) end
 		if op == "Top" then GlobalRanks.ClearCache() return GlobalRanks.Top(...) end
-		error("RankTest: ไม่มี op " .. tostring(op))
+		error("RankTest: ไม่มี op " .. tostring(op)) -- locale: skip
 	end
 	bf.Parent = game:GetService("ServerStorage")
 end
