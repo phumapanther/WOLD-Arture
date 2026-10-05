@@ -10,13 +10,14 @@ if not ok then store = nil end
 local function keyOf(player) return "u_" .. player.UserId end
 
 PlayerJoin.Each(function(player)
+	-- ตั้งแอตทริบิวต์ครั้งเดียว **หลังอ่านที่เก็บ** — ไคลเอนต์รอค่านี้ (≤2 วิ ใน Locale) ก่อนสร้างป้าย
+	-- ถ้าตั้งค่าเดาก่อน ป้ายที่สร้างตอนบูต (จอโหลด HUD) จะติดภาษาไอดีทุกครั้งที่เข้า ทั้งที่เลือกภาษาอื่นไว้
 	local guess = Locale.FromLocaleId(player.LocaleId)
-	player:SetAttribute("WOLD_Lang", guess) -- ทันที ไม่รอ DataStore
-	if not store then return end
-	local got, saved = pcall(function() return store:GetAsync(keyOf(player)) end)
-	-- ระหว่างรอ ผู้เล่นอาจกดเลือกภาษาเองแล้ว → ค่าที่เพิ่งกดชนะ ไม่ถูกค่าเก่าในที่เก็บทับ
-	if got and Locale.Valid(saved) and player.Parent and player:GetAttribute("WOLD_Lang") == guess then
-		player:SetAttribute("WOLD_Lang", saved)
+	local got, saved = false, nil
+	if store then got, saved = pcall(function() return store:GetAsync(keyOf(player)) end) end
+	-- ระหว่างรอ ผู้เล่นอาจกดเลือกภาษาเองแล้ว → ค่าที่เพิ่งกดชนะ
+	if player.Parent and player:GetAttribute("WOLD_Lang") == nil then
+		player:SetAttribute("WOLD_Lang", (got and Locale.Valid(saved)) and saved or guess)
 	end
 end)
 

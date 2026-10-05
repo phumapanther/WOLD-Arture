@@ -115,4 +115,17 @@ end
 function Locale.L(thai, ...) return Locale.T(Locale.Current(), thai, ...) end
 function Locale.Show(text) return Locale.Translate(Locale.Current(), text) end
 
+-- รอแอตทริบิวต์ WOLD_Lang (เซิร์ฟตั้งหลังอ่านที่เก็บ) ไม่เกิน timeout วิ · หมดเวลา = nil แล้ว Current ใช้ภาษาไอดี
+function Locale.AwaitChoice(player, timeout)
+	local started = os.clock()
+	while player:GetAttribute("WOLD_Lang") == nil and os.clock() - started < timeout do task.wait(0.05) end
+	return player:GetAttribute("WOLD_Lang")
+end
+
+-- ฝั่งไคลเอนต์: โมดูลแรกที่ require ตัวนี้ (จอโหลด HUD กระเป๋า) รอภาษาที่เลือกไว้ก่อนสร้างป้ายตอนบูต
+if game:GetService("RunService"):IsClient() then
+	local player = game:GetService("Players").LocalPlayer
+	if player then Locale.AwaitChoice(player, 2) end
+end
+
 return Locale

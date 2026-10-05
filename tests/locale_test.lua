@@ -50,4 +50,25 @@ tr("zh", "ขาย ดาบ x1 ได้ 120", "出售 剑 x1，获得 120", "
 tr("en", "ดาบ (ในบ้าน) x3", "Sword (indoor) x3", "แม่แบบซ้อน %s")
 tr("en", "ดาบ +3", "Sword +3", "ขั้นตีบวกจากเซิร์ฟ")
 
+-- รอภาษาที่เซิร์ฟอ่านจากที่เก็บก่อนสร้างป้าย (รีวิวรอบท้าย Important #1)
+local fakeSet = { GetAttribute = function() return "ja" end }
+local fakeNone = { GetAttribute = function() return nil end }
+check(L.AwaitChoice and L.AwaitChoice(fakeSet, 2) == "ja", "AwaitChoice คืนทันทีเมื่อมีค่าแล้ว")
+check(L.AwaitChoice and L.AwaitChoice(fakeNone, 0) == nil, "AwaitChoice หมดเวลา = nil (ไม่ค้าง)")
+
+-- ชื่อตกแต่งจากเซิร์ฟ (ขอบทอง · สกิน · ขั้น+สกิน · แคลน · ทะเบียน) ย้อนแปลงได้ตรงกับ DisplayName ภาษานั้น (รีวิว Important #2)
+for _, case in ipairs({
+	{ "Egg", { gold = true } },
+	{ "Sword", { skin = "Skin_Sword_Frost" } },
+	{ "Sword", { enhance = 7, skin = "Skin_Sword_Frost" } },
+	{ "ClanRing", { clan = "Knights" } },
+	{ "CarKey", { plate = "CAR-1234" } },
+}) do
+	for _, lang in ipairs({ "en", "zh", "ja" }) do
+		local want = IC.DisplayName(case[1], case[2], lang)
+		local got = L.Translate(lang, IC.DisplayName(case[1], case[2], "th"))
+		check(got == want, ("ชื่อตกแต่ง %s %s: %s ≠ %s"):format(case[1], lang, got, want))
+	end
+end
+
 return (fails == 0 and "PASS\n" or ("FAIL x%d\n"):format(fails)) .. table.concat(out, "\n")
