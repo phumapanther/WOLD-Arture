@@ -46,4 +46,8 @@ tr("en", "🏠 บ้านเต็มแล้ว (2/2 หลัง) — เ�
 tr("en", "สร้าง ดาบ ล้มเหลว วัสดุเสียไป", "Crafting Sword failed, materials lost", "คราฟล้มเหลว")
 tr("zh", "ขาย ดาบ x1 ได้ 120", "出售 剑 x1，获得 120", "ขาย (จีน)")
 
+-- ชื่อซ้อนแม่แบบ (Task 8): ช่อง %s แปลซ้ำได้
+tr("en", "ดาบ (ในบ้าน) x3", "Sword (indoor) x3", "แม่แบบซ้อน %s")
+tr("en", "ดาบ +3", "Sword +3", "ขั้นตีบวกจากเซิร์ฟ")
+
 return (fails == 0 and "PASS\n" or ("FAIL x%d\n"):format(fails)) .. table.concat(out, "\n")

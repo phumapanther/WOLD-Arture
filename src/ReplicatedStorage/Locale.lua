@@ -91,7 +91,11 @@ function Locale.Translate(lang, text)
 				if spec == "%%" then return "%" end
 				i += 1
 				local v = caps[i]
-				return v and (t[v] or v) or ""
+				if not v then return "" end
+				if t[v] then return t[v] end
+				-- ช่อง %s ที่เป็นข้อความซ้อนแม่แบบอีกชั้น ("ดาบ (ในบ้าน) x3") · สั้นกว่าเดิมเสมอ = ไม่วนไม่จบ
+				if spec:sub(-1) == "s" and #v < #text then return Locale.Translate(lang, v) end
+				return v
 			end)
 			return result
 		end

@@ -9,6 +9,8 @@ local Responsive = require(script.Parent.Responsive)
 local NumberBox = require(script.Parent.NumberBox) -- พิมพ์เกินที่มี = เด้งเป็นเลขสูงสุด (2026-10-02)
 local UiSound = require(script.Parent.UiSound)
 local ItemIcon = require(script.Parent.ItemIcon)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -95,7 +97,7 @@ function ShopGui.new()
 	title.TextSize = 19
 	title.TextColor3 = RUNE
 	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.Text = "ร้านขายของ"
+	title.Text = L("ร้านขายของ")
 	title.Parent = panel
 
 	local purse = Instance.new("TextLabel")
@@ -185,8 +187,8 @@ function ShopGui.new()
 	self.tabs = tabs
 	self.tab = nil -- หมวดที่เลือกอยู่ อยู่ข้ามการวาดใหม่ (เซิร์ฟเวอร์ส่งภาพใหม่หลังทุกการซื้อ)
 
-	self.sellList = column(0, "ของขาย")
-	self.buyList = column(0.5, "ร้านรับซื้อ")
+	self.sellList = column(0, L("ของขาย"))
+	self.buyList = column(0.5, L("ร้านรับซื้อ"))
 
 	-- Sell everything the shop will take, in one press. Sitting in the heading rather than at the bottom of
 	-- the list so it does not move as the list grows and shrinks.
@@ -200,7 +202,7 @@ function ShopGui.new()
 	sellAll.Font = Enum.Font.GothamBold
 	sellAll.TextSize = 12
 	sellAll.TextColor3 = Color3.fromRGB(24, 26, 32)
-	sellAll.Text = "ขายทั้งหมด"
+	sellAll.Text = L("ขายทั้งหมด")
 	sellAll.Parent = self.buyList.Parent
 	corner(sellAll, UDim.new(0, 5))
 	sellAll.Activated:Connect(function()
@@ -287,7 +289,7 @@ local function row(parent, order, icon, name, priceText, buttons, extra, priceCo
 	label.TextXAlignment = Enum.TextXAlignment.Left
 	label.TextWrapped = priceText == nil
 	label.TextTruncate = Enum.TextTruncate.AtEnd
-	label.Text = name
+	label.Text = Show(name)
 	label.Parent = frame
 
 	if priceText then
@@ -300,7 +302,7 @@ local function row(parent, order, icon, name, priceText, buttons, extra, priceCo
 		price.TextColor3 = priceColor or GOLD
 		price.TextTruncate = Enum.TextTruncate.AtEnd
 		price.TextXAlignment = Enum.TextXAlignment.Left
-		price.Text = priceText
+		price.Text = Show(priceText)
 		price.Parent = frame
 	end
 	return frame, x
@@ -395,7 +397,7 @@ function ShopGui:drawTabs(categories)
 		b.Font = Enum.Font.GothamBold
 		b.TextSize = 13
 		b.TextColor3 = on and INK or TEXT_MUTED
-		b.Text = c.label
+		b.Text = Show(c.label)
 		b.Parent = self.tabs
 		corner(b, UDim.new(0, 6))
 		b.Activated:Connect(function()
@@ -422,7 +424,7 @@ function ShopGui:Show(snapshot)
 		local level = snapshot.farmLevel and ("🌾 Lv %d · "):format(snapshot.farmLevel) or ""
 		self.purse.Text = ("%s💰 %s · 💎 %s"):format(level, commas(snapshot.gold or 0), commas(snapshot.gems))
 	else
-		self.purse.Text = ("เงิน %d"):format(snapshot.gold or 0)
+		self.purse.Text = L("เงิน %d", snapshot.gold or 0)
 	end
 
 	local filter = self:drawTabs(snapshot.categories)
@@ -448,7 +450,7 @@ function ShopGui:Show(snapshot)
 				-- จมลงใต้ของที่ซื้อได้ทุกแถว ลำดับในกลุ่มเดิม (ผู้ใช้สั่ง 2026-09-28: คอกสัตว์ตกล่างสุดต้องเลื่อนหา)
 				-- เต็มเพดาน (บ้าน/สัตว์เลี้ยง/คอก) = "เต็ม" · ยังไม่ปลดเลเวล = 🔒 (ผู้ใช้สั่ง 2026-10-02)
 				local frame = row(self.sellList, 100000 + entry.index, entry.icon, label, entry.lock, {
-					{ name = "Locked", text = entry.full and "เต็ม" or "🔒", color = Color3.fromRGB(70, 74, 84), width = 58, onClick = function()
+					{ name = "Locked", text = entry.full and L("เต็ม") or "🔒", color = Color3.fromRGB(70, 74, 84), width = 58, onClick = function()
 						self:Note(entry.lock)
 					end },
 				}, nil, Color3.fromRGB(214, 150, 110))
@@ -464,8 +466,8 @@ function ShopGui:Show(snapshot)
 				buttons = { { name = "BuyGems", text = "💎 " .. commas(entry.gems), color = GEM, width = 58, onClick = buy("gems"),
 					short = entry.gems > gems } }
 			else
-				priceText = ("ราคา %d"):format(entry.coins or 0)
-				buttons = { { name = "Buy", text = "ซื้อ", color = Color3.fromRGB(150, 200, 140), width = 58, onClick = buy(nil),
+				priceText = L("ราคา %d", entry.coins or 0)
+				buttons = { { name = "Buy", text = L("ซื้อ"), color = Color3.fromRGB(150, 200, 140), width = 58, onClick = buy(nil),
 					short = (entry.coins or 0) > gold } }
 			end
 			if buttons then
@@ -485,15 +487,15 @@ function ShopGui:Show(snapshot)
 		empty.Font = Enum.Font.Gotham
 		empty.TextSize = 12
 		empty.TextColor3 = TEXT_MUTED
-		empty.Text = "ไม่มีของที่ร้านรับซื้อ"
+		empty.Text = L("ไม่มีของที่ร้านรับซื้อ")
 		empty.Parent = self.buyList
 	end
 	for order, entry in ipairs(snapshot.buys or {}) do
 		local stack = entry.count > 1
 		local frame, used = row(self.buyList, order, entry.icon,
 			("%s x%d"):format(entry.name, entry.count),
-			("ชิ้นละ %d — รวม %d"):format(entry.each, entry.total),
-			{ { name = "Sell", text = "ขายหมด", color = GOLD, width = 58, onClick = function()
+			L("ชิ้นละ %d — รวม %d", entry.each, entry.total),
+			{ { name = "Sell", text = L("ขายหมด"), color = GOLD, width = 58, onClick = function()
 				-- nil amount means the whole stack.
 				if self.onSell then self.onSell(entry.slot, nil) end
 			end } },
@@ -509,14 +511,14 @@ function ShopGui:Show(snapshot)
 	-- Prices drift on a server-wide timer, and saying when makes a low price feel like a reason to come
 	-- back rather than a reason to stop playing.
 	local left = snapshot.rerollIn or 0
-	self.hint.Text = ("ราคารับซื้อเปลี่ยนใหม่ใน %d นาที"):format(math.max(0, left // 60))
+	self.hint.Text = L("ราคารับซื้อเปลี่ยนใหม่ใน %d นาที", math.max(0, left // 60))
 
 	self.gui.Enabled = true
 end
 
 -- ข้อความสั้นที่ท้ายร้านชั่วคราว (เหตุผลที่ของล็อก) แล้วกลับเป็นบรรทัดเวลาราคาเหมือนเดิม
 function ShopGui:Note(text)
-	self.hint.Text = text
+	self.hint.Text = Show(text)
 	self.hint.TextColor3 = Color3.fromRGB(236, 190, 120)
 	local token = os.clock()
 	self.noteToken = token
@@ -524,7 +526,7 @@ function ShopGui:Note(text)
 		if self.noteToken ~= token then return end
 		self.hint.TextColor3 = TEXT_MUTED
 		if self.last then
-			self.hint.Text = ("ราคารับซื้อเปลี่ยนใหม่ใน %d นาที"):format(math.max(0, (self.last.rerollIn or 0) // 60))
+			self.hint.Text = L("ราคารับซื้อเปลี่ยนใหม่ใน %d นาที", math.max(0, (self.last.rerollIn or 0) // 60))
 		end
 	end)
 end

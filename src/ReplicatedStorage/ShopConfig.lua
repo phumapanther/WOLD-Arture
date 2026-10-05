@@ -45,7 +45,7 @@ local function mainPrice(id)
 	for _, row in ipairs(ShopConfig.Sells) do
 		if row.id == id then return row.price end
 	end
-	error("ShopConfig: " .. id .. " ไม่มีในร้านเกมหลัก")
+	error("ShopConfig: " .. id .. " ไม่มีในร้านเกมหลัก") -- locale: skip
 end
 
 ShopConfig.IslandSells = {

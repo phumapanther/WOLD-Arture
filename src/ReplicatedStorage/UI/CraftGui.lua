@@ -11,6 +11,8 @@ local ItemIcon = require(script.Parent.ItemIcon)
 local NumberBox = require(script.Parent.NumberBox)
 local CraftFuel = require(script.Parent.Parent.CraftFuel) -- เชื้อเพลิงเครื่องบนเกาะ (2026-10-02)
 local CraftConfig = require(script.Parent.Parent.CraftConfig) -- ราคา 💎 เสร็จทันที (InstantGems)
+local Locale = require(script.Parent.Parent.Locale)
+local L, Show = Locale.L, Locale.Show
 
 local STONE = Color3.fromRGB(38, 40, 48)
 local STONE_DEEP = Color3.fromRGB(26, 28, 34)
@@ -95,7 +97,7 @@ function CraftGui.new()
 	title.TextSize = 19
 	title.TextColor3 = RUNE
 	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.Text = "โรงตีเหล็ก"
+	title.Text = L("โรงตีเหล็ก")
 	title.TextTruncate = Enum.TextTruncate.AtEnd
 	title.Parent = panel
 	self.title = title
@@ -250,7 +252,7 @@ function CraftGui.new()
 	box.Font = Enum.Font.GothamBold
 	box.TextSize = 12
 	box.TextColor3 = TEXT_LIGHT
-	box.PlaceholderText = "จำนวน"
+	box.PlaceholderText = L("จำนวน")
 	box.PlaceholderColor3 = TEXT_MUTED
 	box.ClearTextOnFocus = false
 	box.Text = ""
@@ -258,7 +260,7 @@ function CraftGui.new()
 	corner(box, UDim.new(0, 5))
 	NumberBox.Bind(box, function() return self.fuelMax end)
 	self.fuelBox = box
-	fuelButton("เติม", 52, 8, RUNE, function()
+	fuelButton(L("เติม"), 52, 8, RUNE, function()
 		local n = NumberBox.Value(box.Text)
 		if n and n > 0 and self.onFuel then self.onFuel(n) end
 		box.Text = ""
@@ -280,19 +282,19 @@ function CraftGui.new()
 	-- ปุ่มเร่ง (ผู้ใช้เลือก 2026-10-02): ระหว่างเครื่องทำงาน · เผาเชื้อเพลิงทั้งถัง ลดเวลา 1:1 · แตะสองครั้งยืนยัน
 	-- (แตะพลาดครั้งเดียว = ถ่านทั้งถังหาย) · โผล่เฉพาะตอนเครื่องนี้ทำงานอยู่และมีเชื้อเพลิง (Render ตั้ง)
 	local boost
-	boost = fuelButton("⚡ เร่ง", 56, 214, Color3.fromRGB(120, 180, 240), function()
+	boost = fuelButton(L("⚡ เร่ง"), 56, 214, Color3.fromRGB(120, 180, 240), function()
 		if boost:GetAttribute("Armed") then
 			boost:SetAttribute("Armed", nil)
-			boost.Text = "⚡ เร่ง"
+			boost.Text = L("⚡ เร่ง")
 			if self.onBoost then self.onBoost() end
 			return
 		end
 		boost:SetAttribute("Armed", true)
-		boost.Text = "ยืนยัน?"
+		boost.Text = L("ยืนยัน?")
 		task.delay(3, function()
 			if boost:GetAttribute("Armed") then
 				boost:SetAttribute("Armed", nil)
-				boost.Text = "⚡ เร่ง"
+				boost.Text = L("⚡ เร่ง")
 			end
 		end)
 	end)
@@ -343,7 +345,7 @@ function CraftGui:RefreshInstant()
 	button.Visible = show
 	if show then
 		local gems = CraftConfig.InstantGems(remaining)
-		button.Text = button:GetAttribute("Armed") and ("ยืนยัน 💎 %d ?"):format(gems) or ("💎 เสร็จทันที %d"):format(gems)
+		button.Text = button:GetAttribute("Armed") and L("ยืนยัน 💎 %d ?", gems) or L("💎 เสร็จทันที %d", gems)
 	else
 		button:SetAttribute("Armed", nil)
 	end
@@ -378,10 +380,10 @@ function CraftGui:ApplyBusy()
 				Size = UDim2.fromScale(1, 1),
 			}):Play()
 			-- เตาไม่ได้ตีเหล็ก: คำว่า "กำลังตี" ที่หน้าครัวอ่านแล้วสะดุด
-			row.button.Text = (self.snapshot and self.snapshot.station) and "กำลังทำ..." or "กำลังตี..."
+			row.button.Text = (self.snapshot and self.snapshot.station) and L("กำลังทำ...") or L("กำลังตี...")
 		else
 			-- ผู้ใช้สั่ง 2026-10-02 · งานที่คืนมาหลังเข้าเกมใหม่ไม่รู้ว่าสูตรไหน (busyIndex nil) = ทุกแถวขึ้นแบบนี้
-			row.button.Text = "รอสักครู่"
+			row.button.Text = L("รอสักครู่")
 		end
 		-- Every button, not just the busy row's: the server refuses a second craft anyway, and a window that
 		-- lets the player press and then tells them off is worse than one that simply does not offer. Greyed
@@ -418,7 +420,7 @@ function CraftGui:ApplyOutcome()
 	-- The colour carries it rather than the wording, because the one thing a player must not have to read
 	-- twice is whether the 25,000 they just spent bought anything.
 	-- แถวตีบวกมีข้อความผลของตัวเอง (winText/failText จากสแนปช็อต)
-	row.odds.Text = self.outcomeOk and (row.winText or "สำเร็จ!") or (row.failText or "ล้มเหลว! เสียวัสดุและค่าจ้างไปแล้ว")
+	row.odds.Text = self.outcomeOk and (Show(row.winText) or L("สำเร็จ!")) or (Show(row.failText) or L("ล้มเหลว! เสียวัสดุและค่าจ้างไปแล้ว"))
 	row.odds.TextColor3 = self.outcomeOk and WIN or LOSE
 	row.frame.BackgroundColor3 = self.outcomeOk and Color3.fromRGB(40, 66, 44) or Color3.fromRGB(72, 38, 36)
 	-- Fading back to the row's normal colour is what ends the moment, so the outcome does not need clearing by
@@ -454,10 +456,10 @@ end
 -- "3 นาที" / "1 ชม. 30 นาที" / "45 วินาที" — เวลาของเครื่องบนเกาะยาวเป็นชั่วโมง
 local function duration(seconds)
 	seconds = math.floor(seconds or 0)
-	if seconds < 60 then return ("%d วินาที"):format(seconds) end
+	if seconds < 60 then return L("%d วินาที", seconds) end
 	local h, m = seconds // 3600, (seconds % 3600) // 60
-	if h > 0 then return m > 0 and ("%d ชม. %d นาที"):format(h, m) or ("%d ชม."):format(h) end
-	return ("%d นาที"):format(m)
+	if h > 0 then return m > 0 and L("%d ชม. %d นาที", h, m) or L("%d ชม.", h) end
+	return L("%d นาที", m)
 end
 
 -- `times` = จำนวนรอบที่เลือกไว้ (เครื่องบนเกาะทำได้ 1-10 รอบต่องาน · เฟส 2c) · `onTimes(n)` เปลี่ยนจำนวน
@@ -493,7 +495,7 @@ local function recipeRow(parent, order, entry, onClick, times, onTimes, fuel)
 	-- A batch says so on the row. Without it the only clue that one press makes eight bullets is counting
 	-- them in the bag afterwards.
 	local made = (entry.yields or 1) * times
-	label.Text = made > 1 and ("%s  x%d"):format(entry.name, made) or entry.name
+	label.Text = made > 1 and ("%s  x%d"):format(Show(entry.name), made) or Show(entry.name)
 	label.Parent = frame
 
 	-- ของที่ต้องใช้ตามจำนวนรอบ (หน้าต่างคิดเพื่อวาดเท่านั้น เซิร์ฟตรวจเองตอนกด)
@@ -540,7 +542,7 @@ local function recipeRow(parent, order, entry, onClick, times, onTimes, fuel)
 		line.TextColor3 = material.have >= need and ENOUGH or SHORT
 		line.TextXAlignment = Enum.TextXAlignment.Left
 		line.TextTruncate = Enum.TextTruncate.AtEnd
-		line.Text = ("%s %d/%d"):format(material.name, material.have, need)
+		line.Text = ("%s %d/%d"):format(Show(material.name), material.have, need)
 		line.Parent = frame
 	end
 
@@ -562,27 +564,27 @@ local function recipeRow(parent, order, entry, onClick, times, onTimes, fuel)
 	local feeColor = (entry.goldHave or 0) >= fee and ENOUGH or SHORT
 	if entry.closed then
 		-- ของที่ยังไม่เปิดให้คราฟ (ผู้ใช้สั่ง 2026-09-28 · CraftConfig.Closed)
-		odds.Text = ("<font color=\"#%s\">🔒 ยังไม่เปิด — เร็วๆ นี้</font>"):format(Color3.fromRGB(214, 170, 120):ToHex())
+		odds.Text = L("<font color=\"#%s\">🔒 ยังไม่เปิด — เร็วๆ นี้</font>", Color3.fromRGB(214, 170, 120):ToHex())
 	elseif entry.lockLevel then
 		-- เฟส 2c: สูตรเครื่องบนเกาะที่ยังไม่ปลด
-		odds.Text = ("<font color=\"#%s\">🔒 ปลดที่เลเวลฟาร์ม %d — ส่งของกับรถส่งออกเพื่อเก็บ EXP</font>"):format(
+		odds.Text = L("<font color=\"#%s\">🔒 ปลดที่เลเวลฟาร์ม %d — ส่งของกับรถส่งออกเพื่อเก็บ EXP</font>", 
 			Color3.fromRGB(214, 170, 120):ToHex(), entry.lockLevel)
 	elseif entry.note then
 		-- แถวตีบวก: เซิร์ฟเวอร์เขียนบรรทัดนี้มาเอง (โอกาส · ดาเมจก่อน→หลัง · ผลของการแตก)
-		odds.Text = entry.note
+		odds.Text = Show(entry.note)
 	elseif (entry.chance or 1) >= 1 and fee <= 0 and (entry.seconds or 0) >= 10 then
 		-- เครื่องที่ใช้เวลาจริง (ครัว · เครื่องบนเกาะ): บอกเวลารวมตามจำนวนรอบ แทน "แลกได้แน่นอน"
 		local total = (entry.seconds or 0) * times
 		odds.Text = times > 1
-			and ("⏱ %s × %d = <font color=\"#%s\">%s</font> · สำเร็จแน่นอน"):format(duration(entry.seconds), times,
+			and L("⏱ %s × %d = <font color=\"#%s\">%s</font> · สำเร็จแน่นอน", duration(entry.seconds), times,
 				ENOUGH:ToHex(), duration(total))
-			or ("⏱ %s · สำเร็จแน่นอน · เดินไปทำอย่างอื่นได้"):format(duration(total))
+			or L("⏱ %s · สำเร็จแน่นอน · เดินไปทำอย่างอื่นได้", duration(total))
 	elseif (entry.chance or 1) >= 1 and fee <= 0 then
 		-- A straight exchange, which is what the unlucky page is. Printing "100% · 0 เหรียญ" would dress a
 		-- certainty up as a bet and invite the player to read odds that are not there.
-		odds.Text = "<font color=\"#" .. ENOUGH:ToHex() .. "\">แลกได้แน่นอน ไม่มีค่าจ้าง</font>"
+		odds.Text = L("<font color=\"#%s\">แลกได้แน่นอน ไม่มีค่าจ้าง</font>", ENOUGH:ToHex())
 	else
-		odds.Text = ("โอกาสสำเร็จ %d%%  ·  ค่าจ้าง <font color=\"#%s\">%d</font> เหรียญ")
+		odds.Text = (L("โอกาสสำเร็จ %d%%  ·  ค่าจ้าง <font color=\"#%s\">%d</font> เหรียญ"))
 			:format(math.floor((entry.chance or 1) * 100 + 0.5), feeColor:ToHex(), fee)
 	end
 	-- เชื้อเพลิงขึ้นหน้าสุด (บรรทัดยาวแล้วถูกตัดท้าย ⛽ ต้องไม่หาย)
@@ -625,8 +627,8 @@ local function recipeRow(parent, order, entry, onClick, times, onTimes, fuel)
 	button.TextSize = 12
 	button.TextColor3 = affordable and Color3.fromRGB(24, 26, 32) or TEXT_MUTED
 	button.Text = entry.closed and "🔒" or entry.lockLevel and ("🔒 Lv%d"):format(entry.lockLevel)
-		or entry.action or (((entry.chance or 1) >= 1 and (entry.gold or 0) <= 0)
-			and ((entry.seconds or 0) >= 10 and "ทำ" or "แลก") or "สร้าง")
+		or Show(entry.action) or (((entry.chance or 1) >= 1 and (entry.gold or 0) <= 0)
+			and ((entry.seconds or 0) >= 10 and L("ทำ") or L("แลก")) or L("สร้าง"))
 	button.Parent = frame
 	corner(button, UDim.new(0, 5))
 	button.Activated:Connect(function()
@@ -639,7 +641,7 @@ local function recipeRow(parent, order, entry, onClick, times, onTimes, fuel)
 		-- แถวที่ยังไม่เปิด: แตะไอคอนล็อกแล้วบอกว่ายังไม่เปิด (ข้อความเด้งในเครื่อง ไม่ต้องถามเซิร์ฟ)
 		if entry.closed then
 			local toast = game.ReplicatedStorage:FindFirstChild("WOLD_Toast")
-			if toast then toast:Fire("🔒 ยังไม่เปิด") end
+			if toast then toast:Fire(L("🔒 ยังไม่เปิด")) end
 			return
 		end
 		if not affordable or button:GetAttribute("Busy") then return end
@@ -755,7 +757,7 @@ function CraftGui:Render()
 		empty.Font = Enum.Font.Gotham
 		empty.TextSize = 12
 		empty.TextColor3 = TEXT_MUTED
-		empty.Text = "ยังไม่มีสูตรในหมวดนี้"
+		empty.Text = L("ยังไม่มีสูตรในหมวดนี้")
 		empty.Parent = self.list
 	end
 
@@ -783,15 +785,15 @@ function CraftGui:Show(snapshot)
 		local pct = CraftFuel.Percent(fuel.amount)
 		self.fuelFill.Size = UDim2.fromScale(pct / 100, 1)
 		self.fuelText.Text = (fuel.amount or 0) > 0
-			and ("⛽ เชื้อเพลิง %d%% · ทำงานได้อีก %s"):format(math.floor(pct), duration(fuel.amount))
-			or "⛽ เชื้อเพลิงหมด — เติมถ่านหิน (16 ก้อน = เต็ม)"
-		self.fuelCoal.Text = ("ถ่าน %d"):format(fuel.coal or 0)
+			and L("⛽ เชื้อเพลิง %d%% · ทำงานได้อีก %s", math.floor(pct), duration(fuel.amount))
+			or L("⛽ เชื้อเพลิงหมด — เติมถ่านหิน (16 ก้อน = เต็ม)")
+		self.fuelCoal.Text = L("ถ่าน %d", fuel.coal or 0)
 		self.fuelMax = math.min(fuel.coal or 0, CraftFuel.Room(fuel.amount))
 		self.fuelBox.Text = NumberBox.Clean(self.fuelBox.Text, self.fuelMax)
 	end
 	-- ชื่อหน้าต่างตามเครื่องที่เปิด (เตาอบ/โต๊ะช่าง/กี่ทอ/ครัว) ไม่มี = โรงตีเหล็ก
-	self.title.Text = snapshot.title or "โรงตีเหล็ก"
-	if snapshot.farmLevel then self.title.Text ..= ("   ·   🌾 เลเวลฟาร์ม %d"):format(snapshot.farmLevel) end
+	self.title.Text = Show(snapshot.title) or L("โรงตีเหล็ก")
+	if snapshot.farmLevel then self.title.Text ..= L("   ·   🌾 เลเวลฟาร์ม %d", snapshot.farmLevel) end
 
 	-- งานที่ค้างอยู่มาจาก **สแนปช็อต** ไม่ใช่ความจำของหน้าต่าง
 	--
@@ -842,7 +844,7 @@ function CraftGui:Show(snapshot)
 		button.BorderSizePixel = 0
 		button.Font = Enum.Font.GothamBold
 		button.TextSize = 12
-		button.Text = tab.name
+		button.Text = Show(tab.name)
 		button:SetAttribute("TabId", tab.id)
 		button.Parent = self.tabBar
 		corner(button, UDim.new(0, 6))
