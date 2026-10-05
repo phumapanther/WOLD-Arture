@@ -16,11 +16,12 @@ local UserInputService = game:GetService("UserInputService")
 
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local UiSound = require(game.ReplicatedStorage.UI.UiSound)
+local Locale = require(game.ReplicatedStorage.Locale)
 
 -- **ทุกข้อความมีเสียง** (QA 2026-09-28 "อินเทอแร็กแล้วต้องไม่เงียบ") — ปฏิเสธ = ToastError · ได้ของ/รางวัล = ToastReward ·
 -- อื่นๆ = ToastInfo · ข้อความรัวๆ เล่นเสียงไม่เกินทุก 0.3 วิ (หลายข้อความในเฟรมเดียวไม่ซ้อนกันเป็นเสียงแตก)
-local REWARD_WORDS = { "ได้รับ", "รับรางวัล", "💎", "🎁", "🎫", "ปลดล็อก", "ปลดสาย", "คราฟสำเร็จ", "ตีบวกสำเร็จ", "ส่งงานสำเร็จ",
-	"ขายได้", "ซื้อ", "จบบท" }
+local REWARD_WORDS = { "ได้รับ", "รับรางวัล", "💎", "🎁", "🎫", "ปลดล็อก", "ปลดสาย", "คราฟสำเร็จ", "ตีบวกสำเร็จ", "ส่งงานสำเร็จ", -- locale: skip (จับคำไทยต้นฉบับ ไม่ได้ขึ้นจอ)
+	"ขายได้", "ซื้อ", "จบบท" } -- locale: skip (จับคำไทยต้นฉบับ ไม่ได้ขึ้นจอ)
 local lastSoundAt = 0
 local function soundFor(message, isError)
 	local now = os.clock()
@@ -28,13 +29,13 @@ local function soundFor(message, isError)
 	lastSoundAt = now
 	if isError then return UiSound.Play("ToastError") end
 	-- ซื้อสำเร็จ (ร้าน/ร้านเพชร/คอก/VIP) = เสียงเหรียญ Purchase (Q15) · "ซื้อไม่สำเร็จ" มาเป็น error ไปแล้วข้างบน
-	if (string.find(message, "^ซื้อ") or string.find(message, "เพชร)", 1, true)) and not string.find(message, "ไม่", 1, true) then
+	if (string.find(message, "^ซื้อ") or string.find(message, "เพชร)", 1, true)) and not string.find(message, "ไม่", 1, true) then -- locale: skip (จับคำไทยต้นฉบับ ไม่ได้ขึ้นจอ)
 		return UiSound.Play("Purchase")
 	end
 	-- "ไม่ได้/ไม่สำเร็จ" ไม่ใช่รางวัล แม้มีคำเหล่านั้นอยู่
-	local reward = string.sub(message, 1, 1) == "+" and not string.find(message, "ไม่", 1, true)
+	local reward = string.sub(message, 1, 1) == "+" and not string.find(message, "ไม่", 1, true) -- locale: skip (จับคำไทยต้นฉบับ ไม่ได้ขึ้นจอ)
 	for _, word in ipairs(REWARD_WORDS) do
-		if not reward and string.find(message, word, 1, true) and not string.find(message, "ไม่" .. word, 1, true) then
+		if not reward and string.find(message, word, 1, true) and not string.find(message, "ไม่" .. word, 1, true) then -- locale: skip (จับคำไทยต้นฉบับ ไม่ได้ขึ้นจอ)
 			reward = true
 		end
 	end
@@ -91,7 +92,8 @@ local function toast(message, isError)
 	line.Font = Enum.Font.GothamBold
 	line.TextSize = 13
 	line.TextColor3 = isError and Color3.fromRGB(232, 128, 118) or Color3.fromRGB(238, 224, 180)
-	line.Text = "  " .. message .. "  "
+	-- ข้อความมาเป็นไทยสำเร็จรูป (เสียงด้านล่างเลือกจากคำไทย) แปลตอนแสดงเท่านั้น — ระบบหลายภาษา 2026-10-05
+	line.Text = "  " .. Locale.Show(message) .. "  "
 	line.Parent = holder
 
 	local corner = Instance.new("UICorner")

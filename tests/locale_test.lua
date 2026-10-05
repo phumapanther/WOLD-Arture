@@ -25,11 +25,25 @@ check(L.Translate("en", "ข้อความแปลก ๆ") == "ข้อ�
 check(L.Translate("th", "ตกได้ ปลา 3.2 กก.") == "ตกได้ ปลา 3.2 กก.", "Translate ไทย = เดิม")
 check(L.Translate("en", "ซื้อ ปลา x2 แล้ว") == "Bought Fish x2", "แม่แบบยาวกว่าชนะ (ไม่ไปจับ 'ซื้อ %s')")
 
+-- %% = เครื่องหมายเปอร์เซ็นต์จริง ต้องย้อนแม่แบบได้
+check(L.Translate("en", "เชื้อเพลิงไม่พอ ต้องใช้ 38% (มี 12%) — เติมถ่านหินที่แถบด้านบน") == "Not enough fuel: need 38% (have 12%) — add coal in the bar above",
+	"Translate แม่แบบที่มี %%: " .. L.Translate("en", "เชื้อเพลิงไม่พอ ต้องใช้ 38% (มี 12%) — เติมถ่านหินที่แถบด้านบน"))
+
 -- ชื่อไอเทมแปลที่ DisplayName ที่เดียว (Task 5)
 local IC = require(game.ReplicatedStorage.ItemCatalog)
 check(IC.DisplayName("Sword", nil, "en") == "Sword", "ชื่อไอเทมแปล: " .. tostring(IC.DisplayName("Sword", nil, "en")))
 check(IC.DisplayName("Sword", { enhance = 3 }, "ja") == "剣 +3", "ขั้นตีบวกต่อท้ายคำแปล: " .. tostring(IC.DisplayName("Sword", { enhance = 3 }, "ja")))
 check(IC.DisplayName("Sword", nil, "th") == "ดาบ", "ไทยเหมือนเดิม")
 check(IC.DisplayName("Sword", nil) == "ดาบ", "ไม่ส่งภาษา (เซิร์ฟ/ตัวจำลอง) = ไทย")
+
+-- ข้อความเซิร์ฟจริง (Task 6): แม่แบบเดียวทั้งประโยค + อาร์กิวเมนต์ที่เป็นชื่อแปลด้วย
+local function tr(lang, text, want, label)
+	local got = L.Translate(lang, text)
+	check(got == want, label .. ": " .. got)
+end
+tr("en", "ซื้อ ดาบ x2 ราคา 600 เหรียญ", "Bought Sword x2 for 600 coins", "ซื้อ + สกุลเงินแปล")
+tr("en", "🏠 บ้านเต็มแล้ว (2/2 หลัง) — เลเวลฟาร์ม 4 มีได้ 2 หลัง", "🏠 House limit reached (2/2) — farm level 4 allows 2", "เพดานบ้านทั้งประโยค")
+tr("en", "สร้าง ดาบ ล้มเหลว วัสดุเสียไป", "Crafting Sword failed, materials lost", "คราฟล้มเหลว")
+tr("zh", "ขาย ดาบ x1 ได้ 120", "出售 剑 x1，获得 120", "ขาย (จีน)")
 
 return (fails == 0 and "PASS\n" or ("FAIL x%d\n"):format(fails)) .. table.concat(out, "\n")

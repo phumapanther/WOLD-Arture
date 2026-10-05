@@ -261,7 +261,8 @@ local function farmGate(player, entry)
 			local owned = ownedCount(player, rule.is)
 			if owned >= cap then
 				local at = FarmLevelConfig.NextCapLevel(rule.levels, level)
-				return rule.full:format(owned, cap) .. (at and rule.more:format(at, rule.cap(at)) or ""), 0, true
+				-- แม่แบบเดียวทั้งประโยค ไคลเอนต์แปลย้อนได้ (ระบบหลายภาษา · Locale.Show)
+				return (at and (rule.full .. rule.more):format(owned, cap, at, rule.cap(at)) or rule.full:format(owned, cap)), 0, true
 			end
 			return nil, cap - owned
 		end

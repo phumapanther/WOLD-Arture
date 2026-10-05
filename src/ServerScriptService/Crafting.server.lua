@@ -197,13 +197,13 @@ local function enhanceRow(state, key, entry)
 		enhance = { slot = key },
 	}
 	if key == "job" then
-		row.name = name .. "  —  อยู่ที่ช่าง"
+		row.name = ("%s  —  อยู่ที่ช่าง"):format(name)
 		row.note = "ช่างกำลังตีอยู่ รอรู้ผล"
 		row.action = "รอ"
 		return row
 	end
 	if not nextLevel then
-		row.name = name .. "  (สูงสุดแล้ว)"
+		row.name = ("%s  (สูงสุดแล้ว)"):format(name)
 		row.note = "ตีบวกครบ +10 แล้ว"
 		row.action = "สูงสุด"
 		return row
@@ -499,11 +499,16 @@ local function resolveJob(player, data, job)
 			if Inventory.AddItem(player, CraftConfig.InsigniaItem, coins) then awarded = coins end
 		end
 		local fee = job.fee or 0
-		local reason = fee > 0 and ("สร้าง %s ล้มเหลว เสียวัสดุและเงิน %d"):format(name, fee)
-			or ("สร้าง %s ล้มเหลว วัสดุเสียไป"):format(name)
-		if awarded > 0 then
-			local coin = ItemCatalog.Get(awardedItem)
-			reason ..= ("  ·  ได้ %s x%d"):format(coin and coin.name or awardedItem, awarded)
+		-- แม่แบบเต็มประโยคทุกแบบ (ไคลเอนต์แปลย้อนด้วย Locale.Show ได้ · ระบบหลายภาษา)
+		local reason
+		local coin = awarded > 0 and ItemCatalog.Get(awardedItem)
+		local coinName = coin and coin.name or awardedItem
+		if fee > 0 then
+			reason = awarded > 0 and ("สร้าง %s ล้มเหลว เสียวัสดุและเงิน %d  ·  ได้ %s x%d"):format(name, fee, coinName, awarded)
+				or ("สร้าง %s ล้มเหลว เสียวัสดุและเงิน %d"):format(name, fee)
+		else
+			reason = awarded > 0 and ("สร้าง %s ล้มเหลว วัสดุเสียไป  ·  ได้ %s x%d"):format(name, coinName, awarded)
+				or ("สร้าง %s ล้มเหลว วัสดุเสียไป"):format(name)
 		end
 		Remotes.SocialNotify:FireClient(player, "error", reason)
 		return false

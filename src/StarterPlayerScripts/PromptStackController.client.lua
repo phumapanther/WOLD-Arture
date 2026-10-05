@@ -6,6 +6,16 @@
 -- UIOffset ที่ไคลเอนต์เขียนไม่ replicate จึงไม่กวนเครื่องอื่น
 local ProximityPromptService = game:GetService("ProximityPromptService")
 local PromptStack = require(game.ReplicatedStorage.UI.PromptStack)
+local Locale = require(game.ReplicatedStorage.Locale)
+
+-- ป้ายปุ่ม E/F ตั้งจากเซิร์ฟ = ภาษาเดียวกันทุกคน → แปลในเครื่องนี้ตอนโชว์ (ค่าที่ไคลเอนต์เขียนไม่ replicate ·
+-- เซิร์ฟเขียนทับเมื่อไหร่ ลูปข้างล่างแปลซ้ำเอง · Show ของข้อความที่แปลแล้ว = เดิม) — ระบบหลายภาษา 2026-10-05
+local function translatePrompt(prompt)
+	if Locale.Current() == "th" then return end
+	local action, object = Locale.Show(prompt.ActionText), Locale.Show(prompt.ObjectText)
+	if prompt.ActionText ~= action then prompt.ActionText = action end
+	if prompt.ObjectText ~= object then prompt.ObjectText = object end
+end
 
 local shown = {} -- [ProximityPrompt] = true ที่กำลังโชว์บนจอเครื่องนี้
 -- ระยะเลื่อนเดิมของปุ่ม (จดตอนเห็นครั้งแรก ก่อนเราเขียนอะไร) — ปุ่มที่อยู่เดี่ยวๆ กลับไปใช้ค่าเดิม
@@ -43,6 +53,7 @@ end
 
 ProximityPromptService.PromptShown:Connect(function(prompt)
 	if original[prompt] == nil then original[prompt] = prompt.UIOffset end
+	translatePrompt(prompt)
 	shown[prompt] = true
 	relayout()
 end)
@@ -55,6 +66,9 @@ end)
 task.spawn(function()
 	while true do
 		task.wait(0.3)
-		if next(shown) then relayout() end
+		if next(shown) then
+			relayout()
+			for prompt in pairs(shown) do translatePrompt(prompt) end
+		end
 	end
 end)

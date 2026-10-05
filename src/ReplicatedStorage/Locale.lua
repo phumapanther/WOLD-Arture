@@ -54,12 +54,20 @@ local function patternsOf(lang)
 		if thai:find("%%") then
 			-- ตัดเป็นชิ้น: ตัวคั่น %… → ช่องจับ · ข้อความระหว่างนั้น escape ตัวพิเศษของรูปแบบ Lua
 			local p, last = "", 1
-			for s, spec, e in thai:gmatch("()(%%[%-%d%.]*[sdf])()") do
-				p ..= thai:sub(last, s - 1):gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0")
-				p ..= spec:sub(-1) == "s" and "(.-)" or "([%-%d%.,]+)"
+			-- %% ในแม่แบบ = เครื่องหมาย % ตัวเดียวในข้อความจริง
+			local function literal(piece)
+				return (piece:gsub("%%%%", "%%"):gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0"))
+			end
+			for s, spec, e in thai:gmatch("()(%%[%-%d%.]*[sdf%%])()") do
+				if spec == "%%" then
+					p ..= literal(thai:sub(last, e - 1))
+				else
+					p ..= literal(thai:sub(last, s - 1))
+					p ..= spec:sub(-1) == "s" and "(.-)" or "([%-%d%.,]+)"
+				end
 				last = e
 			end
-			p ..= thai:sub(last):gsub("[%^%$%(%)%%%.%[%]%*%+%-%?]", "%%%0")
+			p ..= literal(thai:sub(last))
 			list[#list + 1] = { thai = thai, pattern = "^" .. p .. "$" }
 		end
 	end
@@ -79,7 +87,8 @@ function Locale.Translate(lang, text)
 		if caps[1] ~= nil then
 			local template = t[entry.thai]
 			local i = 0
-			local result = template:gsub("%%%.?%d*[sdf]", function()
+			local result = template:gsub("%%[%-%d%.]*[sdf%%]", function(spec)
+				if spec == "%%" then return "%" end
 				i += 1
 				local v = caps[i]
 				return v and (t[v] or v) or ""
