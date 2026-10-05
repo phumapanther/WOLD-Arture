@@ -1,6 +1,6 @@
 -- LanguageRefreshController: เปลี่ยนภาษากลางเกม → ข้อความทุกอันที่ขึ้นจออยู่แล้วเปลี่ยนตามทันที (ผู้ใช้แจ้ง 2026-10-05:
 -- กดเปลี่ยนภาษาแล้วเมนูหินเวท/แถบเควสยังเป็นภาษาเดิม) · ป้ายส่วนใหญ่ถูกสร้างครั้งเดียวด้วย L(...) จึงไม่รู้ว่าภาษาเปลี่ยน
--- วิธี: ย้อนข้อความภาษาเก่ากลับเป็นไทย (Locale.ToThai) แล้วแปลเป็นภาษาใหม่ (Locale.Translate) — ทุก GUI ไม่ต้องแก้ทีละไฟล์
+-- วิธี: หาต้นฉบับไทยของข้อความที่ระบบแปลไว้ (Locale.SourceOf) แล้วแปลเป็นภาษาใหม่ (Locale.Translate) — ทุก GUI ไม่ต้องแก้ทีละไฟล์
 -- ไม่แตะ TextBox.Text (ผู้เล่นพิมพ์เอง) · ข้อความที่ไม่รู้จัก (ชื่อคน ตัวเลข) คงเดิม
 local Players = game:GetService("Players")
 local Locale = require(game.ReplicatedStorage.Locale)
@@ -12,7 +12,10 @@ local current = Locale.Current()
 local function retext(obj, prop, from, to)
 	local text = obj[prop]
 	if text == "" then return end
-	local new = Locale.Translate(to, Locale.ToThai(from, text))
+	-- ต้นฉบับไทย = ข้อความที่ระบบแปลเอง (SourceOf) หรือข้อความที่ขึ้นตอนเป็นภาษาไทย · คำอังกฤษเดิมในโค้ดไม่ถูกแตะ
+	local thai = Locale.SourceOf(text) or (from == "th" and text)
+	if not thai then return end
+	local new = Locale.Translate(to, thai)
 	if new ~= text then obj[prop] = new end
 end
 

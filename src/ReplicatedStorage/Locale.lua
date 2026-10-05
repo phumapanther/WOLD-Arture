@@ -42,19 +42,35 @@ local function lookup(lang, thai)
 end
 
 -- อาร์กิวเมนต์ที่เป็นสตริงแปลด้วย (ชื่อไอเทม/ชื่อเมือง) · format พัง = คืนแม่แบบที่แปลแล้วไม่ format
+-- ข้อความที่ระบบแปลเองในเซสชันนี้ → ไทยต้นฉบับ (เปลี่ยนภาษากลางเกม: แปลป้ายเดิมใหม่) · เฉพาะที่แปลจริง —
+-- คำอังกฤษเดิมในโค้ด ("OK" "HEADSHOT") ไม่เคยผ่านที่นี่ จึงไม่ถูกแปลงเป็นไทย (ผู้ใช้แจ้ง 2026-10-05)
+local produced, producedCount = {}, 0
+local function remember(text, thai)
+	if text == thai or type(text) ~= "string" or type(thai) ~= "string" then return end
+	if producedCount > 20000 then produced, producedCount = {}, 0 end -- ponytail: ล้างทั้งก้อนกันโตไม่หยุด ป้ายเก่ามากๆ อาจไม่เปลี่ยนตาม
+	if not produced[text] then producedCount += 1 end
+	produced[text] = thai
+end
+function Locale.SourceOf(text) return produced[text] end
+
 function Locale.T(lang, thai, ...)
 	local template = lookup(lang, thai)
-	if select("#", ...) == 0 then return template end
+	if select("#", ...) == 0 then
+		remember(template, thai)
+		return template
+	end
 	local args = table.pack(...)
+	local okThai, thaiText = pcall(string.format, thai, ...)
 	for i = 1, args.n do
 		if type(args[i]) == "string" then args[i] = lookup(lang, args[i]) end
 	end
 	local ok, text = pcall(string.format, template, table.unpack(args, 1, args.n))
+	if ok and okThai then remember(text, thaiText) end
 	return ok and text or template
 end
 
 -- แม่แบบ → รูปแบบ Lua ไว้จับข้อความที่ประกอบมาแล้ว · เรียงยาวก่อน (เจาะจงกว่าชนะ)
--- map = { แม่แบบต้นทาง = แม่แบบปลายทาง } ใช้ได้ทั้งไทย→ภาษาอื่น (Translate) และกลับ (ToThai)
+-- map = { แม่แบบต้นทาง = แม่แบบปลายทาง } (ไทย → ภาษาอื่น)
 local function buildPatterns(map)
 	local list = {}
 	for source in pairs(map) do
@@ -111,22 +127,9 @@ function Locale.Translate(lang, text)
 	local t = tableOf(lang)
 	if not t then return text end
 	patterns[lang] = patterns[lang] or buildPatterns(t)
-	return convert(t, patterns[lang], text)
-end
-
--- กลับทาง: ข้อความภาษา lang ที่ขึ้นจออยู่แล้ว → ไทยต้นฉบับ (เปลี่ยนภาษากลางเกมแปลป้ายเดิมใหม่ได้ · ผู้ใช้แจ้ง 2026-10-05)
--- คำแปลซ้ำกันหลายกุญแจ = ได้กุญแจใดกุญแจหนึ่ง (ความหมายเดียวกันอยู่แล้ว) · ไม่รู้จัก/เป็นไทยอยู่แล้ว = เดิม
-local reverse = {}
-function Locale.ToThai(lang, text)
-	if lang == "th" or type(text) ~= "string" then return text end
-	if not reverse[lang] then
-		local t = tableOf(lang)
-		if not t then return text end
-		local map = {}
-		for thai, tr in pairs(t) do map[tr] = map[tr] or thai end
-		reverse[lang] = { map = map, list = buildPatterns(map) }
-	end
-	return convert(reverse[lang].map, reverse[lang].list, text)
+	local result = convert(t, patterns[lang], text)
+	remember(result, text)
+	return result
 end
 
 -- โฟลเดอร์ Sandboxed ของเทส Edit ได้ GetService("Players") = nil ทั้งที่ IsClient() เป็นจริง

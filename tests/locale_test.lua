@@ -71,12 +71,13 @@ for _, case in ipairs({
 	end
 end
 
--- ย้อนคำแปลกลับเป็นไทย (เปลี่ยนภาษากลางเกม: ข้อความบนจอที่สร้างไว้แล้วต้องเปลี่ยนตาม · ผู้ใช้แจ้ง 2026-10-05)
-check(L.ToThai and L.ToThai("en", "Bag is full") == "กระเป๋าเต็ม", "ToThai ตรงตัว")
-check(L.ToThai and L.ToThai("en", "Caught Fish 3.2 kg") == "ตกได้ ปลา 3.2 กก.", "ToThai แม่แบบ + ชื่อในช่อง")
-check(L.ToThai and L.ToThai("en", "กระเป๋าเต็ม") == "กระเป๋าเต็ม", "ToThai ข้อความไทย = เดิม")
-check(L.ToThai and L.ToThai("th", "อะไรก็ได้") == "อะไรก็ได้", "ToThai จากไทย = เดิม")
-check(L.ToThai and L.ToThai("en", "Player123") == "Player123", "ToThai ไม่รู้จัก = เดิม")
-check(L.ToThai and L.Translate("ja", L.ToThai("en", "Caught Fish 3.2 kg")) == L.T("ja", "ตกได้ %s %.1f กก.", "ปลา", 3.2), "en → ja ผ่านไทย")
+-- ต้นฉบับไทยของข้อความที่ระบบแปลเองในเซสชันนี้ (เปลี่ยนภาษากลางเกม) · คำอังกฤษเดิมในโค้ดที่ไม่เคยผ่านการแปลต้องไม่ถูกแปลงเป็นไทย (ผู้ใช้แจ้ง 2026-10-05)
+L.T("en", "กระเป๋าเต็ม")
+check(L.SourceOf and L.SourceOf("Bag is full") == "กระเป๋าเต็ม", "SourceOf ข้อความที่แปลแล้ว")
+L.T("en", "ตกได้ %s %.1f กก.", "ปลา", 3.25)
+check(L.SourceOf and L.SourceOf("Caught Fish 3.2 kg") == "ตกได้ ปลา 3.2 กก.", "SourceOf ข้อความที่ format แล้ว: " .. tostring(L.SourceOf and L.SourceOf("Caught Fish 3.2 kg")))
+L.Translate("ja", "กระเป๋าเต็ม")
+check(L.SourceOf and L.SourceOf(L.T("ja", "กระเป๋าเต็ม")) == "กระเป๋าเต็ม", "SourceOf จาก Translate")
+check(L.SourceOf and L.SourceOf("HEADSHOT") == nil, "คำอังกฤษเดิมในโค้ด (ไม่เคยแปล) = nil ไม่แปลงเป็นไทย")
 
 return (fails == 0 and "PASS\n" or ("FAIL x%d\n"):format(fails)) .. table.concat(out, "\n")

@@ -12,11 +12,7 @@ local Locale = require(game.ReplicatedStorage.Locale)
 -- เซิร์ฟเขียนทับเมื่อไหร่ ลูปข้างล่างแปลซ้ำเอง · Show ของข้อความที่แปลแล้ว = เดิม) — ระบบหลายภาษา 2026-10-05
 -- ข้อความปุ่มอาจถูกแปลเป็นภาษาก่อนหน้าไปแล้ว → ย้อนเป็นไทยก่อนแปลใหม่ (เปลี่ยนภาษากลางเกม/กลับเป็นไทยได้)
 local function toThai(text)
-	for _, lang in ipairs({ "en", "zh", "ja" }) do
-		local thai = Locale.ToThai(lang, text)
-		if thai ~= text then return thai end
-	end
-	return text
+	return Locale.SourceOf(text) or text -- ข้อความที่ไม่เคยถูกแปล (ไทยจากเซิร์ฟ/อังกฤษเดิม) = ตัวมันเอง
 end
 
 local function translatePrompt(prompt)
