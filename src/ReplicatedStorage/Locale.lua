@@ -3,7 +3,7 @@
 local Locale = {}
 
 Locale.Languages = {
-	{ id = "th", label = "ไทย" }, { id = "en", label = "English" },
+	{ id = "th", label = "ไทย" }, { id = "en", label = "English" }, -- locale: skip (ชื่อภาษาเขียนด้วยภาษาของมันเอง)
 	{ id = "zh", label = "简体中文" }, { id = "ja", label = "日本語" },
 }
 
