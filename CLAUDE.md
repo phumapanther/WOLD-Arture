@@ -371,9 +371,9 @@ VIP เริ่ม/หมดกลางเกม = `Inventory.RefreshWeightLim
 `MonowheelController` ตั้ง `LocalTransparencyModifier` (ไคลเอนต์ล้วน คนอื่นเห็นล้อทึบ) ลูป 0.25 วิ หาคันจาก `DriveSeat.Occupant` · ลงแล้วคืน 0 ·
 ตารางชื่อชิ้น `WHEEL_FADE` ต้องตรงกับ `Monowheel.server` `build()` — เปลี่ยนชื่อชิ้นที่นั่นต้องแก้ที่นี่
 
-**หลายภาษา ไทย/อังกฤษ/จีนตัวย่อ/ญี่ปุ่น เฟส 1 (ผู้ใช้สั่ง 2026-10-05 · ยังไม่ได้ดันเข้าเพลส · ยังไม่ได้เทสในเกม)**
+**หลายภาษา ไทย/อังกฤษ/จีนตัวย่อ/ญี่ปุ่น — ครบทั้งเกม (ผู้ใช้สั่ง 2026-10-05 · ดันสามเพลส mismatches 0 · ยังไม่ได้เทสในเกม)**
 สเปก `docs/superpowers/specs/2026-10-03-localization-design.md` · แผน `docs/superpowers/plans/2026-10-05-localization-phase1.md`
-- **ประโยคไทยต้นฉบับ = กุญแจ** ตาราง `ReplicatedStorage/LocaleData/{en,zh,ja}.lua` (Claude แปล เก็บในรีโป) · `Locale.lua` ·
+- **ประโยคไทยต้นฉบับ = กุญแจ** ตาราง `ReplicatedStorage/LocaleData/<lang>_<n>.lua` (Claude แปล เก็บในรีโป ~2,500 คีย์) · ⚠️ **Source ของ Roblox เกิน 200,000 ไบต์ไม่ได้** → locale-add แบ่งไฟล์ละ 150 KB เอง Locale รวมทุกส่วน (ไฟล์ส่วนที่หายไปต้องลบในเพลสเอง verify --push ไม่ลบ) · `Locale.lua` ·
   ภาษาเริ่มต้น = ภาษาบัญชี Roblox (`LocaleId` th/zh/ja/en · อื่น = en) · เลือกเองที่หินเวท → ตั้งค่า (ล็อบบี้ก็ได้) ·
   เก็บที่ DataStore `WOLD_Lang_v1` คีย์ `u_<userId>` (ล็อบบี้/สนามไม่มีโปรไฟล์) → `LanguagePublisher.server` ตั้งแอตทริบิวต์ `WOLD_Lang`
 - ⚠️ **ข้อความใหม่ที่ไคลเอนต์ขึ้นจอต้องผ่าน `Locale.L("ไทย %d", ...)`** (ห้าม `..` ต่อประโยค — ใช้ format ทั้งประโยค) ·
@@ -383,8 +383,10 @@ VIP เริ่ม/หมดกลางเกม = `Inventory.RefreshWeightLim
 - เพิ่มคำแปล: เขียน JSON `{ "ไทย": {en,zh,ja} }` → `node tools/locale-add.js ไฟล์.json` → `node tools/locale-check.js [--server ไฟล์เซิร์ฟ] ไฟล์ไคลเอนต์`
   (MISSING/MISMATCH/BARE = ตก · บรรทัดที่ตั้งใจไม่แปลใส่ `-- locale: skip`) · เทส `tests/locale_test.lua` (offline)
 - ⚠️ คำสำคัญเสียง toast (`ToastController` REWARD_WORDS ฯลฯ) อ่านข้อความไทยต้นฉบับ — แปลหลังเลือกเสียงเสมอ
-- เฟส 1 = HUD · กระเป๋า · ร้าน · คราฟ · toast · ปุ่ม E/F · ล็อบบี้/ปาร์ตี้ PVP/จอโหลด · ชื่อไอเทม · ป้ายบนจอที่สร้างตอนบูตเปลี่ยนหลังเข้าใหม่
-  (ล็อบบี้สร้างจอใหม่ทันที) · ที่เหลือ (หินเวทหน้าอื่น เควส เนื้อเรื่อง แผนที่ ฯลฯ) = เฟสถัดไป
+- แปลครบทุกระบบที่ผู้เล่นเห็น (เฟส 2 ทำด้วย workflow 12 กลุ่ม · เทส `tests/locale_p2_<กลุ่ม>_test.lua` offline) · **ไม่แปล**: Admin*/TikTok*/DevTeleport/TestChest
+  (ทีมแอดมินไทย) · ข้อความที่ผู้เล่นพิมพ์เอง · ป้าย/ชื่อ NPC ที่วางมือใน Studio · ป้ายในโลกที่เซิร์ฟสร้าง (แท็ก `WOLD_ShowText` → `WorldTextController`) แปลตอนข้อความเปลี่ยน
+  · ภาษาเปลี่ยนกลางเกม: หินเวท/บทสอน/ล็อบบี้วาดใหม่ทันที ป้ายที่สร้างตอนบูตเปลี่ยนตอนเข้าใหม่ · ⚠️ เทส Edit ที่โคลนโมดูลเข้าโฟลเดอร์ Sandboxed:
+  `GetService("Players")` = nil ทั้งที่ `IsClient()` จริง และต้องโคลน Locale (+ItemCatalog ถ้าใช้) ไปด้วย
 
 ## โมเดลจากโค้ด (modelkit)
 ชุดสร้างโมเดลด้วยโค้ดอยู่ที่ `modelkit/` + `models/` — **อ่าน `docs/modelkit-reference.md` ก่อนแตะ**
