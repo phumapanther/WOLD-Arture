@@ -574,7 +574,8 @@ function SocialGui:buildSettings()
 		self.languageButtons[lang.id] = b
 		b.Activated:Connect(function() self.pickLanguage(lang.id) end)
 	end
-	local localPlayer = game:GetService("Players").LocalPlayer
+	local players = game:GetService("Players") -- nil ในโฟลเดอร์ Sandboxed ของเทส Edit
+	local localPlayer = players and players.LocalPlayer
 	if localPlayer then localPlayer:GetAttributeChangedSignal("WOLD_Lang"):Connect(paintLang) end
 	paintLang()
 	y = y + 40

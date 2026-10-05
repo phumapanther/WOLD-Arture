@@ -103,10 +103,16 @@ function Locale.Translate(lang, text)
 	return text
 end
 
+-- โฟลเดอร์ Sandboxed ของเทส Edit ได้ GetService("Players") = nil ทั้งที่ IsClient() เป็นจริง
+local function localPlayer()
+	local Players = game:GetService("Players")
+	return Players and Players.LocalPlayer
+end
+
 function Locale.Current()
 	local RunService = game:GetService("RunService")
 	if not RunService:IsClient() then return "th" end
-	local player = game:GetService("Players").LocalPlayer
+	local player = localPlayer()
 	local lang = player and player:GetAttribute("WOLD_Lang")
 	if Locale.Valid(lang) then return lang end
 	return Locale.FromLocaleId(player and player.LocaleId)
@@ -124,7 +130,7 @@ end
 
 -- ฝั่งไคลเอนต์: โมดูลแรกที่ require ตัวนี้ (จอโหลด HUD กระเป๋า) รอภาษาที่เลือกไว้ก่อนสร้างป้ายตอนบูต
 if game:GetService("RunService"):IsClient() then
-	local player = game:GetService("Players").LocalPlayer
+	local player = localPlayer()
 	if player then Locale.AwaitChoice(player, 2) end
 end
 

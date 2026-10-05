@@ -10,6 +10,7 @@ mirror.Capabilities = SecurityCapabilities.new(Enum.SecurityCapability.Basic, En
 mirror.Parent = game.ServerStorage
 game.ReplicatedStorage.UI:Clone().Parent = mirror
 game.ReplicatedStorage.SoundscapeConfig:Clone().Parent = mirror -- UiSound อ่านจาก script.Parent.Parent
+game.ReplicatedStorage.Locale:Clone().Parent = mirror -- ShopGui แปลข้อความ (ระบบหลายภาษา 2026-10-05)
 
 local out, fails = {}, 0
 local function check(ok, text)
