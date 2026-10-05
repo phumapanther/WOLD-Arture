@@ -5,7 +5,6 @@
     "src/ServerScriptService/MapPoi.server.lua",
     "src/ServerScriptService/AnimalHerds.server.lua",
     "src/ServerScriptService/DevTeleport.server.lua",
-    "src/ServerScriptService/TikTokLive.server.lua",
     "src/ServerScriptService/TownBuyers.server.lua",
     "src/ServerScriptService/TownCapture.server.lua",
     "src/ServerScriptService/TownVault.server.lua",

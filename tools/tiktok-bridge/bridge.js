@@ -111,6 +111,7 @@ function emit(event) {
   while (queue.length > CFG.keep) queue.shift();
   log("→", JSON.stringify(event));
   if (PUSH) push(event);
+  toAvatar(event);
   return event;
 }
 
@@ -477,6 +478,37 @@ async function push(event) {
   } catch (err) {
     log("push error", err?.message || err);
   }
+}
+
+// ---------------------------------------------------------------------------- the avatar (rig_studio)
+// The same events also move the PNGTuber on stream: its helper.py takes commands on 127.0.0.1:8766.
+// Hooked in emit() so a real live, the test panel and --mock all reach it the same way, and the like
+// throttle above protects the avatar too. Fire and forget: a closed avatar must never slow the game side.
+//   --avatar off           turn it off
+//   --avatar http://x:8766 another machine
+const AVATAR = flag("avatar", process.env.AVATAR_URL || "http://127.0.0.1:8766");
+const THROWS = ["tomato", "heart", "rock"];
+const AVATAR_PATH = {
+  mob: () => "/fx?type=" + THROWS[Math.floor(Math.random() * THROWS.length)], // like -> something thrown at it
+  chest: () => "/emote?n=5", // gift -> happy bounce (rig_studio emote 5)
+  boss: () => "/emote?n=6",  // sub  -> spin (rig_studio emote 6)
+};
+let avatarDown = false;
+
+function toAvatar(event) {
+  const path = AVATAR !== "off" && AVATAR_PATH[event.kind];
+  if (!path) return;
+  fetch(AVATAR + path())
+    .then(() => {
+      if (avatarDown) { avatarDown = false; log("อวตารต่อติดแล้ว"); }
+    })
+    .catch(() => {
+      // Once, not per like: the avatar being closed is a normal state, not an error worth a wall of text.
+      if (!avatarDown) {
+        avatarDown = true;
+        log(`! ส่งให้อวตารไม่ได้ (${AVATAR}) — เปิดตัวช่วยOBS.bat ของ rig_studio อยู่ไหม · ฝั่งเกมทำงานปกติ`);
+      }
+    });
 }
 
 // ---------------------------------------------------------------------------- HTTP
