@@ -24,6 +24,7 @@ local GIVE_RANGE = 8
 local Remotes = require(game.ReplicatedStorage.Remotes)
 local HudAccess = require(game.ReplicatedStorage.UI.HudAccess)
 local InventoryConfig = require(game.ReplicatedStorage.InventoryConfig)
+local L = require(game.ReplicatedStorage.Locale).L
 
 local player = Players.LocalPlayer
 local gui = InventoryGui.new()
@@ -145,7 +146,7 @@ addSkinEntries = function(entries, anchorButton, title, target, entry)
 	local trap = TrapConfig.Traps[entry.id]
 	if trap and not trap.fixedAmmo then
 		local current = TrapConfig.SelectedAmmo(entry.id, entry.meta, latest.slots)
-		table.insert(entries, { label = ("กระสุน: %s (เปลี่ยน)"):format(current and current.name or "ยังไม่มี"), onClick = function()
+		table.insert(entries, { label = L("กระสุน: %s (เปลี่ยน)", current and current.name or L("ยังไม่มี")), onClick = function()
 			local picks = {}
 			for _, ammo in ipairs(TrapConfig.Ammo) do
 				local _, count = TrapConfig.SelectedAmmo(entry.id, { ammo = ammo.id }, latest.slots)
@@ -153,23 +154,23 @@ addSkinEntries = function(entries, anchorButton, title, target, entry)
 					Remotes.RequestTrapAmmo:FireServer(target, ammo.id)
 				end })
 			end
-			gui:ShowItemMenu(anchorButton, picks, "เลือกกระสุนกับดัก")
+			gui:ShowItemMenu(anchorButton, picks, L("เลือกกระสุนกับดัก"))
 		end })
 	end
 	local options = skinsFor(entry)
 	if #options > 0 then
-		table.insert(entries, { label = ("ติดตั้งสกิน (%d)"):format(#options), onClick = function()
+		table.insert(entries, { label = L("ติดตั้งสกิน (%d)", #options), onClick = function()
 			local picks = {}
 			for _, o in ipairs(options) do
 				table.insert(picks, { label = o.name, onClick = function()
 					Remotes.RequestSkin:FireServer("install", target, o.index)
 				end })
 			end
-			gui:ShowItemMenu(anchorButton, picks, "เลือกสกิน")
+			gui:ShowItemMenu(anchorButton, picks, L("เลือกสกิน"))
 		end })
 	end
 	if entry.meta and entry.meta.skin then
-		table.insert(entries, { label = "ถอดสกิน", onClick = function()
+		table.insert(entries, { label = L("ถอดสกิน"), onClick = function()
 			Remotes.RequestSkin:FireServer("remove", target)
 		end })
 	end
@@ -200,28 +201,28 @@ gui:OnSlotClicked(function(index)
 	-- that does nothing.
 	if item.use and item.use.stat == "clanoutfit" then
 		-- แหวนแคลน: กดได้อย่างเดียวคือใส่/ถอดชุด อยู่ก่อนด่านอื่นเพราะแหวนเป็น token ไม่ใช่ consumable
-		table.insert(entries, { label = "ใส่/ถอดชุดแคลน", onClick = function()
+		table.insert(entries, { label = L("ใส่/ถอดชุดแคลน"), onClick = function()
 			Remotes.RequestUseItem:FireServer(index)
 		end })
 	elseif item.kind == "weapon" or item.kind == "armor" then
-		table.insert(entries, { label = "สวมใส่", onClick = function()
+		table.insert(entries, { label = L("สวมใส่"), onClick = function()
 			Remotes.RequestEquip:FireServer(index)
 		end })
 		addSkinEntries(entries, button, title, "bag:" .. index, slot)
 	elseif item.kind == "consumable" then
-		table.insert(entries, { label = "ใช้", onClick = function()
+		table.insert(entries, { label = L("ใช้"), onClick = function()
 			Remotes.RequestUseItem:FireServer(index)
 		end })
 		-- 🍽️ กินอัตโนมัติเมื่ออาหารเหลือ 10% (ผู้ใช้สั่ง 2026-10-02) · ทีละอย่าง · เฉพาะของที่เติมหลอดอาหาร · ชิ้นขอบทองไม่ถูกกิน
 		if ItemCatalog.FillsHunger(slot.id) and not ItemCatalog.IsGoldBorder(slot.meta) then
 			local chosen = latest.autoEat == slot.id
-			table.insert(entries, { label = chosen and "ยกเลิกกินอัตโนมัติ" or "🍽️ กินอัตโนมัติ", onClick = function()
+			table.insert(entries, { label = chosen and L("ยกเลิกกินอัตโนมัติ") or L("🍽️ กินอัตโนมัติ"), onClick = function()
 				Remotes.RequestSetAutoEat:FireServer(not chosen and slot.id or nil)
 			end })
 		end
 	elseif item.kind == "aura" then
 		-- ออร่า: ใช้ = เปิด/ปิด ไม่ถูกใช้หมด
-		table.insert(entries, { label = "เปิด/ปิดออร่า", onClick = function()
+		table.insert(entries, { label = L("เปิด/ปิดออร่า"), onClick = function()
 			Remotes.RequestUseItem:FireServer(index)
 		end })
 	elseif item.kind == "skin" or item.kind == "fashion" then
@@ -229,51 +230,51 @@ gui:OnSlotClicked(function(index)
 		local key = item.kind == "skin" and "weapon" or "armor"
 		local worn = latest.equipped and latest.equipped[key]
 		if worn and (item.kind == "fashion" or item.skinFor == worn.id) then
-			table.insert(entries, { label = "ติดตั้งกับที่สวมอยู่", onClick = function()
+			table.insert(entries, { label = L("ติดตั้งกับที่สวมอยู่"), onClick = function()
 				Remotes.RequestSkin:FireServer("install", "equipped:" .. key, index)
 			end })
 		else
 			local base = item.kind == "skin" and ItemCatalog.Get(item.skinFor or "") or nil
-			local hint = item.kind == "skin" and ("ใช้กับ: " .. (base and base.name or tostring(item.skinFor)))
-				or "ใช้กับเกราะที่สวมอยู่"
+			local hint = item.kind == "skin" and L("ใช้กับ: %s", base and base.name or tostring(item.skinFor))
+				or L("ใช้กับเกราะที่สวมอยู่")
 			table.insert(entries, { label = hint, onClick = function() end })
 		end
 	elseif item.kind == "placeable" then
 		-- ของวางบนเกาะ: "ใช้" = เข้าโหมดจัดเกาะมุมสูงแล้วหยิบชิ้นนี้ขึ้นมาเลย (IslandBuildController เป็นเจ้าของช่องทาง
 		-- หยิบตอนกด ไม่รอไว้ล่วงหน้า) · ผู้ใช้สั่ง 2026-09-25 "เปิดกระเป๋าและกด ใช้ หรือ กด F4"
 		if workspace:GetAttribute("IslandMode") == true then
-			table.insert(entries, { label = "ใช้ · จัดเกาะ", onClick = function()
+			table.insert(entries, { label = L("ใช้ · จัดเกาะ"), onClick = function()
 				local opener = game.ReplicatedStorage:FindFirstChild("WOLD_StartPlacing")
 				if not opener then warn("[Inventory] ไม่พบ WOLD_StartPlacing (IslandBuildController ไม่ได้รัน?)") return end
 				gui:Hide()
 				opener:Fire(index, slot.id)
 			end })
 		else
-			table.insert(entries, { label = "วางได้บนเกาะฟาร์มเท่านั้น", onClick = function() end })
+			table.insert(entries, { label = L("วางได้บนเกาะฟาร์มเท่านั้น"), onClick = function() end })
 		end
 	end
 
 	-- ใส่ช่องลัด 1-6 จากเมนู — ทางเดียวที่ใช้ได้แน่บนมือถือ (การลากจากกระเป๋าไปแถบล่าง นิ้วบังช่องปลายทาง)
 	-- เงื่อนไขเดียวกับการลาก: ของขยะไม่มีอะไรให้กด (QA 2026-09-26)
 	if item.kind ~= "junk" then
-		table.insert(entries, { label = "ใส่ช่องลัด", onClick = function()
+		table.insert(entries, { label = L("ใส่ช่องลัด"), onClick = function()
 			local picks = {}
 			for n = 1, InventoryConfig.HotbarSlots do
-				table.insert(picks, { label = ("ช่อง %d"):format(n), onClick = function()
+				table.insert(picks, { label = L("ช่อง %d", n), onClick = function()
 					Remotes.RequestSetHotbar:FireServer(n, slot.id)
 				end })
 			end
-			gui:ShowItemMenu(button, picks, "ใส่ช่องลัดช่องไหน")
+			gui:ShowItemMenu(button, picks, L("ใส่ช่องลัดช่องไหน"))
 		end })
 	end
 
 	-- ไม่มีปุ่ม "ให้" สำหรับของประจำตำแหน่ง (ตะหลิวเชฟ แหวนแคลน) ด้วยเหตุผลเดียวกับปุ่มทิ้งของกุญแจรถ
 	-- ข้างล่าง: เซิร์ฟเวอร์ปฏิเสธอยู่แล้ว แต่ปุ่มที่กดแล้วได้คำว่า "ไม่ได้" แย่กว่าปุ่มที่ไม่มี
 	if not ItemCatalog.IsBound(slot.id) and not ItemCatalog.IsGoldBorder(slot.meta) then
-		table.insert(entries, { label = "ให้", onClick = function()
+		table.insert(entries, { label = L("ให้"), onClick = function()
 			local nearby = nearbyPlayers()
 			if #nearby == 0 then
-				gui:ShowItemMenu(button, { { label = "ไม่มีใครอยู่ใกล้", onClick = function() end } }, title)
+				gui:ShowItemMenu(button, { { label = L("ไม่มีใครอยู่ใกล้"), onClick = function() end } }, title)
 				return
 			end
 			-- A second menu of names, in the same place, so it reads as one flow rather than a new window.
@@ -289,13 +290,13 @@ gui:OnSlotClicked(function(index)
 							Remotes.RequestGiveItem:FireServer(index, other, 1)
 							return
 						end
-						gui:ShowCountPrompt(button, ("ให้ %s กี่ชิ้น"):format(title), have, function(count)
+						gui:ShowCountPrompt(button, L("ให้ %s กี่ชิ้น", title), have, function(count)
 							Remotes.RequestGiveItem:FireServer(index, other, count)
 						end)
 					end,
 				})
 			end
-			gui:ShowItemMenu(button, people, ("ให้ใคร: %s"):format(title))
+			gui:ShowItemMenu(button, people, L("ให้ใคร: %s", title))
 		end })
 	end
 
@@ -304,7 +305,7 @@ gui:OnSlotClicked(function(index)
 	-- to do is one they should never have been invited to attempt.
 	if ItemCatalog.IsDroppable(slot.id, slot.meta) then
 		table.insert(entries, {
-			label = "ทิ้ง",
+			label = L("ทิ้ง"),
 			color = Color3.fromRGB(214, 84, 74), -- red: it is the one choice that destroys the item
 			onClick = function()
 				Remotes.RequestDropItem:FireServer(index)
@@ -398,7 +399,7 @@ gui:OnEquipSlotClicked(function(kind)
 	end
 	local title = ItemCatalog.DisplayName(worn.id, worn.meta)
 	local entries = {
-		{ label = "ถอด", onClick = function() Remotes.RequestUnequip:FireServer(kind) end },
+		{ label = L("ถอด"), onClick = function() Remotes.RequestUnequip:FireServer(kind) end },
 	}
 	addSkinEntries(entries, anchor, title, "equipped:" .. kind, worn)
 	gui:ShowItemMenu(anchor, entries, title)

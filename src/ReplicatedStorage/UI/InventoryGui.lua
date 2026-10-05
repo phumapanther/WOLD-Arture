@@ -10,6 +10,7 @@ local UiSound = require(script.Parent.UiSound)
 local InventoryConfig = require(script.Parent.Parent.InventoryConfig)
 local Responsive = require(script.Parent.Responsive)
 local FishingConfig = require(script.Parent.Parent.FishingConfig)
+local L = require(script.Parent.Parent.Locale).L
 
 local InventoryGui = {}
 InventoryGui.__index = InventoryGui
@@ -177,8 +178,8 @@ end
 -- ชื่อแท็บคือ "กระเป๋าหลัก" / "กระเป๋า VIP" (ผู้ใช้ตั้ง) — `id` ยังเป็น main/farm เหมือนเดิม
 -- เพราะมันคือกุญแจที่โค้ดใช้ ไม่ใช่สิ่งที่คนอ่าน · เปลี่ยนป้ายไม่ต้องแตะตรรกะที่ไหนเลย
 InventoryGui.Tabs = {
-	{ id = "main", label = "กระเป๋าหลัก" },
-	{ id = "farm", label = "กระเป๋า VIP" },
+	{ id = "main", label = L("กระเป๋าหลัก") },
+	{ id = "farm", label = L("กระเป๋า VIP") },
 }
 
 -- ของที่นับเป็น "กระเป๋า VIP" = ของวางบนเกาะ (`placeable`) **และของที่ใช้ได้เฉพาะบนเกาะ**
@@ -251,7 +252,7 @@ function InventoryGui.new()
 	self.panel = panel
 
 	-- Header: title, gold, weight, close cross.
-	local title = label(panel, "กระเป๋า", 20, ACCENT)
+	local title = label(panel, L("กระเป๋า"), 20, ACCENT)
 	title.Size = UDim2.new(0.4, 0, 0, 30)
 	title.Position = UDim2.new(0, 18, 0, 12)
 	title.Font = Enum.Font.GothamBold
@@ -296,7 +297,7 @@ function InventoryGui.new()
 	equipColumn.Parent = panel
 
 	self.equipSlots = {}
-	local EQUIP_ORDER = { { key = "weapon", text = "อาวุธ" }, { key = "armor", text = "เกราะ" } }
+	local EQUIP_ORDER = { { key = "weapon", text = L("อาวุธ") }, { key = "armor", text = L("เกราะ") } }
 	for i, entry in ipairs(EQUIP_ORDER) do
 		local holder = Instance.new("TextButton")
 		holder.Name = entry.key
@@ -321,7 +322,7 @@ function InventoryGui.new()
 		caption.Size = UDim2.new(1, -12, 0, 14)
 		caption.Position = UDim2.new(0, 8, 0, 6)
 
-		local name = label(holder, "ว่าง", 14, TEXT_LIGHT)
+		local name = label(holder, L("ว่าง"), 14, TEXT_LIGHT)
 		name.Size = UDim2.new(1, -12, 0, 20)
 		name.Position = UDim2.new(0, 8, 0, 24)
 		name.TextTruncate = Enum.TextTruncate.AtEnd
@@ -532,14 +533,14 @@ function InventoryGui.new()
 	sort.Font = Enum.Font.GothamBold
 	sort.TextSize = 14
 	sort.TextColor3 = Color3.fromRGB(30, 24, 10)
-	sort.Text = "จัดกระเป๋า"
+	sort.Text = L("จัดกระเป๋า")
 	sort.Parent = panel
 	corner(sort, UDim.new(0, 8))
 	self.sortButton = sort
 	-- ตั้งป้ายครั้งแรกให้ตรงกับแท็บที่เปิดอยู่ (RefreshTabs ตัวก่อนหน้านี้ถูกเรียกก่อนปุ่มจะถูกสร้าง)
 	self:RefreshTabs()
 
-	local hint = label(panel, "แตะช่องเพื่อใช้ / สวมใส่", 11, TEXT_MUTED)
+	local hint = label(panel, L("แตะช่องเพื่อใช้ / สวมใส่"), 11, TEXT_MUTED)
 	hint.AnchorPoint = Vector2.new(0, 1)
 	hint.Position = UDim2.new(0.3, 0, 1, -18)
 	hint.Size = UDim2.new(0.3, 0, 0, 16) -- ครึ่งขวาของแถวนี้เป็นของป้ายน้ำหนัก
@@ -569,7 +570,7 @@ function InventoryGui:RefreshTabs()
 	-- **ปุ่มบอกว่ากำลังจะจัดใบไหน** กระเป๋าสองใบแยกกันแล้ว ปุ่มที่เขียนแค่ "จัดกระเป๋า" ทำให้ไม่รู้ว่า
 	-- ของอีกใบจะขยับด้วยหรือเปล่า — ซึ่งเป็นที่มาของความรู้สึก "ของหายไปรวมที่ไหนก็ไม่รู้"
 	if self.sortButton and label then
-		self.sortButton.Text = "จัด" .. label
+		self.sortButton.Text = L("จัด%s", label)
 	end
 end
 
@@ -577,11 +578,11 @@ function InventoryGui:Render(data)
 	-- เก็บไว้ให้ปุ่มแท็บวาดใหม่ได้โดยไม่ต้องรอข้อมูลรอบถัดไปจากเซิร์ฟเวอร์
 	self.lastData = data
 	self:RefreshTabs()
-	self.goldLabel.Text = ("%d เหรียญ"):format(data.gold or 0)
+	self.goldLabel.Text = L("%d เหรียญ", data.gold or 0)
 
 	local weight = data.weight or 0
 	local maxWeight = data.maxWeight or 1
-	self.weightLabel.Text = ("น้ำหนัก %.1f / %d"):format(weight, maxWeight)
+	self.weightLabel.Text = L("น้ำหนัก %.1f / %d", weight, maxWeight)
 	-- Turn the readout red once the player is actually being slowed, so the penalty is never a mystery.
 	self.weightLabel.TextColor3 = (weight > maxWeight) and Color3.fromRGB(224, 96, 84) or TEXT_MUTED
 
@@ -673,7 +674,7 @@ function InventoryGui:Render(data)
 			entry.name.TextColor3 = TEXT_LIGHT
 			local maxDurability = item and (item.maxDurability or item.armor)
 			if maxDurability and worn.durability then
-				entry.durability.Text = ("ความทนทาน %d/%d"):format(math.floor(worn.durability), maxDurability)
+				entry.durability.Text = L("ความทนทาน %d/%d", math.floor(worn.durability), maxDurability)
 			else
 				entry.durability.Text = ""
 			end
@@ -685,7 +686,7 @@ function InventoryGui:Render(data)
 			ItemIcon.SetBadge(entry.icon, InventoryGui.SkinIconOf(worn.meta))
 			entry.icon.Visible = true
 		else
-			entry.name.Text = "ว่าง"
+			entry.name.Text = L("ว่าง")
 			entry.name.TextColor3 = TEXT_MUTED
 			entry.durability.Text = ""
 			entry.stroke.Transparency = 0.8
@@ -932,7 +933,7 @@ function InventoryGui:ShowCountPrompt(slotButton, title, maxCount, onConfirm)
 	heading.TextXAlignment = Enum.TextXAlignment.Left
 	heading.TextTruncate = Enum.TextTruncate.AtEnd
 	heading.TextColor3 = Color3.fromRGB(244, 197, 66)
-	heading.Text = title or "กี่ชิ้น"
+	heading.Text = title or L("กี่ชิ้น")
 	heading.ZIndex = 61
 	heading.Parent = menu
 
@@ -979,7 +980,7 @@ function InventoryGui:ShowCountPrompt(slotButton, title, maxCount, onConfirm)
 	hint.TextSize = 10
 	hint.TextXAlignment = Enum.TextXAlignment.Left
 	hint.TextColor3 = Color3.fromRGB(150, 152, 162)
-	hint.Text = ("มีทั้งหมด %d ชิ้น"):format(maxCount)
+	hint.Text = L("มีทั้งหมด %d ชิ้น", maxCount)
 	hint.ZIndex = 61
 	hint.Parent = menu
 
@@ -991,7 +992,7 @@ function InventoryGui:ShowCountPrompt(slotButton, title, maxCount, onConfirm)
 	confirm.Font = Enum.Font.GothamBold
 	confirm.TextSize = 13
 	confirm.TextColor3 = Color3.fromRGB(232, 232, 238)
-	confirm.Text = "ตกลง"
+	confirm.Text = L("ตกลง")
 	confirm.ZIndex = 61
 	confirm.Parent = menu
 	local fc = Instance.new("UICorner")

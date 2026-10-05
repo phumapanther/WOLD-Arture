@@ -11,6 +11,7 @@ local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 local HudGui = require(game.ReplicatedStorage.UI.HudGui)
 local Remotes = require(game.ReplicatedStorage.Remotes)
+local L = require(game.ReplicatedStorage.Locale).L
 
 -- Same as the lobby: no chat/playerlist UI built for this yet.
 pcall(function() StarterGui:SetCoreGuiEnabled(Enum.CoreGuiType.Chat, false) end)
@@ -127,9 +128,9 @@ local function openPremium(tab)
 		warn("[Hud] ยังไม่มี WOLD_OpenPremium — PremiumController ยังไม่พร้อมหรือหยุดกลางทาง")
 	end
 end
-gui:AddMenuItem("💎 ร้านค้าพรีเมียม", Color3.fromRGB(70, 100, 150), function() openPremium("shop") end)
-gui:AddMenuItem("🎰 กาชา", Color3.fromRGB(120, 70, 150), function() openPremium("gacha") end)
-gui:AddMenuItem("🎫 แบทเทิลพาส", Color3.fromRGB(150, 110, 40), function() openPremium("pass") end)
+gui:AddMenuItem(L("💎 ร้านค้าพรีเมียม"), Color3.fromRGB(70, 100, 150), function() openPremium("shop") end)
+gui:AddMenuItem(L("🎰 กาชา"), Color3.fromRGB(120, 70, 150), function() openPremium("gacha") end)
+gui:AddMenuItem(L("🎫 แบทเทิลพาส"), Color3.fromRGB(150, 110, 40), function() openPremium("pass") end)
 
 gui:OnLobbyRequested(function()
 	-- Server-authoritative: it saves the player's position THEN teleports, because PlayerRemoving does not

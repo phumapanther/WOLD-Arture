@@ -4,6 +4,7 @@ local HudGui = {}
 HudGui.__index = HudGui
 
 local ItemIcon = require(script.Parent.ItemIcon)
+local L = require(script.Parent.Parent.Locale).L
 
 -- Pill bars: rounded-end bar with a round icon badge overlapping its left edge. No text on the bar — icon only.
 -- Colors and gradient stops match the approved HTML reference (docs/superpowers, Main.dc.html) exactly. Icon
@@ -285,7 +286,7 @@ function HudGui.new()
 	lobbyButton.Size = UDim2.new(1, -16, 1, -16)
 	lobbyButton.Position = UDim2.new(0, 8, 0, 8)
 	lobbyButton.BackgroundColor3 = Color3.fromRGB(200, 60, 50)
-	lobbyButton.Text = "กลับหน้า Lobby"
+	lobbyButton.Text = L("กลับหน้า Lobby")
 	lobbyButton.TextColor3 = Color3.new(1, 1, 1)
 	lobbyButton.Font = Enum.Font.SourceSansBold
 	lobbyButton.TextSize = 16
@@ -502,20 +503,20 @@ end
 -- แถวอีโมจิบัพเหนือหลอด EXP: [ชื่อ] = วินาทีที่เหลือ | -1 = ไม่มีวันหมด (อาชีพ/อมตะ) จิ้มอีโมจิ = ป้ายบอกเวลา
 local BUFF_ORDER = { "noHunger", "noStamina", "noMana", "noArmor", "noHp" }
 local BUFF_LOOK = {
-	noHunger = { emoji = "💚", text = "ความหิวไม่ลด" },
-	noStamina = { emoji = "💛", text = "สตามินาไม่ลด" },
-	noMana = { emoji = "💙", text = "มานาไม่ลด" },
-	noArmor = { emoji = "🖤", text = "เกราะไม่ลด" },
+	noHunger = { emoji = "💚", text = L("ความหิวไม่ลด") },
+	noStamina = { emoji = "💛", text = L("สตามินาไม่ลด") },
+	noMana = { emoji = "💙", text = L("มานาไม่ลด") },
+	noArmor = { emoji = "🖤", text = L("เกราะไม่ลด") },
 	-- หัวใจแดงล้วน (ผู้ใช้สั่ง 2026-09-20) — ของเดิมเป็นหัวใจมีผ้าพันแผล ซึ่งฟอนต์บางเครื่องวาดแยกเป็น
 	-- สองตัวอักษรเพราะมันเป็น emoji ประสม (❤️ + ZWJ + 🩹)
-	noHp = { emoji = "❤️", text = "เลือดไม่ลด" },
+	noHp = { emoji = "❤️", text = L("เลือดไม่ลด") },
 }
 
 local function buffLeftText(seconds)
-	if seconds == -1 then return "ไม่มีวันหมด" end
-	if seconds >= 3600 then return ("เหลือ %d ชม. %d นาที"):format(math.floor(seconds / 3600), math.floor((seconds % 3600) / 60)) end
-	if seconds >= 60 then return ("เหลือ %d นาที"):format(math.ceil(seconds / 60)) end
-	return ("เหลือ %d วินาที"):format(math.floor(seconds))
+	if seconds == -1 then return L("ไม่มีวันหมด") end
+	if seconds >= 3600 then return L("เหลือ %d ชม. %d นาที", math.floor(seconds / 3600), math.floor((seconds % 3600) / 60)) end
+	if seconds >= 60 then return L("เหลือ %d นาที", math.ceil(seconds / 60)) end
+	return L("เหลือ %d วินาที", math.floor(seconds))
 end
 
 function HudGui:ensureBuffRow()
