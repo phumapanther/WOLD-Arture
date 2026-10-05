@@ -25,4 +25,11 @@ check(L.Translate("en", "ข้อความแปลก ๆ") == "ข้อ�
 check(L.Translate("th", "ตกได้ ปลา 3.2 กก.") == "ตกได้ ปลา 3.2 กก.", "Translate ไทย = เดิม")
 check(L.Translate("en", "ซื้อ ปลา x2 แล้ว") == "Bought Fish x2", "แม่แบบยาวกว่าชนะ (ไม่ไปจับ 'ซื้อ %s')")
 
+-- ชื่อไอเทมแปลที่ DisplayName ที่เดียว (Task 5)
+local IC = require(game.ReplicatedStorage.ItemCatalog)
+check(IC.DisplayName("Sword", nil, "en") == "Sword", "ชื่อไอเทมแปล: " .. tostring(IC.DisplayName("Sword", nil, "en")))
+check(IC.DisplayName("Sword", { enhance = 3 }, "ja") == "剣 +3", "ขั้นตีบวกต่อท้ายคำแปล: " .. tostring(IC.DisplayName("Sword", { enhance = 3 }, "ja")))
+check(IC.DisplayName("Sword", nil, "th") == "ดาบ", "ไทยเหมือนเดิม")
+check(IC.DisplayName("Sword", nil) == "ดาบ", "ไม่ส่งภาษา (เซิร์ฟ/ตัวจำลอง) = ไทย")
+
 return (fails == 0 and "PASS\n" or ("FAIL x%d\n"):format(fails)) .. table.concat(out, "\n")

@@ -864,9 +864,12 @@ end
 -- One helper rather than the same concatenation at every call site, so a second kind of identity later (a
 -- named weapon, a signed letter) is added here and appears everywhere at once. Callers that have no meta to
 -- hand pass nothing and get exactly what they got before.
-function ItemCatalog.DisplayName(id, meta)
+-- lang (ระบบหลายภาษา 2026-10-05): ไม่ส่ง = ภาษาของเครื่องนี้ (ไคลเอนต์) / ไทย (เซิร์ฟ)
+function ItemCatalog.DisplayName(id, meta, lang)
+	local Locale = require(script.Parent.Locale)
+	lang = lang or Locale.Current()
 	local item = ItemCatalog.Items[id]
-	local base = item and item.name or id
+	local base = item and Locale.T(lang, item.name) or id
 	if type(meta) == "table" and type(meta.plate) == "string" then
 		return base .. " " .. meta.plate
 	end
@@ -882,13 +885,14 @@ function ItemCatalog.DisplayName(id, meta)
 	if type(meta) == "table" and type(meta.skin) == "string" then
 		local skin = ItemCatalog.Items[meta.skin]
 		if skin then
-			local short = skin.name:match(": (.+)$") or skin.name
+			local skinName = Locale.T(lang, skin.name)
+			local short = skinName:match(": (.+)$") or skinName:match("：(.+)$") or skinName
 			return base .. " (" .. short .. ")"
 		end
 	end
 	-- ของขอบทอง (เฟส 2b): "ไข่ (ขอบทอง)"
 	if ItemCatalog.IsGoldBorder(meta) then
-		return base .. " (ขอบทอง)"
+		return base .. " (" .. Locale.T(lang, "ขอบทอง") .. ")"
 	end
 	return base
 end
