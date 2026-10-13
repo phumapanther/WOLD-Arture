@@ -23,3 +23,7 @@ tools/ui-audit/out/
 
 # แผนที่ v2: รูปวาดใหม่ได้จาก samples.txt.gz ใน 3 วิ (tools/render-map.py)
 assets/map/*.png
+
+# บันทึกแชทส่วนตัว — เก็บไว้ในเครื่อง ไม่เผยแพร่ (ผู้ใช้สั่ง 2026-10-13)
+docs/chat-history-chatgpt.txt
+docs/session-2026-09-06-claude-code.md
